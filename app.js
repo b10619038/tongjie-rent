@@ -5,10 +5,11 @@ const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
-const UI_KEY = "tongjie_ui_v1";
+const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午2:00";
+const APP_VERSION = "2026-08-28-上午2:10";
 const CHANGELOG = [
+  { ver: "2026-08-28-上午2:10", items: ["租客與管理員關閉 App 或重新整理後仍保持登入", "只有點「登出」或「切換身分」才會回到登入首頁"] },
   { ver: "2026-08-28-上午2:00", items: ["點擊下方更新通知，可查看這次更新了哪些內容", "看完後可選擇立即更新或稍後"] },
   { ver: "2026-08-28-上午1:55", items: ["公告、報修、續約、合約到期、未繳租金會在手機上方跳出系統通知", "管理員也會收到新報修、續約申請與繳費回報"] },
   { ver: "2026-08-28-上午1:43", items: ["修復「下載安裝電腦版」點了沒反應", "改為跳出安裝說明，Chrome／Edge 可一鍵安裝"] },
@@ -447,7 +448,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -543,32 +544,76 @@ function save() {
 }
 function persistUi() {
   try {
+    if (!ui.role) return;
+    const room = ui.role === "tenant"
+      ? (state.rooms.find(r => r.id === ui.roomId) || (typeof myRoom === "function" ? myRoom() : null))
+      : null;
     const snap = JSON.stringify({
-      role: ui.role, page: ui.page, roomId: ui.roomId, tenantId: ui.tenantId, assetKind: ui.assetKind, adminCode: ui.adminCode || ""
+      role: ui.role,
+      page: ui.page,
+      roomId: ui.roomId,
+      tenantId: ui.tenantId,
+      roomNo: room ? room.no : (ui.roomNo || ""),
+      assetKind: ui.assetKind,
+      adminCode: ui.adminCode || ""
     });
-    sessionStorage.setItem(UI_KEY, snap);
     localStorage.setItem(UI_KEY, snap);
+    sessionStorage.setItem(UI_KEY, snap);
+    localStorage.removeItem("tongjie_ui_v1");
+    sessionStorage.removeItem("tongjie_ui_v1");
   } catch {}
+}
+function readUiSnap() {
+  const parse = raw => {
+    try {
+      const s = JSON.parse(raw);
+      return s && s.role ? s : null;
+    } catch { return null; }
+  };
+  try {
+    return parse(localStorage.getItem(UI_KEY))
+      || parse(sessionStorage.getItem(UI_KEY))
+      || parse(localStorage.getItem("tongjie_ui_v1"))
+      || parse(sessionStorage.getItem("tongjie_ui_v1"));
+  } catch { return null; }
 }
 function restoreUi() {
   try {
-    const raw = sessionStorage.getItem(UI_KEY) || localStorage.getItem(UI_KEY);
-    const s = raw ? JSON.parse(raw) : null;
-    if (!s || !s.role) return;
+    const s = readUiSnap();
+    if (!s) return;
     ui.role = s.role;
     ui.page = s.page || (s.role === "admin" ? "dash" : "home");
     ui.roomId = s.roomId || null;
     ui.tenantId = s.tenantId || null;
+    ui.roomNo = s.roomNo || "";
     ui.assetKind = s.assetKind || "studio";
     ui.adminCode = s.adminCode || "";
-    if (s.role === "tenant" && s.tenantId && !state.tenants.some(t => t.id === s.tenantId)) {
-      ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null;
+    if (ui.page === "tenant-login" || ui.page === "admin-login") {
+      ui.page = s.role === "admin" ? "dash" : "home";
     }
+    if (s.role === "tenant") {
+      let t = (state.tenants || []).find(x => x.id === s.tenantId);
+      let room = (state.rooms || []).find(r => r.id === s.roomId) || (s.roomNo ? (state.rooms || []).find(r => r.no === s.roomNo) : null);
+      if (!t && room) t = (state.tenants || []).find(x => x.id === room.tenantId || x.roomId === room.id);
+      if (!room && t) room = (state.rooms || []).find(r => r.id === t.roomId);
+      if (t) ui.tenantId = t.id;
+      if (room) {
+        ui.roomId = room.id;
+        ui.roomNo = room.no;
+        if (!ui.tenantId) ui.tenantId = room.tenantId;
+      }
+    }
+    persistUi();
   } catch {}
 }
 function clearSession() {
-  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.loginError = ""; ui.adminCode = "";
-  try { sessionStorage.removeItem(UI_KEY); localStorage.removeItem(UI_KEY); } catch {}
+  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = "";
+  try {
+    sessionStorage.removeItem(UI_KEY);
+    localStorage.removeItem(UI_KEY);
+    sessionStorage.removeItem("tongjie_ui_v1");
+    localStorage.removeItem("tongjie_ui_v1");
+  } catch {}
 }
 
 function syncRoomRepairStatus(roomId) {
@@ -2652,7 +2697,7 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return; }
+    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; persistUi(); render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return; }
     ui.loginError = "密碼不正確"; render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
@@ -2661,7 +2706,8 @@ function tryLogin() {
     ui.loginError = room.status === "office" ? "7651 為辦公室，請改走管理員登入" : "此房號目前沒有租客";
     render(); return;
   }
-  ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.page = "home"; ui.loginError = "";
+  ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.roomNo = room.no; ui.page = "home"; ui.loginError = "";
+  persistUi();
   render();
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
@@ -3563,10 +3609,12 @@ function hideSplash() {
 }
 async function boot() {
   const minWait = new Promise(r => setTimeout(r, 1900));
+  restoreUi();
+  applyTheme(currentThemeId());
+  render();
   const got = await pullCloud();
   if (!got) await pushCloud();
   restoreUi();
-  applyTheme(currentThemeId());
   render();
   if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); }
   await minWait;
@@ -3586,4 +3634,6 @@ async function boot() {
     }
   }, 12000);
 }
+window.addEventListener("pagehide", persistUi);
+window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistUi(); });
 boot();
