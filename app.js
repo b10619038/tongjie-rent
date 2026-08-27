@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:18";
+const APP_VERSION = "2026-08-27-下午11:26";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -1483,6 +1483,26 @@ function leaseView() {
       })()}
     </div>`;
 }
+function deleteRepair(id) {
+  const rep = state.repairs.find(x => x.id === id);
+  if (!rep) return;
+  const roomId = rep.roomId;
+  state.repairs = state.repairs.filter(x => x.id !== id);
+  if (state.notices) state.notices = state.notices.filter(n => n.repairId !== id);
+  syncRoomRepairStatus(roomId);
+  save();
+  toast("已刪除報修");
+  render();
+}
+function bindRepairDelete() {
+  document.querySelectorAll("[data-del-repair]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteRepair(btn.dataset.delRepair);
+    };
+  });
+}
 function repairCard(rep, extraClass) {
   return `<div class="card card-body ${extraClass || ""}">
     <div class="row"><span class="k">${rep.type}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
@@ -1490,6 +1510,7 @@ function repairCard(rep, extraClass) {
     <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
     ${appointLabel(rep)}
     ${repairMediaButtons(rep)}
+    <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
   </div>`;
 }
 function repairView() {
@@ -2126,6 +2147,7 @@ function adminRepairs() {
         <button type="button" class="${rep.status === "doing" ? "on" : ""}" data-rep-status="${rep.id}|doing">處理中</button>
         <button type="button" class="${rep.status === "done" ? "on" : ""}" data-rep-status="${rep.id}|done">已完成</button>
       </div>
+      <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
     </div>`;
   }).join("")}</div>`;
 }
@@ -2448,6 +2470,7 @@ function bindTenant() {
   }
   const backRepair = document.getElementById("back-repair");
   if (backRepair) backRepair.onclick = () => { ui.page = "repair"; render(); };
+  bindRepairDelete();
 }
 
 function bindAnnPending() {
@@ -2592,6 +2615,7 @@ function bindLineSwipe() {
 function bindAdmin() {
   document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
+  bindRepairDelete();
   document.querySelectorAll("[data-admin]").forEach(btn => {
     btn.onclick = () => { ui.page = btn.dataset.admin; render(); };
   });
