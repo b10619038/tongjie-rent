@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:43";
+const APP_VERSION = "2026-08-28-上午12:45";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2058,9 +2058,12 @@ function firmChartHtml(company) {
     <div class="firm-body">
       <div class="pie-wrap">
         <div class="pie ${empty ? "empty" : ""} ${ui.keepScroll ? "" : "spin-in"}" style="--in:${inPct}"></div>
-        <div class="pie-center"><b>${money(t.net)}</b><em>淨${unit}收入</em></div>
       </div>
       <div class="firm-legend">
+        <div class="net-row">
+          <span class="leader" aria-hidden="true"></span>
+          <i class="net"></i><span>淨${unit}收入</span><strong>${money(t.net)}</strong>
+        </div>
         <div><i class="in"></i><span>總${unit}收入</span><strong>${money(t.inn)}</strong></div>
         <div><i class="out"></i><span>總${unit}支出</span><strong>${money(t.out)}</strong></div>
         <div class="small">${hint}${empty ? " · 尚無進出帳" : ""}</div>
