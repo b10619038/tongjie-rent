@@ -541,3 +541,27 @@ textarea { min-height: 92px; resize: vertical; }
   pointer-events: none;
   background: transparent;
 }
+.update-bar {
+  position: fixed;
+  left: 0; right: 0; top: 0;
+  z-index: 80;
+  background: #62765b;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.update-bar button {
+  width: auto;
+  background: #fff;
+  color: #62765b;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}

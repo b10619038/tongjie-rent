@@ -7,14 +7,73 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:31";
+const APP_VERSION = "2026-08-27-下午10:33";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => {
     window.__swReg = r;
+    if (r.waiting && !navigator.serviceWorker.controller) r.waiting.postMessage("SKIP_WAITING");
+    watchAppUpdate(r);
     return navigator.serviceWorker.ready;
   }).then(r => { window.__swReg = r; }).catch(() => {});
+  navigator.serviceWorker.addEventListener("message", e => {
+    if (e.data && e.data.type === "APPLY_UPDATE") applyAppUpdate();
+  });
+}
+function isPhone() {
+  return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
+}
+function updateBarHtml() {
+  if (!ui.updateReady) return "";
+  return `<div class="update-bar">發現新版本 ${APP_VERSION}<button type="button" id="apply-update">立即更新</button></div>`;
+}
+function applyAppUpdate() {
+  const reg = window.__swReg;
+  if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+  else location.reload();
+}
+function promptAppUpdate(reg) {
+  if (ui.updateReady) return;
+  ui.updateReady = true;
+  render();
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      const n = new Notification("統潔開發有新版本", {
+        body: "版本 " + APP_VERSION + " 已準備好，請點立即更新",
+        tag: "tongjie-update",
+        icon: "icon-192.png"
+      });
+      n.onclick = () => { window.focus(); applyAppUpdate(); n.close(); };
+    } catch {}
+  }
+  if (reg && reg.showNotification) {
+    reg.showNotification("統潔開發有新版本", {
+      body: "版本 " + APP_VERSION + " 已準備好，請點立即更新",
+      tag: "tongjie-update",
+      icon: "/icon-192.png"
+    }).catch(() => {});
+  }
+}
+function watchAppUpdate(reg) {
+  if (!reg) return;
+  if (reg.waiting && navigator.serviceWorker.controller) promptAppUpdate(reg);
+  reg.addEventListener("updatefound", () => {
+    const sw = reg.installing;
+    if (!sw) return;
+    sw.addEventListener("statechange", () => {
+      if (sw.state === "installed" && navigator.serviceWorker.controller) promptAppUpdate(reg);
+    });
+  });
+  setInterval(() => { try { reg.update(); } catch {} }, 30 * 60 * 1000);
+}
+let __reloading = false;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (__reloading) return;
+    __reloading = true;
+    location.reload();
+  });
 }
 function urlBase64ToUint8Array(b64) {
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -1093,11 +1152,13 @@ function render() {
   const root = document.getElementById("app");
   const guide = notifyGuideHtml();
   const ver = versionFooter();
-  if (!ui.role) { root.innerHTML = gateView() + ver + guide; bindGate(); bindNotifyGuide(); return; }
+  const bar = updateBarHtml();
+  if (!ui.role) { root.innerHTML = bar + gateView() + ver + guide; bindGate(); bindNotifyGuide(); bindUpdateBar(); return; }
   if (ui.role === "admin") {
-    root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}`;
+    root.innerHTML = `${bar}<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}`;
     bindAdmin();
     bindNotifyGuide();
+    bindUpdateBar();
     if (oldScroll != null) {
       const sc = document.querySelector(".admin-scroll");
       if (sc) {
@@ -1107,9 +1168,10 @@ function render() {
     }
     return;
   }
-  root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}`;
+  root.innerHTML = `${bar}<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}`;
   bindTenant();
   bindNotifyGuide();
+  bindUpdateBar();
 }
 
 function gateView() {
@@ -1143,6 +1205,11 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
+    ${!isStandalone() && !isPhone() ? `<div class="card card-body slide-left delay" style="margin-top:14px">
+      <div class="label">安裝到電腦</div>
+      <p class="small">安裝後會像一般軟體一樣出現在開始功能表／程式列。有新版本時會自動通知。</p>
+      <button class="btn-navy" id="install-app" type="button">安裝到電腦</button>
+    </div>` : ""}
   </div>`;
 }
 
@@ -2200,6 +2267,12 @@ function bindGate() {
     input.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
     input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
   }
+  const inst = document.getElementById("install-app");
+  if (inst) inst.onclick = installApp;
+}
+function bindUpdateBar() {
+  const btn = document.getElementById("apply-update");
+  if (btn) btn.onclick = applyAppUpdate;
 }
 
 function bindTenant() {
