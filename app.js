@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:36";
+const APP_VERSION = "2026-08-28-上午1:40";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1279,15 +1279,16 @@ function installCardHtml(label) {
   if (isStandalone()) return "";
   return `<div class="card card-body slide-left" style="margin-top:14px">
     <div class="label">${label}</div>
-    <p class="small">安裝後可從主畫面或開始功能表開啟，有新版本會自動更新。</p>
-    <button class="btn-navy" id="install-app" type="button">${label}</button>
+    <p class="small">Android 與 iPhone／iPad 都可安裝。安裝後從主畫面開啟，有新版本會自動更新。</p>
+    <p class="small">Android 用 Chrome 點下方按鈕；iPhone／iPad 請用 Safari 打開，按分享鈕再選「加入主畫面」。</p>
+    <button class="btn-navy" id="install-app" type="button">安裝到手機</button>
   </div>`;
 }
 function desktopInstallCardHtml() {
   return `<div class="card card-body slide-left" style="margin-top:14px">
     <div class="label">電腦版</div>
     <p class="small">Windows／Mac 可用 Chrome 或 Edge 下載安裝，安裝後從開始功能表開啟，有新版本會自動更新。</p>
-    <button class="btn-navy" id="install-app" type="button">下載安裝電腦版</button>
+    <button class="btn-navy" id="install-desktop" type="button">下載安裝電腦版</button>
   </div>`;
 }
 function gateView() {
@@ -1304,7 +1305,7 @@ function gateView() {
         <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
-      ${isAdmin ? desktopInstallCardHtml() : installCardHtml("安裝 App")}
+      ${isAdmin ? desktopInstallCardHtml() + installCardHtml("下載 App") : installCardHtml("下載 App")}
     </div>`;
   }
   return `<div class="gate">
@@ -2499,7 +2500,9 @@ function bindGate() {
     input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
   }
   const inst = document.getElementById("install-app");
-  if (inst) inst.onclick = installApp;
+  if (inst) inst.onclick = () => installApp("mobile");
+  const desk = document.getElementById("install-desktop");
+  if (desk) desk.onclick = () => installApp("desktop");
 }
 function bindUpdateBar() {
   const btn = document.getElementById("apply-update");
@@ -3342,8 +3345,9 @@ function isInstalledApp() {
   try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
   return false;
 }
-async function installApp() {
-  if (deferredInstall) {
+async function installApp(kind) {
+  const wantMobile = kind === "mobile";
+  if (deferredInstall && !isIOS()) {
     deferredInstall.prompt();
     const choice = await deferredInstall.userChoice.catch(() => null);
     deferredInstall = null;
@@ -3354,8 +3358,14 @@ async function installApp() {
     }
     return;
   }
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  toast(ios ? "請按分享鈕，再選「加入主畫面」" : "請用瀏覽器選單「安裝應用程式」或「加入主畫面」");
+  if (wantMobile) {
+    if (isIOS()) toast("請按底部分享鈕，再選「加入主畫面」");
+    else if (isAndroid()) toast("請用 Chrome 右上選單，選「安裝應用程式」或「加入主畫面」");
+    else toast("請用手機 Safari 或 Chrome 打開此網址後安裝。Android 與 iPhone 都可加入主畫面。");
+    return;
+  }
+  if (isIOS() || isAndroid()) toast("請改用電腦的 Chrome 或 Edge 打開此網址後安裝電腦版");
+  else toast("請用瀏覽器選單「安裝應用程式」，即可安裝到開始功能表");
 }
 document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
