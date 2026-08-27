@@ -348,7 +348,13 @@ textarea { min-height: 92px; resize: vertical; }
 .cal-day { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.cal-form input, .cal-form select { width: 100%; }
+.ver {
+  text-align: center;
+  font-size: 11px;
+  color: #9a9a9a;
+  margin: 22px 0 8px;
+  letter-spacing: .04em;
+}
 .inv-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .inv-paper {
   background: #fffdf8; color: #c1121f; border: 1px solid #c1121f;

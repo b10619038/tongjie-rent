@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v1";
+const CACHE = "tongjie-app-v2";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

@@ -7,6 +7,10 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
+const APP_VERSION = "2026-08-27-下午9:34";
+function versionFooter() {
+  return `<div class="ver">版本 ${APP_VERSION}</div>`;
+}
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
   if (!v) return "";
@@ -1015,6 +1019,7 @@ function gateView() {
         <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
+      ${versionFooter()}
     </div>`;
   }
   return `<div class="gate">
@@ -1037,6 +1042,7 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
+    ${versionFooter()}
   </div>`;
 }
 
@@ -1113,6 +1119,7 @@ function homeView() {
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${hasAnn ? "" : announceBlock}
+      ${versionFooter()}
     </div>`;
 }
 
@@ -1357,7 +1364,7 @@ function adminView() {
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
     </div>
-    <div class="admin-scroll"><div class="admin-in-right">${adminBody()}</div></div>`;
+    <div class="admin-scroll"><div class="admin-in-right">${adminBody()}${versionFooter()}</div></div>`;
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
