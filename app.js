@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:09";
+const APP_VERSION = "2026-08-28-上午12:11";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2699,15 +2699,31 @@ function bindLineSwipe() {
 function bindCountUps() {
   document.querySelectorAll("[data-count]").forEach((el, i) => {
     const to = Number(el.dataset.count) || 0;
-    const start = performance.now();
-    const ms = 620 + i * 70;
-    const tick = now => {
-      const t = Math.min(1, (now - start) / ms);
-      const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = money(Math.round(to * eased));
-      if (t < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+    const delay = i * 90;
+    const set = n => { el.textContent = money(Math.round(n)); };
+    const later = (fn, ms) => setTimeout(fn, ms);
+    later(() => {
+      if (to <= 0) { set(0); return; }
+      set(1);
+      later(() => {
+        set(2);
+        later(() => {
+          set(3);
+          later(() => {
+            const start = performance.now();
+            const from = 3;
+            const ms = 520;
+            const tick = now => {
+              const t = Math.min(1, (now - start) / ms);
+              const eased = t * t * t;
+              set(from + (to - from) * eased);
+              if (t < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          }, 90);
+        }, 90);
+      }, 90);
+    }, delay);
   });
 }
 function bindAdmin() {
