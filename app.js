@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:36";
+const APP_VERSION = "2026-08-28-上午12:38";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2043,10 +2043,7 @@ function firmChartHtml(company) {
   const empty = !total;
   return `<div class="card firm-card">
     <div class="k firm-k"><span>${company}${unit}收支</span>
-      <select data-firm-period="${key}">
-        <option value="month" ${mode === "month" ? "selected" : ""}>月</option>
-        <option value="year" ${mode === "year" ? "selected" : ""}>年</option>
-      </select>
+      <button type="button" class="firm-toggle" data-firm-period="${key}">${unit}</button>
     </div>
     <div class="firm-body">
       <div class="pie-wrap">
@@ -2814,11 +2811,11 @@ function bindAdmin() {
   document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
   bindRepairDelete();
-  document.querySelectorAll("[data-firm-period]").forEach(sel => {
-    sel.onclick = e => e.stopPropagation();
-    sel.onchange = () => {
+  document.querySelectorAll("[data-firm-period]").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
       if (!ui.firmPeriod) ui.firmPeriod = {};
-      ui.firmPeriod[sel.dataset.firmPeriod] = sel.value;
+      ui.firmPeriod[btn.dataset.firmPeriod] = firmPeriod(btn.dataset.firmPeriod) === "year" ? "month" : "year";
       ui.keepScroll = true;
       render();
     };

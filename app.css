@@ -298,9 +298,12 @@ textarea { min-height: 92px; resize: vertical; }
 .dash { padding: 0 20px 30px; display: grid; gap: 14px; }
 .firm-grid { display: grid; gap: 12px; }
 .firm-k { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.firm-k select {
-  width: auto; min-width: 64px; padding: 4px 8px; font-size: 12px; font-weight: 800;
+.firm-k select, .firm-toggle {
+  width: auto; min-width: 64px; padding: 4px 12px; font-size: 12px; font-weight: 800;
   border-radius: 999px;
+}
+.firm-toggle {
+  border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer;
 }
 .firm-card { padding: 16px; }
 .firm-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
