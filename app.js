@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:33";
+const APP_VERSION = "2026-08-28-上午1:36";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1283,6 +1283,13 @@ function installCardHtml(label) {
     <button class="btn-navy" id="install-app" type="button">${label}</button>
   </div>`;
 }
+function desktopInstallCardHtml() {
+  return `<div class="card card-body slide-left" style="margin-top:14px">
+    <div class="label">電腦版</div>
+    <p class="small">Windows／Mac 可用 Chrome 或 Edge 下載安裝，安裝後從開始功能表開啟，有新版本會自動更新。</p>
+    <button class="btn-navy" id="install-app" type="button">下載安裝電腦版</button>
+  </div>`;
+}
 function gateView() {
   if (ui.page === "tenant-login" || ui.page === "admin-login") {
     const isAdmin = ui.page === "admin-login";
@@ -1297,7 +1304,7 @@ function gateView() {
         <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
-      ${installCardHtml("安裝 App")}
+      ${isAdmin ? desktopInstallCardHtml() : installCardHtml("安裝 App")}
     </div>`;
   }
   return `<div class="gate">
