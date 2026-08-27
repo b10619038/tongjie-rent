@@ -1032,6 +1032,11 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
+    <div class="card card-body slide-left delay" style="margin-top:14px">
+      <div class="label">下載 App</div>
+      <p class="small">用手機打開此網址後，按「加入主畫面」，就能像一般 App 一樣使用。</p>
+      <button class="btn-navy" id="install-app" type="button">安裝到手機</button>
+    </div>
   </div>`;
 }
 
@@ -2000,6 +2005,8 @@ function bindGate() {
     input.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
     input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
   }
+  const inst = document.getElementById("install-app");
+  if (inst) inst.onclick = installApp;
 }
 
 function bindTenant() {
@@ -2662,6 +2669,24 @@ function bindCashCal() {
   };
 }
 
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+});
+async function installApp() {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    await deferredInstall.userChoice.catch(() => {});
+    deferredInstall = null;
+    return;
+  }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  toast(ios ? "請按分享鈕，再選「加入主畫面」" : "請用瀏覽器選單「安裝應用程式」或「加入主畫面」");
+}
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
