@@ -330,6 +330,25 @@ textarea { min-height: 92px; resize: vertical; }
 .ai-msg.ai { background: #eef3ea; }
 .ai-msg b { font-size: 12px; color: var(--muted); }
 .ai-msg p { margin: 6px 0 0; white-space: pre-wrap; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; }
+.cal-nav .ghost { width: auto; }
+.cal-sum { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.cal-sum span { background: #f4f4f4; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-w { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; font-weight: 700; }
+.cal-cell {
+  min-height: 64px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  padding: 6px 4px; text-align: left; display: flex; flex-direction: column; gap: 2px;
+}
+.cal-cell.empty { border-color: transparent; background: transparent; }
+.cal-cell.on { background: #eef3ea; border-color: #62765b; }
+.cal-cell em { font-style: normal; font-size: 12px; font-weight: 800; }
+.cal-cell .in { font-size: 10px; color: #2f6b3c; }
+.cal-cell .out { font-size: 10px; color: #b42318; }
+.cal-day { margin-top: 12px; display: grid; gap: 8px; }
+.cal-form { margin-top: 12px; display: grid; gap: 8px; }
+.cal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cal-form input, .cal-form select { width: 100%; }
 .inv-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .inv-paper {
   background: #fffdf8; color: #c1121f; border: 1px solid #c1121f;

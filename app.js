@@ -263,6 +263,7 @@ function normalize(data) {
   if (!Array.isArray(data.renewals)) data.renewals = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
+  if (!Array.isArray(data.books)) data.books = [];
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
     const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
@@ -855,6 +856,114 @@ function calendarItems() {
     });
   });
   return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+function ymdOf(value) {
+  const m = String(value || "").match(/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : "";
+}
+function ensureCalMonth() {
+  if (ui.calYear && ui.calMonth) return;
+  const n = new Date();
+  ui.calYear = n.getFullYear();
+  ui.calMonth = n.getMonth() + 1;
+  ui.calDay = n.getDate();
+}
+function collectLedger() {
+  const rows = [];
+  (state.books || []).forEach(b => rows.push({
+    id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount: Number(b.amount) || 0,
+    roomNo: b.roomNo || "", note: b.note || "", source: "book", canDel: true
+  }));
+  (state.bankSlips || []).forEach(s => {
+    rows.push({
+      id: "slip-" + s.id, type: "in", date: ymdOf(s.date), amount: Number(s.amount) || 0,
+      roomNo: s.roomNo || "", note: s.note || "銀行入帳", source: "slip", canDel: false
+    });
+  });
+  const slipRooms = new Set((state.bankSlips || []).map(s => String(s.roomNo || "")));
+  state.tenants.filter(t => t.paid).forEach(t => {
+    const room = state.rooms.find(r => r.id === t.roomId);
+    const date = ymdOf(t.paidAt) || ymdOf(nowStamp());
+    if (room && slipRooms.has(String(room.no))) return;
+    rows.push({
+      id: "rent-" + t.id, type: "in", date, amount: Number(room && room.rent) || 0,
+      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", source: "rent", canDel: false
+    });
+  });
+  return rows.filter(x => x.date);
+}
+function monthCashHtml() {
+  ensureCalMonth();
+  const y = ui.calYear, m = ui.calMonth;
+  const key = `${y}-${String(m).padStart(2, "0")}`;
+  const rows = collectLedger().filter(x => x.date.slice(0, 7) === key);
+  const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+  const first = new Date(y, m - 1, 1);
+  const start = first.getDay();
+  const dim = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < start; i++) cells.push(null);
+  for (let d = 1; d <= dim; d++) cells.push(d);
+  while (cells.length % 7) cells.push(null);
+  const dayKey = d => `${key}-${String(d).padStart(2, "0")}`;
+  const byDay = d => rows.filter(x => x.date === dayKey(d));
+  const sel = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
+  const selected = sel ? byDay(sel) : [];
+  return `<div class="card card-body">
+    <div class="row">
+      <div>
+        <h2 class="dash-h" style="margin:0">本月進出帳</h2>
+        <div class="small">在平台上查看與登錄一個月的進帳、出帳</div>
+      </div>
+    </div>
+    <div class="cal-nav">
+      <button type="button" class="ghost" data-cal-nav="-1">上一月</button>
+      <strong>${y} 年 ${m} 月</strong>
+      <button type="button" class="ghost" data-cal-nav="1">下一月</button>
+    </div>
+    <div class="cal-sum">
+      <span>進帳 ${money(inn)}</span>
+      <span>出帳 ${money(out)}</span>
+      <span>結餘 ${money(inn - out)}</span>
+    </div>
+    <div class="cal-grid">
+      ${["日", "一", "二", "三", "四", "五", "六"].map(w => `<div class="cal-w">${w}</div>`).join("")}
+      ${cells.map(d => {
+        if (!d) return `<div class="cal-cell empty"></div>`;
+        const list = byDay(d);
+        const di = list.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+        const dout = list.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+        return `<button type="button" class="cal-cell ${sel === d ? "on" : ""}" data-cal-day="${d}">
+          <em>${d}</em>
+          ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
+          ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
+        </button>`;
+      }).join("")}
+    </div>
+    <div class="cal-day">
+      <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
+      ${selected.length ? selected.map(x => `
+        <div class="mini">
+          <b>${x.type === "in" ? "進帳" : "出帳"} · ${x.roomNo || "—"} · ${money(x.amount)}</b>
+          <span>${escapeHtml(x.note || "")}</span>
+          ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
+        </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
+    </div>
+    <form id="book-form" class="cal-form">
+      <h2 class="dash-h">新增一筆</h2>
+      <div class="cal-form-row">
+        <select name="type"><option value="in">進帳</option><option value="out">出帳</option></select>
+        <input name="date" type="date" value="${sel ? dayKey(sel) : ymdOf(nowStamp())}" />
+      </div>
+      <div class="cal-form-row">
+        <input name="amount" type="text" placeholder="金額" />
+        <input name="roomNo" type="text" placeholder="房號（選填）" />
+      </div>
+      <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" />
+      <button class="btn-navy" type="submit">記入日曆</button>
+    </form>
+  </div>`;
 }
 function appointLabel(rep) {
   if (!rep.appointAt) return "";
@@ -1558,21 +1667,7 @@ function adminDash() {
         </table>
       </div>
     </div>
-    <div class="card card-body">
-      <div class="row" style="align-items:flex-start">
-        <div>
-          <h2 class="dash-h" style="margin:0">Google 日曆總紀錄</h2>
-          <div class="small">維修預約與續約簽約時間彙整，可加入 Google 日曆</div>
-        </div>
-        <a class="ghost" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener" style="width:auto;flex:0 0 auto">開啟日曆</a>
-      </div>
-      ${calendarItems().length ? calendarItems().map(ev => `
-        <div class="mini">
-          <b>${escapeHtml(ev.title)}</b>
-          <span>${escapeHtml(ev.sub)}</span>
-          <button type="button" class="ghost" data-gcal-kind="${ev.kind}" data-gcal="${ev.id}" style="width:auto;margin-top:6px">加入 Google 日曆</button>
-        </div>`).join("") : `<div class="empty">目前沒有已預約的維修或續約時間</div>`}
-    </div>
+    ${monthCashHtml()}
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">樓層出租概況</h2>
         ${floors.map(f => `<div class="bar-row"><span>${f.fl}樓</span><div class="bar"><i style="width:${f.pct}%"></i></div><em>${f.full}/${f.total}</em></div>`).join("")}
@@ -2445,6 +2540,7 @@ function bindAdmin() {
     };
   });
   bindAdminAi();
+  bindCashCal();
 }
 
 function bindAdminAi() {
@@ -2511,6 +2607,45 @@ function bindAdminAi() {
       save(); render();
     };
   });
+}
+function bindCashCal() {
+  ensureCalMonth();
+  document.querySelectorAll("[data-cal-nav]").forEach(btn => {
+    btn.onclick = () => {
+      let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
+      if (m < 1) { m = 12; y -= 1; }
+      if (m > 12) { m = 1; y += 1; }
+      ui.calYear = y; ui.calMonth = m; ui.calDay = 1;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-cal-day]").forEach(btn => {
+    btn.onclick = () => { ui.calDay = Number(btn.dataset.calDay); render(); };
+  });
+  document.querySelectorAll("[data-del-book]").forEach(btn => {
+    btn.onclick = () => {
+      state.books = (state.books || []).filter(x => x.id !== btn.dataset.delBook);
+      save(); render();
+    };
+  });
+  const form = document.getElementById("book-form");
+  if (form) form.onsubmit = e => {
+    e.preventDefault();
+    const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
+    const date = form.date.value;
+    if (!amount || !date) { toast("請填日期與金額"); return; }
+    if (!state.books) state.books = [];
+    state.books.push({
+      id: "bk" + Date.now(),
+      type: form.type.value === "out" ? "out" : "in",
+      date, amount,
+      roomNo: (form.roomNo.value || "").trim(),
+      note: (form.note.value || "").trim(),
+      createdAt: nowStamp()
+    });
+    ui.calDay = Number(date.slice(8, 10));
+    save(); toast("已記入日曆"); render();
+  };
 }
 
 document.getElementById("app").addEventListener("click", e => {
