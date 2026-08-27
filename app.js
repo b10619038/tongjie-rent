@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:09";
+const APP_VERSION = "2026-08-27-下午10:31";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -310,6 +310,7 @@ function normalize(data) {
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.errands)) data.errands = [];
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
     const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
@@ -1496,19 +1497,54 @@ function adminBody() {
 function adminAi() {
   const logs = (state.aiLogs || []).slice(-20);
   const slips = (state.bankSlips || []).slice().reverse();
+  const errands = (state.errands || []).slice().reverse();
+  const plan = monthlyErrandPlan();
   return `<div class="admin-grid list">
     <div class="card card-body">
+      <h2 class="dash-h">本月自動分析</h2>
+      <div class="small">${plan.monthLabel}　依公文、銀行紀錄與收租狀況整理</div>
+      ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
+    </div>
+    <form class="card card-body" id="errand-form">
+      <h2 class="dash-h">記下公文／銀行業務</h2>
+      <p class="small">每次跑公文或去銀行都記一筆，之後會自動算出每個月該做的事。</p>
+      <div class="cal-form-row">
+        <select name="kind">
+          <option value="doc">跑公文</option>
+          <option value="bank">銀行業務</option>
+        </select>
+        <input name="date" type="date" value="${ymdOf(nowStamp())}" />
+      </div>
+      <div class="cal-form-row">
+        <input name="title" type="text" placeholder="事項，例如 地政謄本／存提款" />
+        <input name="place" type="text" placeholder="地點，例如 鳳山地政／聯邦銀行" />
+      </div>
+      <div class="cal-form-row">
+        <input name="amount" type="text" placeholder="金額（選填）" />
+        <input name="note" type="text" placeholder="備註（選填）" />
+      </div>
+      <button class="btn-navy" type="submit">登錄這筆</button>
+    </form>
+    ${errands.length ? errands.map(e => `
+      <div class="card card-body">
+        <div class="row"><span class="k">${e.kind === "bank" ? "銀行業務" : "跑公文"} · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
+        <div class="small">${escapeHtml([e.place, e.amount ? money(e.amount) : "", e.note].filter(Boolean).join(" · "))}</div>
+        <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
+      </div>`).join("") : `<div class="empty">還沒有公文或銀行紀錄</div>`}
+    <div class="card card-body">
       <h2 class="dash-h">AI助手</h2>
-      <div class="small">可分析報修、未繳、行事曆，也可上傳實體銀行入帳資料協助對帳。</div>
+      <div class="small">可分析報修、未繳、行事曆、公文與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
       <div class="ai-chips">
+        <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
+        <button type="button" class="ghost" data-ai-q="分析公文紀錄">分析公文</button>
+        <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
         <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
         <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
-        <button type="button" class="ghost" data-ai-q="整理 Google 日曆預約">行事曆整理</button>
         <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
       </div>
       <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "AI助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
       <form id="ai-form">
-        <textarea id="ai-q" placeholder="例如：這個月誰還沒繳？冷氣報修還有幾件？"></textarea>
+        <textarea id="ai-q" placeholder="例如：這個月該跑哪些公文？銀行通常哪一天去？"></textarea>
         <button class="btn-navy" type="submit">送出問題</button>
       </form>
     </div>
@@ -1531,6 +1567,52 @@ function adminAi() {
         <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
       </div>`).join("") : ""}
   </div>`;
+}
+function parseErrandDay(e) {
+  const m = String(e.date || e.createdAt || "").match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? { y: Number(m[1]), mo: Number(m[2]), d: Number(m[3]), key: m[1] + "-" + m[2] } : null;
+}
+function typicalDay(list) {
+  if (!list.length) return 0;
+  const days = list.map(x => x.d).sort((a, b) => a - b);
+  return days[Math.floor((days.length - 1) / 2)];
+}
+function monthlyErrandPlan() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1, today = now.getDate();
+  const ym = y + "-" + String(m).padStart(2, "0");
+  const parsed = (state.errands || []).map(e => Object.assign({}, e, parseErrandDay(e) || {})).filter(x => x.d);
+  const docs = parsed.filter(x => x.kind === "doc");
+  const banks = parsed.filter(x => x.kind === "bank");
+  const thisDocs = docs.filter(x => x.key === ym);
+  const thisBanks = banks.filter(x => x.key === ym);
+  const docDay = typicalDay(docs);
+  const bankDay = typicalDay(banks);
+  const unpaid = state.tenants.filter(t => !t.paid).length;
+  const openFix = state.repairs.filter(r => r.status !== "done").length;
+  const ending = state.tenants.filter(t => String(t.leaseEnd || "").slice(0, 7) === ym);
+  const lines = [];
+  if (bankDay) {
+    if (thisBanks.length) lines.push("銀行業務：過去多在每月 " + bankDay + " 日左右。本月已登錄 " + thisBanks.length + " 筆。");
+    else if (today < bankDay) lines.push("銀行業務：依過去紀錄，建議本月 " + bankDay + " 日前完成存提、對帳。");
+    else lines.push("銀行業務：慣例約每月 " + bankDay + " 日。本月尚未登錄，建議盡快辦理或補記。");
+  } else lines.push("銀行業務：尚無紀錄。去銀行後按「登錄這筆」，之後會自動抓出每月習慣日期。");
+  if (docDay) {
+    if (thisDocs.length) lines.push("跑公文：過去多在每月 " + docDay + " 日左右。本月已登錄 " + thisDocs.length + " 筆。");
+    else if (today < docDay) lines.push("跑公文：依過去紀錄，建議本月 " + docDay + " 日前後辦理地政／稅務等公文。");
+    else lines.push("跑公文：慣例約每月 " + docDay + " 日。本月尚未登錄。");
+  } else lines.push("跑公文：尚無紀錄。每次辦完地政、稅務、水電申請都記下來，就能分析每月行程。");
+  lines.push("收租：多為每月 5 日前。目前未繳 " + unpaid + " 戶。");
+  if (ending.length) lines.push("本月合約到期 " + ending.length + " 戶：" + ending.map(t => {
+    const r = state.rooms.find(x => x.id === t.roomId);
+    return (r ? r.no : "") + " " + (t.name || "");
+  }).join("、") + "，建議提前確認續約。");
+  if (openFix) lines.push("報修未完成 " + openFix + " 件，可一併排維修行程。");
+  const freq = {};
+  parsed.forEach(e => { if (e.title) freq[e.title] = (freq[e.title] || 0) + 1; });
+  const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 3);
+  if (top.length) lines.push("最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。");
+  return { monthLabel: y + " 年 " + m + " 月", lines, docDay, bankDay };
 }
 function aiAnswer(q) {
   const text = String(q || "").trim();
@@ -1557,6 +1639,13 @@ function aiAnswer(q) {
       const room = state.rooms.find(x => x.id === r.roomId);
       return (room ? room.no : "") + " " + r.type + "（" + (r.status === "doing" ? "處理中" : "待處理") + "）" + (r.note ? "：" + r.note : "");
     }).join("\n"));
+  }
+  if (/公文|地政|稅務|每月該做|該做什麼|行程|銀行業務|跑銀行/.test(text)) {
+    const plan = monthlyErrandPlan();
+    lines.push(plan.monthLabel + "建議：");
+    lines.push(plan.lines.join("\n"));
+    const recent = (state.errands || []).slice(-8).reverse();
+    if (recent.length) lines.push("最近紀錄：\n" + recent.map(e => (e.date || "") + " " + (e.kind === "bank" ? "銀行" : "公文") + " " + (e.title || "") + (e.place ? " @" + e.place : "")).join("\n"));
   }
   if (/日曆|預約|行事曆|簽約/.test(text)) {
     lines.push(cal.length ? "已排程：\n" + cal.map(ev => ev.sub + "　" + ev.title).join("\n") : "目前沒有維修或續約預約。");
@@ -1586,7 +1675,7 @@ function aiAnswer(q) {
   }
   if (!lines.length) {
     lines.push("目前套房出租 " + rented + "／" + studios.length + "。未繳 " + unpaid.length + " 戶，報修未完成 " + open.length + " 件，已排程 " + cal.length + " 筆，銀行入帳資料 " + slips.length + " 筆。");
-    lines.push("可以問：誰還沒繳、分析報修、行事曆整理、銀行對帳，或輸入房號。");
+    lines.push("可以問：本月該做什麼、分析公文、分析銀行、誰還沒繳、報修，或輸入房號。");
   }
   return lines.join("\n");
 }
@@ -2695,6 +2784,30 @@ function bindAdminAi() {
     const box = document.getElementById("ai-q");
     ask(box && box.value);
   };
+  const errand = document.getElementById("errand-form");
+  if (errand) errand.onsubmit = e => {
+    e.preventDefault();
+    const title = (errand.title.value || "").trim();
+    const date = errand.date.value;
+    if (!title || !date) { toast("請填事項與日期"); return; }
+    if (!state.errands) state.errands = [];
+    state.errands.push({
+      id: "er" + Date.now(),
+      kind: errand.kind.value === "bank" ? "bank" : "doc",
+      date, title,
+      place: (errand.place.value || "").trim(),
+      amount: Number(String(errand.amount.value || "").replace(/[^\d.]/g, "")) || 0,
+      note: (errand.note.value || "").trim(),
+      createdAt: nowStamp()
+    });
+    save(); toast("已記下這筆"); render();
+  };
+  document.querySelectorAll("[data-del-errand]").forEach(btn => {
+    btn.onclick = () => {
+      state.errands = (state.errands || []).filter(x => x.id !== btn.dataset.delErrand);
+      save(); render();
+    };
+  });
   document.querySelectorAll("[data-del-bank-media]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
