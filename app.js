@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:47";
+const APP_VERSION = "2026-08-27-下午10:49";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -639,7 +639,7 @@ function invoiceCopyHtml(r, t, copyName) {
       </div>
       <div class="inv-stamp">營業人蓋用統一發票專用章
         <div class="inv-chop">
-          <strong>統潔開發有限公司</strong>
+          <strong>統潔＆信潔開發有限公司</strong>
           <span>82934388</span>
           <em>高雄市鳳山區北興街100號1樓</em>
         </div>
@@ -998,8 +998,8 @@ function openGoogleCalendar(item, kind) {
   const isRenew = kind === "renew" || !item.type;
   const text = encodeURIComponent(isRenew ? `${room ? room.no : ""} 續約簽約` : `${room ? room.no : ""} ${item.type}維修`);
   const details = encodeURIComponent(isRenew
-    ? `統潔開發有限公司續約簽約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}`
-    : `統潔開發有限公司報修預約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}\n說明：${item.note || ""}`);
+    ? `統潔＆信潔開發有限公司續約簽約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}`
+    : `統潔＆信潔開發有限公司報修預約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}`, "_blank", "noopener");
 }
 function calendarItems() {
@@ -1205,7 +1205,7 @@ function gateView() {
   return `<div class="gate">
     <div class="slide-right">
       <div class="logo">TONG JIE</div>
-      <h1>統潔開發有限公司</h1>
+      <h1>統潔＆信潔開發有限公司</h1>
       <p class="small"><a href="mailto:jie59056503@gmail.com">jie59056503@gmail.com</a></p>
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
       <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
@@ -1309,7 +1309,7 @@ function markTenantPaid(via) {
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
-  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：統潔開發有限公司\n銀行：803 聯邦銀行 高雄分行\n帳號：010100035909`;
+  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：統潔＆信潔開發有限公司\n銀行：803 聯邦銀行 高雄分行\n帳號：010100035909`;
 }
 function payView() {
   const t = me(); const r = myRoom();
@@ -1326,9 +1326,9 @@ function payView() {
         <div style="margin-top:10px"><span class="pay-pill ${paid ? "paid" : "unpaid"}">${paid ? "本月已繳" : "本月未繳"}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
       </div>
-      <div class="section-title"><h2 class="slide-right">統潔開發有限公司帳戶</h2></div>
+      <div class="section-title"><h2 class="slide-right">統潔＆信潔開發有限公司帳戶</h2></div>
       <div class="card card-body slide-left">
-        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">統潔開發有限公司</span></div>
+        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">統潔＆信潔開發有限公司</span></div>
         <div class="copy-row"><span class="k">銀行代號</span><span class="v">803</span><button type="button" class="ghost" data-copy="803">複製</button></div>
         <div class="copy-row no-copy"><span class="k">銀行名稱</span><span class="v">聯邦銀行 高雄分行</span></div>
         <div class="copy-row"><span class="k">帳號</span><span class="v">010100035909</span><button type="button" class="ghost" data-copy="010100035909">複製</button></div>
@@ -1526,7 +1526,7 @@ function adminView() {
   const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "AI助手"]];
   return `
     <div class="admin-bar">
-      <div><div class="eyebrow">統潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
+      <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
         <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"}</div>
       </div>
       <button class="ghost" id="logout" style="width:auto">切換身分</button>
@@ -1788,7 +1788,7 @@ function adminAnnounce() {
     </form>
     <div class="card card-body">
       <h2 class="dash-h">官方 LINE</h2>
-      <div class="row"><span class="k">帳號</span><span class="v">統潔開發有限公司</span></div>
+      <div class="row"><span class="k">帳號</span><span class="v">統潔＆信潔開發有限公司</span></div>
       <div class="row"><span class="k">LINE ID</span><span class="v">${LINE_OA_ID}</span></div>
       <div class="row"><span class="k">Channel ID</span><span class="v">2011285350</span></div>
       <div class="row"><span class="k">Webhook</span><span class="v">已驗證成功</span></div>
@@ -1882,7 +1882,7 @@ ${xlsSheet("報修", repairHead, repairRows)}
   const a = document.createElement("a");
   const day = nowStamp().slice(0, 10);
   a.href = URL.createObjectURL(blob);
-  a.download = `統潔開發有限公司-整體報表-${day}.xls`;
+  a.download = `統潔＆信潔開發有限公司-整體報表-${day}.xls`;
   document.body.appendChild(a);
   a.click();
   a.remove();
