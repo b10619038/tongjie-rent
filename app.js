@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:44";
+const APP_VERSION = "2026-08-27-下午9:46";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
@@ -622,33 +622,77 @@ function sendRemoteNotify(target, title, body) {
     body: JSON.stringify({ target: target || "all", title, body })
   }).catch(() => {});
 }
+function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function isAndroid() { return /android/i.test(navigator.userAgent); }
+function needsNotifyGuide() {
+  if (ui.notifySkip) return false;
+  if (!isInstalledApp()) return false;
+  if (!("Notification" in window)) return true;
+  return Notification.permission !== "granted";
+}
+function notifyGuideHtml() {
+  if (!needsNotifyGuide()) return "";
+  const denied = "Notification" in window && Notification.permission === "denied";
+  const steps = isIOS()
+    ? (denied
+      ? "請到 iPhone「設定 → 通知 → 統潔開發」打開允許通知，再從主畫面的 App 圖示進入。"
+      : "請點下方按鈕，在跳出的視窗選擇「允許」。iPhone 必須從主畫面 App 開啟才有通知。")
+    : (denied
+      ? "請到手機「設定 → 應用程式 → 統潔開發 → 通知」改為允許，再重新打開 App。"
+      : "請點下方按鈕，在跳出的視窗選擇「允許」。");
+  return `<div class="notify-mask" id="notify-guide">
+    <div class="notify-card">
+      <div class="label">手機通知</div>
+      <h2>開啟通知</h2>
+      <p>安裝後請允許通知，管理員公告、報修與繳費才會在手機跳出。</p>
+      <p class="small">${steps}</p>
+      <button class="btn-navy" id="notify-allow" type="button">立即開啟通知</button>
+      <button class="ghost" id="notify-later" type="button" style="margin-top:8px">稍後</button>
+    </div>
+  </div>`;
+}
+function bindNotifyGuide() {
+  const allow = document.getElementById("notify-allow");
+  const later = document.getElementById("notify-later");
+  if (allow) allow.onclick = async () => {
+    const ok = await enablePush();
+    if (ok) { toast("通知已開啟"); render(); return; }
+    toast(isIOS() ? "請在設定裡允許「統潔開發」通知" : "請在系統設定允許通知");
+    render();
+  };
+  if (later) later.onclick = () => { ui.notifySkip = true; render(); };
+}
 async function enablePush() {
-  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (!("Notification" in window)) return false;
   try {
-    if (Notification.permission !== "granted") {
-      const p = await Notification.requestPermission();
-      if (p !== "granted") return;
+    let p = Notification.permission;
+    if (p !== "granted") p = await Notification.requestPermission();
+    if (p !== "granted") return false;
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+        });
+      }
+      const room = ui.role === "tenant" ? myRoom() : null;
+      await fetch(LINE_HOOK + "/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          role: ui.role || "",
+          roomNo: room ? room.no : (ui.role === "admin" ? "7651" : ""),
+          tenantId: ui.tenantId || ""
+        })
+      }).catch(() => {});
     }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
-      });
-    }
-    const room = ui.role === "tenant" ? myRoom() : null;
-    await fetch(LINE_HOOK + "/api/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
-      body: JSON.stringify({
-        subscription: sub.toJSON(),
-        role: ui.role || "",
-        roomNo: room ? room.no : (ui.role === "admin" ? "7651" : ""),
-        tenantId: ui.tenantId || ""
-      })
-    });
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
@@ -1039,10 +1083,12 @@ function render() {
   const oldScroll = keep ? (document.querySelector(".admin-scroll") || {}).scrollTop : null;
   ui.keepScroll = false;
   const root = document.getElementById("app");
-  if (!ui.role) { root.innerHTML = gateView(); bindGate(); return; }
+  const guide = notifyGuideHtml();
+  if (!ui.role) { root.innerHTML = gateView() + guide; bindGate(); bindNotifyGuide(); return; }
   if (ui.role === "admin") {
-    root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>`;
+    root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${guide}`;
     bindAdmin();
+    bindNotifyGuide();
     if (oldScroll != null) {
       const sc = document.querySelector(".admin-scroll");
       if (sc) {
@@ -1052,8 +1098,9 @@ function render() {
     }
     return;
   }
-  root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>`;
+  root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${guide}`;
   bindTenant();
+  bindNotifyGuide();
 }
 
 function gateView() {
@@ -2745,7 +2792,7 @@ window.addEventListener("beforeinstallprompt", e => {
 window.addEventListener("appinstalled", () => {
   deferredInstall = null;
   try { localStorage.setItem("tongjie_installed", "1"); } catch {}
-  if (!ui.role) render();
+  enablePush().then(() => render());
 });
 function isInstalledApp() {
   try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
@@ -2761,6 +2808,7 @@ async function installApp() {
     deferredInstall = null;
     if (choice && choice.outcome === "accepted") {
       try { localStorage.setItem("tongjie_installed", "1"); } catch {}
+      await enablePush();
       render();
     }
     return;
@@ -2787,9 +2835,10 @@ async function boot() {
   if (!got) await pushCloud();
   restoreUi();
   render();
-  if (ui.role) enablePush();
+  if (ui.role || isInstalledApp()) enablePush();
   await minWait;
   hideSplash();
+  if (isInstalledApp() && needsNotifyGuide()) render();
   setInterval(async () => {
     const before = state.updatedAt;
     const changed = await pullCloud();

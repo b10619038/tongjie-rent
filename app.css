@@ -348,13 +348,21 @@ textarea { min-height: 92px; resize: vertical; }
 .cal-day { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ver {
-  text-align: center;
-  font-size: 11px;
-  color: #9a9a9a;
-  margin: 22px 0 8px;
-  letter-spacing: .04em;
+.notify-mask {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(255,255,255,.72);
+  display: grid; place-items: center; padding: 24px;
 }
+.notify-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 22px 18px 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.08);
+}
+.notify-card h2 { margin: 6px 0 10px; font-size: 22px; }
+.notify-card p { margin: 0 0 10px; color: var(--ink-soft); }
 .inv-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .inv-paper {
   background: #fffdf8; color: #c1121f; border: 1px solid #c1121f;
