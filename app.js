@@ -2517,11 +2517,20 @@ document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
 });
+function hideSplash() {
+  const el = document.getElementById("splash");
+  if (!el) return;
+  el.classList.add("out");
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
+}
 async function boot() {
+  const minWait = new Promise(r => setTimeout(r, 1900));
   const got = await pullCloud();
   if (!got) await pushCloud();
   restoreUi();
   render();
+  await minWait;
+  hideSplash();
   setInterval(async () => {
     const before = state.updatedAt;
     const changed = await pullCloud();
