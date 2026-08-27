@@ -302,15 +302,44 @@ textarea { min-height: 92px; resize: vertical; }
   width: auto; min-width: 64px; padding: 4px 8px; font-size: 12px; font-weight: 800;
   border-radius: 999px;
 }
+.firm-card { padding: 16px; }
+.firm-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.pie-wrap { position: relative; width: 132px; height: 132px; flex: 0 0 132px; }
+.pie {
+  --in: 0;
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--teal) 0 calc(var(--in) * 1%), #c45c4a 0);
+}
+.pie.empty { background: conic-gradient(#ece8e1 0 100%); }
+.pie.spin-in { animation: pieFill .9s cubic-bezier(.2,.85,.2,1) both; }
+@keyframes pieFill { from { --in: 0; } }
+.pie-center {
+  position: absolute; inset: 28px; border-radius: 50%; background: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; z-index: 1; padding: 6px;
+}
+.pie-center b { font-size: 12px; font-weight: 800; line-height: 1.2; }
+.pie-center em { font-size: 10px; color: var(--muted); font-style: normal; margin-top: 2px; }
+.firm-legend { display: grid; gap: 8px; flex: 1; min-width: 0; }
+.firm-legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.firm-legend strong { margin-left: auto; font-weight: 800; }
+.firm-legend i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }
+.firm-legend i.in { background: var(--teal); }
+.firm-legend i.out { background: #c45c4a; }
 .dash-hero { display: grid; gap: 12px; grid-template-columns: 1fr; }
 .dash-two { display: grid; gap: 12px; }
 @media (min-width: 860px) {
-  .firm-grid { grid-template-columns: repeat(3, 1fr); }
+  .firm-grid { grid-template-columns: 1fr 1fr; }
   .dash-hero { grid-template-columns: 1.2fr 1fr 1fr 1fr; }
   .dash-hero.rings { grid-template-columns: 1fr 1fr; }
   .dash-two { grid-template-columns: 1fr 1fr; }
 }
 .dash-h { font-size: 15px; margin-bottom: 12px; }
+@property --in {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
 @property --p {
   syntax: "<number>";
   inherits: true;

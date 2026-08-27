@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:26";
+const APP_VERSION = "2026-08-28-上午12:33";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2027,24 +2027,34 @@ function firmTotals(company, mode) {
   });
   return { inn, out, net: inn - out };
 }
-function firmKpiHtml(company, kind) {
-  const key = (company === "信潔" ? "xj" : "tj") + ({ in: "In", out: "Out", net: "Net" }[kind]);
+function firmChartHtml(company) {
+  const key = company === "信潔" ? "xj" : "tj";
   const mode = firmPeriod(key);
   const t = firmTotals(company, mode);
   const unit = mode === "year" ? "年" : "月";
-  const title = company + ({ in: "總" + unit + "收入", out: "總" + unit + "支出", net: "淨" + unit + "收入" }[kind]);
-  const amt = kind === "in" ? t.inn : kind === "out" ? t.out : t.net;
+  const total = t.inn + t.out;
+  const inPct = total ? Math.round(t.inn / total * 1000) / 10 : 0;
   const now = new Date();
   const hint = mode === "year" ? now.getFullYear() + " 年累計" : now.getMonth() + 1 + " 月";
-  return `<div class="card kpi">
-    <div class="k firm-k"><span>${title}</span>
+  const empty = !total;
+  return `<div class="card firm-card">
+    <div class="k firm-k"><span>${company}${unit}收支</span>
       <select data-firm-period="${key}">
         <option value="month" ${mode === "month" ? "selected" : ""}>月</option>
         <option value="year" ${mode === "year" ? "selected" : ""}>年</option>
       </select>
     </div>
-    <div class="num">${money(amt)}</div>
-    <div class="small">${hint}</div>
+    <div class="firm-body">
+      <div class="pie-wrap">
+        <div class="pie ${empty ? "empty" : ""} ${ui.keepScroll ? "" : "spin-in"}" style="--in:${inPct}"></div>
+        <div class="pie-center"><b>${money(t.net)}</b><em>淨${unit}收入</em></div>
+      </div>
+      <div class="firm-legend">
+        <div><i class="in"></i><span>總${unit}收入</span><strong>${money(t.inn)}</strong></div>
+        <div><i class="out"></i><span>總${unit}支出</span><strong>${money(t.out)}</strong></div>
+        <div class="small">${hint}${empty ? " · 尚無進出帳" : ""}</div>
+      </div>
+    </div>
   </div>`;
 }
 function adminDash() {
@@ -2074,8 +2084,8 @@ function adminDash() {
   const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
   return `<div class="dash">
     <div class="firm-grid">
-      ${["in", "out", "net"].map(k => firmKpiHtml("統潔", k)).join("")}
-      ${["in", "out", "net"].map(k => firmKpiHtml("信潔", k)).join("")}
+      ${firmChartHtml("統潔")}
+      ${firmChartHtml("信潔")}
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
