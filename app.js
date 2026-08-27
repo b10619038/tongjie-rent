@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:46";
+const APP_VERSION = "2026-08-27-下午9:55";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
@@ -624,52 +624,99 @@ function sendRemoteNotify(target, title, body) {
 }
 function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
 function isAndroid() { return /android/i.test(navigator.userAgent); }
+function isStandalone() {
+  if (window.navigator.standalone === true) return true;
+  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return true;
+  if (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches) return true;
+  return false;
+}
+function notifyStatus() {
+  if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return "unsupported";
+  return Notification.permission || "default";
+}
 function needsNotifyGuide() {
   if (ui.notifySkip) return false;
-  if (!isInstalledApp()) return false;
-  if (!("Notification" in window)) return true;
-  return Notification.permission !== "granted";
+  if (notifyStatus() === "granted") return false;
+  if (isStandalone()) return true;
+  if (isInstalledApp()) return true;
+  return false;
 }
 function notifyGuideHtml() {
   if (!needsNotifyGuide()) return "";
-  const denied = "Notification" in window && Notification.permission === "denied";
-  const steps = isIOS()
-    ? (denied
-      ? "請到 iPhone「設定 → 通知 → 統潔開發」打開允許通知，再從主畫面的 App 圖示進入。"
-      : "請點下方按鈕，在跳出的視窗選擇「允許」。iPhone 必須從主畫面 App 開啟才有通知。")
-    : (denied
-      ? "請到手機「設定 → 應用程式 → 統潔開發 → 通知」改為允許，再重新打開 App。"
-      : "請點下方按鈕，在跳出的視窗選擇「允許」。");
+  const st = notifyStatus();
+  const standalone = isStandalone();
+  let steps;
+  if (isIOS() && !standalone) {
+    steps = "iPhone 請先按分享 →「加入主畫面」，再從桌面圖示打開 App，才能出現允許通知。";
+  } else if (st === "unsupported") {
+    steps = isIOS()
+      ? "請用 iOS 16.4 以上，並從主畫面的 App 圖示進入。"
+      : "此瀏覽器不支援通知，請改用 Chrome 並安裝到主畫面。";
+  } else if (st === "denied") {
+    steps = isIOS()
+      ? "通知已被拒絕。請到「設定 → 通知 → 統潔開發」打開允許通知。"
+      : "通知已被拒絕。請到「設定 → 應用程式 → 統潔開發 → 通知」改為允許。";
+  } else {
+    steps = "請點下方按鈕，手機會立刻出現「允許通知」。請選允許。";
+  }
+  const canAsk = st === "default" && (standalone || !isIOS());
   return `<div class="notify-mask" id="notify-guide">
     <div class="notify-card">
       <div class="label">手機通知</div>
       <h2>開啟通知</h2>
-      <p>安裝後請允許通知，管理員公告、報修與繳費才會在手機跳出。</p>
+      <p>管理員公告、報修與繳費會在手機上方跳出。</p>
       <p class="small">${steps}</p>
-      <button class="btn-navy" id="notify-allow" type="button">立即開啟通知</button>
+      ${canAsk ? `<button class="btn-navy" id="notify-allow" type="button">立即開啟通知</button>` : ""}
+      ${isIOS() && !standalone ? `<button class="btn-navy" id="notify-how" type="button">如何加入主畫面</button>` : ""}
+      ${st === "denied" ? `<button class="btn-navy" id="notify-retry" type="button">我已在設定打開</button>` : ""}
       <button class="ghost" id="notify-later" type="button" style="margin-top:8px">稍後</button>
     </div>
   </div>`;
 }
+function requestNotifyPerm(cb) {
+  if (!("Notification" in window) || typeof Notification.requestPermission !== "function") {
+    cb("unsupported");
+    return;
+  }
+  let done = false;
+  const once = p => { if (done) return; done = true; cb(p || Notification.permission); };
+  try {
+    const ret = Notification.requestPermission(once);
+    if (ret && typeof ret.then === "function") ret.then(once, () => once("denied"));
+  } catch {
+    try { Notification.requestPermission().then(once, () => once("denied")); } catch { once("denied"); }
+  }
+}
 function bindNotifyGuide() {
   const allow = document.getElementById("notify-allow");
   const later = document.getElementById("notify-later");
-  if (allow) allow.onclick = async () => {
-    const ok = await enablePush();
-    if (ok) { toast("通知已開啟"); render(); return; }
-    toast(isIOS() ? "請在設定裡允許「統潔開發」通知" : "請在系統設定允許通知");
-    render();
+  const how = document.getElementById("notify-how");
+  const retry = document.getElementById("notify-retry");
+  const askNow = e => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (isIOS() && !isStandalone()) {
+      toast("請先加入主畫面，再用桌面圖示打開");
+      return;
+    }
+    requestNotifyPerm(perm => {
+      if (perm === "granted") {
+        subscribePushOnly();
+        toast("通知已開啟");
+        render();
+        return;
+      }
+      render();
+    });
   };
+  if (allow) allow.onclick = askNow;
+  if (how) how.onclick = () => toast("請點 Safari 分享鈕，選「加入主畫面」");
+  if (retry) retry.onclick = () => { render(); if (notifyStatus() === "granted") toast("通知已開啟"); };
   if (later) later.onclick = () => { ui.notifySkip = true; render(); };
 }
-async function enablePush() {
-  if (!("Notification" in window)) return false;
-  try {
-    let p = Notification.permission;
-    if (p !== "granted") p = await Notification.requestPermission();
-    if (p !== "granted") return false;
-    if ("serviceWorker" in navigator && "PushManager" in window) {
-      const reg = await navigator.serviceWorker.ready;
+function subscribePushOnly() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  navigator.serviceWorker.ready.then(async reg => {
+    try {
       let sub = await reg.pushManager.getSubscription();
       if (!sub) {
         sub = await reg.pushManager.subscribe({
@@ -687,12 +734,15 @@ async function enablePush() {
           roomNo: room ? room.no : (ui.role === "admin" ? "7651" : ""),
           tenantId: ui.tenantId || ""
         })
-      }).catch(() => {});
-    }
-    return true;
-  } catch {
-    return false;
-  }
+      });
+    } catch {}
+  });
+}
+async function enablePush() {
+  if (!("Notification" in window)) return false;
+  if (Notification.permission === "granted") { subscribePushOnly(); return true; }
+  if (Notification.permission === "denied") return false;
+  return false;
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
@@ -2795,10 +2845,9 @@ window.addEventListener("appinstalled", () => {
   enablePush().then(() => render());
 });
 function isInstalledApp() {
+  if (isStandalone()) return true;
+  if (isIOS()) return false;
   try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
-  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return true;
-  if (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches) return true;
-  if (window.navigator.standalone === true) return true;
   return false;
 }
 async function installApp() {
