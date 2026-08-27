@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:53";
+const APP_VERSION = "2026-08-27-下午11:57";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1689,7 +1689,12 @@ function adminAi() {
         <input name="title" type="text" placeholder="事項，例如 存提款／對帳" />
       </div>
       <div class="cal-form-row">
-        <input name="place" type="text" placeholder="地點，例如 聯邦銀行" />
+        <select name="place">
+          <option value="聯邦銀行">聯邦銀行</option>
+          <option value="兆豐銀行">兆豐銀行</option>
+          <option value="農會">農會</option>
+          <option value="郵局">郵局</option>
+        </select>
         <input name="amount" type="text" placeholder="金額（選填）" />
       </div>
       <input name="note" type="text" placeholder="備註（選填）" />
