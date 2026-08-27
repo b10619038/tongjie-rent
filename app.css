@@ -309,19 +309,24 @@ textarea { min-height: 92px; resize: vertical; }
   initial-value: 0;
 }
 .ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; }
+.ring-wrap {
+  position: relative;
+  width: 72px; height: 72px; flex: 0 0 72px;
+}
 .ring {
-  --p: 0; width: 72px; height: 72px; flex: 0 0 72px; border-radius: 50%;
+  --p: 0; position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(#5e7ea8 calc(var(--p) * 1%), #ece8e1 0);
-  display: grid; place-items: center;
-  transform: rotate(-90deg);
 }
 .ring.teal { background: conic-gradient(var(--teal) calc(var(--p) * 1%), #ece8e1 0); }
-.ring b { width: 52px; height: 52px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 14px; transform: rotate(90deg); }
+.ring-wrap b {
+  position: absolute; inset: 10px; border-radius: 50%; background: #fff;
+  display: grid; place-items: center; font-size: 14px; z-index: 1;
+}
 .ring.spin-in { animation: ringFill .9s cubic-bezier(.2,.85,.2,1) both; }
 .ring.spin-in.delay { animation-delay: .16s; }
 @keyframes ringFill {
-  from { --p: 0; transform: rotate(-90deg) rotate(-240deg); }
-  to { transform: rotate(-90deg) rotate(0deg); }
+  from { --p: 0; transform: rotate(-240deg); }
+  to { transform: rotate(0deg); }
 }
 .bar-row { display: grid; grid-template-columns: 36px 1fr 48px; gap: 8px; align-items: center; margin: 8px 0; font-size: 13px; }
 .bar { height: 8px; background: #ece8e1; border-radius: 99px; overflow: hidden; }
