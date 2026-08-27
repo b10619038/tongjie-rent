@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:38";
+const APP_VERSION = "2026-08-27-下午9:44";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
@@ -60,15 +60,15 @@ const AMENITIES = ["冷氣", "冰箱", "洗衣機", "熱水器", "獨立衛浴",
 const FACTORY_GROUPS = [
   { group: "牛1", street: "文龍東路", company: "", city: "高雄市鳳山區文龍東路", items: [
     { no: "牛1-59", unit: "59號", manager: "文榮" },
-    { no: "牛1-61", unit: "61號", manager: "洪潭" },
+    { no: "牛1-61", unit: "61號", manager: "洪漳" },
     { no: "牛1-57巷2", unit: "57巷2號", manager: "浩鈞" },
     { no: "牛1-57巷6", unit: "57巷6號", manager: "文彬" },
     { no: "牛1-57巷8", unit: "57巷8號", manager: "苡真" }
   ]},
   { group: "牛2", street: "文龍東路", company: "", city: "高雄市鳳山區文龍東路", items: [
-    { no: "牛2-21", unit: "57巷1弄21號", manager: "洪潭" },
+    { no: "牛2-21", unit: "57巷1弄21號", manager: "洪漳" },
     { no: "牛2-23", unit: "57巷1弄23號", manager: "文榮" },
-    { no: "牛2-25", unit: "57巷1弄25號", manager: "洪潭" },
+    { no: "牛2-25", unit: "57巷1弄25號", manager: "洪漳" },
     { no: "牛2-27", unit: "57巷1弄27號", manager: "" },
     { no: "牛2-29", unit: "57巷1弄29號", manager: "" },
     { no: "牛2-31", unit: "57巷1弄31號", manager: "" },
@@ -253,6 +253,7 @@ function normalize(data) {
     if (!r.location) r.location = roomAddress(r.no);
     if (!r.kind) r.kind = r.title === "廠房" ? "factory" : "studio";
     if (r.no === "7651") r.kind = "studio";
+    if (r.manager === "洪潭") r.manager = "洪漳";
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
