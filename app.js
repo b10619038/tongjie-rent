@@ -1065,12 +1065,15 @@ function announceCardsHtml() {
 function homeView() {
   const t = me(); const r = myRoom();
   const left = daysLeft(t.leaseEnd); const pay = payLabel(t);
+  const hasAnn = (state.announcements || []).length > 0;
+  const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div>${announceCardsHtml()}`;
   return `
     <div class="topbar">
       <div class="slide-right"><div class="eyebrow">GOOD EVENING</div><h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1></div>
       <button class="back" id="logout-tenant" type="button">登出</button>
     </div>
     <div class="screen">
+      ${hasAnn ? announceBlock : ""}
       <div class="hero-card slide-left">
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${r.title}</div>
@@ -1093,8 +1096,7 @@ function homeView() {
         <button class="ghost" id="bind-line" type="button">綁定 LINE</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
-      <div class="section-title"><h2 class="slide-right">管理員公告</h2></div>
-      ${announceCardsHtml()}
+      ${hasAnn ? "" : announceBlock}
     </div>`;
 }
 
