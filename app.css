@@ -357,6 +357,7 @@ textarea { min-height: 92px; resize: vertical; }
 .cal-cell em { font-style: normal; font-size: 12px; font-weight: 800; }
 .cal-cell .in { font-size: 10px; color: #2f6b3c; }
 .cal-cell .out { font-size: 10px; color: #b42318; }
+.cal-cell .mark { font-size: 10px; color: var(--teal); font-weight: 800; }
 .cal-day { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

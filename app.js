@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:46";
+const APP_VERSION = "2026-08-27-下午11:51";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1182,6 +1182,7 @@ function monthCashHtml() {
           <em>${d}</em>
           ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
           ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
+          ${!di && !dout && list.length ? `<span class="mark">記</span>` : ""}
         </button>`;
       }).join("")}
     </div>
@@ -2959,22 +2960,37 @@ function bindAdminAi() {
     const title = (errand.title.value || "").trim();
     const date = errand.date.value;
     if (!title || !date) { toast("請填事項與日期"); return; }
+    const amount = Number(String(errand.amount.value || "").replace(/[^\d.]/g, "")) || 0;
+    const place = (errand.place.value || "").trim();
+    const note = (errand.note.value || "").trim();
+    const id = "er" + Date.now();
     if (!state.errands) state.errands = [];
-    state.errands.push({
-      id: "er" + Date.now(),
-      kind: "bank",
-      date, title,
-      place: (errand.place.value || "").trim(),
-      amount: Number(String(errand.amount.value || "").replace(/[^\d.]/g, "")) || 0,
-      note: (errand.note.value || "").trim(),
+    state.errands.push({ id, kind: "bank", date, title, place, amount, note, createdAt: nowStamp() });
+    if (!state.books) state.books = [];
+    state.books.push({
+      id,
+      type: "out",
+      date,
+      amount,
+      roomNo: "",
+      note: "銀行業務 " + title + (place ? " · " + place : "") + (note ? " · " + note : ""),
       createdAt: nowStamp()
     });
-    save(); toast("已記下這筆"); render();
+    const p = date.split("-");
+    if (p.length === 3) {
+      ui.calYear = Number(p[0]);
+      ui.calMonth = Number(p[1]);
+      ui.calDay = Number(p[2]);
+    }
+    save();
+    toast("登錄成功");
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
     btn.onclick = () => {
-      state.errands = (state.errands || []).filter(x => x.id !== btn.dataset.delErrand);
-      save(); render();
+      const id = btn.dataset.delErrand;
+      state.errands = (state.errands || []).filter(x => x.id !== id);
+      state.books = (state.books || []).filter(x => x.id !== id);
+      save(); toast("已刪除");
     };
   });
   document.querySelectorAll("[data-del-bank-media]").forEach(btn => {
