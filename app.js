@@ -3,6 +3,8 @@ const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
 const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
+const DATA_API = LINE_HOOK + "/api/state";
+const SYNC_KEY = "tj-82934388";
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
   if (!v) return "";
@@ -219,12 +221,11 @@ function buildSeed() {
   };
 }
 const SEED = buildSeed();
-let state = load();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} } };
+let state = loadLocal();
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null };
+let saveTimer = 0;
 
-function load() {
-  let data;
-  try { const raw = localStorage.getItem(KEY); if (raw) data = JSON.parse(raw); } catch {}
+function normalize(data) {
   if (!data) data = structuredClone(SEED);
   if (!Array.isArray(data.rooms)) data.rooms = [];
   if (!Array.isArray(data.tenants)) data.tenants = [];
@@ -247,9 +248,9 @@ function load() {
     if (r.no === "7651") r.kind = "studio";
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory" && r.status !== "office") {
-      r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
-      r.utilities.water = "一年固定 $1,800";
-      r.rent = 10000;
+      if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
+      if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
+      if (!r.rent) r.rent = 10000;
     }
     if (r.title === "套房" && Array.isArray(r.amenities) && !r.amenities.includes("機車停車格")) r.amenities.push("機車停車格");
   });
@@ -266,11 +267,49 @@ function load() {
   data.tenants.forEach(t => {
     const room = data.rooms.find(r => r.id === t.roomId);
     if (!room || room.status === "office" || room.kind === "factory") return;
-    if (Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
+    if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
   return data;
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return normalize(JSON.parse(raw));
+  } catch {}
+  return normalize(structuredClone(SEED));
+}
+async function pullCloud() {
+  try {
+    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+    if (!res.ok) { ui.cloudOk = false; return false; }
+    const data = await res.json();
+    if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) { ui.cloudOk = true; return false; }
+    state = normalize(data);
+    localStorage.setItem(KEY, JSON.stringify(state));
+    ui.cloudOk = true;
+    return true;
+  } catch {
+    ui.cloudOk = false;
+    return false;
+  }
+}
+async function pushCloud() {
+  try {
+    state.updatedAt = Date.now();
+    const res = await fetch(DATA_API, {
+      method: "PUT",
+      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(state)
+    });
+    ui.cloudOk = res.ok;
+  } catch { ui.cloudOk = false; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushCloud, 400);
+}
 
 function syncRoomRepairStatus(roomId) {
   const room = state.rooms.find(r => r.id === roomId);
@@ -806,6 +845,7 @@ function gateView() {
       <div class="logo">TONG JIE</div>
       <h1>統潔開發有限公司</h1>
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
+      <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
     </div>
     <button class="role-btn slide-left" data-go="tenant-login">
       <strong>我是租客</strong>
@@ -1121,7 +1161,9 @@ function adminView() {
   const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"]];
   return `
     <div class="admin-bar">
-      <div><div class="eyebrow">統潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1></div>
+      <div><div class="eyebrow">統潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
+        <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"}</div>
+      </div>
       <button class="ghost" id="logout" style="width:auto">切換身分</button>
     </div>
     <div class="tabs">
@@ -2235,4 +2277,14 @@ document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
 });
-render();
+async function boot() {
+  const got = await pullCloud();
+  if (!got) await pushCloud();
+  render();
+  setInterval(async () => {
+    const before = state.updatedAt;
+    const changed = await pullCloud();
+    if (changed && state.updatedAt !== before) render();
+  }, 12000);
+}
+boot();
