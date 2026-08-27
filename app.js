@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:01";
+const APP_VERSION = "2026-08-28-上午1:03";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1343,6 +1343,20 @@ function tenantView() {
   return homeView();
 }
 
+function reactionCounts(a) {
+  const rec = a.reactions || {};
+  const c = { like: 0, heart: 0, happy: 0 };
+  Object.keys(rec).forEach(id => { const k = rec[id]; if (c[k] != null) c[k]++; });
+  return c;
+}
+function reactBarHtml(a) {
+  const c = reactionCounts(a);
+  const mine = ui.tenantId ? (a.reactions || {})[ui.tenantId] : "";
+  const items = [["like", "👍"], ["heart", "❤️"], ["happy", "😊"]];
+  return `<div class="ann-react" data-react-ann="${a.id}">${items.map(([k, ic]) =>
+    `<span data-react-kind="${k}" class="${mine === k ? "on" : ""} ${c[k] ? "has" : ""}">${ic}${c[k] ? `<em>${c[k]}</em>` : ""}</span>`
+  ).join("")}</div>`;
+}
 function announceCardsHtml() {
   const list = (state.announcements || []).slice().reverse();
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
@@ -1353,6 +1367,7 @@ function announceCardsHtml() {
       <div class="small">${formatDateTime12(a.createdAt)}</div>
       <p style="margin-top:8px;white-space:pre-wrap">${escapeHtml(a.body)}</p>
       ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
+      ${reactBarHtml(a)}
     </div>`;
   }).join("");
 }
@@ -1890,6 +1905,7 @@ function adminAnnounce() {
         <div class="small">${formatDateTime12(a.createdAt)}</div>
         <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
         ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
+        ${reactBarHtml(a)}
       </div>`).join("") : `<div class="empty">還沒有公告</div>`}
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
@@ -2580,6 +2596,7 @@ function bindTenant() {
       if (!a.readBy.includes(ui.tenantId)) { a.readBy.push(ui.tenantId); save(); render(); }
     };
   });
+  bindAnnounceReactions();
   document.querySelectorAll("[data-room]").forEach(el => {
     el.onclick = () => { ui.roomId = el.dataset.room; ui.page = "room-detail"; render(); };
   });
@@ -2821,10 +2838,34 @@ function bindStudioBuildings() {
     };
   });
 }
+function bindAnnounceReactions() {
+  document.querySelectorAll("[data-react-ann]").forEach(bar => {
+    bar.querySelectorAll("[data-react-kind]").forEach(sp => {
+      let last = 0;
+      sp.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (ui.role !== "tenant" || !ui.tenantId) return;
+        const now = Date.now();
+        if (now - last > 350) { last = now; return; }
+        last = 0;
+        const a = (state.announcements || []).find(x => x.id === bar.dataset.reactAnn);
+        if (!a) return;
+        if (!a.reactions) a.reactions = {};
+        const kind = sp.dataset.reactKind;
+        if (a.reactions[ui.tenantId] === kind) delete a.reactions[ui.tenantId];
+        else a.reactions[ui.tenantId] = kind;
+        save();
+        render();
+      };
+    });
+  });
+}
 function bindAdmin() {
   document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
   bindRepairDelete();
+  bindAnnounceReactions();
   document.querySelectorAll("[data-firm-period]").forEach(btn => {
     btn.onclick = e => {
       e.stopPropagation();
@@ -3050,7 +3091,7 @@ function bindAdmin() {
         if (a) { a.title = title; a.body = body; a.media = media; a.updatedAt = nowStamp(); }
         ui.announceEditId = null; ui.announceMedia = []; save(); toast("已更新公告"); return;
       }
-      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [] });
+      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {} });
       ui.announceMedia = []; save();
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
