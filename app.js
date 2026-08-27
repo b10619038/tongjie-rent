@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:28";
+const APP_VERSION = "2026-08-28-上午1:33";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
