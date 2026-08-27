@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:03";
+const APP_VERSION = "2026-08-28-上午1:11";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1362,7 +1362,7 @@ function announceCardsHtml() {
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
   return list.map(a => {
     const unread = ui.tenantId && !(a.readBy || []).includes(ui.tenantId);
-    return `<div class="card card-body slide-left clickable" data-read-announce="${a.id}">
+    return `<div class="card card-body slide-left clickable ann-card" data-read-announce="${a.id}">
       <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}</div>
       <div class="small">${formatDateTime12(a.createdAt)}</div>
       <p style="margin-top:8px;white-space:pre-wrap">${escapeHtml(a.body)}</p>
@@ -1376,7 +1376,7 @@ function homeView() {
   const t = me(); const r = myRoom();
   const left = daysLeft(t.leaseEnd); const pay = payLabel(t);
   const hasAnn = (state.announcements || []).length > 0;
-  const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div>${announceCardsHtml()}`;
+  const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar">
       <div class="slide-right"><div class="eyebrow">GOOD EVENING</div><h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1></div>
@@ -2838,27 +2838,85 @@ function bindStudioBuildings() {
     };
   });
 }
+function applyAnnouncementReaction(id, kind) {
+  if (!ui.tenantId) return;
+  const a = (state.announcements || []).find(x => x.id === id);
+  if (!a) return;
+  if (!a.reactions) a.reactions = {};
+  if (kind && a.reactions[ui.tenantId] === kind && kind !== "heart") delete a.reactions[ui.tenantId];
+  else a.reactions[ui.tenantId] = kind;
+  save();
+  document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
+}
+function popAnnounceCard(card) {
+  if (!card) return;
+  card.classList.remove("ann-pop");
+  void card.offsetWidth;
+  card.classList.add("ann-pop");
+  const burst = document.createElement("div");
+  burst.className = "ann-burst";
+  burst.textContent = "❤️";
+  card.appendChild(burst);
+  setTimeout(() => burst.remove(), 650);
+}
 function bindAnnounceReactions() {
-  document.querySelectorAll("[data-react-ann]").forEach(bar => {
-    bar.querySelectorAll("[data-react-kind]").forEach(sp => {
-      let last = 0;
-      sp.onclick = e => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (ui.role !== "tenant" || !ui.tenantId) return;
-        const now = Date.now();
-        if (now - last > 350) { last = now; return; }
-        last = 0;
-        const a = (state.announcements || []).find(x => x.id === bar.dataset.reactAnn);
-        if (!a) return;
-        if (!a.reactions) a.reactions = {};
-        const kind = sp.dataset.reactKind;
-        if (a.reactions[ui.tenantId] === kind) delete a.reactions[ui.tenantId];
-        else a.reactions[ui.tenantId] = kind;
-        save();
-        render();
+  document.querySelectorAll("[data-read-announce]").forEach(card => {
+    if (ui.role !== "tenant" || !ui.tenantId) return;
+    let lastTap = 0, pressTimer = 0, startX = 0, startY = 0, picking = false;
+    const clearPress = () => { clearTimeout(pressTimer); pressTimer = 0; };
+    const openPicker = () => {
+      picking = true;
+      card.querySelectorAll(".ann-picker").forEach(n => n.remove());
+      const box = document.createElement("div");
+      box.className = "ann-picker";
+      box.innerHTML = `<span data-pick="like">👍</span><span data-pick="happy">😊</span>`;
+      card.appendChild(box);
+      const hit = (e) => {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        box.querySelectorAll("[data-pick]").forEach(s => s.classList.toggle("hot", !!(el && s.contains(el))));
+        return el && el.closest("[data-pick]");
       };
+      const onMove = e => { hit(e); };
+      const onUp = e => {
+        const pick = hit(e);
+        if (pick) {
+          applyAnnouncementReaction(card.dataset.readAnnounce, pick.dataset.pick);
+          popAnnounceCard(card);
+        }
+        box.remove();
+        picking = false;
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    };
+    card.addEventListener("pointerdown", e => {
+      if (e.target.closest("a,button,video,img")) return;
+      startX = e.clientX; startY = e.clientY;
+      clearPress();
+      pressTimer = setTimeout(openPicker, 420);
     });
+    card.addEventListener("pointermove", e => {
+      if (!pressTimer) return;
+      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) clearPress();
+    });
+    card.addEventListener("pointerup", e => {
+      const wasPress = pressTimer;
+      clearPress();
+      if (picking) return;
+      if (e.target.closest("a,button,video,.ann-picker")) return;
+      const now = Date.now();
+      if (wasPress && now - lastTap < 340) {
+        applyAnnouncementReaction(card.dataset.readAnnounce, "heart");
+        popAnnounceCard(card);
+        lastTap = 0;
+      } else lastTap = now;
+    });
+    card.addEventListener("pointercancel", clearPress);
+    card.addEventListener("contextmenu", e => { if (ui.role === "tenant") e.preventDefault(); });
   });
 }
 function bindAdmin() {

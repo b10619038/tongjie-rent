@@ -599,11 +599,37 @@ textarea { min-height: 92px; resize: vertical; }
 .line-dock iframe { flex: 1; width: 100%; border: 0; background: #d4e8c8; min-height: 220px; }
 .line-dock-fallback { padding: 12px 14px 18px; }
 .line-dock-fallback p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+.ann-list { display: grid; gap: 14px; margin: 0 0 22px; }
+.ann-card { position: relative; overflow: visible; }
+.ann-pop { animation: annPop .38s cubic-bezier(.2, 1.5, .3, 1); }
+@keyframes annPop {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+.ann-burst {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+  font-size: 56px; pointer-events: none; z-index: 6;
+  animation: annBurst .6s ease forwards;
+}
+@keyframes annBurst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
+}
+.ann-picker {
+  position: absolute; right: 12px; bottom: 48px; z-index: 8;
+  display: flex; gap: 10px; align-items: center;
+  background: #fff; border-radius: 999px; padding: 8px 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+}
+.ann-picker span { font-size: 28px; line-height: 1; display: block; transform: scale(1); transition: transform .12s ease; }
+.ann-picker span.hot { transform: scale(1.28); }
 .ann-react {
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
 }
 .ann-react span {
-  position: relative; font-size: 18px; opacity: .42; cursor: pointer;
+  position: relative; font-size: 18px; opacity: .42;
   user-select: none; line-height: 1;
 }
 .ann-react span.has { opacity: .92; }
