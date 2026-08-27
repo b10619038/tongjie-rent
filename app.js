@@ -1473,21 +1473,6 @@ function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
   const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
   return `<div class="admin-grid list">
-    <div class="card card-body">
-      <h2 class="dash-h">官方 LINE</h2>
-      <div class="row"><span class="k">帳號</span><span class="v">統潔開發有限公司</span></div>
-      <div class="row"><span class="k">LINE ID</span><span class="v">${LINE_OA_ID}</span></div>
-      <div class="row"><span class="k">Channel ID</span><span class="v">2011285350</span></div>
-      <div class="row"><span class="k">Webhook</span><span class="v">已驗證成功</span></div>
-      <div class="small" style="margin-top:8px">租客加入 @773zynao 後傳送「房號 姓名」，例如 6821 黃宥宇，就會綁定。</div>
-      <a class="ghost" href="${LINE_CHAT_URL}" target="_blank" rel="noopener" style="margin-top:10px;display:block;text-align:center">開啟 LINE 聊天室後台</a>
-    </div>
-    <form class="card card-body" id="rules-form">
-      <h2 class="dash-h">使用規範</h2>
-      <p class="small">修改後會同步顯示在租客「租約」頁、合約書上方。</p>
-      <label class="field"><span>規範內容</span><textarea name="rules" style="min-height:220px">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
-      <button class="btn-navy" type="submit">儲存規範</button>
-    </form>
     <form class="card card-body" id="announce-form">
       <h2 class="dash-h">${editing ? "編輯公告" : "發布公告"}</h2>
       <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" required /></label>
@@ -1510,6 +1495,21 @@ function adminAnnounce() {
         <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
         ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
       </div>`).join("") : `<div class="empty">還沒有公告</div>`}
+    <form class="card card-body" id="rules-form">
+      <h2 class="dash-h">使用規範</h2>
+      <p class="small">修改後會同步顯示在租客「租約」頁、合約書上方。</p>
+      <label class="field"><span>規範內容</span><textarea name="rules" style="min-height:220px">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
+      <button class="btn-navy" type="submit">儲存規範</button>
+    </form>
+    <div class="card card-body">
+      <h2 class="dash-h">官方 LINE</h2>
+      <div class="row"><span class="k">帳號</span><span class="v">統潔開發有限公司</span></div>
+      <div class="row"><span class="k">LINE ID</span><span class="v">${LINE_OA_ID}</span></div>
+      <div class="row"><span class="k">Channel ID</span><span class="v">2011285350</span></div>
+      <div class="row"><span class="k">Webhook</span><span class="v">已驗證成功</span></div>
+      <div class="small" style="margin-top:8px">租客加入 @773zynao 後傳送「房號 姓名」，例如 6821 黃宥宇，就會綁定。</div>
+      <a class="ghost" href="${LINE_CHAT_URL}" target="_blank" rel="noopener" style="margin-top:10px;display:block;text-align:center">開啟 LINE 聊天室後台</a>
+    </div>
   </div>`;
 }
 function reportStatus(r) {
