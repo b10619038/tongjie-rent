@@ -5,6 +5,8 @@ const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
+const UI_KEY = "tongjie_ui_v1";
+const ADMIN_CODES = ["1976", "7651", "1240"];
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
   if (!v) return "";
@@ -222,7 +224,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [] };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -259,6 +261,8 @@ function normalize(data) {
   if (!data.houseRules) data.houseRules = DEFAULT_RULES;
   else data.houseRules = String(data.houseRules).replace(/水費為每月定額[。]?/, "水費為一年固定 $1,800。");
   if (!Array.isArray(data.renewals)) data.renewals = [];
+  if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
+  if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
     const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
@@ -309,6 +313,34 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
+}
+function persistUi() {
+  try {
+    const snap = JSON.stringify({
+      role: ui.role, page: ui.page, roomId: ui.roomId, tenantId: ui.tenantId, assetKind: ui.assetKind
+    });
+    sessionStorage.setItem(UI_KEY, snap);
+    localStorage.setItem(UI_KEY, snap);
+  } catch {}
+}
+function restoreUi() {
+  try {
+    const raw = sessionStorage.getItem(UI_KEY) || localStorage.getItem(UI_KEY);
+    const s = raw ? JSON.parse(raw) : null;
+    if (!s || !s.role) return;
+    ui.role = s.role;
+    ui.page = s.page || (s.role === "admin" ? "dash" : "home");
+    ui.roomId = s.roomId || null;
+    ui.tenantId = s.tenantId || null;
+    ui.assetKind = s.assetKind || "studio";
+    if (s.role === "tenant" && s.tenantId && !state.tenants.some(t => t.id === s.tenantId)) {
+      ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null;
+    }
+  } catch {}
+}
+function clearSession() {
+  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.loginError = "";
+  try { sessionStorage.removeItem(UI_KEY); localStorage.removeItem(UI_KEY); } catch {}
 }
 
 function syncRoomRepairStatus(roomId) {
@@ -800,6 +832,30 @@ function openGoogleCalendar(item, kind) {
     : `統潔開發有限公司報修預約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}`, "_blank", "noopener");
 }
+function calendarItems() {
+  const items = [];
+  (state.repairs || []).forEach(r => {
+    if (!r.appointAt) return;
+    const room = state.rooms.find(x => x.id === r.roomId);
+    const tenant = state.tenants.find(x => x.id === r.tenantId);
+    items.push({
+      at: r.appointAt, kind: "repair", id: r.id, item: r,
+      title: `${room ? room.no : ""} ${r.type}維修`,
+      sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
+    });
+  });
+  (state.renewals || []).forEach(r => {
+    if (!r.appointAt || r.status === "done") return;
+    const room = state.rooms.find(x => x.id === r.roomId);
+    const tenant = state.tenants.find(x => x.id === r.tenantId);
+    items.push({
+      at: r.appointAt, kind: "renew", id: r.id, item: r,
+      title: `${room ? room.no : ""} 續約簽約`,
+      sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
+    });
+  });
+  return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
 function appointLabel(rep) {
   if (!rep.appointAt) return "";
   return `<div class="row"><span class="k">預約時間</span><button type="button" class="linkish appoint-link" data-gcal="${rep.id}">${formatDateTime12(String(rep.appointAt).replace("T", " "))}</button></div>`;
@@ -814,6 +870,7 @@ function appointBlock(rep) {
 }
 
 function render() {
+  persistUi();
   const root = document.getElementById("app");
   if (!ui.role) { root.innerHTML = gateView(); bindGate(); return; }
   if (ui.role === "admin") {
@@ -832,10 +889,10 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入辦公室房號，進入後台" : "請輸入自己的房號，進入該房間的租約、繳費與報修。"}</p>
+        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入自己的房號，進入該房間的租約、繳費與報修。"}</p>
       </div>
       <div class="login-block slide-left">
-        <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "辦公室房號" : "房號"}" />
+        <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
     </div>`;
@@ -853,7 +910,7 @@ function gateView() {
     </button>
     <button class="role-btn slide-left delay" data-go="admin-login">
       <strong>我是管理員</strong>
-      <span>輸入 7651 後，查看全部房間、租客與報修</span>
+      <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
   </div>`;
 }
@@ -1158,7 +1215,7 @@ function repairView() {
 }
 
 function adminView() {
-  const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"]];
+  const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "AI助手"]];
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
@@ -1200,8 +1257,106 @@ function adminBody() {
   if (page === "invoice") return adminInvoice();
   if (page === "tenants") return adminTenants();
   if (page === "repairs") return adminRepairs();
+  if (page === "ai") return adminAi();
   if (page === "announce") return adminAnnounce();
   return adminDash();
+}
+function adminAi() {
+  const logs = (state.aiLogs || []).slice(-20);
+  const slips = (state.bankSlips || []).slice().reverse();
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <h2 class="dash-h">AI助手</h2>
+      <div class="small">可分析報修、未繳、行事曆，也可上傳實體銀行入帳資料協助對帳。</div>
+      <div class="ai-chips">
+        <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
+        <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
+        <button type="button" class="ghost" data-ai-q="整理 Google 日曆預約">行事曆整理</button>
+        <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
+      </div>
+      <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "AI助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
+      <form id="ai-form">
+        <textarea id="ai-q" placeholder="例如：這個月誰還沒繳？冷氣報修還有幾件？"></textarea>
+        <button class="btn-navy" type="submit">送出問題</button>
+      </form>
+    </div>
+    <form class="card card-body" id="bank-form">
+      <h2 class="dash-h">上傳銀行入帳資料</h2>
+      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額與房號後，AI助手就能用來對帳。</p>
+      <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
+      <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
+      <label class="field"><span>房號</span><input name="roomNo" type="text" placeholder="例如 6821" /></label>
+      <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
+      <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
+      <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
+      <button class="btn-navy" type="submit">儲存入帳資料</button>
+    </form>
+    ${slips.length ? slips.map(s => `
+      <div class="card card-body">
+        <div class="row"><span class="k">${escapeHtml(s.roomNo || "未填房號")} · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
+        <p class="small">${escapeHtml(s.note || "")}</p>
+        ${(s.media || []).map(m => m.kind === "image" ? `<img src="${m.src}" alt="" style="width:100%;border-radius:12px;margin:8px 0">` : `<a class="ghost" href="${m.src}" download="${escapeHtml(m.name || "檔案")}" style="margin-top:8px;display:block;text-align:center">下載檔案</a>`).join("")}
+        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
+      </div>`).join("") : ""}
+  </div>`;
+}
+function aiAnswer(q) {
+  const text = String(q || "").trim();
+  const unpaid = state.tenants.filter(t => !t.paid);
+  const open = state.repairs.filter(r => r.status !== "done");
+  const doing = open.filter(r => r.status === "doing");
+  const wait = open.filter(r => r.status !== "doing");
+  const cal = calendarItems();
+  const slips = state.bankSlips || [];
+  const studios = state.rooms.filter(r => r.kind !== "factory" && r.status !== "office");
+  const rented = studios.filter(r => r.status === "rented").length;
+  const roomHit = text.match(/\d{4}/);
+  const lines = [];
+  if (/未繳|欠租|誰還沒|繳費|租金/.test(text) || /對帳|銀行|入帳/.test(text)) {
+    lines.push("本月未繳 " + unpaid.length + " 戶：");
+    lines.push(unpaid.length ? unpaid.map(t => {
+      const r = state.rooms.find(x => x.id === t.roomId);
+      return (r ? r.no : "") + " " + t.name + " " + money(r ? r.rent : 0);
+    }).join("\n") : "目前沒有未繳租客。");
+  }
+  if (/報修|維修|冷氣|熱水器|電燈/.test(text)) {
+    lines.push("報修待處理 " + wait.length + " 件、處理中 " + doing.length + " 件。");
+    if (open.length) lines.push(open.slice(0, 8).map(r => {
+      const room = state.rooms.find(x => x.id === r.roomId);
+      return (room ? room.no : "") + " " + r.type + "（" + (r.status === "doing" ? "處理中" : "待處理") + "）" + (r.note ? "：" + r.note : "");
+    }).join("\n"));
+  }
+  if (/日曆|預約|行事曆|簽約/.test(text)) {
+    lines.push(cal.length ? "已排程：\n" + cal.map(ev => ev.sub + "　" + ev.title).join("\n") : "目前沒有維修或續約預約。");
+  }
+  if (/對帳|銀行|入帳|存摺/.test(text)) {
+    const paidAmt = state.tenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
+    const slipAmt = slips.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    lines.push("已上傳入帳 " + slips.length + " 筆，合計 " + money(slipAmt) + "。App 已繳合計 " + money(paidAmt) + "。");
+    if (slips.length) lines.push(slips.slice(-6).map(s => (s.date || "") + " " + (s.roomNo || "") + " " + (s.amount ? money(s.amount) : "") + " " + (s.note || "")).join("\n"));
+    const unmatched = unpaid.filter(t => {
+      const r = state.rooms.find(x => x.id === t.roomId);
+      return r && !slips.some(s => String(s.roomNo) === String(r.no));
+    });
+    if (unmatched.length) lines.push("尚未對到入帳的未繳：" + unmatched.map(t => {
+      const r = state.rooms.find(x => x.id === t.roomId);
+      return r ? r.no : "";
+    }).join("、"));
+  }
+  if (roomHit) {
+    const no = roomHit[0];
+    const r = state.rooms.find(x => String(x.no) === no);
+    const t = r ? state.tenants.find(x => x.roomId === r.id) : null;
+    if (r) {
+      lines.push(r.no + " " + r.title + "，狀態 " + statusLabel(r.status) + "，租金 " + money(r.rent) + "。");
+      if (t) lines.push("租客 " + t.name + "，" + (t.paid ? "本月已繳" : "本月未繳") + "，合約 " + t.leaseStart + " 至 " + t.leaseEnd + "。");
+    }
+  }
+  if (!lines.length) {
+    lines.push("目前套房出租 " + rented + "／" + studios.length + "。未繳 " + unpaid.length + " 戶，報修未完成 " + open.length + " 件，已排程 " + cal.length + " 筆，銀行入帳資料 " + slips.length + " 筆。");
+    lines.push("可以問：誰還沒繳、分析報修、行事曆整理、銀行對帳，或輸入房號。");
+  }
+  return lines.join("\n");
 }
 function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
@@ -1402,6 +1557,21 @@ function adminDash() {
           </tbody>
         </table>
       </div>
+    </div>
+    <div class="card card-body">
+      <div class="row" style="align-items:flex-start">
+        <div>
+          <h2 class="dash-h" style="margin:0">Google 日曆總紀錄</h2>
+          <div class="small">維修預約與續約簽約時間彙整，可加入 Google 日曆</div>
+        </div>
+        <a class="ghost" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener" style="width:auto;flex:0 0 auto">開啟日曆</a>
+      </div>
+      ${calendarItems().length ? calendarItems().map(ev => `
+        <div class="mini">
+          <b>${escapeHtml(ev.title)}</b>
+          <span>${escapeHtml(ev.sub)}</span>
+          <button type="button" class="ghost" data-gcal-kind="${ev.kind}" data-gcal="${ev.id}" style="width:auto;margin-top:6px">加入 Google 日曆</button>
+        </div>`).join("") : `<div class="empty">目前沒有已預約的維修或續約時間</div>`}
     </div>
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">樓層出租概況</h2>
@@ -1692,8 +1862,8 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (no === "7651") { ui.role = "admin"; ui.page = "dash"; ui.loginError = ""; render(); return; }
-    ui.loginError = "請輸入辦公室房號 7651"; render(); return;
+    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.page = "dash"; ui.loginError = ""; render(); return; }
+    ui.loginError = "密碼不正確"; render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
   if (!room) { ui.loginError = "找不到這個房號"; render(); return; }
@@ -1726,7 +1896,7 @@ function bindGate() {
 
 function bindTenant() {
   const out = document.getElementById("logout-tenant");
-  if (out) out.onclick = () => { ui.role = null; ui.tenantId = null; ui.page = "home"; render(); };
+  if (out) out.onclick = () => { clearSession(); render(); };
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       ui.page = el.dataset.page;
@@ -1795,9 +1965,12 @@ function bindTenant() {
   document.querySelectorAll("[data-gcal]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault(); e.stopPropagation();
-      const rep = state.repairs.find(x => x.id === btn.dataset.gcal);
-      if (!rep) return;
-      rep.appointRead = true; save(); openGoogleCalendar(rep);
+      const kind = btn.dataset.gcalKind || "repair";
+      const item = kind === "renew"
+        ? (state.renewals || []).find(x => x.id === btn.dataset.gcal)
+        : state.repairs.find(x => x.id === btn.dataset.gcal);
+      if (!item) return;
+      item.appointRead = true; save(); openGoogleCalendar(item, kind);
     };
   });
   document.querySelectorAll("[data-gcal-renew]").forEach(btn => {
@@ -2042,7 +2215,7 @@ function bindLineSwipe() {
 }
 
 function bindAdmin() {
-  document.getElementById("logout").onclick = () => { ui.role = null; ui.page = "home"; render(); };
+  document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
   document.querySelectorAll("[data-admin]").forEach(btn => {
     btn.onclick = () => { ui.page = btn.dataset.admin; render(); };
@@ -2271,6 +2444,73 @@ function bindAdmin() {
       save(); render();
     };
   });
+  bindAdminAi();
+}
+
+function bindAdminAi() {
+  const ask = q => {
+    const text = String(q || "").trim();
+    if (!text) return;
+    if (!state.aiLogs) state.aiLogs = [];
+    state.aiLogs.push({ role: "admin", text, at: nowStamp() });
+    state.aiLogs.push({ role: "ai", text: aiAnswer(text), at: nowStamp() });
+    if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
+    save(); render();
+  };
+  document.querySelectorAll("[data-ai-q]").forEach(btn => {
+    btn.onclick = () => ask(btn.dataset.aiQ);
+  });
+  const form = document.getElementById("ai-form");
+  if (form) form.onsubmit = e => {
+    e.preventDefault();
+    const box = document.getElementById("ai-q");
+    ask(box && box.value);
+  };
+  document.querySelectorAll("[data-del-bank-media]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      (ui.bankMedia || []).splice(Number(btn.dataset.delBankMedia), 1);
+      const box = document.getElementById("bank-preview");
+      if (box) box.innerHTML = mediaPreviewHtml(ui.bankMedia, "data-del-bank-media");
+      bindAdminAi();
+    };
+  });
+  const file = document.getElementById("bank-file");
+  if (file) file.onchange = async () => {
+    if (!ui.bankMedia) ui.bankMedia = [];
+    for (const f of file.files || []) {
+      try {
+        if (f.type === "application/pdf") ui.bankMedia.push({ kind: "file", src: await readFileDataUrl(f), name: f.name });
+        else ui.bankMedia.push({ kind: "image", src: await compressImage(f), name: f.name });
+      } catch {}
+    }
+    file.value = "";
+    const box = document.getElementById("bank-preview");
+    if (box) box.innerHTML = mediaPreviewHtml(ui.bankMedia, "data-del-bank-media");
+    bindAdminAi();
+  };
+  const bank = document.getElementById("bank-form");
+  if (bank) bank.onsubmit = e => {
+    e.preventDefault();
+    if (!state.bankSlips) state.bankSlips = [];
+    state.bankSlips.push({
+      id: "bk" + Date.now(),
+      date: bank.date.value,
+      amount: Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0,
+      roomNo: (bank.roomNo.value || "").trim(),
+      note: (bank.note.value || "").trim(),
+      media: (ui.bankMedia || []).slice(),
+      createdAt: nowStamp()
+    });
+    ui.bankMedia = [];
+    save(); toast("已儲存入帳資料"); render();
+  };
+  document.querySelectorAll("[data-del-slip]").forEach(btn => {
+    btn.onclick = () => {
+      state.bankSlips = (state.bankSlips || []).filter(x => x.id !== btn.dataset.delSlip);
+      save(); render();
+    };
+  });
 }
 
 document.getElementById("app").addEventListener("click", e => {
@@ -2280,6 +2520,7 @@ document.getElementById("app").addEventListener("click", e => {
 async function boot() {
   const got = await pullCloud();
   if (!got) await pushCloud();
+  restoreUi();
   render();
   setInterval(async () => {
     const before = state.updatedAt;
