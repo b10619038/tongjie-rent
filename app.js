@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:49";
+const APP_VERSION = "2026-08-28-上午12:56";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -407,7 +407,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "" };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -504,7 +504,7 @@ function save() {
 function persistUi() {
   try {
     const snap = JSON.stringify({
-      role: ui.role, page: ui.page, roomId: ui.roomId, tenantId: ui.tenantId, assetKind: ui.assetKind
+      role: ui.role, page: ui.page, roomId: ui.roomId, tenantId: ui.tenantId, assetKind: ui.assetKind, adminCode: ui.adminCode || ""
     });
     sessionStorage.setItem(UI_KEY, snap);
     localStorage.setItem(UI_KEY, snap);
@@ -520,13 +520,14 @@ function restoreUi() {
     ui.roomId = s.roomId || null;
     ui.tenantId = s.tenantId || null;
     ui.assetKind = s.assetKind || "studio";
+    ui.adminCode = s.adminCode || "";
     if (s.role === "tenant" && s.tenantId && !state.tenants.some(t => t.id === s.tenantId)) {
       ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null;
     }
   } catch {}
 }
 function clearSession() {
-  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.loginError = "";
+  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.loginError = ""; ui.adminCode = "";
   try { sessionStorage.removeItem(UI_KEY); localStorage.removeItem(UI_KEY); } catch {}
 }
 
@@ -1644,7 +1645,7 @@ function adminView() {
   const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "AI助手"]];
   return `
     <div class="admin-bar">
-      <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
+      <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
         <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"}</div>
       </div>
       <button class="ghost" id="logout" style="width:auto">切換身分</button>
@@ -2445,7 +2446,7 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.page = "dash"; ui.loginError = ""; render(); enablePush(); return; }
+    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; render(); enablePush(); return; }
     ui.loginError = "密碼不正確"; render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
