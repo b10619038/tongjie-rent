@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:37";
+const APP_VERSION = "2026-08-27-下午11:41";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1224,15 +1224,15 @@ function render() {
   persistUi();
   const keep = ui.keepScroll;
   const oldScroll = keep ? (document.querySelector(".admin-scroll") || {}).scrollTop : null;
-  ui.keepScroll = false;
   const root = document.getElementById("app");
   const guide = notifyGuideHtml();
   const ver = versionFooter();
   const bar = updateBarHtml();
   const theme = themePickerHtml();
-  if (!ui.role) { root.innerHTML = bar + gateView() + ver + guide + theme; bindGate(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
+  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + gateView() + ver + guide + theme; bindGate(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
     root.innerHTML = `${bar}<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}${theme}`;
+    ui.keepScroll = false;
     bindAdmin();
     bindNotifyGuide();
     bindUpdateBar();
@@ -1635,7 +1635,7 @@ function adminView() {
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
     </div>
-    <div class="admin-scroll"><div class="admin-in-right">${adminBody()}</div></div>`;
+    <div class="admin-scroll"><div class="${ui.keepScroll ? "admin-static" : "admin-in-right"}">${adminBody()}</div></div>`;
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
