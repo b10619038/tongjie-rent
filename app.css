@@ -250,9 +250,9 @@ textarea { min-height: 92px; resize: vertical; }
 .media-actions .ghost { flex: 1; min-width: 120px; }
 
 .toast {
-  position: absolute; left: 20px; right: 20px; top: 18px;
+  position: fixed; left: 20px; right: 20px; top: 18px;
   background: var(--teal); color: #fff; border-radius: 14px;
-  padding: 12px 14px; font-size: 14px; z-index: 20;
+  padding: 12px 14px; font-size: 14px; z-index: 95;
 }
 
 .admin-bar {
@@ -700,6 +700,23 @@ textarea { min-height: 92px; resize: vertical; }
   cursor: pointer;
 }
 .theme-fab.lift { bottom: calc(96px + var(--safe-b)); }
+.install-mask {
+  position: fixed; inset: 0; z-index: 92;
+  background: rgba(20, 22, 21, .38);
+  display: grid; place-items: end center;
+  padding: 18px 16px calc(24px + var(--safe-b, 0px));
+}
+.install-sheet {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 18px 16px 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.14);
+}
+.install-sheet h2 { margin: 4px 0 10px; font-size: 20px; }
+.install-sheet .btn-navy { width: 100%; margin: 12px 0 8px; }
+.install-sheet .ghost { width: 100%; }
 .theme-mask {
   position: fixed; inset: 0; z-index: 90;
   background: rgba(255,255,255,.72);

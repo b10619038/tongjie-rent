@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:40";
+const APP_VERSION = "2026-08-28-上午1:43";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -82,6 +82,11 @@ function bindThemePicker() {
 }
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+});
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => {
     window.__swReg = r;
@@ -407,7 +412,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "" };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "" };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1250,11 +1255,14 @@ function render() {
   const ver = versionFooter();
   const bar = updateBarHtml();
   const theme = themePickerHtml();
-  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + gateView() + ver + guide + theme; bindGate(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
+  const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
+  const sheet = installSheetHtml();
+  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
-    root.innerHTML = `${bar}<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}${theme}`;
+    root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
     ui.keepScroll = false;
     bindAdmin();
+    bindInstallSheet();
     bindNotifyGuide();
     bindUpdateBar();
     bindThemePicker();
@@ -1268,13 +1276,60 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
+  bindInstallSheet();
   bindNotifyGuide();
   bindUpdateBar();
   bindThemePicker();
 }
 
+function installSheetHtml() {
+  if (!ui.installSheet) return "";
+  const mobile = ui.installSheet === "mobile";
+  const framed = (() => { try { return window.self !== window.top; } catch { return true; } })();
+  const ua = navigator.userAgent || "";
+  const safari = /^((?!chrome|android).)*safari/i.test(ua);
+  let body;
+  if (mobile) {
+    body = framed
+      ? "請用手機瀏覽器打開 https://tongjie-app.pages.dev 再安裝。"
+      : isIOS()
+        ? "請按底部分享鈕，再選「加入主畫面」。"
+        : isAndroid()
+          ? "請用 Chrome 右上選單，選「安裝應用程式」或「加入主畫面」。"
+          : "請用手機 Safari 或 Chrome 打開此網址。Android 點「安裝應用程式」；iPhone 按分享後選「加入主畫面」。";
+  } else if (isStandalone()) {
+    body = "這台電腦已經安裝過了，可從開始功能表或 Dock 開啟「統潔＆信潔開發」。";
+  } else if (framed) {
+    body = "請用電腦的 Chrome 或 Edge 打開 https://tongjie-app.pages.dev 後，再點「下載安裝電腦版」。";
+  } else if (isIOS() || isAndroid()) {
+    body = "請改用電腦的 Chrome 或 Edge 打開 https://tongjie-app.pages.dev 後安裝電腦版。";
+  } else if (safari) {
+    body = "Safari 請選「檔案 → 加入 Dock」。若要一鍵安裝，請改用 Chrome 或 Edge 打開此網址。";
+  } else {
+    body = "請用 Chrome 或 Edge：點網址列右側的「安裝」圖示，或右上角 ⋮ → 安裝「統潔＆信潔開發」。安裝後可從開始功能表開啟。";
+  }
+  return `<div class="install-mask" id="install-mask">
+    <div class="install-sheet">
+      <div class="label">${mobile ? "下載 App" : "電腦版"}</div>
+      <h2>${mobile ? "安裝到手機" : "安裝到電腦"}</h2>
+      <p class="small">${escapeHtml(body)}</p>
+      <p class="small">網址：https://tongjie-app.pages.dev</p>
+      ${deferredInstall && !isIOS() ? `<button class="btn-navy" id="install-try" type="button">立即安裝</button>` : ""}
+      <button class="ghost" id="install-close" type="button">關閉</button>
+    </div>
+  </div>`;
+}
+function bindInstallSheet() {
+  const close = () => { ui.installSheet = ""; render(); };
+  const mask = document.getElementById("install-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "install-mask") close(); };
+  const btn = document.getElementById("install-close");
+  if (btn) btn.onclick = close;
+  const tryBtn = document.getElementById("install-try");
+  if (tryBtn) tryBtn.onclick = () => installApp(ui.installSheet || "desktop", true);
+}
 function installCardHtml(label) {
   if (isStandalone()) return "";
   return `<div class="card card-body slide-left" style="margin-top:14px">
@@ -3329,13 +3384,9 @@ function bindCashCal() {
   };
 }
 
-let deferredInstall = null;
-window.addEventListener("beforeinstallprompt", e => {
-  e.preventDefault();
-  deferredInstall = e;
-});
 window.addEventListener("appinstalled", () => {
   deferredInstall = null;
+  ui.installSheet = "";
   try { localStorage.setItem("tongjie_installed", "1"); } catch {}
   enablePush().then(() => render());
 });
@@ -3345,27 +3396,29 @@ function isInstalledApp() {
   try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
   return false;
 }
-async function installApp(kind) {
+async function installApp(kind, fromSheet) {
   const wantMobile = kind === "mobile";
   if (deferredInstall && !isIOS()) {
-    deferredInstall.prompt();
-    const choice = await deferredInstall.userChoice.catch(() => null);
-    deferredInstall = null;
-    if (choice && choice.outcome === "accepted") {
-      try { localStorage.setItem("tongjie_installed", "1"); } catch {}
-      await enablePush();
-      render();
-    }
+    try {
+      const ev = deferredInstall;
+      ev.prompt();
+      const choice = await ev.userChoice.catch(() => null);
+      deferredInstall = null;
+      if (choice && choice.outcome === "accepted") {
+        try { localStorage.setItem("tongjie_installed", "1"); } catch {}
+        ui.installSheet = "";
+        await enablePush();
+        render();
+        return;
+      }
+    } catch {}
+  }
+  if (fromSheet) {
+    toast(wantMobile ? "請依畫面上的步驟安裝到手機" : "請依畫面上的步驟安裝到電腦");
     return;
   }
-  if (wantMobile) {
-    if (isIOS()) toast("請按底部分享鈕，再選「加入主畫面」");
-    else if (isAndroid()) toast("請用 Chrome 右上選單，選「安裝應用程式」或「加入主畫面」");
-    else toast("請用手機 Safari 或 Chrome 打開此網址後安裝。Android 與 iPhone 都可加入主畫面。");
-    return;
-  }
-  if (isIOS() || isAndroid()) toast("請改用電腦的 Chrome 或 Edge 打開此網址後安裝電腦版");
-  else toast("請用瀏覽器選單「安裝應用程式」，即可安裝到開始功能表");
+  ui.installSheet = wantMobile ? "mobile" : "desktop";
+  render();
 }
 document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
