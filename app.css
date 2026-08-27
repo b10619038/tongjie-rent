@@ -90,6 +90,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .k { color: var(--muted); font-size: 13px; }
 .v { font-weight: 700; }
 .small { color: var(--muted); font-size: 12px; }
+.small a, .lead a { color: var(--teal); text-decoration: none; font-weight: 700; }
 .empty { color: var(--muted); padding: 16px; text-align: center; }
 .badge {
   border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 700;

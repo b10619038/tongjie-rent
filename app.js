@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:40";
+const APP_VERSION = "2026-08-27-下午10:41";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -1203,6 +1203,7 @@ function gateView() {
       <div class="logo">TONG JIE</div>
       <h1>統潔開發有限公司</h1>
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
+      <p class="small">公司信箱 <a href="mailto:jie59056503@gmail.com">jie59056503@gmail.com</a></p>
       <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
     </div>
     <button class="role-btn slide-left" data-go="tenant-login">
@@ -1522,7 +1523,7 @@ function adminView() {
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔開發有限公司</div><h1 style="font-size:24px">管理員後台</h1>
-        <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"}</div>
+        <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"} · <a href="mailto:jie59056503@gmail.com">jie59056503@gmail.com</a></div>
       </div>
       <button class="ghost" id="logout" style="width:auto">切換身分</button>
     </div>
