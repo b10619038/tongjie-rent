@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:57";
+const APP_VERSION = "2026-08-28-上午12:02";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1724,10 +1724,9 @@ function adminAi() {
     </div>
     <form class="card card-body" id="bank-form">
       <h2 class="dash-h">上傳銀行入帳資料</h2>
-      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額與房號後，AI助手就能用來對帳。</p>
+      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額後，AI助手就能用來對帳。</p>
       <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
       <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
-      <label class="field"><span>房號</span><input name="roomNo" type="text" placeholder="例如 6821" /></label>
       <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
       <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
       <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
@@ -1735,7 +1734,7 @@ function adminAi() {
     </form>
     ${slips.length ? slips.map(s => `
       <div class="card card-body">
-        <div class="row"><span class="k">${escapeHtml(s.roomNo || "未填房號")} · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
+        <div class="row"><span class="k">${escapeHtml(s.date || "銀行入帳")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
         <p class="small">${escapeHtml(s.note || "")}</p>
         ${(s.media || []).map(m => m.kind === "image" ? `<img src="${m.src}" alt="" style="width:100%;border-radius:12px;margin:8px 0">` : `<a class="ghost" href="${m.src}" download="${escapeHtml(m.name || "檔案")}" style="margin-top:8px;display:block;text-align:center">下載檔案</a>`).join("")}
         <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
@@ -3029,7 +3028,7 @@ function bindAdminAi() {
       id: "bk" + Date.now(),
       date: bank.date.value,
       amount: Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0,
-      roomNo: (bank.roomNo.value || "").trim(),
+      roomNo: "",
       note: (bank.note.value || "").trim(),
       media: (ui.bankMedia || []).slice(),
       createdAt: nowStamp()
