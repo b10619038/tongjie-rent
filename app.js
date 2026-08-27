@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:17";
+const APP_VERSION = "2026-08-28-上午12:26";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -404,7 +404,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {} };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1199,13 +1199,16 @@ function monthCashHtml() {
       <h2 class="dash-h">新增一筆</h2>
       <div class="cal-form-row">
         <select name="type"><option value="in">進帳</option><option value="out">出帳</option></select>
-        <input name="date" type="date" value="${sel ? dayKey(sel) : ymdOf(nowStamp())}" />
+        <select name="company"><option value="統潔">統潔</option><option value="信潔">信潔</option></select>
       </div>
       <div class="cal-form-row">
+        <input name="date" type="date" value="${sel ? dayKey(sel) : ymdOf(nowStamp())}" />
         <input name="amount" type="text" placeholder="金額" />
+      </div>
+      <div class="cal-form-row">
+        <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" />
         <input name="roomNo" type="text" placeholder="房號（選填）" />
       </div>
-      <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" />
       <button class="btn-navy" type="submit">記入日曆</button>
     </form>
   </div>`;
@@ -1697,7 +1700,10 @@ function adminAi() {
         </select>
         <input name="amount" type="text" placeholder="金額（選填）" />
       </div>
-      <input name="note" type="text" placeholder="備註（選填）" />
+      <div class="cal-form-row">
+        <select name="company"><option value="統潔">統潔</option><option value="信潔">信潔</option></select>
+        <input name="note" type="text" placeholder="備註（選填）" />
+      </div>
       <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
     </form>
     ${errands.length ? errands.map(e => `
@@ -1979,6 +1985,68 @@ ${xlsSheet("報修", repairHead, repairRows)}
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast("已匯出 Excel");
 }
+function roomCompany(r) {
+  const c = String((r && r.company) || "").trim();
+  if (/信潔/.test(c)) return "信潔";
+  return "統潔";
+}
+function firmPeriod(key) {
+  if (!ui.firmPeriod) ui.firmPeriod = {};
+  return ui.firmPeriod[key] === "year" ? "year" : "month";
+}
+function inFirmPeriod(dateStr, mode) {
+  const d = ymdOf(dateStr);
+  if (!d) return false;
+  const now = new Date();
+  if (mode === "year") return d.slice(0, 4) === String(now.getFullYear());
+  return d.slice(0, 7) === now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+}
+function ledgerCompany(row) {
+  const book = (state.books || []).find(b => b.id === row.id);
+  if (book && /信潔/.test(book.company || "")) return "信潔";
+  if (book && /統潔/.test(book.company || "")) return "統潔";
+  const room = state.rooms.find(r => String(r.no) === String(row.roomNo || ""));
+  return roomCompany(room || {});
+}
+function firmTotals(company, mode) {
+  let inn = 0, out = 0;
+  state.tenants.forEach(t => {
+    if (!t.paid) return;
+    const room = state.rooms.find(r => r.id === t.roomId);
+    if (!room || room.status === "office" || roomCompany(room) !== company) return;
+    const date = ymdOf(t.paidAt) || ymdOf(nowStamp());
+    if (!inFirmPeriod(date, mode)) return;
+    inn += Number(room.rent) || 0;
+  });
+  collectLedger().forEach(row => {
+    if (row.source === "rent") return;
+    if (!inFirmPeriod(row.date, mode)) return;
+    if (ledgerCompany(row) !== company) return;
+    if (row.type === "in") inn += Number(row.amount) || 0;
+    else out += Number(row.amount) || 0;
+  });
+  return { inn, out, net: inn - out };
+}
+function firmKpiHtml(company, kind) {
+  const key = (company === "信潔" ? "xj" : "tj") + ({ in: "In", out: "Out", net: "Net" }[kind]);
+  const mode = firmPeriod(key);
+  const t = firmTotals(company, mode);
+  const unit = mode === "year" ? "年" : "月";
+  const title = company + ({ in: "總" + unit + "收入", out: "總" + unit + "支出", net: "淨" + unit + "收入" }[kind]);
+  const amt = kind === "in" ? t.inn : kind === "out" ? t.out : t.net;
+  const now = new Date();
+  const hint = mode === "year" ? now.getFullYear() + " 年累計" : now.getMonth() + 1 + " 月";
+  return `<div class="card kpi">
+    <div class="k firm-k"><span>${title}</span>
+      <select data-firm-period="${key}">
+        <option value="month" ${mode === "month" ? "selected" : ""}>月</option>
+        <option value="year" ${mode === "year" ? "selected" : ""}>年</option>
+      </select>
+    </div>
+    <div class="num">${money(amt)}</div>
+    <div class="small">${hint}</div>
+  </div>`;
+}
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory");
   const rented = studios.filter(r => r.status === "rented").length;
@@ -2005,9 +2073,11 @@ function adminDash() {
   });
   const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
   return `<div class="dash">
-    <div class="dash-hero">
-      <div class="card kpi accent"><div class="k">本月應收租金</div><div class="num">${money(dueAmt)}</div><div class="small">平均每間 ${money(avgRent)}</div></div>
-      <div class="card kpi"><div class="k">已收／未收</div><div class="num">${money(paidAmt)}</div><div class="small">未收 ${money(unpaidAmt)} · ${unpaidTenants.length} 戶</div></div>
+    <div class="firm-grid">
+      ${["in", "out", "net"].map(k => firmKpiHtml("統潔", k)).join("")}
+      ${["in", "out", "net"].map(k => firmKpiHtml("信潔", k)).join("")}
+    </div>
+    <div class="dash-hero rings">
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
@@ -2699,6 +2769,15 @@ function bindAdmin() {
   document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
   bindRepairDelete();
+  document.querySelectorAll("[data-firm-period]").forEach(sel => {
+    sel.onclick = e => e.stopPropagation();
+    sel.onchange = () => {
+      if (!ui.firmPeriod) ui.firmPeriod = {};
+      ui.firmPeriod[sel.dataset.firmPeriod] = sel.value;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-admin]").forEach(btn => {
     btn.onclick = () => { ui.page = btn.dataset.admin; render(); };
   });
@@ -2967,14 +3046,16 @@ function bindAdminAi() {
     const place = (errand.place.value || "").trim();
     const note = (errand.note.value || "").trim();
     const id = "er" + Date.now();
+    const company = errand.company && errand.company.value === "信潔" ? "信潔" : "統潔";
     if (!state.errands) state.errands = [];
-    state.errands.push({ id, kind: "bank", date, title, place, amount, note, createdAt: nowStamp() });
+    state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, createdAt: nowStamp() });
     if (!state.books) state.books = [];
     state.books.push({
       id,
       type: "out",
       date,
       amount,
+      company,
       roomNo: "",
       note: "銀行業務 " + title + (place ? " · " + place : "") + (note ? " · " + note : ""),
       createdAt: nowStamp()
@@ -3074,7 +3155,8 @@ function bindCashCal() {
       id: "bk" + Date.now(),
       type: form.type.value === "out" ? "out" : "in",
       date, amount,
-      roomNo: (form.roomNo.value || "").trim(),
+      company: form.company && form.company.value === "信潔" ? "信潔" : "統潔",
+      roomNo: (form.roomNo && form.roomNo.value || "").trim(),
       note: (form.note.value || "").trim(),
       createdAt: nowStamp()
     });
