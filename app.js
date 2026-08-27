@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:30";
+const APP_VERSION = "2026-08-27-下午11:37";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -98,7 +98,8 @@ function isPhone() {
 }
 function updateBarHtml() {
   if (!ui.updateReady) return "";
-  return `<div class="update-bar">發現新版本，即將自動更新<button type="button" id="apply-update">立即更新</button></div>`;
+  const lift = ui.role === "tenant" ? " lift" : "";
+  return `<div class="home-upd${lift}" id="apply-update">有新版本，軟體自動更新</div>`;
 }
 function applyAppUpdate() {
   const reg = window.__swReg;
@@ -126,7 +127,7 @@ function promptAppUpdate(reg) {
       icon: "/icon-192.png"
     }).catch(() => {});
   }
-  setTimeout(() => applyAppUpdate(), 1200);
+  setTimeout(() => applyAppUpdate(), 2200);
 }
 function watchAppUpdate(reg) {
   if (!reg) return;
