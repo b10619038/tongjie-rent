@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:33";
+const APP_VERSION = "2026-08-28-上午12:36";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -231,6 +231,15 @@ const TENANT_BY_ROOM = {
   "7611": "波波奇", "7622": "邱育琳", "7623": "陳財源", "7631": "蔡文銘",
   "7632": "謝佩君", "7641": "洪子軒"
 };
+const STUDIO_BUILDINGS = [
+  { prefix: "68", no: "牛10-68", street: "文龍東路68號", company: "統潔" },
+  { prefix: "70", no: "牛10-70", street: "文龍東路70號", company: "統潔" },
+  { prefix: "72", no: "牛10-72", street: "文龍東路72號", company: "統潔" },
+  { prefix: "76", no: "牛10-76", street: "文龍東路76號", company: "統潔" }
+];
+function studioPrefix(no) {
+  return String(no || "").replace(/\D/g, "").slice(0, 2);
+}
 const AMENITIES = ["冷氣", "冰箱", "洗衣機", "熱水器", "獨立衛浴", "網路", "書桌椅", "電視", "機車停車格"];
 const FACTORY_GROUPS = [
   { group: "牛1", street: "文龍東路", company: "", city: "高雄市鳳山區文龍東路", items: [
@@ -285,12 +294,6 @@ const FACTORY_GROUPS = [
   { group: "牛8", street: "鳳仁路", company: "統潔", city: "高雄市鳳山區鳳仁路", items: [
     { no: "牛8-77", unit: "97-77號", manager: "錦芳" },
     { no: "牛8-78", unit: "97-78號", manager: "錦芳" }
-  ]},
-  { group: "牛10", street: "文龍東路", company: "統潔", city: "高雄市鳳山區文龍東路", items: [
-    { no: "牛10-68", unit: "68號", manager: "" },
-    { no: "牛10-70", unit: "70號", manager: "" },
-    { no: "牛10-72", unit: "72號", manager: "" },
-    { no: "牛10-76", unit: "76號", manager: "" }
   ]},
   { group: "拉皮", street: "鳳仁路", company: "統潔", city: "高雄市鳳山區鳳仁路", items: [
     { no: "拉皮-1A", unit: "93-1A號", manager: "" },
@@ -404,7 +407,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {} };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -422,6 +425,7 @@ function normalize(data) {
   factoryRooms().forEach(seedRoom => {
     if (!data.rooms.some(r => r.id === seedRoom.id || r.no === seedRoom.no)) data.rooms.push(structuredClone(seedRoom));
   });
+  data.rooms = data.rooms.filter(r => !(r.kind === "factory" && /^牛10-/.test(String(r.no || ""))));
   data.rooms.forEach(r => {
     if (!Array.isArray(r.contractImages)) r.contractImages = [];
     ensurePhotos(r);
@@ -2199,10 +2203,26 @@ function adminRoomListHtml(kind) {
       </div>`;
     }).join("");
   }
-  const list = roomsByFloor().filter(r => (r.kind || "studio") !== "factory");
-  if (!list.length) return `<div class="empty">${kind === "factory" ? "目前沒有廠房" : "目前沒有套房"}</div>`;
+  if (!ui.studioBldg) {
+    return STUDIO_BUILDINGS.map(b => {
+      const rooms = state.rooms.filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix);
+      const rented = rooms.filter(r => r.status === "rented").length;
+      const vacant = rooms.filter(r => r.status === "vacant" || !r.status).length;
+      const cover = rooms.find(r => r.photos && r.photos[0]) || rooms[0];
+      return `<div class="card item clickable" data-studio-bldg="${b.prefix}">
+        ${cover ? photoEl(cover.photos && cover.photos[0], cover.no) : ""}
+        <div><strong>${b.no}</strong>
+          <div class="small">${b.street} · ${b.company}</div>
+          <div class="small">套房 ${rooms.length} 間 · 滿租 ${rented} · 空置 ${vacant}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  const bldg = STUDIO_BUILDINGS.find(x => x.prefix === ui.studioBldg);
+  const list = roomsByFloor().filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === ui.studioBldg);
+  if (!list.length) return `<button type="button" class="ghost" data-studio-bldg="">← 返回棟別</button><div class="empty">這棟目前沒有套房</div>`;
   let lastFloor = "";
-  return list.map(r => {
+  return `<button type="button" class="ghost" data-studio-bldg="" style="margin-bottom:8px">← ${bldg ? bldg.no : "返回棟別"}</button>` + list.map(r => {
     const t = state.tenants.find(x => x.id === r.tenantId);
     const floor = floorNo(r.no);
     const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
@@ -2775,6 +2795,21 @@ function bindLineSwipe() {
     wrap.addEventListener("touchend", onUp);
   });
 }
+function bindStudioBuildings() {
+  document.querySelectorAll("[data-studio-bldg]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.studioBldg = btn.dataset.studioBldg || null;
+      const box = document.getElementById("asset-list");
+      if (box) {
+        box.innerHTML = adminRoomListHtml("studio");
+        bindAdminRoomItems();
+        bindStudioBuildings();
+      }
+    };
+  });
+}
 function bindAdmin() {
   document.getElementById("logout").onclick = () => { clearSession(); render(); };
   bindMediaViewers();
@@ -2797,6 +2832,7 @@ function bindAdmin() {
       const kind = btn.dataset.assetKind;
       if (ui.assetKind === kind) return;
       ui.assetKind = kind;
+      if (kind !== "studio") ui.studioBldg = null;
       const seg = btn.closest(".seg");
       if (seg) {
         seg.classList.remove("is-studio", "is-factory");
@@ -2808,12 +2844,14 @@ function bindAdmin() {
       if (box) {
         box.innerHTML = adminRoomListHtml(kind);
         bindAdminRoomItems();
+        bindStudioBuildings();
       }
     };
   });
   const onTab = document.querySelector(".tab.on");
   if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   bindAdminRoomItems();
+  bindStudioBuildings();
   bindLineSwipe();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
