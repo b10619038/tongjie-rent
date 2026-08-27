@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:51";
+const APP_VERSION = "2026-08-27-下午11:53";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2004,7 +2004,7 @@ function adminDash() {
     <div class="dash-hero">
       <div class="card kpi accent"><div class="k">本月應收租金</div><div class="num">${money(dueAmt)}</div><div class="small">平均每間 ${money(avgRent)}</div></div>
       <div class="card kpi"><div class="k">已收／未收</div><div class="num">${money(paidAmt)}</div><div class="small">未收 ${money(unpaidAmt)} · ${unpaidTenants.length} 戶</div></div>
-      <div class="card ring-card"><div class="ring" style="--p:${collectRate}"><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
+      <div class="card ring-card"><div class="ring teal" style="--p:${collectRate}"><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
       <div class="card ring-card"><div class="ring teal" style="--p:${occ}"><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
     <div class="card card-body">
