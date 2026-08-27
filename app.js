@@ -7,7 +7,16 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:55";
+const APP_VERSION = "2026-08-28-上午2:00";
+const CHANGELOG = [
+  { ver: "2026-08-28-上午2:00", items: ["點擊下方更新通知，可查看這次更新了哪些內容", "看完後可選擇立即更新或稍後"] },
+  { ver: "2026-08-28-上午1:55", items: ["公告、報修、續約、合約到期、未繳租金會在手機上方跳出系統通知", "管理員也會收到新報修、續約申請與繳費回報"] },
+  { ver: "2026-08-28-上午1:43", items: ["修復「下載安裝電腦版」點了沒反應", "改為跳出安裝說明，Chrome／Edge 可一鍵安裝"] },
+  { ver: "2026-08-28-上午1:40", items: ["管理員密碼下方新增「下載 App」", "支援 Android 與 iPhone／iPad 加入主畫面"] },
+  { ver: "2026-08-28-上午1:36", items: ["管理員登入頁新增電腦版下載安裝"] },
+  { ver: "2026-08-28-上午1:33", items: ["電腦版安裝圖標改為圓角"] },
+  { ver: "2026-08-28-上午1:28", items: ["管理員公告改為連點兩下按愛心，讚與笑臉已移除"] }
+];
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -96,17 +105,44 @@ if ("serviceWorker" in navigator) {
   }).then(r => { window.__swReg = r; }).catch(() => {});
   navigator.serviceWorker.addEventListener("message", e => {
     if (e.data && e.data.type === "APPLY_UPDATE") applyAppUpdate();
+    if (e.data && e.data.type === "SHOW_CHANGELOG") {
+      ui.updateReady = true;
+      ui.updateNotes = true;
+      try { render(); } catch {}
+    }
   });
 }
 function isPhone() {
   return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
 }
+function unseenChangelog() {
+  let last = "";
+  try { last = localStorage.getItem("tj-last-ver") || ""; } catch {}
+  const idx = CHANGELOG.findIndex(x => x.ver === last);
+  if (idx <= 0) return CHANGELOG.slice(0, 4);
+  return CHANGELOG.slice(0, idx);
+}
+function changelogSheetHtml() {
+  if (!ui.updateNotes) return "";
+  const notes = unseenChangelog();
+  const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(n.ver)}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`).join("");
+  return `<div class="install-mask" id="update-mask">
+    <div class="install-sheet">
+      <div class="label">軟體更新</div>
+      <h2>這次更新了什麼</h2>
+      <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
+      <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
+      <button class="ghost" id="update-close" type="button">稍後</button>
+    </div>
+  </div>`;
+}
 function updateBarHtml() {
   if (!ui.updateReady) return "";
   const lift = ui.role === "tenant" ? " lift" : "";
-  return `<div class="home-upd${lift}" id="apply-update">有新版本，軟體自動更新</div>`;
+  return `<div class="home-upd${lift}" id="apply-update">有新版本，點此查看更新內容</div>`;
 }
 function applyAppUpdate() {
+  try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
   const reg = window.__swReg;
   if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
   else location.reload();
@@ -118,21 +154,20 @@ function promptAppUpdate(reg) {
   if ("Notification" in window && Notification.permission === "granted") {
     try {
       const n = new Notification("統潔開發有新版本", {
-        body: "正在更新到最新版，也可點此立即更新",
+        body: "點下方通知可查看更新了哪些內容",
         tag: "tongjie-update",
         icon: "icon-192.png"
       });
-      n.onclick = () => { window.focus(); applyAppUpdate(); n.close(); };
+      n.onclick = () => { window.focus(); ui.updateNotes = true; render(); n.close(); };
     } catch {}
   }
   if (reg && reg.showNotification) {
     reg.showNotification("統潔開發有新版本", {
-      body: "正在更新到最新版，也可點此立即更新",
+      body: "點下方通知可查看更新了哪些內容",
       tag: "tongjie-update",
       icon: "/icon-192.png"
     }).catch(() => {});
   }
-  setTimeout(() => applyAppUpdate(), 2200);
 }
 function watchAppUpdate(reg) {
   if (!reg) return;
@@ -412,7 +447,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "" };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1350,7 +1385,7 @@ function render() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
     root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
@@ -2651,7 +2686,13 @@ function bindGate() {
 }
 function bindUpdateBar() {
   const btn = document.getElementById("apply-update");
-  if (btn) btn.onclick = applyAppUpdate;
+  if (btn) btn.onclick = () => { ui.updateNotes = true; render(); };
+  const now = document.getElementById("apply-update-now");
+  if (now) now.onclick = applyAppUpdate;
+  const close = document.getElementById("update-close");
+  if (close) close.onclick = () => { ui.updateNotes = false; render(); };
+  const mask = document.getElementById("update-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "update-mask") { ui.updateNotes = false; render(); } };
 }
 
 function bindTenant() {

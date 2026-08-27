@@ -717,6 +717,11 @@ textarea { min-height: 92px; resize: vertical; }
 .install-sheet h2 { margin: 4px 0 10px; font-size: 20px; }
 .install-sheet .btn-navy { width: 100%; margin: 12px 0 8px; }
 .install-sheet .ghost { width: 100%; }
+.log-list { max-height: 46vh; overflow: auto; margin: 4px 0 8px; }
+.log-ver { margin: 0 0 14px; }
+.log-ver strong { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.log-ver ul { margin: 0; padding-left: 18px; }
+.log-ver li { font-size: 14px; line-height: 1.55; margin: 0 0 4px; }
 .theme-mask {
   position: fixed; inset: 0; z-index: 90;
   background: rgba(255,255,255,.72);

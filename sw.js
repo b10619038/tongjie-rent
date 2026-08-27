@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v14";
+const CACHE = "tongjie-app-v15";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
@@ -42,7 +42,7 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: "window", includeUncontrolled: true });
     if (event.notification.tag === "tongjie-update") {
-      all.forEach(c => c.postMessage({ type: "APPLY_UPDATE" }));
+      all.forEach(c => c.postMessage({ type: "SHOW_CHANGELOG" }));
     }
     if (all[0]) return all[0].focus();
     return clients.openWindow("/");
