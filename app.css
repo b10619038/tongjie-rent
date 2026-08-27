@@ -25,6 +25,7 @@ button, input, textarea, select { font: inherit; }
 .shell { height: 100%; display: flex; flex-direction: column; background: #fff; }
 .shell.admin-wide { overflow: hidden; }
 .tenant-scroll, .admin-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+.admin-scroll { padding-bottom: 28px; }
 
 .topbar {
   padding: 18px 20px 22px;
@@ -107,19 +108,28 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .chip { background: #f7f0e8; color: #17211f; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
 
 .nav {
-  position: relative; margin: 8px 12px calc(12px + var(--safe-b));
+  position: relative; z-index: 41;
+  margin: 8px 12px calc(34px + var(--safe-b));
   background: #fff; border-radius: 22px;
   display: grid; grid-template-columns: repeat(4, 1fr);
-  padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
+  padding: 6px 4px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
 }
 .nav button {
   position: relative; border: 0; background: transparent; color: var(--muted);
-  font: inherit; font-size: 11px; font-weight: 600; padding: 6px 0; cursor: pointer;
+  font: inherit; font-size: 11px; font-weight: 600; padding: 8px 0; cursor: pointer;
   transform-origin: center;
+  border-radius: 16px;
+  margin: 0 2px;
+  transition: background-color .16s ease;
 }
 .nav button.active {
   color: var(--teal);
+  background-color: #f3f3f3;
   animation: navPop .45s cubic-bezier(.2, 1.5, .35, 1) both;
+}
+.nav button:hover,
+.nav button:active {
+  background-color: #f3f3f3;
 }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
@@ -502,7 +512,6 @@ textarea { min-height: 92px; resize: vertical; }
 }
 .issue-opt.selected:hover { background-color: #d8e2d4; }
 .tab.on:hover { background-color: #4e5e49; }
-.nav button.active:hover { background-color: #f3f3f3; }
 .err { color: var(--rose); font-size: 13px; margin-top: 6px; }
 
 .swipe-wrap { position: relative; overflow: hidden; border-radius: 22px; touch-action: pan-y; }
