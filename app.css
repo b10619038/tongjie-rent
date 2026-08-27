@@ -315,9 +315,9 @@ textarea { min-height: 92px; resize: vertical; }
 }
 .ring {
   --p: 0; position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(#5e7ea8 calc(var(--p) * 1%), #ece8e1 0);
+  background: conic-gradient(from -90deg, #5e7ea8 calc(var(--p) * 1%), #ece8e1 0);
 }
-.ring.teal { background: conic-gradient(var(--teal) calc(var(--p) * 1%), #ece8e1 0); }
+.ring.teal { background: conic-gradient(from -90deg, var(--teal) calc(var(--p) * 1%), #ece8e1 0); }
 .ring-wrap b {
   position: absolute; inset: 10px; border-radius: 50%; background: #fff;
   display: grid; place-items: center; font-size: 14px; z-index: 1;
@@ -325,8 +325,7 @@ textarea { min-height: 92px; resize: vertical; }
 .ring.spin-in { animation: ringFill .9s cubic-bezier(.2,.85,.2,1) both; }
 .ring.spin-in.delay { animation-delay: .16s; }
 @keyframes ringFill {
-  from { --p: 0; transform: rotate(-240deg); }
-  to { transform: rotate(0deg); }
+  from { --p: 0; }
 }
 .bar-row { display: grid; grid-template-columns: 36px 1fr 48px; gap: 8px; align-items: center; margin: 8px 0; font-size: 13px; }
 .bar { height: 8px; background: #ece8e1; border-radius: 99px; overflow: hidden; }
