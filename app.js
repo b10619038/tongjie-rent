@@ -7,8 +7,48 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:58";
+const APP_VERSION = "2026-08-27-下午10:01";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
+window.__swReg = null;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => {
+    window.__swReg = r;
+    return navigator.serviceWorker.ready;
+  }).then(r => { window.__swReg = r; }).catch(() => {});
+}
+function urlBase64ToUint8Array(b64) {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+function askTongjieNotify() {
+  if (typeof Notification === "undefined" || typeof Notification.requestPermission !== "function") {
+    alert(isIOS() ? "請先加入主畫面，再用桌面圖示打開 App" : "請用 Chrome 開啟這個網址");
+    return;
+  }
+  const key = urlBase64ToUint8Array(VAPID_PUBLIC);
+  if (window.__swReg && window.__swReg.pushManager) {
+    window.__swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }).catch(() => {});
+  }
+  const ret = Notification.requestPermission();
+  const after = perm => {
+    perm = perm || Notification.permission;
+    if (perm === "granted") {
+      subscribePushOnly();
+      try { new Notification("統潔開發", { body: "通知已開啟", icon: "icon-192.png" }); } catch {}
+      toast("通知已開啟");
+    } else if (perm === "denied") {
+      toast(isIOS() ? "請到設定 → 通知 → 統潔開發，打開允許" : "請到設定 → 應用程式 → 統潔開發 → 通知，改為允許");
+    } else {
+      toast("沒有跳出系統視窗。請用 Chrome 或 Safari，不要從 LINE 裡面開啟");
+    }
+    render();
+  };
+  if (ret && typeof ret.then === "function") ret.then(after, () => after("denied"));
+}
+window.askTongjieNotify = askTongjieNotify;
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
 }
@@ -608,13 +648,6 @@ function toast(msg) {
   ui.toast = msg; render();
   setTimeout(() => { ui.toast = ""; render(); }, 1800);
 }
-function urlBase64ToUint8Array(b64) {
-  const pad = "=".repeat((4 - b64.length % 4) % 4);
-  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
-}
 function sendRemoteNotify(target, title, body) {
   fetch(LINE_HOOK + "/api/push", {
     method: "POST",
@@ -659,56 +692,23 @@ function notifyGuideHtml() {
   } else {
     steps = "請點下方按鈕，手機會立刻出現「允許通知」。請選允許。";
   }
-  const canAsk = st === "default" && (standalone || !isIOS());
   return `<div class="notify-mask" id="notify-guide">
     <div class="notify-card">
       <div class="label">手機通知</div>
       <h2>開啟通知</h2>
       <p>管理員公告、報修與繳費會在手機上方跳出。</p>
       <p class="small">${steps}</p>
-      ${canAsk ? `<button class="btn-navy" id="notify-allow" type="button">立即開啟通知</button>` : ""}
-      ${isIOS() && !standalone ? `<button class="btn-navy" id="notify-how" type="button">如何加入主畫面</button>` : ""}
-      ${st === "denied" ? `<button class="btn-navy" id="notify-retry" type="button">我已在設定打開</button>` : ""}
+      <button class="btn-navy" id="notify-allow" type="button" onclick="askTongjieNotify()">立即開啟通知</button>
+      ${isIOS() && !standalone ? `<button class="ghost" id="notify-how" type="button">如何加入主畫面</button>` : ""}
+      ${st === "denied" ? `<button class="ghost" id="notify-retry" type="button">我已在設定打開</button>` : ""}
       <button class="ghost" id="notify-later" type="button" style="margin-top:8px">稍後</button>
     </div>
   </div>`;
 }
-function requestNotifyPerm(cb) {
-  if (!("Notification" in window) || typeof Notification.requestPermission !== "function") {
-    cb("unsupported");
-    return;
-  }
-  let done = false;
-  const once = p => { if (done) return; done = true; cb(p || Notification.permission); };
-  try {
-    const ret = Notification.requestPermission(once);
-    if (ret && typeof ret.then === "function") ret.then(once, () => once("denied"));
-  } catch {
-    try { Notification.requestPermission().then(once, () => once("denied")); } catch { once("denied"); }
-  }
-}
 function bindNotifyGuide() {
-  const allow = document.getElementById("notify-allow");
   const later = document.getElementById("notify-later");
   const how = document.getElementById("notify-how");
   const retry = document.getElementById("notify-retry");
-  const askNow = e => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    if (isIOS() && !isStandalone()) {
-      toast("請先加入主畫面，再用桌面圖示打開");
-      return;
-    }
-    requestNotifyPerm(perm => {
-      if (perm === "granted") {
-        subscribePushOnly();
-        toast("通知已開啟");
-        render();
-        return;
-      }
-      render();
-    });
-  };
-  if (allow) allow.onclick = askNow;
   if (how) how.onclick = () => toast("請點 Safari 分享鈕，選「加入主畫面」");
   if (retry) retry.onclick = () => { render(); if (notifyStatus() === "granted") toast("通知已開啟"); };
   if (later) later.onclick = () => { ui.notifySkip = true; render(); };
@@ -2862,9 +2862,6 @@ async function installApp() {
   }
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   toast(ios ? "請按分享鈕，再選「加入主畫面」" : "請用瀏覽器選單「安裝應用程式」或「加入主畫面」");
-}
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
