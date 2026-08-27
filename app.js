@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:25";
+const APP_VERSION = "2026-08-28-上午1:28";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1345,18 +1345,15 @@ function tenantView() {
 
 function reactionCounts(a) {
   const rec = a.reactions || {};
-  const c = { like: 0, heart: 0, happy: 0 };
-  Object.keys(rec).forEach(id => { const k = rec[id]; if (c[k] != null) c[k]++; });
-  return c;
+  let heart = 0;
+  Object.keys(rec).forEach(id => { if (rec[id]) heart++; });
+  return { heart };
 }
 function reactBarHtml(a) {
-  const c = reactionCounts(a);
-  const mine = ui.tenantId ? (a.reactions || {})[ui.tenantId] : "";
-  const items = [["like", "👍"], ["heart", "❤️"], ["happy", "😊"]].filter(([k]) => c[k] > 0);
-  if (!items.length) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
-  return `<div class="ann-react" data-react-ann="${a.id}">${items.map(([k, ic]) =>
-    `<span data-react-kind="${k}" class="${mine === k ? "on" : ""} has">${ic}<em>${c[k]}</em></span>`
-  ).join("")}</div>`;
+  const n = reactionCounts(a).heart;
+  if (!n) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
+  const mine = ui.tenantId && (a.reactions || {})[ui.tenantId];
+  return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
 }
 function announceCardsHtml() {
   const list = (state.announcements || []).slice().reverse();
@@ -2845,13 +2842,12 @@ function bindStudioBuildings() {
     };
   });
 }
-function applyAnnouncementReaction(id, kind) {
+function applyAnnouncementReaction(id) {
   if (!ui.tenantId) return;
   const a = (state.announcements || []).find(x => x.id === id);
   if (!a) return;
   if (!a.reactions) a.reactions = {};
-  if (kind && a.reactions[ui.tenantId] === kind && kind !== "heart") delete a.reactions[ui.tenantId];
-  else a.reactions[ui.tenantId] = kind;
+  a.reactions[ui.tenantId] = "heart";
   save();
   document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
 }
@@ -2869,61 +2865,16 @@ function popAnnounceCard(card) {
 function bindAnnounceReactions() {
   document.querySelectorAll("[data-read-announce]").forEach(card => {
     if (ui.role !== "tenant" || !ui.tenantId) return;
-    let lastTap = 0, pressTimer = 0, startX = 0, startY = 0, picking = false;
-    const clearPress = () => { clearTimeout(pressTimer); pressTimer = 0; };
-    const openPicker = () => {
-      picking = true;
-      card.querySelectorAll(".ann-picker").forEach(n => n.remove());
-      const box = document.createElement("div");
-      box.className = "ann-picker";
-      box.innerHTML = `<span data-pick="like">👍</span><span data-pick="happy">😊</span>`;
-      card.appendChild(box);
-      const hit = (e) => {
-        const el = document.elementFromPoint(e.clientX, e.clientY);
-        box.querySelectorAll("[data-pick]").forEach(s => s.classList.toggle("hot", !!(el && s.contains(el))));
-        return el && el.closest("[data-pick]");
-      };
-      const onMove = e => { hit(e); };
-      const onUp = e => {
-        const pick = hit(e);
-        if (pick) {
-          applyAnnouncementReaction(card.dataset.readAnnounce, pick.dataset.pick);
-          popAnnounceCard(card);
-        }
-        box.remove();
-        picking = false;
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-        window.removeEventListener("pointercancel", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-      window.addEventListener("pointercancel", onUp);
-    };
-    card.addEventListener("pointerdown", e => {
-      if (e.target.closest("a,button,video,img")) return;
-      startX = e.clientX; startY = e.clientY;
-      clearPress();
-      pressTimer = setTimeout(openPicker, 420);
-    });
-    card.addEventListener("pointermove", e => {
-      if (!pressTimer) return;
-      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) clearPress();
-    });
+    let lastTap = 0;
     card.addEventListener("pointerup", e => {
-      const wasPress = pressTimer;
-      clearPress();
-      if (picking) return;
-      if (e.target.closest("a,button,video,.ann-picker")) return;
+      if (e.target.closest("a,button,video,img")) return;
       const now = Date.now();
-      if (wasPress && now - lastTap < 340) {
-        applyAnnouncementReaction(card.dataset.readAnnounce, "heart");
+      if (now - lastTap < 340) {
+        applyAnnouncementReaction(card.dataset.readAnnounce);
         popAnnounceCard(card);
         lastTap = 0;
       } else lastTap = now;
     });
-    card.addEventListener("pointercancel", clearPress);
-    card.addEventListener("contextmenu", e => { if (ui.role === "tenant") e.preventDefault(); });
   });
 }
 function bindAdmin() {

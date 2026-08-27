@@ -634,14 +634,6 @@ textarea { min-height: 92px; resize: vertical; }
   35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
 }
-.ann-picker {
-  position: absolute; right: 12px; bottom: 48px; z-index: 8;
-  display: flex; gap: 10px; align-items: center;
-  background: #fff; border-radius: 999px; padding: 8px 12px;
-  box-shadow: 0 12px 28px rgba(0,0,0,.16);
-}
-.ann-picker span { font-size: 28px; line-height: 1; display: block; transform: scale(1); transition: transform .12s ease; }
-.ann-picker span.hot { transform: scale(1.28); }
 .ann-react {
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
 }
