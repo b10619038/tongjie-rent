@@ -980,11 +980,22 @@ function appointBlock(rep) {
 
 function render() {
   persistUi();
+  const keep = ui.keepScroll;
+  const oldScroll = keep ? (document.querySelector(".admin-scroll") || {}).scrollTop : null;
+  ui.keepScroll = false;
   const root = document.getElementById("app");
   if (!ui.role) { root.innerHTML = gateView(); bindGate(); return; }
   if (ui.role === "admin") {
     root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>`;
-    bindAdmin(); return;
+    bindAdmin();
+    if (oldScroll != null) {
+      const sc = document.querySelector(".admin-scroll");
+      if (sc) {
+        sc.scrollTop = oldScroll;
+        requestAnimationFrame(() => { sc.scrollTop = oldScroll; });
+      }
+    }
+    return;
   }
   root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>`;
   bindTenant();
@@ -2612,22 +2623,23 @@ function bindAdminAi() {
 }
 function bindCashCal() {
   ensureCalMonth();
+  const stay = () => { ui.keepScroll = true; render(); };
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onclick = () => {
       let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
       if (m < 1) { m = 12; y -= 1; }
       if (m > 12) { m = 1; y += 1; }
       ui.calYear = y; ui.calMonth = m; ui.calDay = 1;
-      render();
+      stay();
     };
   });
   document.querySelectorAll("[data-cal-day]").forEach(btn => {
-    btn.onclick = () => { ui.calDay = Number(btn.dataset.calDay); render(); };
+    btn.onclick = () => { ui.calDay = Number(btn.dataset.calDay); stay(); };
   });
   document.querySelectorAll("[data-del-book]").forEach(btn => {
     btn.onclick = () => {
       state.books = (state.books || []).filter(x => x.id !== btn.dataset.delBook);
-      save(); render();
+      save(); stay();
     };
   });
   const form = document.getElementById("book-form");
@@ -2646,7 +2658,7 @@ function bindCashCal() {
       createdAt: nowStamp()
     });
     ui.calDay = Number(date.slice(8, 10));
-    save(); toast("已記入日曆"); render();
+    save(); toast("已記入日曆"); stay();
   };
 }
 
