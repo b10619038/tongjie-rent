@@ -526,3 +526,18 @@ textarea { min-height: 92px; resize: vertical; }
 .line-dock iframe { flex: 1; width: 100%; border: 0; background: #d4e8c8; min-height: 220px; }
 .line-dock-fallback { padding: 12px 14px 18px; }
 .line-dock-fallback p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+.ver {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 6px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+  font-size: 11px;
+  color: #9a9a9a;
+  letter-spacing: .04em;
+  pointer-events: none;
+  background: transparent;
+}

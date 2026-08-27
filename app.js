@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:55";
+const APP_VERSION = "2026-08-27-下午9:58";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
@@ -1134,9 +1134,10 @@ function render() {
   ui.keepScroll = false;
   const root = document.getElementById("app");
   const guide = notifyGuideHtml();
-  if (!ui.role) { root.innerHTML = gateView() + guide; bindGate(); bindNotifyGuide(); return; }
+  const ver = versionFooter();
+  if (!ui.role) { root.innerHTML = gateView() + ver + guide; bindGate(); bindNotifyGuide(); return; }
   if (ui.role === "admin") {
-    root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${guide}`;
+    root.innerHTML = `<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}`;
     bindAdmin();
     bindNotifyGuide();
     if (oldScroll != null) {
@@ -1148,7 +1149,7 @@ function render() {
     }
     return;
   }
-  root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${guide}`;
+  root.innerHTML = `<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}`;
   bindTenant();
   bindNotifyGuide();
 }
@@ -1167,7 +1168,6 @@ function gateView() {
         <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
-      ${versionFooter()}
     </div>`;
   }
   return `<div class="gate">
@@ -1190,7 +1190,6 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
-    ${versionFooter()}
   </div>`;
 }
 
@@ -1267,7 +1266,6 @@ function homeView() {
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${hasAnn ? "" : announceBlock}
-      ${versionFooter()}
     </div>`;
 }
 
@@ -1512,7 +1510,7 @@ function adminView() {
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
     </div>
-    <div class="admin-scroll"><div class="admin-in-right">${adminBody()}${versionFooter()}</div></div>`;
+    <div class="admin-scroll"><div class="admin-in-right">${adminBody()}</div></div>`;
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
