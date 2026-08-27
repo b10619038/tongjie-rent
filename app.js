@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:41";
+const APP_VERSION = "2026-08-27-下午11:46";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -781,8 +781,10 @@ function unreadAppoints(tenantId) {
 }
 
 function toast(msg) {
-  ui.toast = msg; render();
-  setTimeout(() => { ui.toast = ""; render(); }, 1800);
+  ui.toast = msg;
+  ui.keepScroll = true;
+  render();
+  setTimeout(() => { ui.toast = ""; ui.keepScroll = true; render(); }, 1800);
 }
 function sendRemoteNotify(target, title, body) {
   fetch(LINE_HOOK + "/api/push", {
@@ -3058,7 +3060,8 @@ function bindCashCal() {
       createdAt: nowStamp()
     });
     ui.calDay = Number(date.slice(8, 10));
-    save(); toast("已記入日曆"); stay();
+    save();
+    toast("已記入日曆");
   };
 }
 
