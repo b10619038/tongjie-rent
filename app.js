@@ -7,7 +7,79 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午11:26";
+const APP_VERSION = "2026-08-27-下午11:30";
+const THEME_KEY = "tongjie_theme";
+const THEMES = [
+  { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
+  { id: "navy", name: "海霧藍", teal: "#3d5a80", mid: "#4f6f99", soft: "#e4edf6", chip: "#eef3f8", ink: "#1b2838" },
+  { id: "sky", name: "青空", teal: "#4a7c9b", mid: "#5b90b0", soft: "#e3f0f6", chip: "#eef6fa", ink: "#173040" },
+  { id: "moss", name: "松針", teal: "#3f6b58", mid: "#52856d", soft: "#e3efe8", chip: "#eef5f0", ink: "#163028" },
+  { id: "tea", name: "暖茶", teal: "#8a6a4f", mid: "#a07d5e", soft: "#f3ebe3", chip: "#f7f0e8", ink: "#2a1f16" },
+  { id: "sand", name: "沙金", teal: "#b08948", mid: "#c49a55", soft: "#f6eedc", chip: "#f8f1e0", ink: "#2c2414" },
+  { id: "clay", name: "赤陶", teal: "#b5694f", mid: "#c47b62", soft: "#f6e6df", chip: "#f8eee9", ink: "#2e1b14" },
+  { id: "rose", name: "豆沙", teal: "#a65d63", mid: "#b87076", soft: "#f6e6e8", chip: "#f8eef0", ink: "#2c1719" },
+  { id: "dusk", name: "暮紫", teal: "#6b5b73", mid: "#7e6d86", soft: "#eee8f1", chip: "#f4eef6", ink: "#241c28" },
+  { id: "slate", name: "岩灰", teal: "#5c6568", mid: "#6e787c", soft: "#e8ecec", chip: "#f0f2f2", ink: "#1c2224" },
+  { id: "ink", name: "墨黑", teal: "#2f3330", mid: "#454a46", soft: "#e6e7e6", chip: "#f0f0ef", ink: "#141615" },
+  { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" }
+];
+function currentThemeId() {
+  try { return localStorage.getItem(THEME_KEY) || "sage"; } catch { return "sage"; }
+}
+function applyTheme(id) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  const r = document.documentElement;
+  r.style.setProperty("--teal", t.teal);
+  r.style.setProperty("--teal-mid", t.mid);
+  r.style.setProperty("--ok", t.teal);
+  r.style.setProperty("--ok-soft", t.soft);
+  r.style.setProperty("--mint", t.soft);
+  r.style.setProperty("--chip", t.chip);
+  r.style.setProperty("--ink", t.ink);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", t.teal);
+  try { localStorage.setItem(THEME_KEY, t.id); } catch {}
+}
+function showThemeFab() {
+  if (!ui.role && (ui.page === "home" || !ui.page)) return true;
+  if (ui.role === "tenant" && ui.page === "home") return true;
+  return false;
+}
+function themePickerHtml() {
+  if (!showThemeFab()) return "";
+  const lift = ui.role === "tenant" ? " lift" : "";
+  const cur = currentThemeId();
+  const panel = ui.themeOpen ? `<div class="theme-mask" id="theme-mask">
+    <div class="theme-panel">
+      <div class="label">整體風格</div>
+      <h2>選擇色調</h2>
+      <div class="theme-grid">
+        ${THEMES.map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
+          <i></i><span>${t.name}</span>
+        </button>`).join("")}
+      </div>
+      <button type="button" class="ghost" id="theme-close">關閉</button>
+    </div>
+  </div>` : "";
+  return `${panel}<button type="button" class="theme-fab${lift}" id="theme-open" aria-label="主題色調">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"/></svg>
+  </button>`;
+}
+function bindThemePicker() {
+  const open = document.getElementById("theme-open");
+  if (open) open.onclick = e => { e.stopPropagation(); ui.themeOpen = !ui.themeOpen; render(); };
+  const close = document.getElementById("theme-close");
+  if (close) close.onclick = () => { ui.themeOpen = false; render(); };
+  const mask = document.getElementById("theme-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "theme-mask") { ui.themeOpen = false; render(); } };
+  document.querySelectorAll("[data-theme]").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      applyTheme(btn.dataset.theme);
+      render();
+    };
+  });
+}
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -331,7 +403,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [] };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1156,12 +1228,14 @@ function render() {
   const guide = notifyGuideHtml();
   const ver = versionFooter();
   const bar = updateBarHtml();
-  if (!ui.role) { root.innerHTML = bar + gateView() + ver + guide; bindGate(); bindNotifyGuide(); bindUpdateBar(); return; }
+  const theme = themePickerHtml();
+  if (!ui.role) { root.innerHTML = bar + gateView() + ver + guide + theme; bindGate(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
-    root.innerHTML = `${bar}<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}`;
+    root.innerHTML = `${bar}<div class="shell admin-wide">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}${adminView()}</div>${ver}${guide}${theme}`;
     bindAdmin();
     bindNotifyGuide();
     bindUpdateBar();
+    bindThemePicker();
     if (oldScroll != null) {
       const sc = document.querySelector(".admin-scroll");
       if (sc) {
@@ -1171,10 +1245,11 @@ function render() {
     }
     return;
   }
-  root.innerHTML = `${bar}<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}`;
+  root.innerHTML = `${bar}<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}${theme}`;
   bindTenant();
   bindNotifyGuide();
   bindUpdateBar();
+  bindThemePicker();
 }
 
 function installCardHtml(label) {
@@ -3031,6 +3106,7 @@ async function boot() {
   const got = await pullCloud();
   if (!got) await pushCloud();
   restoreUi();
+  applyTheme(currentThemeId());
   render();
   if (ui.role || isInstalledApp()) enablePush();
   await minWait;
