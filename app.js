@@ -1246,6 +1246,7 @@ function render() {
     }
     return;
   }
+  ui.keepScroll = false;
   root.innerHTML = `${bar}<div class="shell">${ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : ""}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${ver}${guide}${theme}`;
   bindTenant();
   bindNotifyGuide();
