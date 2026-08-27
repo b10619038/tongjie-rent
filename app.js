@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:40";
+const APP_VERSION = "2026-08-28-上午12:43";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -407,7 +407,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1120,12 +1120,12 @@ function collectLedger() {
   const rows = [];
   (state.books || []).forEach(b => rows.push({
     id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount: Number(b.amount) || 0,
-    roomNo: b.roomNo || "", note: b.note || "", source: "book", canDel: true
+    roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔", source: "book", canDel: true, canEdit: true
   }));
   (state.bankSlips || []).forEach(s => {
     rows.push({
       id: "slip-" + s.id, type: "in", date: ymdOf(s.date), amount: Number(s.amount) || 0,
-      roomNo: s.roomNo || "", note: s.note || "銀行入帳", source: "slip", canDel: false
+      roomNo: s.roomNo || "", note: s.note || "銀行入帳", source: "slip", canDel: false, canEdit: true
     });
   });
   const slipRooms = new Set((state.bankSlips || []).map(s => String(s.roomNo || "")));
@@ -1135,13 +1135,16 @@ function collectLedger() {
     if (room && slipRooms.has(String(room.no))) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount: Number(room && room.rent) || 0,
-      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", source: "rent", canDel: false
+      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", source: "rent", canDel: false, canEdit: false
     });
   });
   return rows.filter(x => x.date);
 }
 function monthCashHtml() {
   ensureCalMonth();
+  const editing = ui.editBookId ? (state.books || []).find(b => b.id === ui.editBookId) : null;
+  const editingSlip = !editing && ui.editSlipId ? (state.bankSlips || []).find(s => s.id === ui.editSlipId) : null;
+  const ed = editing || editingSlip;
   const y = ui.calYear, m = ui.calMonth;
   const key = `${y}-${String(m).padStart(2, "0")}`;
   const rows = collectLedger().filter(x => x.date.slice(0, 7) === key);
@@ -1193,27 +1196,34 @@ function monthCashHtml() {
     <div class="cal-day">
       <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
       ${selected.length ? selected.map(x => `
-        <div class="mini">
+        <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
           <b>${x.type === "in" ? "進帳" : "出帳"} · ${x.roomNo || "—"} · ${money(x.amount)}</b>
-          <span>${escapeHtml(x.note || "")}</span>
+          <span>${escapeHtml(x.note || "")}${x.canEdit ? "" : " · 系統自動帶入"}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
     </div>
     <form id="book-form" class="cal-form">
-      <h2 class="dash-h">新增一筆</h2>
+      <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
-        <select name="type"><option value="in">進帳</option><option value="out">出帳</option></select>
-        <select name="company"><option value="統潔">統潔</option><option value="信潔">信潔</option></select>
+        <select name="type">
+          <option value="in" ${(ed ? ed.type : "in") !== "out" ? "selected" : ""}>進帳</option>
+          <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
+        </select>
+        <select name="company">
+          <option value="統潔" ${!ed || ed.company !== "信潔" ? "selected" : ""}>統潔</option>
+          <option value="信潔" ${ed && ed.company === "信潔" ? "selected" : ""}>信潔</option>
+        </select>
       </div>
       <div class="cal-form-row">
-        <input name="date" type="date" value="${sel ? dayKey(sel) : ymdOf(nowStamp())}" />
-        <input name="amount" type="text" placeholder="金額" />
+        <input name="date" type="date" value="${ed ? ymdOf(ed.date) : (sel ? dayKey(sel) : ymdOf(nowStamp()))}" />
+        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
       <div class="cal-form-row">
-        <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" />
-        <input name="roomNo" type="text" placeholder="房號（選填）" />
+        <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" value="${ed ? escapeHtml(ed.note || "") : ""}" />
+        <input name="roomNo" type="text" placeholder="房號（選填）" value="${ed ? escapeHtml(ed.roomNo || "") : ""}" />
       </div>
-      <button class="btn-navy" type="submit">記入日曆</button>
+      <button class="btn-navy" type="submit">${ed ? "儲存變更" : "記入日曆"}</button>
+      ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
   </div>`;
 }
@@ -3184,27 +3194,64 @@ function bindCashCal() {
     btn.onclick = () => { ui.calDay = Number(btn.dataset.calDay); stay(); };
   });
   document.querySelectorAll("[data-del-book]").forEach(btn => {
-    btn.onclick = () => {
-      state.books = (state.books || []).filter(x => x.id !== btn.dataset.delBook);
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = btn.dataset.delBook;
+      state.books = (state.books || []).filter(x => x.id !== id);
+      if (ui.editBookId === id) ui.editBookId = null;
       save(); stay();
     };
   });
+  document.querySelectorAll("[data-edit-led]").forEach(el => {
+    el.onclick = e => {
+      if (e.target.closest("[data-del-book]")) return;
+      const src = el.dataset.editSrc;
+      const id = el.dataset.editLed;
+      if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
+      ui.editBookId = src === "book" ? id : null;
+      ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
+      stay();
+      requestAnimationFrame(() => {
+        const box = document.getElementById("book-form");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    };
+  });
+  const cancelEdit = document.getElementById("cancel-book-edit");
+  if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
   const form = document.getElementById("book-form");
   if (form) form.onsubmit = e => {
     e.preventDefault();
     const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
     const date = form.date.value;
     if (!amount || !date) { toast("請填日期與金額"); return; }
-    if (!state.books) state.books = [];
-    state.books.push({
-      id: "bk" + Date.now(),
+    const payload = {
       type: form.type.value === "out" ? "out" : "in",
       date, amount,
       company: form.company && form.company.value === "信潔" ? "信潔" : "統潔",
       roomNo: (form.roomNo && form.roomNo.value || "").trim(),
-      note: (form.note.value || "").trim(),
-      createdAt: nowStamp()
-    });
+      note: (form.note.value || "").trim()
+    };
+    if (ui.editBookId) {
+      const b = (state.books || []).find(x => x.id === ui.editBookId);
+      if (b) Object.assign(b, payload);
+      ui.editBookId = null;
+      ui.calDay = Number(date.slice(8, 10));
+      save();
+      toast("已儲存變更");
+      return;
+    }
+    if (ui.editSlipId) {
+      const s = (state.bankSlips || []).find(x => x.id === ui.editSlipId);
+      if (s) { s.date = date; s.amount = amount; s.note = payload.note; s.roomNo = payload.roomNo; }
+      ui.editSlipId = null;
+      ui.calDay = Number(date.slice(8, 10));
+      save();
+      toast("已儲存變更");
+      return;
+    }
+    if (!state.books) state.books = [];
+    state.books.push(Object.assign({ id: "bk" + Date.now(), createdAt: nowStamp() }, payload));
     ui.calDay = Number(date.slice(8, 10));
     save();
     toast("已記入日曆");
