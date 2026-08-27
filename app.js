@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:01";
+const APP_VERSION = "2026-08-27-下午10:06";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -667,52 +667,9 @@ function notifyStatus() {
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return "unsupported";
   return Notification.permission || "default";
 }
-function needsNotifyGuide() {
-  if (ui.notifySkip) return false;
-  if (notifyStatus() === "granted") return false;
-  if (isStandalone()) return true;
-  if (isInstalledApp()) return true;
-  return false;
-}
-function notifyGuideHtml() {
-  if (!needsNotifyGuide()) return "";
-  const st = notifyStatus();
-  const standalone = isStandalone();
-  let steps;
-  if (isIOS() && !standalone) {
-    steps = "iPhone 請先按分享 →「加入主畫面」，再從桌面圖示打開 App，才能出現允許通知。";
-  } else if (st === "unsupported") {
-    steps = isIOS()
-      ? "請用 iOS 16.4 以上，並從主畫面的 App 圖示進入。"
-      : "此瀏覽器不支援通知，請改用 Chrome 並安裝到主畫面。";
-  } else if (st === "denied") {
-    steps = isIOS()
-      ? "通知已被拒絕。請到「設定 → 通知 → 統潔開發」打開允許通知。"
-      : "通知已被拒絕。請到「設定 → 應用程式 → 統潔開發 → 通知」改為允許。";
-  } else {
-    steps = "請點下方按鈕，手機會立刻出現「允許通知」。請選允許。";
-  }
-  return `<div class="notify-mask" id="notify-guide">
-    <div class="notify-card">
-      <div class="label">手機通知</div>
-      <h2>開啟通知</h2>
-      <p>管理員公告、報修與繳費會在手機上方跳出。</p>
-      <p class="small">${steps}</p>
-      <button class="btn-navy" id="notify-allow" type="button" onclick="askTongjieNotify()">立即開啟通知</button>
-      ${isIOS() && !standalone ? `<button class="ghost" id="notify-how" type="button">如何加入主畫面</button>` : ""}
-      ${st === "denied" ? `<button class="ghost" id="notify-retry" type="button">我已在設定打開</button>` : ""}
-      <button class="ghost" id="notify-later" type="button" style="margin-top:8px">稍後</button>
-    </div>
-  </div>`;
-}
-function bindNotifyGuide() {
-  const later = document.getElementById("notify-later");
-  const how = document.getElementById("notify-how");
-  const retry = document.getElementById("notify-retry");
-  if (how) how.onclick = () => toast("請點 Safari 分享鈕，選「加入主畫面」");
-  if (retry) retry.onclick = () => { render(); if (notifyStatus() === "granted") toast("通知已開啟"); };
-  if (later) later.onclick = () => { ui.notifySkip = true; render(); };
-}
+function needsNotifyGuide() { return false; }
+function notifyGuideHtml() { return ""; }
+function bindNotifyGuide() {}
 function subscribePushOnly() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
   navigator.serviceWorker.ready.then(async reg => {
@@ -2882,7 +2839,6 @@ async function boot() {
   if (ui.role || isInstalledApp()) enablePush();
   await minWait;
   hideSplash();
-  if (isInstalledApp() && needsNotifyGuide()) render();
   setInterval(async () => {
     const before = state.updatedAt;
     const changed = await pullCloud();
