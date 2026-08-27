@@ -20,7 +20,7 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 * { box-sizing: border-box; }
-html, body, #app { height: 100%; background: #ffffff; }
+html, body, #app { height: 100%; background: #ffffff; -webkit-tap-highlight-color: transparent; }
 body { margin: 0; font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
 button, input, textarea, select { font: inherit; }
 .shell { height: 100%; display: flex; flex-direction: column; background: #fff; }
@@ -600,8 +600,24 @@ textarea { min-height: 92px; resize: vertical; }
 .line-dock-fallback { padding: 12px 14px 18px; }
 .line-dock-fallback p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
 .ann-list { display: grid; gap: 14px; margin: 0 0 22px; }
-.ann-card { position: relative; overflow: visible; background: var(--card); }
-.ann-card:hover, .ann-card:active { background: var(--card); }
+.ann-card {
+  position: relative;
+  overflow: visible;
+  background: #fff;
+  background-color: #fff;
+  cursor: default;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
+}
+.ann-card:hover,
+.ann-card:focus,
+.ann-card:active,
+.ann-card:focus-visible {
+  background: #fff !important;
+  background-color: #fff !important;
+  -webkit-tap-highlight-color: transparent;
+}
 .ann-pop { animation: annPop .38s cubic-bezier(.2, 1.5, .3, 1); }
 @keyframes annPop {
   0% { transform: scale(1); }

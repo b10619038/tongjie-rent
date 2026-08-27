@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:18";
+const APP_VERSION = "2026-08-28-上午1:25";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -2590,11 +2590,17 @@ function bindTenant() {
     };
   });
   document.querySelectorAll("[data-read-announce]").forEach(el => {
-    el.onclick = () => {
+    el.onclick = e => {
+      e.preventDefault();
       const a = (state.announcements || []).find(x => x.id === el.dataset.readAnnounce);
       if (!a || !ui.tenantId) return;
       if (!a.readBy) a.readBy = [];
-      if (!a.readBy.includes(ui.tenantId)) { a.readBy.push(ui.tenantId); save(); render(); }
+      if (!a.readBy.includes(ui.tenantId)) {
+        a.readBy.push(ui.tenantId);
+        save();
+        const badge = el.querySelector(".badge.unpaid");
+        if (badge) badge.remove();
+      }
     };
   });
   bindAnnounceReactions();
