@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:36";
+const APP_VERSION = "2026-08-27-下午10:40";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -1191,6 +1191,11 @@ function gateView() {
         <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
       </div>
+      ${isAdmin && !isStandalone() ? `<div class="card card-body slide-left" style="margin-top:14px">
+        <div class="label">安裝到電腦</div>
+        <p class="small">安裝後會出現在開始功能表，之後有新版本會自動更新。</p>
+        <button class="btn-navy" id="install-app" type="button">安裝到電腦</button>
+      </div>` : ""}
     </div>`;
   }
   return `<div class="gate">
@@ -1208,11 +1213,6 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
-    ${!isStandalone() ? `<div class="card card-body slide-left delay" style="margin-top:14px">
-      <div class="label">安裝 App</div>
-      <p class="small">${isPhone() ? "按「安裝 App」或瀏覽器的加入主畫面，之後有新版本會自動更新。" : "安裝後會出現在開始功能表，之後有新版本會自動更新。"}</p>
-      <button class="btn-navy" id="install-app" type="button">${isPhone() ? "安裝 App" : "安裝到電腦"}</button>
-    </div>` : ""}
   </div>`;
 }
 
