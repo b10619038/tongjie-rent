@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:06";
+const APP_VERSION = "2026-08-27-下午10:09";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -1134,11 +1134,6 @@ function gateView() {
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
       <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
     </div>
-    ${isInstalledApp() ? "" : `<div class="card card-body slide-left" style="margin-bottom:14px">
-      <div class="label">下載 App</div>
-      <p class="small">用手機打開此網址後，按「加入主畫面」，就能像一般 App 一樣使用。</p>
-      <button class="btn-navy" id="install-app" type="button">安裝到手機</button>
-    </div>`}
     <button class="role-btn slide-left" data-go="tenant-login">
       <strong>我是租客</strong>
       <span>請輸入自己的房號，進入該房間的租約、繳費與報修。</span>
@@ -2116,8 +2111,6 @@ function bindGate() {
     input.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
     input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
   }
-  const inst = document.getElementById("install-app");
-  if (inst) inst.onclick = installApp;
 }
 
 function bindTenant() {
