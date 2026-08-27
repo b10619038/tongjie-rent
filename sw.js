@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v13";
+const CACHE = "tongjie-app-v14";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
@@ -20,16 +20,20 @@ self.addEventListener("fetch", e => {
   );
 });
 self.addEventListener("push", event => {
-  let data = { title: "統潔開發", body: "" };
+  let data = { title: "統潔＆信潔開發", body: "" };
   try {
     if (event.data) data = event.data.json();
   } catch {
     try { data.body = event.data ? event.data.text() : ""; } catch {}
   }
-  event.waitUntil(self.registration.showNotification(data.title || "統潔開發", {
+  event.waitUntil(self.registration.showNotification(data.title || "統潔＆信潔開發", {
     body: data.body || "",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
+    lang: "zh-Hant",
+    vibrate: [180, 80, 180],
+    tag: data.tag || "tongjie",
+    renotify: true,
     data
   }));
 });

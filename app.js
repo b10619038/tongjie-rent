@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:43";
+const APP_VERSION = "2026-08-28-上午1:55";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -844,33 +844,127 @@ function subscribePushOnly() {
   });
 }
 async function enablePush() {
-  if (!("Notification" in window)) return false;
-  if (Notification.permission === "granted") { subscribePushOnly(); return true; }
+  if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return false;
   if (Notification.permission === "denied") return false;
-  return false;
+  if (isIOS() && !isStandalone()) return false;
+  if (Notification.permission !== "granted") {
+    try {
+      const p = await Notification.requestPermission();
+      if (p !== "granted") return false;
+    } catch { return false; }
+  }
+  subscribePushOnly();
+  return true;
+}
+function armPushAsk() {
+  if (!ui.role) return;
+  const go = () => { enablePush().then(() => maybeNudgeNotifies()); };
+  document.addEventListener("pointerdown", go, { once: true, capture: true });
+  document.addEventListener("keydown", go, { once: true, capture: true });
+}
+function shouldShowLocalBanner(target) {
+  if (!target || target === "all") return true;
+  if (target === "admin") return ui.role === "admin";
+  if (target === "tenants") return ui.role === "tenant";
+  const room = myRoom();
+  return !!(ui.role === "tenant" && room && String(room.no) === String(target));
+}
+function showOsBanner(title, body, tag) {
+  const text = String(body || "").slice(0, 180);
+  const opts = {
+    body: text,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    lang: "zh-Hant",
+    vibrate: [180, 80, 180],
+    tag: tag || ("tongjie-" + title),
+    renotify: true
+  };
+  const viaSw = () => navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts));
+  const viaPage = () => { try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); n.close(); }; } catch {} };
+  if (Notification.permission !== "granted") return;
+  if (navigator.serviceWorker) viaSw().catch(viaPage);
+  else viaPage();
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
   if (target) sendRemoteNotify(target, title, text);
-  const showLocal = () => {
-    if (target === "admin" && ui.role !== "admin") return false;
-    if (target === "tenants" && ui.role !== "tenant") return false;
-    if (target && target !== "all" && target !== "admin" && target !== "tenants") {
-      const room = myRoom();
-      if (!(ui.role === "tenant" && room && String(room.no) === String(target))) return false;
-    }
-    return true;
-  };
-  if (!showLocal()) return;
-  const show = () => {
-    try {
-      const n = new Notification(title, { body: text, tag: "tongjie-" + Date.now(), lang: "zh-Hant", icon: "icon-192.png" });
-      n.onclick = () => { window.focus(); n.close(); };
-    } catch {}
-  };
+  if (!shouldShowLocalBanner(target)) return;
+  const show = () => showOsBanner(title, text);
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") { show(); return; }
-  if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") show(); });
+  if (Notification.permission !== "denied" && !(isIOS() && !isStandalone())) {
+    Notification.requestPermission().then(p => { if (p === "granted") { subscribePushOnly(); show(); } });
+  }
+}
+function nudgeKey(id) { return "tj-nudge-" + id; }
+function alreadyNudged(id) {
+  try { return localStorage.getItem(nudgeKey(id)) === todayStamp(); } catch { return true; }
+}
+function markNudged(id) {
+  try { localStorage.setItem(nudgeKey(id), todayStamp()); } catch {}
+}
+function todayStamp() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function maybeNudgeNotifies() {
+  if (ui.role === "tenant" && ui.tenantId) {
+    const t = me();
+    const room = myRoom();
+    const unread = unreadAnnouncements(ui.tenantId);
+    if (unread.length) {
+      const a = unread[unread.length - 1];
+      if (!alreadyNudged("ann-" + a.id)) {
+        markNudged("ann-" + a.id);
+        showOsBanner("管理員公告", a.title + (a.body ? "\n" + a.body : ""), "ann-" + a.id);
+      }
+    }
+    if (t && t.paid === false && !alreadyNudged("unpaid-" + t.id)) {
+      markNudged("unpaid-" + t.id);
+      showOsBanner("本月租金尚未繳納", (room ? room.no + "　" : "") + "請至繳費租金完成轉帳。", "unpaid");
+    }
+    if (t && t.leaseEnd) {
+      const left = Math.ceil((new Date(t.leaseEnd + "T00:00:00") - new Date()) / 86400000);
+      if (left >= 0 && left <= 30 && !alreadyNudged("lease-" + t.id)) {
+        markNudged("lease-" + t.id);
+        showOsBanner("合約即將到期", `將於 ${t.leaseEnd} 到期，還有 ${left} 天，建議確認是否續約。`, "lease");
+      }
+    }
+  }
+  if (ui.role === "admin") {
+    const unpaid = (state.tenants || []).filter(t => t.paid === false && (t.name || "").trim());
+    if (unpaid.length && !alreadyNudged("admin-unpaid")) {
+      markNudged("admin-unpaid");
+      showOsBanner("本月未繳租金", unpaid.length + " 戶尚未繳費", "admin-unpaid");
+    }
+  }
+}
+function notifyCloudChanges(before) {
+  if (!before) return;
+  const newAnns = (state.announcements || []).filter(a => !(before.anns || []).includes(a.id));
+  if (ui.role === "tenant" && newAnns.length) {
+    const a = newAnns[newAnns.length - 1];
+    showOsBanner("管理員公告", a.title + (a.body ? "\n" + a.body : ""), "ann-" + a.id);
+  }
+  if (ui.role === "admin") {
+    (state.repairs || []).filter(r => !(before.repairIds || []).includes(r.id)).forEach(r => {
+      showOsBanner("新報修", (r.roomNo || "") + " " + (r.type || ""), "repair-" + r.id);
+    });
+    (state.renewals || []).filter(x => !(before.renewIds || []).includes(x.id)).forEach(x => {
+      showOsBanner("續約申請", (x.roomNo || "") + " " + (x.name || ""), "renew-" + x.id);
+    });
+  }
+  if (ui.role === "tenant") {
+    (state.repairs || []).filter(r => r.tenantId === ui.tenantId).forEach(r => {
+      const old = (before.repairSnap || {})[r.id];
+      const now = (r.status || "") + "|" + (r.appointAt || "");
+      if (old && old !== now) {
+        const msg = r.status === "done" ? "已完成" : r.appointAt ? "已預約維修時間" : "處理中";
+        showOsBanner("報修更新", (r.type || "報修") + "　" + msg, "repair-" + r.id);
+      }
+    });
+  }
 }
 
 function icon(name) {
@@ -2523,7 +2617,7 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; render(); enablePush(); return; }
+    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return; }
     ui.loginError = "密碼不正確"; render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
@@ -2534,12 +2628,8 @@ function tryLogin() {
   }
   ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.page = "home"; ui.loginError = "";
   render();
-  enablePush();
-  const unread = unreadAnnouncements(ui.tenantId);
-  if (unread.length) {
-    const latest = unread[unread.length - 1];
-    pushPhoneNotify("管理員公告：" + latest.title, latest.body);
-  } else if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+  enablePush().then(() => maybeNudgeNotifies());
+  armPushAsk();
 }
 
 function bindGate() {
@@ -3437,13 +3527,22 @@ async function boot() {
   restoreUi();
   applyTheme(currentThemeId());
   render();
-  if (ui.role || isInstalledApp()) enablePush();
+  if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); }
   await minWait;
   hideSplash();
   setInterval(async () => {
-    const before = state.updatedAt;
+    const before = {
+      anns: (state.announcements || []).map(a => a.id),
+      repairIds: (state.repairs || []).map(r => r.id),
+      repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
+      renewIds: (state.renewals || []).map(x => x.id)
+    };
+    const prevUpdated = state.updatedAt;
     const changed = await pullCloud();
-    if (changed && state.updatedAt !== before) render();
+    if (changed && state.updatedAt !== prevUpdated) {
+      notifyCloudChanges(before);
+      render();
+    }
   }, 12000);
 }
 boot();
