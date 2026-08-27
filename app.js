@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午10:33";
+const APP_VERSION = "2026-08-27-下午10:36";
 const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 window.__swReg = null;
 if ("serviceWorker" in navigator) {
@@ -26,7 +26,7 @@ function isPhone() {
 }
 function updateBarHtml() {
   if (!ui.updateReady) return "";
-  return `<div class="update-bar">發現新版本 ${APP_VERSION}<button type="button" id="apply-update">立即更新</button></div>`;
+  return `<div class="update-bar">發現新版本，即將自動更新<button type="button" id="apply-update">立即更新</button></div>`;
 }
 function applyAppUpdate() {
   const reg = window.__swReg;
@@ -36,11 +36,11 @@ function applyAppUpdate() {
 function promptAppUpdate(reg) {
   if (ui.updateReady) return;
   ui.updateReady = true;
-  render();
+  try { render(); } catch {}
   if ("Notification" in window && Notification.permission === "granted") {
     try {
       const n = new Notification("統潔開發有新版本", {
-        body: "版本 " + APP_VERSION + " 已準備好，請點立即更新",
+        body: "正在更新到最新版，也可點此立即更新",
         tag: "tongjie-update",
         icon: "icon-192.png"
       });
@@ -49,11 +49,12 @@ function promptAppUpdate(reg) {
   }
   if (reg && reg.showNotification) {
     reg.showNotification("統潔開發有新版本", {
-      body: "版本 " + APP_VERSION + " 已準備好，請點立即更新",
+      body: "正在更新到最新版，也可點此立即更新",
       tag: "tongjie-update",
       icon: "/icon-192.png"
     }).catch(() => {});
   }
+  setTimeout(() => applyAppUpdate(), 1200);
 }
 function watchAppUpdate(reg) {
   if (!reg) return;
@@ -65,7 +66,9 @@ function watchAppUpdate(reg) {
       if (sw.state === "installed" && navigator.serviceWorker.controller) promptAppUpdate(reg);
     });
   });
-  setInterval(() => { try { reg.update(); } catch {} }, 30 * 60 * 1000);
+  const check = () => { try { reg.update(); } catch {} };
+  setInterval(check, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
 }
 let __reloading = false;
 if ("serviceWorker" in navigator) {
@@ -1205,10 +1208,10 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
-    ${!isStandalone() && !isPhone() ? `<div class="card card-body slide-left delay" style="margin-top:14px">
-      <div class="label">安裝到電腦</div>
-      <p class="small">安裝後會像一般軟體一樣出現在開始功能表／程式列。有新版本時會自動通知。</p>
-      <button class="btn-navy" id="install-app" type="button">安裝到電腦</button>
+    ${!isStandalone() ? `<div class="card card-body slide-left delay" style="margin-top:14px">
+      <div class="label">安裝 App</div>
+      <p class="small">${isPhone() ? "按「安裝 App」或瀏覽器的加入主畫面，之後有新版本會自動更新。" : "安裝後會出現在開始功能表，之後有新版本會自動更新。"}</p>
+      <button class="btn-navy" id="install-app" type="button">${isPhone() ? "安裝 App" : "安裝到電腦"}</button>
     </div>` : ""}
   </div>`;
 }
