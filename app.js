@@ -7,7 +7,8 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-27-下午9:34";
+const APP_VERSION = "2026-08-27-下午9:38";
+const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
 function versionFooter() {
   return `<div class="ver">版本 ${APP_VERSION}</div>`;
 }
@@ -606,21 +607,70 @@ function toast(msg) {
   ui.toast = msg; render();
   setTimeout(() => { ui.toast = ""; render(); }, 1800);
 }
-function pushPhoneNotify(title, body) {
+function urlBase64ToUint8Array(b64) {
+  const pad = "=".repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+function sendRemoteNotify(target, title, body) {
+  fetch(LINE_HOOK + "/api/push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+    body: JSON.stringify({ target: target || "all", title, body })
+  }).catch(() => {});
+}
+async function enablePush() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    if (Notification.permission !== "granted") {
+      const p = await Notification.requestPermission();
+      if (p !== "granted") return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+      });
+    }
+    const room = ui.role === "tenant" ? myRoom() : null;
+    await fetch(LINE_HOOK + "/api/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+      body: JSON.stringify({
+        subscription: sub.toJSON(),
+        role: ui.role || "",
+        roomNo: room ? room.no : (ui.role === "admin" ? "7651" : ""),
+        tenantId: ui.tenantId || ""
+      })
+    });
+  } catch {}
+}
+function pushPhoneNotify(title, body, target) {
   const text = body || "";
+  if (target) sendRemoteNotify(target, title, text);
+  const showLocal = () => {
+    if (target === "admin" && ui.role !== "admin") return false;
+    if (target === "tenants" && ui.role !== "tenant") return false;
+    if (target && target !== "all" && target !== "admin" && target !== "tenants") {
+      const room = myRoom();
+      if (!(ui.role === "tenant" && room && String(room.no) === String(target))) return false;
+    }
+    return true;
+  };
+  if (!showLocal()) return;
   const show = () => {
     try {
-      const n = new Notification(title, { body: text, tag: "tongjie-" + Date.now(), lang: "zh-Hant" });
+      const n = new Notification(title, { body: text, tag: "tongjie-" + Date.now(), lang: "zh-Hant", icon: "icon-192.png" });
       n.onclick = () => { window.focus(); n.close(); };
-    } catch { toast(title); }
+    } catch {}
   };
-  if (!("Notification" in window)) { toast(title); return; }
+  if (!("Notification" in window)) return;
   if (Notification.permission === "granted") { show(); return; }
-  if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(p => p === "granted" ? show() : toast(title + (text ? "：" + text : "")));
-    return;
-  }
-  toast(title + (text ? "：" + text : ""));
+  if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") show(); });
 }
 
 function icon(name) {
@@ -1131,7 +1181,7 @@ function markTenantPaid(via) {
   t.paidAt = nowStamp();
   if (via === "line") t.lineNotified = true;
   save();
-  pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`);
+  pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
@@ -1982,7 +2032,7 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.page = "dash"; ui.loginError = ""; render(); return; }
+    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.page = "dash"; ui.loginError = ""; render(); enablePush(); return; }
     ui.loginError = "密碼不正確"; render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
@@ -1993,6 +2043,7 @@ function tryLogin() {
   }
   ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.page = "home"; ui.loginError = "";
   render();
+  enablePush();
   const unread = unreadAnnouncements(ui.tenantId);
   if (unread.length) {
     const latest = unread[unread.length - 1];
@@ -2147,7 +2198,7 @@ function bindTenant() {
         id: "rn" + Date.now(), roomId: r.id, tenantId: t.id, status: "open", createdAt: nowStamp()
       });
       save();
-      pushPhoneNotify("續約申請", `${r.no} ${t.name || ""} 申請續約`);
+      pushPhoneNotify("續約申請", `${r.no} ${t.name || ""} 申請續約`, "admin");
       toast("已送出續約申請");
     };
   }
@@ -2189,6 +2240,7 @@ function bindTenant() {
       try { save(); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
+      pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
       ui.repairType = "冷氣"; ui.repairMedia = []; ui.page = "repair-done";
       toast("已提交報修");
     };
@@ -2467,7 +2519,10 @@ function bindAdmin() {
       save();
       const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
-      if (inp.value) pushPhoneNotify("續約簽約時間已安排", formatDateTime12(String(inp.value).replace("T", " ")));
+      if (inp.value) {
+        const room = state.rooms.find(x => x.id === item.roomId);
+        pushPhoneNotify("續約簽約時間", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
+      }
     };
   });
   document.querySelectorAll("[data-rep-status]").forEach(btn => {
@@ -2476,6 +2531,8 @@ function bindAdmin() {
       const rep = state.repairs.find(x => x.id === id);
       if (!rep) return;
       rep.status = status; syncRoomRepairStatus(rep.roomId); save();
+      const room = state.rooms.find(x => x.id === rep.roomId);
+      pushPhoneNotify("報修進度", `${room ? room.no : ""} ${rep.type}已改為${status === "done" ? "已完成" : "處理中"}`, room ? room.no : "tenants");
       const card = btn.closest(".card"); const seg = btn.closest(".seg");
       if (seg) {
         seg.classList.remove("is-doing", "is-done");
@@ -2496,7 +2553,10 @@ function bindAdmin() {
       rep.appointAt = inp.value; rep.appointRead = !inp.value; save();
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
-      if (inp.value) pushPhoneNotify("報修預約已安排", formatDateTime12(String(inp.value).replace("T", " ")));
+      if (inp.value) {
+        const room = state.rooms.find(x => x.id === rep.roomId);
+        pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
+      }
     };
   });
   const rulesForm = document.getElementById("rules-form");
@@ -2546,7 +2606,7 @@ function bindAdmin() {
       }
       state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [] });
       ui.announceMedia = []; save();
-      pushPhoneNotify("管理員公告：" + title, body);
+      pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
     };
   }
@@ -2726,6 +2786,7 @@ async function boot() {
   if (!got) await pushCloud();
   restoreUi();
   render();
+  if (ui.role) enablePush();
   await minWait;
   hideSplash();
   setInterval(async () => {
