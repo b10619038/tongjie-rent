@@ -1024,6 +1024,11 @@ function gateView() {
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
       <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
     </div>
+    ${isInstalledApp() ? "" : `<div class="card card-body slide-left" style="margin-bottom:14px">
+      <div class="label">下載 App</div>
+      <p class="small">用手機打開此網址後，按「加入主畫面」，就能像一般 App 一樣使用。</p>
+      <button class="btn-navy" id="install-app" type="button">安裝到手機</button>
+    </div>`}
     <button class="role-btn slide-left" data-go="tenant-login">
       <strong>我是租客</strong>
       <span>請輸入自己的房號，進入該房間的租約、繳費與報修。</span>
@@ -1032,11 +1037,6 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
-    <div class="card card-body slide-left delay" style="margin-top:14px">
-      <div class="label">下載 App</div>
-      <p class="small">用手機打開此網址後，按「加入主畫面」，就能像一般 App 一樣使用。</p>
-      <button class="btn-navy" id="install-app" type="button">安裝到手機</button>
-    </div>
   </div>`;
 }
 
@@ -2674,11 +2674,27 @@ window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredInstall = e;
 });
+window.addEventListener("appinstalled", () => {
+  deferredInstall = null;
+  try { localStorage.setItem("tongjie_installed", "1"); } catch {}
+  if (!ui.role) render();
+});
+function isInstalledApp() {
+  try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
+  if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return true;
+  if (window.matchMedia && window.matchMedia("(display-mode: fullscreen)").matches) return true;
+  if (window.navigator.standalone === true) return true;
+  return false;
+}
 async function installApp() {
   if (deferredInstall) {
     deferredInstall.prompt();
-    await deferredInstall.userChoice.catch(() => {});
+    const choice = await deferredInstall.userChoice.catch(() => null);
     deferredInstall = null;
+    if (choice && choice.outcome === "accepted") {
+      try { localStorage.setItem("tongjie_installed", "1"); } catch {}
+      render();
+    }
     return;
   }
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
