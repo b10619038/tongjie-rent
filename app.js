@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午1:11";
+const APP_VERSION = "2026-08-28-上午1:18";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1352,9 +1352,10 @@ function reactionCounts(a) {
 function reactBarHtml(a) {
   const c = reactionCounts(a);
   const mine = ui.tenantId ? (a.reactions || {})[ui.tenantId] : "";
-  const items = [["like", "👍"], ["heart", "❤️"], ["happy", "😊"]];
+  const items = [["like", "👍"], ["heart", "❤️"], ["happy", "😊"]].filter(([k]) => c[k] > 0);
+  if (!items.length) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
   return `<div class="ann-react" data-react-ann="${a.id}">${items.map(([k, ic]) =>
-    `<span data-react-kind="${k}" class="${mine === k ? "on" : ""} ${c[k] ? "has" : ""}">${ic}${c[k] ? `<em>${c[k]}</em>` : ""}</span>`
+    `<span data-react-kind="${k}" class="${mine === k ? "on" : ""} has">${ic}<em>${c[k]}</em></span>`
   ).join("")}</div>`;
 }
 function announceCardsHtml() {
@@ -1362,7 +1363,7 @@ function announceCardsHtml() {
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
   return list.map(a => {
     const unread = ui.tenantId && !(a.readBy || []).includes(ui.tenantId);
-    return `<div class="card card-body slide-left clickable ann-card" data-read-announce="${a.id}">
+    return `<div class="card card-body slide-left ann-card" data-read-announce="${a.id}">
       <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}</div>
       <div class="small">${formatDateTime12(a.createdAt)}</div>
       <p style="margin-top:8px;white-space:pre-wrap">${escapeHtml(a.body)}</p>

@@ -600,7 +600,8 @@ textarea { min-height: 92px; resize: vertical; }
 .line-dock-fallback { padding: 12px 14px 18px; }
 .line-dock-fallback p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
 .ann-list { display: grid; gap: 14px; margin: 0 0 22px; }
-.ann-card { position: relative; overflow: visible; }
+.ann-card { position: relative; overflow: visible; background: var(--card); }
+.ann-card:hover, .ann-card:active { background: var(--card); }
 .ann-pop { animation: annPop .38s cubic-bezier(.2, 1.5, .3, 1); }
 @keyframes annPop {
   0% { transform: scale(1); }
