@@ -7,7 +7,7 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v1";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午12:56";
+const APP_VERSION = "2026-08-28-上午1:01";
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -1199,7 +1199,7 @@ function monthCashHtml() {
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
           <b>${x.type === "in" ? "進帳" : "出帳"} · ${x.roomNo || "—"} · ${money(x.amount)}</b>
-          <span>${escapeHtml(x.note || "")}${x.canEdit ? "" : " · 系統自動帶入"}</span>
+          <span>${escapeHtml(x.note || "")}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
     </div>
