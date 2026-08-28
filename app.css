@@ -58,17 +58,21 @@ button, input, textarea, select { font: inherit; }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
 .hero-card {
-  background: var(--ok-soft); color: var(--ink); border-radius: 26px;
-  padding: 20px; border: 1px solid color-mix(in srgb, var(--teal) 20%, #e8e8e8);
+  background: color-mix(in srgb, var(--teal) 16%, var(--card));
+  color: var(--ink);
+  border-radius: 26px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
 }
 .hero-card .label { color: var(--muted); font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--ink); }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
-  background: var(--chip); border: 1px solid color-mix(in srgb, var(--teal) 16%, #e8e8e8); border-radius: 16px; padding: 12px;
+  background: #ffffff; color: #17211f;
+  border: 1px solid #e8e8e8; border-radius: 16px; padding: 12px;
 }
-.stat .label { display: block; margin-bottom: 8px; }
-.stat b { display: block; font-size: 20px; margin-top: 0; }
+.stat .label { display: block; margin-bottom: 8px; color: #7a8a85; }
+.stat b { display: block; font-size: 20px; margin-top: 0; color: #17211f; }
 .pay-pill {
   display: inline-flex; align-items: center; gap: 6px;
   border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700;
