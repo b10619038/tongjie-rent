@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:34";
+const APP_VERSION = "2026-08-28-下午1:44";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:44", items: ["總餘額測試進帳 10,000 已歸零"] },
   { ver: "2026-08-28-下午1:34", items: ["整體報表改為統潔、信潔、個人戶、現金（保險箱）四戶歷史營收，可查月／年並顯示總餘額"] },
   { ver: "2026-08-28-下午1:26", items: ["新增一筆：進帳綠色、出帳紅色"] },
   { ver: "2026-08-28-下午1:24", items: ["信潔與統潔收支圓餅圖改為同一組顏色"] },
@@ -509,6 +510,7 @@ function normalize(data) {
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.books)) data.books = [];
+  data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   data.rooms.forEach(r => {
