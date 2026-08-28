@@ -550,9 +550,12 @@ textarea { min-height: 92px; resize: vertical; }
 .acct-card .k { margin-bottom: 8px; }
 .acct-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-top: 4px; }
 .acct-bal {
-  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
-  font-size: 13px; font-weight: 800;
+  display: block; width: 100%; margin-top: 10px; padding-top: 8px;
+  border: 0; border-top: 1px solid var(--line); background: transparent;
+  font: inherit; font-size: 13px; font-weight: 800; text-align: left;
+  color: inherit; cursor: pointer; border-radius: 0 0 12px 12px;
 }
+.acct-bal:hover { background: rgba(255,255,255,.55); }
 .acct-total {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-top: 12px; padding: 14px 16px; border-radius: 18px;

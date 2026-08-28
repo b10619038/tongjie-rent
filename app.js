@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:05";
+const APP_VERSION = "2026-08-28-下午2:15";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:15", items: ["整體報表累計餘額可點進去編輯", "已移除四戶本期淨額"] },
   { ver: "2026-08-28-下午2:05", items: ["我的房間圖卡改回原本淺綠色，不隨主題變色"] },
   { ver: "2026-08-28-下午2:03", items: ["後台可編輯租客繳費時間與繳費回報", "6821 官方 LINE 繳費回報已歸零"] },
   { ver: "2026-08-28-下午1:55", items: ["我的房間圖卡會隨主題變色，剩餘天數與本月租金維持白底"] },
@@ -528,6 +529,7 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
     const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
@@ -1478,6 +1480,9 @@ function reportBounds() {
     unit: "月", prev: "上一月", next: "下一月"
   };
 }
+function accountOpening(name) {
+  return Number((state.accountOpenings || {})[name]) || 0;
+}
 function accountStats(name, start, end) {
   const rows = collectLedger().filter(x => rowAccount(x) === name);
   const period = rows.filter(x => x.date >= start && x.date <= end);
@@ -1486,7 +1491,8 @@ function accountStats(name, start, end) {
   const hist = rows.filter(x => x.date <= end);
   const balIn = hist.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const balOut = hist.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
-  return { inn, out, net: inn - out, bal: balIn - balOut, count: period.length };
+  const ledger = balIn - balOut;
+  return { inn, out, net: inn - out, ledger, bal: ledger + accountOpening(name), count: period.length };
 }
 function shiftReport(delta) {
   ensureReportPeriod();
@@ -1506,6 +1512,22 @@ function overallReportHtml() {
   const totalIn = stats.reduce((s, x) => s + x.inn, 0) + joint.inn;
   const totalOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
   const yearOn = ui.reportMode === "year";
+  if (ui.editAcct && REPORT_ACCOUNTS.includes(ui.editAcct)) {
+    const s = stats.find(x => x.name === ui.editAcct) || Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
+    return `<div class="card card-body" id="overall-report">
+      <button type="button" class="back" id="acct-bal-back">← 返回</button>
+      <h2 class="dash-h">${escapeHtml(s.name)}　累計餘額</h2>
+      <div class="small">輸入目前實際餘額後儲存。之後用「新增一筆」進出帳會自動加減。</div>
+      <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
+      <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+      <form id="acct-bal-form" style="margin-top:14px">
+        <label class="field"><span>累計餘額</span>
+          <input name="bal" type="text" inputmode="decimal" value="${s.bal}" />
+        </label>
+        <button class="btn-navy" type="submit">儲存</button>
+      </form>
+    </div>`;
+  }
   return `<div class="card card-body" id="overall-report">
     <div class="report-head">
       <h2 class="dash-h" style="margin:0">整體報表</h2>
@@ -1528,15 +1550,14 @@ function overallReportHtml() {
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          <div class="acct-row"><span>本期淨額</span><strong class="${s.net >= 0 ? "led-in" : "led-out"}">${money(s.net)}</strong></div>
-          <div class="acct-bal">累計餘額　${money(s.bal)}</div>
+          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">累計餘額　${money(s.bal)}</button>
         </div>`).join("")}
     </div>
     ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶本期淨額 ${money(joint.net)}　累計餘額 ${money(joint.bal)}</div>` : ""}
     <div class="acct-total">
       <div>
         <div class="k">總餘額</div>
-        <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}　本期淨額 ${money(totalNet)}</div>
+        <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}</div>
       </div>
       <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
     </div>
@@ -3530,6 +3551,32 @@ function bindAdmin() {
       render();
     };
   });
+  document.querySelectorAll("[data-edit-acct]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      ui.editAcct = btn.dataset.editAcct;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const acctBack = document.getElementById("acct-bal-back");
+  if (acctBack) acctBack.onclick = () => { ui.editAcct = ""; ui.keepScroll = true; render(); };
+  const acctForm = document.getElementById("acct-bal-form");
+  if (acctForm) acctForm.onsubmit = e => {
+    e.preventDefault();
+    const name = ui.editAcct;
+    if (!REPORT_ACCOUNTS.includes(name)) return;
+    const b = reportBounds();
+    const s = accountStats(name, b.start, b.end);
+    const next = Number(String(acctForm.bal.value || "").replace(/[^\d.-]/g, ""));
+    if (!state.accountOpenings) state.accountOpenings = {};
+    state.accountOpenings[name] = next - s.ledger;
+    ui.editAcct = "";
+    save();
+    ui.keepScroll = true;
+    toast("已更新 " + name + " 累計餘額");
+    render();
+  };
   refreshLineBinds().then(() => {
     document.querySelectorAll("[data-line-status]").forEach(el => {
       const no = el.dataset.lineStatus;
