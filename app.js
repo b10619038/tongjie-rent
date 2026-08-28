@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午4:16";
+const APP_VERSION = "2026-08-28-下午6:48";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午6:48", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
   { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
   { ver: "2026-08-28-下午4:12", items: ["套房租客／廠房租客切換改為與所有資產相同的順滑移動"] },
   { ver: "2026-08-28-下午4:08", items: ["租客可上傳大頭貼，廠房分組可收合並支援全開全關"] },
@@ -319,14 +320,39 @@ const STUDIO_NOS = [
   "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
   "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642"
 ];
-const TENANT_BY_ROOM = {
-  "6821": "黃宥宇", "6822": "黃莉晏、吳孟書", "6831": "吳昱瑋",
-  "6841": "劉冠德", "6842": "吳汶修", "7021": "陳信安", "7022": "郭雅萱",
-  "7023": "謝雯鶯", "7031": "朱甫晟", "7032": "楊旻憲", "7041": "劉恩彤",
-  "7042": "周佳瑩", "7221": "張智傑", "7222": "廖晉億、林呈澔", "7232": "林紜亦",
-  "7611": "波波奇", "7622": "邱育琳", "7623": "陳財源", "7631": "蔡文銘",
-  "7632": "謝佩君", "7641": "洪子軒"
+const TENANT_INFO = {
+  "6821": { name: "黃宥宇", phone: "0980-330-332" },
+  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "6831": { name: "吳昱瑋" },
+  "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0913-901-017", leaseStart: "2025-09-01", leaseEnd: "2026-08-31" },
+  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847" },
+  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176" },
+  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7032": { name: "莊玉蓮", phone: "0970-803-244", leaseStart: "2025-10-01", leaseEnd: "2026-09-30" },
+  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7042": { name: "陳彥廷、賀芸儀", phone: "0972-986-430／0970-116-205", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7051": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
+  "7223": { name: "黃明媛、柯哲堯", phone: "0900-246-722／0988-881-915", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "57877" },
+  "7231": { name: "林科承、朱宣羽", phone: "0968-887-012／0982-606-649", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7242": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
+  "7251": { name: "呂佳芸" },
+  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31" },
+  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
+  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
+  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "12077" },
+  "7641": { name: "張芷若", phone: "0902-350-637", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" }
 };
+const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
   { prefix: "68", no: "牛10-68", street: "文龍東路68號", company: "統潔" },
   { prefix: "70", no: "牛10-70", street: "文龍東路70號", company: "統潔" },
@@ -462,7 +488,8 @@ function buildSeed() {
   let ti = 1;
   STUDIO_NOS.forEach((no, i) => {
     const id = "r" + no;
-    const name = TENANT_BY_ROOM[no] || "";
+    const info = TENANT_INFO[no];
+    const name = info && info.name ? info.name : "";
     const tid = name ? "t" + ti++ : null;
     rooms.push({
       id, no, title: "套房", rent: 10000, deposit: 25600, kind: "studio",
@@ -472,16 +499,20 @@ function buildSeed() {
       contractImages: [], location: roomAddress(no)
     });
     if (!name) return;
-    const phoneTail = String(1000000 + i * 1373).slice(0, 7);
     tenants.push({
       id: tid, name,
-      phone: "0912-" + phoneTail.slice(0, 3) + "-" + phoneTail.slice(3, 6),
-      idNo: "A1" + String(20000000 + i * 17).slice(0, 8),
-      address: "高雄市新興區民生一路",
-      emergencyName: ["林淑惠", "陳建國", "黃美玲", "張文傑"][i % 4],
-      emergencyPhone: "0988-12" + String(30 + i).padStart(2, "0") + "-55" + String(10 + i).slice(-2),
-      roomId: id, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 5,
-      paid: i % 7 !== 3, note: ""
+      phone: info.phone || "",
+      idNo: "",
+      address: "",
+      emergencyName: "",
+      emergencyPhone: "",
+      roomId: id,
+      leaseStart: info.leaseStart || "",
+      leaseEnd: info.leaseEnd || "",
+      dueDay: 5,
+      paid: true,
+      note: "",
+      bankLast5: info.bankLast5 || ""
     });
   });
   rooms.push({
@@ -490,11 +521,10 @@ function buildSeed() {
     utilities: { electric: "公司自付", water: "公司自付" }, contractImages: [], location: roomAddress("7651")
   });
   factoryRooms().forEach(r => rooms.push(r));
-  tenants[0].phone = "0912-345-678";
-  tenants[0].paid = true;
+  const t6831 = tenants.find(t => t.roomId === "r6831");
   return {
     rooms, tenants,
-    repairs: [{ id: "rep1", roomId: "r6831", tenantId: "t3", type: "熱水器", note: "忽冷忽熱，晚上完全沒熱水", photo: null, status: "open", createdAt: "2026-08-24 21:10" }],
+    repairs: [{ id: "rep1", roomId: "r6831", tenantId: t6831 ? t6831.id : "t3", type: "熱水器", note: "忽冷忽熱，晚上完全沒熱水", photo: null, status: "open", createdAt: "2026-08-24 21:10" }],
     notices: [{ id: "n1", type: "repair", repairId: "rep1", roomNo: "6831", text: "6831 熱水器報修", createdAt: "2026-08-24 21:10", read: false }],
     announcements: [],
     houseRules: DEFAULT_RULES,
@@ -559,7 +589,49 @@ function normalize(data) {
     if (!room || room.status === "office" || room.kind === "factory") return;
     if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
+  if (data.tenantRosterVer !== "20260828sheet") {
+    applyTenantRoster(data);
+    data.tenantRosterVer = "20260828sheet";
+  }
   return data;
+}
+function applyTenantRoster(data) {
+  STUDIO_NOS.forEach(no => {
+    const info = TENANT_INFO[no];
+    let room = data.rooms.find(r => r.no === no);
+    if (!room) {
+      const seedRoom = SEED.rooms.find(r => r.no === no);
+      if (seedRoom) {
+        room = structuredClone(seedRoom);
+        data.rooms.push(room);
+      }
+    }
+    if (!room || room.status === "office") return;
+    if (info && info.name) {
+      let t = data.tenants.find(x => x.roomId === room.id);
+      if (!t) {
+        t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
+        data.tenants.push(t);
+      }
+      t.name = info.name;
+      t.phone = info.phone || "";
+      t.leaseStart = info.leaseStart || "";
+      t.leaseEnd = info.leaseEnd || "";
+      t.bankLast5 = info.bankLast5 || "";
+      room.tenantId = t.id;
+      if (room.status !== "repair") room.status = "rented";
+    } else {
+      if (room.status !== "repair") room.status = "vacant";
+      const t = data.tenants.find(x => x.roomId === room.id);
+      if (t) {
+        t.name = "";
+        t.phone = "";
+        t.leaseStart = "";
+        t.leaseEnd = "";
+        t.bankLast5 = "";
+      }
+    }
+  });
 }
 function loadLocal() {
   try {
@@ -814,7 +886,9 @@ function maybeAuditBrowse() {
   audit("瀏覽", pageLabel());
 }
 function daysLeft(end) {
-  return Math.ceil((new Date(end + "T00:00:00") - TODAY) / 86400000);
+  if (!end) return null;
+  const n = Math.ceil((new Date(end + "T00:00:00") - TODAY) / 86400000);
+  return Number.isFinite(n) ? n : null;
 }
 function rentOverdueDays() {
   const due = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
@@ -2304,7 +2378,7 @@ function homeView() {
         <div class="room-name">${r.no}　${r.title}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
-          <div class="stat"><div class="label">租約剩餘天數</div><b>${left} 天</b></div>
+          <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
           <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
         </div>
       </div>
@@ -2482,9 +2556,9 @@ function leaseView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">承租房間</span><span class="v">${r.no} ${r.title}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
-        <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart}</span></div>
-        <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd}</span></div>
-        <div class="row"><span class="k">剩餘天數</span><span class="v">${left} 天</span></div>
+        <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart || "—"}</span></div>
+        <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd || "—"}</span></div>
+        <div class="row"><span class="k">剩餘天數</span><span class="v">${left == null ? "—" : left + " 天"}</span></div>
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
         <div class="row"><span class="k">每月租金</span><span class="v">${money(r.rent)}</span></div>
       </div>
@@ -3252,7 +3326,7 @@ function adminDash() {
   const unpaidAmt = Math.max(dueAmt - paidAmt, 0);
   const collectRate = dueAmt ? Math.round(paidAmt / dueAmt * 100) : 0;
   const unpaidTenants = state.tenants.filter(t => !t.paid);
-  const expiring = state.tenants.map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days <= 90).sort((a, b) => a.days - b.days);
+  const expiring = state.tenants.map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
   const fixes = {
     open: state.repairs.filter(x => x.status === "open").length,
@@ -3489,6 +3563,7 @@ function tenantListInnerHtml(kind) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       <div class="row"><span class="k">電話</span><span class="v">${t.phone || "—"}</span></div>
+      ${t.bankLast5 ? `<div class="row"><span class="k">帳戶後五碼</span><span class="v">${escapeHtml(t.bankLast5)}</span></div>` : ""}
       <div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
       <div class="row"><span class="k">剩餘</span><span class="v">${t.leaseEnd ? daysLeft(t.leaseEnd) + " 天" : "—"}</span></div>
       <button class="ghost" data-invoice="${t.roomId}" style="margin-top:8px">產出發票</button>
@@ -3687,6 +3762,7 @@ function adminRoomEdit() {
       </div>
       ${field("登入密碼", "loginPass", t?.loginPass || "")}
       ${field("電話", "phone", t?.phone || "")}
+      ${field("帳戶後五碼", "bankLast5", t?.bankLast5 || "")}
       ${field("身分證字號", "idNo", t?.idNo || "")}
       ${field("通訊地址", "address", t?.address || "")}
       ${field("緊急聯絡人", "emergencyName", t?.emergencyName || "")}
@@ -3740,6 +3816,7 @@ function saveRoomEdit(form) {
     t.name = g("name"); t.phone = g("phone"); t.idNo = g("idNo"); t.address = g("address");
     t.emergencyName = g("emergencyName"); t.emergencyPhone = g("emergencyPhone");
     t.loginPass = String(g("loginPass") || "").trim();
+    t.bankLast5 = String(g("bankLast5") || "").trim();
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
     t.dueDay = Number(g("dueDay")) || t.dueDay || 5;
     t.paid = g("paid") === "1"; t.note = g("note");
