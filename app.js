@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:40";
+const APP_VERSION = "2026-08-28-晚上10:50";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上10:50", onlyDev: true, items: ["開發者後台改為登出／租客預覽，預覽不計入金額"] },
   { ver: "2026-08-28-晚上10:40", items: ["租客未上傳大頭貼時改為白色人像", "公告旁加上客服頭像"] },
   { ver: "2026-08-28-晚上10:30", items: ["日誌可看租客／管理員／開發者是否在線", "修復電腦與手機底部更新通知圖塊"] },
   { ver: "2026-08-28-晚上10:20", items: ["手機點個人戶下拉選成員後，會進入該人的營收總額"] },
@@ -853,6 +854,7 @@ function isOnline(id) {
 }
 function isTenantOnline(id) { return isOnline(id); }
 function beatPresence() {
+  if (isDevPreview()) return;
   const id = presenceKey();
   const beat = presencePayload();
   if (!id || !beat) return;
@@ -954,6 +956,7 @@ function factoryNamedCount(data) {
   }).length;
 }
 async function pushCloud() {
+  if (isDevPreview()) return;
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
@@ -973,6 +976,7 @@ async function pushCloud() {
   finally { if (timer) clearTimeout(timer); }
 }
 function save() {
+  if (isDevPreview()) return;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
@@ -991,7 +995,8 @@ function persistUi() {
       roomNo: room ? room.no : (ui.roomNo || ""),
       assetKind: ui.assetKind,
       tenantKind: ui.tenantKind,
-      adminCode: ui.adminCode || ""
+      adminCode: ui.adminCode || "",
+      devPreview: !!ui.devPreview
     });
     localStorage.setItem(UI_KEY, snap);
     sessionStorage.setItem(UI_KEY, snap);
@@ -1025,8 +1030,20 @@ function restoreUi() {
     ui.assetKind = s.assetKind || "studio";
     ui.tenantKind = s.tenantKind === "factory" ? "factory" : "studio";
     ui.adminCode = s.adminCode || "";
+    ui.devPreview = !!(s.devPreview && (s.adminCode === "1240" || ui.adminCode === "1240"));
     if (ui.page === "tenant-login" || ui.page === "admin-login") {
       ui.page = s.role === "admin" ? "dash" : "home";
+    }
+    if (ui.devPreview) {
+      ui.role = "tenant";
+      ui.adminCode = "1240";
+      ensureDevPreview();
+      ui.tenantId = ui.devTenant.id;
+      ui.roomId = ui.devRoom.id;
+      ui.roomNo = ui.devRoom.no;
+      if (!ui.page || ui.page === "dash") ui.page = "home";
+      persistUi();
+      return;
     }
     if (s.role === "tenant") {
       let t = (state.tenants || []).find(x => x.id === s.tenantId);
@@ -1045,6 +1062,7 @@ function restoreUi() {
 }
 function clearSession() {
   ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = "";
+  ui.devPreview = false; ui.devTenant = null; ui.devRoom = null; ui.devRepairs = []; ui.devRenewals = []; ui.devReactions = {}; ui.devReadAnns = {};
   try {
     sessionStorage.removeItem(UI_KEY);
     localStorage.removeItem(UI_KEY);
@@ -1275,6 +1293,7 @@ function logKind(x) {
 let lastAuditBrowse = "";
 function audit(action, detail) {
   try {
+    if (isDevPreview()) return;
     if (!state.auditLogs) state.auditLogs = [];
     const page = pageLabel();
     const key = [ui.role, ui.tenantId || ui.adminCode || "", action, detail || "", page].join("|");
@@ -1515,8 +1534,75 @@ function floorNo(no) {
 function roomsByFloor() {
   return [...state.rooms].sort((a, b) => floorNo(a.no) - floorNo(b.no) || a.no.localeCompare(b.no, "zh-Hant"));
 }
-function me() { return state.tenants.find(t => t.id === ui.tenantId); }
-function myRoom() { const t = me(); return t ? state.rooms.find(r => r.id === t.roomId) : null; }
+function isDevPreview() { return !!(ui.devPreview && ui.role === "tenant"); }
+function ensureDevPreview() {
+  if (ui.devTenant && ui.devRoom) return;
+  const sample = (state.rooms || []).find(r => r.kind !== "factory" && r.status !== "office") || {};
+  const y = new Date().getFullYear();
+  ui.devRoom = {
+    id: "r-dev-preview",
+    no: "DEMO",
+    title: sample.title || "套房",
+    kind: "studio",
+    status: "rented",
+    rent: 10000,
+    deposit: 10000,
+    location: "開發者測試房間（不計入金額）",
+    tenantId: "t-dev-preview",
+    amenities: Array.isArray(sample.amenities) && sample.amenities.length ? sample.amenities.slice() : ["冷氣", "冰箱", "洗衣機", "機車停車格"],
+    photos: (sample.photos && sample.photos.length) ? sample.photos.slice() : photosFor("6821").slice(),
+    utilities: sample.utilities ? Object.assign({}, sample.utilities) : { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+    contractImages: []
+  };
+  ui.devTenant = {
+    id: "t-dev-preview",
+    name: "開發者預覽",
+    roomId: "r-dev-preview",
+    paid: false,
+    leaseStart: y + "-01-01",
+    leaseEnd: (y + 1) + "-12-31",
+    dueDay: 5,
+    phone: "",
+    loginPass: ""
+  };
+  if (!ui.devRepairs) ui.devRepairs = [];
+  if (!ui.devRenewals) ui.devRenewals = [];
+  if (!ui.devReactions) ui.devReactions = {};
+  if (!ui.devReadAnns) ui.devReadAnns = {};
+}
+function enterDevPreview() {
+  ui.devPreview = true;
+  ui.adminCode = "1240";
+  ensureDevPreview();
+  ui.role = "tenant";
+  ui.tenantId = ui.devTenant.id;
+  ui.roomId = ui.devRoom.id;
+  ui.roomNo = ui.devRoom.no;
+  ui.page = "home";
+  persistUi();
+  render();
+}
+function exitDevPreview() {
+  ui.devPreview = false;
+  ui.role = "admin";
+  ui.adminCode = "1240";
+  ui.page = "dash";
+  ui.tenantId = null;
+  ui.roomId = null;
+  ui.roomNo = "";
+  persistUi();
+  beatPresence();
+  render();
+}
+function me() {
+  if (isDevPreview()) { ensureDevPreview(); return ui.devTenant; }
+  return state.tenants.find(t => t.id === ui.tenantId);
+}
+function myRoom() {
+  if (isDevPreview()) { ensureDevPreview(); return ui.devRoom; }
+  const t = me();
+  return t ? state.rooms.find(r => r.id === t.roomId) : null;
+}
 function unreadAnnouncements(tenantId) {
   return (state.announcements || []).filter(a => !(a.readBy || []).includes(tenantId));
 }
@@ -1625,6 +1711,7 @@ function showOsBanner(title, body, tag) {
   else viaPage();
 }
 function pushPhoneNotify(title, body, target) {
+  if (isDevPreview()) return;
   const text = body || "";
   if (target) sendRemoteNotify(target, title, text);
   if (!shouldShowLocalBanner(target)) return;
@@ -2672,7 +2759,7 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll"><div class="zoom-page${keep ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${keep ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindInstallSheet();
   bindNotifyGuide();
@@ -2839,7 +2926,8 @@ function tenantView() {
 }
 
 function reactionCounts(a) {
-  const rec = a.reactions || {};
+  const rec = Object.assign({}, (a && a.reactions) || {});
+  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id]) rec[ui.tenantId] = "heart";
   let heart = 0;
   Object.keys(rec).forEach(id => { if (rec[id]) heart++; });
   return { heart };
@@ -2847,11 +2935,11 @@ function reactionCounts(a) {
 function reactBarHtml(a) {
   const n = reactionCounts(a).heart;
   if (!n) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
-  const mine = ui.tenantId && (a.reactions || {})[ui.tenantId];
+  const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
   return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
 }
 function announceBodyHtml(a, actions) {
-  const unread = ui.tenantId && !(a.readBy || []).includes(ui.tenantId);
+  const unread = ui.tenantId && (isDevPreview() ? !(ui.devReadAnns || {})[a.id] : !(a.readBy || []).includes(ui.tenantId));
   return `<div class="ann-head">
       ${staffAvatarHtml("sm")}
       <div class="ann-meta">
@@ -2879,11 +2967,11 @@ function homeView() {
       <div class="who-line slide-right">
         <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
         <div>
-          <div class="eyebrow">GOOD EVENING</div>
+          <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : "GOOD EVENING"}</div>
           <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
         </div>
       </div>
-      <button class="back" id="logout-tenant" type="button">登出</button>
+      <button class="back" id="logout-tenant" type="button">${ui.devPreview ? "返回後台" : "登出"}</button>
     </div>
     <div class="screen">
       ${hasAnn ? announceBlock : ""}
@@ -3087,7 +3175,7 @@ function leaseView() {
         : `<div class="card card-body slide-left"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`}
       ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>` : ""}
       ${(() => {
-        const pending = (state.renewals || []).filter(x => x.tenantId === t.id && x.status !== "done");
+        const pending = (isDevPreview() ? (ui.devRenewals || []) : (state.renewals || [])).filter(x => x.tenantId === t.id && x.status !== "done");
         const cur = pending[pending.length - 1];
         const asked = !!cur;
         return `
@@ -3130,7 +3218,7 @@ function repairCard(rep, extraClass) {
   </div>`;
 }
 function repairView() {
-  const mine = state.repairs.filter(r => r.tenantId === ui.tenantId).slice().reverse();
+  const mine = (isDevPreview() ? (ui.devRepairs || []) : state.repairs.filter(r => r.tenantId === ui.tenantId)).slice().reverse();
   if (ui.page === "repair-done") {
     return `<div class="topbar"><div class="slide-right"><div class="eyebrow">REPAIR</div><h1>報修</h1></div></div>
       <div class="screen">
@@ -3165,7 +3253,9 @@ function adminView() {
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
       </div>
-      <button class="ghost" id="logout" style="width:auto">切換身分</button>
+      ${ui.adminCode === "1240"
+        ? `<div class="switch-pair"><button type="button" class="switch-tile" id="logout">登出</button><button type="button" class="switch-tile" id="preview-tenant">租客</button></div>`
+        : `<button class="ghost" id="logout" style="width:auto">切換身分</button>`}
     </div>
     <div class="tabs">
       ${pages.map(([id, label]) => {
@@ -4510,7 +4600,12 @@ function bindUpdateBar() {
 
 function bindTenant() {
   const out = document.getElementById("logout-tenant");
-  if (out) out.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
+  if (out) out.onclick = () => {
+    if (isDevPreview()) { exitDevPreview(); return; }
+    audit("登出", "登出"); clearSession(); render();
+  };
+  const exitPrev = document.getElementById("exit-preview");
+  if (exitPrev) exitPrev.onclick = () => exitDevPreview();
   const av = document.getElementById("tenant-avatar");
   if (av) av.onchange = async () => {
     const f = av.files && av.files[0];
@@ -4614,6 +4709,13 @@ function bindTenant() {
       e.preventDefault();
       const a = (state.announcements || []).find(x => x.id === el.dataset.readAnnounce);
       if (!a || !ui.tenantId) return;
+      if (isDevPreview()) {
+        if (!ui.devReadAnns) ui.devReadAnns = {};
+        ui.devReadAnns[a.id] = true;
+        const badge = el.querySelector(".badge.unpaid");
+        if (badge) badge.remove();
+        return;
+      }
       if (!a.readBy) a.readBy = [];
       if (!a.readBy.includes(ui.tenantId)) {
         a.readBy.push(ui.tenantId);
@@ -4652,6 +4754,14 @@ function bindTenant() {
     askRenew.onclick = () => {
       const t = me(); const r = myRoom();
       if (!t || !r) return;
+      if (isDevPreview()) {
+        if (!ui.devRenewals) ui.devRenewals = [];
+        if (ui.devRenewals.some(x => x.tenantId === t.id && x.status !== "done")) { toast("已送出續約申請"); return; }
+        ui.devRenewals.push({ id: "rn" + Date.now(), roomId: r.id, tenantId: t.id, status: "open", createdAt: nowStamp() });
+        toast("預覽：已送出續約（不會寫入）");
+        render();
+        return;
+      }
       if ((state.renewals || []).some(x => x.tenantId === t.id && x.status !== "done")) {
         toast("已送出續約申請"); return;
       }
@@ -4692,10 +4802,19 @@ function bindTenant() {
       const stamp = nowStamp();
       const room = myRoom();
       const rid = "r" + Date.now();
-      state.repairs.push({
+      const rec = {
         id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, note,
         photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp
-      });
+      };
+      if (isDevPreview()) {
+        if (!ui.devRepairs) ui.devRepairs = [];
+        ui.devRepairs.push(rec);
+        ui.repairType = "冷氣"; ui.repairMedia = []; ui.page = "repair-done";
+        toast("預覽：已提交報修（不會寫入）");
+        render();
+        return;
+      }
+      state.repairs.push(rec);
       if (!state.notices) state.notices = [];
       state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
@@ -4924,6 +5043,12 @@ function applyAnnouncementReaction(id) {
   if (!ui.tenantId) return;
   const a = (state.announcements || []).find(x => x.id === id);
   if (!a) return;
+  if (isDevPreview()) {
+    if (!ui.devReactions) ui.devReactions = {};
+    ui.devReactions[id] = "heart";
+    document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
+    return;
+  }
   if (!a.reactions) a.reactions = {};
   a.reactions[ui.tenantId] = "heart";
   save();
@@ -4957,7 +5082,9 @@ function bindAnnounceReactions() {
 }
 function bindAdmin() {
   const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => { audit("登出", "切換身分"); clearSession(); render(); };
+  if (logout) logout.onclick = () => { audit("登出", ui.adminCode === "1240" ? "登出" : "切換身分"); clearSession(); render(); };
+  const previewBtn = document.getElementById("preview-tenant");
+  if (previewBtn) previewBtn.onclick = () => enterDevPreview();
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
     btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
   });

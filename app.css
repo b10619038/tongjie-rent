@@ -292,6 +292,24 @@ textarea { min-height: 92px; resize: vertical; }
   padding: 16px 20px 8px;
 }
 .admin-bar h1 { margin-top: 8px; }
+.switch-pair { display: flex; gap: 8px; flex-shrink: 0; }
+.switch-tile {
+  width: auto; min-width: 72px; margin: 0;
+  padding: 10px 16px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--card);
+  font: inherit; font-weight: 800; color: var(--teal); cursor: pointer;
+}
+.switch-tile:hover { background: var(--ok-soft); }
+.preview-banner {
+  margin: 10px 16px 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--gold-soft);
+  color: #7a4a10;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
 .tabs {
   display: flex; gap: 8px; padding: 14px 20px 18px;
   flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
