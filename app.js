@@ -6,11 +6,13 @@ const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
+const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:18";
+const APP_VERSION = "2026-08-28-下午2:20";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:20", items: ["後台分類可長按左右拖移排序"] },
   { ver: "2026-08-28-下午2:18", onlyDev: true, items: ["操作日誌新增開發者分類，1240 會歸在開發者"] },
   { ver: "2026-08-28-下午2:16", items: ["AI助手更名為工作助手"] },
   { ver: "2026-08-28-下午2:15", items: ["整體報表累計餘額可點進去編輯", "已移除四戶本期淨額"] },
@@ -2142,8 +2144,7 @@ function repairView() {
 }
 
 function adminView() {
-  const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "工作助手"]];
-  if (ui.adminCode === "1240") pages.push(["logs", "日誌"]);
+  const pages = adminPages();
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
@@ -2158,6 +2159,86 @@ function adminView() {
       }).join("")}
     </div>
     <div class="admin-scroll"><div class="${ui.keepScroll ? "admin-static" : "admin-in-right"}">${adminBody()}</div></div>`;
+}
+function adminPages() {
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌" };
+  const allowed = ["dash", "rooms", "tenants", "announce", "repairs", "ai"];
+  if (ui.adminCode === "1240") allowed.push("logs");
+  let ids = [];
+  try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
+  if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
+  ids = ids.filter(id => allowed.includes(id));
+  allowed.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+  return ids.map(id => [id, labels[id]]);
+}
+function saveTabOrder(ids) {
+  try { localStorage.setItem(TAB_KEY, JSON.stringify(ids)); } catch {}
+  state.tabOrder = ids.slice();
+  save();
+}
+function bindTabReorder() {
+  const bar = document.querySelector(".tabs");
+  if (!bar) return;
+  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0;
+  const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
+  bar.addEventListener("contextmenu", e => { if (e.target.closest(".tab")) e.preventDefault(); });
+  bar.addEventListener("pointerdown", e => {
+    const tab = e.target.closest(".tab");
+    if (!tab) return;
+    startX = e.clientX;
+    pid = e.pointerId;
+    armed = false;
+    moved = false;
+    dragEl = tab;
+    clear();
+    timer = setTimeout(() => {
+      armed = true;
+      bar.classList.add("sorting");
+      if (dragEl) {
+        dragEl.classList.add("dragging");
+        try { dragEl.setPointerCapture(pid); } catch {}
+      }
+    }, 420);
+  });
+  bar.addEventListener("pointermove", e => {
+    if (!dragEl) return;
+    if (!armed) {
+      if (Math.abs(e.clientX - startX) > 12) { clear(); dragEl = null; }
+      return;
+    }
+    e.preventDefault();
+    moved = true;
+    const x = e.clientX;
+    const tabs = [...bar.querySelectorAll(".tab")];
+    const over = tabs.find(t => {
+      const r = t.getBoundingClientRect();
+      return x >= r.left && x <= r.right;
+    });
+    if (over && over !== dragEl) {
+      const from = tabs.indexOf(dragEl);
+      const to = tabs.indexOf(over);
+      if (from < 0 || to < 0) return;
+      if (from < to) bar.insertBefore(dragEl, over.nextSibling);
+      else bar.insertBefore(dragEl, over);
+    }
+  });
+  const end = () => {
+    clear();
+    if (armed && dragEl) {
+      dragEl.classList.remove("dragging");
+      if (moved) {
+        dragEl.dataset.dragged = "1";
+        saveTabOrder([...bar.querySelectorAll(".tab")].map(t => t.dataset.admin));
+      }
+    }
+    bar.classList.remove("sorting");
+    armed = false;
+    dragEl = null;
+    moved = false;
+  };
+  bar.addEventListener("pointerup", end);
+  bar.addEventListener("pointercancel", end);
+  bar.addEventListener("pointerleave", e => { if (!armed) end(); });
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
@@ -3488,8 +3569,17 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-admin]").forEach(btn => {
-    btn.onclick = () => { ui.page = btn.dataset.admin; render(); };
+    btn.onclick = e => {
+      if (btn.classList.contains("tab") && btn.dataset.dragged === "1") {
+        delete btn.dataset.dragged;
+        e.preventDefault();
+        return;
+      }
+      ui.page = btn.dataset.admin;
+      render();
+    };
   });
+  bindTabReorder();
   document.querySelectorAll("[data-asset-kind]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
