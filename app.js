@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:15";
-const TENANT_ROSTER_VER = "20260828-2030";
+const APP_VERSION = "2026-08-29-凌晨1:20";
+const TENANT_ROSTER_VER = "20260829-0155";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:20", items: ["套入牛10　115年8月收款明細：租金、承租人、已繳日期"] },
   { ver: "2026-08-29-凌晨1:15", items: ["安裝後引導開啟手機／電腦系統通知（Android 與 iOS）"] },
   { ver: "2026-08-29-凌晨1:10", items: ["安裝版才發系統通知：公告、繳費、到期、報修、續約"] },
   { ver: "2026-08-29-凌晨1:05", items: ["套房租客圖卡顯示租金，在線狀態改為綠／紅圓點"] },
@@ -383,42 +384,41 @@ const DEFAULT_RULES = `1. 每月租金請於繳費日前完成，逾期將依合
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
 const TODAY = new Date("2026-08-26T00:00:00");
 const STUDIO_NOS = [
-  "6821", "6822", "6823", "6831", "6832", "6841", "6842",
-  "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
-  "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
+  "6811", "6821", "6822", "6823", "6831", "6832", "6841", "6842",
+  "7011", "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
+  "7211", "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
   "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642"
 ];
 const TENANT_INFO = {
-  "6821": { name: "黃宥宇", phone: "0980-330-332" },
-  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "6831": { name: "吳昱瑋" },
-  "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0913-901-017", leaseStart: "2025-09-01", leaseEnd: "2026-08-31" },
-  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847" },
-  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176" },
-  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7032": { name: "莊玉蓮", phone: "0970-803-244", leaseStart: "2025-10-01", leaseEnd: "2026-09-30" },
-  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7042": { name: "陳彥廷、賀芸儀", phone: "0972-986-430／0970-116-205", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7051": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
-  "7223": { name: "黃明媛、柯哲堯", phone: "0900-246-722／0988-881-915", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "57877" },
+  "6821": { name: "黃宥宇", phone: "0980-330-332", rent: 7000, paidAt: "2026-08-10" },
+  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
+  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-04" },
+  "6831": { name: "吳昱瑋", rent: 9000, paidAt: "2026-08-01" },
+  "6832": { name: "高逸安、翁玟倫", rent: 13500, paidAt: "2026-08-05" },
+  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", rent: 9000, paidAt: "2026-08-05" },
+  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 14000, paidAt: "2026-08-10" },
+  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
+  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", rent: 7000, paidAt: "2026-08-21" },
+  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-03" },
+  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-07-31" },
+  "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 12000, paidAt: "2026-08-05" },
+  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-07-31" },
+  "7042": { name: "周佳瑩", rent: 14000, paidAt: "2026-08-07" },
+  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
+  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", rent: 7000, paidAt: "2026-08-01" },
+  "7223": { name: "許芸慈", rent: 10000, paidAt: "2026-07-31" },
   "7231": { name: "林科承、朱宣羽", phone: "0968-887-012／0982-606-649", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7242": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
-  "7251": { name: "呂佳芸" },
-  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31" },
-  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
-  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
-  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "12077" },
-  "7641": { name: "張芷若", phone: "0902-350-637", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" }
+  "7232": { name: "林紘亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 14000, paidAt: "2026-07-26" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 8000, paidAt: "2026-08-04" },
+  "7242": { name: "張育慈、周聖傑", rent: 14000, paidAt: "2026-07-28" },
+  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", rent: 50000, paidAt: "2026-08-03" },
+  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rent: 7000, paidAt: "2026-08-05" },
+  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rent: 7000, paidAt: "2026-08-10" },
+  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-05" },
+  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-08-15" },
+  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "12077", rent: 14000, paidAt: "2026-08-05" },
+  "7641": { name: "洪子軒", rent: 9000, paidAt: "2026-08-05" },
+  "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", rent: 14000, paidAt: "2026-08-04" }
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -677,7 +677,7 @@ function buildSeed() {
     const name = info && info.name ? info.name : "";
     const tid = name ? "t" + ti++ : null;
     rooms.push({
-      id, no, title: "套房", rent: 10000, deposit: 25600, kind: "studio",
+      id, no, title: "套房", rent: (info && info.rent) || 10000, deposit: 25600, kind: "studio",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
       utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
@@ -695,7 +695,8 @@ function buildSeed() {
       leaseStart: info.leaseStart || "",
       leaseEnd: info.leaseEnd || "",
       dueDay: 5,
-      paid: true,
+      paid: !!(info && info.paidAt),
+      paidAt: info && info.paidAt ? info.paidAt + " 12:00" : "",
       note: "",
       bankLast5: info.bankLast5 || ""
     });
@@ -765,7 +766,9 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
       if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
-      if (!r.rent) r.rent = 10000;
+      const info = TENANT_INFO[r.no];
+      if (info && info.rent) r.rent = info.rent;
+      else if (!r.rent) r.rent = 10000;
     }
     if (r.title === "套房" && Array.isArray(r.amenities) && !r.amenities.includes("機車停車格")) r.amenities.push("機車停車格");
   });
@@ -867,9 +870,17 @@ function applyTenantRoster(data) {
       }
       t.name = info.name;
       t.phone = info.phone || "";
-      t.leaseStart = info.leaseStart || "";
-      t.leaseEnd = info.leaseEnd || "";
-      t.bankLast5 = info.bankLast5 || "";
+      t.leaseStart = info.leaseStart || t.leaseStart || "";
+      t.leaseEnd = info.leaseEnd || t.leaseEnd || "";
+      t.bankLast5 = info.bankLast5 || t.bankLast5 || "";
+      if (info.rent) room.rent = info.rent;
+      if (info.paidAt) {
+        t.paid = true;
+        t.paidAt = info.paidAt.length <= 10 ? info.paidAt + " 12:00" : info.paidAt;
+      } else {
+        t.paid = false;
+        t.paidAt = "";
+      }
       room.tenantId = t.id;
       if (room.status !== "repair") room.status = "rented";
     } else {
