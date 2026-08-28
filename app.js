@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:50";
+const APP_VERSION = "2026-08-28-下午1:53";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:53", items: ["整體報表標題與說明改為獨立一排，不再被按鈕擠掉"] },
   { ver: "2026-08-28-下午1:50", items: ["主題新增極白、極黑"] },
   { ver: "2026-08-28-下午1:48", items: ["租客「我的房間」圖卡會跟著主題色調一起變化"] },
   { ver: "2026-08-28-下午1:44", items: ["總餘額測試進帳 10,000 已歸零"] },
@@ -1486,11 +1487,9 @@ function overallReportHtml() {
   const totalOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
   const yearOn = ui.reportMode === "year";
   return `<div class="card card-body" id="overall-report">
-    <div class="row" style="align-items:flex-start">
-      <div>
-        <h2 class="dash-h" style="margin:0">整體報表</h2>
-        <div class="small">四戶歷史營收：本期收支與截至本期的累計餘額</div>
-      </div>
+    <div class="report-head">
+      <h2 class="dash-h" style="margin:0">整體報表</h2>
+      <div class="small">四戶歷史營收：本期收支與截至本期的累計餘額</div>
       <div class="report-actions no-print">
         <button type="button" class="ghost ${yearOn ? "" : "on"}" data-report-mode="month" style="width:auto">月</button>
         <button type="button" class="ghost ${yearOn ? "on" : ""}" data-report-mode="year" style="width:auto">年</button>
