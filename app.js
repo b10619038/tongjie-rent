@@ -10,9 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午6:48";
+const APP_VERSION = "2026-08-28-下午6:55";
 const CHANGELOG = [
-  { ver: "2026-08-28-下午6:48", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
+  { ver: "2026-08-28-下午6:55", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
   { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
   { ver: "2026-08-28-下午4:12", items: ["套房租客／廠房租客切換改為與所有資產相同的順滑移動"] },
   { ver: "2026-08-28-下午4:08", items: ["租客可上傳大頭貼，廠房分組可收合並支援全開全關"] },
@@ -589,9 +589,9 @@ function normalize(data) {
     if (!room || room.status === "office" || room.kind === "factory") return;
     if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
-  if (data.tenantRosterVer !== "20260828sheet") {
+  if (data.tenantRosterVer !== "20260828sheet2") {
     applyTenantRoster(data);
-    data.tenantRosterVer = "20260828sheet";
+    data.tenantRosterVer = "20260828sheet2";
   }
   return data;
 }
@@ -622,14 +622,8 @@ function applyTenantRoster(data) {
       if (room.status !== "repair") room.status = "rented";
     } else {
       if (room.status !== "repair") room.status = "vacant";
-      const t = data.tenants.find(x => x.roomId === room.id);
-      if (t) {
-        t.name = "";
-        t.phone = "";
-        t.leaseStart = "";
-        t.leaseEnd = "";
-        t.bankLast5 = "";
-      }
+      data.tenants = data.tenants.filter(x => x.roomId !== room.id);
+      room.tenantId = null;
     }
   });
 }
@@ -2571,7 +2565,7 @@ function leaseView() {
       ${(r.contractImages && r.contractImages.length)
         ? `<div class="contract-list slide-left">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
         : `<div class="card card-body slide-left"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`}
-      <p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>
+      ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>` : ""}
       ${(() => {
         const pending = (state.renewals || []).filter(x => x.tenantId === t.id && x.status !== "done");
         const cur = pending[pending.length - 1];
@@ -3497,6 +3491,7 @@ function tenantListOfKind(kind) {
   const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder) return false;
+    if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
     return factory ? roomIsFactory(r) : !roomIsFactory(r);
   }).sort((a, b) => {
