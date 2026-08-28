@@ -529,7 +529,30 @@ textarea { min-height: 92px; resize: vertical; }
   body.print-report .report-wrap { max-height: none !important; overflow: visible !important; }
   body.print-report .admin-scroll { padding: 0 !important; }
 }
-.report-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.report-actions { display: flex; gap: 8px; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+.report-actions .ghost.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+.acct-grid {
+  display: grid; gap: 10px; margin-top: 4px;
+  grid-template-columns: 1fr 1fr;
+}
+.acct-card {
+  background: #f7f7f7; border-radius: 16px; padding: 12px 14px;
+}
+.acct-card .k { margin-bottom: 8px; }
+.acct-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-top: 4px; }
+.acct-bal {
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+  font-size: 13px; font-weight: 800;
+}
+.acct-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding: 14px 16px; border-radius: 18px;
+  background: var(--ok-soft);
+}
+.acct-total strong { font-size: 22px; font-weight: 800; white-space: nowrap; }
+@media (min-width: 860px) {
+  .acct-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+}
 .item {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center;
   padding: 10px; cursor: pointer;

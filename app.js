@@ -8,8 +8,10 @@ const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:26";
+const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
+const APP_VERSION = "2026-08-28-下午1:34";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:34", items: ["整體報表改為統潔、信潔、個人戶、現金（保險箱）四戶歷史營收，可查月／年並顯示總餘額"] },
   { ver: "2026-08-28-下午1:26", items: ["新增一筆：進帳綠色、出帳紅色"] },
   { ver: "2026-08-28-下午1:24", items: ["信潔與統潔收支圓餅圖改為同一組顏色"] },
   { ver: "2026-08-28-下午1:22", items: ["新增一筆帳戶改為統潔、信潔、聯名戶、個人戶、現金（保險箱）"] },
@@ -1412,6 +1414,102 @@ function collectLedger() {
   });
   return rows.filter(x => x.date);
 }
+function rowAccount(row) {
+  const c = String((row && row.company) || "");
+  if (REPORT_ACCOUNTS.includes(c) || c === "聯名戶") return c;
+  if (/現金|保險/.test(c)) return "現金(保險箱)";
+  if (/個人/.test(c)) return "個人戶";
+  if (/聯名/.test(c)) return "聯名戶";
+  if (/信潔/.test(c)) return "信潔";
+  return "統潔";
+}
+function ensureReportPeriod() {
+  const n = new Date();
+  if (!ui.reportYear) ui.reportYear = n.getFullYear();
+  if (!ui.reportMonth) ui.reportMonth = n.getMonth() + 1;
+  if (ui.reportMode !== "year") ui.reportMode = "month";
+}
+function reportBounds() {
+  ensureReportPeriod();
+  const y = ui.reportYear, m = ui.reportMonth;
+  if (ui.reportMode === "year") {
+    return { start: y + "-01-01", end: y + "-12-31", label: y + " 年", unit: "年", prev: "上一年", next: "下一年" };
+  }
+  const last = new Date(y, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  return {
+    start: y + "-" + mm + "-01",
+    end: y + "-" + mm + "-" + String(last).padStart(2, "0"),
+    label: y + " 年 " + m + " 月",
+    unit: "月", prev: "上一月", next: "下一月"
+  };
+}
+function accountStats(name, start, end) {
+  const rows = collectLedger().filter(x => rowAccount(x) === name);
+  const period = rows.filter(x => x.date >= start && x.date <= end);
+  const inn = period.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const out = period.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+  const hist = rows.filter(x => x.date <= end);
+  const balIn = hist.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const balOut = hist.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+  return { inn, out, net: inn - out, bal: balIn - balOut, count: period.length };
+}
+function shiftReport(delta) {
+  ensureReportPeriod();
+  if (ui.reportMode === "year") ui.reportYear += delta;
+  else {
+    ui.reportMonth += delta;
+    if (ui.reportMonth < 1) { ui.reportMonth = 12; ui.reportYear -= 1; }
+    if (ui.reportMonth > 12) { ui.reportMonth = 1; ui.reportYear += 1; }
+  }
+}
+function overallReportHtml() {
+  const b = reportBounds();
+  const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
+  const joint = accountStats("聯名戶", b.start, b.end);
+  const totalBal = stats.reduce((s, x) => s + x.bal, 0) + joint.bal;
+  const totalNet = stats.reduce((s, x) => s + x.net, 0) + joint.net;
+  const totalIn = stats.reduce((s, x) => s + x.inn, 0) + joint.inn;
+  const totalOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
+  const yearOn = ui.reportMode === "year";
+  return `<div class="card card-body" id="overall-report">
+    <div class="row" style="align-items:flex-start">
+      <div>
+        <h2 class="dash-h" style="margin:0">整體報表</h2>
+        <div class="small">四戶歷史營收：本期收支與截至本期的累計餘額</div>
+      </div>
+      <div class="report-actions no-print">
+        <button type="button" class="ghost ${yearOn ? "" : "on"}" data-report-mode="month" style="width:auto">月</button>
+        <button type="button" class="ghost ${yearOn ? "on" : ""}" data-report-mode="year" style="width:auto">年</button>
+        <button type="button" class="ghost" id="export-report" style="width:auto">匯出 Excel</button>
+        <button type="button" class="ghost" id="print-report" style="width:auto">列印</button>
+      </div>
+    </div>
+    <div class="cal-nav">
+      <button type="button" class="ghost" data-report-nav="-1">${b.prev}</button>
+      <strong>${b.label}</strong>
+      <button type="button" class="ghost" data-report-nav="1">${b.next}</button>
+    </div>
+    <div class="acct-grid">
+      ${stats.map(s => `
+        <div class="acct-card">
+          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
+          <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          <div class="acct-row"><span>本期淨額</span><strong class="${s.net >= 0 ? "led-in" : "led-out"}">${money(s.net)}</strong></div>
+          <div class="acct-bal">累計餘額　${money(s.bal)}</div>
+        </div>`).join("")}
+    </div>
+    ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶本期淨額 ${money(joint.net)}　累計餘額 ${money(joint.bal)}</div>` : ""}
+    <div class="acct-total">
+      <div>
+        <div class="k">總餘額</div>
+        <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}　本期淨額 ${money(totalNet)}</div>
+      </div>
+      <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
+    </div>
+  </div>`;
+}
 function monthCashHtml() {
   ensureCalMonth();
   const editing = ui.editBookId ? (state.books || []).find(b => b.id === ui.editBookId) : null;
@@ -2343,19 +2441,24 @@ function overallRows() {
   });
 }
 function exportOverallReport() {
+  const b = reportBounds();
+  const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
+  const joint = accountStats("聯名戶", b.start, b.end);
+  const acctRows = stats.map(s => [s.name, s.inn, s.out, s.net, s.bal]);
+  if (joint.inn || joint.out || joint.bal) acctRows.push(["聯名戶", joint.inn, joint.out, joint.net, joint.bal]);
+  const totIn = acctRows.reduce((s, r) => s + r[1], 0);
+  const totOut = acctRows.reduce((s, r) => s + r[2], 0);
+  acctRows.push(["總計", totIn, totOut, totIn - totOut, acctRows.reduce((s, r) => s + r[4], 0)]);
   const items = overallRows();
   const summary = [
     ["項目", "數值"],
+    ["期間", b.label],
+    ["總餘額", acctRows[acctRows.length - 1][4]],
     ["套房數", state.rooms.filter(r => r.kind !== "factory" && r.status !== "office").length],
     ["廠房數", state.rooms.filter(r => r.kind === "factory").length],
     ["租客數", state.tenants.length],
     ["本月已繳", state.tenants.filter(t => t.paid).length],
     ["本月未繳", state.tenants.filter(t => !t.paid).length],
-    ["應收租金", state.rooms.filter(r => r.kind !== "factory").reduce((s, r) => s + (Number(r.rent) || 0), 0)],
-    ["已收租金", state.tenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0)],
-    ["報修待處理", state.repairs.filter(x => x.status === "open").length],
-    ["報修處理中", state.repairs.filter(x => x.status === "doing").length],
-    ["報修已完成", state.repairs.filter(x => x.status === "done").length],
     ["匯出時間", nowStamp()]
   ];
   const assetHead = ["房號", "類型", "樓層/組別", "狀態", "租客/管理人", "電話", "月租", "繳費", "起租日", "到期日", "剩餘天數", "LINE", "地址"];
@@ -2369,6 +2472,7 @@ function exportOverallReport() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+${xlsSheet("帳戶營收", ["帳戶", "本期收入", "本期支出", "本期淨額", "累計餘額"], acctRows)}
 ${xlsSheet("總覽", ["項目", "數值"], summary.slice(1))}
 ${xlsSheet("全部資產", assetHead, items.map(x => x.row))}
 ${xlsSheet("報修", repairHead, repairRows)}
@@ -2500,42 +2604,7 @@ function adminDash() {
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
-    <div class="card card-body" id="overall-report">
-      <div class="row" style="align-items:flex-start">
-        <div>
-          <h2 class="dash-h" style="margin:0">整體報表</h2>
-          <div class="small">套房、廠房、繳費、報修一次彙總，可匯出 Excel 或列印</div>
-        </div>
-        <div class="report-actions no-print">
-          <button type="button" class="ghost" id="export-report" style="width:auto;flex:0 0 auto">匯出 Excel</button>
-          <button type="button" class="ghost" id="print-report" style="width:auto;flex:0 0 auto">列印</button>
-        </div>
-      </div>
-      <div class="report-sum">
-        <span>套房 ${studios.length}</span>
-        <span>廠房 ${state.rooms.filter(r => r.kind === "factory").length}</span>
-        <span>已繳 ${state.tenants.filter(t => t.paid).length}</span>
-        <span>未繳 ${unpaidTenants.length}</span>
-        <span>報修中 ${fixes.open + fixes.doing}</span>
-      </div>
-      <div class="report-wrap">
-        <table class="report-table">
-          <thead><tr><th>房號</th><th>類型</th><th>狀態</th><th>租客</th><th>月租</th><th>繳費</th><th>到期</th><th>LINE</th></tr></thead>
-          <tbody>
-            ${overallRows().map(x => `<tr>
-              <td>${escapeHtml(String(x.row[0]))}</td>
-              <td>${escapeHtml(String(x.row[1]))}</td>
-              <td>${escapeHtml(String(x.row[3]))}</td>
-              <td>${escapeHtml(String(x.row[4]))}</td>
-              <td>${money(x.row[6])}</td>
-              <td>${escapeHtml(String(x.row[7]))}</td>
-              <td>${escapeHtml(String(x.row[9] || "—"))}</td>
-              <td>${escapeHtml(String(x.row[11]))}</td>
-            </tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    ${overallReportHtml()}
     ${monthCashHtml()}
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">樓層出租概況</h2>
@@ -3400,6 +3469,22 @@ function bindAdmin() {
   if (exportBtn) exportBtn.onclick = exportOverallReport;
   const printReport = document.getElementById("print-report");
   if (printReport) printReport.onclick = printOverallReport;
+  document.querySelectorAll("[data-report-nav]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      shiftReport(Number(btn.dataset.reportNav));
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-report-mode]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      ui.reportMode = btn.dataset.reportMode === "year" ? "year" : "month";
+      ui.keepScroll = true;
+      render();
+    };
+  });
   refreshLineBinds().then(() => {
     document.querySelectorAll("[data-line-status]").forEach(el => {
       const no = el.dataset.lineStatus;
