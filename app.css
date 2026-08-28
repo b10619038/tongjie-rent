@@ -610,7 +610,9 @@ textarea { min-height: 92px; resize: vertical; }
   cursor: pointer; font: inherit; font-weight: 800;
 }
 .floor-h.fold-h.closed { opacity: .9; }
-.factory-pack.folded { display: none; }
+.factory-pack { overflow: hidden; }
+.factory-pack-inner { display: grid; gap: 12px; }
+.factory-pack.folded { height: 0; }
 .select-mini { border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px; background: var(--card); }
 .field { display: grid; gap: 6px; margin: 10px 0; font-size: 13px; color: var(--muted); }
 .contract-list { display: grid; gap: 10px; }

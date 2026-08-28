@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午4:12";
+const APP_VERSION = "2026-08-28-下午4:16";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
   { ver: "2026-08-28-下午4:12", items: ["套房租客／廠房租客切換改為與所有資產相同的順滑移動"] },
   { ver: "2026-08-28-下午4:08", items: ["租客可上傳大頭貼，廠房分組可收合並支援全開全關"] },
   { ver: "2026-08-28-下午4:00", items: ["廠房租客預留 40 個空白名額"] },
@@ -3360,7 +3361,7 @@ function adminRoomListHtml(kind) {
         </select>
       </div>`).join("");
       return `<button type="button" class="floor-h fold-h${closed ? " closed" : ""}" data-factory-fold="${escapeHtml(g.group)}">${escapeHtml(g.group)}${g.company ? " · " + escapeHtml(g.company) : ""} · ${escapeHtml(g.street)}（${g.rooms.length} 戶）</button>
-      <div class="factory-pack${closed ? " folded" : ""}" data-factory-pack="${escapeHtml(g.group)}">${cards}</div>`;
+      <div class="factory-pack${closed ? " folded" : ""}" data-factory-pack="${escapeHtml(g.group)}"${closed ? ' style="height:0"' : ""}><div class="factory-pack-inner">${cards}</div></div>`;
     }).join("");
   }
   if (!ui.studioBldg) {
@@ -4241,6 +4242,32 @@ function bindLineSwipe() {
     wrap.addEventListener("touchend", onUp);
   });
 }
+function setFactoryPack(pack, close) {
+  if (!pack) return;
+  const inner = pack.querySelector(".factory-pack-inner") || pack;
+  pack.style.overflow = "hidden";
+  pack.style.transition = "height .45s cubic-bezier(.22,.82,.22,1)";
+  const isClosed = pack.classList.contains("folded") || pack.style.height === "0px";
+  if (close) {
+    if (isClosed && pack.getBoundingClientRect().height < 2) return;
+    pack.style.height = inner.scrollHeight + "px";
+    pack.offsetHeight;
+    pack.classList.add("folded");
+    pack.style.height = "0px";
+  } else {
+    if (!isClosed && pack.style.height !== "0px") { pack.style.height = "auto"; return; }
+    pack.classList.remove("folded");
+    pack.style.height = "0px";
+    pack.offsetHeight;
+    pack.style.height = inner.scrollHeight + "px";
+    const onEnd = e => {
+      if (e.propertyName && e.propertyName !== "height") return;
+      if (!pack.classList.contains("folded")) pack.style.height = "auto";
+      pack.removeEventListener("transitionend", onEnd);
+    };
+    pack.addEventListener("transitionend", onEnd);
+  }
+}
 function bindFactoryFold() {
   document.querySelectorAll("[data-factory-fold]").forEach(btn => {
     btn.onclick = e => {
@@ -4252,7 +4279,7 @@ function bindFactoryFold() {
       const closed = !!ui.factoryFold[g];
       btn.classList.toggle("closed", closed);
       document.querySelectorAll("[data-factory-pack]").forEach(p => {
-        if (p.dataset.factoryPack === g) p.classList.toggle("folded", closed);
+        if (p.dataset.factoryPack === g) setFactoryPack(p, closed);
       });
     };
   });
@@ -4266,7 +4293,7 @@ function bindFactoryFold() {
         ui.factoryFold[b.dataset.factoryFold] = close;
         b.classList.toggle("closed", close);
       });
-      document.querySelectorAll("[data-factory-pack]").forEach(p => p.classList.toggle("folded", close));
+      document.querySelectorAll("[data-factory-pack]").forEach(p => setFactoryPack(p, close));
     };
   });
 }
