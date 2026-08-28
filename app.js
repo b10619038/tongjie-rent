@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:20";
+const APP_VERSION = "2026-08-28-晚上11:25";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:25", items: ["租客列表可搜尋房號、姓名、電話"] },
   { ver: "2026-08-28-晚上11:20", onlyDev: true, items: ["開發者後台登出／租客改回分開的兩顆圖塊"] },
   { ver: "2026-08-28-晚上11:15", items: ["套房租客圖卡預設收成姓名列，點一下展開"] },
   { ver: "2026-08-28-晚上11:05", onlyDev: true, items: ["開發者後台登出／租客合併為可左右滑動的圖塊"] },
@@ -4133,14 +4134,24 @@ function adminRooms() {
 function roomIsFactory(r) {
   return !!(r && r.kind === "factory");
 }
+function normSearch(s) {
+  return String(s || "").toLowerCase().replace(/[\s、\-－()]/g, "");
+}
+function tenantMatchesQ(t, r, q) {
+  const parts = [t.name, t.phone, t.contactName, r && r.no];
+  return parts.some(x => normSearch(x).includes(q));
+}
 function tenantListOfKind(kind) {
   const factory = kind === "factory";
+  const q = normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder) return false;
     if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
-    return factory ? roomIsFactory(r) : !roomIsFactory(r);
+    if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
+    if (q && !tenantMatchesQ(t, r, q)) return false;
+    return true;
   }).sort((a, b) => {
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
@@ -4156,7 +4167,8 @@ function tenantListOfKind(kind) {
 }
 function tenantListInnerHtml(kind) {
   const list = tenantListOfKind(kind);
-  const renews = (state.renewals || []).filter(x => {
+  const q = normSearch(ui.tenantQ);
+  const renews = q ? [] : (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
     const room = state.rooms.find(r => r.id === x.roomId);
     if (!room || room.status === "office") return false;
@@ -4205,7 +4217,7 @@ function tenantListInnerHtml(kind) {
       ${foldable ? `<div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>` : details}
     </div>
     </div>`;
-  }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}`;
+  }).join("") : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
 }
 function tenantKindHint(kind) {
   return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
@@ -4229,6 +4241,21 @@ function applyTenantKind(kind) {
     bindTenantListTools();
     bindTenantFold();
   }
+}
+function bindTenantSearch() {
+  const inp = document.getElementById("tenant-search");
+  if (!inp) return;
+  inp.oninput = () => {
+    ui.tenantQ = String(inp.value || "");
+    const box = document.getElementById("tenant-list");
+    if (!box) return;
+    const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+    box.innerHTML = tenantListInnerHtml(kind);
+    bindAdminRoomItems();
+    bindLineSwipe();
+    bindTenantListTools();
+    bindTenantFold();
+  };
 }
 function bindTenantFold() {
   document.querySelectorAll("[data-fold-tenant]").forEach(el => {
@@ -4329,6 +4356,9 @@ function adminTenants() {
         <button type="button" class="${kind === "studio" ? "on" : ""}" data-tenant-kind="studio">套房租客</button>
         <button type="button" class="${kind === "factory" ? "on" : ""}" data-tenant-kind="factory">廠房租客</button>
       </div>
+    </div>
+    <div class="card card-body tenant-search">
+      <input id="tenant-search" type="search" enterkeyhint="search" placeholder="搜尋房號、姓名、電話" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
@@ -5246,6 +5276,7 @@ function bindAdmin() {
   bindFactoryFold();
   bindLineSwipe();
   bindTenantFold();
+  bindTenantSearch();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
