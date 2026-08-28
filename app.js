@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午4:08";
+const APP_VERSION = "2026-08-28-下午4:12";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午4:12", items: ["套房租客／廠房租客切換改為與所有資產相同的順滑移動"] },
   { ver: "2026-08-28-下午4:08", items: ["租客可上傳大頭貼，廠房分組可收合並支援全開全關"] },
   { ver: "2026-08-28-下午4:00", items: ["廠房租客預留 40 個空白名額"] },
   { ver: "2026-08-28-下午3:50", items: ["租客分為套房租客與廠房租客，現有房號都在套房"] },
@@ -3437,8 +3438,7 @@ function tenantListOfKind(kind) {
   }
   return list;
 }
-function adminTenants() {
-  const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+function tenantListInnerHtml(kind) {
   const list = tenantListOfKind(kind);
   const renews = (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
@@ -3446,17 +3446,7 @@ function adminTenants() {
     if (!room || room.status === "office") return false;
     return kind === "factory" ? roomIsFactory(room) : !roomIsFactory(room);
   }).slice().reverse();
-  return `<div class="admin-grid list">
-    <div class="card card-body">
-      <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
-        <i class="seg-bg"></i>
-        <button type="button" class="${kind === "studio" ? "on" : ""}" data-tenant-kind="studio">套房租客</button>
-        <button type="button" class="${kind === "factory" ? "on" : ""}" data-tenant-kind="factory">廠房租客</button>
-      </div>
-    </div>
-    <p class="small" style="padding:0 4px">${kind === "factory" ? "廠房租客預留 40 個名額，尚未登記的可先留白。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。"}</p>
-    <div id="tenant-list">
-    ${renews.length ? `<div class="card card-body"><h2 class="dash-h">續約申請</h2>${renews.map(x => {
+  return `${renews.length ? `<div class="card card-body"><h2 class="dash-h">續約申請</h2>${renews.map(x => {
       const room = state.rooms.find(r => r.id === x.roomId);
       const tenant = state.tenants.find(t => t.id === x.tenantId);
       return `<div class="mini"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")}</b>
@@ -3504,8 +3494,112 @@ function adminTenants() {
       <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>
     </div>
     </div>`;
-  }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}
+  }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}`;
+}
+function tenantKindHint(kind) {
+  return kind === "factory" ? "廠房租客預留 40 個名額，尚未登記的可先留白。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
+}
+function applyTenantKind(kind) {
+  const next = kind === "factory" ? "factory" : "studio";
+  ui.tenantKind = next;
+  const seg = document.getElementById("tenant-kind-seg");
+  if (seg) {
+    seg.classList.remove("is-studio", "is-factory");
+    seg.classList.add(next === "factory" ? "is-factory" : "is-studio");
+    seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tenantKind === next));
+  }
+  const hint = document.getElementById("tenant-kind-hint");
+  if (hint) hint.textContent = tenantKindHint(next);
+  const box = document.getElementById("tenant-list");
+  if (box) {
+    box.innerHTML = tenantListInnerHtml(next);
+    bindAdminRoomItems();
+    bindLineSwipe();
+    bindTenantListTools();
+  }
+}
+function bindTenantListTools() {
+  document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.invoiceRoomId = btn.dataset.invoice;
+      ui.invoiceFrom = "tenants";
+      ui.page = "invoice";
+      render();
+    };
+  });
+  document.querySelectorAll("#tenant-list [data-toggle-pay]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = state.tenants.find(x => x.id === btn.dataset.togglePay);
+      if (!t) return;
+      t.paid = !t.paid;
+      if (t.paid) {
+        if (!t.paidAt) t.paidAt = nowStamp();
+        if (!t.paidVia) t.paidVia = "app";
+      } else {
+        t.paidVia = "";
+        t.lineNotified = false;
+        t.paidAt = "";
+      }
+      save();
+      const box = document.getElementById("tenant-list");
+      if (box) {
+        box.innerHTML = tenantListInnerHtml(ui.tenantKind === "factory" ? "factory" : "studio");
+        bindAdminRoomItems();
+        bindLineSwipe();
+        bindTenantListTools();
+      } else render();
+    };
+  });
+  document.querySelectorAll("#tenant-list [data-renew-done]").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const item = (state.renewals || []).find(x => x.id === btn.dataset.renewDone);
+      if (item) {
+        item.status = "done";
+        save();
+        const box = document.getElementById("tenant-list");
+        if (box) {
+          box.innerHTML = tenantListInnerHtml(ui.tenantKind === "factory" ? "factory" : "studio");
+          bindAdminRoomItems();
+          bindLineSwipe();
+          bindTenantListTools();
+        } else render();
+      }
+    };
+  });
+  document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
+    inp.onclick = e => e.stopPropagation();
+    inp.onchange = () => {
+      const item = (state.renewals || []).find(x => x.id === inp.dataset.renewAppoint);
+      if (!item) return;
+      item.appointAt = inp.value;
+      item.appointRead = !inp.value;
+      save();
+      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
+      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
+      if (inp.value) {
+        const room = state.rooms.find(x => x.id === item.roomId);
+        pushPhoneNotify("續約簽約時間", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
+      }
+    };
+  });
+}
+function adminTenants() {
+  const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
+        <i class="seg-bg"></i>
+        <button type="button" class="${kind === "studio" ? "on" : ""}" data-tenant-kind="studio">套房租客</button>
+        <button type="button" class="${kind === "factory" ? "on" : ""}" data-tenant-kind="factory">廠房租客</button>
+      </div>
     </div>
+    <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
+    <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
         <div>
@@ -4336,15 +4430,7 @@ function bindAdmin() {
       e.preventDefault();
       const kind = btn.dataset.tenantKind === "factory" ? "factory" : "studio";
       if ((ui.tenantKind === "factory" ? "factory" : "studio") === kind) return;
-      ui.tenantKind = kind;
-      const seg = btn.closest(".seg") || document.getElementById("tenant-kind-seg");
-      if (seg) {
-        seg.classList.remove("is-studio", "is-factory");
-        seg.classList.add(kind === "factory" ? "is-factory" : "is-studio");
-        seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tenantKind === kind));
-      }
-      ui.keepScroll = true;
-      render();
+      applyTenantKind(kind);
     };
   });
   const onTab = document.querySelector(".tab.on");

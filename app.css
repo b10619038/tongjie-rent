@@ -632,7 +632,7 @@ textarea { min-height: 92px; resize: vertical; }
   box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateX(0);
   opacity: 0; transition: transform .45s cubic-bezier(.22,.82,.22,1), opacity .2s ease;
 }
-#asset-list { display: contents; }
+#asset-list, #tenant-list { display: contents; }
 .seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg { opacity: 1; }
 .seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translateX(100%); }
 .seg button {
