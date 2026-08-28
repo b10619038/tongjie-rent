@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:15";
+const APP_VERSION = "2026-08-28-下午2:16";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:16", items: ["AI助手更名為工作助手"] },
   { ver: "2026-08-28-下午2:15", items: ["整體報表累計餘額可點進去編輯", "已移除四戶本期淨額"] },
   { ver: "2026-08-28-下午2:05", items: ["我的房間圖卡改回原本淺綠色，不隨主題變色"] },
   { ver: "2026-08-28-下午2:03", items: ["後台可編輯租客繳費時間與繳費回報", "6821 官方 LINE 繳費回報已歸零"] },
@@ -731,7 +732,7 @@ function pageLabel() {
     "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
-    tenants: "租客", announce: "公告", repairs: "報修", ai: "AI助手", logs: "日誌",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌",
     "tenant-login": "租客登入", "admin-login": "管理員登入"
   };
   return map[p] || p;
@@ -2133,7 +2134,7 @@ function repairView() {
 }
 
 function adminView() {
-  const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "AI助手"]];
+  const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "工作助手"]];
   if (ui.adminCode === "1240") pages.push(["logs", "日誌"]);
   return `
     <div class="admin-bar">
@@ -2262,7 +2263,7 @@ function adminAi() {
       </div>`;
     }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}
     <div class="card card-body">
-      <h2 class="dash-h">AI助手</h2>
+      <h2 class="dash-h">工作助手</h2>
       <div class="small">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
       <div class="ai-chips">
         <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
@@ -2271,7 +2272,7 @@ function adminAi() {
         <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
         <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
       </div>
-      <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "AI助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
+      <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "工作助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
       <form id="ai-form">
         <textarea id="ai-q" placeholder="例如：銀行通常哪一天去？這個月誰還沒繳？"></textarea>
         <button class="btn-navy" type="submit">送出問題</button>
@@ -2279,7 +2280,7 @@ function adminAi() {
     </div>
     <form class="card card-body" id="bank-form">
       <h2 class="dash-h">上傳銀行入帳資料</h2>
-      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額後，AI助手就能用來對帳。</p>
+      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額後，工作助手就能用來對帳。</p>
       <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
       <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
       <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
