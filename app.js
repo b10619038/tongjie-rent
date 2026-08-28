@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:14";
+const APP_VERSION = "2026-08-29-凌晨2:16";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:16", items: ["租客首頁恢復設備、水電、Wifi；DEMO 房間可模擬完整內容"] },
   { ver: "2026-08-29-凌晨2:14", items: ["租客繳費狀態已移除匯入資料（開發者預覽與所有租客）"] },
   { ver: "2026-08-29-凌晨2:10", items: ["收租率與出租率圓餅改玫瑰與金黃"] },
   { ver: "2026-08-29-凌晨2:08", items: ["滑動排表時不會再切到其他頁"] },
@@ -1773,25 +1774,26 @@ function roomsByFloor() {
 }
 function isDevPreview() { return !!(ui.devPreview && ui.role === "tenant"); }
 function ensureDevPreview() {
-  if (ui.devTenant && ui.devRoom) return;
   const sample = (state.rooms || []).find(r => r.kind !== "factory" && r.status !== "office") || {};
   const y = new Date().getFullYear();
+  const photos = ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"];
   ui.devRoom = {
     id: "r-dev-preview",
     no: "DEMO",
-    title: sample.title || "套房",
+    title: "套房",
     kind: "studio",
     status: "rented",
     rent: 10000,
     deposit: 10000,
-    location: "開發者測試房間（不計入金額）",
+    location: "高雄市鳳山區文龍東路68號2樓-1室",
+    note: "開發者測試房間（不計入金額）",
     tenantId: "t-dev-preview",
-    amenities: Array.isArray(sample.amenities) && sample.amenities.length ? sample.amenities.slice() : ["冷氣", "冰箱", "洗衣機", "機車停車格"],
-    photos: (sample.photos && sample.photos.length) ? sample.photos.slice() : photosFor("6821").slice(),
-    utilities: sample.utilities ? Object.assign({}, sample.utilities) : { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
-    contractImages: []
+    amenities: AMENITIES.slice(),
+    photos: photos,
+    utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+    contractImages: sample.contractImages ? sample.contractImages.slice() : []
   };
-  ui.devTenant = {
+  ui.devTenant = Object.assign({
     id: "t-dev-preview",
     name: "開發者預覽",
     roomId: "r-dev-preview",
@@ -1799,9 +1801,9 @@ function ensureDevPreview() {
     leaseStart: y + "-01-01",
     leaseEnd: (y + 1) + "-12-31",
     dueDay: 5,
-    phone: "",
+    phone: "0912-345-678",
     loginPass: ""
-  };
+  }, ui.devTenant && ui.devTenant.id === "t-dev-preview" ? { avatar: ui.devTenant.avatar, paid: ui.devTenant.paid, paidVia: ui.devTenant.paidVia, paidAt: ui.devTenant.paidAt } : {});
   if (!ui.devRepairs) ui.devRepairs = [];
   if (!ui.devRenewals) ui.devRenewals = [];
   if (!ui.devReactions) ui.devReactions = {};
@@ -3326,7 +3328,7 @@ function homeView() {
       <div class="hero-card slide-left">
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${r.title}</div>
-        <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.location || roomAddress(r.no))}</div>
+        <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
           <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
@@ -3346,6 +3348,7 @@ function homeView() {
         <button class="ghost" id="nearby-spots" type="button">周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
+      ${roomExtrasHtml(r)}
       ${hasAnn ? "" : announceBlock}
     </div>`;
 }
@@ -3507,33 +3510,50 @@ function roomTile(r, clickable, extraClass) {
     <span class="badge ${r.status}">${statusLabel(r.status)}</span>
   </div>`;
 }
+function roomExtrasHtml(r) {
+  if (!r) return "";
+  const am = (Array.isArray(r.amenities) && r.amenities.length) ? r.amenities : AMENITIES;
+  const util = r.utilities || {};
+  const wifi = r.no || "DEMO";
+  return `
+      <div class="section-title"><h2 class="slide-right">設備</h2></div>
+      <div class="chips slide-left">${am.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join("")}</div>
+      <div class="section-title"><h2 class="slide-right">水電</h2></div>
+      <div class="card card-body slide-left">
+        <div class="row"><span class="k">電費</span><span class="v">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span></div>
+        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || "一年固定 $1,800")}</span></div>
+      </div>
+      <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
+      <div class="card card-body slide-left">
+        <div class="row"><span class="k">帳號</span><span class="v">${escapeHtml(wifi)}</span></div>
+        <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
+      </div>`;
+}
+function findRoom(id) {
+  if (isDevPreview()) {
+    ensureDevPreview();
+    if (!id || id === ui.devRoom.id || id === "r-dev-preview") return ui.devRoom;
+  }
+  return (state.rooms || []).find(x => x.id === id) || myRoom();
+}
 function roomDetailView(id) {
-  const r = state.rooms.find(x => x.id === id);
+  const r = findRoom(id);
   if (!r) return `<div class="screen"><p>找不到房間</p></div>`;
+  const photos = (r.photos && r.photos.length) ? r.photos : photosFor(r.no, r.kind);
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left">${(r.photos || photosFor(r.no, r.kind)).map(src => photoEl(src, r.no)).join("")}</div>
+      <div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>
       <div class="card card-body slide-up" style="margin-top:14px">
         <div class="row"><span class="k">房號</span><span class="v">${r.no}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
+        ${r.note ? `<div class="row wrap"><span class="k">說明</span><span class="v">${escapeHtml(r.note)}</span></div>` : ""}
         <div class="row"><span class="k">租金</span><span class="v">${r.status === "office" ? "—" : money(r.rent)}</span></div>
         <div class="row"><span class="k">狀態</span><span class="v"><span class="badge ${r.status}">${statusLabel(r.status)}</span></span></div>
       </div>
-      <div class="section-title"><h2>設備</h2></div>
-      <div class="chips">${r.amenities.map(a => `<span class="chip">${a}</span>`).join("")}</div>
-      <div class="section-title"><h2>水電</h2></div>
-      <div class="card card-body">
-        <div class="row"><span class="k">電費</span><span class="v">${r.utilities.electric}</span></div>
-        <div class="row"><span class="k">水費</span><span class="v">${r.utilities.water}</span></div>
-      </div>
-      <div class="section-title"><h2>Wifi</h2></div>
-      <div class="card card-body">
-        <div class="row"><span class="k">帳號</span><span class="v">${r.no}</span></div>
-        <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
-      </div>
+      ${roomExtrasHtml(r)}
       ${r.kind === "factory" || r.status === "office" ? "" : `<div class="section-title"><h2>使用規範</h2></div>
       <div class="card card-body rules">
         <p>1. 本房為獨立套房，請愛惜房間設備與裝潢。</p>
