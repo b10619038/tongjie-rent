@@ -58,14 +58,15 @@ button, input, textarea, select { font: inherit; }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
 .hero-card {
-  background: color-mix(in srgb, var(--teal) 16%, var(--card));
-  color: var(--ink);
+  background: #e6ede3;
+  color: #17211f;
   border-radius: 26px;
   padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+  border: 1px solid #d5ddd8;
 }
-.hero-card .label { color: var(--muted); font-size: 13px; display: block; margin-bottom: 10px; }
-.hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--ink); }
+.hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
+.hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
+.hero-card .small { color: #7a8a85; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
   background: #ffffff; color: #17211f;
