@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:16";
+const APP_VERSION = "2026-08-29-凌晨2:18";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:18", items: ["套房設備新增床鋪、電梯"] },
   { ver: "2026-08-29-凌晨2:16", items: ["租客首頁恢復設備、水電、Wifi；DEMO 房間可模擬完整內容"] },
   { ver: "2026-08-29-凌晨2:14", items: ["租客繳費狀態已移除匯入資料（開發者預覽與所有租客）"] },
   { ver: "2026-08-29-凌晨2:10", items: ["收租率與出租率圓餅改玫瑰與金黃"] },
@@ -446,7 +447,7 @@ const STUDIO_BUILDINGS = [
 function studioPrefix(no) {
   return String(no || "").replace(/\D/g, "").slice(0, 2);
 }
-const AMENITIES = ["冷氣", "冰箱", "洗衣機", "熱水器", "獨立衛浴", "網路", "書桌椅", "電視", "機車停車格"];
+const AMENITIES = ["冷氣", "冰箱", "洗衣機", "熱水器", "獨立衛浴", "網路", "書桌椅", "電視", "床鋪", "機車停車格", "電梯"];
 const FACTORY_GROUPS = [
   { group: "牛1", street: "文龍東路", company: "信潔", city: "高雄市鳳山區文龍東路", items: [
     { no: "牛1-59", unit: "59號", manager: "文榮" },
@@ -859,7 +860,9 @@ function normalize(data) {
       if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
       if (!r.rent) r.rent = 10000;
     }
-    if (r.title === "套房" && Array.isArray(r.amenities) && !r.amenities.includes("機車停車格")) r.amenities.push("機車停車格");
+    if (r.title === "套房" && Array.isArray(r.amenities)) {
+      ["機車停車格", "床鋪", "電梯"].forEach(x => { if (!r.amenities.includes(x)) r.amenities.push(x); });
+    }
   });
   if (!Array.isArray(data.notices)) data.notices = [];
   if (!Array.isArray(data.announcements)) data.announcements = [];
