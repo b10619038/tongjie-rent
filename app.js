@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:20";
-const TENANT_ROSTER_VER = "20260829-0155";
+const APP_VERSION = "2026-08-29-凌晨1:25";
+const TENANT_ROSTER_VER = "20260829-0200";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:25", items: ["7051、7251 改空房", "套房租客可匯入收款明細"] },
   { ver: "2026-08-29-凌晨1:20", items: ["套入牛10　115年8月收款明細：租金、承租人、已繳日期"] },
   { ver: "2026-08-29-凌晨1:15", items: ["安裝後引導開啟手機／電腦系統通知（Android 與 iOS）"] },
   { ver: "2026-08-29-凌晨1:10", items: ["安裝版才發系統通知：公告、繳費、到期、報修、續約"] },
@@ -889,6 +890,135 @@ function applyTenantRoster(data) {
       room.tenantId = null;
     }
   });
+}
+function isVacantImportName(s) {
+  const n = String(s || "").replace(/\s+/g, "");
+  return !n || n === "0" || n === "空" || n === "空房" || n === "—" || n === "-" || n === "無";
+}
+function formatImportName(s) {
+  return String(s || "").replace(/[\/／\s]+/g, "、").replace(/、+/g, "、").replace(/^、|、$/g, "").trim();
+}
+function mapTenantImportRows(rows) {
+  if (!rows || !rows.length) return [];
+  const norm = r => (r || []).map(c => String(c == null ? "" : c).trim());
+  let headAt = -1;
+  for (let i = 0; i < Math.min(rows.length, 12); i++) {
+    if (norm(rows[i]).some(c => /房號|承租人|收款日期|金額/.test(c))) { headAt = i; break; }
+  }
+  const col = { date: -1, name: -1, no: -1, amount: -1 };
+  if (headAt >= 0) {
+    norm(rows[headAt]).forEach((h, i) => {
+      if (/收款日期|收租日|繳費日|日期/.test(h) && col.date < 0) col.date = i;
+      else if (/承租人|姓名|租客/.test(h)) col.name = i;
+      else if (/房號|房間/.test(h)) col.no = i;
+      else if (/金額|租金|月租/.test(h) && !/押金|水費/.test(h)) col.amount = i;
+    });
+  }
+  const out = [];
+  const start = headAt >= 0 ? headAt + 1 : 0;
+  for (let i = start; i < rows.length; i++) {
+    const raw = rows[i] || [];
+    const line = norm(raw).join(" ");
+    if (!line || /總計|合計|開立發票/.test(line)) continue;
+    let no = col.no >= 0 ? String(raw[col.no] || "").trim() : "";
+    if (!no) {
+      const hit = line.match(/\b(牛?\d{1,2}-?\d{2,4}|[6-7]\d{3})\b/);
+      if (hit) no = hit[1];
+    }
+    no = String(no).replace(/\s+/g, "");
+    if (!no) continue;
+    const name = col.name >= 0 ? String(raw[col.name] || "").trim() : "";
+    const rent = col.amount >= 0 ? cellAmount(raw[col.amount]) : 0;
+    const paidAt = col.date >= 0 ? cellYmd(raw[col.date]) : "";
+    out.push({ no, name, rent, paidAt });
+  }
+  return out;
+}
+function applyTenantImport(list) {
+  let n = 0, vacant = 0, paid = 0;
+  list.forEach(row => {
+    const no = String(row.no || "").replace(/\s+/g, "");
+    if (!no || no === "7651") return;
+    let room = state.rooms.find(r => String(r.no) === no && r.kind !== "factory");
+    if (!room && /^\d{4}$/.test(no)) {
+      room = {
+        id: "r" + no, no, title: "套房", rent: row.rent || 10000, deposit: 25600, kind: "studio",
+        status: "vacant", tenantId: null, photos: photosFor(no), amenities: AMENITIES.slice(),
+        utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+        contractImages: [], location: roomAddress(no)
+      };
+      state.rooms.push(room);
+    }
+    if (!room || room.status === "office" || room.kind === "factory") return;
+    if (isVacantImportName(row.name)) {
+      if (room.status !== "repair") room.status = "vacant";
+      state.tenants = state.tenants.filter(t => t.roomId !== room.id);
+      room.tenantId = null;
+      vacant++; n++;
+      return;
+    }
+    let t = state.tenants.find(x => x.roomId === room.id);
+    if (!t) {
+      t = { id: "t" + no, roomId: room.id, dueDay: 5, phone: "", idNo: "", address: "" };
+      state.tenants.push(t);
+    }
+    t.name = formatImportName(row.name);
+    if (row.rent) room.rent = row.rent;
+    if (row.paidAt) {
+      t.paid = true;
+      t.paidAt = row.paidAt.length <= 10 ? row.paidAt + " 12:00" : row.paidAt;
+      paid++;
+    } else {
+      t.paid = false;
+      t.paidAt = "";
+    }
+    room.tenantId = t.id;
+    if (room.status !== "repair") room.status = "rented";
+    n++;
+  });
+  if (n) { save(); audit("匯入資料", "套入 " + n + " 筆套房資料"); }
+  return { n, vacant, paid };
+}
+async function importTenantFile(file) {
+  toast("正在讀取資料…");
+  try {
+    const buf = await file.arrayBuffer();
+    const name = file.name || "資料";
+    const lower = name.toLowerCase();
+    let rows = [];
+    if (lower.endsWith(".csv") || (file.type && file.type.indexOf("csv") >= 0)) {
+      rows = parseCsvText(new TextDecoder("utf-8").decode(buf));
+    } else {
+      const XLSX = await loadXlsxLib();
+      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      wb.SheetNames.forEach(sn => {
+        rows = rows.concat(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" }));
+      });
+    }
+    const list = mapTenantImportRows(rows);
+    const r = applyTenantImport(list);
+    toast(r.n ? "已匯入 " + r.n + " 筆（空房 " + r.vacant + "、已繳 " + r.paid + "）" : "看不懂這份表，請用房號、承租人、金額、收款日期");
+    render();
+  } catch {
+    toast("讀取失敗，請用 Excel 或 CSV");
+  }
+}
+function downloadTenantTemplate() {
+  const csv = "\uFEFF收款日期,承租人,房號,金額\n2026/8/10,黃宥宇,6821,7000\n,0,7051,\n,0,7251,\n";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "套房收款匯入範本.csv";
+  a.click();
+}
+function bindTenantImport() {
+  const inp = document.getElementById("tenant-import");
+  if (inp) inp.onchange = () => {
+    const file = inp.files && inp.files[0];
+    inp.value = "";
+    if (file) importTenantFile(file);
+  };
+  const tpl = document.getElementById("tenant-tpl");
+  if (tpl) tpl.onclick = () => downloadTenantTemplate();
 }
 function loadLocal() {
   try {
@@ -4695,6 +4825,11 @@ function adminTenants() {
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
+    ${kind === "studio" ? `<div class="card card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label class="upload" style="flex:1">匯入資料<input id="tenant-import" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden /></label>
+      <button type="button" class="ghost" id="tenant-tpl" style="width:auto">下載範本</button>
+    </div>
+    <p class="small" style="padding:0 4px">可匯入收款明細 Excel／CSV（房號、承租人、金額、收款日期）。承租人填 0 會改成空房。</p>` : ""}
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
@@ -5625,6 +5760,7 @@ function bindAdmin() {
   bindLineSwipe();
   bindTenantFold();
   bindTenantSearch();
+  bindTenantImport();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
