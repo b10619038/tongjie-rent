@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午3:06";
+const APP_VERSION = "2026-08-28-下午3:40";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午3:40", items: ["新增一筆可上傳 Excel，工作助手自動記入進出帳與整體報表"] },
   { ver: "2026-08-28-下午3:06", items: ["租客登入需設定密碼，後台可查看，忘記密碼可找回"] },
   { ver: "2026-08-28-下午2:54", items: ["修正手機打開 App 卡在白畫面"] },
   { ver: "2026-08-28-下午2:48", items: ["整體報表年月切換改為順滑滑動", "本月進出帳已清空 8/28 自動帶入的紀錄"] },
@@ -1765,11 +1766,221 @@ function monthCashHtml() {
       </div>
       <div class="cal-form-row">
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
+        <label class="upload xls-up">上傳 Excel<input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden /></label>
       </div>
+      <div class="small">可把做好的 Excel 上傳，工作助手會自動辨識並記入本月進出帳與整體報表。</div>
       <button class="btn-navy" type="submit">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
   </div>`;
+}
+function parseCsvText(text) {
+  const rows = [];
+  let row = [], cell = "", q = false;
+  const s = String(text || "").replace(/^\ufeff/, "");
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (q) {
+      if (ch === '"' && s[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') q = false;
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === "," || ch === "\t") { row.push(cell); cell = ""; }
+    else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (ch !== "\r") cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim()));
+}
+function parseSpreadsheetXml(xml) {
+  const rows = [];
+  const rowRe = /<Row\b[^>]*>([\s\S]*?)<\/Row>/gi;
+  let rm;
+  while ((rm = rowRe.exec(xml))) {
+    const cells = [];
+    const cellRe = /<Cell\b([^>]*)>([\s\S]*?)<\/Cell>/gi;
+    let cm, idx = 0;
+    while ((cm = cellRe.exec(rm[1]))) {
+      const idxM = /ss:Index="(\d+)"/.exec(cm[1] || "");
+      if (idxM) idx = Number(idxM[1]) - 1;
+      while (cells.length < idx) cells.push("");
+      const d = /<Data\b[^>]*>([\s\S]*?)<\/Data>/i.exec(cm[2] || "");
+      cells[idx] = d ? d[1].replace(/<[^>]+>/g, "").replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">") : "";
+      idx++;
+    }
+    if (cells.some(c => String(c).trim())) rows.push(cells);
+  }
+  return rows;
+}
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error("no xlsx"));
+    s.onerror = () => reject(new Error("xlsx"));
+    document.head.appendChild(s);
+  });
+}
+function excelSerialYmd(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num) || num < 20000 || num > 80000) return "";
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(num) * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+function cellYmd(v) {
+  if (v == null || v === "") return "";
+  if (typeof v === "number") return excelSerialYmd(v);
+  const s = String(v).trim();
+  let m = s.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+  if (m) return m[1] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
+  m = s.match(/(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*(\d{1,2})\s*日)?/);
+  if (m) return m[1] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3] || "1").padStart(2, "0");
+  return ymdOf(s) || excelSerialYmd(s);
+}
+function cellAmount(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return Math.abs(v);
+  const n = Number(String(v || "").replace(/[,，\s]/g, "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? Math.abs(n) : 0;
+}
+function cellAccount(v) {
+  const s = String(v || "");
+  if (/現金|保險/.test(s)) return "現金(保險箱)";
+  if (/個人/.test(s)) return "個人戶";
+  if (/聯名/.test(s)) return "聯名戶";
+  if (/信潔/.test(s)) return "信潔";
+  if (/統潔/.test(s)) return "統潔";
+  return "";
+}
+function cellType(v, amountRaw) {
+  const s = String(v || "");
+  if (/出帳|支出|付|借|withdraw|out|expense/i.test(s)) return "out";
+  if (/進帳|收入|收|貸|deposit|in|income/i.test(s)) return "in";
+  if (typeof amountRaw === "number" && amountRaw < 0) return "out";
+  if (/^-/.test(String(amountRaw || ""))) return "out";
+  return "";
+}
+function mapSheetRows(rows) {
+  if (!rows || !rows.length) return [];
+  const norm = r => (r || []).map(c => String(c == null ? "" : c).trim());
+  let headAt = -1;
+  const headKeys = /日期|date|期間|進帳|出帳|金額|帳戶|備註|收入|支出|類型|項目/;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    if (norm(rows[i]).some(c => headKeys.test(c))) { headAt = i; break; }
+  }
+  const col = { date: 0, type: -1, amount: -1, inn: -1, out: -1, company: -1, note: -1 };
+  if (headAt >= 0) {
+    norm(rows[headAt]).forEach((h, i) => {
+      if (/日期|date|期間|入帳日|記帳日/.test(h) && col.date === 0) col.date = i;
+      else if (/類型|收支|進帳\/出帳/.test(h)) col.type = i;
+      else if (/本期收入|收入/.test(h) && !/淨/.test(h)) col.inn = i;
+      else if (/本期支出|支出/.test(h) && !/淨/.test(h)) col.out = i;
+      else if (/金額|amount/.test(h)) col.amount = i;
+      else if (/帳戶|歸屬|公司|company/.test(h)) col.company = i;
+      else if (/備註|說明|項目|note/.test(h)) col.note = i;
+    });
+  }
+  const out = [];
+  const start = headAt >= 0 ? headAt + 1 : 0;
+  for (let i = start; i < rows.length; i++) {
+    const raw = rows[i] || [];
+    const line = norm(raw).join(" ");
+    if (!line || /總計|總餘額|總覽|匯出時間|套房數|廠房數/.test(line)) continue;
+    const date = cellYmd(raw[col.date] != null ? raw[col.date] : raw[0]);
+    let type = col.type >= 0 ? cellType(raw[col.type], raw[col.amount]) : "";
+    let amount = 0;
+    if (col.inn >= 0 || col.out >= 0) {
+      const inn = col.inn >= 0 ? cellAmount(raw[col.inn]) : 0;
+      const outAmt = col.out >= 0 ? cellAmount(raw[col.out]) : 0;
+      if (inn && !outAmt) { type = "in"; amount = inn; }
+      else if (outAmt && !inn) { type = "out"; amount = outAmt; }
+      else if (inn && outAmt) {
+        if (date) {
+          out.push({ date, type: "in", amount: inn, company: cellAccount(raw[col.company]) || "統潔", note: String(raw[col.note] != null ? raw[col.note] : raw[1] || "") });
+          out.push({ date, type: "out", amount: outAmt, company: cellAccount(raw[col.company]) || "統潔", note: String(raw[col.note] != null ? raw[col.note] : raw[1] || "") });
+        }
+        continue;
+      }
+    }
+    if (!amount && col.amount >= 0) amount = cellAmount(raw[col.amount]);
+    if (!amount) {
+      for (let k = raw.length - 1; k >= 0; k--) {
+        const n = cellAmount(raw[k]);
+        if (n) { amount = n; if (!type) type = cellType(raw[k], raw[k]); break; }
+      }
+    }
+    if (!date || !amount) continue;
+    if (!type) type = cellType(line, amount) || "in";
+    const company = (col.company >= 0 ? cellAccount(raw[col.company]) : cellAccount(line)) || "統潔";
+    const note = String((col.note >= 0 ? raw[col.note] : raw[1]) || "").trim();
+    out.push({ date, type, amount, company, note });
+  }
+  return out;
+}
+function importBooksFromRows(list, fileName) {
+  if (!list.length) return 0;
+  if (!state.books) state.books = [];
+  const seen = new Set(state.books.map(b => [b.date, b.type, b.amount, b.company, b.note || ""].join("|")));
+  let n = 0;
+  let first = "";
+  list.forEach(row => {
+    const key = [row.date, row.type, row.amount, row.company, row.note || ""].join("|");
+    if (seen.has(key)) return;
+    seen.add(key);
+    state.books.push({
+      id: "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
+      type: row.type === "out" ? "out" : "in",
+      date: row.date,
+      amount: row.amount,
+      company: BOOK_ACCOUNTS.includes(row.company) ? row.company : "統潔",
+      note: row.note || ("Excel 匯入" + (fileName ? " · " + fileName : "")),
+      roomNo: "",
+      createdAt: nowStamp()
+    });
+    n++;
+    if (!first) first = row.date;
+  });
+  if (n && first) {
+    ui.calYear = Number(first.slice(0, 4));
+    ui.calMonth = Number(first.slice(5, 7));
+    ui.calDay = Number(first.slice(8, 10));
+  }
+  if (n) {
+    if (!state.aiLogs) state.aiLogs = [];
+    state.aiLogs.push({
+      role: "ai",
+      text: "已查看「" + (fileName || "Excel") + "」，辨識 " + n + " 筆記帳並記入本月進出帳與整體報表。"
+    });
+    save();
+  }
+  return n;
+}
+async function importExcelBooks(file, after) {
+  toast("工作助手正在查看 Excel…");
+  try {
+    const name = file.name || "Excel";
+    const buf = await file.arrayBuffer();
+    let rows = [];
+    const lower = name.toLowerCase();
+    if (lower.endsWith(".csv") || file.type.indexOf("csv") >= 0) {
+      rows = parseCsvText(new TextDecoder("utf-8").decode(buf));
+    } else if (lower.endsWith(".xml") || /ss:Workbook|<Workbook/.test(new TextDecoder("utf-8").decode(buf.slice(0, 800)))) {
+      rows = parseSpreadsheetXml(new TextDecoder("utf-8").decode(buf));
+    } else {
+      const XLSX = await loadXlsxLib();
+      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      wb.SheetNames.forEach(sn => {
+        const sheet = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" });
+        rows = rows.concat(sheet);
+      });
+    }
+    const list = mapSheetRows(rows);
+    const n = importBooksFromRows(list, name);
+    toast(n ? "工作助手已記入 " + n + " 筆進出帳" : "看不懂這份表，請用日期、進帳／出帳、金額、帳戶、備註欄位");
+    if (after) after();
+  } catch (err) {
+    toast("Excel 讀取失敗，請另存 CSV 或 .xlsx 再試");
+  }
 }
 function appointLabel(rep) {
   if (!rep.appointAt) return "";
@@ -4398,6 +4609,13 @@ function bindCashCal() {
     toast("已記入日曆");
     };
   }
+  const xls = document.getElementById("book-xls");
+  if (xls) xls.onchange = () => {
+    const file = xls.files && xls.files[0];
+    xls.value = "";
+    if (!file) return;
+    importExcelBooks(file, stay);
+  };
 }
 
 window.addEventListener("appinstalled", () => {
