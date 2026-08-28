@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:48";
+const APP_VERSION = "2026-08-28-下午1:50";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:50", items: ["主題新增極白、極黑"] },
   { ver: "2026-08-28-下午1:48", items: ["租客「我的房間」圖卡會跟著主題色調一起變化"] },
   { ver: "2026-08-28-下午1:44", items: ["總餘額測試進帳 10,000 已歸零"] },
   { ver: "2026-08-28-下午1:34", items: ["整體報表改為統潔、信潔、個人戶、現金（保險箱）四戶歷史營收，可查月／年並顯示總餘額"] },
@@ -44,7 +45,9 @@ const THEMES = [
   { id: "dusk", name: "暮紫", teal: "#6b5b73", mid: "#7e6d86", soft: "#eee8f1", chip: "#f4eef6", ink: "#241c28" },
   { id: "slate", name: "岩灰", teal: "#5c6568", mid: "#6e787c", soft: "#e8ecec", chip: "#f0f2f2", ink: "#1c2224" },
   { id: "ink", name: "墨黑", teal: "#2f3330", mid: "#454a46", soft: "#e6e7e6", chip: "#f0f0ef", ink: "#141615" },
-  { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" }
+  { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" },
+  { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
+  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#161616", chip: "#1c1c1c", ink: "#f5f5f5", paper: "#000000", card: "#111111", line: "#2c2c2c", muted: "#8d8d8d", inkSoft: "#c8c8c8", onTeal: "#111111", bar: "#000000" }
 ];
 function currentThemeId() {
   try { return localStorage.getItem(THEME_KEY) || "sage"; } catch { return "sage"; }
@@ -59,8 +62,15 @@ function applyTheme(id) {
   r.style.setProperty("--mint", t.soft);
   r.style.setProperty("--chip", t.chip);
   r.style.setProperty("--ink", t.ink);
+  r.style.setProperty("--ink-soft", t.inkSoft || "#4b5b57");
+  r.style.setProperty("--muted", t.muted || "#7a8a85");
+  r.style.setProperty("--line", t.line || "#e4ebe8");
+  r.style.setProperty("--paper", t.paper || "#ffffff");
+  r.style.setProperty("--card", t.card || "#ffffff");
+  r.style.setProperty("--on-teal", t.onTeal || "#ffffff");
+  r.style.setProperty("--mask", t.bar === "#000000" ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", t.teal);
+  if (meta) meta.setAttribute("content", t.bar || t.teal);
   try { localStorage.setItem(THEME_KEY, t.id); } catch {}
 }
 function showThemeFab() {
