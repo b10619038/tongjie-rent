@@ -65,12 +65,35 @@ button, input, textarea, select { font: inherit; }
 @keyframes slideUpCard { from { transform: translateY(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
+.keep-still .hero-model { animation: none !important; transform: none !important; opacity: 1 !important; }
 .hero-card {
+  position: relative;
+  overflow: hidden;
   background: #e6ede3;
   color: #17211f;
   border-radius: 26px;
   padding: 20px;
   border: 1px solid #d5ddd8;
+  min-height: 176px;
+}
+.hero-copy { position: relative; z-index: 1; }
+.hero-copy .label,
+.hero-copy .room-name,
+.hero-copy > .small { padding-right: 44%; }
+.hero-model {
+  position: absolute;
+  right: -8%; top: -10%;
+  width: 50%; height: 124%;
+  object-fit: cover;
+  object-position: left center;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 28%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0%, #000 28%, #000 100%);
+  animation: heroModelIn .95s cubic-bezier(.22,.82,.22,1) .12s both;
+}
+@keyframes heroModelIn {
+  from { transform: translateX(46%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }

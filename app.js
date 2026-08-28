@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:25";
+const APP_VERSION = "2026-08-29-凌晨12:30";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:30", items: ["我的房間圖塊右側滑入套房模型"] },
   { ver: "2026-08-29-凌晨12:25", items: ["子母車改為單桶與提垃圾人像", "套房詳情新增基本使用規範"] },
   { ver: "2026-08-29-凌晨12:20", items: ["套房與公共陽台照片改為白色簡約建模風格"] },
   { ver: "2026-08-29-凌晨12:15", items: ["房間新增子母車（垃圾桶）與使用規範"] },
@@ -3082,13 +3083,16 @@ function homeView() {
     <div class="screen">
       ${hasAnn ? announceBlock : ""}
       <div class="hero-card slide-left">
-        <div class="label">我的房間</div>
-        <div class="room-name">${r.no}　${r.title}</div>
-        <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.location || roomAddress(r.no))}</div>
-        <div class="hero-stats">
-          <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
-          <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
+        <div class="hero-copy">
+          <div class="label">我的房間</div>
+          <div class="room-name">${r.no}　${r.title}</div>
+          <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.location || roomAddress(r.no))}</div>
+          <div class="hero-stats">
+            <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
+            <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
+          </div>
         </div>
+        <img class="hero-model" src="${(r.photos && r.photos[0]) || photosFor(r.no)[0]}" alt="" />
       </div>
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
