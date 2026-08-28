@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:15";
+const APP_VERSION = "2026-08-29-凌晨12:20";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:20", items: ["套房與公共陽台照片改為白色簡約建模風格"] },
   { ver: "2026-08-29-凌晨12:15", items: ["房間新增子母車（垃圾桶）與使用規範"] },
   { ver: "2026-08-29-凌晨12:10", items: ["房間停車位改為白色簡約建模照片"] },
   { ver: "2026-08-28-晚上11:55", items: ["租客內容新增周邊景點，可看地圖並導航"] },
@@ -521,8 +522,13 @@ const PHOTO_SET = [
 function isUsablePhoto(src) {
   return typeof src === "string" && (src.startsWith("data:image") || src.startsWith("images/") || src.startsWith("blob:") || src.startsWith("http"));
 }
+const PHOTO_STYLE_VER = "iso-white-1";
 function ensurePhotos(r) {
   if (!Array.isArray(r.photos)) r.photos = [];
+  if (r.photoStyle !== PHOTO_STYLE_VER) {
+    r.photos = photosFor(r.no).slice();
+    r.photoStyle = PHOTO_STYLE_VER;
+  }
   r.photos = r.photos.filter(isUsablePhoto).slice(0, 5);
   if (!r.photos.length) r.photos = photosFor(r.no).slice();
 }
