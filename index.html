@@ -23,6 +23,7 @@
       animation: splashHouse 1.8s ease forwards;
     }
     #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; }
+    #splash.out svg { animation: none; opacity: 0; }
     @keyframes splashHouse {
       0% { opacity: 0; transform: translateY(18px) scale(.86); }
       28% { opacity: 1; transform: translateY(0) scale(1); }

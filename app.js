@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:48";
+const APP_VERSION = "2026-08-28-下午2:54";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:54", items: ["修正手機打開 App 卡在白畫面"] },
   { ver: "2026-08-28-下午2:48", items: ["整體報表年月切換改為順滑滑動", "本月進出帳已清空 8/28 自動帶入的紀錄"] },
   { ver: "2026-08-28-下午2:37", items: ["總覽圓餅改為整體報表的營收總額與本期收支"] },
   { ver: "2026-08-28-下午2:34", items: ["後台分類列可左右滑動，內容區也可滑動切換分類"] },
@@ -560,8 +561,10 @@ function loadLocal() {
   return normalize(structuredClone(SEED));
 }
 async function pullCloud() {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
   try {
-    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
@@ -573,18 +576,24 @@ async function pullCloud() {
   } catch {
     ui.cloudOk = false;
     return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 async function pushCloud() {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
     state.updatedAt = Date.now();
     const res = await fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(state)
+      body: JSON.stringify(state),
+      signal: ctrl ? ctrl.signal : undefined
     });
     ui.cloudOk = res.ok;
   } catch { ui.cloudOk = false; }
+  finally { if (timer) clearTimeout(timer); }
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -3693,7 +3702,8 @@ function bindAnnounceReactions() {
   });
 }
 function bindAdmin() {
-  document.getElementById("logout").onclick = () => { audit("登出", "切換身分"); clearSession(); render(); };
+  const logout = document.getElementById("logout");
+  if (logout) logout.onclick = () => { audit("登出", "切換身分"); clearSession(); render(); };
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
     btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
   });
@@ -4299,36 +4309,44 @@ document.getElementById("app").addEventListener("click", e => {
 });
 function hideSplash() {
   const el = document.getElementById("splash");
-  if (!el) return;
+  if (!el || el.dataset.done === "1") return;
+  el.dataset.done = "1";
   el.classList.add("out");
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
 }
 async function boot() {
-  const minWait = new Promise(r => setTimeout(r, 1900));
-  restoreUi();
-  applyTheme(currentThemeId());
-  if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
-  render();
-  const got = await pullCloud();
-  if (!got) await pushCloud();
-  restoreUi();
-  render();
-  if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); }
-  await minWait;
+  const splashAt = setTimeout(hideSplash, 2200);
+  try {
+    restoreUi();
+    applyTheme(currentThemeId());
+    if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
+    render();
+    const got = await pullCloud();
+    if (!got) await pushCloud();
+    restoreUi();
+    render();
+    if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()).catch(() => {}); armPushAsk(); }
+  } catch (err) {
+    try { console.error(err); } catch {}
+    try { render(); } catch {}
+  }
+  clearTimeout(splashAt);
   hideSplash();
   setInterval(async () => {
-    const before = {
-      anns: (state.announcements || []).map(a => a.id),
-      repairIds: (state.repairs || []).map(r => r.id),
-      repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
-      renewIds: (state.renewals || []).map(x => x.id)
-    };
-    const prevUpdated = state.updatedAt;
-    const changed = await pullCloud();
-    if (changed && state.updatedAt !== prevUpdated) {
-      notifyCloudChanges(before);
-      render();
-    }
+    try {
+      const before = {
+        anns: (state.announcements || []).map(a => a.id),
+        repairIds: (state.repairs || []).map(r => r.id),
+        repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
+        renewIds: (state.renewals || []).map(x => x.id)
+      };
+      const prevUpdated = state.updatedAt;
+      const changed = await pullCloud();
+      if (changed && state.updatedAt !== prevUpdated) {
+        notifyCloudChanges(before);
+        render();
+      }
+    } catch {}
   }, 12000);
 }
 window.addEventListener("pagehide", persistUi);
