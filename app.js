@@ -12,11 +12,12 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上9:40";
+const APP_VERSION = "2026-08-28-晚上10:00";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-28-晚上9:40", items: ["整體報表改為典籍個人戶，可下拉八位成員", "套房租客圖卡顯示在線中／離線中", "日誌會記下管理員操作時的地址與手機型號", "修正畫面每隔幾秒自動跳一下"] },
+  { ver: "2026-08-28-晚上10:00", items: ["整體報表個人戶圖卡改與其他帳戶同大小，下拉改為請下拉選擇", "日誌地址改為台灣縣市＋區", "套房租客在線狀態改到姓名右側"] },
+  { ver: "2026-08-28-晚上9:40", items: ["整體報表個人戶可下拉八位成員", "套房租客圖卡顯示在線中／離線中", "日誌會記下管理員操作時的地址與手機型號", "修正畫面每隔幾秒自動跳一下"] },
   { ver: "2026-08-28-晚上8:55", items: ["整體報表個人戶納入八位成員", "新增一筆帳戶的個人戶可選趙文榮等八位"] },
   { ver: "2026-08-28-下午6:55", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
   { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
@@ -1039,44 +1040,96 @@ async function refreshGeo() {
   if (ui.geoAddr) return ui.geoAddr;
   if (ui.geoTried) return ui.geoAddr || "";
   ui.geoTried = true;
-  const sources = ["https://ipwho.is/", "https://ipapi.co/json/", "https://ipinfo.io/json"];
-  for (const url of sources) {
-    try {
-      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 3500) : 0;
-      const res = await fetch(url, { signal: ctrl ? ctrl.signal : undefined });
-      if (timer) clearTimeout(timer);
-      if (!res.ok) continue;
-      const d = await res.json();
-      if (!d || d.success === false) continue;
-      const cc = String(d.country_code || d.country || "");
-      const country = d.country_name || (/^TW$/i.test(cc) ? "臺灣" : d.country);
-      const addr = fmtGeo({ country, region: d.region, city: d.city });
-      if (!addr) continue;
-      ui.geoAddr = addr;
-      ui.geoIp = d.ip || "";
-      return ui.geoAddr;
-    } catch {}
+  const ip = await lookupIpFix();
+  if (ip && ip.ip) ui.geoIp = ip.ip;
+  let addr = "";
+  if (ip && isFinite(ip.lat) && isFinite(ip.lon)) addr = await reverseTwAddr(ip.lat, ip.lon);
+  if (!addr && ip) addr = fmtTwAddr({
+    country: ip.country,
+    country_code: ip.country_code,
+    city: ip.city,
+    county: ip.region,
+    suburb: ip.district || ""
+  });
+  if (addr) {
+    ui.geoAddr = addr;
+    backfillAuditAddress(addr);
   }
-  return "";
+  return ui.geoAddr || "";
 }
-function fmtGeo(d) {
+async function fetchJson(url) {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 3500) : 0;
+  try {
+    const res = await fetch(url, { signal: ctrl ? ctrl.signal : undefined });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+  finally { if (timer) clearTimeout(timer); }
+}
+async function lookupIpFix() {
+  const list = [
+    ["https://ipwho.is/", d => d && d.success !== false ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country, country_code: d.country_code, region: d.region, city: d.city, ip: d.ip } : null],
+    ["https://ipapi.co/json/", d => d && !d.error ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country_name, country_code: d.country, region: d.region, city: d.city, ip: d.ip } : null],
+    ["https://ipinfo.io/json", d => {
+      const loc = String((d && d.loc) || "").split(",");
+      return { lat: Number(loc[0]), lon: Number(loc[1]), country: d.country, country_code: d.country, region: d.region, city: d.city, ip: d.ip };
+    }]
+  ];
+  for (const [url, parse] of list) {
+    const d = await fetchJson(url);
+    if (!d) continue;
+    const p = parse(d);
+    if (p && isFinite(p.lat) && isFinite(p.lon)) return p;
+  }
+  return null;
+}
+async function reverseTwAddr(lat, lon) {
+  const d = await fetchJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" + lat + "&lon=" + lon + "&zoom=16&addressdetails=1&accept-language=zh-TW");
+  if (!d || !d.address) return "";
+  return fmtTwAddr(d.address);
+}
+function pickZh(s) {
+  const raw = String(s || "").trim();
+  if (!raw) return "";
+  const parts = raw.split(/[;/｜|]/).map(x => x.trim()).filter(Boolean);
+  const cjk = parts.find(x => /[\u4e00-\u9fff]/.test(x));
+  let out = cjk || parts[0] || "";
   const cityMap = {
-    "New Taipei": "新北市", Kaohsiung: "高雄市", Taipei: "臺北市", Taichung: "臺中市",
-    Tainan: "臺南市", Taoyuan: "桃園市", Hsinchu: "新竹", Keelung: "基隆市",
-    Chiayi: "嘉義", Hualien: "花蓮", Taitung: "臺東", Pingtung: "屏東縣",
+    "New Taipei": "新北市", Kaohsiung: "高雄市", Taipei: "台北市", Taichung: "台中市",
+    Tainan: "台南市", Taoyuan: "桃園市", Hsinchu: "新竹市", Keelung: "基隆市",
+    Chiayi: "嘉義", Hualien: "花蓮", Taitung: "台東", Pingtung: "屏東縣",
     Yilan: "宜蘭", Miaoli: "苗栗", Changhua: "彰化", Nantou: "南投",
     Yunlin: "雲林", Penghu: "澎湖", Kinmen: "金門", Lienchiang: "連江"
   };
-  let country = d.country || "";
-  if (/Taiwan|台灣|臺灣|^TW$/i.test(country)) country = "臺灣";
-  const tr = s => {
-    const raw = String(s || "");
-    const k = Object.keys(cityMap).find(x => raw.indexOf(x) >= 0);
-    return k ? cityMap[k] : raw.replace(/ City$/i, "市").replace(/ County$/i, "縣");
-  };
-  const parts = [country, tr(d.region), tr(d.city)].filter(Boolean);
-  return parts.filter((p, i) => parts.indexOf(p) === i).join(" ");
+  const hit = Object.keys(cityMap).find(x => out.indexOf(x) >= 0);
+  if (hit) out = cityMap[hit];
+  return out.replace(/臺/g, "台").replace(/ City$/i, "市").replace(/ County$/i, "縣");
+}
+function fmtTwAddr(a) {
+  if (!a) return "";
+  const cc = String(a.country_code || a.country || "");
+  const isTw = /台灣|臺灣|Taiwan|^tw$/i.test(cc);
+  const city = pickZh(a.city || a.county || a.state || a.region || "");
+  const dist = pickZh(a.suburb || a.city_district || a.district || a.town || a.municipality || a.village || "");
+  if (isTw) {
+    const parts = ["台灣"];
+    if (city) parts.push(city);
+    if (dist && dist !== city) parts.push(dist);
+    return parts.join(" ");
+  }
+  const country = pickZh(a.country) || pickZh(cc);
+  const parts = [country, city, dist].filter((p, i, arr) => p && arr.indexOf(p) === i);
+  return parts.join(" ");
+}
+function backfillAuditAddress(addr) {
+  if (!addr || !state.auditLogs) return;
+  let n = 0;
+  const mine = deviceInfo();
+  state.auditLogs.forEach(x => {
+    if (x && !x.address && x.device === mine) { x.address = addr; n++; }
+  });
+  if (n) try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
 }
 function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
@@ -1892,9 +1945,8 @@ function personOfAccount(c) {
   return "";
 }
 function accountLabel(c) {
-  if (c === "個人戶") return "典籍個人戶";
   const p = personOfAccount(c);
-  if (p) return "典籍個人戶 · " + p;
+  if (p) return "個人戶 · " + p;
   return String(c || "統潔");
 }
 function bookAccountOptions(selected) {
@@ -1903,7 +1955,7 @@ function bookAccountOptions(selected) {
   const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
   const extra = (sel === "個人戶" || (isPersonalKey(sel) && !PERSONAL_ACCOUNTS.includes(sel)))
     ? opt(sel, accountLabel(sel)) : "";
-  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="典籍個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
+  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
 }
 function isBookCompany(v) {
   return BOOK_ACCOUNTS.includes(v) || PERSONAL_ACCOUNTS.includes(v) || v === "個人戶" || isPersonalKey(v);
@@ -1998,13 +2050,13 @@ function overallReportBodyHtml() {
     </div>
     <div class="acct-grid">
       ${stats.map(s => `
-        <div class="acct-card${s.name === "個人戶" ? " acct-wide" : ""}">
-          <div class="k">${s.name === "個人戶" ? "典籍個人戶" : escapeHtml(s.name)}</div>
+        <div class="acct-card">
+          <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          ${s.name === "個人戶" ? `<label class="acct-drop"><span>成員</span>
+          ${s.name === "個人戶" ? `<label class="acct-drop">
             <select id="acct-person-pick">
-              <option value="">請下拉選擇八位成員</option>
+              <option value="">請下拉選擇</option>
               ${PERSONAL_PEOPLE.map(p => {
                 const ps = accountStats(personalKey(p), b.start, b.end);
                 return `<option value="${escapeHtml(personalKey(p))}">${escapeHtml(p)}　${money(ps.bal)}</option>`;
@@ -3497,7 +3549,7 @@ function exportOverallReport() {
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const list = stats.slice();
-  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "典籍個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
+  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
   if (joint.inn || joint.out || joint.bal) list.push(Object.assign({ name: "聯名戶" }, joint));
   const totIn = list.reduce((s, x) => s + x.inn, 0);
   const totOut = list.reduce((s, x) => s + x.out, 0);
@@ -3884,7 +3936,7 @@ function tenantListInnerHtml(kind) {
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE<br>私訊</div>
       <div class="card card-body clickable swipe-front" data-admin-room="${t.roomId}">
-      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="row-end">${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span></span></div>
+      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
       ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
@@ -5431,7 +5483,7 @@ async function boot() {
     restoreUi();
     applyTheme(currentThemeId());
     if (hasUnseenUpdate()) ui.updateReady = true;
-    await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 1200))]);
+    await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
     const got = await pullCloud();
