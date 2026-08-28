@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:50";
+const APP_VERSION = "2026-08-29-凌晨1:55";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:55", items: ["整體報表匯出／列印改為當月、當年、四戶與總餘額排表"] },
   { ver: "2026-08-29-凌晨1:50", items: ["營收總額圓餅改為較清爽的配色"] },
   { ver: "2026-08-29-凌晨1:42", items: ["修復進入後空白"] },
   { ver: "2026-08-29-凌晨1:40", items: ["套入115年7月進出帳與期初餘額（現金、統潔、信潔、個人戶）"] },
@@ -2596,7 +2597,8 @@ function overallReportBodyHtml() {
         <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}</div>
       </div>
       <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
-    </div>`;
+    </div>
+    ${revenueTableHtml()}`;
 }
 function overallReportHtml() {
   const b = reportBounds();
@@ -4113,14 +4115,87 @@ function xmlEsc(v) {
     .replace(/>/g, "&" + "gt;")
     .replace(/"/g, "&" + "quot;");
 }
-function xlsCell(v) {
+function xlsCell(v, style) {
   const n = typeof v === "number" && Number.isFinite(v);
-  return `<Cell><Data ss:Type="${n ? "Number" : "String"}">${xmlEsc(n ? v : v)}</Data></Cell>`;
+  const st = style ? ` ss:StyleID="${style}"` : "";
+  return `<Cell${st}><Data ss:Type="${n ? "Number" : "String"}">${xmlEsc(n ? v : (v == null ? "" : v))}</Data></Cell>`;
+}
+function xlsRow(vals, styles) {
+  return `<Row>${vals.map((v, i) => xlsCell(v, styles && styles[i])).join("")}</Row>`;
 }
 function xlsSheet(name, headers, rows) {
-  const head = `<Row>${headers.map(h => xlsCell(h)).join("")}</Row>`;
-  const body = rows.map(r => `<Row>${r.map(c => xlsCell(c)).join("")}</Row>`).join("");
+  const head = `<Row>${headers.map(h => xlsCell(h, "Head")).join("")}</Row>`;
+  const body = rows.map(r => `<Row>${r.map(c => xlsCell(c, typeof c === "number" ? "Money" : "")).join("")}</Row>`).join("");
   return `<Worksheet ss:Name="${xmlEsc(name)}"><Table>${head}${body}</Table></Worksheet>`;
+}
+function reportAccountBundle() {
+  ensureReportPeriod();
+  const y = ui.reportYear, m = ui.reportMonth;
+  const last = new Date(y, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  const month = { start: y + "-" + mm + "-01", end: y + "-" + mm + "-" + String(last).padStart(2, "0"), label: y + " 年 " + m + " 月" };
+  const year = { start: y + "-01-01", end: y + "-12-31", label: y + " 年" };
+  const cols = REPORT_ACCOUNTS.map(n => ({
+    name: n,
+    m: accountStats(n, month.start, month.end),
+    y: accountStats(n, year.start, year.end)
+  }));
+  const people = PERSONAL_PEOPLE.map(p => ({
+    name: p,
+    m: accountStats(personalKey(p), month.start, month.end),
+    y: accountStats(personalKey(p), year.start, year.end)
+  }));
+  const add = pick => cols.reduce((s, c) => s + pick(c), 0);
+  return {
+    y, m, month, year, cols, people,
+    totals: {
+      mIn: add(c => c.m.inn), mOut: add(c => c.m.out), mNet: add(c => c.m.net),
+      yIn: add(c => c.y.inn), yOut: add(c => c.y.out), yNet: add(c => c.y.net),
+      bal: add(c => c.m.bal)
+    }
+  };
+}
+function revenueTableHtml() {
+  const d = reportAccountBundle();
+  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${money(v)}</td>`;
+  const row = (label, pick, cls) => {
+    const vals = d.cols.map(pick);
+    const tot = vals.reduce((s, x) => s + x, 0);
+    return `<tr class="${cls || ""}"><th>${label}</th>${vals.map(td).join("")}${td(tot)}</tr>`;
+  };
+  return `<div class="rev-sheet">
+    <div class="rev-caption">${escapeHtml(d.month.label)}　／　${escapeHtml(d.year.label)}</div>
+    <table class="rev-table">
+      <thead>
+        <tr><th>項目</th>${d.cols.map(c => `<th>${escapeHtml(c.name)}</th>`).join("")}<th>合計</th></tr>
+      </thead>
+      <tbody>
+        ${row("當月收入", c => c.m.inn)}
+        ${row("當月支出", c => c.m.out)}
+        ${row("當月結餘", c => c.m.net)}
+        ${row("當年收入", c => c.y.inn)}
+        ${row("當年支出", c => c.y.out)}
+        ${row("當年結餘", c => c.y.net)}
+        ${row("營收總額", c => c.m.bal, "tot")}
+      </tbody>
+    </table>
+    <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
+    <div class="rev-caption">個人戶明細</div>
+    <table class="rev-table">
+      <thead>
+        <tr><th>成員</th><th>當月收入</th><th>當月支出</th><th>當月結餘</th><th>當年收入</th><th>當年支出</th><th>當年結餘</th><th>營收總額</th></tr>
+      </thead>
+      <tbody>
+        ${d.people.map(p => `<tr>
+          <th>${escapeHtml(p.name)}</th>${td(p.m.inn)}${td(p.m.out)}${td(p.m.net)}${td(p.y.inn)}${td(p.y.out)}${td(p.y.net)}${td(p.m.bal)}
+        </tr>`).join("")}
+        ${(() => {
+          const p = d.cols.find(c => c.name === "個人戶") || { m: { inn: 0, out: 0, net: 0, bal: 0 }, y: { inn: 0, out: 0, net: 0 } };
+          return `<tr class="tot"><th>個人戶合計</th>${td(p.m.inn)}${td(p.m.out)}${td(p.m.net)}${td(p.y.inn)}${td(p.y.out)}${td(p.y.net)}${td(p.m.bal)}</tr>`;
+        })()}
+      </tbody>
+    </table>
+  </div>`;
 }
 function overallRows() {
   return state.rooms.slice().sort((a, b) => {
@@ -4153,30 +4228,48 @@ function overallRows() {
   });
 }
 function exportOverallReport() {
-  const b = reportBounds();
-  const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
-  const joint = accountStats("聯名戶", b.start, b.end);
-  const list = stats.slice();
-  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
-  if (joint.inn || joint.out || joint.bal) list.push(Object.assign({ name: "聯名戶" }, joint));
-  const totIn = list.reduce((s, x) => s + x.inn, 0);
-  const totOut = list.reduce((s, x) => s + x.out, 0);
-  const totalBal = list.reduce((s, x) => s + x.bal, 0);
-  const acctRows = list.map(s => [b.label, accountLabel(s.name), s.inn, s.out, s.bal, totalBal]);
-  acctRows.push([b.label, "總計", totIn, totOut, totalBal, totalBal]);
+  const d = reportAccountBundle();
+  const heads = ["項目"].concat(d.cols.map(c => c.name), ["合計"]);
+  const moneyS = ["Label", "Money", "Money", "Money", "Money", "Money"];
+  const totS = ["LabelB", "MoneyB", "MoneyB", "MoneyB", "MoneyB", "MoneyB"];
+  const mk = (label, pick, bold) => {
+    const vals = d.cols.map(pick);
+    const tot = vals.reduce((s, x) => s + x, 0);
+    return xlsRow([label].concat(vals, [tot]), bold ? totS : moneyS);
+  };
+  const colsXml = `<Column ss:Width="92"/>` + heads.slice(1).map(() => `<Column ss:Width="112"/>`).join("");
+  const sheet1 = `<Worksheet ss:Name="營收總表"><Table>
+${colsXml}
+<Row><Cell ss:StyleID="Title" ss:MergeAcross="5"><Data ss:Type="String">統潔＆信潔開發有限公司　整體報表</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="5"><Data ss:Type="String">${xmlEsc(d.month.label + "　／　" + d.year.label)}</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="5"><Data ss:Type="String">匯出時間 ${xmlEsc(nowStamp())}</Data></Cell></Row>
+<Row></Row>
+${xlsRow(heads, heads.map(() => "Head"))}
+${mk("當月收入", c => c.m.inn)}
+${mk("當月支出", c => c.m.out)}
+${mk("當月結餘", c => c.m.net)}
+${mk("當年收入", c => c.y.inn)}
+${mk("當年支出", c => c.y.out)}
+${mk("當年結餘", c => c.y.net)}
+${mk("營收總額", c => c.m.bal, true)}
+<Row></Row>
+${xlsRow(["總餘額", d.totals.bal, "", "", "", ""], ["LabelB", "MoneyB", "", "", "", ""])}
+</Table></Worksheet>`;
+  const pHead = ["成員", "當月收入", "當月支出", "當月結餘", "當年收入", "當年支出", "當年結餘", "營收總額"];
+  const pMoney = ["Label", "Money", "Money", "Money", "Money", "Money", "Money", "Money"];
+  const pTot = ["LabelB", "MoneyB", "MoneyB", "MoneyB", "MoneyB", "MoneyB", "MoneyB", "MoneyB"];
+  const person = d.cols.find(c => c.name === "個人戶") || { m: { inn: 0, out: 0, net: 0, bal: 0 }, y: { inn: 0, out: 0, net: 0 } };
+  const peopleRows = d.people.map(p => xlsRow([p.name, p.m.inn, p.m.out, p.m.net, p.y.inn, p.y.out, p.y.net, p.m.bal], pMoney)).join("");
+  const peopleTot = xlsRow(["個人戶合計", person.m.inn, person.m.out, person.m.net, person.y.inn, person.y.out, person.y.net, person.m.bal], pTot);
+  const sheet2 = `<Worksheet ss:Name="個人戶"><Table>
+<Column ss:Width="120"/>${pHead.slice(1).map(() => `<Column ss:Width="100"/>`).join("")}
+<Row><Cell ss:StyleID="Title" ss:MergeAcross="7"><Data ss:Type="String">個人戶明細　${xmlEsc(d.month.label)}</Data></Cell></Row>
+<Row></Row>
+${xlsRow(pHead, pHead.map(() => "Head"))}
+${peopleRows}
+${peopleTot}
+</Table></Worksheet>`;
   const items = overallRows();
-  const summary = [
-    ["期間", b.label],
-    ["總餘額", totalBal],
-    ["本期收入", totIn],
-    ["本期支出", totOut],
-    ["套房數", state.rooms.filter(r => r.kind !== "factory" && r.status !== "office").length],
-    ["廠房數", state.rooms.filter(r => r.kind === "factory").length],
-    ["租客數", state.tenants.length],
-    ["本月已繳", state.tenants.filter(t => t.paid).length],
-    ["本月未繳", state.tenants.filter(t => !t.paid).length],
-    ["匯出時間", nowStamp()]
-  ];
   const assetHead = ["房號", "類型", "樓層/組別", "狀態", "租客/管理人", "電話", "月租", "繳費", "起租日", "到期日", "剩餘天數", "LINE", "地址"];
   const repairHead = ["時間", "房號", "租客", "類型", "狀態", "說明", "預約時間"];
   const repairRows = state.repairs.slice().reverse().map(rep => {
@@ -4188,16 +4281,24 @@ function exportOverallReport() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${xlsSheet("總覽", ["項目", "數值"], summary)}
-${xlsSheet("帳戶營收", ["期間", "帳戶", "本期收入", "本期支出", "營收總額", "總餘額"], acctRows)}
+<Styles>
+  <Style ss:ID="Default"><Alignment ss:Vertical="Center"/><Font ss:FontName="Microsoft JhengHei" ss:Size="11"/></Style>
+  <Style ss:ID="Title"><Font ss:FontName="Microsoft JhengHei" ss:Size="16" ss:Bold="1"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="Head"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#3FA89A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="Label"><Font ss:FontName="Microsoft JhengHei" ss:Size="11"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>
+  <Style ss:ID="LabelB"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left" ss:Vertical="Center"/></Style>
+  <Style ss:ID="Money"><Font ss:FontName="Microsoft JhengHei" ss:Size="11"/><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+  <Style ss:ID="MoneyB"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+</Styles>
+${sheet1}
+${sheet2}
 ${xlsSheet("全部資產", assetHead, items.map(x => x.row))}
 ${xlsSheet("報修", repairHead, repairRows)}
 </Workbook>`;
   const blob = new Blob(["\uFEFF" + xml], { type: "application/vnd.ms-excel" });
   const a = document.createElement("a");
-  const stamp = String(b.label).replace(/\s+/g, "");
   a.href = URL.createObjectURL(blob);
-  a.download = `統潔＆信潔開發有限公司-整體報表-${stamp}.xls`;
+  a.download = `統潔＆信潔開發有限公司-整體報表-${d.y}年${d.m}月.xls`;
   document.body.appendChild(a);
   a.click();
   a.remove();

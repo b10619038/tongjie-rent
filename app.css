@@ -610,10 +610,28 @@ textarea { min-height: 92px; resize: vertical; }
   body.print-report #overall-report { box-shadow: none; border: 0; }
   body.print-report .report-wrap { max-height: none !important; overflow: visible !important; }
   body.print-report .admin-scroll { padding: 0 !important; }
+  body.print-report .rev-sheet { overflow: visible; }
+  body.print-report .rev-table { min-width: 0; font-size: 11px; }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
-.report-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; align-items: center; }
+.rev-sheet { margin-top: 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rev-caption { font-size: 13px; font-weight: 800; margin: 14px 0 8px; }
+.rev-balance { font-size: 18px; font-weight: 800; margin: 12px 0 4px; }
+.rev-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
+.rev-table th, .rev-table td {
+  border: 1px solid var(--line); padding: 8px 10px; text-align: right; white-space: nowrap;
+}
+.rev-table th:first-child, .rev-table td:first-child { text-align: left; font-weight: 700; }
+.rev-table thead th {
+  background: #3FA89A; color: #fff; font-weight: 700; text-align: center;
+}
+.rev-table tbody th { background: #f7faf9; }
+.rev-table tr.tot th, .rev-table tr.tot td { background: #eef6f4; font-weight: 800; }
+@media (max-width: 640px) {
+  .rev-table { font-size: 11px; min-width: 480px; }
+  .rev-table th, .rev-table td { padding: 6px; }
+}
 .report-actions .ghost.on { background: var(--teal); color: var(--on-teal, #fff); border-color: var(--teal); }
 #report-period-seg { width: 132px; margin: 0; flex: 0 0 132px; }
 .acct-grid {
