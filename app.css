@@ -567,8 +567,25 @@ textarea { min-height: 92px; resize: vertical; }
 .acct-card {
   background: var(--chip); border-radius: 16px; padding: 12px 14px;
 }
+.acct-card.acct-wide { grid-column: 1 / -1; }
 .acct-card .k { margin-bottom: 8px; }
 .acct-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-top: 4px; }
+.acct-people {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.acct-person {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  width: 100%; margin: 0; padding: 7px 0;
+  border: 0; background: transparent; font: inherit; font-size: 13px;
+  color: inherit; cursor: pointer; text-align: left; border-radius: 8px;
+}
+.acct-person strong { font-size: 12px; font-weight: 800; white-space: nowrap; }
+.acct-person:hover { background: rgba(255,255,255,.45); }
 .acct-bal {
   display: block; width: 100%; margin-top: 10px; padding-top: 8px;
   border: 0; border-top: 1px solid var(--line); background: transparent;

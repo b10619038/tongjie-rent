@@ -10,8 +10,14 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午6:55";
+const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
+const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
+const APP_VERSION = "2026-08-28-晚上9:25";
+const TENANT_ROSTER_VER = "20260828-2030";
+const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上9:25", items: ["手機與電腦已對上最新版，不再卡在下午6:55", "下方會出現更新內容圖塊，點了可看這次改了什麼"] },
+  { ver: "2026-08-28-晚上8:55", items: ["整體報表個人戶納入八位成員", "新增一筆帳戶的個人戶可選趙文榮等八位"] },
   { ver: "2026-08-28-下午6:55", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
   { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
   { ver: "2026-08-28-下午4:12", items: ["套房租客／廠房租客切換改為與所有資產相同的順滑移動"] },
@@ -165,11 +171,17 @@ function isPhone() {
   return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
 }
 function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; }
+function lastSeenVersion() {
+  try { return localStorage.getItem("tj-last-ver") || ""; } catch { return ""; }
+}
+function hasUnseenUpdate() {
+  return lastSeenVersion() !== APP_VERSION;
+}
 function unseenChangelog() {
-  let last = "";
-  try { last = localStorage.getItem("tj-last-ver") || ""; } catch {}
+  const last = lastSeenVersion();
+  if (last === APP_VERSION) return [];
   const idx = CHANGELOG.findIndex(x => x.ver === last);
-  const raw = idx <= 0 ? CHANGELOG.slice(0, 4) : CHANGELOG.slice(0, idx);
+  const raw = idx < 0 ? CHANGELOG.slice(0, 4) : CHANGELOG.slice(0, idx);
   const dev = isDeveloper();
   return raw.map(n => {
     if (n.onlyDev && !dev) return null;
@@ -186,16 +198,16 @@ function changelogSheetHtml() {
     <div class="install-sheet">
       <div class="label">軟體更新</div>
       <h2>這次更新了什麼</h2>
-      <div class="log-list">${blocks || `<p class="small">${isDeveloper() ? "版本 " + escapeHtml(APP_VERSION) : "系統已更新。"}</p>`}</div>
+      <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
     </div>
   </div>`;
 }
 function updateBarHtml() {
-  if (!ui.updateReady) return "";
+  if (!hasUnseenUpdate() && !ui.updateReady) return "";
   const lift = ui.role === "tenant" ? " lift" : "";
-  return `<div class="home-upd${lift}" id="apply-update">有新版本，點此查看更新內容</div>`;
+  return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此查看更新內容</div>`;
 }
 function applyAppUpdate() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
@@ -236,7 +248,8 @@ function watchAppUpdate(reg) {
     });
   });
   const check = () => { try { reg.update(); } catch {} };
-  setInterval(check, 5 * 60 * 1000);
+  check();
+  setInterval(check, 30 * 1000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
 }
 let __reloading = false;
@@ -364,14 +377,14 @@ function studioPrefix(no) {
 }
 const AMENITIES = ["冷氣", "冰箱", "洗衣機", "熱水器", "獨立衛浴", "網路", "書桌椅", "電視", "機車停車格"];
 const FACTORY_GROUPS = [
-  { group: "牛1", street: "文龍東路", company: "", city: "高雄市鳳山區文龍東路", items: [
+  { group: "牛1", street: "文龍東路", company: "信潔", city: "高雄市鳳山區文龍東路", items: [
     { no: "牛1-59", unit: "59號", manager: "文榮" },
     { no: "牛1-61", unit: "61號", manager: "洪漳" },
     { no: "牛1-57巷2", unit: "57巷2號", manager: "浩鈞" },
     { no: "牛1-57巷6", unit: "57巷6號", manager: "文彬" },
     { no: "牛1-57巷8", unit: "57巷8號", manager: "苡真" }
   ]},
-  { group: "牛2", street: "文龍東路", company: "", city: "高雄市鳳山區文龍東路", items: [
+  { group: "牛2", street: "文龍東路", company: "信潔", city: "高雄市鳳山區文龍東路", items: [
     { no: "牛2-21", unit: "57巷1弄21號", manager: "洪漳" },
     { no: "牛2-23", unit: "57巷1弄23號", manager: "文榮" },
     { no: "牛2-25", unit: "57巷1弄25號", manager: "洪漳" },
@@ -381,7 +394,8 @@ const FACTORY_GROUPS = [
     { no: "牛2-33", unit: "57巷1弄33號", manager: "浩鈞" },
     { no: "牛2-35", unit: "57巷1弄35號", manager: "苡真" }
   ]},
-  { group: "牛3", street: "鳳仁路", company: "", city: "高雄市鳳山區鳳仁路", items: [
+  { group: "牛3", street: "鳳仁路", company: "信潔", city: "高雄市鳳山區鳳仁路", items: [
+    { no: "牛3-97-61", unit: "97-61號", manager: "", company: "統潔" },
     { no: "牛3-97-63", unit: "97-63號", manager: "成、賢" },
     { no: "牛3-97-65A", unit: "97-65A號", manager: "成、賢" },
     { no: "牛3-97-65B", unit: "97-65B號", manager: "賢" }
@@ -423,10 +437,37 @@ const FACTORY_GROUPS = [
     { no: "拉皮-2A", unit: "93-2A號", manager: "" },
     { no: "拉皮-2B", unit: "93-2B號", manager: "" }
   ]},
-  { group: "大樹", street: "九曲路", company: "統潔", city: "高雄市鳳山區九曲路", items: [
+  { group: "大樹", street: "九曲路", company: "統潔", city: "高雄市大樹區九曲路", items: [
     { no: "大樹-18", unit: "52巷32弄18號", manager: "" }
   ]}
 ];
+const FACTORY_TENANT_INFO = {
+  "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000" },
+  "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, note: "" },
+  "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, note: "" },
+  "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, note: "" },
+  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, note: "116/9/1 未稅 $47,000；117/9/1 $48,000；118/9/1 $49,000；119/9/1 $50,000" },
+  "牛8-77": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000" },
+  "牛8-78": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000" },
+  "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金溝", phone: "0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 52000, rent: 54600, note: "113/11/1～116/10/31 未稅 $52,000；116/11/1～118/10/31 未稅 $55,000" },
+  "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2026-03-31", rentUntaxed: 40000, rent: 42000, note: "合約至 115/3/31" },
+  "牛3-97-65A": { name: "昱銘國際開發有限公司", taxId: "24988951", contactName: "黃彥銘", phone: "0932-720-800", leaseStart: "2025-01-01", leaseEnd: "2029-12-31", rentUntaxed: 30000, rent: 31500, note: "114/1/1～116/12/31 未稅 $30,000；117/1/1～118/12/31 未稅 $33,000" },
+  "牛3-97-65B": { name: "昱銘國際開發有限公司", taxId: "24988951", contactName: "黃彥銘", phone: "0932-720-800", leaseStart: "2025-03-01", leaseEnd: "2029-12-31", rentUntaxed: 20000, rent: 21000, note: "114/3/1～116/12/31 未稅 $20,000；117/1/1～118/12/31 未稅 $22,000" },
+  "牛3-97-63": { name: "世鋼企業有限公司", taxId: "84997856", contactName: "余世鋼", phone: "0932-898-898", leaseStart: "2025-11-01", leaseEnd: "2029-10-31", rentUntaxed: 65000, rent: 68250, note: "114/11/1～115/10/31 未稅 $65,000；115/11/1～118/10/31 未稅 $68,000" },
+  "牛2-25": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-07-01", leaseEnd: "2029-06-30", rentUntaxed: 38000, rent: 39900, note: "114/7/1～116/6/30 未稅 $38,000；116/7/1～118/6/30 未稅 $40,000" },
+  "牛1-57巷8": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-06-01", leaseEnd: "2029-05-31", rentUntaxed: 30000, rent: 31500, note: "114/6/1～116/5/31 未稅 $30,000；116/6/1～118/5/31 未稅 $33,000" },
+  "牛2-31": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-07-01", leaseEnd: "2029-06-30", rentUntaxed: 30000, rent: 31500, note: "114/7/1～116/6/30 未稅 $30,000；116/7/1～118/6/30 未稅 $33,000" },
+  "牛2-33": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-08-01", leaseEnd: "2029-07-31", rentUntaxed: 30000, rent: 31500, note: "114/8/1～116/7/31 未稅 $30,000；116/8/1～118/7/31 未稅 $33,000" },
+  "牛2-35": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-08-01", leaseEnd: "2029-07-31", rentUntaxed: 30000, rent: 31500, note: "114/8/1～116/7/31 未稅 $30,000；116/8/1～118/7/31 未稅 $33,000" },
+  "牛1-57巷6": { name: "凱薩琳食品有限公司", taxId: "16995828", contactName: "林淑惠", phone: "0932-730-739／07-792-6088", leaseStart: "2025-07-01", leaseEnd: "2029-06-30", rentUntaxed: 30000, rent: 31500, note: "114/7/1～116/6/30 未稅 $30,000；116/7/1～118/6/30 未稅 $33,000" },
+  "牛1-61": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛1-59": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛1-57巷2": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛2-21": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛2-23": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛2-27": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
+  "牛2-29": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" }
+};
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
 const PHOTO_SET = [
   ["images/living.jpg", "images/kitchen.jpg"],
@@ -458,6 +499,7 @@ function factoryRooms() {
   const out = [];
   FACTORY_GROUPS.forEach(g => {
     g.items.forEach(item => {
+      const info = FACTORY_TENANT_INFO[item.no];
       out.push({
         id: "f" + item.no.replace(/[^\w\u4e00-\u9fff-]/g, ""),
         no: item.no,
@@ -465,12 +507,13 @@ function factoryRooms() {
         kind: "factory",
         group: g.group,
         street: g.street,
-        company: g.company,
+        company: item.company || g.company,
         manager: item.manager || "",
         location: g.city + item.unit,
-        rent: 0,
+        rent: info && info.rent ? info.rent : 0,
+        rentUntaxed: info && info.rentUntaxed ? info.rentUntaxed : 0,
         deposit: 0,
-        status: item.manager ? "rented" : "vacant",
+        status: info && info.name ? "rented" : "vacant",
         tenantId: null,
         photos: photosFor(item.no),
         amenities: ["電力", "停車"],
@@ -520,7 +563,24 @@ function buildSeed() {
     tenantId: null, photos: photosFor("7651"), amenities: ["冷氣", "網路", "書桌椅"],
     utilities: { electric: "公司自付", water: "公司自付" }, contractImages: [], location: roomAddress("7651")
   });
-  factoryRooms().forEach(r => rooms.push(r));
+  factoryRooms().forEach(r => {
+    const info = FACTORY_TENANT_INFO[r.no];
+    if (info && info.name) {
+      const tid = "tf-" + r.no;
+      r.tenantId = tid;
+      r.status = "rented";
+      r.rent = info.rent || 0;
+      r.rentUntaxed = info.rentUntaxed || 0;
+      tenants.push({
+        id: tid, name: info.name, phone: info.phone || "", taxId: info.taxId || "",
+        contactName: info.contactName || "", idNo: "", address: "",
+        emergencyName: "", emergencyPhone: "", roomId: r.id,
+        leaseStart: info.leaseStart || "", leaseEnd: info.leaseEnd || "",
+        dueDay: 5, paid: true, note: info.note || "", rentUntaxed: info.rentUntaxed || 0
+      });
+    }
+    rooms.push(r);
+  });
   const t6831 = tenants.find(t => t.roomId === "r6831");
   return {
     rooms, tenants,
@@ -533,7 +593,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -589,11 +649,49 @@ function normalize(data) {
     if (!room || room.status === "office" || room.kind === "factory") return;
     if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
-  if (data.tenantRosterVer !== "20260828sheet2") {
+  if (data.tenantRosterVer !== TENANT_ROSTER_VER) {
     applyTenantRoster(data);
-    data.tenantRosterVer = "20260828sheet2";
+    data.tenantRosterVer = TENANT_ROSTER_VER;
   }
+  applyFactoryRoster(data);
+  data.factoryRosterVer = FACTORY_ROSTER_VER;
   return data;
+}
+function applyFactoryRoster(data) {
+  factoryRooms().forEach(seedRoom => {
+    let room = data.rooms.find(r => r.id === seedRoom.id || r.no === seedRoom.no);
+    if (!room) {
+      room = structuredClone(seedRoom);
+      data.rooms.push(room);
+    } else {
+      room.group = seedRoom.group;
+      room.street = seedRoom.street;
+      room.company = seedRoom.company;
+      room.location = seedRoom.location;
+      room.manager = seedRoom.manager;
+      room.kind = "factory";
+      room.title = "廠房";
+    }
+    const info = FACTORY_TENANT_INFO[room.no];
+    if (!info || !info.name) return;
+    let t = data.tenants.find(x => x.roomId === room.id);
+    if (!t) {
+      t = { id: "tf-" + room.no, roomId: room.id, dueDay: 5, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
+      data.tenants.push(t);
+    }
+    t.name = info.name;
+    t.phone = info.phone || "";
+    t.taxId = info.taxId || "";
+    t.contactName = info.contactName || "";
+    t.leaseStart = info.leaseStart || "";
+    t.leaseEnd = info.leaseEnd || "";
+    t.note = info.note || "";
+    t.rentUntaxed = info.rentUntaxed || 0;
+    room.tenantId = t.id;
+    room.rent = info.rent || room.rent;
+    room.rentUntaxed = info.rentUntaxed || 0;
+    if (room.status !== "repair") room.status = "rented";
+  });
 }
 function applyTenantRoster(data) {
   STUDIO_NOS.forEach(no => {
@@ -642,7 +740,12 @@ async function pullCloud() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
-    if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) { ui.cloudOk = true; return false; }
+    if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
+      applyTenantRoster(state);
+      applyFactoryRoster(state);
+      ui.cloudOk = true;
+      return "local-newer";
+    }
     state = normalize(data);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
@@ -654,10 +757,23 @@ async function pullCloud() {
     if (timer) clearTimeout(timer);
   }
 }
+function factoryNamedCount(data) {
+  const rooms = (data && data.rooms) || [];
+  const tenants = (data && data.tenants) || [];
+  return tenants.filter(t => {
+    if (!String(t && t.name || "").trim()) return false;
+    const r = rooms.find(x => x.id === t.roomId);
+    return r && r.kind === "factory";
+  }).length;
+}
 async function pushCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
+    applyTenantRoster(state);
+    applyFactoryRoster(state);
+    const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
+    if (need && factoryNamedCount(state) < need) { ui.cloudOk = false; return; }
     state.updatedAt = Date.now();
     const res = await fetch(DATA_API, {
       method: "PUT",
@@ -884,6 +1000,11 @@ function daysLeft(end) {
   const n = Math.ceil((new Date(end + "T00:00:00") - TODAY) / 86400000);
   return Number.isFinite(n) ? n : null;
 }
+function leaseLeftText(end) {
+  const n = daysLeft(end);
+  if (n == null) return "—";
+  return n < 0 ? "已到期" : n + " 天";
+}
 function rentOverdueDays() {
   const due = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
   return Math.max(0, Math.floor((TODAY - due) / 86400000));
@@ -987,6 +1108,7 @@ function invoiceCopyHtml(r, t, copyName) {
     </div>
     <div class="inv-buyer">
       <div class="inv-line"><span>買 受 人：</span><b>${escapeHtml(buyer)}</b></div>
+      ${t && t.taxId ? `<div class="inv-line"><span>統一編號：</span><b>${escapeHtml(t.taxId)}</b></div>` : ""}
       <div class="inv-addr">
         <span>地　　址：</span>
         <b>${escapeHtml(addr.city)}</b><i>縣市</i>
@@ -1608,10 +1730,48 @@ function guessCashType(text, fallback) {
 }
 function isCashAccount(name) {
   const a = cellAccount(name) || name;
-  return BOOK_ACCOUNTS.includes(a) || REPORT_ACCOUNTS.includes(a);
+  return BOOK_ACCOUNTS.includes(a) || REPORT_ACCOUNTS.includes(a) || PERSONAL_ACCOUNTS.includes(a) || isPersonalKey(a);
+}
+function personalKey(name) { return "個人戶·" + name; }
+function isPersonalKey(c) {
+  const s = String(c || "");
+  return s === "個人戶" || s.startsWith("個人戶·") || PERSONAL_ACCOUNTS.includes(s) || PERSONAL_PEOPLE.includes(s);
+}
+function personOfAccount(c) {
+  const s = String(c || "").trim();
+  if (s.startsWith("個人戶·")) return s.slice("個人戶·".length);
+  if (PERSONAL_PEOPLE.includes(s)) return s;
+  const hit = PERSONAL_PEOPLE.find(p => s === p || s.indexOf(p) >= 0);
+  if (hit) return hit;
+  if (/趙海成|趙正賢/.test(s)) return "趙海成、趙正賢";
+  return "";
+}
+function accountLabel(c) {
+  const p = personOfAccount(c);
+  if (p) return "個人戶 · " + p;
+  return String(c || "統潔");
+}
+function bookAccountOptions(selected) {
+  const sel = String(selected || "統潔");
+  const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
+  const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
+  const extra = (sel === "個人戶" || (isPersonalKey(sel) && !PERSONAL_ACCOUNTS.includes(sel)))
+    ? opt(sel, accountLabel(sel)) : "";
+  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
+}
+function isBookCompany(v) {
+  return BOOK_ACCOUNTS.includes(v) || PERSONAL_ACCOUNTS.includes(v) || v === "個人戶" || isPersonalKey(v);
+}
+function normalizeBookCompany(v) {
+  const s = String(v || "").trim();
+  if (PERSONAL_ACCOUNTS.includes(s) || BOOK_ACCOUNTS.includes(s)) return s;
+  const p = personOfAccount(s);
+  if (p) return personalKey(p);
+  return cellAccount(s) || "統潔";
 }
 function rowAccount(row) {
   const c = String((row && row.company) || "");
+  if (isPersonalKey(c) || personOfAccount(c)) return "個人戶";
   if (REPORT_ACCOUNTS.includes(c) || c === "聯名戶") return c;
   if (/現金|保險/.test(c)) return "現金(保險箱)";
   if (/個人/.test(c)) return "個人戶";
@@ -1641,10 +1801,22 @@ function reportBounds() {
   };
 }
 function accountOpening(name) {
-  return Number((state.accountOpenings || {})[name]) || 0;
+  const map = state.accountOpenings || {};
+  const raw = Number(map[name]) || 0;
+  if (name === "個人戶") {
+    return raw + PERSONAL_PEOPLE.reduce((s, p) => s + (Number(map[personalKey(p)]) || 0), 0);
+  }
+  return raw;
+}
+function ledgerRowsForAccount(name) {
+  const rows = collectLedger();
+  if (name === "個人戶") return rows.filter(x => rowAccount(x) === "個人戶");
+  const person = personOfAccount(name);
+  if (person) return rows.filter(x => personOfAccount(x.company) === person);
+  return rows.filter(x => rowAccount(x) === name);
 }
 function accountStats(name, start, end) {
-  const rows = collectLedger().filter(x => rowAccount(x) === name);
+  const rows = ledgerRowsForAccount(name);
   const period = rows.filter(x => x.date >= start && x.date <= end);
   const inn = period.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = period.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
@@ -1652,7 +1824,10 @@ function accountStats(name, start, end) {
   const balIn = hist.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const balOut = hist.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
   const ledger = balIn - balOut;
-  return { inn, out, net: inn - out, ledger, bal: ledger + accountOpening(name), count: period.length };
+  const opening = name === "個人戶"
+    ? accountOpening("個人戶")
+    : (Number((state.accountOpenings || {})[name]) || 0);
+  return { inn, out, net: inn - out, ledger, bal: ledger + opening, count: period.length };
 }
 function shiftReport(delta) {
   ensureReportPeriod();
@@ -1677,10 +1852,14 @@ function overallReportBodyHtml() {
     </div>
     <div class="acct-grid">
       ${stats.map(s => `
-        <div class="acct-card">
+        <div class="acct-card${s.name === "個人戶" ? " acct-wide" : ""}">
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          ${s.name === "個人戶" ? `<div class="acct-people">${PERSONAL_PEOPLE.map(p => {
+            const ps = accountStats(personalKey(p), b.start, b.end);
+            return `<button type="button" class="acct-person" data-edit-acct="${escapeHtml(personalKey(p))}"><span>${escapeHtml(p)}</span><strong>${money(ps.bal)}</strong></button>`;
+          }).join("")}</div>` : ""}
           <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
         </div>`).join("")}
     </div>
@@ -1696,11 +1875,11 @@ function overallReportBodyHtml() {
 function overallReportHtml() {
   const b = reportBounds();
   const yearOn = ui.reportMode === "year";
-  if (ui.editAcct && REPORT_ACCOUNTS.includes(ui.editAcct)) {
+  if (ui.editAcct && (REPORT_ACCOUNTS.includes(ui.editAcct) || isPersonalKey(ui.editAcct))) {
     const s = Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
     return `<div class="card card-body" id="overall-report">
       <button type="button" class="back" id="acct-bal-back">← 返回</button>
-      <h2 class="dash-h">${escapeHtml(s.name)}　營收總額</h2>
+      <h2 class="dash-h">${escapeHtml(accountLabel(s.name))}　營收總額</h2>
       <div class="small">輸入目前實際餘額後儲存。之後用「新增一筆」進出帳會自動加減。</div>
       <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
       <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
@@ -1874,7 +2053,7 @@ function monthCashHtml() {
       <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(x.company || "統潔")} · ${money(x.amount)}</b>
+          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(accountLabel(x.company || "統潔"))} · ${money(x.amount)}</b>
           <span>${escapeHtml(x.note || "")}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
@@ -1887,7 +2066,7 @@ function monthCashHtml() {
           <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
         </select>
         <select name="company">
-          ${BOOK_ACCOUNTS.map(n => `<option value="${n}" ${(ed ? ed.company : "統潔") === n ? "selected" : ""}>${n}</option>`).join("")}
+          ${bookAccountOptions(ed ? ed.company : "統潔")}
         </select>
       </div>
       <div class="cal-form-row">
@@ -1975,6 +2154,8 @@ function cellAmount(v) {
 }
 function cellAccount(v) {
   const s = String(v || "");
+  const person = PERSONAL_PEOPLE.find(p => s.indexOf(p) >= 0) || (/趙海成|趙正賢/.test(s) ? "趙海成、趙正賢" : "");
+  if (person) return personalKey(person);
   if (/現金|保險/.test(s)) return "現金(保險箱)";
   if (/個人/.test(s)) return "個人戶";
   if (/聯名/.test(s)) return "聯名戶";
@@ -2062,7 +2243,7 @@ function importBooksFromRows(list, fileName) {
       type: row.type === "out" ? "out" : "in",
       date: row.date,
       amount: row.amount,
-      company: BOOK_ACCOUNTS.includes(row.company) ? row.company : "統潔",
+      company: normalizeBookCompany(row.company),
       note: row.note || ("Excel 匯入" + (fileName ? " · " + fileName : "")),
       roomNo: "",
       createdAt: nowStamp()
@@ -2897,11 +3078,11 @@ function adminAi() {
       </div>
       <div class="cal-form-row">
         <select name="company">
-          ${BOOK_ACCOUNTS.map(n => `<option value="${n}">${n}</option>`).join("")}
+          ${bookAccountOptions("統潔")}
         </select>
         <input name="note" type="text" placeholder="備註（選填）" />
       </div>
-      <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
+      <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
       <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
       <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
       <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
@@ -2938,7 +3119,7 @@ function adminAi() {
       <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
       <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
       <label class="field"><span>金流帳戶</span>
-        <select name="company">${BOOK_ACCOUNTS.map(n => `<option value="${n}">${n}</option>`).join("")}</select>
+        <select name="company">${bookAccountOptions("統潔")}</select>
       </label>
       <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
       <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
@@ -3156,6 +3337,7 @@ function exportOverallReport() {
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const list = stats.slice();
+  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
   if (joint.inn || joint.out || joint.bal) list.push(Object.assign({ name: "聯名戶" }, joint));
   const totIn = list.reduce((s, x) => s + x.inn, 0);
   const totOut = list.reduce((s, x) => s + x.out, 0);
@@ -3228,7 +3410,7 @@ function inFirmPeriod(dateStr, mode) {
 function ledgerCompany(row) {
   const book = (state.books || []).find(b => b.id === row.id);
   if (book && book.company) {
-    if (BOOK_ACCOUNTS.includes(book.company)) return book.company;
+    if (isBookCompany(book.company)) return book.company;
     if (/信潔/.test(book.company)) return "信潔";
     if (/統潔/.test(book.company)) return "統潔";
   }
@@ -3315,8 +3497,12 @@ function adminDash() {
   const fixRooms = new Set(state.repairs.filter(x => x.status !== "done").map(x => x.roomId));
   const repairing = studios.filter(r => r.status === "repair" || fixRooms.has(r.id)).length;
   const occ = studios.length ? Math.round(rented / studios.length * 100) : 0;
+  const studioTenants = state.tenants.filter(t => {
+    const room = state.rooms.find(x => x.id === t.roomId);
+    return room && room.kind !== "factory" && room.status !== "office";
+  });
   const dueAmt = studios.reduce((s, r) => s + (Number(r.rent) || 0), 0);
-  const paidAmt = state.tenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
+  const paidAmt = studioTenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
   const unpaidAmt = Math.max(dueAmt - paidAmt, 0);
   const collectRate = dueAmt ? Math.round(paidAmt / dueAmt * 100) : 0;
   const unpaidTenants = state.tenants.filter(t => !t.paid);
@@ -3338,7 +3524,7 @@ function adminDash() {
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
-      <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
+      <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${studioTenants.filter(t => t.paid).length}／${studioTenants.length} 位租客</div></div></div>
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
     ${overallReportHtml()}
@@ -3385,7 +3571,7 @@ function adminDash() {
       <div class="card card-body"><h2 class="dash-h">90 天內到期（${soon} 戶 60 天內）</h2>
         ${expiring.length ? expiring.slice(0, 8).map(x => {
           const room = state.rooms.find(r => r.id === x.t.roomId);
-          return `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days} 天 · ${x.t.leaseEnd}</span></div>`;
+          return `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days < 0 ? "已到期" : x.days + " 天"} · ${x.t.leaseEnd}</span></div>`;
         }).join("") : `<div class="empty">近 90 天沒有到期合約</div>`}
       </div>
     </div>
@@ -3417,9 +3603,12 @@ function adminRoomListHtml(kind) {
     </div>`;
     return bar + groups.map(g => {
       const closed = !!ui.factoryFold[g.group];
-      const cards = g.rooms.map(r => `<div class="card item clickable" data-admin-room="${r.id}">
+      const cards = g.rooms.map(r => {
+        const t = state.tenants.find(x => x.id === r.tenantId);
+        return `<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl(r.photos && r.photos[0], r.no)}
         <div><strong>${r.no}</strong>
+          <div class="small">${t && t.name ? escapeHtml(t.name) : "尚無租客"}${r.rent ? " · " + money(r.rent) + "／月" : ""}</div>
           <div class="small">${escapeHtml(r.location || "")}${r.manager ? " · " + escapeHtml(r.manager) : ""}</div>
         </div>
         <select class="select-mini" data-status="${r.id}">
@@ -3427,7 +3616,8 @@ function adminRoomListHtml(kind) {
           <option value="vacant" ${r.status === "vacant" ? "selected" : ""}>空置</option>
           <option value="repair" ${r.status === "repair" ? "selected" : ""}>維修中</option>
         </select>
-      </div>`).join("");
+      </div>`;
+      }).join("");
       return `<button type="button" class="floor-h fold-h${closed ? " closed" : ""}" data-factory-fold="${escapeHtml(g.group)}">${escapeHtml(g.group)}${g.company ? " · " + escapeHtml(g.company) : ""} · ${escapeHtml(g.street)}（${g.rooms.length} 戶）</button>
       <div class="factory-pack${closed ? " folded" : ""}" data-factory-pack="${escapeHtml(g.group)}"${closed ? ' style="height:0"' : ""}><div class="factory-pack-inner">${cards}</div></div>`;
     }).join("");
@@ -3498,14 +3688,13 @@ function tenantListOfKind(kind) {
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
+    if (factory) {
+      const ga = FACTORY_GROUP_ORDER.indexOf(ra?.group);
+      const gb = FACTORY_GROUP_ORDER.indexOf(rb?.group);
+      if (ga !== gb) return (ga < 0 ? 99 : ga) - (gb < 0 ? 99 : gb);
+    }
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
-  if (!factory) return list;
-  let i = 1;
-  while (list.length < 40) {
-    list.push({ id: "fslot-" + i, name: "", phone: "", paid: true, placeholder: true, slot: list.length + 1, roomId: "" });
-    i++;
-  }
   return list;
 }
 function tenantListInnerHtml(kind) {
@@ -3529,20 +3718,7 @@ function tenantListInnerHtml(kind) {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${list.length ? list.map((t, i) => {
-    if (t.placeholder) {
-      const n = String(t.slot || i + 1).padStart(2, "0");
-      const r = t.roomId ? state.rooms.find(x => x.id === t.roomId) : null;
-      return `<div class="card card-body${r ? " clickable" : ""}"${r ? ` data-admin-room="${r.id}"` : ""}>
-        <div class="row"><span class="k">空白名額 ${n}</span><span class="badge vacant">未登記</span></div>
-        <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
-        <div class="row"><span class="k">登入密碼</span><span class="v">尚未設定</span></div>
-        <div class="row"><span class="k">LINE</span><span class="small">尚未綁定</span></div>
-        <div class="row"><span class="k">電話</span><span class="v">—</span></div>
-        <div class="row"><span class="k">租期</span><span class="v">— → —</span></div>
-        <div class="row"><span class="k">剩餘</span><span class="v">—</span></div>
-      </div>`;
-    }
+    ${list.length ? list.map(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     const pay = payLabel(t);
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
@@ -3558,9 +3734,13 @@ function tenantListInnerHtml(kind) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       <div class="row"><span class="k">電話</span><span class="v">${t.phone || "—"}</span></div>
+      ${t.contactName ? `<div class="row"><span class="k">聯絡人</span><span class="v">${escapeHtml(t.contactName)}</span></div>` : ""}
+      ${t.taxId ? `<div class="row"><span class="k">統編</span><span class="v">${escapeHtml(t.taxId)}</span></div>` : ""}
       ${t.bankLast5 ? `<div class="row"><span class="k">帳戶後五碼</span><span class="v">${escapeHtml(t.bankLast5)}</span></div>` : ""}
+      ${r && r.kind === "factory" ? `<div class="row"><span class="k">月租</span><span class="v">${(t.rentUntaxed || r.rentUntaxed) ? "未稅 " + money(t.rentUntaxed || r.rentUntaxed) + "　含稅 " + money(r.rent || 0) : money(r.rent || 0)}</span></div>` : ""}
       <div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
-      <div class="row"><span class="k">剩餘</span><span class="v">${t.leaseEnd ? daysLeft(t.leaseEnd) + " 天" : "—"}</span></div>
+      <div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>
+      ${t.note && r && r.kind === "factory" ? `<div class="row"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
       <button class="ghost" data-invoice="${t.roomId}" style="margin-top:8px">產出發票</button>
       <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>
     </div>
@@ -3568,7 +3748,7 @@ function tenantListInnerHtml(kind) {
   }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}`;
 }
 function tenantKindHint(kind) {
-  return kind === "factory" ? "廠房租客預留 40 個名額，尚未登記的可先留白。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
+  return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
 }
 function applyTenantKind(kind) {
   const next = kind === "factory" ? "factory" : "studio";
@@ -3750,13 +3930,16 @@ function adminRoomEdit() {
       ${field("租金", "rent", r.rent, "text")}
       ${field("押金", "deposit", r.deposit, "text")}
       ${field("狀態", "status", r.status, "select-status")}
-      ${field("租客姓名", "name", t?.name || "")}
+      ${field(r.kind === "factory" ? "公司／租客" : "租客姓名", "name", t?.name || "")}
       <div class="who-mini" style="margin:8px 0 12px">
         ${avatarHtml(t, "")}
         <label class="upload" style="flex:1;margin:0">上傳租客大頭貼<input id="tenant-avatar-admin" type="file" accept="image/*" hidden /></label>
       </div>
       ${field("登入密碼", "loginPass", t?.loginPass || "")}
       ${field("電話", "phone", t?.phone || "")}
+      ${field("聯絡人", "contactName", t?.contactName || "")}
+      ${field("統編", "taxId", t?.taxId || "")}
+      ${field("未稅租金", "rentUntaxed", t?.rentUntaxed || r.rentUntaxed || "")}
       ${field("帳戶後五碼", "bankLast5", t?.bankLast5 || "")}
       ${field("身分證字號", "idNo", t?.idNo || "")}
       ${field("通訊地址", "address", t?.address || "")}
@@ -3812,6 +3995,10 @@ function saveRoomEdit(form) {
     t.emergencyName = g("emergencyName"); t.emergencyPhone = g("emergencyPhone");
     t.loginPass = String(g("loginPass") || "").trim();
     t.bankLast5 = String(g("bankLast5") || "").trim();
+    t.taxId = String(g("taxId") || "").trim();
+    t.contactName = String(g("contactName") || "").trim();
+    t.rentUntaxed = Number(g("rentUntaxed")) || 0;
+    r.rentUntaxed = t.rentUntaxed;
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
     t.dueDay = Number(g("dueDay")) || t.dueDay || 5;
     t.paid = g("paid") === "1"; t.note = g("note");
@@ -4575,16 +4762,21 @@ function bindAdmin() {
   if (acctForm) acctForm.onsubmit = e => {
     e.preventDefault();
     const name = ui.editAcct;
-    if (!REPORT_ACCOUNTS.includes(name)) return;
+    if (!REPORT_ACCOUNTS.includes(name) && !isPersonalKey(name)) return;
     const b = reportBounds();
     const s = accountStats(name, b.start, b.end);
     const next = Number(String(acctForm.bal.value || "").replace(/[^\d.-]/g, ""));
     if (!state.accountOpenings) state.accountOpenings = {};
-    state.accountOpenings[name] = next - s.ledger;
+    if (name === "個人戶") {
+      const peopleOpen = PERSONAL_PEOPLE.reduce((sum, p) => sum + (Number(state.accountOpenings[personalKey(p)]) || 0), 0);
+      state.accountOpenings[name] = next - s.ledger - peopleOpen;
+    } else {
+      state.accountOpenings[name] = next - s.ledger;
+    }
     ui.editAcct = "";
     save();
     ui.keepScroll = true;
-    toast("已更新 " + name + " 營收總額");
+    toast("已更新 " + accountLabel(name) + " 營收總額");
     render();
   };
   refreshLineBinds().then(() => {
@@ -4832,7 +5024,7 @@ function bindAdminAi() {
     const place = (errand.place.value || "").trim();
     const note = (errand.note.value || "").trim();
     const id = "er" + Date.now();
-    const company = BOOK_ACCOUNTS.includes(errand.company && errand.company.value) ? errand.company.value : (cellAccount(note + title) || "統潔");
+    const company = normalizeBookCompany((errand.company && errand.company.value) || cellAccount(note + title) || "統潔");
     if (!state.errands) state.errands = [];
     state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, media: (ui.errandMedia || []).slice(), createdAt: nowStamp() });
     const p = date.split("-");
@@ -4906,7 +5098,7 @@ function bindAdminAi() {
     const date = bank.date.value;
     const amount = Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0;
     const note = (bank.note.value || "").trim();
-    const company = BOOK_ACCOUNTS.includes(bank.company && bank.company.value) ? bank.company.value : (cellAccount(note) || "統潔");
+    const company = normalizeBookCompany((bank.company && bank.company.value) || cellAccount(note) || "統潔");
     if (!state.bankSlips) state.bankSlips = [];
     state.bankSlips.push({
       id: "slip" + Date.now(),
@@ -4988,7 +5180,7 @@ function bindCashCal() {
     const payload = {
       type: form.type.value === "out" ? "out" : "in",
       date, amount,
-      company: BOOK_ACCOUNTS.includes(form.company && form.company.value) ? form.company.value : "統潔",
+      company: normalizeBookCompany(form.company && form.company.value),
       note: (form.note.value || "").trim()
     };
     if (ui.editBookId) {
@@ -5077,10 +5269,12 @@ async function boot() {
   try {
     restoreUi();
     applyTheme(currentThemeId());
+    if (hasUnseenUpdate()) ui.updateReady = true;
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
     const got = await pullCloud();
-    if (!got) await pushCloud();
+    if (got === false) await pushCloud();
+    else if (got === "local-newer") await pushCloud();
     restoreUi();
     render();
     if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()).catch(() => {}); armPushAsk(); }
@@ -5090,7 +5284,7 @@ async function boot() {
   }
   clearTimeout(splashAt);
   hideSplash();
-  setInterval(async () => {
+  const syncTick = async () => {
     try {
       const before = {
         anns: (state.announcements || []).map(a => a.id),
@@ -5100,12 +5294,19 @@ async function boot() {
       };
       const prevUpdated = state.updatedAt;
       const changed = await pullCloud();
-      if (changed && state.updatedAt !== prevUpdated) {
+      if (changed === true && state.updatedAt !== prevUpdated) {
         notifyCloudChanges(before);
+        render();
+      } else if (changed === true) {
         render();
       }
     } catch {}
-  }, 12000);
+  };
+  setInterval(syncTick, 8000);
+  setTimeout(syncTick, 2000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") syncTick();
+  });
 }
 window.addEventListener("pagehide", persistUi);
 window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistUi(); });

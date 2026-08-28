@@ -1,0 +1,17 @@
+/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+
+/app.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/app.css
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
