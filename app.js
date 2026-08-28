@@ -7,8 +7,9 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午2:10";
+const APP_VERSION = "2026-08-28-上午11:08";
 const CHANGELOG = [
+  { ver: "2026-08-28-上午11:08", items: ["開發者後台新增「日誌」，可看租客／管理員何時用哪台裝置登入、操作與瀏覽"] },
   { ver: "2026-08-28-上午2:10", items: ["租客與管理員關閉 App 或重新整理後仍保持登入", "只有點「登出」或「切換身分」才會回到登入首頁"] },
   { ver: "2026-08-28-上午2:00", items: ["點擊下方更新通知，可查看這次更新了哪些內容", "看完後可選擇立即更新或稍後"] },
   { ver: "2026-08-28-上午1:55", items: ["公告、報修、續約、合約到期、未繳租金會在手機上方跳出系統通知", "管理員也會收到新報修、續約申請與繳費回報"] },
@@ -491,6 +492,7 @@ function normalize(data) {
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.errands)) data.errands = [];
+  if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
     const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
@@ -650,6 +652,75 @@ function nowStamp() {
   const period = h >= 12 ? "下午" : "上午";
   let h12 = h % 12; if (h12 === 0) h12 = 12;
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${period} ${h12}:${p(now.getMinutes())}`;
+}
+function deviceInfo() {
+  const ua = navigator.userAgent || "";
+  let os = "未知裝置";
+  if (/iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) os = "iPad";
+  else if (/iPhone|iPod/i.test(ua)) os = "iPhone";
+  else if (/Android/i.test(ua)) os = "Android";
+  else if (/Windows/i.test(ua)) os = "Windows 電腦";
+  else if (/Mac OS X/i.test(ua)) os = "Mac 電腦";
+  else if (/Linux/i.test(ua)) os = "電腦";
+  let browser = "瀏覽器";
+  if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
+  else if (/Firefox\//i.test(ua)) browser = "Firefox";
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+  const mode = isStandalone() ? "已安裝 App" : "網頁";
+  return os + " · " + browser + " · " + mode;
+}
+function pageLabel() {
+  const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
+  const map = {
+    home: "首頁", rooms: ui.role === "admin" ? "所有資產" : "房間",
+    "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台",
+    lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
+    dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "AI助手", logs: "日誌",
+    "tenant-login": "租客登入", "admin-login": "管理員登入"
+  };
+  return map[p] || p;
+}
+function actorLabel() {
+  if (ui.role === "admin") {
+    const name = ui.adminCode === "1240" ? "開發者" : "管理員";
+    return `${name}（密碼 ${ui.adminCode || "未知"}）`;
+  }
+  if (ui.role === "tenant") {
+    const room = typeof myRoom === "function" ? myRoom() : null;
+    const t = typeof me === "function" ? me() : null;
+    const no = (room && room.no) || ui.roomNo || "";
+    const name = t && t.name ? t.name : "未填姓名";
+    return `租客 ${no}　${name}`;
+  }
+  return "未登入";
+}
+let lastAuditBrowse = "";
+function audit(action, detail) {
+  try {
+    if (!state.auditLogs) state.auditLogs = [];
+    const page = pageLabel();
+    const key = [ui.role, ui.tenantId || ui.adminCode || "", action, detail || "", page].join("|");
+    if (action === "瀏覽" && key === lastAuditBrowse) return;
+    if (action === "瀏覽") lastAuditBrowse = key;
+    state.auditLogs.push({
+      id: "log" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
+      at: nowStamp(),
+      kind: ui.role || "guest",
+      who: actorLabel(),
+      action,
+      detail: detail || "",
+      page,
+      device: deviceInfo()
+    });
+    if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
+    save();
+  } catch {}
+}
+function maybeAuditBrowse() {
+  if (!ui.role) return;
+  audit("瀏覽", pageLabel());
 }
 function daysLeft(end) {
   return Math.ceil((new Date(end + "T00:00:00") - TODAY) / 86400000);
@@ -873,6 +944,7 @@ function unreadAppoints(tenantId) {
 function toast(msg) {
   ui.toast = msg;
   ui.keepScroll = true;
+  if (ui.role && msg && /^(已|登錄成功)/.test(String(msg))) audit("操作", String(msg));
   render();
   setTimeout(() => { ui.toast = ""; ui.keepScroll = true; render(); }, 1800);
 }
@@ -1422,6 +1494,7 @@ function appointBlock(rep) {
 
 function render() {
   persistUi();
+  maybeAuditBrowse();
   const keep = ui.keepScroll;
   const oldScroll = keep ? (document.querySelector(".admin-scroll") || {}).scrollTop : null;
   const root = document.getElementById("app");
@@ -1893,6 +1966,7 @@ function repairView() {
 
 function adminView() {
   const pages = [["dash", "總覽"], ["rooms", "所有資產"], ["tenants", "租客"], ["announce", "公告"], ["repairs", "報修"], ["ai", "AI助手"]];
+  if (ui.adminCode === "1240") pages.push(["logs", "日誌"]);
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
@@ -1903,7 +1977,7 @@ function adminView() {
     <div class="tabs">
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
     </div>
@@ -1936,7 +2010,32 @@ function adminBody() {
   if (page === "repairs") return adminRepairs();
   if (page === "ai") return adminAi();
   if (page === "announce") return adminAnnounce();
+  if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
   return adminDash();
+}
+function adminLogs() {
+  const filter = ui.logFilter || "all";
+  let list = (state.auditLogs || []).slice().reverse();
+  if (filter === "tenant") list = list.filter(x => x.kind === "tenant");
+  if (filter === "admin") list = list.filter(x => x.kind === "admin" || x.kind === "guest");
+  const chips = [["all", "全部"], ["tenant", "租客"], ["admin", "管理員"]];
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <h2 class="dash-h">操作日誌</h2>
+      <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見，全部裝置共用。</p>
+      <div class="log-filters">
+        ${chips.map(([id, label]) => `<button type="button" class="ghost ${filter === id ? "on" : ""}" data-log-filter="${id}">${label}</button>`).join("")}
+      </div>
+      <div class="small" style="margin-top:8px">共 ${list.length} 筆</div>
+    </div>
+    ${list.length ? list.map(x => `
+      <div class="card card-body log-card">
+        <div class="row"><span class="k">${escapeHtml(x.who)}</span><span class="small">${escapeHtml(x.at)}</span></div>
+        <div class="log-line"><em>操作</em><span>${escapeHtml(x.action)}${x.detail ? " · " + escapeHtml(x.detail) : ""}</span></div>
+        <div class="log-line"><em>瀏覽</em><span>${escapeHtml(x.page || "—")}</span></div>
+        <div class="log-line"><em>裝置</em><span>${escapeHtml(x.device || "—")}</span></div>
+      </div>`).join("") : `<div class="empty">尚無日誌</div>`}
+  </div>`;
 }
 function adminAi() {
   const logs = (state.aiLogs || []).slice(-20);
@@ -2697,17 +2796,26 @@ function tryLogin() {
   const input = document.getElementById("room-login");
   const no = (input.value || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
-    if (ADMIN_CODES.includes(no)) { ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; persistUi(); render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return; }
-    ui.loginError = "密碼不正確"; render(); return;
+    if (ADMIN_CODES.includes(no)) {
+      ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = "";
+      persistUi();
+      audit("登入", "管理員密碼 " + no);
+      render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
+    }
+    ui.loginError = "密碼不正確";
+    audit("登入失敗", "嘗試管理員密碼 " + no);
+    render(); return;
   }
   const room = state.rooms.find(r => r.no === no);
-  if (!room) { ui.loginError = "找不到這個房號"; render(); return; }
+  if (!room) { ui.loginError = "找不到這個房號"; audit("登入失敗", "嘗試房號 " + no); render(); return; }
   if (room.status === "office" || !room.tenantId) {
     ui.loginError = room.status === "office" ? "7651 為辦公室，請改走管理員登入" : "此房號目前沒有租客";
+    audit("登入失敗", "嘗試房號 " + no);
     render(); return;
   }
   ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.roomNo = room.no; ui.page = "home"; ui.loginError = "";
   persistUi();
+  audit("登入", "房號 " + room.no);
   render();
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
@@ -2743,7 +2851,7 @@ function bindUpdateBar() {
 
 function bindTenant() {
   const out = document.getElementById("logout-tenant");
-  if (out) out.onclick = () => { clearSession(); render(); };
+  if (out) out.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       ui.page = el.dataset.page;
@@ -3120,7 +3228,10 @@ function bindAnnounceReactions() {
   });
 }
 function bindAdmin() {
-  document.getElementById("logout").onclick = () => { clearSession(); render(); };
+  document.getElementById("logout").onclick = () => { audit("登出", "切換身分"); clearSession(); render(); };
+  document.querySelectorAll("[data-log-filter]").forEach(btn => {
+    btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
+  });
   bindMediaViewers();
   bindRepairDelete();
   bindAnnounceReactions();
@@ -3180,6 +3291,7 @@ function bindAdmin() {
     ui.invoiceTrack = track ? String(track.value || "").trim().toUpperCase() : "";
     ui.invoiceNum = num ? String(num.value || "").trim() : "";
     render();
+    audit("操作", "列印發票 " + (ui.invoiceTrack || "") + (ui.invoiceNum || ""));
     setTimeout(() => window.print(), 50);
   };
   const invTrack = document.getElementById("inv-track");
@@ -3611,6 +3723,7 @@ async function boot() {
   const minWait = new Promise(r => setTimeout(r, 1900));
   restoreUi();
   applyTheme(currentThemeId());
+  if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
   render();
   const got = await pullCloud();
   if (!got) await pushCloud();
