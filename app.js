@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:55";
+const APP_VERSION = "2026-08-28-下午2:03";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:03", items: ["後台可編輯租客繳費時間與繳費回報", "6821 官方 LINE 繳費回報已歸零"] },
   { ver: "2026-08-28-下午1:55", items: ["我的房間圖卡會隨主題變色，剩餘天數與本月租金維持白底"] },
   { ver: "2026-08-28-下午1:53", items: ["整體報表標題與說明改為獨立一排，不再被按鈕擠掉"] },
   { ver: "2026-08-28-下午1:50", items: ["主題新增極白、極黑"] },
@@ -685,6 +686,23 @@ function nowStamp() {
   const period = h >= 12 ? "下午" : "上午";
   let h12 = h % 12; if (h12 === 0) h12 = 12;
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${period} ${h12}:${p(now.getMinutes())}`;
+}
+function toDatetimeLocal(value) {
+  if (!value) return "";
+  const text = String(value);
+  const m12 = text.match(/^(\d{4}-\d{2}-\d{2})\s*(上午|下午)\s*(\d{1,2}):(\d{2})/);
+  if (m12) {
+    let h = Number(m12[3]) % 12;
+    if (m12[2] === "下午") h += 12;
+    return `${m12[1]}T${String(h).padStart(2, "0")}:${m12[4]}`;
+  }
+  const m = text.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+  if (m) return `${m[1]}T${String(Number(m[2])).padStart(2, "0")}:${m[3]}`;
+  return "";
+}
+function fromDatetimeLocal(value) {
+  if (!value) return "";
+  return formatDateTime12(String(value).replace("T", " "));
 }
 function deviceInfo() {
   const ua = navigator.userAgent || "";
@@ -2774,7 +2792,8 @@ function adminTenants() {
       <div class="swipe-reveal">LINE<br>私訊</div>
       <div class="card card-body clickable swipe-front" data-admin-room="${t.roomId}">
       <div class="row"><span class="k">${escapeHtml(t.name)}</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
-      ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified ? "官方 LINE 已通知" : "App 已回報"}${t.paidAt ? " · " + formatDateTime12(t.paidAt) : ""}</span></div>` : ""}
+      ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
+      ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
       ${(() => {
         const bound = r && lineBindForRoom(r.no);
@@ -2841,6 +2860,11 @@ function field(label, name, value, type) {
     <option value="1" ${value ? "selected" : ""}>本月已繳</option>
     <option value="0" ${!value ? "selected" : ""}>本月未繳</option>
   </select></label>`;
+  if (type === "select-paidvia") return `<label class="field"><span>${label}</span><select name="${name}">
+    <option value="" ${!value ? "selected" : ""}>無</option>
+    <option value="app" ${value === "app" ? "selected" : ""}>App 已回報</option>
+    <option value="line" ${value === "line" ? "selected" : ""}>官方 LINE 已通知</option>
+  </select></label>`;
   return `<label class="field"><span>${label}</span><input name="${name}" type="${type || "text"}" value="${escapeHtml(value ?? "")}" /></label>`;
 }
 function adminRoomEdit() {
@@ -2872,6 +2896,8 @@ function adminRoomEdit() {
       ${field("到期日", "leaseEnd", t?.leaseEnd, "date")}
       ${field("每月繳費日", "dueDay", t?.dueDay || 5)}
       ${field("本月繳費", "paid", t ? t.paid : true, "select-paid")}
+      ${field("繳費時間", "paidAt", toDatetimeLocal(t?.paidAt), "datetime-local")}
+      ${field("繳費回報", "paidVia", t?.lineNotified ? "line" : (t?.paidVia || ""), "select-paidvia")}
       ${field("備註", "note", t?.note, "textarea")}
       <div class="section-title"><h2>房間照片（${Math.min((r.photos || []).length, 5)}／5）</h2></div>
       <label class="upload">上傳房間照片<input id="room-photo-upload" type="file" accept="image/*" multiple hidden /></label>
@@ -2917,6 +2943,11 @@ function saveRoomEdit(form) {
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
     t.dueDay = Number(g("dueDay")) || t.dueDay || 5;
     t.paid = g("paid") === "1"; t.note = g("note");
+    t.paidAt = fromDatetimeLocal(g("paidAt"));
+    t.paidVia = g("paidVia") || "";
+    t.lineNotified = t.paidVia === "line";
+    if (!t.paidAt && t.paid) t.paidAt = nowStamp();
+    if (!t.paid && !t.paidVia) t.lineNotified = false;
   }
   save(); toast("已儲存");
 }
@@ -3554,7 +3585,16 @@ function bindAdmin() {
   document.querySelectorAll("[data-toggle-pay]").forEach(btn => {
     btn.onclick = () => {
       const t = state.tenants.find(x => x.id === btn.dataset.togglePay);
-      t.paid = !t.paid; save(); render();
+      t.paid = !t.paid;
+      if (t.paid) {
+        if (!t.paidAt) t.paidAt = nowStamp();
+        if (!t.paidVia) t.paidVia = "app";
+      } else {
+        t.paidVia = "";
+        t.lineNotified = false;
+        t.paidAt = "";
+      }
+      save(); render();
     };
   });
   document.querySelectorAll("[data-renew-done]").forEach(btn => {
