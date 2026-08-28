@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:02";
+const APP_VERSION = "2026-08-29-凌晨2:05";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:05", items: ["點擊營收排表可放大，手機橫放可雙指縮放"] },
   { ver: "2026-08-29-凌晨2:02", items: ["收租率與出租率圓餅改清爽配色"] },
   { ver: "2026-08-29-凌晨2:00", items: ["整體報表兩張排表改為圓角圖塊"] },
   { ver: "2026-08-29-凌晨1:58", items: ["整體報表改為匯出、列印，放在月年右側"] },
@@ -2701,6 +2702,10 @@ function bindReportBody() {
     ui.keepScroll = true;
     render();
   };
+  document.querySelectorAll("[data-rev-zoom]").forEach(card => {
+    card.onclick = () => openRevZoom(card, card.dataset.revZoom);
+    card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRevZoom(card, card.dataset.revZoom); } };
+  });
   document.querySelectorAll("[data-pick-person]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -4167,8 +4172,8 @@ function revenueTableHtml() {
     return `<tr class="${cls || ""}"><th>${label}</th>${vals.map(td).join("")}${td(tot)}</tr>`;
   };
   return `<div class="rev-sheet">
-    <div class="rev-caption">${escapeHtml(d.month.label)}　／　${escapeHtml(d.year.label)}</div>
-    <div class="rev-card">
+    <div class="rev-caption">${escapeHtml(d.month.label)}　／　${escapeHtml(d.year.label)}<span class="rev-hint">點擊放大</span></div>
+    <div class="rev-card" data-rev-zoom="營收總表" role="button" tabindex="0">
     <table class="rev-table">
       <thead>
         <tr><th>項目</th>${d.cols.map(c => `<th>${escapeHtml(c.name)}</th>`).join("")}<th>合計</th></tr>
@@ -4185,8 +4190,8 @@ function revenueTableHtml() {
     </table>
     </div>
     <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
-    <div class="rev-caption">個人戶明細</div>
-    <div class="rev-card">
+    <div class="rev-caption">個人戶明細<span class="rev-hint">點擊放大</span></div>
+    <div class="rev-card" data-rev-zoom="個人戶明細" role="button" tabindex="0">
     <table class="rev-table">
       <thead>
         <tr><th>成員</th><th>當月收入</th><th>當月支出</th><th>當月結餘</th><th>當年收入</th><th>當年支出</th><th>當年結餘</th><th>營收總額</th></tr>
@@ -4203,6 +4208,86 @@ function revenueTableHtml() {
     </table>
     </div>
   </div>`;
+}
+function closeRevZoom() {
+  const box = document.getElementById("rev-zoom");
+  if (box) box.remove();
+  document.body.classList.remove("rev-zooming");
+}
+function openRevZoom(card, title) {
+  closeRevZoom();
+  const table = card && card.querySelector("table");
+  if (!table) return;
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox rev-zoom";
+  wrap.id = "rev-zoom";
+  wrap.innerHTML = `
+    <div class="lightbox-bar">
+      <button type="button" id="lb-close">關閉</button>
+      <span>${escapeHtml(title || "報表")}</span>
+      <span class="rev-zoom-tools">
+        <button type="button" id="rev-zoom-out">－</button>
+        <button type="button" id="rev-zoom-in">＋</button>
+      </span>
+    </div>
+    <div class="rev-zoom-view" id="rev-zoom-view">
+      <div class="rev-zoom-inner" id="rev-zoom-inner">${table.outerHTML}</div>
+    </div>
+    <div class="rev-zoom-hint">雙指放大縮小 · 手機橫放可看全表</div>`;
+  document.body.appendChild(wrap);
+  document.body.classList.add("rev-zooming");
+  document.getElementById("lb-close").onclick = closeRevZoom;
+  wrap.addEventListener("click", e => { if (e.target === wrap) closeRevZoom(); });
+  const onKey = e => { if (e.key === "Escape") { closeRevZoom(); window.removeEventListener("keydown", onKey); } };
+  window.addEventListener("keydown", onKey);
+  const view = document.getElementById("rev-zoom-view");
+  const inner = document.getElementById("rev-zoom-inner");
+  let scale = 1, x = 0, y = 0;
+  const apply = () => { inner.style.transform = "translate(" + x + "px," + y + "px) scale(" + scale + ")"; };
+  const setScale = next => { scale = Math.min(4, Math.max(0.55, next)); apply(); };
+  document.getElementById("rev-zoom-in").onclick = e => { e.stopPropagation(); setScale(scale * 1.2); };
+  document.getElementById("rev-zoom-out").onclick = e => { e.stopPropagation(); setScale(scale / 1.2); };
+  view.addEventListener("wheel", e => {
+    e.preventDefault();
+    setScale(scale * (e.deltaY < 0 ? 1.1 : 0.9));
+  }, { passive: false });
+  let mode = "", p0 = null, dist0 = 0, s0 = 1, x0 = 0, y0 = 0;
+  const pt = t => ({ x: t.clientX, y: t.clientY });
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  view.addEventListener("touchstart", e => {
+    if (e.touches.length === 2) {
+      mode = "pinch";
+      dist0 = dist(pt(e.touches[0]), pt(e.touches[1]));
+      s0 = scale; x0 = x; y0 = y;
+    } else if (e.touches.length === 1) {
+      mode = "pan";
+      p0 = pt(e.touches[0]);
+      x0 = x; y0 = y;
+    }
+  }, { passive: true });
+  view.addEventListener("touchmove", e => {
+    if (mode === "pinch" && e.touches.length === 2) {
+      e.preventDefault();
+      setScale(s0 * dist(pt(e.touches[0]), pt(e.touches[1])) / (dist0 || 1));
+    } else if (mode === "pan" && e.touches.length === 1) {
+      e.preventDefault();
+      const p = pt(e.touches[0]);
+      x = x0 + p.x - p0.x;
+      y = y0 + p.y - p0.y;
+      apply();
+    }
+  }, { passive: false });
+  view.addEventListener("touchend", e => { if (!e.touches.length) mode = ""; });
+  let lastTap = 0;
+  view.addEventListener("click", e => {
+    if (e.target.closest("button")) return;
+    const now = Date.now();
+    if (now - lastTap < 280) {
+      if (scale > 1.15) { scale = 1; x = 0; y = 0; } else setScale(2);
+      apply();
+    }
+    lastTap = now;
+  });
 }
 function overallRows() {
   return state.rooms.slice().sort((a, b) => {
