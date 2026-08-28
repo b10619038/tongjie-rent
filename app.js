@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:55";
+const APP_VERSION = "2026-08-29-凌晨12:10";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:10", items: ["房間停車位改為白色簡約建模照片"] },
   { ver: "2026-08-28-晚上11:55", items: ["租客內容新增周邊景點，可看地圖並導航"] },
   { ver: "2026-08-28-晚上11:35", items: ["廠房租客可收合，同公司多房合併", "廠房搜尋改為人名、公司名、牛案場"] },
   { ver: "2026-08-28-晚上11:25", items: ["租客列表可搜尋房號、姓名、電話"] },
@@ -3154,7 +3155,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s3" data-page="parking" style="margin-top:12px">
-        <div class="parking-thumb"><span>P</span></div>
+        <img src="images/parking.jpg" alt="停車位" />
         <div class="room-row-info">
           <strong>${mine.no}</strong>
           <span class="small">停車位</span>
@@ -3172,8 +3173,9 @@ function parkingView() {
       <div class="eyebrow">PARKING</div><h1>停車位</h1>
     </div></div>
     <div class="screen">
-      <div class="room-row slide-left">
-        <div class="parking-thumb"><span>P</span></div>
+      <div class="photos slide-left"><img src="images/parking.jpg" alt="機車停車位" /></div>
+      <div class="room-row slide-left" style="margin-top:14px">
+        <img src="images/parking.jpg" alt="停車位" />
         <div class="room-row-info">
           <strong>${r.no}</strong>
           <span class="small">機車停車位</span>
