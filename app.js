@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午3:40";
+const APP_VERSION = "2026-08-28-下午3:46";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午3:46", items: ["銀行入帳與銀行業務有金流會記入進出帳與報表，並自動去掉重複"] },
   { ver: "2026-08-28-下午3:40", items: ["新增一筆可上傳 Excel，工作助手自動記入進出帳與整體報表"] },
   { ver: "2026-08-28-下午3:06", items: ["租客登入需設定密碼，後台可查看，忘記密碼可找回"] },
   { ver: "2026-08-28-下午2:54", items: ["修正手機打開 App 卡在白畫面"] },
@@ -1454,31 +1455,78 @@ function ensureCalMonth() {
 }
 function collectLedger() {
   const rows = [];
-  (state.books || []).forEach(b => rows.push({
-    id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount: Number(b.amount) || 0,
-    roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔", source: "book", canDel: true, canEdit: true
-  }));
-  (state.bankSlips || []).forEach(s => {
-    const room = state.rooms.find(r => String(r.no) === String(s.roomNo || ""));
+  (state.books || []).forEach(b => {
+    const amount = Number(b.amount) || 0;
+    if (!amount) return;
     rows.push({
-      id: "slip-" + s.id, type: "in", date: ymdOf(s.date), amount: Number(s.amount) || 0,
-      roomNo: s.roomNo || "", note: s.note || "銀行入帳", company: s.company || roomCompany(room || {}),
+      id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount,
+      roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔",
+      source: "book", canDel: true, canEdit: true
+    });
+  });
+  (state.bankSlips || []).forEach(s => {
+    const amount = Number(s.amount) || 0;
+    if (!amount) return;
+    const room = state.rooms.find(r => String(r.no) === String(s.roomNo || ""));
+    const company = cellAccount(s.company || s.note) || roomCompany(room || {}) || "統潔";
+    rows.push({
+      id: "slip-" + s.id, type: guessCashType(s.note, "in"), date: ymdOf(s.date), amount,
+      roomNo: s.roomNo || "", note: s.note || "銀行入帳", company,
       source: "slip", canDel: false, canEdit: true
     });
   });
-  const slipRooms = new Set((state.bankSlips || []).map(s => String(s.roomNo || "")));
+  (state.errands || []).forEach(e => {
+    if (e.kind === "doc") return;
+    const amount = Number(e.amount) || 0;
+    if (!amount) return;
+    const blob = [e.title, e.place, e.note, e.company].join(" ");
+    const company = cellAccount(e.company || blob) || "統潔";
+    rows.push({
+      id: "errand-" + e.id,
+      type: guessCashType(blob, "out"),
+      date: ymdOf(e.date), amount,
+      roomNo: "", note: ["銀行業務", e.title, e.place, e.note].filter(Boolean).join(" · "),
+      company, source: "errand", canDel: false, canEdit: false
+    });
+  });
+  const taken = new Set(rows.filter(x => x.roomNo).map(x => String(x.roomNo)));
   state.tenants.filter(t => t.paid).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     const date = ymdOf(t.paidAt);
     if (!date) return;
-    if (room && slipRooms.has(String(room.no))) return;
+    if (room && taken.has(String(room.no))) return;
+    const amount = Number(room && room.rent) || 0;
+    if (!amount) return;
     rows.push({
-      id: "rent-" + t.id, type: "in", date, amount: Number(room && room.rent) || 0,
+      id: "rent-" + t.id, type: "in", date, amount,
       roomNo: room ? room.no : "", note: (t.name || "") + " 租金", company: roomCompany(room || {}),
       source: "rent", canDel: false, canEdit: false
     });
   });
-  return rows.filter(x => x.date);
+  return dedupeLedger(rows);
+}
+function ledgerDupKey(row) {
+  return [ymdOf(row.date), row.type === "out" ? "out" : "in", Number(row.amount) || 0, rowAccount(row)].join("|");
+}
+function dedupeLedger(rows) {
+  const rank = { book: 1, slip: 2, errand: 3, rent: 4 };
+  const list = rows.filter(x => x.date && x.amount).slice().sort((a, b) => (rank[a.source] || 9) - (rank[b.source] || 9));
+  const seen = new Set();
+  const out = [];
+  list.forEach(r => {
+    const k = ledgerDupKey(r);
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(r);
+  });
+  return out;
+}
+function guessCashType(text, fallback) {
+  return cellType(text, "") || fallback || "in";
+}
+function isCashAccount(name) {
+  const a = cellAccount(name) || name;
+  return BOOK_ACCOUNTS.includes(a) || REPORT_ACCOUNTS.includes(a);
 }
 function rowAccount(row) {
   const c = String((row && row.company) || "");
@@ -2760,9 +2808,12 @@ function adminAi() {
         <input name="amount" type="text" placeholder="金額（選填）" />
       </div>
       <div class="cal-form-row">
-        <select name="company"><option value="統潔">統潔</option><option value="信潔">信潔</option></select>
+        <select name="company">
+          ${BOOK_ACCOUNTS.map(n => `<option value="${n}">${n}</option>`).join("")}
+        </select>
         <input name="note" type="text" placeholder="備註（選填）" />
       </div>
+      <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
       <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
       <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
       <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
@@ -2772,7 +2823,7 @@ function adminAi() {
       return `
       <div class="card card-body">
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
-        <div class="small">${escapeHtml([e.place, e.amount ? money(e.amount) : "", e.note].filter(Boolean).join(" · "))}</div>
+        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.note].filter(Boolean).join(" · "))}</div>
         ${pics.length ? `<button type="button" class="ghost" data-view-media="${e.id}|image" style="margin-top:8px">查看會計紙本${pics.length > 1 ? "（" + pics.length + "）" : ""}</button>` : ""}
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
       </div>`;
@@ -2795,9 +2846,12 @@ function adminAi() {
     </div>
     <form class="card card-body" id="bank-form">
       <h2 class="dash-h">上傳銀行入帳資料</h2>
-      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額後，工作助手就能用來對帳。</p>
+      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額與金流帳戶後，會記入進出帳與整體報表；工作助手會去掉重複。</p>
       <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
       <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
+      <label class="field"><span>金流帳戶</span>
+        <select name="company">${BOOK_ACCOUNTS.map(n => `<option value="${n}">${n}</option>`).join("")}</select>
+      </label>
       <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
       <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
       <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
@@ -2806,7 +2860,7 @@ function adminAi() {
     ${slips.length ? slips.map(s => `
       <div class="card card-body">
         <div class="row"><span class="k">${escapeHtml(s.date || "銀行入帳")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
-        <p class="small">${escapeHtml(s.note || "")}</p>
+        <div class="small">${escapeHtml(s.company || "統潔")}${s.note ? " · " + escapeHtml(s.note) : ""}</div>
         ${(s.media || []).map(m => m.kind === "image" ? `<img src="${m.src}" alt="" style="width:100%;border-radius:12px;margin:8px 0">` : `<a class="ghost" href="${m.src}" download="${escapeHtml(m.name || "檔案")}" style="margin-top:8px;display:block;text-align:center">下載檔案</a>`).join("")}
         <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
       </div>`).join("") : ""}
@@ -4428,20 +4482,9 @@ function bindAdminAi() {
     const place = (errand.place.value || "").trim();
     const note = (errand.note.value || "").trim();
     const id = "er" + Date.now();
-    const company = errand.company && errand.company.value === "信潔" ? "信潔" : "統潔";
+    const company = BOOK_ACCOUNTS.includes(errand.company && errand.company.value) ? errand.company.value : (cellAccount(note + title) || "統潔");
     if (!state.errands) state.errands = [];
     state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, media: (ui.errandMedia || []).slice(), createdAt: nowStamp() });
-    if (!state.books) state.books = [];
-    state.books.push({
-      id,
-      type: "out",
-      date,
-      amount,
-      company,
-      roomNo: "",
-      note: "銀行業務 " + title + (place ? " · " + place : "") + (note ? " · " + note : ""),
-      createdAt: nowStamp()
-    });
     const p = date.split("-");
     if (p.length === 3) {
       ui.calYear = Number(p[0]);
@@ -4449,8 +4492,12 @@ function bindAdminAi() {
       ui.calDay = Number(p[2]);
     }
     ui.errandMedia = [];
+    if (amount) {
+      if (!state.aiLogs) state.aiLogs = [];
+      state.aiLogs.push({ role: "ai", text: "已查看銀行業務「" + title + "」" + money(amount) + "（" + company + "）。若與現有記帳同一天同金額同帳戶，進出帳與整體報表只計一筆。" });
+    }
     save();
-    toast("登錄成功");
+    toast(amount ? "登錄成功，已納入進出帳與整體報表" : "登錄成功");
   };
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
     btn.onclick = e => {
@@ -4506,18 +4553,27 @@ function bindAdminAi() {
   const bank = document.getElementById("bank-form");
   if (bank) bank.onsubmit = e => {
     e.preventDefault();
+    const date = bank.date.value;
+    const amount = Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0;
+    const note = (bank.note.value || "").trim();
+    const company = BOOK_ACCOUNTS.includes(bank.company && bank.company.value) ? bank.company.value : (cellAccount(note) || "統潔");
     if (!state.bankSlips) state.bankSlips = [];
     state.bankSlips.push({
-      id: "bk" + Date.now(),
-      date: bank.date.value,
-      amount: Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0,
-      roomNo: "",
-      note: (bank.note.value || "").trim(),
+      id: "slip" + Date.now(),
+      date, amount, roomNo: "", note, company,
       media: (ui.bankMedia || []).slice(),
       createdAt: nowStamp()
     });
     ui.bankMedia = [];
-    save(); toast("已儲存入帳資料"); render();
+    if (amount) {
+      if (!state.aiLogs) state.aiLogs = [];
+      state.aiLogs.push({ role: "ai", text: "已查看銀行入帳 " + money(amount) + "（" + company + "）。同一天、同金額、同帳戶的重複資料，進出帳與整體報表只會算一筆。" });
+      const p = String(date || "").split("-");
+      if (p.length === 3) { ui.calYear = Number(p[0]); ui.calMonth = Number(p[1]); ui.calDay = Number(p[2]); }
+    }
+    save();
+    toast(amount ? "已納入進出帳與整體報表" : "已儲存入帳資料（未填金額，未記入進出帳）");
+    render();
   };
   document.querySelectorAll("[data-del-slip]").forEach(btn => {
     btn.onclick = () => {
@@ -4556,6 +4612,7 @@ function bindCashCal() {
       const src = el.dataset.editSrc;
       const id = el.dataset.editLed;
       if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
+      if (src === "errand") { toast("這筆來自銀行業務，請到工作助手修改"); return; }
       ui.editBookId = src === "book" ? id : null;
       ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
       stay();
