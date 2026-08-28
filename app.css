@@ -676,6 +676,7 @@ textarea { min-height: 92px; resize: vertical; }
   letter-spacing: .04em;
   pointer-events: none;
   background: transparent;
+  white-space: nowrap;
 }
 .home-upd {
   position: fixed;

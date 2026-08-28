@@ -7,8 +7,9 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午11:24";
+const APP_VERSION = "2026-08-28-上午11:56";
 const CHANGELOG = [
+  { ver: "2026-08-28-上午11:56", items: ["畫面正下方改為「資料經 HTTPS 同步雲端」與版本號同一行"] },
   { ver: "2026-08-28-上午11:24", onlyDev: true, items: ["日誌紀錄可單筆刪除、全選刪除", "開發者專用更新內容，一般管理員與租客看不到"] },
   { ver: "2026-08-28-上午11:10", items: ["記下銀行業務可上傳會計紙本照片"] },
   { ver: "2026-08-28-上午11:08", onlyDev: true, items: ["開發者後台新增「日誌」，可看租客／管理員何時用哪台裝置登入、操作與瀏覽"] },
@@ -236,7 +237,8 @@ function askTongjieNotify() {
 }
 window.askTongjieNotify = askTongjieNotify;
 function versionFooter() {
-  return `<div class="ver">版本 ${APP_VERSION}</div>`;
+  const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
+  return `<div class="ver">${cloud}　版本 ${APP_VERSION}</div>`;
 }
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
@@ -1626,7 +1628,6 @@ function gateView() {
       <h1>統潔＆信潔開發有限公司</h1>
       <p class="small"><a href="mailto:jie59056503@gmail.com">jie59056503@gmail.com</a></p>
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
-      <p class="small">${ui.cloudOk === true ? "雲端已同步" : ui.cloudOk === false ? "尚未連上雲端，先使用本機資料" : "正在連接雲端…"}</p>
     </div>
     <button class="role-btn slide-left" data-go="tenant-login">
       <strong>我是租客</strong>
@@ -1980,7 +1981,6 @@ function adminView() {
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
-        <div class="small">${ui.cloudOk === true ? "雲端已同步，全部裝置共用" : ui.cloudOk === false ? "尚未連上雲端" : "正在同步…"}</div>
       </div>
       <button class="ghost" id="logout" style="width:auto">切換身分</button>
     </div>
