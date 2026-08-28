@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午4:00";
+const APP_VERSION = "2026-08-28-下午4:08";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午4:08", items: ["租客可上傳大頭貼，廠房分組可收合並支援全開全關"] },
   { ver: "2026-08-28-下午4:00", items: ["廠房租客預留 40 個空白名額"] },
   { ver: "2026-08-28-下午3:50", items: ["租客分為套房租客與廠房租客，現有房號都在套房"] },
   { ver: "2026-08-28-下午3:46", items: ["銀行入帳與銀行業務有金流會記入進出帳與報表，並自動去掉重複"] },
@@ -1296,22 +1297,29 @@ function bindPendingMedia() {
     };
   });
 }
-function compressImage(file) {
+function compressImage(file, maxSize) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const max = 1400;
+      const max = maxSize || 1400;
       let w = img.width, h = img.height;
       if (w > max) { h = Math.round(h * max / w); w = max; }
+      if (h > max) { w = Math.round(w * max / h); h = max; }
       canvas.width = w; canvas.height = h;
       canvas.getContext("2d").drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      resolve(canvas.toDataURL("image/jpeg", maxSize && maxSize <= 500 ? 0.82 : 0.72));
     };
     img.onerror = reject; img.src = url;
   });
+}
+function avatarHtml(t, size) {
+  const cls = "avatar" + (size === "sm" ? " sm" : "");
+  if (t && t.avatar) return `<img class="${cls}" src="${t.avatar}" alt="">`;
+  const ch = String((t && t.name) || "＋").replace(/\s/g, "").slice(0, 1) || "＋";
+  return `<span class="${cls} ph">${escapeHtml(ch)}</span>`;
 }
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -2278,7 +2286,13 @@ function homeView() {
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar">
-      <div class="slide-right"><div class="eyebrow">GOOD EVENING</div><h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1></div>
+      <div class="who-line slide-right">
+        <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : `<span class="ph">${escapeHtml(((t.name || "＋").replace(/\s/g, "").slice(0, 1) || "＋"))}</span>`}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
+        <div>
+          <div class="eyebrow">GOOD EVENING</div>
+          <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
+        </div>
+      </div>
       <button class="back" id="logout-tenant" type="button">登出</button>
     </div>
     <div class="screen">
@@ -3316,11 +3330,24 @@ function adminRoomListHtml(kind) {
       return String(a.no).localeCompare(String(b.no), "zh-Hant");
     });
     if (!list.length) return `<div class="empty">目前沒有廠房</div>`;
-    let last = "";
-    return list.map(r => {
-      const head = r.group !== last ? `<div class="floor-h">${r.group}${r.company ? " · " + r.company : ""} · ${r.street}（${list.filter(x => x.group === r.group).length} 戶）</div>` : "";
-      last = r.group;
-      return `${head}<div class="card item clickable" data-admin-room="${r.id}">
+    if (!ui.factoryFold) ui.factoryFold = {};
+    const groups = [];
+    list.forEach(r => {
+      const g = r.group || "其他";
+      let pack = groups.find(x => x.group === g);
+      if (!pack) { pack = { group: g, rooms: [], company: r.company || "", street: r.street || "" }; groups.push(pack); }
+      pack.rooms.push(r);
+    });
+    const bar = `<div class="fold-bar">
+      <span class="small">點綠色小標可收合分組</span>
+      <div class="fold-actions">
+        <button type="button" class="ghost" data-factory-all="open">全開</button>
+        <button type="button" class="ghost" data-factory-all="close">全關</button>
+      </div>
+    </div>`;
+    return bar + groups.map(g => {
+      const closed = !!ui.factoryFold[g.group];
+      const cards = g.rooms.map(r => `<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl(r.photos && r.photos[0], r.no)}
         <div><strong>${r.no}</strong>
           <div class="small">${escapeHtml(r.location || "")}${r.manager ? " · " + escapeHtml(r.manager) : ""}</div>
@@ -3330,7 +3357,9 @@ function adminRoomListHtml(kind) {
           <option value="vacant" ${r.status === "vacant" ? "selected" : ""}>空置</option>
           <option value="repair" ${r.status === "repair" ? "selected" : ""}>維修中</option>
         </select>
-      </div>`;
+      </div>`).join("");
+      return `<button type="button" class="floor-h fold-h${closed ? " closed" : ""}" data-factory-fold="${escapeHtml(g.group)}">${escapeHtml(g.group)}${g.company ? " · " + escapeHtml(g.company) : ""} · ${escapeHtml(g.street)}（${g.rooms.length} 戶）</button>
+      <div class="factory-pack${closed ? " folded" : ""}" data-factory-pack="${escapeHtml(g.group)}">${cards}</div>`;
     }).join("");
   }
   if (!ui.studioBldg) {
@@ -3459,7 +3488,7 @@ function adminTenants() {
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE<br>私訊</div>
       <div class="card card-body clickable swipe-front" data-admin-room="${t.roomId}">
-      <div class="row"><span class="k">${escapeHtml(t.name)}</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
+      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
       ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
@@ -3557,6 +3586,10 @@ function adminRoomEdit() {
       ${field("押金", "deposit", r.deposit, "text")}
       ${field("狀態", "status", r.status, "select-status")}
       ${field("租客姓名", "name", t?.name || "")}
+      <div class="who-mini" style="margin:8px 0 12px">
+        ${avatarHtml(t, "")}
+        <label class="upload" style="flex:1;margin:0">上傳租客大頭貼<input id="tenant-avatar-admin" type="file" accept="image/*" hidden /></label>
+      </div>
       ${field("登入密碼", "loginPass", t?.loginPass || "")}
       ${field("電話", "phone", t?.phone || "")}
       ${field("身分證字號", "idNo", t?.idNo || "")}
@@ -3775,6 +3808,20 @@ function bindUpdateBar() {
 function bindTenant() {
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
+  const av = document.getElementById("tenant-avatar");
+  if (av) av.onchange = async () => {
+    const f = av.files && av.files[0];
+    av.value = "";
+    if (!f) return;
+    const t = me();
+    if (!t) return;
+    try {
+      t.avatar = await compressImage(f, 480);
+      save();
+      toast("大頭貼已更新");
+      render();
+    } catch { toast("照片讀取失敗"); }
+  };
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       ui.page = el.dataset.page;
@@ -4100,6 +4147,35 @@ function bindLineSwipe() {
     wrap.addEventListener("touchend", onUp);
   });
 }
+function bindFactoryFold() {
+  document.querySelectorAll("[data-factory-fold]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const g = btn.dataset.factoryFold;
+      if (!ui.factoryFold) ui.factoryFold = {};
+      ui.factoryFold[g] = !ui.factoryFold[g];
+      const closed = !!ui.factoryFold[g];
+      btn.classList.toggle("closed", closed);
+      document.querySelectorAll("[data-factory-pack]").forEach(p => {
+        if (p.dataset.factoryPack === g) p.classList.toggle("folded", closed);
+      });
+    };
+  });
+  document.querySelectorAll("[data-factory-all]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const close = btn.dataset.factoryAll === "close";
+      if (!ui.factoryFold) ui.factoryFold = {};
+      document.querySelectorAll("[data-factory-fold]").forEach(b => {
+        ui.factoryFold[b.dataset.factoryFold] = close;
+        b.classList.toggle("closed", close);
+      });
+      document.querySelectorAll("[data-factory-pack]").forEach(p => p.classList.toggle("folded", close));
+    };
+  });
+}
 function bindStudioBuildings() {
   document.querySelectorAll("[data-studio-bldg]").forEach(btn => {
     btn.onclick = e => {
@@ -4251,6 +4327,7 @@ function bindAdmin() {
         box.innerHTML = adminRoomListHtml(kind);
         bindAdminRoomItems();
         bindStudioBuildings();
+        bindFactoryFold();
       }
     };
   });
@@ -4274,6 +4351,7 @@ function bindAdmin() {
   if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   bindAdminRoomItems();
   bindStudioBuildings();
+  bindFactoryFold();
   bindLineSwipe();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
@@ -4333,6 +4411,26 @@ function bindAdmin() {
   });
   const form = document.getElementById("room-edit-form");
   if (form) form.onsubmit = e => { e.preventDefault(); saveRoomEdit(form); };
+  const avAdmin = document.getElementById("tenant-avatar-admin");
+  if (avAdmin) avAdmin.onchange = async () => {
+    const f = avAdmin.files && avAdmin.files[0];
+    avAdmin.value = "";
+    if (!f) return;
+    const r = state.rooms.find(x => x.id === ui.roomId);
+    if (!r) return;
+    let t = state.tenants.find(x => x.id === r.tenantId);
+    if (!t) {
+      t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 5, name: "" };
+      state.tenants.push(t); r.tenantId = t.id;
+    }
+    try {
+      t.avatar = await compressImage(f, 480);
+      save();
+      ui.keepScroll = true;
+      toast("大頭貼已更新");
+      render();
+    } catch { toast("照片讀取失敗"); }
+  };
   const roomPhotoUp = document.getElementById("room-photo-upload");
   if (roomPhotoUp) {
     roomPhotoUp.onchange = async () => {
