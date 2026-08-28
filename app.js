@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:55";
+const APP_VERSION = "2026-08-28-晚上11:00";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:00", items: ["公告署名改為管理員或開發者，不再顯示客服"] },
   { ver: "2026-08-28-晚上10:55", items: ["管理員後台「切換身分」改為登出"] },
   { ver: "2026-08-28-晚上10:50", onlyDev: true, items: ["開發者後台改為登出／租客預覽，預覽不計入金額"] },
   { ver: "2026-08-28-晚上10:40", items: ["租客未上傳大頭貼時改為白色人像", "公告旁加上客服頭像"] },
@@ -664,6 +665,17 @@ function normalize(data) {
   });
   if (!Array.isArray(data.notices)) data.notices = [];
   if (!Array.isArray(data.announcements)) data.announcements = [];
+  data.announcements.forEach(a => {
+    if (a.postedBy) return;
+    const logs = (data.auditLogs || []).filter(x =>
+      String(x.page || "") === "公告" && /已發布公告|已更新公告/.test(String(x.detail || ""))
+    );
+    const last = logs[logs.length - 1];
+    const who = last ? String(last.who || "") : "";
+    if (last && (last.kind === "dev" || /1240/.test(who))) a.postedBy = "1240";
+    else if (/7651/.test(who)) a.postedBy = "7651";
+    else if (/1976/.test(who)) a.postedBy = "1976";
+  });
   if (!data.houseRules) data.houseRules = DEFAULT_RULES;
   else data.houseRules = String(data.houseRules).replace(/水費為每月定額[。]?/, "水費為一年固定 $1,800。");
   if (!Array.isArray(data.renewals)) data.renewals = [];
@@ -1911,9 +1923,9 @@ function avatarHtml(t, size) {
   if (t && t.avatar) return `<img class="${cls}" src="${t.avatar}" alt="">`;
   return `<span class="${cls} ph default">${defaultAvatarSvg()}</span>`;
 }
-function staffAvatarHtml(size) {
+function staffAvatarHtml(size, title) {
   const cls = "avatar staff" + (size === "sm" ? " sm" : "");
-  return `<span class="${cls}" title="客服">${staffAvatarSvg()}</span>`;
+  return `<span class="${cls}" title="${escapeHtml(title || "客服")}">${staffAvatarSvg()}</span>`;
 }
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -2939,13 +2951,17 @@ function reactBarHtml(a) {
   const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
   return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
 }
+function announcePosterLabel(a) {
+  return String((a && a.postedBy) || "") === "1240" ? "開發者" : "管理員";
+}
 function announceBodyHtml(a, actions) {
   const unread = ui.tenantId && (isDevPreview() ? !(ui.devReadAnns || {})[a.id] : !(a.readBy || []).includes(ui.tenantId));
+  const poster = announcePosterLabel(a);
   return `<div class="ann-head">
-      ${staffAvatarHtml("sm")}
+      ${staffAvatarHtml("sm", poster)}
       <div class="ann-meta">
         <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}${actions || ""}</div>
-        <div class="small">客服　${formatDateTime12(a.createdAt)}</div>
+        <div class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</div>
       </div>
     </div>
     <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
@@ -3688,8 +3704,8 @@ function adminAnnounce() {
   const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
   return `<div class="admin-grid list">
     <form class="card card-body" id="announce-form">
-      <h2 class="dash-h who-mini">${staffAvatarHtml("sm")}<span>${editing ? "編輯公告" : "發布公告"}</span></h2>
-      <p class="small">發布後，租客與後台都會在公告旁看到客服頭像。</p>
+      <h2 class="dash-h who-mini">${staffAvatarHtml("sm", ui.adminCode === "1240" ? "開發者" : "管理員")}<span>${editing ? "編輯公告" : "發布公告"}</span></h2>
+      <p class="small">7651 發布顯示管理員，1240 發布顯示開發者。</p>
       <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" required /></label>
       <label class="field"><span>內容</span><textarea name="body" required>${editing ? escapeHtml(editing.body) : ""}</textarea></label>
       <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
@@ -5443,10 +5459,13 @@ function bindAdmin() {
       const media = (ui.announceMedia || []).slice();
       if (ui.announceEditId) {
         const a = state.announcements.find(x => x.id === ui.announceEditId);
-        if (a) { a.title = title; a.body = body; a.media = media; a.updatedAt = nowStamp(); }
+        if (a) {
+          a.title = title; a.body = body; a.media = media; a.updatedAt = nowStamp();
+          if (!a.postedBy) a.postedBy = ui.adminCode || "";
+        }
         ui.announceEditId = null; ui.announceMedia = []; save(); toast("已更新公告"); return;
       }
-      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {} });
+      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "" });
       ui.announceMedia = []; save();
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
