@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:25";
+const APP_VERSION = "2026-08-28-晚上11:35";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:35", items: ["廠房租客可收合，同公司多房合併", "廠房搜尋改為人名、公司名、牛案場"] },
   { ver: "2026-08-28-晚上11:25", items: ["租客列表可搜尋房號、姓名、電話"] },
   { ver: "2026-08-28-晚上11:20", onlyDev: true, items: ["開發者後台登出／租客改回分開的兩顆圖塊"] },
   { ver: "2026-08-28-晚上11:15", items: ["套房租客圖卡預設收成姓名列，點一下展開"] },
@@ -4137,9 +4138,16 @@ function roomIsFactory(r) {
 function normSearch(s) {
   return String(s || "").toLowerCase().replace(/[\s、\-－()]/g, "");
 }
-function tenantMatchesQ(t, r, q) {
+function tenantMatchesQ(t, r, q, kind) {
+  if (kind === "factory") {
+    const parts = [t.name, t.contactName, r && r.group, r && r.no];
+    return parts.some(x => normSearch(x).includes(q));
+  }
   const parts = [t.name, t.phone, t.contactName, r && r.no];
   return parts.some(x => normSearch(x).includes(q));
+}
+function tenantSearchPlaceholder(kind) {
+  return kind === "factory" ? "搜尋人名、公司名、牛案場" : "搜尋房號、姓名、電話";
 }
 function tenantListOfKind(kind) {
   const factory = kind === "factory";
@@ -4150,7 +4158,7 @@ function tenantListOfKind(kind) {
     if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
-    if (q && !tenantMatchesQ(t, r, q)) return false;
+    if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     return true;
   }).sort((a, b) => {
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
@@ -4165,8 +4173,33 @@ function tenantListOfKind(kind) {
   });
   return list;
 }
-function tenantListInnerHtml(kind) {
+function tenantEntriesOfKind(kind) {
   const list = tenantListOfKind(kind);
+  if (kind !== "factory") {
+    return list.map(t => ({
+      key: t.id,
+      tenants: [t],
+      rooms: [state.rooms.find(x => x.id === t.roomId)].filter(Boolean)
+    }));
+  }
+  const map = new Map();
+  const order = [];
+  list.forEach(t => {
+    const r = state.rooms.find(x => x.id === t.roomId);
+    const key = String(t.taxId || "").trim() || String(t.name || "").trim() || t.id;
+    if (!map.has(key)) {
+      const e = { key, tenants: [], rooms: [] };
+      map.set(key, e);
+      order.push(e);
+    }
+    const e = map.get(key);
+    e.tenants.push(t);
+    if (r) e.rooms.push(r);
+  });
+  return order;
+}
+function tenantListInnerHtml(kind) {
+  const entries = tenantEntriesOfKind(kind);
   const q = normSearch(ui.tenantQ);
   const renews = q ? [] : (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
@@ -4187,16 +4220,43 @@ function tenantListInnerHtml(kind) {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${list.length ? list.map(t => {
-    const r = state.rooms.find(x => x.id === t.roomId);
-    const pay = payLabel(t);
-    const foldable = kind !== "factory";
-    const open = !foldable || !!(ui.tenantOpen && ui.tenantOpen[t.id]);
-    const details = `${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
+    ${entries.length ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
+}
+function tenantEntryCardHtml(kind, entry) {
+  const tenants = entry.tenants || [];
+  const rooms = entry.rooms || [];
+  const t = tenants[0];
+  const r = rooms[0];
+  if (!t) return "";
+  const foldId = kind === "factory" ? "fg-" + entry.key : t.id;
+  const open = !!(ui.tenantOpen && ui.tenantOpen[foldId]);
+  const unpaid = tenants.some(x => !x.paid);
+  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  const nos = rooms.map(x => x.no).filter(Boolean).join("、") || (r ? r.no : "—");
+  const sites = [...new Set(rooms.map(x => x.group).filter(Boolean))].join("、");
+  const roomRentLine = (tt, rr) => {
+    const u = tt.rentUntaxed || (rr && rr.rentUntaxed);
+    const tax = (rr && rr.rent) || 0;
+    return u ? "未稅 " + money(u) + "　含稅 " + money(tax) : money(tax);
+  };
+  const rentsSame = tenants.every(tt => {
+    const rr = rooms.find(x => x.id === tt.roomId) || r;
+    return roomRentLine(tt, rr) === roomRentLine(t, r);
+  });
+  const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
+  const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
+      <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
+      ${t.paidAt && tenants.length === 1 ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
-      <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
-      <div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>
+      ${kind !== "factory" ? `<div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>` : ""}
       ${(() => {
+        if (kind === "factory" && tenants.length > 1) {
+          return tenants.map(tt => {
+            const rr = state.rooms.find(x => x.id === tt.roomId);
+            const bound = rr && lineBindForRoom(rr.no);
+            return `<div class="row" data-line-status="${rr ? rr.no : ""}"><span class="k">LINE　${escapeHtml(rr ? rr.no : "")}</span>${bound ? `<span class="badge rented">已綁定${lineBindName(rr.no) ? " · " + escapeHtml(lineBindName(rr.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
+          }).join("");
+        }
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
@@ -4204,20 +4264,33 @@ function tenantListInnerHtml(kind) {
       ${t.contactName ? `<div class="row"><span class="k">聯絡人</span><span class="v">${escapeHtml(t.contactName)}</span></div>` : ""}
       ${t.taxId ? `<div class="row"><span class="k">統編</span><span class="v">${escapeHtml(t.taxId)}</span></div>` : ""}
       ${t.bankLast5 ? `<div class="row"><span class="k">帳戶後五碼</span><span class="v">${escapeHtml(t.bankLast5)}</span></div>` : ""}
-      ${r && r.kind === "factory" ? `<div class="row"><span class="k">月租</span><span class="v">${(t.rentUntaxed || r.rentUntaxed) ? "未稅 " + money(t.rentUntaxed || r.rentUntaxed) + "　含稅 " + money(r.rent || 0) : money(r.rent || 0)}</span></div>` : ""}
-      <div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
-      <div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>
-      ${t.note && r && r.kind === "factory" ? `<div class="row"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
-      <button class="ghost" data-invoice="${t.roomId}" style="margin-top:8px">產出發票</button>
-      <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>`;
-    return `<div class="swipe-wrap${foldable && !open ? " slim" : ""}" data-swipe-tenant="${t.id}">
+      ${kind === "factory" ? (rentsSame
+        ? `<div class="row wrap"><span class="k">月租</span><span class="v">${roomRentLine(t, r)}</span></div>`
+        : tenants.map(tt => {
+            const rr = state.rooms.find(x => x.id === tt.roomId);
+            return `<div class="row wrap"><span class="k">月租　${escapeHtml(rr ? rr.no : "")}</span><span class="v">${roomRentLine(tt, rr)}</span></div>`;
+          }).join("")) : ""}
+      ${leasesSame
+        ? `<div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
+      <div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>`
+        : tenants.map(tt => {
+            const rr = state.rooms.find(x => x.id === tt.roomId);
+            return `<div class="row wrap"><span class="k">租期　${escapeHtml(rr ? rr.no : "")}</span><span class="v">${tt.leaseStart || "—"} → ${tt.leaseEnd || "—"}　${leaseLeftText(tt.leaseEnd)}</span></div>`;
+          }).join("")}
+      ${t.note && kind === "factory" ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
+      ${tenants.map(tt => {
+        const rr = state.rooms.find(x => x.id === tt.roomId);
+        const label = tenants.length > 1 && rr ? escapeHtml(rr.no) + "　" : "";
+        return `<button class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">${label}產出發票</button>
+      <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>`;
+      }).join("")}`;
+  return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE<br>私訊</div>
-      <div class="card card-body clickable swipe-front${foldable ? " tenant-slim" : ""}${open && foldable ? " open" : ""}"${foldable ? ` data-fold-tenant="${t.id}"` : ` data-admin-room="${t.roomId}"`}>
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span>${foldable ? `<span class="fold-caret"></span>` : ""}</span></div>
-      ${foldable ? `<div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>` : details}
+      <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
-  }).join("") : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
 }
 function tenantKindHint(kind) {
   return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
@@ -4233,6 +4306,8 @@ function applyTenantKind(kind) {
   }
   const hint = document.getElementById("tenant-kind-hint");
   if (hint) hint.textContent = tenantKindHint(next);
+  const search = document.getElementById("tenant-search");
+  if (search) search.placeholder = tenantSearchPlaceholder(next);
   const box = document.getElementById("tenant-list");
   if (box) {
     box.innerHTML = tenantListInnerHtml(next);
@@ -4358,7 +4433,7 @@ function adminTenants() {
       </div>
     </div>
     <div class="card card-body tenant-search">
-      <input id="tenant-search" type="search" enterkeyhint="search" placeholder="搜尋房號、姓名、電話" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
+      <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
