@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:10";
+const APP_VERSION = "2026-08-29-凌晨12:15";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:15", items: ["房間新增子母車（垃圾桶）與使用規範"] },
   { ver: "2026-08-29-凌晨12:10", items: ["房間停車位改為白色簡約建模照片"] },
   { ver: "2026-08-28-晚上11:55", items: ["租客內容新增周邊景點，可看地圖並導航"] },
   { ver: "2026-08-28-晚上11:35", items: ["廠房租客可收合，同公司多房合併", "廠房搜尋改為人名、公司名、牛案場"] },
@@ -1353,7 +1354,7 @@ function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
   const map = {
     home: "首頁", rooms: ui.role === "admin" ? "所有資產" : "房間",
-    "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台",
+    "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
     tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌",
@@ -3002,7 +3003,7 @@ function nav() {
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
-    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home");
+    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home");
     return `<button data-page="${id}" class="${on ? "active" : ""}">${icon(ic)}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
@@ -3012,6 +3013,7 @@ function tenantView() {
   if (ui.page === "room-detail") return roomDetailView(ui.roomId || myRoom().id);
   if (ui.page === "parking") return parkingView();
   if (ui.page === "balcony") return balconyView();
+  if (ui.page === "trash") return trashView();
   if (ui.page === "lease") return leaseView();
   if (ui.page === "repair" || ui.page === "repair-done") return repairView();
   if (ui.page === "pay") return payView();
@@ -3163,6 +3165,15 @@ function roomsView() {
         </div>
         <span class="badge rented">已配</span>
       </div>
+      <div class="room-row clickable room-seq s4" data-page="trash" style="margin-top:12px">
+        <img src="images/trash-cart.jpg" alt="子母車" />
+        <div class="room-row-info">
+          <strong>子母車</strong>
+          <span class="small">垃圾桶</span>
+          <div class="price">NT$ 0 <em>/月</em></div>
+        </div>
+        <span class="badge rented">已配</span>
+      </div>
     </div>`;
 }
 
@@ -3189,6 +3200,32 @@ function parkingView() {
         <p>3. 離開時請熄火、上鎖，貴重物品請勿留置車上。</p>
         <p>4. 停車區禁止充電改裝、維修或傾倒機油。</p>
         <p>5. 車輛損壞、遺失由車主自行負責，請妥善保管。</p>
+      </div>
+    </div>`;
+}
+function trashView() {
+  return `<div class="topbar slide-right"><div>
+      <button class="back" data-page="rooms">← 返回</button>
+      <div class="eyebrow">TRASH</div><h1>子母車</h1>
+    </div></div>
+    <div class="screen">
+      <div class="photos slide-left"><img src="images/trash-cart.jpg" alt="子母車" /></div>
+      <div class="room-row slide-left" style="margin-top:14px">
+        <img src="images/trash-cart.jpg" alt="子母車" />
+        <div class="room-row-info">
+          <strong>子母車</strong>
+          <span class="small">垃圾桶</span>
+          <div class="price">NT$ 0 <em>/月</em></div>
+        </div>
+        <span class="badge rented">已配</span>
+      </div>
+      <div class="card card-body slide-left rules" style="margin-top:14px">
+        <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
+        <p>1. 本棟提供子母車供倒垃圾使用，請愛惜公物。</p>
+        <p>2. 一般垃圾請裝袋綁緊後放入；資源回收請分類，勿混丟。</p>
+        <p>3. 請於規定清運時間再推至定點，勿提前堆放於走道或大門。</p>
+        <p>4. 使用完畢請將子母車推回原位，保持整潔。</p>
+        <p>5. 大型廢棄物、電池、油品等請依環保局規定另行處理，禁止投入子母車。</p>
       </div>
     </div>`;
 }
