@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨3:19";
+const APP_VERSION = "2026-08-29-凌晨3:23";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨3:23", items: ["套房資產四棟封面統一為白模套房照"] },
   { ver: "2026-08-29-凌晨3:19", items: ["陽台、停車位、子母車詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:16", items: ["房間詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:12", items: ["房間、陽台、車位、子母車圖塊換成新白模照片"] },
@@ -4697,9 +4698,8 @@ function adminRoomListHtml(kind) {
       const rooms = state.rooms.filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix);
       const rented = rooms.filter(r => r.status === "rented").length;
       const vacant = rooms.filter(r => r.status === "vacant" || !r.status).length;
-      const cover = rooms.find(r => r.photos && r.photos[0]) || rooms[0];
       return `<div class="card item clickable" data-studio-bldg="${b.prefix}">
-        ${cover ? photoEl(cover.photos && cover.photos[0], cover.no) : ""}
+        <img src="images/studio-room.jpg?v=1323" alt="${escapeHtml(b.no)}" />
         <div><strong>${b.no}</strong>
           <div class="small">${b.street} · ${b.company}</div>
           <div class="small">套房 ${rooms.length} 間 · 滿租 ${rented} · 空置 ${vacant}</div>
