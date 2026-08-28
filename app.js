@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:00";
+const APP_VERSION = "2026-08-28-晚上11:05";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:05", onlyDev: true, items: ["開發者後台登出／租客合併為可左右滑動的圖塊"] },
   { ver: "2026-08-28-晚上11:00", items: ["公告署名改為管理員或開發者，不再顯示客服"] },
   { ver: "2026-08-28-晚上10:55", items: ["管理員後台「切換身分」改為登出"] },
   { ver: "2026-08-28-晚上10:50", onlyDev: true, items: ["開發者後台改為登出／租客預覽，預覽不計入金額"] },
@@ -3271,7 +3272,7 @@ function adminView() {
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
       </div>
       ${ui.adminCode === "1240"
-        ? `<div class="switch-pair"><button type="button" class="switch-tile" id="logout">登出</button><button type="button" class="switch-tile" id="preview-tenant">租客</button></div>`
+        ? `<div class="seg" id="dev-switch-seg"><i class="seg-bg"></i><button type="button" id="logout">登出</button><button type="button" id="preview-tenant">租客</button></div>`
         : `<button class="ghost" id="logout" style="width:auto">登出</button>`}
     </div>
     <div class="tabs">
@@ -5099,9 +5100,30 @@ function bindAnnounceReactions() {
 }
 function bindAdmin() {
   const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
   const previewBtn = document.getElementById("preview-tenant");
-  if (previewBtn) previewBtn.onclick = () => enterDevPreview();
+  const playDevSwitch = side => {
+    if (ui.devSwitching) return;
+    ui.devSwitching = true;
+    const seg = document.getElementById("dev-switch-seg");
+    if (seg) {
+      seg.classList.remove("is-logout", "is-tenant");
+      void seg.offsetWidth;
+      seg.classList.add(side === "tenant" ? "is-tenant" : "is-logout");
+      seg.querySelectorAll("button").forEach(b => {
+        b.classList.toggle("on", (side === "tenant" && b.id === "preview-tenant") || (side === "logout" && b.id === "logout"));
+      });
+    }
+    setTimeout(() => {
+      ui.devSwitching = false;
+      if (side === "tenant") enterDevPreview();
+      else { audit("登出", "登出"); clearSession(); render(); }
+    }, 380);
+  };
+  if (previewBtn) previewBtn.onclick = () => playDevSwitch("tenant");
+  if (logout) logout.onclick = () => {
+    if (document.getElementById("dev-switch-seg")) playDevSwitch("logout");
+    else { audit("登出", "登出"); clearSession(); render(); }
+  };
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
     btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
   });

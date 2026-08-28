@@ -292,14 +292,11 @@ textarea { min-height: 92px; resize: vertical; }
   padding: 16px 20px 8px;
 }
 .admin-bar h1 { margin-top: 8px; }
-.switch-pair { display: flex; gap: 8px; flex-shrink: 0; }
-.switch-tile {
-  width: auto; min-width: 72px; margin: 0;
-  padding: 10px 16px; border-radius: 14px;
-  border: 1.5px solid var(--line); background: var(--card);
-  font: inherit; font-weight: 800; color: var(--teal); cursor: pointer;
+.admin-bar .seg {
+  margin: 0; width: 148px; flex: 0 0 148px;
 }
-.switch-tile:hover { background: var(--ok-soft); }
+.seg.is-logout .seg-bg, .seg.is-tenant .seg-bg { opacity: 1; }
+.seg.is-tenant .seg-bg { transform: translateX(100%); }
 .preview-banner {
   margin: 10px 16px 0;
   padding: 10px 12px;
@@ -729,8 +726,8 @@ textarea { min-height: 92px; resize: vertical; }
   opacity: 0; transition: transform .45s cubic-bezier(.22,.82,.22,1), opacity .2s ease;
 }
 #asset-list, #tenant-list { display: contents; }
-.seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg { opacity: 1; }
-.seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translateX(100%); }
+.seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg, .seg.is-logout .seg-bg, .seg.is-tenant .seg-bg { opacity: 1; }
+.seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg, .seg.is-tenant .seg-bg { transform: translateX(100%); }
 .seg button {
   position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer;
