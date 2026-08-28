@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:30";
+const APP_VERSION = "2026-08-29-凌晨1:35";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:35", items: ["修復安裝版與電腦進入後空白"] },
   { ver: "2026-08-29-凌晨1:30", items: ["還原先前套入的租客名單", "租客首頁繳費狀態可匯入轉帳資料"] },
   { ver: "2026-08-29-凌晨1:25", items: ["7051、7251 改空房", "套房租客可匯入收款明細"] },
   { ver: "2026-08-29-凌晨1:20", items: ["套入牛10　115年8月收款明細：租金、承租人、已繳日期"] },
@@ -6250,4 +6251,6 @@ async function boot() {
     }
   });
 }
-window.addE
+window.addEventListener("pagehide", persistUi);
+window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistUi(); });
+boot();
