@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:55";
+const APP_VERSION = "2026-08-29-凌晨1:00";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:00", items: ["廠房資產首頁改為白色建模照片"] },
   { ver: "2026-08-29-凌晨12:55", items: ["移除我的房間圖卡滑入模型"] },
   { ver: "2026-08-29-凌晨12:50", items: ["租客登入欄位改為建立密碼"] },
   { ver: "2026-08-29-凌晨12:45", items: ["我的房間模型完整顯示在卡片內，不再卡住邊"] },
@@ -526,21 +527,30 @@ const PHOTO_SET = [
   ["images/kitchen.jpg", "images/living.jpg"],
   ["images/bath.jpg", "images/bedroom.jpg"]
 ];
+const FACTORY_PHOTO_SET = [
+  ["images/factory-a.jpg", "images/factory-b.jpg"],
+  ["images/factory-b.jpg", "images/factory-c.jpg"],
+  ["images/factory-c.jpg", "images/factory-a.jpg"]
+];
 function isUsablePhoto(src) {
   return typeof src === "string" && (src.startsWith("data:image") || src.startsWith("images/") || src.startsWith("blob:") || src.startsWith("http"));
 }
 const PHOTO_STYLE_VER = "iso-white-1";
+const FACTORY_PHOTO_STYLE_VER = "iso-white-factory-1";
 function ensurePhotos(r) {
   if (!Array.isArray(r.photos)) r.photos = [];
-  if (r.photoStyle !== PHOTO_STYLE_VER) {
-    r.photos = photosFor(r.no).slice();
-    r.photoStyle = PHOTO_STYLE_VER;
+  const factory = r.kind === "factory";
+  const ver = factory ? FACTORY_PHOTO_STYLE_VER : PHOTO_STYLE_VER;
+  if (r.photoStyle !== ver) {
+    r.photos = photosFor(r.no, factory ? "factory" : "studio").slice();
+    r.photoStyle = ver;
   }
   r.photos = r.photos.filter(isUsablePhoto).slice(0, 5);
-  if (!r.photos.length) r.photos = photosFor(r.no).slice();
+  if (!r.photos.length) r.photos = photosFor(r.no, factory ? "factory" : "studio").slice();
 }
-function photosFor(no) {
-  return PHOTO_SET[Number(String(no).replace(/\D/g, "") || 0) % PHOTO_SET.length];
+function photosFor(no, kind) {
+  const set = kind === "factory" ? FACTORY_PHOTO_SET : PHOTO_SET;
+  return set[Number(String(no).replace(/\D/g, "") || 0) % set.length];
 }
 function roomAddress(no) {
   const s = String(no).replace(/\D/g, "");
@@ -644,7 +654,7 @@ function factoryRooms() {
         deposit: 0,
         status: info && info.name ? "rented" : "vacant",
         tenantId: null,
-        photos: photosFor(item.no),
+        photos: photosFor(item.no, "factory"),
         amenities: ["電力", "停車"],
         utilities: { electric: "依約自付", water: "依約自付" },
         contractImages: []
@@ -744,10 +754,9 @@ function normalize(data) {
   data.rooms = data.rooms.filter(r => !(r.kind === "factory" && /^牛10-/.test(String(r.no || ""))));
   data.rooms.forEach(r => {
     if (!Array.isArray(r.contractImages)) r.contractImages = [];
-    ensurePhotos(r);
-    if (!r.location) r.location = roomAddress(r.no);
     if (!r.kind) r.kind = r.title === "廠房" ? "factory" : "studio";
     if (r.no === "7651") r.kind = "studio";
+    ensurePhotos(r);
     if (r.manager === "洪潭") r.manager = "洪漳";
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory" && r.status !== "office") {
@@ -3278,7 +3287,7 @@ function roomDetailView(id) {
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left">${(r.photos || photosFor(r.no)).map(src => photoEl(src, r.no)).join("")}</div>
+      <div class="photos slide-left">${(r.photos || photosFor(r.no, r.kind)).map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>
       <div class="card card-body slide-up" style="margin-top:14px">
         <div class="row"><span class="k">房號</span><span class="v">${r.no}</span></div>
@@ -5606,7 +5615,7 @@ function bindAdmin() {
       const room = state.rooms.find(r => r.id === ui.roomId);
       if (!room) return;
       room.photos.splice(Number(btn.dataset.delPhoto), 1);
-      if (!room.photos.length) room.photos = photosFor(room.no).slice();
+      if (!room.photos.length) room.photos = photosFor(room.no, room.kind).slice();
       save();
       render();
     };
