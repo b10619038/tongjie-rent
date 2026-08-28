@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:20";
+const APP_VERSION = "2026-08-28-下午2:24";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:24", items: ["後台分類改為手機可長按拖移，並跟著手指滑動"] },
   { ver: "2026-08-28-下午2:20", items: ["後台分類可長按左右拖移排序"] },
   { ver: "2026-08-28-下午2:18", onlyDev: true, items: ["操作日誌新增開發者分類，1240 會歸在開發者"] },
   { ver: "2026-08-28-下午2:16", items: ["AI助手更名為工作助手"] },
@@ -2179,54 +2180,61 @@ function saveTabOrder(ids) {
 function bindTabReorder() {
   const bar = document.querySelector(".tabs");
   if (!bar) return;
-  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0;
+  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0;
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
-  bar.addEventListener("contextmenu", e => { if (e.target.closest(".tab")) e.preventDefault(); });
-  bar.addEventListener("pointerdown", e => {
-    const tab = e.target.closest(".tab");
-    if (!tab) return;
-    startX = e.clientX;
-    pid = e.pointerId;
-    armed = false;
-    moved = false;
-    dragEl = tab;
-    clear();
-    timer = setTimeout(() => {
-      armed = true;
-      bar.classList.add("sorting");
-      if (dragEl) {
-        dragEl.classList.add("dragging");
-        try { dragEl.setPointerCapture(pid); } catch {}
-      }
-    }, 420);
-  });
-  bar.addEventListener("pointermove", e => {
+  const pt = e => {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  };
+  const follow = x => {
     if (!dragEl) return;
+    dragEl.style.transform = "translate3d(" + (x - startX) + "px,0,0) scale(1.08)";
+  };
+  const onMove = e => {
+    if (!dragEl) return;
+    const p = pt(e);
     if (!armed) {
-      if (Math.abs(e.clientX - startX) > 12) { clear(); dragEl = null; }
+      if (Math.hypot(p.x - startX, p.y - holdY) > 30) { clear(); dragEl = null; }
       return;
     }
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     moved = true;
-    const x = e.clientX;
+    follow(p.x);
+    const center = dragEl.getBoundingClientRect().left + dragEl.offsetWidth / 2;
     const tabs = [...bar.querySelectorAll(".tab")];
-    const over = tabs.find(t => {
-      const r = t.getBoundingClientRect();
-      return x >= r.left && x <= r.right;
-    });
-    if (over && over !== dragEl) {
+    for (const t of tabs) {
+      if (t === dragEl) continue;
+      const mid = t.getBoundingClientRect().left + t.offsetWidth / 2;
       const from = tabs.indexOf(dragEl);
-      const to = tabs.indexOf(over);
-      if (from < 0 || to < 0) return;
-      if (from < to) bar.insertBefore(dragEl, over.nextSibling);
-      else bar.insertBefore(dragEl, over);
+      const to = tabs.indexOf(t);
+      if (from < to && center > mid) {
+        const left = dragEl.getBoundingClientRect().left;
+        bar.insertBefore(dragEl, t.nextSibling);
+        startX += dragEl.getBoundingClientRect().left - left;
+        follow(p.x);
+        break;
+      }
+      if (from > to && center < mid) {
+        const left = dragEl.getBoundingClientRect().left;
+        bar.insertBefore(dragEl, t);
+        startX += dragEl.getBoundingClientRect().left - left;
+        follow(p.x);
+        break;
+      }
     }
-  });
-  const end = () => {
+  };
+  const onEnd = () => {
     clear();
-    if (armed && dragEl) {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("touchmove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("touchend", onEnd);
+    window.removeEventListener("pointercancel", onEnd);
+    if (dragEl) {
+      dragEl.style.transform = "";
       dragEl.classList.remove("dragging");
-      if (moved) {
+      if (armed && moved) {
         dragEl.dataset.dragged = "1";
         saveTabOrder([...bar.querySelectorAll(".tab")].map(t => t.dataset.admin));
       }
@@ -2236,9 +2244,34 @@ function bindTabReorder() {
     dragEl = null;
     moved = false;
   };
-  bar.addEventListener("pointerup", end);
-  bar.addEventListener("pointercancel", end);
-  bar.addEventListener("pointerleave", e => { if (!armed) end(); });
+  const arm = () => {
+    if (!dragEl) return;
+    armed = true;
+    bar.classList.add("sorting");
+    dragEl.classList.add("dragging");
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+    try { dragEl.setPointerCapture(pid); } catch {}
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+  };
+  bar.addEventListener("contextmenu", e => { if (e.target.closest(".tab")) e.preventDefault(); });
+  bar.addEventListener("pointerdown", e => {
+    const tab = e.target.closest(".tab");
+    if (!tab) return;
+    const p = pt(e);
+    startX = p.x; holdY = p.y; pid = e.pointerId;
+    armed = false; moved = false; dragEl = tab;
+    clear();
+    timer = setTimeout(arm, 280);
+  });
+  bar.addEventListener("pointermove", onMove, { passive: false });
+  bar.addEventListener("touchmove", onMove, { passive: false });
+  bar.addEventListener("pointerup", onEnd);
+  bar.addEventListener("touchend", onEnd);
+  bar.addEventListener("pointercancel", onEnd);
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
