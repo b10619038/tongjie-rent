@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:54";
+const APP_VERSION = "2026-08-28-下午3:06";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午3:06", items: ["租客登入需設定密碼，後台可查看，忘記密碼可找回"] },
   { ver: "2026-08-28-下午2:54", items: ["修正手機打開 App 卡在白畫面"] },
   { ver: "2026-08-28-下午2:48", items: ["整體報表年月切換改為順滑滑動", "本月進出帳已清空 8/28 自動帶入的紀錄"] },
   { ver: "2026-08-28-下午2:37", items: ["總覽圓餅改為整體報表的營收總額與本期收支"] },
@@ -751,7 +752,8 @@ function pageLabel() {
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
     tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌",
-    "tenant-login": "租客登入", "admin-login": "管理員登入"
+    "tenant-login": "租客登入", "admin-login": "管理員登入",
+    "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
   };
   return map[p] || p;
 }
@@ -1884,6 +1886,40 @@ function desktopInstallCardHtml() {
   </div>`;
 }
 function gateView() {
+  if (ui.page === "tenant-forgot") {
+    return `<div class="gate">
+      <button class="back slide-right" id="back-gate" type="button">← 返回</button>
+      <div class="slide-right">
+        <div class="logo">TONG JIE</div>
+        <h1>忘記密碼</h1>
+        <p class="lead">輸入房號與姓名，核對後顯示登入密碼。</p>
+      </div>
+      <div class="login-block slide-left">
+        <input id="forgot-room" type="text" inputmode="numeric" maxlength="8" placeholder="房號" value="${escapeHtml(ui.loginRoom || "")}" />
+        <input id="forgot-name" type="text" placeholder="租客姓名" value="${escapeHtml(ui.forgotName || "")}" />
+        ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
+        ${ui.foundPass != null ? `<div class="pass-found">${ui.foundPass ? escapeHtml(ui.foundPass) : "尚未設定密碼"}</div>
+          <div class="small">${ui.foundPass ? "請用此密碼登入，也可請管理員在後台協助修改。" : "請回登入頁用房號建立密碼。"}</div>` : ""}
+        <button class="btn-navy" id="do-forgot" type="button">找回密碼</button>
+      </div>
+    </div>`;
+  }
+  if (ui.page === "tenant-setpass") {
+    return `<div class="gate">
+      <button class="back slide-right" id="back-gate" type="button">← 返回</button>
+      <div class="slide-right">
+        <div class="logo">TONG JIE</div>
+        <h1>設定登入密碼</h1>
+        <p class="lead">${escapeHtml(ui.loginRoom || "")} 室第一次登入，請設定密碼，之後進出都要輸入。</p>
+      </div>
+      <div class="login-block slide-left">
+        <input id="set-pass" type="password" maxlength="20" placeholder="設定密碼（至少 4 碼）" />
+        <input id="set-pass2" type="password" maxlength="20" placeholder="再輸入一次" />
+        ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
+        <button class="btn-navy" id="do-setpass" type="button">建立密碼並進入</button>
+      </div>
+    </div>`;
+  }
   if (ui.page === "tenant-login" || ui.page === "admin-login") {
     const isAdmin = ui.page === "admin-login";
     return `<div class="gate">
@@ -1891,11 +1927,14 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入自己的房號，進入該房間的租約、繳費與報修。"}</p>
+        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號與登入密碼。第一次進來請先建立密碼。"}</p>
       </div>
       <div class="login-block slide-left">
-        <input id="room-login" type="text" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" />
+        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(!isAdmin ? (ui.loginRoom || "") : "")}" />
+        ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="登入密碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
+        ${isAdmin ? "" : `<button class="btn-navy" id="do-login" type="button">登入</button>
+          <button class="forgot-link" id="go-forgot" type="button">忘記密碼</button>`}
       </div>
       ${isAdmin ? desktopInstallCardHtml() + installCardHtml("下載 App") : installCardHtml("下載 App")}
     </div>`;
@@ -3109,6 +3148,7 @@ function adminTenants() {
       ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
+      <div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>
       ${(() => {
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
@@ -3201,6 +3241,7 @@ function adminRoomEdit() {
       ${field("押金", "deposit", r.deposit, "text")}
       ${field("狀態", "status", r.status, "select-status")}
       ${field("租客姓名", "name", t?.name || "")}
+      ${field("登入密碼", "loginPass", t?.loginPass || "")}
       ${field("電話", "phone", t?.phone || "")}
       ${field("身分證字號", "idNo", t?.idNo || "")}
       ${field("通訊地址", "address", t?.address || "")}
@@ -3254,6 +3295,7 @@ function saveRoomEdit(form) {
   if (t) {
     t.name = g("name"); t.phone = g("phone"); t.idNo = g("idNo"); t.address = g("address");
     t.emergencyName = g("emergencyName"); t.emergencyPhone = g("emergencyPhone");
+    t.loginPass = String(g("loginPass") || "").trim();
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
     t.dueDay = Number(g("dueDay")) || t.dueDay || 5;
     t.paid = g("paid") === "1"; t.note = g("note");
@@ -3266,9 +3308,35 @@ function saveRoomEdit(form) {
   save(); toast("已儲存");
 }
 
+function tenantByRoomNo(no) {
+  const room = state.rooms.find(r => String(r.no) === String(no));
+  if (!room) return { room: null, tenant: null };
+  const tenant = state.tenants.find(t => t.id === room.tenantId) || null;
+  return { room, tenant };
+}
+function nameMatch(a, b) {
+  const n = s => String(s || "").replace(/\s+/g, "").replace(/、/g, "");
+  const x = n(a), y = n(b);
+  return !!(x && y && (x === y || x.includes(y) || y.includes(x)));
+}
+function enterTenant(room, tenant) {
+  ui.role = "tenant";
+  ui.tenantId = tenant.id;
+  ui.roomId = room.id;
+  ui.roomNo = room.no;
+  ui.page = "home";
+  ui.loginError = "";
+  ui.loginRoom = "";
+  ui.foundPass = null;
+  persistUi();
+  audit("登入", "房號 " + room.no);
+  render();
+  enablePush().then(() => maybeNudgeNotifies());
+  armPushAsk();
+}
 function tryLogin() {
   const input = document.getElementById("room-login");
-  const no = (input.value || "").replace(/\s+/g, "");
+  const no = ((input && input.value) || ui.loginRoom || "").replace(/\s+/g, "");
   if (ui.page === "admin-login") {
     if (ADMIN_CODES.includes(no)) {
       ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = "";
@@ -3280,33 +3348,98 @@ function tryLogin() {
     audit("登入失敗", "嘗試管理員密碼 " + no);
     render(); return;
   }
-  const room = state.rooms.find(r => r.no === no);
+  if (!no) { ui.loginError = "請輸入房號"; render(); return; }
+  const { room, tenant } = tenantByRoomNo(no);
   if (!room) { ui.loginError = "找不到這個房號"; audit("登入失敗", "嘗試房號 " + no); render(); return; }
-  if (room.status === "office" || !room.tenantId) {
+  if (room.status === "office" || !tenant) {
     ui.loginError = room.status === "office" ? "7651 為辦公室，請改走管理員登入" : "此房號目前沒有租客";
     audit("登入失敗", "嘗試房號 " + no);
     render(); return;
   }
-  ui.role = "tenant"; ui.tenantId = room.tenantId; ui.roomId = room.id; ui.roomNo = room.no; ui.page = "home"; ui.loginError = "";
-  persistUi();
-  audit("登入", "房號 " + room.no);
+  ui.loginRoom = room.no;
+  const pass = String((document.getElementById("pass-login") || {}).value || "").trim();
+  if (!tenant.loginPass) {
+    ui.page = "tenant-setpass";
+    ui.loginError = "";
+    render();
+    return;
+  }
+  if (!pass) { ui.loginError = "請輸入登入密碼"; render(); return; }
+  if (pass !== String(tenant.loginPass)) {
+    ui.loginError = "密碼不正確";
+    audit("登入失敗", "房號 " + room.no + " 密碼錯誤");
+    render(); return;
+  }
+  enterTenant(room, tenant);
+}
+function trySetPass() {
+  const p1 = String((document.getElementById("set-pass") || {}).value || "").trim();
+  const p2 = String((document.getElementById("set-pass2") || {}).value || "").trim();
+  const { room, tenant } = tenantByRoomNo(ui.loginRoom);
+  if (!room || !tenant) { ui.loginError = "找不到這個房號"; ui.page = "tenant-login"; render(); return; }
+  if (p1.length < 4) { ui.loginError = "密碼至少 4 碼"; render(); return; }
+  if (p1 !== p2) { ui.loginError = "兩次輸入的密碼不一致"; render(); return; }
+  tenant.loginPass = p1;
+  save();
+  toast("密碼已建立");
+  enterTenant(room, tenant);
+}
+function tryForgot() {
+  const no = String((document.getElementById("forgot-room") || {}).value || "").replace(/\s+/g, "");
+  const name = String((document.getElementById("forgot-name") || {}).value || "").trim();
+  ui.foundPass = null;
+  if (!no || !name) { ui.loginError = "請輸入房號與姓名"; render(); return; }
+  const { room, tenant } = tenantByRoomNo(no);
+  if (!room || !tenant) { ui.loginError = "找不到這個房號的租客"; render(); return; }
+  ui.loginRoom = no;
+  ui.forgotName = name;
+  if (!nameMatch(tenant.name, name)) { ui.loginError = "姓名不符，請再確認或洽管理員"; render(); return; }
+  ui.loginError = "";
+  ui.foundPass = tenant.loginPass || "";
+  audit("找回密碼", "房號 " + room.no);
   render();
-  enablePush().then(() => maybeNudgeNotifies());
-  armPushAsk();
 }
 
 function bindGate() {
   document.querySelectorAll("[data-go]").forEach(btn => {
-    btn.onclick = () => { ui.page = btn.dataset.go; ui.loginError = ""; render(); };
+    btn.onclick = () => { ui.page = btn.dataset.go; ui.loginError = ""; ui.foundPass = null; render(); };
   });
   const back = document.getElementById("back-gate");
-  if (back) back.onclick = () => { ui.page = "home"; ui.loginError = ""; render(); };
+  if (back) back.onclick = () => {
+    if (ui.page === "tenant-setpass" || ui.page === "tenant-forgot") {
+      ui.page = "tenant-login"; ui.loginError = ""; ui.foundPass = null; render(); return;
+    }
+    ui.page = "home"; ui.loginError = ""; ui.loginRoom = ""; ui.foundPass = null; render();
+  };
   const input = document.getElementById("room-login");
   if (input) {
     input.focus();
-    input.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
-    input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") {
+      if (ui.page === "admin-login") tryLogin();
+      else {
+        const pass = document.getElementById("pass-login");
+        if (pass) pass.focus();
+        else tryLogin();
+      }
+    }});
+    if (ui.page === "admin-login") {
+      input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
+    }
   }
+  const pass = document.getElementById("pass-login");
+  if (pass) pass.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+  const doLogin = document.getElementById("do-login");
+  if (doLogin) doLogin.onclick = tryLogin;
+  const goForgot = document.getElementById("go-forgot");
+  if (goForgot) goForgot.onclick = () => { ui.page = "tenant-forgot"; ui.loginError = ""; ui.foundPass = null; render(); };
+  const doSet = document.getElementById("do-setpass");
+  if (doSet) doSet.onclick = trySetPass;
+  const set2 = document.getElementById("set-pass2");
+  if (set2) set2.addEventListener("keydown", e => { if (e.key === "Enter") trySetPass(); });
+  const doForgot = document.getElementById("do-forgot");
+  if (doForgot) doForgot.onclick = tryForgot;
+  const forgotName = document.getElementById("forgot-name");
+  if (forgotName) forgotName.addEventListener("keydown", e => { if (e.key === "Enter") tryForgot(); });
   const inst = document.getElementById("install-app");
   if (inst) inst.onclick = () => installApp("mobile");
   const desk = document.getElementById("install-desktop");
