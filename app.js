@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:42";
+const APP_VERSION = "2026-08-29-凌晨1:50";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:50", items: ["營收總額圓餅改為較清爽的配色"] },
   { ver: "2026-08-29-凌晨1:42", items: ["修復進入後空白"] },
   { ver: "2026-08-29-凌晨1:40", items: ["套入115年7月進出帳與期初餘額（現金、統潔、信潔、個人戶）"] },
   { ver: "2026-08-29-凌晨1:35", items: ["修復安裝版與電腦進入後空白"] },
@@ -4259,15 +4260,19 @@ function reportPiesHtml() {
   const b = reportBounds();
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
-  const colors = ["#62765b", "#3d5a80", "#b08948", "#8a6a4f"];
-  const slices = stats.map((s, i) => ({ name: accountLabel(s.name), bal: s.bal, v: Math.max(0, s.bal), color: colors[i] }));
+  const colors = { "統潔": "#3FA89A", "信潔": "#5B8EE8", "個人戶": "#E8896C", "現金(保險箱)": "#8B95A8" };
+  const slices = stats.map(s => ({ name: accountLabel(s.name), bal: s.bal, v: Math.max(0, s.bal), color: colors[s.name] || "#8B95A8" }));
   const sum = slices.reduce((s, x) => s + x.v, 0);
   let acc = 0;
-  const stops = slices.map(p => {
+  const gap = sum ? 0.7 : 0;
+  const stops = [];
+  slices.forEach((p, i) => {
     const from = sum ? acc / sum * 100 : 0;
     acc += p.v;
     const to = sum ? acc / sum * 100 : from;
-    return p.color + " " + from + "% " + to + "%";
+    const end = i === slices.length - 1 ? Math.max(from, to - gap) : Math.max(from, to - gap);
+    stops.push(p.color + " " + from + "% " + end + "%");
+    if (gap && to > from) stops.push("#ffffff " + end + "% " + to + "%");
   });
   const pieCss = sum
     ? "conic-gradient(from -90deg, " + stops.join(",") + ")"

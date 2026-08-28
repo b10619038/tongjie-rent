@@ -402,9 +402,10 @@ textarea { min-height: 92px; resize: vertical; }
 .pie {
   --in: 0;
   position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from -90deg, var(--teal) 0 calc(var(--in) * 1%), #c45c4a 0);
+  background: conic-gradient(from -90deg, #3FA89A 0 calc(var(--in) * 1%), #E8896C 0);
+  box-shadow: 0 0 0 1px rgba(23, 33, 31, .06);
 }
-.pie.empty { background: conic-gradient(from -90deg, var(--teal) 0 calc(var(--in) * 1%), #c45c4a 0); opacity: .35; }
+.pie.empty { background: conic-gradient(from -90deg, #3FA89A 0 calc(var(--in) * 1%), #E8896C 0); opacity: .35; }
 .pie.spin-in { animation: piePop .9s cubic-bezier(.2,.85,.2,1) both; }
 @keyframes piePop {
   from { opacity: 0; transform: scale(.92); }
@@ -417,8 +418,8 @@ textarea { min-height: 92px; resize: vertical; }
 .firm-legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .firm-legend strong { margin-left: auto; font-weight: 800; }
 .firm-legend i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }
-.firm-legend i.in { background: var(--teal); }
-.firm-legend i.out { background: #c45c4a; }
+.firm-legend i.in { background: #3FA89A; }
+.firm-legend i.out { background: #E8896C; }
 .firm-legend i.net { background: var(--ink); }
 .net-row { font-weight: 800; }
 @media (max-width: 640px) {
