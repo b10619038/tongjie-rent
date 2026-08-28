@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:34";
+const APP_VERSION = "2026-08-28-下午2:37";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:37", items: ["總覽圓餅改為整體報表的營收總額與本期收支"] },
   { ver: "2026-08-28-下午2:34", items: ["後台分類列可左右滑動，內容區也可滑動切換分類"] },
   { ver: "2026-08-28-下午2:32", items: ["匯出 Excel 含期間年月與總餘額"] },
   { ver: "2026-08-28-下午2:28", items: ["累計餘額改為營收總額", "整體報表年月合併為可左右滑動切換"] },
@@ -2759,35 +2760,59 @@ function firmTotals(company, mode) {
   });
   return { inn, out, net: inn - out };
 }
-function firmChartHtml(company) {
-  const key = company === "信潔" ? "xj" : "tj";
-  const mode = firmPeriod(key);
-  const t = firmTotals(company, mode);
-  const unit = mode === "year" ? "年" : "月";
-  const total = t.inn + t.out;
-  const inPct = total ? Math.round(t.inn / total * 1000) / 10 : 0;
-  const now = new Date();
-  const hint = mode === "year" ? now.getFullYear() + " 年累計" : now.getMonth() + 1 + " 月";
-  const empty = !total;
+function reportPiesHtml() {
+  const b = reportBounds();
+  const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
+  const joint = accountStats("聯名戶", b.start, b.end);
+  const colors = ["#62765b", "#3d5a80", "#b08948", "#8a6a4f"];
+  const slices = stats.map((s, i) => ({ name: s.name, bal: s.bal, v: Math.max(0, s.bal), color: colors[i] }));
+  const sum = slices.reduce((s, x) => s + x.v, 0);
+  let acc = 0;
+  const stops = slices.map(p => {
+    const from = sum ? acc / sum * 100 : 0;
+    acc += p.v;
+    const to = sum ? acc / sum * 100 : from;
+    return p.color + " " + from + "% " + to + "%";
+  });
+  const pieCss = sum
+    ? "conic-gradient(from -90deg, " + stops.join(",") + ")"
+    : "conic-gradient(from -90deg, #d7d7d7 0 100%)";
+  const totIn = stats.reduce((s, x) => s + x.inn, 0) + joint.inn;
+  const totOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
+  const flow = totIn + totOut;
+  const inPct = flow ? Math.round(totIn / flow * 1000) / 10 : 0;
+  const yearOn = ui.reportMode === "year";
+  const unit = yearOn ? "年" : "月";
+  const toggle = `<button type="button" class="firm-toggle" data-report-mode="${yearOn ? "month" : "year"}">${unit}</button>`;
+  const spin = ui.keepScroll ? "" : "spin-in";
   return `<div class="card firm-card">
-    <div class="k firm-k"><span>${company}${unit}收支</span>
-      <button type="button" class="firm-toggle" data-firm-period="${key}">${unit}</button>
-    </div>
-    <div class="firm-body">
-      <div class="pie-wrap">
-        <div class="pie ${empty ? "empty" : ""} ${ui.keepScroll ? "" : "spin-in"}" style="--in:${inPct}"></div>
-        <div class="pie-center"></div>
-      </div>
-      <div class="firm-legend">
-        <div class="net-row">
-          <i class="net"></i><span>淨${unit}收入</span><strong>${money(t.net)}</strong>
+      <div class="k firm-k"><span>營收總額</span>${toggle}</div>
+      <div class="firm-body">
+        <div class="pie-wrap">
+          <div class="pie ${sum ? "" : "empty"} ${spin}" style="background:${pieCss}"></div>
+          <div class="pie-center"></div>
         </div>
-        <div><i class="in"></i><span>總${unit}收入</span><strong>${money(t.inn)}</strong></div>
-        <div><i class="out"></i><span>總${unit}支出</span><strong>${money(t.out)}</strong></div>
-        <div class="small">${hint}${empty ? " · 尚無進出帳" : ""}</div>
+        <div class="firm-legend">
+          ${slices.map(p => `<div><i style="background:${p.color}"></i><span>${escapeHtml(p.name)}</span><strong>${money(p.bal)}</strong></div>`).join("")}
+          <div class="small">${escapeHtml(b.label)}${sum ? "" : " · 尚無營收"}</div>
+        </div>
       </div>
     </div>
-  </div>`;
+    <div class="card firm-card">
+      <div class="k firm-k"><span>本期收支</span>${toggle}</div>
+      <div class="firm-body">
+        <div class="pie-wrap">
+          <div class="pie ${flow ? "" : "empty"} ${spin}" style="--in:${inPct}"></div>
+          <div class="pie-center"></div>
+        </div>
+        <div class="firm-legend">
+          <div class="net-row"><i class="net"></i><span>淨${unit}額</span><strong class="${totIn - totOut >= 0 ? "led-in" : "led-out"}">${money(totIn - totOut)}</strong></div>
+          <div><i class="in"></i><span>本期收入</span><strong class="led-in">${money(totIn)}</strong></div>
+          <div><i class="out"></i><span>本期支出</span><strong class="led-out">${money(totOut)}</strong></div>
+          <div class="small">${escapeHtml(b.label)}${flow ? "" : " · 尚無進出帳"}</div>
+        </div>
+      </div>
+    </div>`;
 }
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory");
@@ -2816,8 +2841,7 @@ function adminDash() {
   const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
   return `<div class="dash">
     <div class="firm-grid">
-      ${firmChartHtml("統潔")}
-      ${firmChartHtml("信潔")}
+      ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
