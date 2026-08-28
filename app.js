@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:28";
+const APP_VERSION = "2026-08-28-下午2:32";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:32", items: ["匯出 Excel 含期間年月與總餘額"] },
   { ver: "2026-08-28-下午2:28", items: ["累計餘額改為營收總額", "整體報表年月合併為可左右滑動切換"] },
   { ver: "2026-08-28-下午2:24", items: ["後台分類改為手機可長按拖移，並跟著手指滑動"] },
   { ver: "2026-08-28-下午2:20", items: ["後台分類可長按左右拖移排序"] },
@@ -2625,16 +2626,19 @@ function exportOverallReport() {
   const b = reportBounds();
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
-  const acctRows = stats.map(s => [s.name, s.inn, s.out, s.net, s.bal]);
-  if (joint.inn || joint.out || joint.bal) acctRows.push(["聯名戶", joint.inn, joint.out, joint.net, joint.bal]);
-  const totIn = acctRows.reduce((s, r) => s + r[1], 0);
-  const totOut = acctRows.reduce((s, r) => s + r[2], 0);
-  acctRows.push(["總計", totIn, totOut, totIn - totOut, acctRows.reduce((s, r) => s + r[4], 0)]);
+  const list = stats.slice();
+  if (joint.inn || joint.out || joint.bal) list.push(Object.assign({ name: "聯名戶" }, joint));
+  const totIn = list.reduce((s, x) => s + x.inn, 0);
+  const totOut = list.reduce((s, x) => s + x.out, 0);
+  const totalBal = list.reduce((s, x) => s + x.bal, 0);
+  const acctRows = list.map(s => [b.label, s.name, s.inn, s.out, s.bal, totalBal]);
+  acctRows.push([b.label, "總計", totIn, totOut, totalBal, totalBal]);
   const items = overallRows();
   const summary = [
-    ["項目", "數值"],
     ["期間", b.label],
-    ["總餘額", acctRows[acctRows.length - 1][4]],
+    ["總餘額", totalBal],
+    ["本期收入", totIn],
+    ["本期支出", totOut],
     ["套房數", state.rooms.filter(r => r.kind !== "factory" && r.status !== "office").length],
     ["廠房數", state.rooms.filter(r => r.kind === "factory").length],
     ["租客數", state.tenants.length],
@@ -2653,16 +2657,16 @@ function exportOverallReport() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${xlsSheet("帳戶營收", ["帳戶", "本期收入", "本期支出", "本期淨額", "營收總額"], acctRows)}
-${xlsSheet("總覽", ["項目", "數值"], summary.slice(1))}
+${xlsSheet("總覽", ["項目", "數值"], summary)}
+${xlsSheet("帳戶營收", ["期間", "帳戶", "本期收入", "本期支出", "營收總額", "總餘額"], acctRows)}
 ${xlsSheet("全部資產", assetHead, items.map(x => x.row))}
 ${xlsSheet("報修", repairHead, repairRows)}
 </Workbook>`;
   const blob = new Blob(["\uFEFF" + xml], { type: "application/vnd.ms-excel" });
   const a = document.createElement("a");
-  const day = nowStamp().slice(0, 10);
+  const stamp = String(b.label).replace(/\s+/g, "");
   a.href = URL.createObjectURL(blob);
-  a.download = `統潔＆信潔開發有限公司-整體報表-${day}.xls`;
+  a.download = `統潔＆信潔開發有限公司-整體報表-${stamp}.xls`;
   document.body.appendChild(a);
   a.click();
   a.remove();
