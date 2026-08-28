@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨3:16";
+const APP_VERSION = "2026-08-29-凌晨3:19";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨3:19", items: ["陽台、停車位、子母車詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:16", items: ["房間詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:12", items: ["房間、陽台、車位、子母車圖塊換成新白模照片"] },
   { ver: "2026-08-29-凌晨2:41", items: ["廠房資產首頁照片統一換成白模廠區"] },
@@ -665,6 +666,13 @@ function playRoomHero() {
     const p = v.play();
     if (p && p.catch) p.catch(() => {});
   });
+}
+function amenityVideoHtml(src, poster) {
+  return `<div class="photos photos-video slide-left">
+    <video class="room-hero-video" autoplay muted loop playsinline webkit-playsinline poster="${poster}">
+      <source src="${src}" type="video/mp4">
+    </video>
+  </div>`;
 }
 function factoryRooms() {
   const out = [];
@@ -3452,7 +3460,7 @@ function parkingView() {
       <div class="eyebrow">PARKING</div><h1>停車位</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/parking.jpg?v=1312" alt="機車停車位" /></div>
+      ${amenityVideoHtml("images/parking.mp4?v=1319", "images/parking.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/parking.jpg?v=1312" alt="停車位" />
         <div class="room-row-info">
@@ -3477,7 +3485,7 @@ function trashView() {
       <div class="eyebrow">TRASH</div><h1>子母車</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/trash-cart.jpg?v=1312" alt="子母車" /></div>
+      ${amenityVideoHtml("images/trash-cart.mp4?v=1319", "images/trash-cart.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
         <div class="room-row-info">
@@ -3503,7 +3511,7 @@ function balconyView() {
       <div class="eyebrow">BALCONY</div><h1>公共陽台</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/balcony.jpg?v=1312" alt="公共陽台" /></div>
+      ${amenityVideoHtml("images/balcony.mp4?v=1319", "images/balcony.jpg?v=1312")}
       <div class="card card-body slide-left rules" style="margin-top:14px">
         <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
         <p>1. 公共陽台提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
@@ -3560,11 +3568,7 @@ function roomDetailView(id) {
   const media = r.kind === "factory"
     ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>`
-    : `<div class="photos photos-video slide-left">
-        <video class="room-hero-video" autoplay muted loop playsinline webkit-playsinline poster="images/studio-room.jpg?v=1312">
-          <source src="images/studio-room.mp4?v=1316" type="video/mp4">
-        </video>
-      </div>`;
+    : amenityVideoHtml("images/studio-room.mp4?v=1316", "images/studio-room.jpg?v=1312");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
