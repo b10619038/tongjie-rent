@@ -437,6 +437,10 @@ textarea { min-height: 92px; resize: vertical; }
 .cal-day { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form { margin-top: 12px; display: grid; gap: 8px; }
 .cal-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.book-type.in, .book-type option[value="in"] { color: var(--teal); font-weight: 800; }
+.book-type.out, .book-type option[value="out"] { color: #c45c4a; font-weight: 800; }
+.led-in { color: var(--teal); }
+.led-out { color: #c45c4a; }
 .notify-mask {
   position: fixed; inset: 0; z-index: 8000;
   background: rgba(255,255,255,.72);

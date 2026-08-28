@@ -8,8 +8,9 @@ const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午1:24";
+const APP_VERSION = "2026-08-28-下午1:26";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:26", items: ["新增一筆：進帳綠色、出帳紅色"] },
   { ver: "2026-08-28-下午1:24", items: ["信潔與統潔收支圓餅圖改為同一組顏色"] },
   { ver: "2026-08-28-下午1:22", items: ["新增一筆帳戶改為統潔、信潔、聯名戶、個人戶、現金（保險箱）"] },
   { ver: "2026-08-28-下午1:16", items: ["總覽新增一筆已移除房號欄，說明改為備註", "整體報表可列印"] },
@@ -1468,7 +1469,7 @@ function monthCashHtml() {
       <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-          <b>${x.type === "in" ? "進帳" : "出帳"} · ${escapeHtml(x.company || "統潔")} · ${money(x.amount)}</b>
+          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(x.company || "統潔")} · ${money(x.amount)}</b>
           <span>${escapeHtml(x.note || "")}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
@@ -1476,7 +1477,7 @@ function monthCashHtml() {
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
-        <select name="type">
+        <select name="type" class="book-type ${(ed && ed.type === "out") ? "out" : "in"}">
           <option value="in" ${(ed ? ed.type : "in") !== "out" ? "selected" : ""}>進帳</option>
           <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
         </select>
@@ -3755,7 +3756,12 @@ function bindCashCal() {
   const cancelEdit = document.getElementById("cancel-book-edit");
   if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
   const form = document.getElementById("book-form");
-  if (form) form.onsubmit = e => {
+  if (form) {
+    if (form.type) form.type.onchange = () => {
+      form.type.classList.remove("in", "out");
+      form.type.classList.add(form.type.value === "out" ? "out" : "in");
+    };
+    form.onsubmit = e => {
     e.preventDefault();
     const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
     const date = form.date.value;
@@ -3789,7 +3795,8 @@ function bindCashCal() {
     ui.calDay = Number(date.slice(8, 10));
     save();
     toast("已記入日曆");
-  };
+    };
+  }
 }
 
 window.addEventListener("appinstalled", () => {
