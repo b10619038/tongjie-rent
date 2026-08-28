@@ -65,43 +65,17 @@ button, input, textarea, select { font: inherit; }
 @keyframes slideUpCard { from { transform: translateY(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
-.keep-still .hero-model { animation: none !important; transform: none !important; opacity: 1 !important; }
 .hero-card {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: 1fr 132px;
-  grid-template-areas: "copy model" "stats stats";
-  column-gap: 8px;
-  row-gap: 12px;
   background: #ececec;
   color: #17211f;
   border-radius: 26px;
-  padding: 16px 14px 16px 16px;
+  padding: 20px;
   border: 1px solid #dedede;
 }
-.hero-copy { grid-area: copy; position: relative; z-index: 1; min-width: 0; }
-.hero-copy .label,
-.hero-copy .room-name,
-.hero-copy > .small { padding-right: 0; }
-.hero-model {
-  grid-area: model;
-  position: static;
-  width: 132px; height: 108px;
-  object-fit: contain;
-  object-position: center;
-  pointer-events: none;
-  align-self: center;
-  animation: heroModelIn .95s cubic-bezier(.22,.82,.22,1) .12s both;
-}
-@keyframes heroModelIn {
-  from { transform: translateX(70%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-.hero-stats { grid-area: stats; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
-.hero-card .small { color: #7a8a85; margin: -8px 0 0; }
+.hero-card .small { color: #7a8a85; }
+.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
   background: #ffffff; color: #17211f;
   border: 1px solid #e8e8e8; border-radius: 16px; padding: 12px;
