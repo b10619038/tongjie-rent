@@ -56,14 +56,14 @@ button, input, textarea, select { font: inherit; }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
 .hero-card {
-  background: #f2f2f2; color: var(--ink); border-radius: 26px;
-  padding: 20px; border: 1px solid #e0e0e0;
+  background: var(--ok-soft); color: var(--ink); border-radius: 26px;
+  padding: 20px; border: 1px solid color-mix(in srgb, var(--teal) 20%, #e8e8e8);
 }
 .hero-card .label { color: var(--muted); font-size: 13px; display: block; margin-bottom: 10px; }
-.hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; }
+.hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: var(--ink); }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
-  background: #ffffff; border: 1px solid var(--line); border-radius: 16px; padding: 12px;
+  background: var(--chip); border: 1px solid color-mix(in srgb, var(--teal) 16%, #e8e8e8); border-radius: 16px; padding: 12px;
 }
 .stat .label { display: block; margin-bottom: 8px; }
 .stat b { display: block; font-size: 20px; margin-top: 0; }
