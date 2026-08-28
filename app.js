@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:00";
+const APP_VERSION = "2026-08-28-晚上10:20";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上10:20", items: ["手機點個人戶下拉選成員後，會進入該人的營收總額"] },
   { ver: "2026-08-28-晚上10:00", items: ["整體報表個人戶圖卡改與其他帳戶同大小，下拉改為請下拉選擇", "日誌地址改為台灣縣市＋區", "套房租客在線狀態改到姓名右側"] },
   { ver: "2026-08-28-晚上9:40", items: ["整體報表個人戶可下拉八位成員", "套房租客圖卡顯示在線中／離線中", "日誌會記下管理員操作時的地址與手機型號", "修正畫面每隔幾秒自動跳一下"] },
   { ver: "2026-08-28-晚上8:55", items: ["整體報表個人戶納入八位成員", "新增一筆帳戶的個人戶可選趙文榮等八位"] },
@@ -202,6 +203,23 @@ function changelogSheetHtml() {
       <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
+    </div>
+  </div>`;
+}
+function personPickSheetHtml() {
+  if (!ui.personPick) return "";
+  const b = reportBounds();
+  return `<div class="install-mask" id="person-pick-mask">
+    <div class="install-sheet">
+      <div class="label">個人戶</div>
+      <h2>選擇成員</h2>
+      <div class="pick-list">
+        ${PERSONAL_PEOPLE.map(p => {
+          const ps = accountStats(personalKey(p), b.start, b.end);
+          return `<button type="button" class="pick-item" data-pick-person="${escapeHtml(personalKey(p))}"><span>${escapeHtml(p)}</span><strong>${money(ps.bal)}</strong></button>`;
+        }).join("")}
+      </div>
+      <button class="ghost" id="person-pick-cancel" type="button">取消</button>
     </div>
   </div>`;
 }
@@ -2054,15 +2072,7 @@ function overallReportBodyHtml() {
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          ${s.name === "個人戶" ? `<label class="acct-drop">
-            <select id="acct-person-pick">
-              <option value="">請下拉選擇</option>
-              ${PERSONAL_PEOPLE.map(p => {
-                const ps = accountStats(personalKey(p), b.start, b.end);
-                return `<option value="${escapeHtml(personalKey(p))}">${escapeHtml(p)}　${money(ps.bal)}</option>`;
-              }).join("")}
-            </select>
-          </label>` : ""}
+          ${s.name === "個人戶" ? `<button type="button" class="acct-drop-btn" id="acct-person-pick">請下拉選擇</button>` : ""}
           <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
         </div>`).join("")}
     </div>
@@ -2166,11 +2176,28 @@ function bindReportBody() {
     };
   });
   const pick = document.getElementById("acct-person-pick");
-  if (pick) pick.onchange = () => {
-    if (!pick.value) return;
-    ui.editAcct = pick.value;
+  if (pick) pick.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.personPick = true;
     ui.keepScroll = true;
     render();
+  };
+  document.querySelectorAll("[data-pick-person]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.personPick = false;
+      ui.editAcct = btn.dataset.pickPerson;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const pickCancel = document.getElementById("person-pick-cancel");
+  if (pickCancel) pickCancel.onclick = () => { ui.personPick = false; ui.keepScroll = true; render(); };
+  const pickMask = document.getElementById("person-pick-mask");
+  if (pickMask) pickMask.onclick = e => {
+    if (e.target === pickMask) { ui.personPick = false; ui.keepScroll = true; render(); }
   };
 }
 function bindReportModeBtns() {
@@ -2527,7 +2554,7 @@ function render() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
     root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
