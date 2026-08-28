@@ -7,8 +7,9 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午11:08";
+const APP_VERSION = "2026-08-28-上午11:10";
 const CHANGELOG = [
+  { ver: "2026-08-28-上午11:10", items: ["記下銀行業務可上傳會計紙本照片"] },
   { ver: "2026-08-28-上午11:08", items: ["開發者後台新增「日誌」，可看租客／管理員何時用哪台裝置登入、操作與瀏覽"] },
   { ver: "2026-08-28-上午2:10", items: ["租客與管理員關閉 App 或重新整理後仍保持登入", "只有點「登出」或「切換身分」才會回到登入首頁"] },
   { ver: "2026-08-28-上午2:00", items: ["點擊下方更新通知，可查看這次更新了哪些內容", "看完後可選擇立即更新或稍後"] },
@@ -449,7 +450,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -1187,7 +1188,8 @@ function bindMediaViewers() {
       const [id, kind] = btn.dataset.viewMedia.split("|");
       const rep = state.repairs.find(x => x.id === id);
       const ann = (state.announcements || []).find(x => x.id === id);
-      const media = rep ? getRepairMedia(rep) : (ann ? (ann.media || []) : []);
+      const err = (state.errands || []).find(x => x.id === id);
+      const media = rep ? getRepairMedia(rep) : (ann ? (ann.media || []) : (err ? (err.media || []) : []));
       if (ann && ui.tenantId) {
         if (!ann.readBy) ann.readBy = [];
         if (!ann.readBy.includes(ui.tenantId)) { ann.readBy.push(ui.tenantId); save(); }
@@ -2068,14 +2070,20 @@ function adminAi() {
         <select name="company"><option value="統潔">統潔</option><option value="信潔">信潔</option></select>
         <input name="note" type="text" placeholder="備註（選填）" />
       </div>
+      <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
+      <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
       <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
     </form>
-    ${errands.length ? errands.map(e => `
+    ${errands.length ? errands.map(e => {
+      const pics = (e.media || []).filter(m => m.kind === "image");
+      return `
       <div class="card card-body">
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
         <div class="small">${escapeHtml([e.place, e.amount ? money(e.amount) : "", e.note].filter(Boolean).join(" · "))}</div>
+        ${pics.length ? `<button type="button" class="ghost" data-view-media="${e.id}|image" style="margin-top:8px">查看會計紙本${pics.length > 1 ? "（" + pics.length + "）" : ""}</button>` : ""}
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : `<div class="empty">還沒有銀行紀錄</div>`}
+      </div>`;
+    }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}
     <div class="card card-body">
       <h2 class="dash-h">AI助手</h2>
       <div class="small">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
@@ -3518,7 +3526,7 @@ function bindAdminAi() {
     const id = "er" + Date.now();
     const company = errand.company && errand.company.value === "信潔" ? "信潔" : "統潔";
     if (!state.errands) state.errands = [];
-    state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, createdAt: nowStamp() });
+    state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, media: (ui.errandMedia || []).slice(), createdAt: nowStamp() });
     if (!state.books) state.books = [];
     state.books.push({
       id,
@@ -3536,8 +3544,29 @@ function bindAdminAi() {
       ui.calMonth = Number(p[1]);
       ui.calDay = Number(p[2]);
     }
+    ui.errandMedia = [];
     save();
     toast("登錄成功");
+  };
+  document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      (ui.errandMedia || []).splice(Number(btn.dataset.delErrandMedia), 1);
+      const box = document.getElementById("errand-preview");
+      if (box) box.innerHTML = mediaPreviewHtml(ui.errandMedia, "data-del-errand-media");
+      bindAdminAi();
+    };
+  });
+  const errandPhoto = document.getElementById("errand-photo");
+  if (errandPhoto) errandPhoto.onchange = async () => {
+    if (!ui.errandMedia) ui.errandMedia = [];
+    for (const f of errandPhoto.files || []) {
+      try { ui.errandMedia.push({ kind: "image", src: await compressImage(f), name: f.name }); } catch {}
+    }
+    errandPhoto.value = "";
+    const box = document.getElementById("errand-preview");
+    if (box) box.innerHTML = mediaPreviewHtml(ui.errandMedia, "data-del-errand-media");
+    bindAdminAi();
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
     btn.onclick = () => {
