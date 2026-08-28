@@ -326,9 +326,12 @@ textarea { min-height: 92px; resize: vertical; }
   position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(from -90deg, var(--teal) 0 calc(var(--in) * 1%), #c45c4a 0);
 }
-.pie.empty { background: conic-gradient(#ece8e1 0 100%); }
-.pie.spin-in { animation: pieFill .9s cubic-bezier(.2,.85,.2,1) both; }
-@keyframes pieFill { from { --in: 0; } }
+.pie.empty { background: conic-gradient(from -90deg, var(--teal) 0 calc(var(--in) * 1%), #c45c4a 0); opacity: .35; }
+.pie.spin-in { animation: piePop .9s cubic-bezier(.2,.85,.2,1) both; }
+@keyframes piePop {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
 .pie-center {
   position: absolute; inset: 26px; border-radius: 50%; background: #fff; z-index: 1;
 }
@@ -357,7 +360,7 @@ textarea { min-height: 92px; resize: vertical; }
 .dash-h { font-size: 15px; margin-bottom: 12px; }
 @property --in {
   syntax: "<number>";
-  inherits: true;
+  inherits: false;
   initial-value: 0;
 }
 @property --p {
