@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:10";
+const APP_VERSION = "2026-08-29-凌晨2:12";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:12", items: ["租客繳費狀態移除匯入資料"] },
   { ver: "2026-08-29-凌晨2:10", items: ["收租率與出租率圓餅改玫瑰與金黃"] },
   { ver: "2026-08-29-凌晨2:08", items: ["滑動排表時不會再切到其他頁"] },
   { ver: "2026-08-29-凌晨2:05", items: ["點擊營收排表可放大，手機橫放可雙指縮放"] },
@@ -3336,10 +3337,6 @@ function homeView() {
         <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${money(r.rent)}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">每月 ${t.dueDay || 5} 日前</span></div>
-        <div class="row"><span class="k">繳費資料</span>
-          <label class="upload" style="width:auto;padding:8px 12px">匯入資料<input id="pay-import" type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic" hidden /></label>
-        </div>
-        ${(t.payProofs || []).length ? `<div class="small" style="margin-top:4px">${(t.payProofs || []).map(p => escapeHtml(p.name || "繳費證明")).join("、")}</div>` : `<div class="small" style="margin-top:4px">可上傳轉帳明細或收據照片</div>`}
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
@@ -5402,28 +5399,6 @@ function bindTenant() {
       toast("已回報本月已繳費");
     };
   }
-  const payImport = document.getElementById("pay-import");
-  if (payImport) payImport.onchange = async () => {
-    const f = payImport.files && payImport.files[0];
-    payImport.value = "";
-    const t = me(); const r = myRoom();
-    if (!f || !t) return;
-    try {
-      if (!Array.isArray(t.payProofs)) t.payProofs = [];
-      const isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name || "");
-      const item = {
-        kind: isPdf ? "file" : "image",
-        name: f.name || "繳費資料",
-        at: nowStamp(),
-        src: isPdf ? await readFileDataUrl(f) : await compressImage(f)
-      };
-      t.payProofs.push(item);
-      if (!t.paid) markTenantPaid("app");
-      else save();
-      toast("已匯入繳費資料");
-      render();
-    } catch { toast("檔案讀取失敗"); }
-  };
   const linePaid = document.getElementById("line-paid");
   if (linePaid) {
     linePaid.onclick = async () => {
