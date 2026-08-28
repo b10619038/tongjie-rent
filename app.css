@@ -615,7 +615,14 @@ textarea { min-height: 92px; resize: vertical; }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
-.rev-sheet { margin-top: 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rev-sheet { margin-top: 18px; }
+.rev-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--card, #fff);
+}
 .rev-caption { font-size: 13px; font-weight: 800; margin: 14px 0 8px; }
 .rev-balance { font-size: 18px; font-weight: 800; margin: 12px 0 4px; }
 .rev-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
@@ -626,6 +633,10 @@ textarea { min-height: 92px; resize: vertical; }
 .rev-table thead th {
   background: #3FA89A; color: #fff; font-weight: 700; text-align: center;
 }
+.rev-table thead th:first-child { border-top-left-radius: 17px; }
+.rev-table thead th:last-child { border-top-right-radius: 17px; }
+.rev-table tbody tr:last-child th { border-bottom-left-radius: 17px; }
+.rev-table tbody tr:last-child td:last-child { border-bottom-right-radius: 17px; }
 .rev-table tbody th { background: #f7faf9; }
 .rev-table tr.tot th, .rev-table tr.tot td { background: #eef6f4; font-weight: 800; }
 @media (max-width: 640px) {

@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:58";
+const APP_VERSION = "2026-08-29-凌晨2:00";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:00", items: ["整體報表兩張排表改為圓角圖塊"] },
   { ver: "2026-08-29-凌晨1:58", items: ["整體報表改為匯出、列印，放在月年右側"] },
   { ver: "2026-08-29-凌晨1:55", items: ["整體報表匯出／列印改為當月、當年、四戶與總餘額排表"] },
   { ver: "2026-08-29-凌晨1:50", items: ["營收總額圓餅改為較清爽的配色"] },
@@ -4166,6 +4167,7 @@ function revenueTableHtml() {
   };
   return `<div class="rev-sheet">
     <div class="rev-caption">${escapeHtml(d.month.label)}　／　${escapeHtml(d.year.label)}</div>
+    <div class="rev-card">
     <table class="rev-table">
       <thead>
         <tr><th>項目</th>${d.cols.map(c => `<th>${escapeHtml(c.name)}</th>`).join("")}<th>合計</th></tr>
@@ -4180,8 +4182,10 @@ function revenueTableHtml() {
         ${row("營收總額", c => c.m.bal, "tot")}
       </tbody>
     </table>
+    </div>
     <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
     <div class="rev-caption">個人戶明細</div>
+    <div class="rev-card">
     <table class="rev-table">
       <thead>
         <tr><th>成員</th><th>當月收入</th><th>當月支出</th><th>當月結餘</th><th>當年收入</th><th>當年支出</th><th>當年結餘</th><th>營收總額</th></tr>
@@ -4196,6 +4200,7 @@ function revenueTableHtml() {
         })()}
       </tbody>
     </table>
+    </div>
   </div>`;
 }
 function overallRows() {
