@@ -7,8 +7,9 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午11:56";
+const APP_VERSION = "2026-08-28-下午1:16";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:16", items: ["總覽新增一筆已移除房號欄，說明改為備註", "整體報表可列印"] },
   { ver: "2026-08-28-上午11:56", items: ["畫面正下方改為「資料經 HTTPS 同步雲端」與版本號同一行"] },
   { ver: "2026-08-28-上午11:24", onlyDev: true, items: ["日誌紀錄可單筆刪除、全選刪除", "開發者專用更新內容，一般管理員與租客看不到"] },
   { ver: "2026-08-28-上午11:10", items: ["記下銀行業務可上傳會計紙本照片"] },
@@ -1483,8 +1484,7 @@ function monthCashHtml() {
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
       <div class="cal-form-row">
-        <input name="note" type="text" placeholder="說明，例如 6821 租金／修繕／水費" value="${ed ? escapeHtml(ed.note || "") : ""}" />
-        <input name="roomNo" type="text" placeholder="房號（選填）" value="${ed ? escapeHtml(ed.roomNo || "") : ""}" />
+        <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
       </div>
       <button class="btn-navy" type="submit">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
@@ -2378,6 +2378,13 @@ ${xlsSheet("報修", repairHead, repairRows)}
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast("已匯出 Excel");
 }
+function printOverallReport() {
+  document.body.classList.add("print-report");
+  const after = () => document.body.classList.remove("print-report");
+  window.addEventListener("afterprint", after, { once: true });
+  window.print();
+  setTimeout(after, 800);
+}
 function roomCompany(r) {
   const c = String((r && r.company) || "").trim();
   if (/信潔/.test(c)) return "信潔";
@@ -2484,13 +2491,16 @@ function adminDash() {
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${state.tenants.filter(t => t.paid).length}／${state.tenants.length} 位租客</div></div></div>
       <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
-    <div class="card card-body">
+    <div class="card card-body" id="overall-report">
       <div class="row" style="align-items:flex-start">
         <div>
           <h2 class="dash-h" style="margin:0">整體報表</h2>
-          <div class="small">套房、廠房、繳費、報修一次彙總，可匯出 Excel</div>
+          <div class="small">套房、廠房、繳費、報修一次彙總，可匯出 Excel 或列印</div>
         </div>
-        <button type="button" class="ghost" id="export-report" style="width:auto;flex:0 0 auto">匯出 Excel</button>
+        <div class="report-actions no-print">
+          <button type="button" class="ghost" id="export-report" style="width:auto;flex:0 0 auto">匯出 Excel</button>
+          <button type="button" class="ghost" id="print-report" style="width:auto;flex:0 0 auto">列印</button>
+        </div>
       </div>
       <div class="report-sum">
         <span>套房 ${studios.length}</span>
@@ -3379,6 +3389,8 @@ function bindAdmin() {
   if (invNum) invNum.onchange = () => { ui.invoiceNum = String(invNum.value || "").trim(); };
   const exportBtn = document.getElementById("export-report");
   if (exportBtn) exportBtn.onclick = exportOverallReport;
+  const printReport = document.getElementById("print-report");
+  if (printReport) printReport.onclick = printOverallReport;
   refreshLineBinds().then(() => {
     document.querySelectorAll("[data-line-status]").forEach(el => {
       const no = el.dataset.lineStatus;
@@ -3744,7 +3756,6 @@ function bindCashCal() {
       type: form.type.value === "out" ? "out" : "in",
       date, amount,
       company: form.company && form.company.value === "信潔" ? "信潔" : "統潔",
-      roomNo: (form.roomNo && form.roomNo.value || "").trim(),
       note: (form.note.value || "").trim()
     };
     if (ui.editBookId) {
@@ -3758,7 +3769,7 @@ function bindCashCal() {
     }
     if (ui.editSlipId) {
       const s = (state.bankSlips || []).find(x => x.id === ui.editSlipId);
-      if (s) { s.date = date; s.amount = amount; s.note = payload.note; s.roomNo = payload.roomNo; }
+      if (s) { s.date = date; s.amount = amount; s.note = payload.note; }
       ui.editSlipId = null;
       ui.calDay = Number(date.slice(8, 10));
       save();
@@ -3766,7 +3777,7 @@ function bindCashCal() {
       return;
     }
     if (!state.books) state.books = [];
-    state.books.push(Object.assign({ id: "bk" + Date.now(), createdAt: nowStamp() }, payload));
+    state.books.push(Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload));
     ui.calDay = Number(date.slice(8, 10));
     save();
     toast("已記入日曆");
