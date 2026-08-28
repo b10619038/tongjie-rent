@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:20";
+const APP_VERSION = "2026-08-28-晚上10:30";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上10:30", items: ["日誌可看租客／管理員／開發者是否在線", "修復電腦與手機底部更新通知圖塊"] },
   { ver: "2026-08-28-晚上10:20", items: ["手機點個人戶下拉選成員後，會進入該人的營收總額"] },
   { ver: "2026-08-28-晚上10:00", items: ["整體報表個人戶圖卡改與其他帳戶同大小，下拉改為請下拉選擇", "日誌地址改為台灣縣市＋區", "套房租客在線狀態改到姓名右側"] },
   { ver: "2026-08-28-晚上9:40", items: ["整體報表個人戶可下拉八位成員", "套房租客圖卡顯示在線中／離線中", "日誌會記下管理員操作時的地址與手機型號", "修正畫面每隔幾秒自動跳一下"] },
@@ -161,7 +162,6 @@ if ("serviceWorker" in navigator) {
     return navigator.serviceWorker.ready;
   }).then(r => { window.__swReg = r; }).catch(() => {});
   navigator.serviceWorker.addEventListener("message", e => {
-    if (e.data && e.data.type === "APPLY_UPDATE") applyAppUpdate();
     if (e.data && e.data.type === "SHOW_CHANGELOG") {
       ui.updateReady = true;
       ui.updateNotes = true;
@@ -176,8 +176,14 @@ function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; 
 function lastSeenVersion() {
   try { return localStorage.getItem("tj-last-ver") || ""; } catch { return ""; }
 }
+function seedSeenVersion() {
+  if (lastSeenVersion()) return;
+  try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+}
 function hasUnseenUpdate() {
-  return lastSeenVersion() !== APP_VERSION;
+  const last = lastSeenVersion();
+  if (!last) return false;
+  return last !== APP_VERSION;
 }
 function unseenChangelog() {
   const last = lastSeenVersion();
@@ -230,9 +236,15 @@ function updateBarHtml() {
 }
 function applyAppUpdate() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+  ui.updateNotes = false;
+  ui.updateReady = false;
   const reg = window.__swReg;
-  if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
-  else location.reload();
+  if (reg && reg.waiting) {
+    __reloading = true;
+    reg.waiting.postMessage("SKIP_WAITING");
+    return;
+  }
+  render();
 }
 function promptAppUpdate(reg) {
   if (ui.updateReady) return;
@@ -806,21 +818,53 @@ function coreSig(d) {
   } catch { return String(d && d.updatedAt); }
 }
 const ONLINE_MS = 90000;
-function isTenantOnline(id) {
+function presenceKey() {
+  if (ui.role === "tenant" && ui.tenantId) return ui.tenantId;
+  if (ui.role === "admin" && ui.adminCode) return "admin-" + ui.adminCode;
+  return "";
+}
+function presenceKindOf(id, p) {
+  if (p && p.kind) return p.kind;
+  const code = (p && p.code) || (String(id).startsWith("admin-") ? String(id).slice(6) : "");
+  if (code === "1240") return "dev";
+  if (String(id).startsWith("admin-")) return "admin";
+  return "tenant";
+}
+function presencePayload() {
+  const id = presenceKey();
+  if (!id) return null;
+  const kind = ui.role === "tenant" ? "tenant" : (ui.adminCode === "1240" ? "dev" : "admin");
+  let name = "";
+  let roomNo = ui.roomNo || "";
+  if (ui.role === "tenant") {
+    const t = typeof me === "function" ? me() : null;
+    name = (t && t.name) || "";
+    const r = typeof myRoom === "function" ? myRoom() : null;
+    if (r && r.no) roomNo = r.no;
+  } else {
+    name = kind === "dev" ? "開發者" : "管理員";
+  }
+  return { at: Date.now(), kind, role: ui.role, code: ui.adminCode || "", roomNo, name, device: deviceInfo() };
+}
+function isOnline(id) {
   const p = (state.presence || {})[id];
   return !!(p && p.at && (Date.now() - p.at) < ONLINE_MS);
 }
+function isTenantOnline(id) { return isOnline(id); }
 function beatPresence() {
-  if (ui.role !== "tenant" || !ui.tenantId) return;
+  const id = presenceKey();
+  const beat = presencePayload();
+  if (!id || !beat) return;
   if (!state.presence || typeof state.presence !== "object") state.presence = {};
-  state.presence[ui.tenantId] = { at: Date.now(), roomNo: ui.roomNo || "", device: deviceInfo() };
+  state.presence[id] = beat;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   clearTimeout(presenceTimer);
   presenceTimer = setTimeout(pushPresence, 700);
 }
 async function pushPresence() {
-  if (ui.role !== "tenant" || !ui.tenantId) return;
-  const beat = (state.presence && state.presence[ui.tenantId]) || { at: Date.now(), roomNo: ui.roomNo || "", device: deviceInfo() };
+  const id = presenceKey();
+  const beat = presencePayload();
+  if (!id || !beat) return;
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
@@ -832,11 +876,14 @@ async function pushPresence() {
     if (need && factoryNamedCount(data) < need) return;
     if (state.updatedAt && data.updatedAt && state.updatedAt > data.updatedAt) {
       mergePresenceInto(state, data);
+      if (!state.presence) state.presence = {};
+      state.presence[id] = beat;
+      await pushCloud();
       return;
     }
     if (!data.presence || typeof data.presence !== "object") data.presence = {};
     mergePresenceInto(data, state);
-    data.presence[ui.tenantId] = Object.assign({}, beat, { at: Date.now() });
+    data.presence[id] = Object.assign({}, beat, { at: Date.now() });
     state.presence = data.presence;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
     await fetch(DATA_API, {
@@ -848,12 +895,53 @@ async function pushPresence() {
   } catch {}
   finally { if (timer) clearTimeout(timer); }
 }
+function logPresenceId(x) {
+  const who = String((x && x.who) || "");
+  const code = (who.match(/密碼\s*(\d+)/) || [])[1];
+  if (code) return "admin-" + code;
+  const no = (who.match(/^租客\s+(\S+)/) || [])[1];
+  if (!no) return "";
+  const room = state.rooms.find(r => String(r.no) === String(no));
+  if (!room) return "";
+  const t = state.tenants.find(n => n.roomId === room.id || n.id === room.tenantId);
+  return t ? t.id : "";
+}
+function onlineStaffHtml() {
+  const slots = [
+    ["admin-1240", "開發者", "1240"],
+    ["admin-1976", "管理員", "1976"],
+    ["admin-7651", "管理員", "7651"]
+  ];
+  return slots.map(([id, label, code]) => {
+    const on = isOnline(id);
+    const p = (state.presence || {})[id] || {};
+    const extra = on && p.device ? `<span class="small">${escapeHtml(p.device)}</span>` : "";
+    return `<div class="online-row"><span class="k">${label}（${code}）</span><span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${id}">${on ? "在線中" : "離線中"}</span></span></div>`;
+  }).join("");
+}
+function onlineTenantLinesHtml() {
+  const now = Date.now();
+  const rows = Object.keys(state.presence || {}).map(id => {
+    const p = state.presence[id];
+    if (!p || !p.at || now - p.at >= ONLINE_MS) return null;
+    if (presenceKindOf(id, p) !== "tenant") return null;
+    const t = state.tenants.find(x => x.id === id);
+    const room = t ? state.rooms.find(r => r.id === t.roomId) : null;
+    const name = (t && t.name) || p.name || "租客";
+    const no = (room && room.no) || p.roomNo || "";
+    return `<div class="online-row"><span class="k">${escapeHtml(no ? no + "　" + name : name)}</span><span class="live-pill on" data-online="${id}">在線中</span></div>`;
+  }).filter(Boolean);
+  if (!rows.length) return `<div class="small">目前沒有租客在線</div>`;
+  return rows.join("");
+}
 function refreshOnlineBadges() {
   document.querySelectorAll("[data-online]").forEach(el => {
-    const on = isTenantOnline(el.dataset.online);
+    const on = isOnline(el.dataset.online);
     el.classList.toggle("on", on);
     el.textContent = on ? "在線中" : "離線中";
   });
+  const box = document.getElementById("online-tenants");
+  if (box) box.innerHTML = onlineTenantLinesHtml();
 }
 function factoryNamedCount(data) {
   const rooms = (data && data.rooms) || [];
@@ -3260,6 +3348,15 @@ function adminLogs() {
   const pickedN = list.filter(x => picked[x.id]).length;
   return `<div class="admin-grid list">
     <div class="card card-body">
+      <h2 class="dash-h">目前在線</h2>
+      <p class="small">開發者、管理員與正在使用 App 的租客。</p>
+      <div class="online-board">
+        ${onlineStaffHtml()}
+        <div class="online-h">租客</div>
+        <div id="online-tenants">${onlineTenantLinesHtml()}</div>
+      </div>
+    </div>
+    <div class="card card-body">
       <h2 class="dash-h">操作日誌</h2>
       <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見。</p>
       <div class="log-filters">
@@ -3272,11 +3369,14 @@ function adminLogs() {
       </div>
       <div class="small" style="margin-top:8px">共 ${list.length} 筆</div>
     </div>
-    ${list.length ? list.map(x => `
+    ${list.length ? list.map(x => {
+      const pid = logPresenceId(x);
+      const on = pid && isOnline(pid);
+      return `
       <div class="card card-body log-card">
         <div class="row">
           <label class="log-check"><input type="checkbox" data-log-pick="${x.id}" ${picked[x.id] ? "checked" : ""}></label>
-          <span class="k">${escapeHtml(x.who)}</span>
+          <span class="who-mini"><span class="k">${escapeHtml(x.who)}</span>${pid ? `<span class="live-pill${on ? " on" : ""}" data-online="${pid}">${on ? "在線中" : "離線中"}</span>` : ""}</span>
           <span class="small">${escapeHtml(x.at)}</span>
         </div>
         <div class="log-line"><em>操作</em><span>${escapeHtml(x.action)}${x.detail ? " · " + escapeHtml(x.detail) : ""}</span></div>
@@ -3285,7 +3385,8 @@ function adminLogs() {
         ${logKind(x) !== "tenant" ? `<div class="log-line"><em>型號</em><span>${escapeHtml(x.model || "—")}</span></div>
         <div class="log-line"><em>地址</em><span>${escapeHtml(x.address || "—")}</span></div>` : ""}
         <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
-      </div>`).join("") : `<div class="empty">尚無日誌</div>`}
+      </div>`;
+    }).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
 }
 function adminAi() {
@@ -4285,6 +4386,7 @@ function tryLogin() {
       ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = "";
       persistUi();
       audit("登入", "管理員密碼 " + no);
+      beatPresence();
       render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
     }
     ui.loginError = "密碼不正確";
@@ -5509,6 +5611,7 @@ async function boot() {
   try {
     restoreUi();
     applyTheme(currentThemeId());
+    seedSeenVersion();
     if (hasUnseenUpdate()) ui.updateReady = true;
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
