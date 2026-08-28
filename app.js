@@ -7,8 +7,10 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-下午1:16";
+const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
+const APP_VERSION = "2026-08-28-下午1:22";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午1:22", items: ["新增一筆帳戶改為統潔、信潔、聯名戶、個人戶、現金（保險箱）"] },
   { ver: "2026-08-28-下午1:16", items: ["總覽新增一筆已移除房號欄，說明改為備註", "整體報表可列印"] },
   { ver: "2026-08-28-上午11:56", items: ["畫面正下方改為「資料經 HTTPS 同步雲端」與版本號同一行"] },
   { ver: "2026-08-28-上午11:24", onlyDev: true, items: ["日誌紀錄可單筆刪除、全選刪除", "開發者專用更新內容，一般管理員與租客看不到"] },
@@ -1388,9 +1390,11 @@ function collectLedger() {
     roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔", source: "book", canDel: true, canEdit: true
   }));
   (state.bankSlips || []).forEach(s => {
+    const room = state.rooms.find(r => String(r.no) === String(s.roomNo || ""));
     rows.push({
       id: "slip-" + s.id, type: "in", date: ymdOf(s.date), amount: Number(s.amount) || 0,
-      roomNo: s.roomNo || "", note: s.note || "銀行入帳", source: "slip", canDel: false, canEdit: true
+      roomNo: s.roomNo || "", note: s.note || "銀行入帳", company: s.company || roomCompany(room || {}),
+      source: "slip", canDel: false, canEdit: true
     });
   });
   const slipRooms = new Set((state.bankSlips || []).map(s => String(s.roomNo || "")));
@@ -1400,7 +1404,8 @@ function collectLedger() {
     if (room && slipRooms.has(String(room.no))) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount: Number(room && room.rent) || 0,
-      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", source: "rent", canDel: false, canEdit: false
+      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", company: roomCompany(room || {}),
+      source: "rent", canDel: false, canEdit: false
     });
   });
   return rows.filter(x => x.date);
@@ -1462,7 +1467,7 @@ function monthCashHtml() {
       <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-          <b>${x.type === "in" ? "進帳" : "出帳"} · ${x.roomNo || "—"} · ${money(x.amount)}</b>
+          <b>${x.type === "in" ? "進帳" : "出帳"} · ${escapeHtml(x.company || "統潔")} · ${money(x.amount)}</b>
           <span>${escapeHtml(x.note || "")}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
@@ -1475,8 +1480,7 @@ function monthCashHtml() {
           <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
         </select>
         <select name="company">
-          <option value="統潔" ${!ed || ed.company !== "信潔" ? "selected" : ""}>統潔</option>
-          <option value="信潔" ${ed && ed.company === "信潔" ? "selected" : ""}>信潔</option>
+          ${BOOK_ACCOUNTS.map(n => `<option value="${n}" ${(ed ? ed.company : "統潔") === n ? "selected" : ""}>${n}</option>`).join("")}
         </select>
       </div>
       <div class="cal-form-row">
@@ -2403,8 +2407,11 @@ function inFirmPeriod(dateStr, mode) {
 }
 function ledgerCompany(row) {
   const book = (state.books || []).find(b => b.id === row.id);
-  if (book && /信潔/.test(book.company || "")) return "信潔";
-  if (book && /統潔/.test(book.company || "")) return "統潔";
+  if (book && book.company) {
+    if (BOOK_ACCOUNTS.includes(book.company)) return book.company;
+    if (/信潔/.test(book.company)) return "信潔";
+    if (/統潔/.test(book.company)) return "統潔";
+  }
   const room = state.rooms.find(r => String(r.no) === String(row.roomNo || ""));
   return roomCompany(room || {});
 }
@@ -3755,7 +3762,7 @@ function bindCashCal() {
     const payload = {
       type: form.type.value === "out" ? "out" : "in",
       date, amount,
-      company: form.company && form.company.value === "信潔" ? "信潔" : "統潔",
+      company: BOOK_ACCOUNTS.includes(form.company && form.company.value) ? form.company.value : "統潔",
       note: (form.note.value || "").trim()
     };
     if (ui.editBookId) {
