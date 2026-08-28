@@ -12,11 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:12";
+const APP_VERSION = "2026-08-29-凌晨2:14";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-29-凌晨2:12", items: ["租客繳費狀態移除匯入資料"] },
+  { ver: "2026-08-29-凌晨2:14", items: ["租客繳費狀態已移除匯入資料（開發者預覽與所有租客）"] },
   { ver: "2026-08-29-凌晨2:10", items: ["收租率與出租率圓餅改玫瑰與金黃"] },
   { ver: "2026-08-29-凌晨2:08", items: ["滑動排表時不會再切到其他頁"] },
   { ver: "2026-08-29-凌晨2:05", items: ["點擊營收排表可放大，手機橫放可雙指縮放"] },
