@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午3:46";
+const APP_VERSION = "2026-08-28-下午3:50";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午3:50", items: ["租客分為套房租客與廠房租客，現有房號都在套房"] },
   { ver: "2026-08-28-下午3:46", items: ["銀行入帳與銀行業務有金流會記入進出帳與報表，並自動去掉重複"] },
   { ver: "2026-08-28-下午3:40", items: ["新增一筆可上傳 Excel，工作助手自動記入進出帳與整體報表"] },
   { ver: "2026-08-28-下午3:06", items: ["租客登入需設定密碼，後台可查看，忘記密碼可找回"] },
@@ -498,7 +499,7 @@ function buildSeed() {
 }
 const SEED = buildSeed();
 let state = loadLocal();
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false };
 let saveTimer = 0;
 
 function normalize(data) {
@@ -616,6 +617,7 @@ function persistUi() {
       tenantId: ui.tenantId,
       roomNo: room ? room.no : (ui.roomNo || ""),
       assetKind: ui.assetKind,
+      tenantKind: ui.tenantKind,
       adminCode: ui.adminCode || ""
     });
     localStorage.setItem(UI_KEY, snap);
@@ -648,6 +650,7 @@ function restoreUi() {
     ui.tenantId = s.tenantId || null;
     ui.roomNo = s.roomNo || "";
     ui.assetKind = s.assetKind || "studio";
+    ui.tenantKind = s.tenantKind === "factory" ? "factory" : "studio";
     ui.adminCode = s.adminCode || "";
     if (ui.page === "tenant-login" || ui.page === "admin-login") {
       ui.page = s.role === "admin" ? "dash" : "home";
@@ -3380,16 +3383,41 @@ function adminRooms() {
     <div id="asset-list">${adminRoomListHtml(kind)}</div>
   </div>`;
 }
-function adminTenants() {
-  const list = state.tenants.slice().sort((a, b) => {
+function roomIsFactory(r) {
+  return !!(r && r.kind === "factory");
+}
+function tenantListOfKind(kind) {
+  const factory = kind === "factory";
+  return state.tenants.filter(t => {
+    const r = state.rooms.find(x => x.id === t.roomId);
+    if (!r || r.status === "office") return false;
+    return factory ? roomIsFactory(r) : !roomIsFactory(r);
+  }).sort((a, b) => {
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
-  const renews = (state.renewals || []).filter(x => x.status !== "done").slice().reverse();
+}
+function adminTenants() {
+  const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+  const list = tenantListOfKind(kind);
+  const renews = (state.renewals || []).filter(x => {
+    if (x.status === "done") return false;
+    const room = state.rooms.find(r => r.id === x.roomId);
+    if (!room || room.status === "office") return false;
+    return kind === "factory" ? roomIsFactory(room) : !roomIsFactory(room);
+  }).slice().reverse();
   return `<div class="admin-grid list">
+    <div class="card card-body">
+      <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
+        <i class="seg-bg"></i>
+        <button type="button" class="${kind === "studio" ? "on" : ""}" data-tenant-kind="studio">套房租客</button>
+        <button type="button" class="${kind === "factory" ? "on" : ""}" data-tenant-kind="factory">廠房租客</button>
+      </div>
+    </div>
     <p class="small" style="padding:0 4px">向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。</p>
+    <div id="tenant-list">
     ${renews.length ? `<div class="card card-body"><h2 class="dash-h">續約申請</h2>${renews.map(x => {
       const room = state.rooms.find(r => r.id === x.roomId);
       const tenant = state.tenants.find(t => t.id === x.tenantId);
@@ -3403,7 +3431,7 @@ function adminTenants() {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${list.map(t => {
+    ${list.length ? list.map(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     const pay = payLabel(t);
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
@@ -3418,14 +3446,15 @@ function adminTenants() {
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
-      <div class="row"><span class="k">電話</span><span class="v">${t.phone}</span></div>
-      <div class="row"><span class="k">租期</span><span class="v">${t.leaseStart} → ${t.leaseEnd}</span></div>
-      <div class="row"><span class="k">剩餘</span><span class="v">${daysLeft(t.leaseEnd)} 天</span></div>
+      <div class="row"><span class="k">電話</span><span class="v">${t.phone || "—"}</span></div>
+      <div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
+      <div class="row"><span class="k">剩餘</span><span class="v">${t.leaseEnd ? daysLeft(t.leaseEnd) + " 天" : "—"}</span></div>
       <button class="ghost" data-invoice="${t.roomId}" style="margin-top:8px">產出發票</button>
       <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>
     </div>
     </div>`;
-  }).join("")}
+  }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}
+    </div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
         <div>
@@ -4201,6 +4230,22 @@ function bindAdmin() {
         bindAdminRoomItems();
         bindStudioBuildings();
       }
+    };
+  });
+  document.querySelectorAll("[data-tenant-kind]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const kind = btn.dataset.tenantKind === "factory" ? "factory" : "studio";
+      if ((ui.tenantKind === "factory" ? "factory" : "studio") === kind) return;
+      ui.tenantKind = kind;
+      const seg = btn.closest(".seg") || document.getElementById("tenant-kind-seg");
+      if (seg) {
+        seg.classList.remove("is-studio", "is-factory");
+        seg.classList.add(kind === "factory" ? "is-factory" : "is-studio");
+        seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tenantKind === kind));
+      }
+      ui.keepScroll = true;
+      render();
     };
   });
   const onTab = document.querySelector(".tab.on");
