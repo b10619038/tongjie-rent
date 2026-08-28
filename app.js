@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:00";
+const APP_VERSION = "2026-08-29-凌晨2:02";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:02", items: ["收租率與出租率圓餅改清爽配色"] },
   { ver: "2026-08-29-凌晨2:00", items: ["整體報表兩張排表改為圓角圖塊"] },
   { ver: "2026-08-29-凌晨1:58", items: ["整體報表改為匯出、列印，放在月年右側"] },
   { ver: "2026-08-29-凌晨1:55", items: ["整體報表匯出／列印改為當月、當年、四戶與總餘額排表"] },
@@ -4455,8 +4456,8 @@ function adminDash() {
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
-      <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${studioTenants.filter(t => t.paid).length}／${studioTenants.length} 位租客</div></div></div>
-      <div class="card ring-card"><div class="ring-wrap"><div class="ring teal ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
+      <div class="card ring-card"><div class="ring-wrap"><div class="ring mint ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${studioTenants.filter(t => t.paid).length}／${studioTenants.length} 位租客</div></div></div>
+      <div class="card ring-card"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
     </div>
     ${overallReportHtml()}
     ${monthCashHtml()}
