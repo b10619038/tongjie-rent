@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:10";
+const APP_VERSION = "2026-08-29-凌晨1:15";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:15", items: ["安裝後引導開啟手機／電腦系統通知（Android 與 iOS）"] },
   { ver: "2026-08-29-凌晨1:10", items: ["安裝版才發系統通知：公告、繳費、到期、報修、續約"] },
   { ver: "2026-08-29-凌晨1:05", items: ["套房租客圖卡顯示租金，在線狀態改為綠／紅圓點"] },
   { ver: "2026-08-29-凌晨1:00", items: ["廠房資產首頁改為白色建模照片"] },
@@ -1754,12 +1755,97 @@ function isStandalone() {
   return false;
 }
 function notifyStatus() {
+  if (isIOS() && !isStandalone()) return "need-install";
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return "unsupported";
   return Notification.permission || "default";
 }
-function needsNotifyGuide() { return false; }
-function notifyGuideHtml() { return ""; }
-function bindNotifyGuide() {}
+function notifySnoozed() {
+  try { return sessionStorage.getItem("tj-notify-snooze") === "1"; } catch { return false; }
+}
+function snoozeNotifyGuide() {
+  try { sessionStorage.setItem("tj-notify-snooze", "1"); } catch {}
+  ui.notifyGuide = false;
+}
+function needsNotifyGuide() {
+  if (!isInstalledApp()) return false;
+  if (ui.notifyGuide === true) return true;
+  if (notifySnoozed() && ui.notifyGuide !== true) return false;
+  const st = notifyStatus();
+  return st === "default" || st === "denied" || st === "unsupported";
+}
+function notifyOsSteps() {
+  if (isIOS()) return [
+    "1. 請從主畫面圖示打開這個 App（不要從 Safari 開）。",
+    "2. 點下方「開啟通知」，在系統視窗選允許。",
+    "3. 若沒跳出：設定 → 通知 → 統潔開發 → 允許通知。"
+  ];
+  if (isAndroid()) return [
+    "1. 點下方「開啟通知」，在系統視窗選允許。",
+    "2. 若沒跳出：設定 → 應用程式 → 統潔開發 → 通知 → 允許。",
+    "3. 請用 Chrome 安裝的圖示打開，不要用網頁分頁。"
+  ];
+  return [
+    "1. 點下方「開啟通知」，在瀏覽器視窗選允許。",
+    "2. 若被擋住：點網址列左側鎖頭 → 通知 → 允許。",
+    "3. 請從開始功能表或 Dock 打開已安裝的 App。"
+  ];
+}
+function notifyGuideHtml() {
+  if (!needsNotifyGuide()) return notifyChipHtml();
+  const st = notifyStatus();
+  const title = st === "denied" ? "通知被關閉" : st === "unsupported" ? "這台裝置暫不支援通知" : "開啟手機通知";
+  const lead = st === "denied"
+    ? "系統目前擋住通知，請依步驟打開，之後公告、報修、繳費才會在螢幕上方跳出。"
+    : st === "unsupported"
+      ? (isIOS() ? "請將 iOS 更新到 16.4 以上，並用「加入主畫面」後的圖示打開。" : "請改用 Chrome 或 Edge 安裝後再開啟通知。")
+      : "安裝後請允許通知。公告、未繳租金、報修與續約會像一般 App 一樣從螢幕上方跳出。";
+  const steps = notifyOsSteps().map(s => `<p>${s}</p>`).join("");
+  const allow = st === "unsupported" ? "" : `<button class="btn-navy" id="notify-allow" type="button">${st === "denied" ? "再試一次" : "開啟通知"}</button>`;
+  return `<div class="install-mask" id="notify-mask">
+    <div class="install-sheet">
+      <div class="label">NOTIFICATIONS</div>
+      <h2>${title}</h2>
+      <p class="small">${lead}</p>
+      <div class="notify-steps">${steps}</div>
+      ${allow}
+      <button class="ghost" id="notify-later" type="button">稍後</button>
+    </div>
+  </div>`;
+}
+function notifyChipHtml() {
+  if (!isInstalledApp() || needsNotifyGuide()) return "";
+  const st = notifyStatus();
+  if (st === "granted") return "";
+  if (st === "need-install") return "";
+  return `<button type="button" class="notify-chip" id="open-notify-guide">尚未開啟通知，點此設定</button>`;
+}
+function bindNotifyGuide() {
+  const later = () => { snoozeNotifyGuide(); render(); };
+  const mask = document.getElementById("notify-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "notify-mask") later(); };
+  const laterBtn = document.getElementById("notify-later");
+  if (laterBtn) laterBtn.onclick = later;
+  const allow = document.getElementById("notify-allow");
+  if (allow) allow.onclick = async () => {
+    const ok = await enablePush(true);
+    if (ok) {
+      try { sessionStorage.removeItem("tj-notify-snooze"); } catch {}
+      ui.notifyGuide = false;
+      toast("通知已開啟");
+      showOsBanner("統潔開發", "通知已開啟，之後重要訊息會顯示在螢幕上方", "notify-on");
+      render();
+      maybeNudgeNotifies();
+    } else if (notifyStatus() === "denied") {
+      ui.notifyGuide = true;
+      toast(isIOS() ? "請到設定 → 通知 → 統潔開發，打開允許" : "請到設定 → 應用程式 → 統潔開發 → 通知，改為允許");
+      render();
+    } else {
+      toast("沒有跳出系統視窗，請再點一次「開啟通知」");
+    }
+  };
+  const chip = document.getElementById("open-notify-guide");
+  if (chip) chip.onclick = () => { ui.notifyGuide = true; try { sessionStorage.removeItem("tj-notify-snooze"); } catch {}; render(); };
+}
 function subscribePushOnly() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
   navigator.serviceWorker.ready.then(async reg => {
@@ -1785,8 +1871,8 @@ function subscribePushOnly() {
     } catch {}
   });
 }
-async function enablePush() {
-  if (!isInstalledApp()) return false;
+async function enablePush(forceAsk) {
+  if (!isInstalledApp() && !forceAsk) return false;
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return false;
   if (Notification.permission === "denied") return false;
   if (isIOS() && !isStandalone()) return false;
@@ -1801,7 +1887,13 @@ async function enablePush() {
 }
 function armPushAsk() {
   if (!ui.role || !isInstalledApp()) return;
-  const go = () => { enablePush().then(() => maybeNudgeNotifies()); };
+  if (notifyStatus() === "granted") {
+    subscribePushOnly();
+    maybeNudgeNotifies();
+    return;
+  }
+  if (needsNotifyGuide()) return;
+  const go = () => { enablePush().then(ok => { if (ok) maybeNudgeNotifies(); }); };
   document.addEventListener("pointerdown", go, { once: true, capture: true });
   document.addEventListener("keydown", go, { once: true, capture: true });
 }
@@ -6021,7 +6113,12 @@ window.addEventListener("appinstalled", () => {
   deferredInstall = null;
   ui.installSheet = "";
   try { localStorage.setItem("tongjie_installed", "1"); } catch {}
-  enablePush().then(() => render());
+  try { sessionStorage.removeItem("tj-notify-snooze"); } catch {}
+  ui.notifyGuide = true;
+  enablePush().then(ok => {
+    if (ok) ui.notifyGuide = false;
+    render();
+  });
 });
 function isInstalledApp() {
   if (isStandalone()) return true;
@@ -6040,7 +6137,10 @@ async function installApp(kind, fromSheet) {
       if (choice && choice.outcome === "accepted") {
         try { localStorage.setItem("tongjie_installed", "1"); } catch {}
         ui.installSheet = "";
-        await enablePush();
+        try { sessionStorage.removeItem("tj-notify-snooze"); } catch {}
+        ui.notifyGuide = true;
+        const ok = await enablePush();
+        if (ok) ui.notifyGuide = false;
         render();
         return;
       }
