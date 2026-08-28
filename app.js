@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:35";
+const APP_VERSION = "2026-08-29-凌晨12:40";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:40", items: ["我的房間圖卡固定淺灰，不受調色盤影響"] },
   { ver: "2026-08-29-凌晨12:35", items: ["我的房間模型再往左，避免手機擋住"] },
   { ver: "2026-08-29-凌晨12:30", items: ["我的房間圖塊右側滑入套房模型"] },
   { ver: "2026-08-29-凌晨12:25", items: ["子母車改為單桶與提垃圾人像", "套房詳情新增基本使用規範"] },

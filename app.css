@@ -69,11 +69,11 @@ button, input, textarea, select { font: inherit; }
 .hero-card {
   position: relative;
   overflow: hidden;
-  background: #e6ede3;
+  background: #ececec;
   color: #17211f;
   border-radius: 26px;
   padding: 20px;
-  border: 1px solid #d5ddd8;
+  border: 1px solid #dedede;
   min-height: 176px;
 }
 .hero-copy { position: relative; z-index: 1; }
