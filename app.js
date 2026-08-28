@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:05";
+const APP_VERSION = "2026-08-29-凌晨1:10";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:10", items: ["安裝版才發系統通知：公告、繳費、到期、報修、續約"] },
   { ver: "2026-08-29-凌晨1:05", items: ["套房租客圖卡顯示租金，在線狀態改為綠／紅圓點"] },
   { ver: "2026-08-29-凌晨1:00", items: ["廠房資產首頁改為白色建模照片"] },
   { ver: "2026-08-29-凌晨12:55", items: ["移除我的房間圖卡滑入模型"] },
@@ -272,22 +273,22 @@ function promptAppUpdate(reg) {
   if (ui.updateReady) return;
   ui.updateReady = true;
   try { render(); } catch {}
-  if ("Notification" in window && Notification.permission === "granted") {
+  if (canOsNotify()) {
     try {
       const n = new Notification("統潔開發有新版本", {
-        body: "點下方通知可查看更新了哪些內容",
+        body: "點通知可查看更新了哪些內容",
         tag: "tongjie-update",
         icon: "icon-192.png"
       });
       n.onclick = () => { window.focus(); ui.updateNotes = true; render(); n.close(); };
     } catch {}
-  }
-  if (reg && reg.showNotification) {
-    reg.showNotification("統潔開發有新版本", {
-      body: "點下方通知可查看更新了哪些內容",
-      tag: "tongjie-update",
-      icon: "/icon-192.png"
-    }).catch(() => {});
+    if (reg && reg.showNotification) {
+      reg.showNotification("統潔開發有新版本", {
+        body: "點通知可查看更新了哪些內容",
+        tag: "tongjie-update",
+        icon: "/icon-192.png"
+      }).catch(() => {});
+    }
   }
 }
 function watchAppUpdate(reg) {
@@ -1785,6 +1786,7 @@ function subscribePushOnly() {
   });
 }
 async function enablePush() {
+  if (!isInstalledApp()) return false;
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return false;
   if (Notification.permission === "denied") return false;
   if (isIOS() && !isStandalone()) return false;
@@ -1798,7 +1800,7 @@ async function enablePush() {
   return true;
 }
 function armPushAsk() {
-  if (!ui.role) return;
+  if (!ui.role || !isInstalledApp()) return;
   const go = () => { enablePush().then(() => maybeNudgeNotifies()); };
   document.addEventListener("pointerdown", go, { once: true, capture: true });
   document.addEventListener("keydown", go, { once: true, capture: true });
@@ -1810,20 +1812,26 @@ function shouldShowLocalBanner(target) {
   const room = myRoom();
   return !!(ui.role === "tenant" && room && String(room.no) === String(target));
 }
+function canOsNotify() {
+  if (!isInstalledApp()) return false;
+  if (!("Notification" in window)) return false;
+  return Notification.permission === "granted";
+}
 function showOsBanner(title, body, tag) {
+  if (!canOsNotify()) return;
   const text = String(body || "").slice(0, 180);
   const opts = {
     body: text,
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     lang: "zh-Hant",
-    vibrate: [180, 80, 180],
+    vibrate: [200, 80, 200],
     tag: tag || ("tongjie-" + title),
-    renotify: true
+    renotify: true,
+    silent: false
   };
   const viaSw = () => navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts));
   const viaPage = () => { try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); n.close(); }; } catch {} };
-  if (Notification.permission !== "granted") return;
   if (navigator.serviceWorker) viaSw().catch(viaPage);
   else viaPage();
 }
@@ -1851,6 +1859,7 @@ function todayStamp() {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function maybeNudgeNotifies() {
+  if (!canOsNotify()) return;
   if (ui.role === "tenant" && ui.tenantId) {
     const t = me();
     const room = myRoom();
@@ -1883,7 +1892,7 @@ function maybeNudgeNotifies() {
   }
 }
 function notifyCloudChanges(before) {
-  if (!before) return;
+  if (!before || !canOsNotify()) return;
   const newAnns = (state.announcements || []).filter(a => !(before.anns || []).includes(a.id));
   if (ui.role === "tenant" && newAnns.length) {
     const a = newAnns[newAnns.length - 1];
@@ -5725,7 +5734,7 @@ function bindAdmin() {
   }
   const af = document.getElementById("announce-form");
   if (af) {
-    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    if (isInstalledApp() && "Notification" in window && Notification.permission === "default") Notification.requestPermission().then(p => { if (p === "granted") subscribePushOnly(); });
     const addAnnFiles = async (files, kind) => {
       if (!ui.announceMedia) ui.announceMedia = [];
       for (const file of files) {

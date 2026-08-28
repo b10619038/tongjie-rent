@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v88";
-const BUILD = "20260829-0105";
+const CACHE = "tongjie-app-v89";
+const BUILD = "20260829-0110";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -43,22 +43,27 @@ self.addEventListener("fetch", e => {
   })());
 });
 self.addEventListener("push", event => {
-  let data = { title: "統潔＆信潔開發", body: "" };
-  try {
-    if (event.data) data = event.data.json();
-  } catch {
-    try { data.body = event.data ? event.data.text() : ""; } catch {}
-  }
-  event.waitUntil(self.registration.showNotification(data.title || "統潔＆信潔開發", {
-    body: data.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    lang: "zh-Hant",
-    vibrate: [180, 80, 180],
-    tag: data.tag || "tongjie",
-    renotify: true,
-    data
-  }));
+  event.waitUntil((async () => {
+    const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (cl.some(c => c.visibilityState === "visible")) return;
+    let data = { title: "統潔＆信潔開發", body: "" };
+    try {
+      if (event.data) data = event.data.json();
+    } catch {
+      try { data.body = event.data ? event.data.text() : ""; } catch {}
+    }
+    await self.registration.showNotification(data.title || "統潔＆信潔開發", {
+      body: data.body || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      lang: "zh-Hant",
+      vibrate: [200, 80, 200],
+      tag: data.tag || "tongjie",
+      renotify: true,
+      silent: false,
+      data
+    });
+  })());
 });
 self.addEventListener("notificationclick", event => {
   event.notification.close();
