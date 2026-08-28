@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:32";
+const APP_VERSION = "2026-08-28-下午2:34";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:34", items: ["後台分類列可左右滑動，內容區也可滑動切換分類"] },
   { ver: "2026-08-28-下午2:32", items: ["匯出 Excel 含期間年月與總餘額"] },
   { ver: "2026-08-28-下午2:28", items: ["累計餘額改為營收總額", "整體報表年月合併為可左右滑動切換"] },
   { ver: "2026-08-28-下午2:24", items: ["後台分類改為手機可長按拖移，並跟著手指滑動"] },
@@ -2270,13 +2271,46 @@ function bindTabReorder() {
     startX = p.x; holdY = p.y; pid = e.pointerId;
     armed = false; moved = false; dragEl = tab;
     clear();
-    timer = setTimeout(arm, 280);
+    timer = setTimeout(arm, 320);
   });
-  bar.addEventListener("pointermove", onMove, { passive: false });
-  bar.addEventListener("touchmove", onMove, { passive: false });
+  bar.addEventListener("pointermove", e => {
+    if (armed || !dragEl) return;
+    const p = pt(e);
+    if (Math.hypot(p.x - startX, p.y - holdY) > 16) { clear(); dragEl = null; }
+  }, { passive: true });
   bar.addEventListener("pointerup", onEnd);
-  bar.addEventListener("touchend", onEnd);
   bar.addEventListener("pointercancel", onEnd);
+}
+function bindAdminPageSwipe() {
+  const sc = document.querySelector(".admin-scroll");
+  if (!sc) return;
+  let x0 = 0, y0 = 0, on = false;
+  sc.addEventListener("touchstart", e => {
+    if (e.touches.length !== 1) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, #report-period-seg, input, textarea, select, .tabs")) return;
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    on = true;
+  }, { passive: true });
+  sc.addEventListener("touchend", e => {
+    if (!on) return;
+    on = false;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - x0;
+    const dy = t.clientY - y0;
+    if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+    const pages = adminPages().map(p => p[0]);
+    let cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
+    if (cur === "room-edit" || cur === "invoice") return;
+    const i = pages.indexOf(cur);
+    if (i < 0) return;
+    const next = dx < 0 ? i + 1 : i - 1;
+    if (next < 0 || next >= pages.length) return;
+    ui.page = pages[next];
+    ui.keepScroll = false;
+    render();
+  }, { passive: true });
 }
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
@@ -3621,6 +3655,7 @@ function bindAdmin() {
     };
   });
   bindTabReorder();
+  bindAdminPageSwipe();
   document.querySelectorAll("[data-asset-kind]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
