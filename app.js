@@ -9,8 +9,9 @@ const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:16";
+const APP_VERSION = "2026-08-28-下午2:18";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:18", onlyDev: true, items: ["操作日誌新增開發者分類，1240 會歸在開發者"] },
   { ver: "2026-08-28-下午2:16", items: ["AI助手更名為工作助手"] },
   { ver: "2026-08-28-下午2:15", items: ["整體報表累計餘額可點進去編輯", "已移除四戶本期淨額"] },
   { ver: "2026-08-28-下午2:05", items: ["我的房間圖卡改回原本淺綠色，不隨主題變色"] },
@@ -751,6 +752,13 @@ function actorLabel() {
   }
   return "未登入";
 }
+function logKind(x) {
+  if (!x) return "admin";
+  if (x.kind === "dev" || x.kind === "developer") return "dev";
+  if (/開發者|密碼 1240/.test(String(x.who || ""))) return "dev";
+  if (x.kind === "tenant") return "tenant";
+  return "admin";
+}
 let lastAuditBrowse = "";
 function audit(action, detail) {
   try {
@@ -762,7 +770,7 @@ function audit(action, detail) {
     state.auditLogs.push({
       id: "log" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
       at: nowStamp(),
-      kind: ui.role || "guest",
+      kind: ui.role === "admin" && ui.adminCode === "1240" ? "dev" : (ui.role || "guest"),
       who: actorLabel(),
       action,
       detail: detail || "",
@@ -2184,9 +2192,10 @@ function adminBody() {
 function adminLogs() {
   const filter = ui.logFilter || "all";
   let list = (state.auditLogs || []).slice().reverse();
-  if (filter === "tenant") list = list.filter(x => x.kind === "tenant");
-  if (filter === "admin") list = list.filter(x => x.kind === "admin" || x.kind === "guest");
-  const chips = [["all", "全部"], ["tenant", "租客"], ["admin", "管理員"]];
+  if (filter === "tenant") list = list.filter(x => logKind(x) === "tenant");
+  if (filter === "admin") list = list.filter(x => logKind(x) === "admin");
+  if (filter === "dev") list = list.filter(x => logKind(x) === "dev");
+  const chips = [["all", "全部"], ["tenant", "租客"], ["admin", "管理員"], ["dev", "開發者"]];
   const picked = ui.logPicked || {};
   const pickedN = list.filter(x => picked[x.id]).length;
   return `<div class="admin-grid list">
