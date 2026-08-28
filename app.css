@@ -625,6 +625,7 @@ textarea { min-height: 92px; resize: vertical; }
   -webkit-overflow-scrolling: touch;
   background: var(--card, #fff);
   cursor: pointer;
+  touch-action: pan-x pan-y;
 }
 .rev-hint { margin-left: 8px; font-weight: 600; color: var(--ink-soft); font-size: 12px; }
 .rev-zoom {

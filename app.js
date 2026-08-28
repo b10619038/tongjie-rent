@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:05";
+const APP_VERSION = "2026-08-29-凌晨2:08";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:08", items: ["滑動排表時不會再切到其他頁"] },
   { ver: "2026-08-29-凌晨2:05", items: ["點擊營收排表可放大，手機橫放可雙指縮放"] },
   { ver: "2026-08-29-凌晨2:02", items: ["收租率與出租率圓餅改清爽配色"] },
   { ver: "2026-08-29-凌晨2:00", items: ["整體報表兩張排表改為圓角圖塊"] },
@@ -2705,6 +2706,8 @@ function bindReportBody() {
   document.querySelectorAll("[data-rev-zoom]").forEach(card => {
     card.onclick = () => openRevZoom(card, card.dataset.revZoom);
     card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRevZoom(card, card.dataset.revZoom); } };
+    card.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+    card.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
   });
   document.querySelectorAll("[data-pick-person]").forEach(btn => {
     btn.onclick = e => {
@@ -3779,7 +3782,7 @@ function bindAdminPageSwipe() {
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    if (e.target.closest(".swipe-wrap, .cal-grid, #report-period-seg, input, textarea, select, .tabs")) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, #report-period-seg, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, input, textarea, select, .tabs")) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     on = true;
@@ -4236,6 +4239,8 @@ function openRevZoom(card, title) {
     <div class="rev-zoom-hint">雙指放大縮小 · 手機橫放可看全表</div>`;
   document.body.appendChild(wrap);
   document.body.classList.add("rev-zooming");
+  wrap.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+  wrap.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
   document.getElementById("lb-close").onclick = closeRevZoom;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeRevZoom(); });
   const onKey = e => { if (e.key === "Escape") { closeRevZoom(); window.removeEventListener("keydown", onKey); } };
@@ -4255,6 +4260,7 @@ function openRevZoom(card, title) {
   const pt = t => ({ x: t.clientX, y: t.clientY });
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   view.addEventListener("touchstart", e => {
+    e.stopPropagation();
     if (e.touches.length === 2) {
       mode = "pinch";
       dist0 = dist(pt(e.touches[0]), pt(e.touches[1]));
@@ -4266,6 +4272,7 @@ function openRevZoom(card, title) {
     }
   }, { passive: true });
   view.addEventListener("touchmove", e => {
+    e.stopPropagation();
     if (mode === "pinch" && e.touches.length === 2) {
       e.preventDefault();
       setScale(s0 * dist(pt(e.touches[0]), pt(e.touches[1])) / (dist0 || 1));
