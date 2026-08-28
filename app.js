@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:40";
+const APP_VERSION = "2026-08-29-凌晨12:45";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:45", items: ["我的房間模型完整顯示在卡片內，不再卡住邊"] },
   { ver: "2026-08-29-凌晨12:40", items: ["我的房間圖卡固定淺灰，不受調色盤影響"] },
   { ver: "2026-08-29-凌晨12:35", items: ["我的房間模型再往左，避免手機擋住"] },
   { ver: "2026-08-29-凌晨12:30", items: ["我的房間圖塊右側滑入套房模型"] },
@@ -3088,13 +3089,13 @@ function homeView() {
         <div class="hero-copy">
           <div class="label">我的房間</div>
           <div class="room-name">${r.no}　${r.title}</div>
-          <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.location || roomAddress(r.no))}</div>
-          <div class="hero-stats">
-            <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
-            <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
-          </div>
+          <div class="small">${escapeHtml(r.location || roomAddress(r.no))}</div>
         </div>
-        <img class="hero-model" src="${(r.photos && r.photos[0]) || photosFor(r.no)[0]}" alt="" />
+        <img class="hero-model" src="images/hero-living.jpg" alt="" />
+        <div class="hero-stats">
+          <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
+          <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
+        </div>
       </div>
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
