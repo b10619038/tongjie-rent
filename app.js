@@ -12,11 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上9:25";
+const APP_VERSION = "2026-08-28-晚上9:40";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-28-晚上9:25", items: ["手機與電腦已對上最新版，不再卡在下午6:55", "下方會出現更新內容圖塊，點了可看這次改了什麼"] },
+  { ver: "2026-08-28-晚上9:40", items: ["整體報表改為典籍個人戶，可下拉八位成員", "套房租客圖卡顯示在線中／離線中", "日誌會記下管理員操作時的地址與手機型號", "修正畫面每隔幾秒自動跳一下"] },
   { ver: "2026-08-28-晚上8:55", items: ["整體報表個人戶納入八位成員", "新增一筆帳戶的個人戶可選趙文榮等八位"] },
   { ver: "2026-08-28-下午6:55", items: ["套入套房租客正確姓名、電話、合約期間與帳戶後五碼"] },
   { ver: "2026-08-28-下午4:16", items: ["廠房分組收合改為子項目往上滑收"] },
@@ -595,6 +595,7 @@ const SEED = buildSeed();
 let state = loadLocal();
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
+let presenceTimer = 0;
 
 function normalize(data) {
   if (!data) data = structuredClone(SEED);
@@ -638,6 +639,7 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
+  if (!data.presence || typeof data.presence !== "object") data.presence = {};
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   data.rooms.forEach(r => {
     if (r.status === "office" || r.kind === "factory") return;
@@ -740,13 +742,20 @@ async function pullCloud() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    mergePresenceInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyTenantRoster(state);
       applyFactoryRoster(state);
       ui.cloudOk = true;
       return "local-newer";
     }
+    if (state.updatedAt && data.updatedAt && data.updatedAt === state.updatedAt) {
+      ui.cloudOk = true;
+      return "same";
+    }
+    const mine = state.presence;
     state = normalize(data);
+    mergePresenceInto(state, { presence: mine });
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -756,6 +765,76 @@ async function pullCloud() {
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+function mergePresenceInto(target, other) {
+  if (!target.presence || typeof target.presence !== "object") target.presence = {};
+  const src = (other && other.presence) || {};
+  Object.keys(src).forEach(id => {
+    const a = target.presence[id];
+    const b = src[id];
+    if (!b || !b.at) return;
+    if (!a || b.at > a.at) target.presence[id] = b;
+  });
+}
+function coreSig(d) {
+  try {
+    return JSON.stringify({
+      b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
+      n: d.renewals, s: d.bankSlips, e: d.errands,
+      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note]),
+      m: (d.rooms || []).map(x => [x.id, x.status, x.rent])
+    });
+  } catch { return String(d && d.updatedAt); }
+}
+const ONLINE_MS = 90000;
+function isTenantOnline(id) {
+  const p = (state.presence || {})[id];
+  return !!(p && p.at && (Date.now() - p.at) < ONLINE_MS);
+}
+function beatPresence() {
+  if (ui.role !== "tenant" || !ui.tenantId) return;
+  if (!state.presence || typeof state.presence !== "object") state.presence = {};
+  state.presence[ui.tenantId] = { at: Date.now(), roomNo: ui.roomNo || "", device: deviceInfo() };
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  clearTimeout(presenceTimer);
+  presenceTimer = setTimeout(pushPresence, 700);
+}
+async function pushPresence() {
+  if (ui.role !== "tenant" || !ui.tenantId) return;
+  const beat = (state.presence && state.presence[ui.tenantId]) || { at: Date.now(), roomNo: ui.roomNo || "", device: deviceInfo() };
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
+  try {
+    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !Array.isArray(data.rooms) || !data.rooms.length) return;
+    const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
+    if (need && factoryNamedCount(data) < need) return;
+    if (state.updatedAt && data.updatedAt && state.updatedAt > data.updatedAt) {
+      mergePresenceInto(state, data);
+      return;
+    }
+    if (!data.presence || typeof data.presence !== "object") data.presence = {};
+    mergePresenceInto(data, state);
+    data.presence[ui.tenantId] = Object.assign({}, beat, { at: Date.now() });
+    state.presence = data.presence;
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    await fetch(DATA_API, {
+      method: "PUT",
+      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: ctrl ? ctrl.signal : undefined
+    });
+  } catch {}
+  finally { if (timer) clearTimeout(timer); }
+}
+function refreshOnlineBadges() {
+  document.querySelectorAll("[data-online]").forEach(el => {
+    const on = isTenantOnline(el.dataset.online);
+    el.classList.toggle("on", on);
+    el.textContent = on ? "在線中" : "離線中";
+  });
 }
 function factoryNamedCount(data) {
   const rooms = (data && data.rooms) || [];
@@ -918,6 +997,27 @@ function fromDatetimeLocal(value) {
   if (!value) return "";
   return formatDateTime12(String(value).replace("T", " "));
 }
+function deviceModel() {
+  const ua = navigator.userAgent || "";
+  const android = ua.match(/;\s*([^;)]+?)\s+Build\//i);
+  if (/Android/i.test(ua) && android) {
+    const name = android[1].replace(/_/g, " ").trim();
+    if (name && !/^wv$/i.test(name) && !/Linux/i.test(name)) return name;
+  }
+  if (/Android/i.test(ua)) return "Android 手機";
+  if (/iPhone/i.test(ua)) {
+    const ios = ua.match(/OS (\d+)[._](\d+)/);
+    return "iPhone" + (ios ? " iOS " + ios[1] + "." + ios[2] : "");
+  }
+  if (/iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
+    const ios = ua.match(/OS (\d+)[._](\d+)/);
+    return "iPad" + (ios ? " iPadOS " + ios[1] + "." + ios[2] : "");
+  }
+  if (/Windows NT/i.test(ua)) return "Windows 電腦";
+  if (/Mac OS X/i.test(ua)) return "Mac 電腦";
+  if (/Linux/i.test(ua)) return "電腦";
+  return "未知型號";
+}
 function deviceInfo() {
   const ua = navigator.userAgent || "";
   let os = "未知裝置";
@@ -934,6 +1034,49 @@ function deviceInfo() {
   else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
   const mode = isStandalone() ? "已安裝 App" : "網頁";
   return os + " · " + browser + " · " + mode;
+}
+async function refreshGeo() {
+  if (ui.geoAddr) return ui.geoAddr;
+  if (ui.geoTried) return ui.geoAddr || "";
+  ui.geoTried = true;
+  const sources = ["https://ipwho.is/", "https://ipapi.co/json/", "https://ipinfo.io/json"];
+  for (const url of sources) {
+    try {
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 3500) : 0;
+      const res = await fetch(url, { signal: ctrl ? ctrl.signal : undefined });
+      if (timer) clearTimeout(timer);
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (!d || d.success === false) continue;
+      const cc = String(d.country_code || d.country || "");
+      const country = d.country_name || (/^TW$/i.test(cc) ? "臺灣" : d.country);
+      const addr = fmtGeo({ country, region: d.region, city: d.city });
+      if (!addr) continue;
+      ui.geoAddr = addr;
+      ui.geoIp = d.ip || "";
+      return ui.geoAddr;
+    } catch {}
+  }
+  return "";
+}
+function fmtGeo(d) {
+  const cityMap = {
+    "New Taipei": "新北市", Kaohsiung: "高雄市", Taipei: "臺北市", Taichung: "臺中市",
+    Tainan: "臺南市", Taoyuan: "桃園市", Hsinchu: "新竹", Keelung: "基隆市",
+    Chiayi: "嘉義", Hualien: "花蓮", Taitung: "臺東", Pingtung: "屏東縣",
+    Yilan: "宜蘭", Miaoli: "苗栗", Changhua: "彰化", Nantou: "南投",
+    Yunlin: "雲林", Penghu: "澎湖", Kinmen: "金門", Lienchiang: "連江"
+  };
+  let country = d.country || "";
+  if (/Taiwan|台灣|臺灣|^TW$/i.test(country)) country = "臺灣";
+  const tr = s => {
+    const raw = String(s || "");
+    const k = Object.keys(cityMap).find(x => raw.indexOf(x) >= 0);
+    return k ? cityMap[k] : raw.replace(/ City$/i, "市").replace(/ County$/i, "縣");
+  };
+  const parts = [country, tr(d.region), tr(d.city)].filter(Boolean);
+  return parts.filter((p, i) => parts.indexOf(p) === i).join(" ");
 }
 function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
@@ -985,7 +1128,9 @@ function audit(action, detail) {
       action,
       detail: detail || "",
       page,
-      device: deviceInfo()
+      device: deviceInfo(),
+      model: deviceModel(),
+      address: ui.geoAddr || ""
     });
     if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
     save();
@@ -1747,8 +1892,9 @@ function personOfAccount(c) {
   return "";
 }
 function accountLabel(c) {
+  if (c === "個人戶") return "典籍個人戶";
   const p = personOfAccount(c);
-  if (p) return "個人戶 · " + p;
+  if (p) return "典籍個人戶 · " + p;
   return String(c || "統潔");
 }
 function bookAccountOptions(selected) {
@@ -1757,7 +1903,7 @@ function bookAccountOptions(selected) {
   const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
   const extra = (sel === "個人戶" || (isPersonalKey(sel) && !PERSONAL_ACCOUNTS.includes(sel)))
     ? opt(sel, accountLabel(sel)) : "";
-  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
+  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="典籍個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
 }
 function isBookCompany(v) {
   return BOOK_ACCOUNTS.includes(v) || PERSONAL_ACCOUNTS.includes(v) || v === "個人戶" || isPersonalKey(v);
@@ -1853,13 +1999,18 @@ function overallReportBodyHtml() {
     <div class="acct-grid">
       ${stats.map(s => `
         <div class="acct-card${s.name === "個人戶" ? " acct-wide" : ""}">
-          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="k">${s.name === "個人戶" ? "典籍個人戶" : escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          ${s.name === "個人戶" ? `<div class="acct-people">${PERSONAL_PEOPLE.map(p => {
-            const ps = accountStats(personalKey(p), b.start, b.end);
-            return `<button type="button" class="acct-person" data-edit-acct="${escapeHtml(personalKey(p))}"><span>${escapeHtml(p)}</span><strong>${money(ps.bal)}</strong></button>`;
-          }).join("")}</div>` : ""}
+          ${s.name === "個人戶" ? `<label class="acct-drop"><span>成員</span>
+            <select id="acct-person-pick">
+              <option value="">請下拉選擇八位成員</option>
+              ${PERSONAL_PEOPLE.map(p => {
+                const ps = accountStats(personalKey(p), b.start, b.end);
+                return `<option value="${escapeHtml(personalKey(p))}">${escapeHtml(p)}　${money(ps.bal)}</option>`;
+              }).join("")}
+            </select>
+          </label>` : ""}
           <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
         </div>`).join("")}
     </div>
@@ -1962,6 +2113,13 @@ function bindReportBody() {
       render();
     };
   });
+  const pick = document.getElementById("acct-person-pick");
+  if (pick) pick.onchange = () => {
+    if (!pick.value) return;
+    ui.editAcct = pick.value;
+    ui.keepScroll = true;
+    render();
+  };
 }
 function bindReportModeBtns() {
   document.querySelectorAll("[data-report-mode]").forEach(btn => {
@@ -2337,7 +2495,7 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll"><div class="zoom-page">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll"><div class="zoom-page${keep ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindInstallSheet();
   bindNotifyGuide();
@@ -3045,6 +3203,8 @@ function adminLogs() {
         <div class="log-line"><em>操作</em><span>${escapeHtml(x.action)}${x.detail ? " · " + escapeHtml(x.detail) : ""}</span></div>
         <div class="log-line"><em>瀏覽</em><span>${escapeHtml(x.page || "—")}</span></div>
         <div class="log-line"><em>裝置</em><span>${escapeHtml(x.device || "—")}</span></div>
+        ${logKind(x) !== "tenant" ? `<div class="log-line"><em>型號</em><span>${escapeHtml(x.model || "—")}</span></div>
+        <div class="log-line"><em>地址</em><span>${escapeHtml(x.address || "—")}</span></div>` : ""}
         <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
       </div>`).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
@@ -3337,12 +3497,12 @@ function exportOverallReport() {
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const list = stats.slice();
-  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
+  PERSONAL_PEOPLE.forEach(p => list.push(Object.assign({ name: "典籍個人戶 · " + p }, accountStats(personalKey(p), b.start, b.end))));
   if (joint.inn || joint.out || joint.bal) list.push(Object.assign({ name: "聯名戶" }, joint));
   const totIn = list.reduce((s, x) => s + x.inn, 0);
   const totOut = list.reduce((s, x) => s + x.out, 0);
   const totalBal = list.reduce((s, x) => s + x.bal, 0);
-  const acctRows = list.map(s => [b.label, s.name, s.inn, s.out, s.bal, totalBal]);
+  const acctRows = list.map(s => [b.label, accountLabel(s.name), s.inn, s.out, s.bal, totalBal]);
   acctRows.push([b.label, "總計", totIn, totOut, totalBal, totalBal]);
   const items = overallRows();
   const summary = [
@@ -3441,7 +3601,7 @@ function reportPiesHtml() {
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const colors = ["#62765b", "#3d5a80", "#b08948", "#8a6a4f"];
-  const slices = stats.map((s, i) => ({ name: s.name, bal: s.bal, v: Math.max(0, s.bal), color: colors[i] }));
+  const slices = stats.map((s, i) => ({ name: accountLabel(s.name), bal: s.bal, v: Math.max(0, s.bal), color: colors[i] }));
   const sum = slices.reduce((s, x) => s + x.v, 0);
   let acc = 0;
   const stops = slices.map(p => {
@@ -3724,7 +3884,7 @@ function tenantListInnerHtml(kind) {
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE<br>私訊</div>
       <div class="card card-body clickable swipe-front" data-admin-room="${t.roomId}">
-      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
+      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="row-end">${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span></span></div>
       ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
@@ -4033,6 +4193,7 @@ function enterTenant(room, tenant) {
   ui.foundPass = null;
   persistUi();
   audit("登入", "房號 " + room.no);
+  beatPresence();
   render();
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
@@ -5270,12 +5431,14 @@ async function boot() {
     restoreUi();
     applyTheme(currentThemeId());
     if (hasUnseenUpdate()) ui.updateReady = true;
+    await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 1200))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
     const got = await pullCloud();
     if (got === false) await pushCloud();
     else if (got === "local-newer") await pushCloud();
     restoreUi();
+    beatPresence();
     render();
     if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()).catch(() => {}); armPushAsk(); }
   } catch (err) {
@@ -5293,19 +5456,24 @@ async function boot() {
         renewIds: (state.renewals || []).map(x => x.id)
       };
       const prevUpdated = state.updatedAt;
+      const prevSig = coreSig(state);
       const changed = await pullCloud();
-      if (changed === true && state.updatedAt !== prevUpdated) {
+      refreshOnlineBadges();
+      if (changed === true && state.updatedAt !== prevUpdated && coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
-        render();
-      } else if (changed === true) {
+        ui.keepScroll = true;
         render();
       }
     } catch {}
   };
   setInterval(syncTick, 8000);
   setTimeout(syncTick, 2000);
+  setInterval(beatPresence, 25000);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") syncTick();
+    if (document.visibilityState === "visible") {
+      beatPresence();
+      syncTick();
+    }
   });
 }
 window.addEventListener("pagehide", persistUi);
