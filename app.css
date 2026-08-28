@@ -213,6 +213,11 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .photos img, .photos .ph {
   width: 86%; max-height: 220px; object-fit: cover; border-radius: 18px; flex: 0 0 auto; scroll-snap-align: start;
 }
+.photos-video { display: block; overflow: hidden; }
+.photos-video video {
+  width: 100%; aspect-ratio: 3 / 2; max-height: 280px; object-fit: cover;
+  border-radius: 18px; background: #e8ecef; display: block;
+}
 .ph { height: 200px; display: grid; place-items: center; color: #fff; font-weight: 700; }
 
 .room-row {

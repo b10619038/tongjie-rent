@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨3:12";
+const APP_VERSION = "2026-08-29-凌晨3:16";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨3:16", items: ["房間詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:12", items: ["房間、陽台、車位、子母車圖塊換成新白模照片"] },
   { ver: "2026-08-29-凌晨2:41", items: ["廠房資產首頁照片統一換成白模廠區"] },
   { ver: "2026-08-29-凌晨2:34", items: ["已移除後台透天模型預覽"] },
@@ -657,6 +658,13 @@ function nearbySheetHtml() {
 function photoEl(src, no) {
   if (!src || String(src).length < 8) src = photosFor(no || "6821")[0];
   return `<img src="${src}" alt="${no || ""}">`;
+}
+function playRoomHero() {
+  document.querySelectorAll(".room-hero-video").forEach(v => {
+    v.muted = true;
+    const p = v.play();
+    if (p && p.catch) p.catch(() => {});
+  });
 }
 function factoryRooms() {
   const out = [];
@@ -3117,6 +3125,7 @@ function render() {
   bindNotifyGuide();
   bindUpdateBar();
   bindThemePicker();
+  playRoomHero();
 }
 
 function installSheetHtml() {
@@ -3548,12 +3557,19 @@ function roomDetailView(id) {
   const r = findRoom(id);
   if (!r) return `<div class="screen"><p>找不到房間</p></div>`;
   const photos = (r.photos && r.photos.length) ? r.photos : photosFor(r.no, r.kind);
+  const media = r.kind === "factory"
+    ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
+      <p class="small hint-note">左右滑動可看更多房間照片</p>`
+    : `<div class="photos photos-video slide-left">
+        <video class="room-hero-video" autoplay muted loop playsinline webkit-playsinline poster="images/studio-room.jpg?v=1312">
+          <source src="images/studio-room.mp4?v=1316" type="video/mp4">
+        </video>
+      </div>`;
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
-      <p class="small hint-note">左右滑動可看更多房間照片</p>
+      ${media}
       <div class="card card-body slide-up" style="margin-top:14px">
         <div class="row"><span class="k">房號</span><span class="v">${r.no}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
