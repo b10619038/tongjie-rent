@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:50";
+const APP_VERSION = "2026-08-28-晚上10:55";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上10:55", items: ["管理員後台「切換身分」改為登出"] },
   { ver: "2026-08-28-晚上10:50", onlyDev: true, items: ["開發者後台改為登出／租客預覽，預覽不計入金額"] },
   { ver: "2026-08-28-晚上10:40", items: ["租客未上傳大頭貼時改為白色人像", "公告旁加上客服頭像"] },
   { ver: "2026-08-28-晚上10:30", items: ["日誌可看租客／管理員／開發者是否在線", "修復電腦與手機底部更新通知圖塊"] },
@@ -3255,7 +3256,7 @@ function adminView() {
       </div>
       ${ui.adminCode === "1240"
         ? `<div class="switch-pair"><button type="button" class="switch-tile" id="logout">登出</button><button type="button" class="switch-tile" id="preview-tenant">租客</button></div>`
-        : `<button class="ghost" id="logout" style="width:auto">切換身分</button>`}
+        : `<button class="ghost" id="logout" style="width:auto">登出</button>`}
     </div>
     <div class="tabs">
       ${pages.map(([id, label]) => {
@@ -5082,7 +5083,7 @@ function bindAnnounceReactions() {
 }
 function bindAdmin() {
   const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => { audit("登出", ui.adminCode === "1240" ? "登出" : "切換身分"); clearSession(); render(); };
+  if (logout) logout.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
   const previewBtn = document.getElementById("preview-tenant");
   if (previewBtn) previewBtn.onclick = () => enterDevPreview();
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
