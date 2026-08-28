@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨12:20";
+const APP_VERSION = "2026-08-29-凌晨12:25";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨12:25", items: ["子母車改為單桶與提垃圾人像", "套房詳情新增基本使用規範"] },
   { ver: "2026-08-29-凌晨12:20", items: ["套房與公共陽台照片改為白色簡約建模風格"] },
   { ver: "2026-08-29-凌晨12:15", items: ["房間新增子母車（垃圾桶）與使用規範"] },
   { ver: "2026-08-29-凌晨12:10", items: ["房間停車位改為白色簡約建模照片"] },
@@ -3172,7 +3173,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s4" data-page="trash" style="margin-top:12px">
-        <img src="images/trash-cart.jpg" alt="子母車" />
+        <img src="images/trash-cart.jpg?v=1225" alt="子母車" />
         <div class="room-row-info">
           <strong>子母車</strong>
           <span class="small">垃圾桶</span>
@@ -3215,9 +3216,9 @@ function trashView() {
       <div class="eyebrow">TRASH</div><h1>子母車</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/trash-cart.jpg" alt="子母車" /></div>
+      <div class="photos slide-left"><img src="images/trash-cart.jpg?v=1225" alt="子母車" /></div>
       <div class="room-row slide-left" style="margin-top:14px">
-        <img src="images/trash-cart.jpg" alt="子母車" />
+        <img src="images/trash-cart.jpg?v=1225" alt="子母車" />
         <div class="room-row-info">
           <strong>子母車</strong>
           <span class="small">垃圾桶</span>
@@ -3291,6 +3292,15 @@ function roomDetailView(id) {
         <div class="row"><span class="k">帳號</span><span class="v">${r.no}</span></div>
         <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
       </div>
+      ${r.kind === "factory" || r.status === "office" ? "" : `<div class="section-title"><h2>使用規範</h2></div>
+      <div class="card card-body rules">
+        <p>1. 本房為獨立套房，請愛惜房間設備與裝潢。</p>
+        <p>2. 房間內禁止抽菸；簡易加熱可以，請勿開放式烹煮油煙。</p>
+        <p>3. 垃圾請裝袋後拿到子母車，勿堆在門口或走廊。</p>
+        <p>4. 冷氣、熱水器請正常使用，損壞請從 App 報修，勿自行拆修。</p>
+        <p>5. 請保持安靜，晚上 9 點後避免大聲喧嘩。</p>
+        <p>6. 訪客請由承租人陪同，房間不得轉租或借住。</p>
+      </div>`}
     </div>`;
 }
 function leaseView() {
