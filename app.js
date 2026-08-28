@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:25";
-const TENANT_ROSTER_VER = "20260829-0200";
+const APP_VERSION = "2026-08-29-凌晨1:30";
+const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:30", items: ["還原先前套入的租客名單", "租客首頁繳費狀態可匯入轉帳資料"] },
   { ver: "2026-08-29-凌晨1:25", items: ["7051、7251 改空房", "套房租客可匯入收款明細"] },
   { ver: "2026-08-29-凌晨1:20", items: ["套入牛10　115年8月收款明細：租金、承租人、已繳日期"] },
   { ver: "2026-08-29-凌晨1:15", items: ["安裝後引導開啟手機／電腦系統通知（Android 與 iOS）"] },
@@ -385,41 +386,42 @@ const DEFAULT_RULES = `1. 每月租金請於繳費日前完成，逾期將依合
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
 const TODAY = new Date("2026-08-26T00:00:00");
 const STUDIO_NOS = [
-  "6811", "6821", "6822", "6823", "6831", "6832", "6841", "6842",
-  "7011", "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
-  "7211", "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
+  "6821", "6822", "6823", "6831", "6832", "6841", "6842",
+  "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
+  "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
   "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642"
 ];
 const TENANT_INFO = {
-  "6821": { name: "黃宥宇", phone: "0980-330-332", rent: 7000, paidAt: "2026-08-10" },
-  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
-  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-04" },
-  "6831": { name: "吳昱瑋", rent: 9000, paidAt: "2026-08-01" },
-  "6832": { name: "高逸安、翁玟倫", rent: 13500, paidAt: "2026-08-05" },
-  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", rent: 9000, paidAt: "2026-08-05" },
-  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 14000, paidAt: "2026-08-10" },
-  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
-  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", rent: 7000, paidAt: "2026-08-21" },
-  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-03" },
-  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-07-31" },
-  "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 12000, paidAt: "2026-08-05" },
-  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-07-31" },
-  "7042": { name: "周佳瑩", rent: 14000, paidAt: "2026-08-07" },
-  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 7000, paidAt: "2026-08-01" },
-  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", rent: 7000, paidAt: "2026-08-01" },
-  "7223": { name: "許芸慈", rent: 10000, paidAt: "2026-07-31" },
+  "6821": { name: "黃宥宇", phone: "0980-330-332" },
+  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "6831": { name: "吳昱瑋" },
+  "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0913-901-017", leaseStart: "2025-09-01", leaseEnd: "2026-08-31" },
+  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847" },
+  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176" },
+  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7032": { name: "莊玉蓮", phone: "0970-803-244", leaseStart: "2025-10-01", leaseEnd: "2026-09-30" },
+  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7042": { name: "陳彥廷、賀芸儀", phone: "0972-986-430／0970-116-205", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7051": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
+  "7223": { name: "黃明媛、柯哲堯", phone: "0900-246-722／0988-881-915", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "57877" },
   "7231": { name: "林科承、朱宣羽", phone: "0968-887-012／0982-606-649", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7232": { name: "林紘亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 14000, paidAt: "2026-07-26" },
-  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 8000, paidAt: "2026-08-04" },
-  "7242": { name: "張育慈、周聖傑", rent: 14000, paidAt: "2026-07-28" },
-  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", rent: 50000, paidAt: "2026-08-03" },
-  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rent: 7000, paidAt: "2026-08-05" },
-  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rent: 7000, paidAt: "2026-08-10" },
-  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 10000, paidAt: "2026-08-05" },
-  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", rent: 9000, paidAt: "2026-08-15" },
-  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "12077", rent: 14000, paidAt: "2026-08-05" },
-  "7641": { name: "洪子軒", rent: 9000, paidAt: "2026-08-05" },
-  "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", rent: 14000, paidAt: "2026-08-04" }
+  "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7242": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
+  "7251": { name: "呂佳芸" },
+  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31" },
+  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
+  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
+  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", bankLast5: "12077" },
+  "7641": { name: "張芷若", phone: "0902-350-637", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" }
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -678,7 +680,7 @@ function buildSeed() {
     const name = info && info.name ? info.name : "";
     const tid = name ? "t" + ti++ : null;
     rooms.push({
-      id, no, title: "套房", rent: (info && info.rent) || 10000, deposit: 25600, kind: "studio",
+      id, no, title: "套房", rent: 10000, deposit: 25600, kind: "studio",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
       utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
@@ -696,8 +698,7 @@ function buildSeed() {
       leaseStart: info.leaseStart || "",
       leaseEnd: info.leaseEnd || "",
       dueDay: 5,
-      paid: !!(info && info.paidAt),
-      paidAt: info && info.paidAt ? info.paidAt + " 12:00" : "",
+      paid: true,
       note: "",
       bankLast5: info.bankLast5 || ""
     });
@@ -767,9 +768,7 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
       if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
-      const info = TENANT_INFO[r.no];
-      if (info && info.rent) r.rent = info.rent;
-      else if (!r.rent) r.rent = 10000;
+      if (!r.rent) r.rent = 10000;
     }
     if (r.title === "套房" && Array.isArray(r.amenities) && !r.amenities.includes("機車停車格")) r.amenities.push("機車停車格");
   });
@@ -871,17 +870,10 @@ function applyTenantRoster(data) {
       }
       t.name = info.name;
       t.phone = info.phone || "";
-      t.leaseStart = info.leaseStart || t.leaseStart || "";
-      t.leaseEnd = info.leaseEnd || t.leaseEnd || "";
-      t.bankLast5 = info.bankLast5 || t.bankLast5 || "";
-      if (info.rent) room.rent = info.rent;
-      if (info.paidAt) {
-        t.paid = true;
-        t.paidAt = info.paidAt.length <= 10 ? info.paidAt + " 12:00" : info.paidAt;
-      } else {
-        t.paid = false;
-        t.paidAt = "";
-      }
+      t.leaseStart = info.leaseStart || "";
+      t.leaseEnd = info.leaseEnd || "";
+      t.bankLast5 = info.bankLast5 || "";
+      if (room.kind !== "factory") room.rent = 10000;
       room.tenantId = t.id;
       if (room.status !== "repair") room.status = "rented";
     } else {
@@ -890,135 +882,10 @@ function applyTenantRoster(data) {
       room.tenantId = null;
     }
   });
-}
-function isVacantImportName(s) {
-  const n = String(s || "").replace(/\s+/g, "");
-  return !n || n === "0" || n === "空" || n === "空房" || n === "—" || n === "-" || n === "無";
-}
-function formatImportName(s) {
-  return String(s || "").replace(/[\/／\s]+/g, "、").replace(/、+/g, "、").replace(/^、|、$/g, "").trim();
-}
-function mapTenantImportRows(rows) {
-  if (!rows || !rows.length) return [];
-  const norm = r => (r || []).map(c => String(c == null ? "" : c).trim());
-  let headAt = -1;
-  for (let i = 0; i < Math.min(rows.length, 12); i++) {
-    if (norm(rows[i]).some(c => /房號|承租人|收款日期|金額/.test(c))) { headAt = i; break; }
-  }
-  const col = { date: -1, name: -1, no: -1, amount: -1 };
-  if (headAt >= 0) {
-    norm(rows[headAt]).forEach((h, i) => {
-      if (/收款日期|收租日|繳費日|日期/.test(h) && col.date < 0) col.date = i;
-      else if (/承租人|姓名|租客/.test(h)) col.name = i;
-      else if (/房號|房間/.test(h)) col.no = i;
-      else if (/金額|租金|月租/.test(h) && !/押金|水費/.test(h)) col.amount = i;
-    });
-  }
-  const out = [];
-  const start = headAt >= 0 ? headAt + 1 : 0;
-  for (let i = start; i < rows.length; i++) {
-    const raw = rows[i] || [];
-    const line = norm(raw).join(" ");
-    if (!line || /總計|合計|開立發票/.test(line)) continue;
-    let no = col.no >= 0 ? String(raw[col.no] || "").trim() : "";
-    if (!no) {
-      const hit = line.match(/\b(牛?\d{1,2}-?\d{2,4}|[6-7]\d{3})\b/);
-      if (hit) no = hit[1];
-    }
-    no = String(no).replace(/\s+/g, "");
-    if (!no) continue;
-    const name = col.name >= 0 ? String(raw[col.name] || "").trim() : "";
-    const rent = col.amount >= 0 ? cellAmount(raw[col.amount]) : 0;
-    const paidAt = col.date >= 0 ? cellYmd(raw[col.date]) : "";
-    out.push({ no, name, rent, paidAt });
-  }
-  return out;
-}
-function applyTenantImport(list) {
-  let n = 0, vacant = 0, paid = 0;
-  list.forEach(row => {
-    const no = String(row.no || "").replace(/\s+/g, "");
-    if (!no || no === "7651") return;
-    let room = state.rooms.find(r => String(r.no) === no && r.kind !== "factory");
-    if (!room && /^\d{4}$/.test(no)) {
-      room = {
-        id: "r" + no, no, title: "套房", rent: row.rent || 10000, deposit: 25600, kind: "studio",
-        status: "vacant", tenantId: null, photos: photosFor(no), amenities: AMENITIES.slice(),
-        utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
-        contractImages: [], location: roomAddress(no)
-      };
-      state.rooms.push(room);
-    }
-    if (!room || room.status === "office" || room.kind === "factory") return;
-    if (isVacantImportName(row.name)) {
-      if (room.status !== "repair") room.status = "vacant";
-      state.tenants = state.tenants.filter(t => t.roomId !== room.id);
-      room.tenantId = null;
-      vacant++; n++;
-      return;
-    }
-    let t = state.tenants.find(x => x.roomId === room.id);
-    if (!t) {
-      t = { id: "t" + no, roomId: room.id, dueDay: 5, phone: "", idNo: "", address: "" };
-      state.tenants.push(t);
-    }
-    t.name = formatImportName(row.name);
-    if (row.rent) room.rent = row.rent;
-    if (row.paidAt) {
-      t.paid = true;
-      t.paidAt = row.paidAt.length <= 10 ? row.paidAt + " 12:00" : row.paidAt;
-      paid++;
-    } else {
-      t.paid = false;
-      t.paidAt = "";
-    }
-    room.tenantId = t.id;
-    if (room.status !== "repair") room.status = "rented";
-    n++;
+  ["6811", "7011", "7211"].forEach(no => {
+    data.rooms = (data.rooms || []).filter(r => r.no !== no);
+    data.tenants = (data.tenants || []).filter(t => t.roomId !== "r" + no);
   });
-  if (n) { save(); audit("匯入資料", "套入 " + n + " 筆套房資料"); }
-  return { n, vacant, paid };
-}
-async function importTenantFile(file) {
-  toast("正在讀取資料…");
-  try {
-    const buf = await file.arrayBuffer();
-    const name = file.name || "資料";
-    const lower = name.toLowerCase();
-    let rows = [];
-    if (lower.endsWith(".csv") || (file.type && file.type.indexOf("csv") >= 0)) {
-      rows = parseCsvText(new TextDecoder("utf-8").decode(buf));
-    } else {
-      const XLSX = await loadXlsxLib();
-      const wb = XLSX.read(buf, { type: "array", cellDates: true });
-      wb.SheetNames.forEach(sn => {
-        rows = rows.concat(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: "" }));
-      });
-    }
-    const list = mapTenantImportRows(rows);
-    const r = applyTenantImport(list);
-    toast(r.n ? "已匯入 " + r.n + " 筆（空房 " + r.vacant + "、已繳 " + r.paid + "）" : "看不懂這份表，請用房號、承租人、金額、收款日期");
-    render();
-  } catch {
-    toast("讀取失敗，請用 Excel 或 CSV");
-  }
-}
-function downloadTenantTemplate() {
-  const csv = "\uFEFF收款日期,承租人,房號,金額\n2026/8/10,黃宥宇,6821,7000\n,0,7051,\n,0,7251,\n";
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  a.download = "套房收款匯入範本.csv";
-  a.click();
-}
-function bindTenantImport() {
-  const inp = document.getElementById("tenant-import");
-  if (inp) inp.onchange = () => {
-    const file = inp.files && inp.files[0];
-    inp.value = "";
-    if (file) importTenantFile(file);
-  };
-  const tpl = document.getElementById("tenant-tpl");
-  if (tpl) tpl.onclick = () => downloadTenantTemplate();
 }
 function loadLocal() {
   try {
@@ -3353,6 +3220,10 @@ function homeView() {
         <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${money(r.rent)}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">每月 ${t.dueDay || 5} 日前</span></div>
+        <div class="row"><span class="k">繳費資料</span>
+          <label class="upload" style="width:auto;padding:8px 12px">匯入資料<input id="pay-import" type="file" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.png,.heic" hidden /></label>
+        </div>
+        ${(t.payProofs || []).length ? `<div class="small" style="margin-top:4px">${(t.payProofs || []).map(p => escapeHtml(p.name || "繳費證明")).join("、")}</div>` : `<div class="small" style="margin-top:4px">可上傳轉帳明細或收據照片</div>`}
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
@@ -4825,11 +4696,6 @@ function adminTenants() {
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
-    ${kind === "studio" ? `<div class="card card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <label class="upload" style="flex:1">匯入資料<input id="tenant-import" type="file" accept=".xlsx,.xls,.csv,text/csv" hidden /></label>
-      <button type="button" class="ghost" id="tenant-tpl" style="width:auto">下載範本</button>
-    </div>
-    <p class="small" style="padding:0 4px">可匯入收款明細 Excel／CSV（房號、承租人、金額、收款日期）。承租人填 0 會改成空房。</p>` : ""}
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
@@ -5229,6 +5095,28 @@ function bindTenant() {
       toast("已回報本月已繳費");
     };
   }
+  const payImport = document.getElementById("pay-import");
+  if (payImport) payImport.onchange = async () => {
+    const f = payImport.files && payImport.files[0];
+    payImport.value = "";
+    const t = me(); const r = myRoom();
+    if (!f || !t) return;
+    try {
+      if (!Array.isArray(t.payProofs)) t.payProofs = [];
+      const isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name || "");
+      const item = {
+        kind: isPdf ? "file" : "image",
+        name: f.name || "繳費資料",
+        at: nowStamp(),
+        src: isPdf ? await readFileDataUrl(f) : await compressImage(f)
+      };
+      t.payProofs.push(item);
+      if (!t.paid) markTenantPaid("app");
+      else save();
+      toast("已匯入繳費資料");
+      render();
+    } catch { toast("檔案讀取失敗"); }
+  };
   const linePaid = document.getElementById("line-paid");
   if (linePaid) {
     linePaid.onclick = async () => {
@@ -5760,7 +5648,6 @@ function bindAdmin() {
   bindLineSwipe();
   bindTenantFold();
   bindTenantSearch();
-  bindTenantImport();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -6363,6 +6250,4 @@ async function boot() {
     }
   });
 }
-window.addEventListener("pagehide", persistUi);
-window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistUi(); });
-boot();
+window.addE
