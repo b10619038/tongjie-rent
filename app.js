@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午3:50";
+const APP_VERSION = "2026-08-28-下午4:00";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午4:00", items: ["廠房租客預留 40 個空白名額"] },
   { ver: "2026-08-28-下午3:50", items: ["租客分為套房租客與廠房租客，現有房號都在套房"] },
   { ver: "2026-08-28-下午3:46", items: ["銀行入帳與銀行業務有金流會記入進出帳與報表，並自動去掉重複"] },
   { ver: "2026-08-28-下午3:40", items: ["新增一筆可上傳 Excel，工作助手自動記入進出帳與整體報表"] },
@@ -3388,8 +3389,9 @@ function roomIsFactory(r) {
 }
 function tenantListOfKind(kind) {
   const factory = kind === "factory";
-  return state.tenants.filter(t => {
+  const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
+    if (!t || t.placeholder) return false;
     if (!r || r.status === "office") return false;
     return factory ? roomIsFactory(r) : !roomIsFactory(r);
   }).sort((a, b) => {
@@ -3398,6 +3400,13 @@ function tenantListOfKind(kind) {
     const rb = state.rooms.find(x => x.id === b.roomId);
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
+  if (!factory) return list;
+  let i = 1;
+  while (list.length < 40) {
+    list.push({ id: "fslot-" + i, name: "", phone: "", paid: true, placeholder: true, slot: list.length + 1, roomId: "" });
+    i++;
+  }
+  return list;
 }
 function adminTenants() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
@@ -3416,7 +3425,7 @@ function adminTenants() {
         <button type="button" class="${kind === "factory" ? "on" : ""}" data-tenant-kind="factory">廠房租客</button>
       </div>
     </div>
-    <p class="small" style="padding:0 4px">向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。</p>
+    <p class="small" style="padding:0 4px">${kind === "factory" ? "廠房租客預留 40 個名額，尚未登記的可先留白。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。"}</p>
     <div id="tenant-list">
     ${renews.length ? `<div class="card card-body"><h2 class="dash-h">續約申請</h2>${renews.map(x => {
       const room = state.rooms.find(r => r.id === x.roomId);
@@ -3431,7 +3440,20 @@ function adminTenants() {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${list.length ? list.map(t => {
+    ${list.length ? list.map((t, i) => {
+    if (t.placeholder) {
+      const n = String(t.slot || i + 1).padStart(2, "0");
+      const r = t.roomId ? state.rooms.find(x => x.id === t.roomId) : null;
+      return `<div class="card card-body${r ? " clickable" : ""}"${r ? ` data-admin-room="${r.id}"` : ""}>
+        <div class="row"><span class="k">空白名額 ${n}</span><span class="badge vacant">未登記</span></div>
+        <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
+        <div class="row"><span class="k">登入密碼</span><span class="v">尚未設定</span></div>
+        <div class="row"><span class="k">LINE</span><span class="small">尚未綁定</span></div>
+        <div class="row"><span class="k">電話</span><span class="v">—</span></div>
+        <div class="row"><span class="k">租期</span><span class="v">— → —</span></div>
+        <div class="row"><span class="k">剩餘</span><span class="v">—</span></div>
+      </div>`;
+    }
     const r = state.rooms.find(x => x.id === t.roomId);
     const pay = payLabel(t);
     return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
