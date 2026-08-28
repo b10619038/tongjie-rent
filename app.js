@@ -7,10 +7,11 @@ const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const ADMIN_CODES = ["1976", "7651", "1240"];
-const APP_VERSION = "2026-08-28-上午11:10";
+const APP_VERSION = "2026-08-28-上午11:24";
 const CHANGELOG = [
+  { ver: "2026-08-28-上午11:24", onlyDev: true, items: ["日誌紀錄可單筆刪除、全選刪除", "開發者專用更新內容，一般管理員與租客看不到"] },
   { ver: "2026-08-28-上午11:10", items: ["記下銀行業務可上傳會計紙本照片"] },
-  { ver: "2026-08-28-上午11:08", items: ["開發者後台新增「日誌」，可看租客／管理員何時用哪台裝置登入、操作與瀏覽"] },
+  { ver: "2026-08-28-上午11:08", onlyDev: true, items: ["開發者後台新增「日誌」，可看租客／管理員何時用哪台裝置登入、操作與瀏覽"] },
   { ver: "2026-08-28-上午2:10", items: ["租客與管理員關閉 App 或重新整理後仍保持登入", "只有點「登出」或「切換身分」才會回到登入首頁"] },
   { ver: "2026-08-28-上午2:00", items: ["點擊下方更新通知，可查看這次更新了哪些內容", "看完後可選擇立即更新或稍後"] },
   { ver: "2026-08-28-上午1:55", items: ["公告、報修、續約、合約到期、未繳租金會在手機上方跳出系統通知", "管理員也會收到新報修、續約申請與繳費回報"] },
@@ -118,12 +119,19 @@ if ("serviceWorker" in navigator) {
 function isPhone() {
   return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
 }
+function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; }
 function unseenChangelog() {
   let last = "";
   try { last = localStorage.getItem("tj-last-ver") || ""; } catch {}
   const idx = CHANGELOG.findIndex(x => x.ver === last);
-  if (idx <= 0) return CHANGELOG.slice(0, 4);
-  return CHANGELOG.slice(0, idx);
+  const raw = idx <= 0 ? CHANGELOG.slice(0, 4) : CHANGELOG.slice(0, idx);
+  const dev = isDeveloper();
+  return raw.map(n => {
+    if (n.onlyDev && !dev) return null;
+    const items = (n.items || []).slice();
+    if (dev && n.devItems) items.push(...n.devItems);
+    return items.length ? { ver: n.ver, items } : null;
+  }).filter(Boolean);
 }
 function changelogSheetHtml() {
   if (!ui.updateNotes) return "";
@@ -133,7 +141,7 @@ function changelogSheetHtml() {
     <div class="install-sheet">
       <div class="label">軟體更新</div>
       <h2>這次更新了什麼</h2>
-      <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
+      <div class="log-list">${blocks || `<p class="small">${isDeveloper() ? "版本 " + escapeHtml(APP_VERSION) : "系統已更新。"}</p>`}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
     </div>
@@ -2021,21 +2029,33 @@ function adminLogs() {
   if (filter === "tenant") list = list.filter(x => x.kind === "tenant");
   if (filter === "admin") list = list.filter(x => x.kind === "admin" || x.kind === "guest");
   const chips = [["all", "全部"], ["tenant", "租客"], ["admin", "管理員"]];
+  const picked = ui.logPicked || {};
+  const pickedN = list.filter(x => picked[x.id]).length;
   return `<div class="admin-grid list">
     <div class="card card-body">
       <h2 class="dash-h">操作日誌</h2>
-      <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見，全部裝置共用。</p>
+      <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見。</p>
       <div class="log-filters">
         ${chips.map(([id, label]) => `<button type="button" class="ghost ${filter === id ? "on" : ""}" data-log-filter="${id}">${label}</button>`).join("")}
+      </div>
+      <div class="log-filters">
+        <button type="button" class="ghost" id="log-all">${pickedN && pickedN === list.length ? "取消全選" : "全選"}</button>
+        <button type="button" class="ghost" id="log-del-picked">刪除已選${pickedN ? "（" + pickedN + "）" : ""}</button>
+        <button type="button" class="ghost" id="log-del-all">全部刪除</button>
       </div>
       <div class="small" style="margin-top:8px">共 ${list.length} 筆</div>
     </div>
     ${list.length ? list.map(x => `
       <div class="card card-body log-card">
-        <div class="row"><span class="k">${escapeHtml(x.who)}</span><span class="small">${escapeHtml(x.at)}</span></div>
+        <div class="row">
+          <label class="log-check"><input type="checkbox" data-log-pick="${x.id}" ${picked[x.id] ? "checked" : ""}></label>
+          <span class="k">${escapeHtml(x.who)}</span>
+          <span class="small">${escapeHtml(x.at)}</span>
+        </div>
         <div class="log-line"><em>操作</em><span>${escapeHtml(x.action)}${x.detail ? " · " + escapeHtml(x.detail) : ""}</span></div>
         <div class="log-line"><em>瀏覽</em><span>${escapeHtml(x.page || "—")}</span></div>
         <div class="log-line"><em>裝置</em><span>${escapeHtml(x.device || "—")}</span></div>
+        <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
       </div>`).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
 }
@@ -3239,6 +3259,57 @@ function bindAdmin() {
   document.getElementById("logout").onclick = () => { audit("登出", "切換身分"); clearSession(); render(); };
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
     btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
+  });
+  document.querySelectorAll("[data-log-pick]").forEach(inp => {
+    inp.onchange = () => {
+      if (!ui.logPicked) ui.logPicked = {};
+      if (inp.checked) ui.logPicked[inp.dataset.logPick] = true;
+      else delete ui.logPicked[inp.dataset.logPick];
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const logAll = document.getElementById("log-all");
+  if (logAll) logAll.onclick = () => {
+    const filter = ui.logFilter || "all";
+    let list = (state.auditLogs || []).slice();
+    if (filter === "tenant") list = list.filter(x => x.kind === "tenant");
+    if (filter === "admin") list = list.filter(x => x.kind === "admin" || x.kind === "guest");
+    const picked = ui.logPicked || {};
+    const allOn = list.length && list.every(x => picked[x.id]);
+    ui.logPicked = {};
+    if (!allOn) list.forEach(x => { ui.logPicked[x.id] = true; });
+    ui.keepScroll = true;
+    render();
+  };
+  const logDelPicked = document.getElementById("log-del-picked");
+  if (logDelPicked) logDelPicked.onclick = () => {
+    const picked = ui.logPicked || {};
+    const ids = Object.keys(picked);
+    if (!ids.length) { toast("請先勾選要刪的紀錄"); return; }
+    state.auditLogs = (state.auditLogs || []).filter(x => !picked[x.id]);
+    ui.logPicked = {};
+    save();
+    ui.keepScroll = true;
+    toast("日誌已移除");
+  };
+  const logDelAll = document.getElementById("log-del-all");
+  if (logDelAll) logDelAll.onclick = () => {
+    state.auditLogs = [];
+    ui.logPicked = {};
+    save();
+    ui.keepScroll = true;
+    toast("日誌已清空");
+  };
+  document.querySelectorAll("[data-del-log]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.delLog;
+      state.auditLogs = (state.auditLogs || []).filter(x => x.id !== id);
+      if (ui.logPicked) delete ui.logPicked[id];
+      save();
+      ui.keepScroll = true;
+      toast("日誌已移除");
+    };
   });
   bindMediaViewers();
   bindRepairDelete();

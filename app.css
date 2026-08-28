@@ -283,6 +283,8 @@ textarea { min-height: 92px; resize: vertical; }
   flex: 0 0 36px; font-style: normal; color: var(--muted);
   font-size: 12px; font-weight: 700; padding-top: 2px;
 }
+.log-check { display: grid; place-items: center; margin-right: 4px; }
+.log-check input { width: 18px; height: 18px; accent-color: var(--teal); }
 .badge-dot {
   position: absolute; top: -4px; right: -6px;
   min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
