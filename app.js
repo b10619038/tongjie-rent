@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上10:30";
+const APP_VERSION = "2026-08-28-晚上10:40";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上10:40", items: ["租客未上傳大頭貼時改為白色人像", "公告旁加上客服頭像"] },
   { ver: "2026-08-28-晚上10:30", items: ["日誌可看租客／管理員／開發者是否在線", "修復電腦與手機底部更新通知圖塊"] },
   { ver: "2026-08-28-晚上10:20", items: ["手機點個人戶下拉選成員後，會進入該人的營收總額"] },
   { ver: "2026-08-28-晚上10:00", items: ["整體報表個人戶圖卡改與其他帳戶同大小，下拉改為請下拉選擇", "日誌地址改為台灣縣市＋區", "套房租客在線狀態改到姓名右側"] },
@@ -1811,11 +1812,20 @@ function compressImage(file, maxSize) {
     img.onerror = reject; img.src = url;
   });
 }
+function defaultAvatarSvg() {
+  return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#e8e8e8"/><circle cx="32" cy="23.5" r="11.5" fill="#fff"/><path d="M8 58c2-13.5 10.5-19.5 24-19.5S54 44.5 56 58" fill="#fff"/></svg>`;
+}
+function staffAvatarSvg() {
+  return `<svg class="avatar-svg" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#efe8df"/><path d="M17 36c1.2-16 7.5-23 15-23s13.8 7 15 23v4H17z" fill="#5c4338"/><circle cx="32" cy="28" r="11" fill="#f0c8b0"/><path d="M21 28c0-11 5-16 11-16 7 0 12 5.2 12 16" fill="none" stroke="#62765b" stroke-width="3.1" stroke-linecap="round"/><circle cx="18.6" cy="31" r="4.1" fill="#62765b"/><path d="M18.6 35c-1 8 6 12.8 13 12.8" fill="none" stroke="#62765b" stroke-width="2" stroke-linecap="round"/><path d="M12 58c2-11 9-16 20-16s18 5 20 16" fill="#62765b"/><circle cx="28.2" cy="27.2" r="1.15" fill="#7a5346"/><circle cx="35.8" cy="27.2" r="1.15" fill="#7a5346"/><path d="M29 32.4c1.3 1.5 4.7 1.5 6 0" fill="none" stroke="#d09080" stroke-width="1.15" stroke-linecap="round"/></svg>`;
+}
 function avatarHtml(t, size) {
   const cls = "avatar" + (size === "sm" ? " sm" : "");
   if (t && t.avatar) return `<img class="${cls}" src="${t.avatar}" alt="">`;
-  const ch = String((t && t.name) || "＋").replace(/\s/g, "").slice(0, 1) || "＋";
-  return `<span class="${cls} ph">${escapeHtml(ch)}</span>`;
+  return `<span class="${cls} ph default">${defaultAvatarSvg()}</span>`;
+}
+function staffAvatarHtml(size) {
+  const cls = "avatar staff" + (size === "sm" ? " sm" : "");
+  return `<span class="${cls}" title="客服">${staffAvatarSvg()}</span>`;
 }
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -2840,19 +2850,23 @@ function reactBarHtml(a) {
   const mine = ui.tenantId && (a.reactions || {})[ui.tenantId];
   return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
 }
+function announceBodyHtml(a, actions) {
+  const unread = ui.tenantId && !(a.readBy || []).includes(ui.tenantId);
+  return `<div class="ann-head">
+      ${staffAvatarHtml("sm")}
+      <div class="ann-meta">
+        <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}${actions || ""}</div>
+        <div class="small">客服　${formatDateTime12(a.createdAt)}</div>
+      </div>
+    </div>
+    <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
+    ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
+    ${reactBarHtml(a)}`;
+}
 function announceCardsHtml() {
   const list = (state.announcements || []).slice().reverse();
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
-  return list.map(a => {
-    const unread = ui.tenantId && !(a.readBy || []).includes(ui.tenantId);
-    return `<div class="card card-body slide-left ann-card" data-read-announce="${a.id}">
-      <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}</div>
-      <div class="small">${formatDateTime12(a.createdAt)}</div>
-      <p style="margin-top:8px;white-space:pre-wrap">${escapeHtml(a.body)}</p>
-      ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
-      ${reactBarHtml(a)}
-    </div>`;
-  }).join("");
+  return list.map(a => `<div class="card card-body slide-left ann-card" data-read-announce="${a.id}">${announceBodyHtml(a)}</div>`).join("");
 }
 
 function homeView() {
@@ -2863,7 +2877,7 @@ function homeView() {
   return `
     <div class="topbar">
       <div class="who-line slide-right">
-        <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : `<span class="ph">${escapeHtml(((t.name || "＋").replace(/\s/g, "").slice(0, 1) || "＋"))}</span>`}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
+        <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
         <div>
           <div class="eyebrow">GOOD EVENING</div>
           <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
@@ -3583,7 +3597,8 @@ function adminAnnounce() {
   const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
   return `<div class="admin-grid list">
     <form class="card card-body" id="announce-form">
-      <h2 class="dash-h">${editing ? "編輯公告" : "發布公告"}</h2>
+      <h2 class="dash-h who-mini">${staffAvatarHtml("sm")}<span>${editing ? "編輯公告" : "發布公告"}</span></h2>
+      <p class="small">發布後，租客與後台都會在公告旁看到客服頭像。</p>
       <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" required /></label>
       <label class="field"><span>內容</span><textarea name="body" required>${editing ? escapeHtml(editing.body) : ""}</textarea></label>
       <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
@@ -3594,16 +3609,8 @@ function adminAnnounce() {
     </form>
     ${list.length ? list.map(a => `
       <div class="card card-body">
-        <div class="row"><span class="k">${escapeHtml(a.title)}</span>
-          <div class="row-actions">
-            <button type="button" class="ghost" data-edit-announce="${a.id}" style="width:auto">編輯</button>
-            <button type="button" class="ghost" data-del-announce="${a.id}" style="width:auto">刪除</button>
-          </div>
-        </div>
-        <div class="small">${formatDateTime12(a.createdAt)}</div>
-        <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
-        ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
-        ${reactBarHtml(a)}
+        ${announceBodyHtml(a, `<div class="row-actions"><button type="button" class="ghost" data-edit-announce="${a.id}" style="width:auto">編輯</button>
+            <button type="button" class="ghost" data-del-announce="${a.id}" style="width:auto">刪除</button></div>`)}
       </div>`).join("") : `<div class="empty">還沒有公告</div>`}
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
