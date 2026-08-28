@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:24";
+const APP_VERSION = "2026-08-28-下午2:28";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:28", items: ["累計餘額改為營收總額", "整體報表年月合併為可左右滑動切換"] },
   { ver: "2026-08-28-下午2:24", items: ["後台分類改為手機可長按拖移，並跟著手指滑動"] },
   { ver: "2026-08-28-下午2:20", items: ["後台分類可長按左右拖移排序"] },
   { ver: "2026-08-28-下午2:18", onlyDev: true, items: ["操作日誌新增開發者分類，1240 會歸在開發者"] },
@@ -1528,12 +1529,12 @@ function overallReportHtml() {
     const s = stats.find(x => x.name === ui.editAcct) || Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
     return `<div class="card card-body" id="overall-report">
       <button type="button" class="back" id="acct-bal-back">← 返回</button>
-      <h2 class="dash-h">${escapeHtml(s.name)}　累計餘額</h2>
+      <h2 class="dash-h">${escapeHtml(s.name)}　營收總額</h2>
       <div class="small">輸入目前實際餘額後儲存。之後用「新增一筆」進出帳會自動加減。</div>
       <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
       <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
       <form id="acct-bal-form" style="margin-top:14px">
-        <label class="field"><span>累計餘額</span>
+        <label class="field"><span>營收總額</span>
           <input name="bal" type="text" inputmode="decimal" value="${s.bal}" />
         </label>
         <button class="btn-navy" type="submit">儲存</button>
@@ -1543,10 +1544,13 @@ function overallReportHtml() {
   return `<div class="card card-body" id="overall-report">
     <div class="report-head">
       <h2 class="dash-h" style="margin:0">整體報表</h2>
-      <div class="small">四戶歷史營收：本期收支與截至本期的累計餘額</div>
+      <div class="small">四戶歷史營收：本期收支與截至本期的營收總額</div>
       <div class="report-actions no-print">
-        <button type="button" class="ghost ${yearOn ? "" : "on"}" data-report-mode="month" style="width:auto">月</button>
-        <button type="button" class="ghost ${yearOn ? "on" : ""}" data-report-mode="year" style="width:auto">年</button>
+        <div class="seg ${yearOn ? "is-year" : "is-month"}" id="report-period-seg">
+          <i class="seg-bg"></i>
+          <button type="button" class="${yearOn ? "" : "on"}" data-report-mode="month">月</button>
+          <button type="button" class="${yearOn ? "on" : ""}" data-report-mode="year">年</button>
+        </div>
         <button type="button" class="ghost" id="export-report" style="width:auto">匯出 Excel</button>
         <button type="button" class="ghost" id="print-report" style="width:auto">列印</button>
       </div>
@@ -1562,10 +1566,10 @@ function overallReportHtml() {
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">累計餘額　${money(s.bal)}</button>
+          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
         </div>`).join("")}
     </div>
-    ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶本期淨額 ${money(joint.net)}　累計餘額 ${money(joint.bal)}</div>` : ""}
+    ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶營收總額 ${money(joint.bal)}</div>` : ""}
     <div class="acct-total">
       <div>
         <div class="k">總餘額</div>
@@ -2649,7 +2653,7 @@ function exportOverallReport() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${xlsSheet("帳戶營收", ["帳戶", "本期收入", "本期支出", "本期淨額", "累計餘額"], acctRows)}
+${xlsSheet("帳戶營收", ["帳戶", "本期收入", "本期支出", "本期淨額", "營收總額"], acctRows)}
 ${xlsSheet("總覽", ["項目", "數值"], summary.slice(1))}
 ${xlsSheet("全部資產", assetHead, items.map(x => x.row))}
 ${xlsSheet("報修", repairHead, repairRows)}
@@ -3684,6 +3688,38 @@ function bindAdmin() {
       render();
     };
   });
+  const periodSeg = document.getElementById("report-period-seg");
+  if (periodSeg) {
+    let x0 = 0, y0 = 0, swiping = false;
+    const setMode = mode => {
+      if ((mode === "year") === (ui.reportMode === "year")) return;
+      ui.reportMode = mode;
+      periodSeg.classList.remove("is-month", "is-year");
+      periodSeg.classList.add(mode === "year" ? "is-year" : "is-month");
+      periodSeg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.reportMode === mode));
+      ui.keepScroll = true;
+      render();
+    };
+    periodSeg.addEventListener("pointerdown", e => {
+      x0 = e.clientX; y0 = e.clientY; swiping = false;
+    });
+    periodSeg.addEventListener("pointermove", e => {
+      if (!x0) return;
+      const dx = e.clientX - x0;
+      if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(e.clientY - y0)) swiping = true;
+    });
+    periodSeg.addEventListener("pointerup", e => {
+      const dx = e.clientX - x0;
+      x0 = 0;
+      if (!swiping) return;
+      e.preventDefault();
+      if (dx < -24) setMode("year");
+      else if (dx > 24) setMode("month");
+    });
+    periodSeg.addEventListener("click", e => {
+      if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
+    }, true);
+  }
   document.querySelectorAll("[data-edit-acct]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -3707,7 +3743,7 @@ function bindAdmin() {
     ui.editAcct = "";
     save();
     ui.keepScroll = true;
-    toast("已更新 " + name + " 累計餘額");
+    toast("已更新 " + name + " 營收總額");
     render();
   };
   refreshLineBinds().then(() => {

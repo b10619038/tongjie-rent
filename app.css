@@ -548,8 +548,9 @@ textarea { min-height: 92px; resize: vertical; }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
-.report-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start; align-items: center; }
 .report-actions .ghost.on { background: var(--teal); color: var(--on-teal, #fff); border-color: var(--teal); }
+#report-period-seg { width: 132px; margin: 0; flex: 0 0 132px; }
 .acct-grid {
   display: grid; gap: 10px; margin-top: 4px;
   grid-template-columns: 1fr 1fr;
@@ -603,8 +604,8 @@ textarea { min-height: 92px; resize: vertical; }
   opacity: 0; transition: transform .4s ease, opacity .2s ease;
 }
 #asset-list { display: contents; }
-.seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg { opacity: 1; }
-.seg.is-done .seg-bg, .seg.is-factory .seg-bg { transform: translateX(100%); }
+.seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg { opacity: 1; }
+.seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translateX(100%); }
 .seg button {
   position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer;
