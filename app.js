@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:41";
+const APP_VERSION = "2026-08-29-凌晨3:12";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨3:12", items: ["房間、陽台、車位、子母車圖塊換成新白模照片"] },
   { ver: "2026-08-29-凌晨2:41", items: ["廠房資產首頁照片統一換成白模廠區"] },
   { ver: "2026-08-29-凌晨2:34", items: ["已移除後台透天模型預覽"] },
   { ver: "2026-08-29-凌晨2:32", items: ["後台首頁可預覽五層四戶透天模型照片"] },
@@ -3404,9 +3405,9 @@ function roomsView() {
   const mine = myRoom();
   return `<div class="topbar slide-right"><div><div class="eyebrow">ROOMS</div><h1>房間</h1></div></div>
     <div class="screen">
-      ${roomTile(mine, true, "room-seq")}
+      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1312")}
       <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
-        <img src="images/balcony.jpg" alt="公共陽台" />
+        <img src="images/balcony.jpg?v=1312" alt="公共陽台" />
         <div class="room-row-info">
           <strong>公共陽台</strong>
           <span class="small">曬衣陽台</span>
@@ -3415,7 +3416,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s3" data-page="parking" style="margin-top:12px">
-        <img src="images/parking.jpg" alt="停車位" />
+        <img src="images/parking.jpg?v=1312" alt="停車位" />
         <div class="room-row-info">
           <strong>${mine.no}</strong>
           <span class="small">停車位</span>
@@ -3424,7 +3425,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s4" data-page="trash" style="margin-top:12px">
-        <img src="images/trash-cart.jpg?v=1225" alt="子母車" />
+        <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
         <div class="room-row-info">
           <strong>子母車</strong>
           <span class="small">垃圾桶</span>
@@ -3442,9 +3443,9 @@ function parkingView() {
       <div class="eyebrow">PARKING</div><h1>停車位</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/parking.jpg" alt="機車停車位" /></div>
+      <div class="photos slide-left"><img src="images/parking.jpg?v=1312" alt="機車停車位" /></div>
       <div class="room-row slide-left" style="margin-top:14px">
-        <img src="images/parking.jpg" alt="停車位" />
+        <img src="images/parking.jpg?v=1312" alt="停車位" />
         <div class="room-row-info">
           <strong>${r.no}</strong>
           <span class="small">機車停車位</span>
@@ -3467,9 +3468,9 @@ function trashView() {
       <div class="eyebrow">TRASH</div><h1>子母車</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/trash-cart.jpg?v=1225" alt="子母車" /></div>
+      <div class="photos slide-left"><img src="images/trash-cart.jpg?v=1312" alt="子母車" /></div>
       <div class="room-row slide-left" style="margin-top:14px">
-        <img src="images/trash-cart.jpg?v=1225" alt="子母車" />
+        <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
         <div class="room-row-info">
           <strong>子母車</strong>
           <span class="small">垃圾桶</span>
@@ -3493,7 +3494,7 @@ function balconyView() {
       <div class="eyebrow">BALCONY</div><h1>公共陽台</h1>
     </div></div>
     <div class="screen">
-      <div class="photos slide-left"><img src="images/balcony.jpg" alt="公共陽台" /></div>
+      <div class="photos slide-left"><img src="images/balcony.jpg?v=1312" alt="公共陽台" /></div>
       <div class="card card-body slide-left rules" style="margin-top:14px">
         <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
         <p>1. 公共陽台提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
@@ -3504,9 +3505,10 @@ function balconyView() {
       </div>
     </div>`;
 }
-function roomTile(r, clickable, extraClass) {
+function roomTile(r, clickable, extraClass, photoSrc) {
+  const img = photoSrc ? `<img src="${photoSrc}" alt="${escapeHtml(r.no)}" />` : photoEl(r.photos && r.photos[0], r.no);
   return `<div class="room-row ${extraClass || "slide-left"}" ${clickable ? `data-room="${r.id}"` : ""}>
-    ${photoEl(r.photos && r.photos[0], r.no)}
+    ${img}
     <div class="room-row-info">
       <strong>${r.no}</strong>
       <span class="small">${r.title}</span>
