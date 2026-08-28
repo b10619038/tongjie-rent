@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:05";
+const APP_VERSION = "2026-08-28-晚上11:15";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:15", items: ["套房租客圖卡預設收成姓名列，點一下展開"] },
   { ver: "2026-08-28-晚上11:05", onlyDev: true, items: ["開發者後台登出／租客合併為可左右滑動的圖塊"] },
   { ver: "2026-08-28-晚上11:00", items: ["公告署名改為管理員或開發者，不再顯示客服"] },
   { ver: "2026-08-28-晚上10:55", items: ["管理員後台「切換身分」改為登出"] },
@@ -4176,11 +4177,9 @@ function tenantListInnerHtml(kind) {
     ${list.length ? list.map(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     const pay = payLabel(t);
-    return `<div class="swipe-wrap" data-swipe-tenant="${t.id}">
-      <div class="swipe-reveal">LINE<br>私訊</div>
-      <div class="card card-body clickable swipe-front" data-admin-room="${t.roomId}">
-      <div class="row"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="pay-pill ${pay.cls}">${pay.text}</span></div>
-      ${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
+    const foldable = kind !== "factory";
+    const open = !foldable || !!(ui.tenantOpen && ui.tenantOpen[t.id]);
+    const details = `${t.paidAt ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       <div class="row"><span class="k">房間</span><span class="v">${r ? r.no : "—"}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>
@@ -4197,7 +4196,12 @@ function tenantListInnerHtml(kind) {
       <div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>
       ${t.note && r && r.kind === "factory" ? `<div class="row"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
       <button class="ghost" data-invoice="${t.roomId}" style="margin-top:8px">產出發票</button>
-      <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>
+      <button class="ghost" data-toggle-pay="${t.id}" style="margin-top:8px">${t.paid ? "標記為未繳" : "標記為已繳"}</button>`;
+    return `<div class="swipe-wrap${foldable && !open ? " slim" : ""}" data-swipe-tenant="${t.id}">
+      <div class="swipe-reveal">LINE<br>私訊</div>
+      <div class="card card-body clickable swipe-front${foldable ? " tenant-slim" : ""}${open && foldable ? " open" : ""}"${foldable ? ` data-fold-tenant="${t.id}"` : ` data-admin-room="${t.roomId}"`}>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span>${foldable ? `<span class="fold-caret"></span>` : ""}</span></div>
+      ${foldable ? `<div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>` : details}
     </div>
     </div>`;
   }).join("") : `<div class="empty">${kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"}</div>`}`;
@@ -4222,7 +4226,26 @@ function applyTenantKind(kind) {
     bindAdminRoomItems();
     bindLineSwipe();
     bindTenantListTools();
+    bindTenantFold();
   }
+}
+function bindTenantFold() {
+  document.querySelectorAll("[data-fold-tenant]").forEach(el => {
+    const id = el.dataset.foldTenant;
+    if (!id) return;
+    el.onclick = e => {
+      if (e.target.closest("button,select,a,input")) return;
+      if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!ui.tenantOpen) ui.tenantOpen = {};
+      const next = !ui.tenantOpen[id];
+      ui.tenantOpen[id] = next;
+      el.classList.toggle("open", next);
+      const wrap = el.closest(".swipe-wrap");
+      if (wrap) wrap.classList.toggle("slim", !next);
+    };
+  });
 }
 function bindTenantListTools() {
   document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {
@@ -4257,6 +4280,7 @@ function bindTenantListTools() {
         bindAdminRoomItems();
         bindLineSwipe();
         bindTenantListTools();
+        bindTenantFold();
       } else render();
     };
   });
@@ -4273,6 +4297,7 @@ function bindTenantListTools() {
           bindAdminRoomItems();
           bindLineSwipe();
           bindTenantListTools();
+          bindTenantFold();
         } else render();
       }
     };
@@ -5240,6 +5265,7 @@ function bindAdmin() {
   bindStudioBuildings();
   bindFactoryFold();
   bindLineSwipe();
+  bindTenantFold();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
