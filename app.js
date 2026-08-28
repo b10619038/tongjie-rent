@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-28-晚上11:35";
+const APP_VERSION = "2026-08-28-晚上11:55";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-28-晚上11:55", items: ["租客內容新增周邊景點，可看地圖並導航"] },
   { ver: "2026-08-28-晚上11:35", items: ["廠房租客可收合，同公司多房合併", "廠房搜尋改為人名、公司名、牛案場"] },
   { ver: "2026-08-28-晚上11:25", items: ["租客列表可搜尋房號、姓名、電話"] },
   { ver: "2026-08-28-晚上11:20", onlyDev: true, items: ["開發者後台登出／租客改回分開的兩顆圖塊"] },
@@ -530,6 +531,79 @@ function roomAddress(no) {
   const s = String(no).replace(/\D/g, "");
   if (s.length < 4) return "高雄市鳳山區文龍東路";
   return `高雄市鳳山區文龍東路${s.slice(0, 2)}號${s.charAt(2)}樓-${s.charAt(3)}室`;
+}
+const NEARBY_AREAS = {
+  wenlong: {
+    title: "文龍東路附近",
+    lat: 22.6438, lng: 120.3732,
+    pois: [
+      { kind: "便利超商", name: "7-ELEVEN 文龍門市", lat: 22.6435, lng: 120.3730 },
+      { kind: "便利超商", name: "全家便利商店 鳳山文龍店", lat: 22.6444, lng: 120.3722 },
+      { kind: "超市", name: "全聯福利中心 鳳山文衡店", lat: 22.6408, lng: 120.3685 },
+      { kind: "學校", name: "高雄市鳳山區中崙國小", lat: 22.6416, lng: 120.3708 },
+      { kind: "學校", name: "高雄市立中崙國中", lat: 22.6402, lng: 120.3695 },
+      { kind: "餐廳", name: "麥當勞 鳳山文衡店", lat: 22.6395, lng: 120.3672 },
+      { kind: "醫療", name: "高雄市立鳳山醫院", lat: 22.6265, lng: 120.3608 },
+      { kind: "交通", name: "臺鐵鳳山車站", lat: 22.6314, lng: 120.3578 },
+      { kind: "景點", name: "衛武營國家藝術文化中心", lat: 22.6247, lng: 120.3419 }
+    ]
+  },
+  fengren: {
+    title: "鳳仁路附近",
+    lat: 22.6358, lng: 120.3756,
+    pois: [
+      { kind: "便利超商", name: "7-ELEVEN 鳳仁門市", lat: 22.6354, lng: 120.3752 },
+      { kind: "便利超商", name: "全家便利商店 鳳山鳳仁店", lat: 22.6366, lng: 120.3760 },
+      { kind: "超市", name: "全聯福利中心 鳳山鳳仁店", lat: 22.6348, lng: 120.3740 },
+      { kind: "學校", name: "高雄市鳳山區中崙國小", lat: 22.6416, lng: 120.3708 },
+      { kind: "餐廳", name: "丹丹漢堡 鳳仁店", lat: 22.6339, lng: 120.3736 },
+      { kind: "醫療", name: "高雄市立鳳山醫院", lat: 22.6265, lng: 120.3608 },
+      { kind: "景點", name: "澄清湖風景區", lat: 22.6578, lng: 120.3496 },
+      { kind: "交通", name: "臺鐵鳳山車站", lat: 22.6314, lng: 120.3578 }
+    ]
+  },
+  dashu: {
+    title: "大樹九曲路附近",
+    lat: 22.6558, lng: 120.4212,
+    pois: [
+      { kind: "交通", name: "臺鐵九曲堂車站", lat: 22.6564, lng: 120.4210 },
+      { kind: "便利超商", name: "7-ELEVEN 九曲堂門市", lat: 22.6560, lng: 120.4202 },
+      { kind: "便利超商", name: "全家便利商店 大樹九曲店", lat: 22.6548, lng: 120.4194 },
+      { kind: "學校", name: "高雄市大樹區九曲國小", lat: 22.6536, lng: 120.4180 },
+      { kind: "餐廳", name: "九曲堂周邊小吃", lat: 22.6552, lng: 120.4206 },
+      { kind: "景點", name: "佛光山", lat: 22.7480, lng: 120.4456 },
+      { kind: "醫療", name: "大樹區衛生所", lat: 22.6896, lng: 120.4328 }
+    ]
+  }
+};
+function nearbyArea(r) {
+  const blob = [r && r.location, r && r.street, r && r.group, r && r.no, r && r.city].map(x => String(x || "")).join(" ");
+  if (/大樹|九曲/.test(blob)) return NEARBY_AREAS.dashu;
+  if (/鳳仁|牛3|牛5|牛6|牛7|牛8|拉皮/.test(blob)) return NEARBY_AREAS.fengren;
+  return NEARBY_AREAS.wenlong;
+}
+function poiNavUrl(p) {
+  const name = encodeURIComponent(p.name);
+  if (typeof isIOS === "function" && isIOS()) return "https://maps.apple.com/?daddr=" + p.lat + "," + p.lng + "&q=" + name + "&dirflg=d";
+  return "https://www.google.com/maps/dir/?api=1&destination=" + p.lat + "," + p.lng + "&travelmode=driving";
+}
+function nearbySheetHtml() {
+  if (!ui.nearbyOpen) return "";
+  const area = nearbyArea(typeof myRoom === "function" ? myRoom() : null);
+  const lat = area.lat, lng = area.lng;
+  const bbox = (lng - 0.014) + "," + (lat - 0.011) + "," + (lng + 0.014) + "," + (lat + 0.011);
+  const pois = area.pois || [];
+  ui.nearbyPois = pois;
+  return `<div class="install-mask" id="nearby-mask">
+    <div class="install-sheet nearby-sheet">
+      <div class="label">周邊景點</div>
+      <h2>${escapeHtml(area.title)}</h2>
+      <p class="small">點下面項目，會打開手機地圖導航。</p>
+      <iframe class="nearby-map" title="附近地圖" src="https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <div class="poi-list">${pois.map((p, i) => `<button type="button" class="poi-item" data-poi="${i}"><span class="poi-kind">${escapeHtml(p.kind)}</span><span class="poi-name">${escapeHtml(p.name)}</span><span class="poi-go">導航</span></button>`).join("")}</div>
+      <button class="ghost" id="nearby-close" type="button">關閉</button>
+    </div>
+  </div>`;
 }
 function photoEl(src, no) {
   if (!src || String(src).length < 8) src = photosFor(no || "6821")[0];
@@ -2757,7 +2831,7 @@ function render() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
     root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
@@ -3017,6 +3091,7 @@ function homeView() {
         <button class="ghost" data-page="rooms">房間資訊</button>
         <button class="ghost" data-page="pay">繳費租金</button>
         <button class="ghost" id="bind-line" type="button">綁定 LINE</button>
+        <button class="ghost" id="nearby-spots" type="button">周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${hasAnn ? "" : announceBlock}
@@ -4814,6 +4889,20 @@ function bindTenant() {
       toast("請傳送「房號 姓名」完成綁定");
     };
   }
+  const nearbyBtn = document.getElementById("nearby-spots");
+  if (nearbyBtn) nearbyBtn.onclick = () => { ui.nearbyOpen = true; render(); };
+  const nearbyClose = document.getElementById("nearby-close");
+  if (nearbyClose) nearbyClose.onclick = () => { ui.nearbyOpen = false; render(); };
+  const nearbyMask = document.getElementById("nearby-mask");
+  if (nearbyMask) nearbyMask.onclick = e => { if (e.target.id === "nearby-mask") { ui.nearbyOpen = false; render(); } };
+  document.querySelectorAll("[data-poi]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const p = (ui.nearbyPois || [])[Number(btn.dataset.poi)];
+      if (!p) return;
+      window.open(poiNavUrl(p), "_blank", "noopener");
+    };
+  });
   const markPaid = document.getElementById("mark-paid");
   if (markPaid && !markPaid.disabled) {
     markPaid.onclick = () => {
