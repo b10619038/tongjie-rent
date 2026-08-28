@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨2:32";
+const APP_VERSION = "2026-08-29-凌晨2:34";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨2:34", items: ["已移除後台透天模型預覽"] },
   { ver: "2026-08-29-凌晨2:32", items: ["後台首頁可預覽五層四戶透天模型照片"] },
   { ver: "2026-08-29-凌晨2:18", items: ["套房設備新增床鋪、電梯"] },
   { ver: "2026-08-29-凌晨2:16", items: ["租客首頁恢復設備、水電、Wifi；DEMO 房間可模擬完整內容"] },
@@ -4566,11 +4567,6 @@ function adminDash() {
   });
   const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
   return `<div class="dash">
-    <div class="card card-body">
-      <div class="k">透天模型預覽</div>
-      <div class="small">瘦高五層 · 四戶連棟 · 陽台曬衣 · 屋頂太陽能 · 一樓鐵捲門</div>
-      <img src="images/townhouse-row.jpg" alt="透天模型" style="width:100%;border-radius:16px;margin-top:10px;display:block;background:#d5dae0">
-    </div>
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
