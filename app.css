@@ -123,6 +123,12 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .live-pill.on { background: #e6f4ea; color: #1b7a3a; }
 .live-pill.on::before { background: #22a34a; box-shadow: 0 0 0 3px rgba(34,163,74,.18); }
+.live-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #e24b4b; flex-shrink: 0; padding: 0;
+  box-shadow: 0 0 0 3px rgba(226,75,75,.16);
+}
+.live-dot.on { background: #22a34a; box-shadow: 0 0 0 3px rgba(34,163,74,.18); }
 .k { color: var(--muted); font-size: 13px; }
 .v { font-weight: 700; }
 .small { color: var(--muted); font-size: 12px; }

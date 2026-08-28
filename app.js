@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨1:00";
+const APP_VERSION = "2026-08-29-凌晨1:05";
 const TENANT_ROSTER_VER = "20260828-2030";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-凌晨1:05", items: ["套房租客圖卡顯示租金，在線狀態改為綠／紅圓點"] },
   { ver: "2026-08-29-凌晨1:00", items: ["廠房資產首頁改為白色建模照片"] },
   { ver: "2026-08-29-凌晨12:55", items: ["移除我的房間圖卡滑入模型"] },
   { ver: "2026-08-29-凌晨12:50", items: ["租客登入欄位改為建立密碼"] },
@@ -1057,7 +1058,7 @@ function refreshOnlineBadges() {
   document.querySelectorAll("[data-online]").forEach(el => {
     const on = isOnline(el.dataset.online);
     el.classList.toggle("on", on);
-    el.textContent = on ? "在線中" : "離線中";
+    if (!el.classList.contains("live-dot")) el.textContent = on ? "在線中" : "離線中";
   });
   const box = document.getElementById("online-tenants");
   if (box) box.innerHTML = onlineTenantLinesHtml();
@@ -4391,6 +4392,7 @@ function tenantEntryCardHtml(kind, entry) {
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
   const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
+      ${kind !== "factory" ? `<div class="row"><span class="k">租金</span><span class="v">${r && r.rent ? money(r.rent) : "—"}</span></div>` : ""}
       ${t.paidAt && tenants.length === 1 ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       ${kind !== "factory" ? `<div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>` : ""}
@@ -4432,7 +4434,7 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE<br>私訊</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-pill${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}">${isTenantOnline(t.id) ? "在線中" : "離線中"}</span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-dot${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}"></span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
