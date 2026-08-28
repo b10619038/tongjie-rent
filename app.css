@@ -602,7 +602,7 @@ textarea { min-height: 92px; resize: vertical; }
   position: absolute; top: 4px; bottom: 4px; left: 4px;
   width: calc((100% - 8px) / 2); background: var(--card); border-radius: 999px;
   box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateX(0);
-  opacity: 0; transition: transform .4s ease, opacity .2s ease;
+  opacity: 0; transition: transform .45s cubic-bezier(.22,.82,.22,1), opacity .2s ease;
 }
 #asset-list { display: contents; }
 .seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg { opacity: 1; }

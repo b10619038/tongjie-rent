@@ -10,8 +10,9 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const APP_VERSION = "2026-08-28-下午2:37";
+const APP_VERSION = "2026-08-28-下午2:48";
 const CHANGELOG = [
+  { ver: "2026-08-28-下午2:48", items: ["整體報表年月切換改為順滑滑動", "本月進出帳已清空 8/28 自動帶入的紀錄"] },
   { ver: "2026-08-28-下午2:37", items: ["總覽圓餅改為整體報表的營收總額與本期收支"] },
   { ver: "2026-08-28-下午2:34", items: ["後台分類列可左右滑動，內容區也可滑動切換分類"] },
   { ver: "2026-08-28-下午2:32", items: ["匯出 Excel 含期間年月與總餘額"] },
@@ -1456,7 +1457,8 @@ function collectLedger() {
   const slipRooms = new Set((state.bankSlips || []).map(s => String(s.roomNo || "")));
   state.tenants.filter(t => t.paid).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
-    const date = ymdOf(t.paidAt) || ymdOf(nowStamp());
+    const date = ymdOf(t.paidAt);
+    if (!date) return;
     if (room && slipRooms.has(String(room.no))) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount: Number(room && room.rent) || 0,
@@ -1519,17 +1521,41 @@ function shiftReport(delta) {
     if (ui.reportMonth > 12) { ui.reportMonth = 1; ui.reportYear += 1; }
   }
 }
-function overallReportHtml() {
+function overallReportBodyHtml() {
   const b = reportBounds();
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const totalBal = stats.reduce((s, x) => s + x.bal, 0) + joint.bal;
-  const totalNet = stats.reduce((s, x) => s + x.net, 0) + joint.net;
   const totalIn = stats.reduce((s, x) => s + x.inn, 0) + joint.inn;
   const totalOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
+  return `<div class="cal-nav">
+      <button type="button" class="ghost" data-report-nav="-1">${b.prev}</button>
+      <strong>${b.label}</strong>
+      <button type="button" class="ghost" data-report-nav="1">${b.next}</button>
+    </div>
+    <div class="acct-grid">
+      ${stats.map(s => `
+        <div class="acct-card">
+          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
+          <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
+        </div>`).join("")}
+    </div>
+    ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶營收總額 ${money(joint.bal)}</div>` : ""}
+    <div class="acct-total">
+      <div>
+        <div class="k">總餘額</div>
+        <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}</div>
+      </div>
+      <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
+    </div>`;
+}
+function overallReportHtml() {
+  const b = reportBounds();
   const yearOn = ui.reportMode === "year";
   if (ui.editAcct && REPORT_ACCOUNTS.includes(ui.editAcct)) {
-    const s = stats.find(x => x.name === ui.editAcct) || Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
+    const s = Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
     return `<div class="card card-body" id="overall-report">
       <button type="button" class="back" id="acct-bal-back">← 返回</button>
       <h2 class="dash-h">${escapeHtml(s.name)}　營收總額</h2>
@@ -1558,29 +1584,96 @@ function overallReportHtml() {
         <button type="button" class="ghost" id="print-report" style="width:auto">列印</button>
       </div>
     </div>
-    <div class="cal-nav">
-      <button type="button" class="ghost" data-report-nav="-1">${b.prev}</button>
-      <strong>${b.label}</strong>
-      <button type="button" class="ghost" data-report-nav="1">${b.next}</button>
-    </div>
-    <div class="acct-grid">
-      ${stats.map(s => `
-        <div class="acct-card">
-          <div class="k">${escapeHtml(s.name)}</div>
-          <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
-          <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
-        </div>`).join("")}
-    </div>
-    ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶營收總額 ${money(joint.bal)}</div>` : ""}
-    <div class="acct-total">
-      <div>
-        <div class="k">總餘額</div>
-        <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}</div>
-      </div>
-      <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
-    </div>
+    <div id="report-body">${overallReportBodyHtml()}</div>
   </div>`;
+}
+function applyReportMode(mode) {
+  const next = mode === "year" ? "year" : "month";
+  if (ui.reportMode === next) return;
+  ui.reportMode = next;
+  ui.keepScroll = true;
+  const seg = document.getElementById("report-period-seg");
+  if (seg) {
+    seg.classList.remove("is-month", "is-year");
+    seg.classList.add(next === "year" ? "is-year" : "is-month");
+    seg.querySelectorAll("[data-report-mode]").forEach(b => b.classList.toggle("on", b.dataset.reportMode === next));
+  }
+  const body = document.getElementById("report-body");
+  if (body) {
+    body.innerHTML = overallReportBodyHtml();
+    bindReportBody();
+  }
+  const pies = document.getElementById("report-pies");
+  if (pies) {
+    pies.innerHTML = reportPiesHtml();
+    bindReportModeBtns();
+  }
+  if (!body) {
+    ui.keepScroll = true;
+    render();
+  }
+}
+function bindReportBody() {
+  document.querySelectorAll("[data-report-nav]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      shiftReport(Number(btn.dataset.reportNav));
+      const body = document.getElementById("report-body");
+      if (body) {
+        body.innerHTML = overallReportBodyHtml();
+        bindReportBody();
+      } else {
+        ui.keepScroll = true;
+        render();
+      }
+      const pies = document.getElementById("report-pies");
+      if (pies) {
+        pies.innerHTML = reportPiesHtml();
+        bindReportModeBtns();
+      }
+    };
+  });
+  document.querySelectorAll("[data-edit-acct]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      ui.editAcct = btn.dataset.editAcct;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+}
+function bindReportModeBtns() {
+  document.querySelectorAll("[data-report-mode]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      applyReportMode(btn.dataset.reportMode);
+    };
+  });
+}
+function bindReportPeriodSeg() {
+  const periodSeg = document.getElementById("report-period-seg");
+  if (!periodSeg) return;
+  let x0 = 0, y0 = 0, swiping = false;
+  periodSeg.addEventListener("pointerdown", e => {
+    x0 = e.clientX; y0 = e.clientY; swiping = false;
+  });
+  periodSeg.addEventListener("pointermove", e => {
+    if (!x0) return;
+    const dx = e.clientX - x0;
+    if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(e.clientY - y0)) swiping = true;
+  });
+  periodSeg.addEventListener("pointerup", e => {
+    const dx = e.clientX - x0;
+    x0 = 0;
+    if (!swiping) return;
+    e.preventDefault();
+    if (dx < -24) applyReportMode("year");
+    else if (dx > 24) applyReportMode("month");
+  });
+  periodSeg.addEventListener("click", e => {
+    if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
+  }, true);
 }
 function monthCashHtml() {
   ensureCalMonth();
@@ -2840,7 +2933,7 @@ function adminDash() {
   });
   const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
   return `<div class="dash">
-    <div class="firm-grid">
+    <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
@@ -3735,62 +3828,9 @@ function bindAdmin() {
   if (exportBtn) exportBtn.onclick = exportOverallReport;
   const printReport = document.getElementById("print-report");
   if (printReport) printReport.onclick = printOverallReport;
-  document.querySelectorAll("[data-report-nav]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      shiftReport(Number(btn.dataset.reportNav));
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  document.querySelectorAll("[data-report-mode]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      ui.reportMode = btn.dataset.reportMode === "year" ? "year" : "month";
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  const periodSeg = document.getElementById("report-period-seg");
-  if (periodSeg) {
-    let x0 = 0, y0 = 0, swiping = false;
-    const setMode = mode => {
-      if ((mode === "year") === (ui.reportMode === "year")) return;
-      ui.reportMode = mode;
-      periodSeg.classList.remove("is-month", "is-year");
-      periodSeg.classList.add(mode === "year" ? "is-year" : "is-month");
-      periodSeg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.reportMode === mode));
-      ui.keepScroll = true;
-      render();
-    };
-    periodSeg.addEventListener("pointerdown", e => {
-      x0 = e.clientX; y0 = e.clientY; swiping = false;
-    });
-    periodSeg.addEventListener("pointermove", e => {
-      if (!x0) return;
-      const dx = e.clientX - x0;
-      if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(e.clientY - y0)) swiping = true;
-    });
-    periodSeg.addEventListener("pointerup", e => {
-      const dx = e.clientX - x0;
-      x0 = 0;
-      if (!swiping) return;
-      e.preventDefault();
-      if (dx < -24) setMode("year");
-      else if (dx > 24) setMode("month");
-    });
-    periodSeg.addEventListener("click", e => {
-      if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
-    }, true);
-  }
-  document.querySelectorAll("[data-edit-acct]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      ui.editAcct = btn.dataset.editAcct;
-      ui.keepScroll = true;
-      render();
-    };
-  });
+  bindReportBody();
+  bindReportModeBtns();
+  bindReportPeriodSeg();
   const acctBack = document.getElementById("acct-bal-back");
   if (acctBack) acctBack.onclick = () => { ui.editAcct = ""; ui.keepScroll = true; render(); };
   const acctForm = document.getElementById("acct-bal-form");
