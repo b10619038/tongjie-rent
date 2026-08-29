@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:22";
+const APP_VERSION = "2026-08-29-下午5:26";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:26", items: ["修復公告編輯：點編輯會打開發布欄並帶入內容"] },
   { ver: "2026-08-29-下午5:22", items: ["發布公告標題恢復，並修正點其他地方會跳到此欄"] },
   { ver: "2026-08-29-下午5:18", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午5:14", items: ["公告編輯按鈕改為捲到上方表單，並加大點擊區"] },
@@ -3218,10 +3219,18 @@ function render() {
     bindThemePicker();
     bindPullRefresh();
     const sc = document.querySelector(".admin-scroll");
-    if (sc && !pageChanged) {
-      sc.scrollTop = oldAdmin;
-      requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
+    if (sc) {
+      if (ui.adminJump === "announce-form") {
+        const el = document.getElementById("announce-form");
+        const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
+        sc.scrollTop = Math.max(0, top);
+        requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
+      } else if (!pageChanged) {
+        sc.scrollTop = oldAdmin;
+        requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
+      }
     }
+    ui.adminJump = "";
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     ui.keepScroll = false;
@@ -3419,6 +3428,22 @@ function reactBarHtml(a) {
   if (!n) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
   const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
   return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
+}
+function startAnnounceEdit(id) {
+  const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
+  if (!a) { toast("找不到這則公告"); return; }
+  ui.page = "announce";
+  ui.announceEditId = a.id;
+  ui.announceMedia = (a.media || []).slice();
+  ui.announceOpen = true;
+  ui.adminJump = "announce-form";
+  render();
+}
+function deleteAnnounce(id) {
+  const key = String(id || "");
+  state.announcements = (state.announcements || []).filter(a => String(a.id) !== key);
+  if (String(ui.announceEditId) === key) { ui.announceEditId = null; ui.announceMedia = []; }
+  save(); render();
 }
 function announcePosterLabel(a) {
   return String((a && a.postedBy) || "") === "1240" ? "開發者" : "管理員";
@@ -6694,25 +6719,17 @@ function bindAdmin() {
   const cancelAnn = document.getElementById("cancel-announce-edit");
   if (cancelAnn) cancelAnn.onclick = () => { ui.announceEditId = null; ui.announceMedia = []; render(); };
   document.querySelectorAll("[data-edit-announce]").forEach(btn => {
-    const go = e => {
+    btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const a = (state.announcements || []).find(x => x.id === btn.dataset.editAnnounce);
-      if (!a) { toast("找不到這則公告"); return; }
-      ui.announceEditId = a.id;
-      ui.announceMedia = (a.media || []).slice();
-      ui.announceOpen = true;
-      render();
+      startAnnounceEdit(btn.dataset.editAnnounce);
     };
-    btn.onclick = go;
   });
   document.querySelectorAll("[data-del-announce]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      state.announcements = (state.announcements || []).filter(a => a.id !== btn.dataset.delAnnounce);
-      if (ui.announceEditId === btn.dataset.delAnnounce) { ui.announceEditId = null; ui.announceMedia = []; }
-      save(); render();
+      deleteAnnounce(btn.dataset.delAnnounce);
     };
   });
   bindAdminAi();
@@ -7135,8 +7152,21 @@ async function installApp(kind, fromSheet) {
 }
 document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
-  if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
-});
+  if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); return; }
+  const edit = e.target.closest("[data-edit-announce]");
+  if (edit) {
+    e.preventDefault();
+    e.stopPropagation();
+    startAnnounceEdit(edit.dataset.editAnnounce);
+    return;
+  }
+  const del = e.target.closest("[data-del-announce]");
+  if (del) {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteAnnounce(del.dataset.delAnnounce);
+  }
+}, true);
 function bindPullRefresh() {
   const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
   if (!sc) return;
