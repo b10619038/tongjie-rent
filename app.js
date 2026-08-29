@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-17";
+const APP_STAMP = "2026-08-30-01-24";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修復工作助手按 Enter 與送出沒反應"] },
+  { ver: APP_STAMP, items: ["後台日誌右邊新增設定"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -1792,7 +1792,7 @@ function pageLabel() {
     "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
-    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定",
     "tenant-login": "租客登入", "admin-login": "管理員登入",
     "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
   };
@@ -4706,9 +4706,10 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定" };
   const allowed = ["dash", "rooms", "tenants", "announce", "repairs", "ai"];
   if (ui.adminCode === "1240") allowed.push("logs");
+  allowed.push("settings");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -4904,6 +4905,7 @@ function adminBody() {
     if (page === "ai") return adminAi();
     if (page === "announce") return adminAnnounce();
     if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
+    if (page === "settings") return adminSettings();
     return adminDash();
   } catch (err) {
     try { console.error(err); } catch {}
@@ -4960,6 +4962,44 @@ function adminLogs() {
         <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
       </div>`;
     }).join("") : `<div class="empty">尚無日誌</div>`}
+  </div>`;
+}
+function adminSettings() {
+  const who = ui.adminCode === "1240" ? "開發者" : "管理員";
+  const st = notifyStatus();
+  const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
+  const theme = THEMES.find(t => t.id === currentThemeId()) || THEMES[0];
+  const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <h2 class="dash-h">設定</h2>
+      <p class="small">帳號、通知、外觀與安裝。</p>
+    </div>
+    <div class="card card-body">
+      <div class="label">帳號</div>
+      <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
+      <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
+    </div>
+    <div class="card card-body">
+      <div class="label">通知</div>
+      <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
+      <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
+    </div>
+    <div class="card card-body">
+      <div class="label">外觀</div>
+      <div class="row"><span class="k">目前色調</span><span class="v">${escapeHtml(theme.name)}</span></div>
+      <button type="button" class="ghost" id="set-theme" style="margin-top:10px">選擇色調</button>
+    </div>
+    <div class="card card-body">
+      <div class="label">安裝</div>
+      <p class="small">安裝到手機或電腦後，通知與更新會比較穩定。</p>
+      <button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝說明</button>
+    </div>
+    <div class="card card-body">
+      <div class="label">資料</div>
+      <div class="row"><span class="k">雲端</span><span class="v">${escapeHtml(cloud)}</span></div>
+      <div class="row"><span class="k">版本</span><span class="v">${escapeHtml(APP_VERSION)}</span></div>
+    </div>
   </div>`;
 }
 const AI_BLOCKS = ["plan", "errand", "ai"];
@@ -7732,8 +7772,33 @@ function bindAdmin() {
   });
   bindAdminAi();
   bindCashCal();
+  bindAdminSettings();
 }
 
+function bindAdminSettings() {
+  const notify = document.getElementById("set-notify");
+  if (notify) notify.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askTongjieNotify();
+  };
+  const theme = document.getElementById("set-theme");
+  if (theme) theme.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.themeOpen = true;
+    ui.keepScroll = true;
+    render();
+  };
+  const install = document.getElementById("set-install");
+  if (install) install.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.installSheet = true;
+    ui.keepScroll = true;
+    render();
+  };
+}
 function bindAiBlockReorder() {
   const box = document.getElementById("ai-blocks");
   if (!box) return;
