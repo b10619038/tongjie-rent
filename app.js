@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:37";
+const APP_VERSION = "2026-08-29-下午6:38";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:38", items: ["租客底部分頁改為滑順移動，到位後有縮放"] },
   { ver: "2026-08-29-下午6:37", items: ["租客切換頁面恢復左右滑入，報修標題靠左"] },
   { ver: "2026-08-29-下午6:30", items: ["天氣特效改為只留動態圖，不再換背景色"] },
   { ver: "2026-08-29-下午6:26", items: ["天氣背景改為動態特效：太陽、飄雲、落雨、閃電"] },
@@ -3349,6 +3350,7 @@ function render() {
   ui.keepScroll = false;
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
+  bindNavPill();
   bindInstallSheet();
   bindNotifyGuide();
   bindUpdateBar();
@@ -3502,15 +3504,50 @@ function gateView() {
 
 function nav() {
   const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"]];
-  return `<nav class="nav">${items.map(([id, ic, label]) => {
+  return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
       : id === "home" ? unreadAnnouncements(ui.tenantId).length
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
     const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease");
-    return `<button data-page="${id}" class="${on ? "active" : ""}">${icon(ic)}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
+    return `<button type="button" data-page="${id}" class="${on ? "active" : ""}">${icon(ic)}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
+}
+function bindNavPill() {
+  const bar = document.querySelector(".nav");
+  const bg = bar && bar.querySelector(".nav-bg");
+  const on = bar && bar.querySelector("button.active");
+  if (!bar || !bg || !on) return;
+  const go = () => {
+    bg.style.width = on.offsetWidth + "px";
+    bg.style.transform = "translate3d(" + on.offsetLeft + "px,0,0)";
+  };
+  const prev = ui.navPill;
+  bg.classList.remove("land");
+  on.classList.remove("land");
+  if (prev && prev.x !== on.offsetLeft) {
+    bg.style.transition = "none";
+    bg.style.width = prev.w + "px";
+    bg.style.transform = "translate3d(" + prev.x + "px,0,0)";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
+      go();
+      let done = false;
+      const land = () => {
+        if (done) return;
+        done = true;
+        bg.classList.add("land");
+        on.classList.add("land");
+      };
+      bg.addEventListener("transitionend", land, { once: true });
+      setTimeout(land, 480);
+    }));
+  } else {
+    bg.style.transition = "none";
+    go();
+  }
+  ui.navPill = { x: on.offsetLeft, w: on.offsetWidth };
 }
 
 function tenantView() {
@@ -5897,6 +5934,10 @@ function bindTenant() {
     el.onclick = () => {
       const next = el.dataset.page;
       if (next === ui.page) return;
+      if (el.closest(".nav")) {
+        const on = document.querySelector(".nav button.active");
+        if (on) ui.navPill = { x: on.offsetLeft, w: on.offsetWidth };
+      }
       ui.page = next;
       if (ui.page === "repair" && ui.tenantId) {
         let changed = false;
