@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午2:28";
+const APP_VERSION = "2026-08-29-下午2:29";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午2:29", items: ["電腦可用滑鼠框選文字複製，框選不會卡住"] },
   { ver: "2026-08-29-下午2:28", items: ["套房／廠房與租客切換圖塊點擊有縮放回彈"] },
   { ver: "2026-08-29-下午1:06", items: ["套房／廠房與租客白塊改為滑過去，不再瞬間跳亮"] },
   { ver: "2026-08-29-中午12:46", items: ["套房／廠房與租客切換白塊改為點哪裡滑到哪裡"] },
@@ -6879,6 +6880,32 @@ document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
 });
+(function bindTextSelectCopy() {
+  let dragging = false, x0 = 0, y0 = 0;
+  document.addEventListener("mousedown", e => {
+    if (e.button !== 0) return;
+    dragging = false;
+    x0 = e.clientX;
+    y0 = e.clientY;
+  }, true);
+  document.addEventListener("mousemove", e => {
+    if (e.buttons !== 1) return;
+    if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) dragging = true;
+  }, true);
+  document.addEventListener("click", e => {
+    const sel = window.getSelection && window.getSelection();
+    const text = sel ? String(sel.toString() || "").trim() : "";
+    if (dragging && text) {
+      e.stopPropagation();
+      dragging = false;
+      return;
+    }
+    dragging = false;
+    if (text && !e.target.closest("input, textarea, .k, .v, p, td, th, .small, .contract-doc, h1, h2, h3, h4, label, .chip")) {
+      sel.removeAllRanges();
+    }
+  }, true);
+})();
 function bindPullRefresh() {
   const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
   if (!sc) return;

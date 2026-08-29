@@ -31,9 +31,8 @@ html, body {
   background: var(--paper);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  -webkit-user-select: text;
-  user-select: text;
-  -webkit-touch-callout: default;
+  -webkit-user-select: none;
+  user-select: none;
 }
 #app {
   min-height: 100%;
@@ -48,11 +47,12 @@ button, .nav, .tab, .seg, .issue-opt, .ghost, .btn-navy, .theme-fab, .switch-til
   -webkit-user-select: none;
   user-select: none;
 }
-.k, .v, p, h1, h2, h3, h4, .small, .chip, .room-name, .contract-doc, td, th, .lead, label {
+.k, .v, p, h1, h2, h3, h4, .small, .chip, .room-name, .contract-doc, td, th, .lead, label, .who-mini, .pay-pill, .acct-total, .dash-h {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
 }
+::selection { background: #b5d7ff; color: inherit; }
 input, textarea {
   -webkit-user-select: text;
   user-select: text;
