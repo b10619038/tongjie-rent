@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:26";
+const APP_VERSION = "2026-08-29-中午12:31";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:31", items: ["套房／廠房與租客左右切換改為滑順"] },
   { ver: "2026-08-29-中午12:26", items: ["修復畫面全白"] },
   { ver: "2026-08-29-中午12:24", items: ["套房租客圖卡往左小滑才開 LINE，綠色區塊縮小"] },
   { ver: "2026-08-29-中午12:22", items: ["點擊畫面維持原位置，不會跳回頂部"] },
@@ -2718,8 +2719,7 @@ function applyReportMode(mode) {
   ui.keepScroll = true;
   const seg = document.getElementById("report-period-seg");
   if (seg) {
-    seg.classList.remove("is-month", "is-year");
-    seg.classList.add(next === "year" ? "is-year" : "is-month");
+    setSegSide(seg, next === "year", "is-month", "is-year");
     seg.querySelectorAll("[data-report-mode]").forEach(b => b.classList.toggle("on", b.dataset.reportMode === next));
   }
   const body = document.getElementById("report-body");
@@ -3970,7 +3970,7 @@ function bindAdminPageSwipe() {
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    if (e.target.closest(".swipe-wrap, .cal-grid, #report-period-seg, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, input, textarea, select, .tabs")) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, input, textarea, select, .tabs")) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     on = true;
@@ -4875,7 +4875,7 @@ function adminRooms() {
   const kind = ui.assetKind === "factory" ? "factory" : "studio";
   return `<div class="admin-grid list">
     <div class="card card-body">
-      <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}">
+      <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="asset-kind-seg">
         <i class="seg-bg"></i>
         <button type="button" class="${kind === "studio" ? "on" : ""}" data-asset-kind="studio">套房</button>
         <button type="button" class="${kind === "factory" ? "on" : ""}" data-asset-kind="factory">廠房</button>
@@ -5049,13 +5049,18 @@ function tenantEntryCardHtml(kind, entry) {
 function tenantKindHint(kind) {
   return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
 }
+function setSegSide(seg, rightOn, leftClass, rightClass) {
+  if (!seg) return;
+  void seg.offsetWidth;
+  seg.classList.toggle(leftClass, !rightOn);
+  seg.classList.toggle(rightClass, !!rightOn);
+}
 function applyTenantKind(kind) {
   const next = kind === "factory" ? "factory" : "studio";
   ui.tenantKind = next;
   const seg = document.getElementById("tenant-kind-seg");
   if (seg) {
-    seg.classList.remove("is-studio", "is-factory");
-    seg.classList.add(next === "factory" ? "is-factory" : "is-studio");
+    setSegSide(seg, next === "factory", "is-studio", "is-factory");
     seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tenantKind === next));
   }
   const hint = document.getElementById("tenant-kind-hint");
@@ -5064,11 +5069,13 @@ function applyTenantKind(kind) {
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const box = document.getElementById("tenant-list");
   if (box) {
-    box.innerHTML = tenantListInnerHtml(next);
-    bindAdminRoomItems();
-    bindLineSwipe();
-    bindTenantListTools();
-    bindTenantFold();
+    requestAnimationFrame(() => {
+      box.innerHTML = tenantListInnerHtml(next);
+      bindAdminRoomItems();
+      bindLineSwipe();
+      bindTenantListTools();
+      bindTenantFold();
+    });
   }
 }
 function bindTenantSearch() {
@@ -6186,19 +6193,19 @@ function bindAdmin() {
       if (ui.assetKind === kind) return;
       ui.assetKind = kind;
       if (kind !== "studio") ui.studioBldg = null;
-      const seg = btn.closest(".seg");
+      const seg = btn.closest(".seg") || document.getElementById("asset-kind-seg");
       if (seg) {
-        seg.classList.remove("is-studio", "is-factory");
-        seg.classList.add(kind === "factory" ? "is-factory" : "is-studio");
-        seg.querySelectorAll("button").forEach(b => b.classList.remove("on"));
-        btn.classList.add("on");
+        setSegSide(seg, kind === "factory", "is-studio", "is-factory");
+        seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.assetKind === kind));
       }
       const box = document.getElementById("asset-list");
       if (box) {
-        box.innerHTML = adminRoomListHtml(kind);
-        bindAdminRoomItems();
-        bindStudioBuildings();
-        bindFactoryFold();
+        requestAnimationFrame(() => {
+          box.innerHTML = adminRoomListHtml(kind);
+          bindAdminRoomItems();
+          bindStudioBuildings();
+          bindFactoryFold();
+        });
       }
     };
   });
@@ -6393,10 +6400,8 @@ function bindAdmin() {
       pushPhoneNotify("報修進度", `${room ? room.no : ""} ${rep.type}已改為${status === "done" ? "已完成" : "處理中"}`, room ? room.no : "tenants");
       const card = btn.closest(".card"); const seg = btn.closest(".seg");
       if (seg) {
-        seg.classList.remove("is-doing", "is-done");
-        seg.classList.add(status === "done" ? "is-done" : "is-doing");
-        seg.querySelectorAll("button").forEach(b => b.classList.remove("on"));
-        btn.classList.add("on");
+        setSegSide(seg, status === "done", "is-doing", "is-done");
+        seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
       }
       const badge = card && card.querySelector(".badge");
       if (badge) { badge.className = "badge " + status; badge.textContent = status === "done" ? "已完成" : "處理中"; }

@@ -919,23 +919,27 @@ body.rev-zooming { overflow: hidden; }
 .seg {
   position: relative; display: grid; grid-template-columns: 1fr 1fr;
   background: var(--ok-soft); border-radius: 999px; padding: 4px; margin-top: 8px;
+  isolation: isolate;
 }
 .seg-bg {
   position: absolute; top: 4px; bottom: 4px; left: 4px;
   width: calc((100% - 8px) / 2); background: var(--card); border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08); transform: translateX(0);
-  opacity: 0; transition: transform .45s cubic-bezier(.22,.82,.22,1), opacity .2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  transform: translate3d(0,0,0);
+  opacity: 1;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+  transition: transform .45s cubic-bezier(.22,.82,.22,1);
 }
 #asset-list, #tenant-list { display: contents; }
-.seg.is-doing .seg-bg, .seg.is-done .seg-bg, .seg.is-studio .seg-bg, .seg.is-factory .seg-bg, .seg.is-month .seg-bg, .seg.is-year .seg-bg { opacity: 1; }
-.seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translateX(100%); }
+.seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translate3d(100%,0,0); }
 .seg button {
   position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer;
 }
 .seg button.on { color: var(--ink); }
-.seg button:hover { background-color: #e9e9e9; }
-.seg button.on:hover { background-color: transparent; }
+.seg button:hover, .seg button.on:hover { background-color: transparent; }
 
 .done-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
 .done-box .ghost { margin-top: 18px; }
