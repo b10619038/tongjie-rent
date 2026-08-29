@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:50";
+const APP_VERSION = "2026-08-29-下午6:52";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:52", items: ["天氣動態不因點擊畫面而重來"] },
   { ver: "2026-08-29-下午6:50", items: ["點首頁時公告圖塊從左邊滑入"] },
   { ver: "2026-08-29-下午6:47", items: ["底部分頁點擊時圖示也會立刻放大"] },
   { ver: "2026-08-29-下午6:44", items: ["底部分頁點下去立刻放大，不再延遲"] },
@@ -1538,19 +1539,71 @@ function skyFxHtml(sky) {
   const n = s === "storm" ? 40 : 30;
   const drops = Array.from({ length: n }, (_, i) => {
     const left = (i * 37) % 100;
-    const delay = ((i * 13) % 90) / 100;
-    const dur = (s === "storm" ? 0.42 : 0.72) + (i % 6) * 0.08;
-    return `<span class="drop" style="left:${left}%;animation-delay:${delay}s;animation-duration:${dur}s;height:${12 + (i % 7) * 2}px"></span>`;
+    return `<span class="drop" style="left:${left}%;height:${12 + (i % 7) * 2}px"></span>`;
   }).join("");
   return drops + (s === "storm" ? `<span class="flash"></span><span class="bolt"></span>` : "");
 }
+let skyLive = null, skyRaf = 0, skyKind = "", skyT0 = 0;
+function ensureSkyLive() {
+  if (skyLive) return skyLive;
+  skyLive = document.createElement("div");
+  skyLive.id = "sky-live";
+  skyLive.className = "sky-fx sky-live";
+  skyLive.setAttribute("aria-hidden", "true");
+  document.body.appendChild(skyLive);
+  return skyLive;
+}
+function attachSkyLive() {
+  const hero = document.querySelector(".weather-hero");
+  const el = ensureSkyLive();
+  const sky = ui.sky || "cloud";
+  if (hero) {
+    hero.setAttribute("data-sky", sky);
+    if (el.parentNode !== hero) hero.insertBefore(el, hero.firstChild);
+    el.style.display = "";
+  } else {
+    if (el.parentNode !== document.body) document.body.appendChild(el);
+    el.style.display = "none";
+  }
+  if (skyKind !== sky) {
+    skyKind = sky;
+    el.innerHTML = skyFxHtml(sky);
+    skyT0 = performance.now();
+  }
+  if (!skyRaf) skyRaf = requestAnimationFrame(tickSky);
+}
+function tickSky(now) {
+  skyRaf = requestAnimationFrame(tickSky);
+  if (!skyLive || skyLive.style.display === "none") return;
+  const t = (now - (skyT0 || now)) / 1000;
+  const h = skyLive.clientHeight || 118;
+  const kids = skyLive.children;
+  for (let i = 0; i < kids.length; i++) {
+    const n = kids[i];
+    if (n.classList.contains("drop")) {
+      const spd = (skyKind === "storm" ? 180 : 110) + (i % 7) * 18;
+      n.style.transform = "translateY(" + (((t * spd) + i * 17) % (h + 40) - 24) + "px) rotate(14deg)";
+    } else if (n.classList.contains("cld")) {
+      n.style.transform = "translateX(" + (((t * (8 + i * 3)) + i * 40) % 160 - 40) + "%)";
+    } else if (n.classList.contains("sun-rays")) {
+      n.style.transform = "rotate(" + (t * 24) + "deg)";
+    } else if (n.classList.contains("sun-ball")) {
+      n.style.transform = "scale(" + (1 + Math.sin(t * 2.2) * 0.08) + ")";
+    } else if (n.classList.contains("spark")) {
+      const p = (t * 0.7 + i * 0.18) % 1;
+      n.style.opacity = p < 0.7 ? String(1 - p) : "0";
+      n.style.transform = "translate(" + (-46 * p) + "px," + (-36 * p) + "px) scale(" + (0.3 + p) + ")";
+    } else if (n.classList.contains("flash")) {
+      const cycle = t % 3.6;
+      n.style.background = (cycle > 3.1 && cycle < 3.25) ? "rgba(255,255,255,.55)" : "transparent";
+    } else if (n.classList.contains("bolt")) {
+      const cycle = t % 3.6;
+      n.style.opacity = (cycle > 3.1 && cycle < 3.22) ? "1" : "0";
+    }
+  }
+}
 function applySkyDom() {
-  document.querySelectorAll(".weather-hero").forEach(el => {
-    const sky = ui.sky || "cloud";
-    el.setAttribute("data-sky", sky);
-    const fx = el.querySelector(".sky-fx");
-    if (fx) fx.innerHTML = skyFxHtml(sky);
-  });
+  attachSkyLive();
 }
 async function refreshSky(force) {
   const now = Date.now();
@@ -3355,6 +3408,7 @@ function render() {
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindNavPill();
+  attachSkyLive();
   bindInstallSheet();
   bindNotifyGuide();
   bindUpdateBar();
@@ -3636,7 +3690,6 @@ function homeView() {
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
-      <div class="sky-fx" aria-hidden="true">${skyFxHtml(ui.sky)}</div>
       <div class="who-line slide-right">
         <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
         <div>

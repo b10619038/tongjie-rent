@@ -167,11 +167,8 @@ input, textarea, select {
   overflow: hidden;
   min-height: 118px;
 }
-.weather-hero .sky-fx {
-  position: absolute; inset: 0;
-  pointer-events: none; z-index: 0;
-  overflow: hidden;
-}
+.sky-live, .sky-live * { animation: none !important; }
+.sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .weather-hero .who-line,
 .weather-hero .back { position: relative; z-index: 1; }
 
