@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午2:29";
+const APP_VERSION = "2026-08-29-下午2:40";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午2:40", items: ["整體報表切換改為年在左、月在右"] },
   { ver: "2026-08-29-下午2:29", items: ["電腦可用滑鼠框選文字複製，框選不會卡住"] },
   { ver: "2026-08-29-下午2:28", items: ["套房／廠房與租客切換圖塊點擊有縮放回彈"] },
   { ver: "2026-08-29-下午1:06", items: ["套房／廠房與租客白塊改為滑過去，不再瞬間跳亮"] },
@@ -2710,8 +2711,8 @@ function overallReportHtml() {
       <div class="report-actions no-print">
         <div class="seg ${yearOn ? "is-year" : "is-month"}" id="report-period-seg">
           <i class="seg-bg"></i>
-          <button type="button" class="${yearOn ? "" : "on"}" data-report-mode="month">月</button>
           <button type="button" class="${yearOn ? "on" : ""}" data-report-mode="year">年</button>
+          <button type="button" class="${yearOn ? "" : "on"}" data-report-mode="month">月</button>
         </div>
         <button type="button" class="ghost" id="export-report">匯出</button>
         <button type="button" class="ghost" id="print-report">列印</button>
@@ -2727,7 +2728,7 @@ function applyReportMode(mode) {
   ui.keepScroll = true;
   const seg = document.getElementById("report-period-seg");
   if (seg) {
-    setSegSide(seg, next === "year", "is-month", "is-year");
+    setSegSide(seg, next === "month", "is-year", "is-month");
     seg.querySelectorAll("[data-report-mode]").forEach(b => b.classList.toggle("on", b.dataset.reportMode === next));
   }
   const body = document.getElementById("report-body");
@@ -2830,8 +2831,8 @@ function bindReportPeriodSeg() {
     x0 = 0;
     if (!swiping) return;
     e.preventDefault();
-    if (dx < -24) applyReportMode("year");
-    else if (dx > 24) applyReportMode("month");
+    if (dx < -24) applyReportMode("month");
+    else if (dx > 24) applyReportMode("year");
   });
   periodSeg.addEventListener("click", e => {
     if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
