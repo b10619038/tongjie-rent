@@ -1094,7 +1094,8 @@ img.avatar { object-fit: cover; display: block; }
 .swipe-wrap.slim { border-radius: 16px; }
 .tenant-slim { padding: 8px 14px; transition: padding .32s ease; }
 .tenant-slim.open { padding: 16px; }
-.tenant-slim-head { padding: 2px 0; }
+.tenant-slim-head { padding: 2px 0; align-items: center; gap: 4px; }
+.fold-head { flex: 1; min-width: 0; }
 .tenant-slim-body {
   display: grid;
   grid-template-rows: 0fr;
@@ -1128,8 +1129,18 @@ img.avatar { object-fit: cover; display: block; }
   box-shadow: 0 12px 28px rgba(0,0,0,.12);
   will-change: transform;
 }
-#ai-blocks.sorting { touch-action: none; }
-#ai-blocks.sorting .ai-block { cursor: grabbing; }
+.ai-drag {
+  flex-shrink: 0;
+  width: 36px; height: 36px; margin: -6px -4px -6px 0;
+  border: 0; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  display: grid; place-items: center;
+  cursor: grab; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+.ai-drag svg { fill: currentColor; pointer-events: none; }
+.ai-drag:active { cursor: grabbing; color: var(--teal); }
+#ai-blocks.sorting .ai-drag { cursor: grabbing; }
 #announce-fold {
   width: 100%; margin: 0; padding: 6px 0;
   border: 0; background: transparent; cursor: pointer;

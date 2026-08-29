@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:44";
+const APP_VERSION = "2026-08-29-下午4:47";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:47", items: ["工作助手圖塊改為右上角拖移點才能拖排"] },
   { ver: "2026-08-29-下午4:44", items: ["拖移工作助手圖塊時維持圓角"] },
   { ver: "2026-08-29-下午4:39", items: ["工作助手圖塊可上下拖移排序"] },
   { ver: "2026-08-29-下午4:38", items: ["工作助手改為橫條收起，點擊展開"] },
@@ -4128,6 +4129,9 @@ function loadAiBlockOrder() {
 function saveAiBlockOrder(ids) {
   try { localStorage.setItem(AI_BLOCK_KEY, JSON.stringify(ids.filter(id => AI_BLOCKS.includes(id)))); } catch {}
 }
+function aiDragBtn() {
+  return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="7" cy="5" r="1.7"/><circle cx="13" cy="5" r="1.7"/><circle cx="7" cy="10" r="1.7"/><circle cx="13" cy="10" r="1.7"/><circle cx="7" cy="15" r="1.7"/><circle cx="13" cy="15" r="1.7"/></svg></button>`;
+}
 function adminAi() {
   const logs = (state.aiLogs || []).slice(-20);
   const slips = (state.bankSlips || []).slice().reverse();
@@ -4135,15 +4139,18 @@ function adminAi() {
   const plan = monthlyErrandPlan();
   const parts = {
     plan: `<div class="card card-body">
-      <h2 class="dash-h">本月自動分析</h2>
+      <div class="row"><h2 class="dash-h" style="margin:0">本月自動分析</h2>${aiDragBtn()}</div>
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
     </div>`,
     errand: `<form class="card card-body tenant-slim${ui.errandOpen ? " open" : ""}" id="errand-form" autocomplete="off">
-      <button type="button" class="row tenant-slim-head fold-head" id="errand-fold">
-        <span class="k">記下銀行業務</span>
-        <span class="row-end"><span class="small">${ui.errandOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
-      </button>
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="errand-fold">
+          <span class="k">記下銀行業務</span>
+          <span class="row-end"><span class="small">${ui.errandOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">每次去銀行都記一筆，之後會自動算出每個月該做的事。</p>
@@ -4182,10 +4189,13 @@ function adminAi() {
       </div>`;
     }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}`,
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
-      <button type="button" class="row tenant-slim-head fold-head" id="ai-fold">
-        <span class="k">工作助手</span>
-        <span class="row-end"><span class="small">${ui.aiOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
-      </button>
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="ai-fold">
+          <span class="k">工作助手</span>
+          <span class="row-end"><span class="small">${ui.aiOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <div class="small" style="margin-top:10px">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
@@ -4205,10 +4215,13 @@ function adminAi() {
       </div>
     </div>`,
     bank: `<form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
-      <button type="button" class="row tenant-slim-head fold-head" id="bank-fold">
-        <span class="k">上傳銀行入帳資料</span>
-        <span class="row-end"><span class="small">${ui.bankOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
-      </button>
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="bank-fold">
+          <span class="k">上傳銀行入帳資料</span>
+          <span class="row-end"><span class="small">${ui.bankOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">可上傳存摺、轉帳畫面或對帳單。填金額與金流帳戶後，會記入進出帳與整體報表；工作助手會去掉重複。</p>
@@ -6733,22 +6746,31 @@ function bindAiBlockReorder() {
     moved = false;
   };
   box.addEventListener("pointerdown", e => {
-    if (e.target.closest("input, textarea, select, a, label.upload, [data-ai-q], [data-del-errand], [data-del-slip], [data-view-media]")) return;
-    const block = e.target.closest(".ai-block");
+    const handle = e.target.closest(".ai-drag");
+    if (!handle) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const block = handle.closest(".ai-block");
     if (!block) return;
     const p = pt(e);
     dragEl = block;
     startY = p.y;
     originY = p.y;
     holdX = p.x;
-    armed = false;
+    armed = true;
     moved = false;
+    box.classList.add("sorting");
+    dragEl.classList.add("dragging");
+    try { if (navigator.vibrate) navigator.vibrate(10); } catch {}
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
     window.addEventListener("touchend", onEnd);
     window.addEventListener("pointercancel", onEnd);
-  });
+  }, true);
+  box.addEventListener("click", e => {
+    if (e.target.closest(".ai-drag")) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
 }
 function bindAdminAi() {
   const ask = q => {
