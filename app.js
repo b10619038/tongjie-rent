@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午1:06";
+const APP_VERSION = "2026-08-29-下午2:28";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午2:28", items: ["套房／廠房與租客切換圖塊點擊有縮放回彈"] },
   { ver: "2026-08-29-下午1:06", items: ["套房／廠房與租客白塊改為滑過去，不再瞬間跳亮"] },
   { ver: "2026-08-29-中午12:46", items: ["套房／廠房與租客切換白塊改為點哪裡滑到哪裡"] },
   { ver: "2026-08-29-中午12:42", items: ["套房／廠房與租客切換白塊改為與月／年相同滑動"] },
@@ -5093,6 +5094,11 @@ function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (rightClass) seg.classList.toggle(rightClass, !!rightOn);
   btns.forEach((b, i) => b.classList.toggle("on", rightOn ? i === 1 : i === 0));
   placeSegPill(seg, btn || btns[0], true);
+  if (seg.id === "asset-kind-seg" || seg.id === "tenant-kind-seg") {
+    seg.classList.remove("pop");
+    void seg.offsetWidth;
+    seg.classList.add("pop");
+  }
 }
 function bindSegPills() {
   document.querySelectorAll(".seg").forEach(seg => {

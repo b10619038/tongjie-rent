@@ -986,6 +986,13 @@ body.rev-zooming { overflow: hidden; }
 }
 .seg button.on { color: var(--ink); }
 .seg button:hover, .seg button.on:hover { background-color: transparent; }
+#asset-kind-seg, #tenant-kind-seg { transform-origin: center; }
+#asset-kind-seg.pop, #tenant-kind-seg.pop { animation: segPop .32s cubic-bezier(.2,1.15,.32,1); }
+@keyframes segPop {
+  0% { transform: scale(1); }
+  38% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
 
 .done-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
 .done-box .ghost { margin-top: 18px; }
