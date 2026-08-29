@@ -1100,8 +1100,9 @@ img.avatar { object-fit: cover; display: block; }
   grid-template-rows: 0fr;
   transition: grid-template-rows .38s cubic-bezier(.22,.82,.22,1);
 }
-.tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; }
+.tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; display: block; }
 .tenant-slim-inner { overflow: hidden; min-height: 0; }
+.tenant-slim.open .tenant-slim-inner { overflow: visible; min-height: auto; }
 .fold-caret {
   width: 8px; height: 8px; flex-shrink: 0;
   border-right: 2px solid var(--muted);
@@ -1142,7 +1143,42 @@ img.avatar { object-fit: cover; display: block; }
   font: inherit; color: inherit; text-align: left;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
-#announce-form .tenant-slim-inner { padding-bottom: 4px; }
+#announce-form,
+#rules-form {
+  position: relative;
+  z-index: 6;
+  isolation: isolate;
+  overflow: visible !important;
+  pointer-events: auto !important;
+}
+#announce-form .field,
+#announce-form input,
+#announce-form textarea,
+#announce-form label,
+#announce-form .upload,
+#announce-form button,
+#rules-form .field,
+#rules-form textarea,
+#rules-form label,
+#rules-form button,
+[data-edit-announce],
+[data-del-announce] {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+}
+#announce-form input,
+#announce-form textarea,
+#rules-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  background: #fff;
+  color: #111;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
 .swipe-reveal {
   position: absolute; top: 6px; right: 0; bottom: auto;
   width: 48px; height: 32px;

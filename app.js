@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:08";
+const APP_VERSION = "2026-08-29-下午5:10";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:10", items: ["公告編輯與使用規範恢復可點擊填寫"] },
   { ver: "2026-08-29-下午5:08", items: ["套房改為和廠房一樣的綠色分組收合"] },
   { ver: "2026-08-29-下午5:07", items: ["公告改為頭貼旁顯示管理員與時間，標題在下一行"] },
   { ver: "2026-08-29-下午4:51", items: ["工作助手拖移點改為隱形，仍可從右上角拖排"] },
@@ -2120,7 +2121,13 @@ function armPushAsk() {
     return;
   }
   if (needsNotifyGuide()) return;
-  const go = () => { enablePush().then(ok => { if (ok) maybeNudgeNotifies(); }); };
+  const go = e => {
+    if (e && e.target && e.target.closest("input, textarea, select, button, a, label, canvas, .field, .upload")) {
+      document.addEventListener("pointerdown", go, { once: true, capture: true });
+      return;
+    }
+    enablePush().then(ok => { if (ok) maybeNudgeNotifies(); });
+  };
   document.addEventListener("pointerdown", go, { once: true, capture: true });
   document.addEventListener("keydown", go, { once: true, capture: true });
 }
@@ -4014,7 +4021,7 @@ function bindAdminPageSwipe() {
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, form, input, textarea, select, .tabs, label, .ai-block")) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, form, input, textarea, select, .tabs, label, .ai-block, .card, button")) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     on = true;
@@ -4370,8 +4377,8 @@ function adminAnnounce() {
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
-          <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" /></label>
-          <label class="field"><span>內容</span><textarea name="body">${editing ? escapeHtml(editing.body) : ""}</textarea></label>
+          <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" /></label>
+          <label class="field"><span>內容</span><textarea id="ann-body" name="body">${editing ? escapeHtml(editing.body) : ""}</textarea></label>
           <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
           <label class="upload">上傳影片<input id="ann-video" type="file" accept="video/*" hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
@@ -4388,7 +4395,7 @@ function adminAnnounce() {
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
       <p class="small">修改後會同步顯示在租客「租約」頁、合約書上方。</p>
-      <label class="field"><span>規範內容</span><textarea name="rules" style="min-height:220px">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
+      <label class="field"><span>規範內容</span><textarea id="rules-text" name="rules" style="min-height:220px">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
       <button class="btn-navy" type="submit">儲存規範</button>
     </form>
     <div class="card card-body">
@@ -6611,12 +6618,16 @@ function bindAdmin() {
   if (rulesForm) {
     rulesForm.onsubmit = e => {
       e.preventDefault();
-      const text = (rulesForm.rules.value || "").trim();
+      const text = formVal(rulesForm, "rules").trim();
       if (!text) { toast("請填寫使用規範"); return; }
       state.houseRules = text;
       save();
       toast("使用規範已更新，租客租約會同步");
     };
+    document.querySelectorAll("#rules-form textarea").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    });
   }
   const af = document.getElementById("announce-form");
   if (af) {
@@ -6624,14 +6635,11 @@ function bindAdmin() {
     if (fold) fold.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const block = fold.closest(".ai-block");
-      if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
       ui.announceOpen = !af.classList.contains("open");
       af.classList.toggle("open", ui.announceOpen);
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.announceOpen ? "點擊收起" : "點擊展開";
     };
-    if (isInstalledApp() && "Notification" in window && Notification.permission === "default") Notification.requestPermission().then(p => { if (p === "granted") subscribePushOnly(); });
     const addAnnFiles = async (files, kind) => {
       if (!ui.announceMedia) ui.announceMedia = [];
       for (const file of files) {
@@ -6651,6 +6659,10 @@ function bindAdmin() {
     if (photo) photo.onchange = () => { addAnnFiles(photo.files, "image"); photo.value = ""; };
     if (video) video.onchange = () => { addAnnFiles(video.files, "video"); video.value = ""; };
     bindAnnPending();
+    document.querySelectorAll("#announce-form input, #announce-form textarea").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    });
     af.onsubmit = e => {
       e.preventDefault();
       const title = formVal(af, "title").trim();
