@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:02";
+const APP_VERSION = "2026-08-29-下午9:06";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:06", items: ["內容四個按鈕左邊加上小圖"] },
   { ver: "2026-08-29-下午9:02", items: ["修復總覽新增一筆無法輸入與記入"] },
   { ver: "2026-08-29-下午9:01", items: ["整體報表移除個人戶明細表"] },
   { ver: "2026-08-29-下午8:53", items: ["內容按鈕改為左上繳費租金、右上綁定 LINE、左下房間資訊"] },
@@ -2424,7 +2425,10 @@ function icon(name) {
     home: '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10 10 4l7 6v7H3z"/></svg>',
     room: '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="12" height="11" rx="1.5"/><path d="M8 16v-5h4v5"/></svg>',
     lease: '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h8v14H6z"/><path d="M8 8h4M8 11h4"/></svg>',
-    fix: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
+    fix: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v11H8.5L4 20.5V5.5z"/></svg>',
+    pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.2"/></svg>'
   };
   return map[name];
 }
@@ -3814,10 +3818,10 @@ function homeView() {
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
-        <button class="ghost" data-page="pay">繳費租金</button>
-        <button class="ghost" id="bind-line" type="button">綁定 LINE</button>
-        <button class="ghost" data-page="rooms">房間資訊</button>
-        <button class="ghost" id="nearby-spots" type="button">周邊景點</button>
+        <button class="ghost" data-page="pay"><span class="btn-ic">${icon("pay")}</span>繳費租金</button>
+        <button class="ghost" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定 LINE</button>
+        <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room")}</span>房間資訊</button>
+        <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${roomExtrasHtml(r)}

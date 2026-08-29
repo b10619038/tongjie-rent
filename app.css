@@ -635,6 +635,20 @@ textarea { min-height: 92px; resize: vertical; }
   animation: esignEdge 1.6s ease-out 1.5s infinite;
 }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.btn-row .ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-ic {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.btn-ic svg { display: block; width: 18px; height: 18px; }
 .btn-row .btn-navy { grid-column: 1 / -1; }
 .copy-row {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 8px;
