@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午2:55";
+const APP_VERSION = "2026-08-29-下午3:24";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午3:24", items: ["記下銀行業務可正常填寫並登錄"] },
   { ver: "2026-08-29-下午2:55", items: ["開發者公告改用男客服頭貼"] },
   { ver: "2026-08-29-下午2:51", items: ["管理員公告頭貼改為客服照片"] },
   { ver: "2026-08-29-下午2:44", items: ["套房／廠房與租客切換改為與年月相同的白塊滑動"] },
@@ -1921,6 +1922,11 @@ function showToastBanner(msg) {
     const n = document.querySelector(".toast");
     if (n) n.remove();
   }, 1800);
+}
+function formVal(form, name) {
+  const el = form && form.elements && form.elements.namedItem(name);
+  if (!el) return "";
+  return String(el.value || "");
 }
 function toast(msg) {
   ui.toast = msg;
@@ -6546,8 +6552,8 @@ function bindAdmin() {
     bindAnnPending();
     af.onsubmit = e => {
       e.preventDefault();
-      const title = (af.title.value || "").trim();
-      const body = (af.body.value || "").trim();
+      const title = formVal(af, "title").trim();
+      const body = formVal(af, "body").trim();
       if (!title || !body) { toast("請填寫標題與內容"); return; }
       if (!state.announcements) state.announcements = [];
       const media = (ui.announceMedia || []).slice();
@@ -6607,14 +6613,14 @@ function bindAdminAi() {
   const errand = document.getElementById("errand-form");
   if (errand) errand.onsubmit = e => {
     e.preventDefault();
-    const title = (errand.title.value || "").trim();
-    const date = errand.date.value;
+    const title = formVal(errand, "title").trim();
+    const date = formVal(errand, "date").trim();
     if (!title || !date) { toast("請填事項與日期"); return; }
-    const amount = Number(String(errand.amount.value || "").replace(/[^\d.]/g, "")) || 0;
-    const place = (errand.place.value || "").trim();
-    const note = (errand.note.value || "").trim();
+    const amount = Number(String(formVal(errand, "amount")).replace(/[^\d.]/g, "")) || 0;
+    const place = formVal(errand, "place").trim();
+    const note = formVal(errand, "note").trim();
     const id = "er" + Date.now();
-    const company = normalizeBookCompany((errand.company && errand.company.value) || cellAccount(note + title) || "統潔");
+    const company = normalizeBookCompany(formVal(errand, "company") || cellAccount(note + title) || "統潔");
     if (!state.errands) state.errands = [];
     state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, media: (ui.errandMedia || []).slice(), createdAt: nowStamp() });
     const p = date.split("-");
