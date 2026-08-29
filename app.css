@@ -752,6 +752,7 @@ input[type="file"] {
   display: flex; gap: 8px;
   width: max-content;
   isolation: isolate;
+  overflow: visible;
 }
 .tab-bg {
   position: absolute; left: 0; top: 0;
@@ -759,9 +760,16 @@ input[type="file"] {
   border-radius: 999px;
   pointer-events: none;
   z-index: 0;
+  transform-origin: center center;
   will-change: transform, width;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
   transition: transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1);
+}
+.tab-bg.land { animation: tabBgPop .45s cubic-bezier(.22,1.35,.32,1) forwards; }
+@keyframes tabBgPop {
+  0% { transform: translate3d(var(--tx), var(--ty), 0) scale(1.08); }
+  40% { transform: translate3d(var(--tx), var(--ty), 0) scale(1.22); }
+  100% { transform: translate3d(var(--tx), var(--ty), 0) scale(1.08); }
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
