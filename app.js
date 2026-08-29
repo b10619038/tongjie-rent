@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:20";
+const APP_VERSION = "2026-08-29-下午9:28";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:28", items: ["手機後台總覽圓餅圖與邊距不再卡住"] },
   { ver: "2026-08-29-下午9:20", items: ["本月進出帳可拉選日期區間查看紀錄"] },
   { ver: "2026-08-29-下午9:12", items: ["本月進出帳匯出列印改到右上"] },
   { ver: "2026-08-29-下午9:11", items: ["銀行入帳與銀行業務合併為跑銀行上傳入帳"] },
