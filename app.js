@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:18";
+const APP_VERSION = "2026-08-29-下午5:22";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:22", items: ["發布公告標題恢復，並修正點其他地方會跳到此欄"] },
   { ver: "2026-08-29-下午5:18", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午5:14", items: ["公告編輯按鈕改為捲到上方表單，並加大點擊區"] },
   { ver: "2026-08-29-下午5:13", items: ["套房分組房間首頁圖統一換成白色套房模型"] },
@@ -3217,16 +3218,10 @@ function render() {
     bindThemePicker();
     bindPullRefresh();
     const sc = document.querySelector(".admin-scroll");
-    if (sc) {
-      if (ui.adminJump === "top") {
-        sc.scrollTop = 0;
-        requestAnimationFrame(() => { sc.scrollTop = 0; });
-      } else if (!pageChanged) {
-        sc.scrollTop = oldAdmin;
-        requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
-      }
+    if (sc && !pageChanged) {
+      sc.scrollTop = oldAdmin;
+      requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
     }
-    ui.adminJump = "";
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     ui.keepScroll = false;
@@ -4374,15 +4369,14 @@ function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
   const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
   const who = ui.adminCode === "1240" ? "開發者" : "管理員";
-  const open = !!(editing || ui.announceOpen);
-  if (editing) ui.announceOpen = true;
+  const open = !!ui.announceOpen;
   return `<div class="admin-grid list">
     <form class="card card-body tenant-slim${open ? " open" : ""}" id="announce-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head" id="announce-fold">
-        <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">${editing ? "編輯公告" : "發布公告"}</span></span>
+        <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">發布公告</span></span>
         <span class="row-end"><span class="small">${open ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
       </button>
-      <div class="tenant-slim-body">
+      <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
           <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" /></label>
@@ -6645,6 +6639,11 @@ function bindAdmin() {
       e.stopPropagation();
       ui.announceOpen = !af.classList.contains("open");
       af.classList.toggle("open", ui.announceOpen);
+      const body = af.querySelector(".tenant-slim-body");
+      if (body) {
+        if (ui.announceOpen) body.removeAttribute("inert");
+        else body.setAttribute("inert", "");
+      }
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.announceOpen ? "點擊收起" : "點擊展開";
     };
@@ -6703,7 +6702,6 @@ function bindAdmin() {
       ui.announceEditId = a.id;
       ui.announceMedia = (a.media || []).slice();
       ui.announceOpen = true;
-      ui.adminJump = "top";
       render();
     };
     btn.onclick = go;
