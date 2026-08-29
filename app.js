@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:30";
+const APP_VERSION = "2026-08-29-下午6:37";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:37", items: ["租客切換頁面恢復左右滑入，報修標題靠左"] },
   { ver: "2026-08-29-下午6:30", items: ["天氣特效改為只留動態圖，不再換背景色"] },
   { ver: "2026-08-29-下午6:26", items: ["天氣背景改為動態特效：太陽、飄雲、落雨、閃電"] },
   { ver: "2026-08-29-下午6:19", items: ["租客問候區依鳳山即時天氣顯示晴天／陰天／雨天／大雷雨"] },
@@ -3346,7 +3347,7 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll tenant-still">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page keep-still">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindInstallSheet();
   bindNotifyGuide();
@@ -4021,8 +4022,12 @@ function repairView() {
       </div>`;
   }
   const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視"];
-  return `<div class="topbar"><div class="eyebrow">REPAIR</div><h1>報修</h1></div>
+  return `<div class="topbar slide-right"><div>
+      <div class="eyebrow">REPAIR</div>
+      <h1>報修</h1>
+    </div></div>
     <div class="screen">
+      <div class="slide-left">
       <div id="repair-form">
         <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}</div>
         <div class="repair-note-box">
