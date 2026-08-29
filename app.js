@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:52";
+const APP_VERSION = "2026-08-29-下午6:54";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:54", items: ["點首頁時房間圖塊從右邊滑入"] },
   { ver: "2026-08-29-下午6:52", items: ["天氣動態不因點擊畫面而重來"] },
   { ver: "2026-08-29-下午6:50", items: ["點首頁時公告圖塊從左邊滑入"] },
   { ver: "2026-08-29-下午6:47", items: ["底部分頁點擊時圖示也會立刻放大"] },
@@ -3701,7 +3702,7 @@ function homeView() {
     </div>
     <div class="screen">
       ${hasAnn ? announceBlock : ""}
-      <div class="hero-card slide-left">
+      <div class="hero-card">
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${r.title}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
