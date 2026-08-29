@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:59";
+const APP_VERSION = "2026-08-30-上午1:00";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:59", items: ["跑業務移除這次做了什麼"] },
+  { ver: "2026-08-30-上午1:00", items: ["極淺灰改名為極灰"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -237,7 +237,7 @@ const THEMES = [
   { id: "ink", name: "墨黑", teal: "#2f3330", mid: "#454a46", soft: "#e6e7e6", chip: "#f0f0ef", ink: "#141615" },
   { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" },
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
-  { id: "mist", name: "極淺灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
+  { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
   { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#161616", chip: "#1c1c1c", ink: "#f5f5f5", paper: "#000000", card: "#111111", line: "#2c2c2c", muted: "#8d8d8d", inkSoft: "#c8c8c8", onTeal: "#111111", bar: "#000000" }
 ];
 function currentThemeId() {
