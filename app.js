@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午1:00";
+const APP_STAMP = "2026-08-30-01-03";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午1:00", items: ["極淺灰改名為極灰"] },
+  { ver: APP_STAMP, items: ["畫面下方版本改為西元-月-日-時-分-累積修改次數"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -222,6 +222,8 @@ const CHANGELOG = [
   { ver: "2026-08-28-上午1:33", items: ["電腦版安裝圖標改為圓角"] },
   { ver: "2026-08-28-上午1:28", items: ["管理員公告改為連點兩下按愛心，讚與笑臉已移除"] }
 ];
+const APP_BUILD_NO = CHANGELOG.length;
+const APP_VERSION = APP_STAMP + "-" + String(APP_BUILD_NO);
 const THEME_KEY = "tongjie_theme";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
@@ -496,7 +498,7 @@ function askTongjieNotify() {
 window.askTongjieNotify = askTongjieNotify;
 function versionFooter() {
   const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
-  return `<div class="ver">${cloud}　版本 ${APP_VERSION}</div>`;
+  return `<div class="ver">${cloud}　${APP_VERSION}</div>`;
 }
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
