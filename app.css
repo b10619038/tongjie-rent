@@ -426,7 +426,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   color: var(--teal);
   background-color: transparent;
 }
-.nav button:active { background-color: transparent; transform: scale(1.14); transition: transform .38s cubic-bezier(.22,.82,.22,1); }
+.nav button:active { background-color: transparent; transform: scale(1.22); transition: transform .38s cubic-bezier(.22,.82,.22,1); }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
 }
