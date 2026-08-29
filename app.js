@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-12";
+const APP_STAMP = "2026-08-30-01-17";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["畫面下方只顯示西元月日時分與累積修改次數"] },
+  { ver: APP_STAMP, items: ["修復工作助手按 Enter 與送出沒反應"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5052,7 +5052,7 @@ function adminAi() {
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
             <textarea id="ai-q" name="q" rows="1" placeholder="輸入訊息" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="ai-send" type="submit" aria-label="送出">送出</button>
+            <button class="ai-send" type="button" aria-label="送出">送出</button>
           </form>
         </div>
       </div>
@@ -7837,13 +7837,23 @@ function bindAdminAi() {
   const ask = q => {
     const text = String(q || "").trim();
     if (!text) return;
-    if (!state.aiLogs) state.aiLogs = [];
-    state.aiLogs.push({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
-    state.aiLogs.push({ role: "ai", text: aiAnswer(text), at: nowStamp() });
-    if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
-    ui.aiDraft = "";
-    ui.aiOpen = true;
-    save(); render();
+    try {
+      if (!state.aiLogs) state.aiLogs = [];
+      state.aiLogs.push({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
+      let ans = "";
+      try { ans = aiAnswer(text); } catch (err) { ans = "先收到了。這題我再整理一次。"; }
+      state.aiLogs.push({ role: "ai", text: ans, at: nowStamp() });
+      if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
+      ui.aiDraft = "";
+      ui.aiOpen = true;
+      save();
+    } catch {}
+    ui.keepScroll = true;
+    render();
+  };
+  const sendNow = () => {
+    const box = document.getElementById("ai-q");
+    ask(box && box.value);
   };
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
@@ -7871,12 +7881,27 @@ function bindAdminAi() {
     qBox.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => qBox.focus(), 0); });
     qBox.addEventListener("click", e => { e.stopPropagation(); qBox.focus(); });
     qBox.addEventListener("input", () => { ui.aiDraft = qBox.value; });
+    qBox.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        e.stopPropagation();
+        sendNow();
+      }
+    });
   }
-  if (form) form.onsubmit = e => {
-    e.preventDefault();
-    const box = document.getElementById("ai-q");
-    ask(box && box.value);
-  };
+  if (form) {
+    form.addEventListener("pointerdown", e => e.stopPropagation());
+    form.addEventListener("submit", e => { e.preventDefault(); e.stopPropagation(); sendNow(); });
+  }
+  const sendBtn = document.querySelector("#ai-form .ai-send");
+  if (sendBtn) {
+    sendBtn.addEventListener("pointerdown", e => { e.stopPropagation(); });
+    sendBtn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      sendNow();
+    });
+  }
   const pane = document.getElementById("ai-log");
   if (pane) pane.scrollTop = pane.scrollHeight;
   const errand = document.getElementById("errand-form");

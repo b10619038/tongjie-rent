@@ -1544,7 +1544,7 @@ img.avatar { object-fit: cover; display: block; }
 }
 #ai-form {
   position: relative;
-  z-index: 2;
+  z-index: 12;
   isolation: isolate;
   pointer-events: auto !important;
   display: flex;
@@ -1552,13 +1552,12 @@ img.avatar { object-fit: cover; display: block; }
   align-items: flex-end;
   margin-top: 10px;
 }
-#ai-form textarea,
-#ai-form button {
+#ai-form textarea {
   pointer-events: auto !important;
   -webkit-user-select: text !important;
   user-select: text !important;
   position: relative;
-  z-index: 2;
+  z-index: 12;
 }
 #ai-form textarea {
   display: block;
@@ -1587,6 +1586,10 @@ img.avatar { object-fit: cover; display: block; }
   font-weight: 800;
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
+  z-index: 13;
+  pointer-events: auto !important;
+  user-select: none;
 }
 .tenant-slim:not(.open) .tenant-slim-body {
   pointer-events: none !important;
