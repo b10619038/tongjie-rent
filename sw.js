@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v233";
-const BUILD = "20260830-0040";
+const CACHE = "tongjie-app-v234";
+const BUILD = "20260830-0043";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -57,6 +57,7 @@ self.addEventListener("push", event => {
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       lang: "zh-Hant",
+      subtitle: data.subtitle || "統潔開發",
       vibrate: [200, 80, 200],
       tag: data.tag || "tongjie",
       renotify: true,

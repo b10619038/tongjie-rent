@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:40";
+const APP_VERSION = "2026-08-30-上午12:43";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:40", items: ["修正跑業務預判文字跑版"] },
+  { ver: "2026-08-30-上午12:43", items: ["手機通知改顯示中文名稱，不再出現英文網址"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -420,7 +420,10 @@ function promptAppUpdate(reg) {
       const n = new Notification("統潔開發有新版本", {
         body: "點通知可查看更新了哪些內容",
         tag: "tongjie-update",
-        icon: "icon-192.png"
+        icon: "icon-192.png",
+        badge: "icon-192.png",
+        lang: "zh-Hant",
+        subtitle: "統潔開發"
       });
       n.onclick = () => { window.focus(); ui.updateNotes = true; render(); n.close(); };
     } catch {}
@@ -428,7 +431,10 @@ function promptAppUpdate(reg) {
       reg.showNotification("統潔開發有新版本", {
         body: "點通知可查看更新了哪些內容",
         tag: "tongjie-update",
-        icon: "/icon-192.png"
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        lang: "zh-Hant",
+        subtitle: "統潔開發"
       }).catch(() => {});
     }
   }
@@ -477,7 +483,7 @@ function askTongjieNotify() {
     perm = perm || Notification.permission;
     if (perm === "granted") {
       subscribePushOnly();
-      try { new Notification("統潔開發", { body: "通知已開啟", icon: "icon-192.png" }); } catch {}
+      try { new Notification("統潔開發", { body: "通知已開啟", icon: "icon-192.png", lang: "zh-Hant", subtitle: "統潔開發" }); } catch {}
       toast("通知已開啟");
     } else if (perm === "denied") {
       toast(isIOS() ? "請到設定 → 通知 → 統潔開發，打開允許" : "請到設定 → 應用程式 → 統潔開發 → 通知，改為允許");
@@ -2366,6 +2372,7 @@ function showOsBanner(title, body, tag) {
     icon: "/icon-192.png",
     badge: "/icon-192.png",
     lang: "zh-Hant",
+    subtitle: "統潔開發",
     vibrate: [200, 80, 200],
     tag: tag || ("tongjie-" + title),
     renotify: true,
