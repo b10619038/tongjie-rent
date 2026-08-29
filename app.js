@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:40";
+const APP_VERSION = "2026-08-29-下午8:41";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:41", items: ["更新視窗標題改為這次更新內容如下"] },
   { ver: "2026-08-29-下午8:40", items: ["修復點更新列沒有跳出更新內容"] },
   { ver: "2026-08-29-下午8:38b", items: ["後台頂部分頁綠色底塊跟著文字一起放大"] },
   { ver: "2026-08-29-下午8:38", items: ["收合橫條移除點擊展開文字"] },
@@ -348,7 +349,7 @@ function changelogSheetHtml() {
   return `<div class="install-mask" id="update-mask">
     <div class="install-sheet">
       <div class="label">軟體更新</div>
-      <h2>這次更新了什麼</h2>
+      <h2>這次更新內容如下:</h2>
       <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
