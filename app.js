@@ -5708,6 +5708,9 @@ function bindTenant() {
       toast("已送出續約申請");
       ui.keepScroll = true;
       render();
+    };
+  }
+  const photo = document.getElementById("repair-photo");
   const video = document.getElementById("repair-video");
   const addRepairFiles = async (files, kind) => {
     if (!ui.repairMedia) ui.repairMedia = [];
