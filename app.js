@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:38b";
+const APP_VERSION = "2026-08-29-下午8:40";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:40", items: ["修復點更新列沒有跳出更新內容"] },
   { ver: "2026-08-29-下午8:38b", items: ["後台頂部分頁綠色底塊跟著文字一起放大"] },
   { ver: "2026-08-29-下午8:38", items: ["收合橫條移除點擊展開文字"] },
   { ver: "2026-08-29-下午8:37", items: ["內容四個按鈕改回兩兩一排"] },
@@ -3430,7 +3431,8 @@ function render() {
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
-    if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide")) {
+    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml;
+    if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
