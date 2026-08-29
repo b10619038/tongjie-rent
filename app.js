@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:28";
-const TENANT_ROSTER_VER = "20260829-2225";
+const APP_VERSION = "2026-08-29-下午10:30";
+const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:30", items: ["所有資產編輯欄位可正常填寫"] },
   { ver: "2026-08-29-下午10:28", items: ["總覽新增太陽能覆蓋率圓餅圖"] },
   { ver: "2026-08-29-下午10:25", items: ["套房出租率圖塊加上廠房與店面出租率，並新增6811、7011、7211店面"] },
   { ver: "2026-08-29-下午10:13", items: ["統潔分聯邦農會兆豐、信潔分聯邦，進出帳明細會顯示銀行"] },
@@ -845,11 +846,15 @@ function buildSeed() {
     const info = TENANT_INFO[no];
     const name = info && info.name ? info.name : "";
     const tid = name ? "t" + ti++ : null;
+    const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
     rooms.push({
       id, no, title: isStoreNo(no) ? "店面" : "套房",
       rent: name ? 10000 : (isStoreNo(no) ? 0 : 10000), deposit: name ? 25600 : 0,
       kind: isStoreNo(no) ? "store" : "studio",
       shop: (info && info.shop) || "",
+      group: bld ? bld.no : "",
+      street: bld ? bld.street : "",
+      company: bld ? bld.company : "統潔",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
       utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
@@ -1132,6 +1137,12 @@ function applyTenantRoster(data) {
       }
     }
     if (!room || room.status === "office") return;
+    const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
+    if (bld) {
+      if (!room.group) room.group = bld.no;
+      if (!room.street) room.street = bld.street;
+      if (!room.company) room.company = bld.company;
+    }
     if (info && info.name) {
       let t = data.tenants.find(x => x.roomId === room.id);
       if (!t) {
@@ -5972,6 +5983,7 @@ function field(label, name, value, type) {
   </select></label>`;
   if (type === "select-kind") return `<label class="field"><span>${label}</span><select name="${name}">
     <option value="studio" ${value === "studio" ? "selected" : ""}>套房</option>
+    <option value="store" ${value === "store" ? "selected" : ""}>店面</option>
     <option value="factory" ${value === "factory" ? "selected" : ""}>廠房</option>
   </select></label>`;
   if (type === "select-paid") return `<label class="field"><span>${label}</span><select name="${name}">
@@ -7140,7 +7152,13 @@ function bindAdmin() {
     });
   });
   const form = document.getElementById("room-edit-form");
-  if (form) form.onsubmit = e => { e.preventDefault(); saveRoomEdit(form); };
+  if (form) {
+    form.onsubmit = e => { e.preventDefault(); e.stopPropagation(); saveRoomEdit(form); };
+    form.querySelectorAll("input, select, textarea").forEach(el => {
+      el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
+      el.onclick = e => { e.stopPropagation(); el.focus(); };
+    });
+  }
   const avAdmin = document.getElementById("tenant-avatar-admin");
   if (avAdmin) avAdmin.onchange = async () => {
     const f = avAdmin.files && avAdmin.files[0];
@@ -7937,6 +7955,8 @@ function bindPullRefresh() {
     ptr.innerHTML = "<em></em><span>下拉重新整理</span>";
     sc.insertBefore(ptr, sc.firstChild);
   }
+  if (sc.dataset.ptrBound === "1") return;
+  sc.dataset.ptrBound = "1";
   let y0 = 0, pulling = false, dy = 0, busy = false;
   const max = 92, need = 62;
   const label = ptr.querySelector("span");
