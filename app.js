@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:02";
+const APP_VERSION = "2026-08-29-中午12:04";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:04", items: ["報修描述欄可穩定輸入，不再整頁跳動"] },
   { ver: "2026-08-29-中午12:02", items: ["極黑主題下我的房間圖卡改為深底清楚字"] },
   { ver: "2026-08-29-上午11:59", items: ["報修選項與提交不再整頁滑動，描述欄可正常輸入"] },
   { ver: "2026-08-29-上午11:54", items: ["極黑主題修正底部選單與報修選項對比"] },
@@ -1883,12 +1884,37 @@ function unreadAppoints(tenantId) {
   return (state.repairs || []).filter(r => r.tenantId === tenantId && r.appointAt && !r.appointRead).length;
 }
 
+let toastTimer = 0;
+function showToastBanner(msg) {
+  const app = document.getElementById("app");
+  if (!app) return;
+  let el = app.querySelector(".toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "toast";
+    app.insertBefore(el, app.firstChild);
+  }
+  el.textContent = String(msg || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    ui.toast = "";
+    const n = document.querySelector(".toast");
+    if (n) n.remove();
+  }, 1800);
+}
 function toast(msg) {
   ui.toast = msg;
   ui.keepScroll = true;
   if (ui.role && msg && /^(已|登錄成功)/.test(String(msg))) audit("操作", String(msg));
+  const ae = document.activeElement;
+  const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT");
+  if (ui.page === "repair" || typing) {
+    showToastBanner(msg);
+    return;
+  }
   render();
-  setTimeout(() => { ui.toast = ""; ui.keepScroll = true; render(); }, 1800);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { ui.toast = ""; ui.keepScroll = true; render(); }, 1800);
 }
 function sendRemoteNotify(target, title, body) {
   fetch(LINE_HOOK + "/api/push", {
@@ -3135,7 +3161,8 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${keep ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  const still = keep || ui.page === "repair" || ui.page === "repair-done";
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${still ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindInstallSheet();
   bindNotifyGuide();
@@ -3686,7 +3713,7 @@ function repairView() {
     <div class="screen">
       <div class="form-grid" id="repair-form">
         ${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}
-        <textarea id="repair-note" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
+        <textarea id="repair-note" class="repair-note" rows="4" autocomplete="off" enterkeyhint="done" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
         <label class="upload">上傳照片<input id="repair-photo" type="file" accept="image/*" multiple hidden /></label>
         <label class="upload">上傳影片<input id="repair-video" type="file" accept="video/*" hidden /></label>
         <div id="media-preview">${pendingPreviewHtml()}</div>
@@ -5390,7 +5417,9 @@ function bindTenant() {
   };
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
-      ui.page = el.dataset.page;
+      const next = el.dataset.page;
+      if (next === ui.page) return;
+      ui.page = next;
       if (ui.page === "repair" && ui.tenantId) {
         let changed = false;
         state.repairs.forEach(r => {
@@ -5522,13 +5551,10 @@ function bindTenant() {
   const repairNote = document.getElementById("repair-note");
   if (repairNote) {
     repairNote.addEventListener("input", () => { ui.repairNote = repairNote.value; });
-    repairNote.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
-    repairNote.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
-  }
-  const repairForm = document.getElementById("repair-form");
-  if (repairForm) {
-    repairForm.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
-    repairForm.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+    repairNote.addEventListener("focus", () => {
+      const z = document.querySelector(".zoom-page");
+      if (z) { z.classList.add("keep-still"); z.style.transform = "none"; z.style.animation = "none"; }
+    });
   }
   bindMediaViewers();
   const contracts = (myRoom() && myRoom().contractImages) || [];

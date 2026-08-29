@@ -275,6 +275,20 @@ textarea, input[type="text"], input[type="date"], input[type="datetime-local"], 
   -webkit-user-select: text; user-select: text;
 }
 textarea { min-height: 92px; resize: vertical; }
+#repair-note, .repair-note {
+  position: relative;
+  z-index: 6;
+  min-height: 120px;
+  font-size: 16px;
+  line-height: 1.5;
+  touch-action: manipulation;
+  transform: none !important;
+  animation: none !important;
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#repair-form { transform: none !important; animation: none !important; }
 .primary, .ghost, .danger, .btn-dark, .btn-navy {
   border: 0; border-radius: 14px; padding: 13px 16px;
   font: inherit; font-weight: 700; cursor: pointer; width: 100%;
