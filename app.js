@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:38";
+const APP_VERSION = "2026-08-29-下午4:39";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:39", items: ["工作助手圖塊可上下拖移排序"] },
   { ver: "2026-08-29-下午4:38", items: ["工作助手改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:35", items: ["手機頂部狀態列顏色會跟著主題改變"] },
   { ver: "2026-08-29-下午4:30", items: ["上傳銀行入帳資料可填寫，並改為橫條展開"] },
@@ -4006,7 +4007,7 @@ function bindAdminPageSwipe() {
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, form, input, textarea, select, .tabs, label")) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, form, input, textarea, select, .tabs, label, .ai-block")) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     on = true;
@@ -4113,18 +4114,31 @@ function adminLogs() {
     }).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
 }
+const AI_BLOCKS = ["plan", "errand", "ai", "bank"];
+const AI_BLOCK_KEY = "tongjie_ai_blocks";
+function loadAiBlockOrder() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(AI_BLOCK_KEY) || "[]");
+    if (!Array.isArray(raw)) return AI_BLOCKS.slice();
+    const keep = raw.filter(id => AI_BLOCKS.includes(id));
+    return keep.concat(AI_BLOCKS.filter(id => !keep.includes(id)));
+  } catch { return AI_BLOCKS.slice(); }
+}
+function saveAiBlockOrder(ids) {
+  try { localStorage.setItem(AI_BLOCK_KEY, JSON.stringify(ids.filter(id => AI_BLOCKS.includes(id)))); } catch {}
+}
 function adminAi() {
   const logs = (state.aiLogs || []).slice(-20);
   const slips = (state.bankSlips || []).slice().reverse();
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
   const plan = monthlyErrandPlan();
-  return `<div class="admin-grid list">
-    <div class="card card-body">
+  const parts = {
+    plan: `<div class="card card-body">
       <h2 class="dash-h">本月自動分析</h2>
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
-    </div>
-    <form class="card card-body tenant-slim${ui.errandOpen ? " open" : ""}" id="errand-form" autocomplete="off">
+    </div>`,
+    errand: `<form class="card card-body tenant-slim${ui.errandOpen ? " open" : ""}" id="errand-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head fold-head" id="errand-fold">
         <span class="k">記下銀行業務</span>
         <span class="row-end"><span class="small">${ui.errandOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
@@ -4165,8 +4179,8 @@ function adminAi() {
         ${pics.length ? `<button type="button" class="ghost" data-view-media="${e.id}|image" style="margin-top:8px">查看會計紙本${pics.length > 1 ? "（" + pics.length + "）" : ""}</button>` : ""}
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
       </div>`;
-    }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}
-    <div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
+    }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}`,
+    ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <button type="button" class="row tenant-slim-head fold-head" id="ai-fold">
         <span class="k">工作助手</span>
         <span class="row-end"><span class="small">${ui.aiOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
@@ -4188,8 +4202,8 @@ function adminAi() {
           </form>
         </div>
       </div>
-    </div>
-    <form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
+    </div>`,
+    bank: `<form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head fold-head" id="bank-fold">
         <span class="k">上傳銀行入帳資料</span>
         <span class="row-end"><span class="small">${ui.bankOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
@@ -4215,8 +4229,9 @@ function adminAi() {
         <div class="small">${escapeHtml(s.company || "統潔")}${s.note ? " · " + escapeHtml(s.note) : ""}</div>
         ${(s.media || []).map(m => m.kind === "image" ? `<img src="${m.src}" alt="" style="width:100%;border-radius:12px;margin:8px 0">` : `<a class="ghost" href="${m.src}" download="${escapeHtml(m.name || "檔案")}" style="margin-top:8px;display:block;text-align:center">下載檔案</a>`).join("")}
         <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : ""}
-  </div>`;
+      </div>`).join("") : ""}`
+  };
+  return `<div class="admin-grid list" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
 }
 function parseErrandDay(e) {
   const m = String(e.date || e.createdAt || "").match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -6577,6 +6592,8 @@ function bindAdmin() {
     if (fold) fold.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      const block = fold.closest(".ai-block");
+      if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
       ui.announceOpen = !af.classList.contains("open");
       af.classList.toggle("open", ui.announceOpen);
       const hint = fold.querySelector(".small");
@@ -6643,6 +6660,95 @@ function bindAdmin() {
   bindCashCal();
 }
 
+function bindAiBlockReorder() {
+  const box = document.getElementById("ai-blocks");
+  if (!box) return;
+  let dragEl = null, startY = 0, holdX = 0, originY = 0, armed = false, moved = false;
+  const items = () => [...box.querySelectorAll(":scope > .ai-block")];
+  const pt = e => {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  };
+  const follow = y => {
+    if (!dragEl) return;
+    dragEl.style.transform = "translate3d(0," + (y - startY) + "px,0)";
+  };
+  const onMove = e => {
+    if (!dragEl) return;
+    const p = pt(e);
+    if (!armed) {
+      const dy = p.y - originY, dx = p.x - holdX;
+      if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy)) { dragEl = null; return; }
+      if (Math.abs(dy) < 10) return;
+      armed = true;
+      moved = true;
+      box.classList.add("sorting");
+      dragEl.classList.add("dragging");
+      try { if (navigator.vibrate) navigator.vibrate(10); } catch {}
+    }
+    if (e.cancelable) e.preventDefault();
+    moved = true;
+    follow(p.y);
+    const midY = dragEl.getBoundingClientRect().top + dragEl.offsetHeight / 2;
+    for (const t of items()) {
+      if (t === dragEl) continue;
+      const mid = t.getBoundingClientRect().top + t.offsetHeight / 2;
+      const from = items().indexOf(dragEl);
+      const to = items().indexOf(t);
+      if (from < to && midY > mid) {
+        const top = dragEl.getBoundingClientRect().top;
+        box.insertBefore(dragEl, t.nextSibling);
+        startY += dragEl.getBoundingClientRect().top - top;
+        follow(p.y);
+        break;
+      }
+      if (from > to && midY < mid) {
+        const top = dragEl.getBoundingClientRect().top;
+        box.insertBefore(dragEl, t);
+        startY += dragEl.getBoundingClientRect().top - top;
+        follow(p.y);
+        break;
+      }
+    }
+  };
+  const onEnd = () => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("touchmove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("touchend", onEnd);
+    window.removeEventListener("pointercancel", onEnd);
+    if (dragEl) {
+      dragEl.style.transform = "";
+      dragEl.classList.remove("dragging");
+      if (moved) {
+        dragEl.dataset.dragged = "1";
+        saveAiBlockOrder(items().map(n => n.dataset.aiBlock));
+      }
+    }
+    box.classList.remove("sorting");
+    dragEl = null;
+    armed = false;
+    moved = false;
+  };
+  box.addEventListener("pointerdown", e => {
+    if (e.target.closest("input, textarea, select, a, label.upload, [data-ai-q], [data-del-errand], [data-del-slip], [data-view-media]")) return;
+    const block = e.target.closest(".ai-block");
+    if (!block) return;
+    const p = pt(e);
+    dragEl = block;
+    startY = p.y;
+    originY = p.y;
+    holdX = p.x;
+    armed = false;
+    moved = false;
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("touchend", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+  });
+}
 function bindAdminAi() {
   const ask = q => {
     const text = String(q || "").trim();
@@ -6659,6 +6765,8 @@ function bindAdminAi() {
   if (aiFold && aiCard) aiFold.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    const block = aiFold.closest(".ai-block");
+    if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
     ui.aiOpen = !aiCard.classList.contains("open");
     aiCard.classList.toggle("open", ui.aiOpen);
     const hint = aiFold.querySelector(".small");
@@ -6679,6 +6787,8 @@ function bindAdminAi() {
     if (fold) fold.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      const block = fold.closest(".ai-block");
+      if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
       ui.errandOpen = !errand.classList.contains("open");
       errand.classList.toggle("open", ui.errandOpen);
       const hint = fold.querySelector(".small");
@@ -6773,6 +6883,8 @@ function bindAdminAi() {
     if (fold) fold.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      const block = fold.closest(".ai-block");
+      if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
       ui.bankOpen = !bank.classList.contains("open");
       bank.classList.toggle("open", ui.bankOpen);
       const hint = fold.querySelector(".small");
@@ -6814,6 +6926,7 @@ function bindAdminAi() {
       save(); render();
     };
   });
+  bindAiBlockReorder();
 }
 function bindCashCal() {
   ensureCalMonth();
