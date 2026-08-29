@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午3:28";
+const APP_VERSION = "2026-08-29-下午3:32";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午3:32", items: ["記下銀行業務欄位改為可點擊填寫"] },
   { ver: "2026-08-29-下午3:28", items: ["記下銀行業務欄位可點擊填寫"] },
   { ver: "2026-08-29-下午3:24", items: ["記下銀行業務可正常填寫並登錄"] },
   { ver: "2026-08-29-下午2:55", items: ["開發者公告改用男客服頭貼"] },
@@ -3993,7 +3994,7 @@ function bindAdminPageSwipe() {
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
-    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, input, textarea, select, .tabs")) return;
+    if (e.target.closest(".swipe-wrap, .cal-grid, .seg, .tenant-search, .rev-card, .rev-sheet, .rev-zoom, #rev-zoom, form, input, textarea, select, .tabs, label")) return;
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
     on = true;
@@ -4111,28 +4112,26 @@ function adminAi() {
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
     </div>
-    <form class="card card-body" id="errand-form">
+    <form class="card card-body" id="errand-form" autocomplete="off">
       <h2 class="dash-h">記下銀行業務</h2>
       <p class="small">每次去銀行都記一筆，之後會自動算出每個月該做的事。</p>
-      <div class="cal-form-row">
-        <input name="date" type="date" value="${ymdOf(nowStamp())}" />
-        <input name="title" type="text" placeholder="事項，例如 存提款／對帳" />
-      </div>
-      <div class="cal-form-row">
-        <select name="place">
+      <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
+      <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 存提款／對帳" /></label>
+      <label class="field"><span>銀行</span>
+        <select id="errand-place" name="place">
           <option value="聯邦銀行">聯邦銀行</option>
           <option value="兆豐銀行">兆豐銀行</option>
           <option value="農會">農會</option>
           <option value="郵局">郵局</option>
         </select>
-        <input name="amount" type="text" placeholder="金額（選填）" />
-      </div>
-      <div class="cal-form-row">
-        <select name="company">
+      </label>
+      <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 5000" /></label>
+      <label class="field"><span>帳戶</span>
+        <select id="errand-company" name="company">
           ${bookAccountOptions("統潔")}
         </select>
-        <input name="note" type="text" placeholder="備註（選填）" />
-      </div>
+      </label>
+      <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="備註" /></label>
       <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
       <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
       <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
@@ -6614,7 +6613,7 @@ function bindAdminAi() {
   const errand = document.getElementById("errand-form");
   if (errand) errand.onsubmit = e => {
     e.preventDefault();
-    const title = formVal(errand, "title").trim();
+    const title = formVal(errand, "item").trim();
     const date = formVal(errand, "date").trim();
     if (!title || !date) { toast("請填事項與日期"); return; }
     const amount = Number(String(formVal(errand, "amount")).replace(/[^\d.]/g, "")) || 0;
@@ -6638,6 +6637,10 @@ function bindAdminAi() {
     save();
     toast(amount ? "登錄成功，已納入進出帳與整體報表" : "登錄成功");
   };
+  document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea").forEach(el => {
+    el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+    el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+  });
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -6862,36 +6865,6 @@ document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
 });
-(function bindTextSelectCopy() {
-  let dragging = false, x0 = 0, y0 = 0;
-  const isField = el => el && el.closest && el.closest("input, textarea, select, button, a, label, option, .seg");
-  document.addEventListener("mousedown", e => {
-    if (e.button !== 0) return;
-    if (isField(e.target)) { dragging = false; return; }
-    dragging = false;
-    x0 = e.clientX;
-    y0 = e.clientY;
-  }, true);
-  document.addEventListener("mousemove", e => {
-    if (e.buttons !== 1) return;
-    if (isField(e.target)) return;
-    if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) dragging = true;
-  }, true);
-  document.addEventListener("click", e => {
-    if (isField(e.target)) { dragging = false; return; }
-    const sel = window.getSelection && window.getSelection();
-    const text = sel ? String(sel.toString() || "").trim() : "";
-    if (dragging && text) {
-      e.stopPropagation();
-      dragging = false;
-      return;
-    }
-    dragging = false;
-    if (text && !e.target.closest(".k, .v, p, td, th, .small, .contract-doc, h1, h2, h3, h4, .chip")) {
-      sel.removeAllRanges();
-    }
-  }, true);
-})();
 function bindPullRefresh() {
   const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
   if (!sc) return;
@@ -6912,7 +6885,7 @@ function bindPullRefresh() {
   };
   sc.addEventListener("touchstart", e => {
     if (busy || sc.scrollTop > 2) { pulling = false; return; }
-    if (e.target.closest("input, textarea, select, canvas, .swipe-wrap, .seg, .tabs, button")) return;
+    if (e.target.closest("form, input, textarea, select, canvas, .swipe-wrap, .seg, .tabs, button, label")) return;
     y0 = e.touches[0].clientY;
     pulling = true;
     dy = 0;
