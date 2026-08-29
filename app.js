@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:19";
+const APP_VERSION = "2026-08-29-下午4:27";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:27", items: ["記下銀行業務改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:19", items: ["發布公告改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午3:32", items: ["記下銀行業務欄位改為可點擊填寫"] },
   { ver: "2026-08-29-下午3:28", items: ["記下銀行業務欄位可點擊填寫"] },
@@ -881,7 +882,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -4113,30 +4114,37 @@ function adminAi() {
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
     </div>
-    <form class="card card-body" id="errand-form" autocomplete="off">
-      <h2 class="dash-h">記下銀行業務</h2>
-      <p class="small">每次去銀行都記一筆，之後會自動算出每個月該做的事。</p>
-      <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
-      <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 存提款／對帳" /></label>
-      <label class="field"><span>銀行</span>
-        <select id="errand-place" name="place">
-          <option value="聯邦銀行">聯邦銀行</option>
-          <option value="兆豐銀行">兆豐銀行</option>
-          <option value="農會">農會</option>
-          <option value="郵局">郵局</option>
-        </select>
-      </label>
-      <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 5000" /></label>
-      <label class="field"><span>帳戶</span>
-        <select id="errand-company" name="company">
-          ${bookAccountOptions("統潔")}
-        </select>
-      </label>
-      <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="備註" /></label>
-      <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
-      <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
-      <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
-      <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
+    <form class="card card-body tenant-slim${ui.errandOpen ? " open" : ""}" id="errand-form" autocomplete="off">
+      <button type="button" class="row tenant-slim-head fold-head" id="errand-fold">
+        <span class="k">記下銀行業務</span>
+        <span class="row-end"><span class="small">${ui.errandOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+      </button>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">每次去銀行都記一筆，之後會自動算出每個月該做的事。</p>
+          <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
+          <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 存提款／對帳" /></label>
+          <label class="field"><span>銀行</span>
+            <select id="errand-place" name="place">
+              <option value="聯邦銀行">聯邦銀行</option>
+              <option value="兆豐銀行">兆豐銀行</option>
+              <option value="農會">農會</option>
+              <option value="郵局">郵局</option>
+            </select>
+          </label>
+          <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 5000" /></label>
+          <label class="field"><span>帳戶</span>
+            <select id="errand-company" name="company">
+              ${bookAccountOptions("統潔")}
+            </select>
+          </label>
+          <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="備註" /></label>
+          <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
+          <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
+          <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
+          <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
+        </div>
+      </div>
     </form>
     ${errands.length ? errands.map(e => {
       const pics = (e.media || []).filter(m => m.kind === "image");
@@ -6631,7 +6639,17 @@ function bindAdminAi() {
     ask(box && box.value);
   };
   const errand = document.getElementById("errand-form");
-  if (errand) errand.onsubmit = e => {
+  if (errand) {
+    const fold = document.getElementById("errand-fold");
+    if (fold) fold.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.errandOpen = !errand.classList.contains("open");
+      errand.classList.toggle("open", ui.errandOpen);
+      const hint = fold.querySelector(".small");
+      if (hint) hint.textContent = ui.errandOpen ? "點擊收起" : "點擊展開";
+    };
+    errand.onsubmit = e => {
     e.preventDefault();
     const title = formVal(errand, "item").trim();
     const date = formVal(errand, "date").trim();
@@ -6650,17 +6668,19 @@ function bindAdminAi() {
       ui.calDay = Number(p[2]);
     }
     ui.errandMedia = [];
+    ui.errandOpen = false;
     if (amount) {
       if (!state.aiLogs) state.aiLogs = [];
       state.aiLogs.push({ role: "ai", text: "已查看銀行業務「" + title + "」" + money(amount) + "（" + company + "）。若與現有記帳同一天同金額同帳戶，進出帳與整體報表只計一筆。" });
     }
     save();
     toast(amount ? "登錄成功，已納入進出帳與整體報表" : "登錄成功");
-  };
-  document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea").forEach(el => {
-    el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
-    el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
-  });
+    };
+    document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    });
+  }
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();

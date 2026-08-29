@@ -1081,6 +1081,12 @@ img.avatar { object-fit: cover; display: block; }
   transition: transform .28s ease;
   margin-left: 2px;
 }
+.fold-head {
+  width: 100%; margin: 0; padding: 6px 0;
+  border: 0; background: transparent; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
 #announce-fold {
   width: 100%; margin: 0; padding: 6px 0;
   border: 0; background: transparent; cursor: pointer;
