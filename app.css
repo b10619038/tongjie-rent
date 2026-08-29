@@ -165,10 +165,7 @@ input, textarea, select {
 .weather-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 0 0 28px 28px;
-  margin: 0 0 6px;
   min-height: 118px;
-  transition: background .6s ease, color .4s ease;
 }
 .weather-hero .sky-fx {
   position: absolute; inset: 0;
@@ -177,29 +174,6 @@ input, textarea, select {
 }
 .weather-hero .who-line,
 .weather-hero .back { position: relative; z-index: 1; }
-.weather-hero[data-sky="sun"] {
-  background: linear-gradient(180deg, #6ec4ea 0%, #ffe18a 58%, #fff1c4 100%);
-  color: #1d2a30;
-}
-.weather-hero[data-sky="sun"] .eyebrow { color: #5a6a72; }
-.weather-hero[data-sky="sun"] .back { color: #3d5c48; }
-.weather-hero[data-sky="cloud"] {
-  background: linear-gradient(180deg, #8ea0b0 0%, #c2ced6 55%, #dbe3e8 100%);
-  color: #243038;
-}
-.weather-hero[data-sky="cloud"] .eyebrow { color: #5c6b74; }
-.weather-hero[data-sky="rain"] {
-  background: linear-gradient(180deg, #3e5566 0%, #67808e 100%);
-  color: #f3f7fa;
-}
-.weather-hero[data-sky="rain"] .eyebrow { color: rgba(255,255,255,.72); }
-.weather-hero[data-sky="rain"] .back { color: #e8f0e8; }
-.weather-hero[data-sky="storm"] {
-  background: linear-gradient(180deg, #0e1218 0%, #243040 100%);
-  color: #f4f7fb;
-}
-.weather-hero[data-sky="storm"] .eyebrow { color: rgba(255,255,255,.7); }
-.weather-hero[data-sky="storm"] .back { color: #dce8dc; }
 
 .sky-fx .sun-ball {
   position: absolute; right: 26px; top: 6px;
@@ -212,37 +186,39 @@ input, textarea, select {
   position: absolute; right: -6px; top: -28px;
   width: 150px; height: 150px;
   background: repeating-conic-gradient(#ffe27a 0 7deg, transparent 7deg 20deg);
-  opacity: .55;
+  opacity: .5;
   animation: sunRays 7s linear infinite;
   -webkit-mask-image: radial-gradient(circle, transparent 26%, #000 30%, #000 46%, transparent 58%);
   mask-image: radial-gradient(circle, transparent 26%, #000 30%, #000 46%, transparent 58%);
 }
 .sky-fx .spark {
   position: absolute; width: 7px; height: 7px; border-radius: 50%;
-  background: #fff; box-shadow: 0 0 8px #fff7b0;
+  background: #ffd24a; box-shadow: 0 0 8px #ffd24a;
   right: calc(18px + var(--i) * 16px); top: 42%;
   animation: sparkFly 2.2s ease-in-out infinite;
   animation-delay: calc(var(--i) * .28s);
 }
 .sky-fx .cld {
   position: absolute; height: 40px; border-radius: 40px;
-  background: #fff; opacity: .82;
+  background: #d7dee4;
+  box-shadow: 18px 8px 0 0 #c5ced6;
+  opacity: .9;
   animation: cloudMove linear infinite;
 }
 .sky-fx .cld.a { width: 150px; top: 10px; animation-duration: 14s; }
-.sky-fx .cld.b { width: 110px; top: 42px; height: 32px; opacity: .58; animation-duration: 20s; animation-delay: -6s; }
-.sky-fx .cld.c { width: 90px; top: 18px; height: 28px; opacity: .7; animation-duration: 11s; animation-delay: -3s; }
-.sky-fx .cld.d { width: 130px; top: 62px; height: 34px; opacity: .5; animation-duration: 18s; animation-delay: -9s; }
+.sky-fx .cld.b { width: 110px; top: 42px; height: 32px; opacity: .7; animation-duration: 20s; animation-delay: -6s; }
+.sky-fx .cld.c { width: 90px; top: 18px; height: 28px; opacity: .8; animation-duration: 11s; animation-delay: -3s; }
+.sky-fx .cld.d { width: 130px; top: 62px; height: 34px; opacity: .55; animation-duration: 18s; animation-delay: -9s; }
 .sky-fx .drop {
   position: absolute; top: -24px; width: 2px;
-  background: linear-gradient(transparent, rgba(255,255,255,.95));
+  background: linear-gradient(transparent, rgba(80,110,128,.85));
   border-radius: 2px;
   animation: dropFall linear infinite;
   opacity: .8;
 }
 .weather-hero[data-sky="storm"] .sky-fx .drop {
   width: 2.5px;
-  background: linear-gradient(transparent, rgba(190,220,255,.95));
+  background: linear-gradient(transparent, rgba(50,70,90,.95));
 }
 .sky-fx .flash {
   position: absolute; inset: 0;
@@ -251,10 +227,10 @@ input, textarea, select {
 .sky-fx .bolt {
   position: absolute; right: 16%; top: 6px;
   width: 22px; height: 54px;
-  background: #fffbe8;
+  background: #8aa0c8;
   clip-path: polygon(62% 0, 18% 52%, 46% 52%, 28% 100%, 82% 38%, 54% 38%);
   opacity: 0;
-  filter: drop-shadow(0 0 10px #fff);
+  filter: drop-shadow(0 0 8px #9eb4dc);
   animation: boltFlash 3.6s ease-in-out infinite;
 }
 @keyframes sunPulse {
@@ -277,9 +253,9 @@ input, textarea, select {
 }
 @keyframes lightning {
   0%, 84%, 100% { background: transparent; }
-  86% { background: rgba(255,255,255,.78); }
+  86% { background: rgba(255,255,255,.55); }
   88% { background: transparent; }
-  90% { background: rgba(200,220,255,.45); }
+  90% { background: rgba(210,220,240,.35); }
   92% { background: transparent; }
 }
 @keyframes boltFlash {

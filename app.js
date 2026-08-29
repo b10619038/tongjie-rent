@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:26";
+const APP_VERSION = "2026-08-29-下午6:30";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:30", items: ["天氣特效改為只留動態圖，不再換背景色"] },
   { ver: "2026-08-29-下午6:26", items: ["天氣背景改為動態特效：太陽、飄雲、落雨、閃電"] },
   { ver: "2026-08-29-下午6:19", items: ["租客問候區依鳳山即時天氣顯示晴天／陰天／雨天／大雷雨"] },
   { ver: "2026-08-29-下午6:07", items: ["銀行入帳與銀行業務改為吸收檔案文字記入帳本，不再留圖片"] },
