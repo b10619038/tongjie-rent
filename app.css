@@ -938,13 +938,13 @@ input[type="file"] {
 .solar-card { min-width: 0; }
 .solar-shot {
   margin-left: auto;
-  width: 46%;
-  max-width: 240px;
-  height: 92px;
+  width: 48%;
+  max-width: 260px;
+  height: 110px;
   object-fit: contain;
   object-position: right center;
   background: transparent;
-  border-radius: 12px;
+  border-radius: 0;
   flex: 0 0 auto;
   pointer-events: none;
 }
