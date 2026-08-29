@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:37";
+const APP_VERSION = "2026-08-29-下午8:38";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:38", items: ["收合橫條移除點擊展開文字"] },
   { ver: "2026-08-29-下午8:37", items: ["內容四個按鈕改回兩兩一排"] },
   { ver: "2026-08-29-下午8:36", items: ["點本月未繳可進入繳費租金"] },
   { ver: "2026-08-29-下午8:33", items: ["後台頂部分頁改為不重畫底條，滑動更順"] },
@@ -4527,7 +4528,7 @@ function adminAi() {
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
           <span class="k">記下銀行業務</span>
-          <span class="row-end"><span class="small">${ui.errandOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+          <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
       </div>
@@ -4568,7 +4569,7 @@ function adminAi() {
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="ai-fold">
           <span class="k">工作助手</span>
-          <span class="row-end"><span class="small">${ui.aiOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+          <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
       </div>
@@ -4594,7 +4595,7 @@ function adminAi() {
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="bank-fold">
           <span class="k">上傳銀行入帳資料</span>
-          <span class="row-end"><span class="small">${ui.bankOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+          <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
       </div>
@@ -4733,7 +4734,7 @@ function adminAnnounce() {
     <form class="card card-body tenant-slim${open ? " open" : ""}" id="announce-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head" id="announce-fold">
         <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">發布公告</span></span>
-        <span class="row-end"><span class="small">${open ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+        <span class="row-end"><span class="fold-caret"></span></span>
       </button>
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
