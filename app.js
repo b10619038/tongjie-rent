@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:42";
+const APP_VERSION = "2026-08-29-下午8:44";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:44", items: ["後台頂部分頁改回原本樣式，不再放大跳動"] },
   { ver: "2026-08-29-下午8:42", items: ["修復立即更新按鈕沒有反應"] },
   { ver: "2026-08-29-下午8:41", items: ["更新視窗標題改為這次更新內容如下"] },
   { ver: "2026-08-29-下午8:40", items: ["修復點更新列沒有跳出更新內容"] },
@@ -4257,34 +4258,21 @@ function bindTabPill() {
   const bg = track && track.querySelector(".tab-bg");
   const on = track && track.querySelector(".tab.on");
   if (!track || !bg || !on) return;
-  const go = (scale) => {
-    const s = scale == null ? 1.08 : scale;
-    bg.style.setProperty("--tx", on.offsetLeft + "px");
-    bg.style.setProperty("--ty", on.offsetTop + "px");
+  const go = () => {
     bg.style.width = on.offsetWidth + "px";
     bg.style.height = on.offsetHeight + "px";
-    bg.style.transform = "translate3d(" + on.offsetLeft + "px," + on.offsetTop + "px,0) scale(" + s + ")";
+    bg.style.transform = "translate3d(" + on.offsetLeft + "px," + on.offsetTop + "px,0)";
   };
   const prev = ui.tabPill;
-  bg.classList.remove("land");
   if (!prev) {
     bg.style.transition = "none";
-    go(1.08);
+    go();
     requestAnimationFrame(() => {
       bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1)";
     });
   } else {
     bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1)";
-    go(1.08);
-    let done = false;
-    const land = () => {
-      if (done) return;
-      done = true;
-      on.classList.add("land");
-      bg.classList.add("land");
-    };
-    bg.addEventListener("transitionend", land, { once: true });
-    setTimeout(land, 480);
+    go();
   }
   ui.tabPill = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
 }
@@ -6821,22 +6809,6 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-admin]").forEach(btn => {
-    if (btn.classList.contains("tab")) {
-      btn.onpointerdown = () => {
-        btn.style.transition = "transform .2s cubic-bezier(.22,.82,.22,1)";
-        btn.style.transform = "scale(1.18)";
-        const bg = document.querySelector(".tab-bg");
-        if (bg) {
-          const x = btn.offsetLeft, y = btn.offsetTop;
-          bg.style.setProperty("--tx", x + "px");
-          bg.style.setProperty("--ty", y + "px");
-          bg.style.transition = "transform .2s cubic-bezier(.22,.82,.22,1), width .2s cubic-bezier(.22,.82,.22,1), height .2s cubic-bezier(.22,.82,.22,1)";
-          bg.style.width = btn.offsetWidth + "px";
-          bg.style.height = btn.offsetHeight + "px";
-          bg.style.transform = "translate3d(" + x + "px," + y + "px,0) scale(1.18)";
-        }
-      };
-    }
     btn.onclick = e => {
       if (btn.classList.contains("tab") && btn.dataset.dragged === "1") {
         delete btn.dataset.dragged;
