@@ -605,7 +605,22 @@ textarea { min-height: 92px; resize: vertical; }
 .btn-navy:disabled { opacity: 0.55; cursor: default; background: var(--teal); }
 .ghost { background: var(--card); color: var(--teal); border: 1.5px solid var(--line); }
 .danger { background: var(--rose-soft); color: var(--rose); }
-.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.nudge-bounce {
+  position: relative;
+  isolation: isolate;
+  animation: esignBounce .7s cubic-bezier(.22,1.4,.32,1) .9s both;
+  z-index: 1;
+}
+.nudge-bounce::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--teal);
+  pointer-events: none;
+  opacity: 0;
+  animation: esignEdge 1.6s ease-out 1.5s infinite;
+}
 .btn-row .btn-navy { grid-column: 1 / -1; }
 .copy-row {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 8px;
