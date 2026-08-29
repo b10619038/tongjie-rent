@@ -1473,7 +1473,12 @@ img.avatar { object-fit: cover; display: block; }
   transition: grid-template-rows .38s cubic-bezier(.22,.82,.22,1);
 }
 .tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; }
+.tenant-slim-inner { overflow: hidden; min-height: 0; }
 .tenant-slim.open .tenant-slim-inner { overflow: visible; }
+.tenant-slim:not(.open) .tenant-slim-body {
+  grid-template-rows: 0fr;
+  overflow: hidden;
+}
 #ai-form {
   position: relative;
   z-index: 8;
