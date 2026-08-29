@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:29";
+const APP_VERSION = "2026-08-30-上午12:32";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:29", items: ["所有資產預設全部收合"] },
+  { ver: "2026-08-30-上午12:32", items: ["一次多張照片會分開問公司與銀行"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -3648,18 +3648,16 @@ function guessBill(text) {
   if (/繳費單|繳款單|帳單|繳費/.test(s)) return { name: "繳費", place: "超商" };
   return null;
 }
-function inferFromUpload(files) {
-  const list = [...(files || [])];
-  const names = list.map(f => f.name).join(" ");
-  const blob = names;
+function inferOneFile(file) {
+  const blob = String((file && file.name) || "");
   const party = guessParty(blob);
   const bill = guessBill(blob);
-  const meta = list.map(f => guessMetaFromName(f.name));
-  const date = (meta.find(x => x.date) || {}).date || (list[0] && list[0].lastModified
-    ? (() => { const d = new Date(list[0].lastModified); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()
+  const meta = guessMetaFromName(blob);
+  const date = meta.date || (file && file.lastModified
+    ? (() => { const d = new Date(file.lastModified); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()
     : ymdOf(nowStamp()));
-  const amount = (meta.find(x => x.amount) || {}).amount || (party && !bill && party.rent) || 0;
-  const bank = guessBank(blob) || (meta.find(x => x.bank) || {}).bank || "";
+  const amount = meta.amount || (party && !bill && party.rent) || 0;
+  const bank = guessBank(blob) || meta.bank || "";
   let title = "現場紀錄";
   let company = cellAccount(blob) || "";
   let pendingBank = false;
@@ -3669,7 +3667,6 @@ function inferFromUpload(files) {
     title = "繳費　" + bill.name;
     cashType = "out";
     place = place || bill.place;
-    if (!company) company = "統潔";
   } else if (/收租|租金|收現|現金|收錢/.test(blob) || (party && !bank && !/存摺|對帳|簿子/.test(blob))) {
     title = party ? ("收租　" + party.name) : "收租／收現";
     company = "現金(保險箱)";
@@ -3679,7 +3676,7 @@ function inferFromUpload(files) {
   } else if (/超商/.test(blob) && !bank) {
     title = "超商";
     place = "超商";
-  } else if (/存摺|對帳|簿子|入帳|銀行/.test(blob) || bank) {
+  } else if (/存摺|對帳|簿子|入帳|銀行|聯邦|兆豐|農會/.test(blob) || bank) {
     title = "跑銀行／入帳";
     place = place || "";
     cashType = cashType === "out" ? "out" : "in";
@@ -3692,35 +3689,44 @@ function inferFromUpload(files) {
   }
   return {
     date, title, place, amount, company,
-    note: [bill && bill.name, party && party.name, names].filter(Boolean).join(" · "),
-    pendingBank, party, bill, files: names, cashType,
+    note: [bill && bill.name, party && party.name, blob].filter(Boolean).join(" · "),
+    pendingBank, party, bill, files: blob, fileName: blob, cashType,
     needCompany: !company,
     needBank: !place && cashType !== "out" && !pendingBank,
     needAmount: !amount
   };
 }
+function inferFromUpload(files) {
+  const list = [...(files || [])].filter(f => !isSheetFile(f)).map(inferOneFile);
+  return list.length === 1 ? list[0] : { items: list, title: list.length + " 張照片" };
+}
+function errandGuessList() {
+  if (Array.isArray(ui.errandGuesses) && ui.errandGuesses.length) return ui.errandGuesses;
+  if (ui.errandGuess && ui.errandGuess.items) return ui.errandGuess.items;
+  if (ui.errandGuess) return [ui.errandGuess];
+  return [];
+}
 function errandGuessHtml(g) {
-  if (!g) return `<div id="errand-guess-box"><div class="mini" id="errand-guess"><b>預判</b><span>直接上傳即可，不用先選銀行或公司。分不出來才會問你。</span></div></div>`;
-  const bits = [
-    g.date, g.title, g.place, g.company,
-    g.amount ? money(g.amount) : "",
-    g.cashType === "out" ? "支出" : "",
-    g.pendingBank ? "先入現金，待存銀行" : ""
-  ].filter(Boolean);
-  const askCo = g.needCompany ? `<div class="bank-picks guess-picks">${["統潔", "信潔", "聯名戶", "現金(保險箱)"].map(c => `<button type="button" class="bank-pick" data-guess-co="${c}">${c}</button>`).join("")}</div>` : "";
-  const askBk = g.needBank ? `<div class="bank-picks guess-picks">${BANK_PLACES.map(b => `<button type="button" class="bank-pick" data-guess-bk="${b}">${b}</button>`).join("")}</div>` : "";
-  const hint = g.needAmount ? `<div class="small">照片裡若看得到金額，請把檔名帶上數字，或改傳 Excel／明細，計算才準。</div>` : "";
-  return `<div id="errand-guess-box">
-    <div class="mini" id="errand-guess"><b>預判</b><span>${escapeHtml(bits.join(" · ") || "已收到檔案")}</span></div>
-    ${g.needCompany ? `<div class="small">這筆是哪間公司？</div>${askCo}` : ""}
-    ${g.needBank ? `<div class="small">這本是哪家銀行？</div>${askBk}` : ""}
-    ${hint}
-  </div>`;
+  const list = Array.isArray(g) ? g : errandGuessList();
+  if (!list.length) return `<div id="errand-guess-box"><div class="mini" id="errand-guess"><b>預判</b><span>一次可拍很多本、不用照順序。每張會分開預判，分不出公司或銀行才問你。</span></div></div>`;
+  return `<div id="errand-guess-box">${list.map((item, i) => {
+    const bits = [
+      item.fileName || ("照片 " + (i + 1)),
+      item.date, item.title, item.place, item.company,
+      item.amount ? money(item.amount) : "",
+      item.cashType === "out" ? "支出" : "",
+      item.pendingBank ? "先入現金，待存銀行" : ""
+    ].filter(Boolean);
+    const askCo = item.needCompany ? `<div class="small">這張是哪間公司？</div><div class="bank-picks guess-picks">${["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"].map(c => `<button type="button" class="bank-pick${item.company === c ? " on" : ""}" data-guess-i="${i}" data-guess-co="${c}">${c}</button>`).join("")}</div>` : "";
+    const askBk = item.needBank ? `<div class="small">這本是哪家銀行？</div><div class="bank-picks guess-picks">${BANK_PLACES.map(b => `<button type="button" class="bank-pick${item.place === b ? " on" : ""}" data-guess-i="${i}" data-guess-bk="${b}">${b}</button>`).join("")}</div>` : "";
+    const hint = item.needAmount ? `<div class="small">這張還沒讀到金額。檔名帶數字，或改傳 Excel 會比較準。</div>` : "";
+    return `<div class="mini errand-shot"><b>照片 ${i + 1}</b><span>${escapeHtml(bits.join(" · "))}</span>${askCo}${askBk}${hint}</div>`;
+  }).join("")}</div>`;
 }
 function refreshErrandGuessBox() {
   const box = document.getElementById("errand-guess-box") || document.getElementById("errand-guess");
   if (!box) return;
-  const html = errandGuessHtml(ui.errandGuess);
+  const html = errandGuessHtml(errandGuessList());
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   if (tmp.firstElementChild) box.replaceWith(tmp.firstElementChild);
@@ -3731,9 +3737,13 @@ function bindErrandGuessPicks() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      if (!ui.errandGuess) ui.errandGuess = {};
-      ui.errandGuess.company = btn.dataset.guessCo;
-      ui.errandGuess.needCompany = false;
+      const list = errandGuessList();
+      const i = Number(btn.dataset.guessI) || 0;
+      if (!list[i]) return;
+      list[i].company = btn.dataset.guessCo;
+      list[i].needCompany = false;
+      ui.errandGuesses = list;
+      ui.errandGuess = list[0] || null;
       refreshErrandGuessBox();
     };
   });
@@ -3741,9 +3751,13 @@ function bindErrandGuessPicks() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      if (!ui.errandGuess) ui.errandGuess = {};
-      ui.errandGuess.place = btn.dataset.guessBk;
-      ui.errandGuess.needBank = false;
+      const list = errandGuessList();
+      const i = Number(btn.dataset.guessI) || 0;
+      if (!list[i]) return;
+      list[i].place = btn.dataset.guessBk;
+      list[i].needBank = false;
+      ui.errandGuesses = list;
+      ui.errandGuess = list[0] || null;
       refreshErrandGuessBox();
     };
   });
@@ -4979,7 +4993,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">不用先分類。直接上傳繳費單、收據、存摺或 Excel；系統會預判。只有分不出公司或銀行時，才要點一下。繳費單會當支出記入。</p>
+          <p class="small" style="margin-top:10px">一次可以拍很多本、不用照順序。每張照片會分開預判；分不出公司（統潔／信潔／聯名戶／個人／現金）或銀行（聯邦／兆豐／農會／超商）時，會跳出讓你選。</p>
           ${errandGuessHtml(ui.errandGuess)}
           <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
@@ -7817,67 +7831,80 @@ function bindAdminAi() {
     };
     errand.onsubmit = e => {
     e.preventDefault();
-    const g = ui.errandGuess;
-    if (!g && !ui.errandAbsorb) { toast("請先上傳照片或檔案"); return; }
-    const date = ymdOf((g && g.date) || nowStamp());
-    const amount = Number(g && g.amount) || 0;
-    const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
-    const place = (g && g.place) || "";
-    const note = (g && g.note) || ui.errandAbsorb || "";
-    const company = normalizeBookCompany((g && g.company) || "統潔");
-    const id = "er" + Date.now();
+    const list = errandGuessList();
+    if (!list.length) {
+      if (ui.errandAbsorb) {
+        toast("Excel 已記入進出帳");
+        ui.errandAbsorb = "";
+        ui.keepScroll = true;
+        render();
+        return;
+      }
+      toast("請先上傳照片或檔案");
+      return;
+    }
+    const pending = list.filter(x => x.needCompany || x.needBank);
+    if (pending.length) { toast("還有 " + pending.length + " 張還沒選公司或銀行"); return; }
     if (!state.errands) state.errands = [];
     if (!state.books) state.books = [];
-    const pendingBank = !!(g && g.pendingBank);
-    const cashType = (g && g.cashType) === "out" ? "out" : "in";
-    const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子/.test(title) || /聯邦|兆豐|農會/.test(place));
-    const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
-    if (amount && cash) {
-      cash.linkedId = id;
-      cash.pendingBank = false;
-      state.books.push({
-        id: "bk" + Date.now(), type: "out", date, amount, company: "現金(保險箱)",
-        bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id
+    let nCash = 0, nOut = 0, nIn = 0, nLink = 0;
+    list.forEach((g, idx) => {
+      const date = ymdOf((g && g.date) || nowStamp());
+      const amount = Number(g && g.amount) || 0;
+      const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
+      const place = (g && g.place) || "";
+      const note = (g && g.note) || "";
+      const company = normalizeBookCompany((g && g.company) || "統潔");
+      const id = "er" + Date.now() + "-" + idx;
+      const pendingBank = !!(g && g.pendingBank);
+      const cashType = (g && g.cashType) === "out" ? "out" : "in";
+      const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子/.test(title) || /聯邦|兆豐|農會/.test(place));
+      const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
+      if (amount && cash) {
+        cash.linkedId = id;
+        cash.pendingBank = false;
+        state.books.push({
+          id: "bk" + Date.now() + "-c" + idx, type: "out", date, amount, company: "現金(保險箱)",
+          bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id
+        });
+        state.books.push({
+          id: "bk" + Date.now() + "-b" + idx, type: "in", date, amount, company: company === "現金(保險箱)" ? "統潔" : company,
+          bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id
+        });
+        nLink += 1;
+      } else if (amount) {
+        state.books.push({
+          id: "bk" + Date.now() + "-" + idx, type: cashType,
+          date, amount, company, bank: place, note: note || title,
+          pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)")
+        });
+        if (cashType === "out") nOut += 1;
+        else if (pendingBank) nCash += 1;
+        else nIn += 1;
+      }
+      state.errands.push({
+        id, kind: "bank", date, title, place, amount, note, company,
+        pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : "",
+        skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
       });
-      state.books.push({
-        id: "bk" + (Date.now() + 1), type: "in", date, amount, company: company === "現金(保險箱)" ? "統潔" : company,
-        bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id
-      });
-    } else if (amount) {
-      state.books.push({
-        id: "bk" + Date.now(), type: cashType,
-        date, amount, company, bank: place, note: note || title,
-        pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)")
-      });
-    }
-    state.errands.push({
-      id, kind: "bank", date, title, place, amount, note, company,
-      pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : "",
-      skipLedger: true, summary: ui.errandAbsorb || "", createdAt: nowStamp()
+      const p = date.split("-");
+      if (p.length === 3) {
+        ui.calYear = Number(p[0]);
+        ui.calMonth = Number(p[1]);
+        ui.calDay = Number(p[2]);
+      }
     });
-    const p = date.split("-");
-    if (p.length === 3) {
-      ui.calYear = Number(p[0]);
-      ui.calMonth = Number(p[1]);
-      ui.calDay = Number(p[2]);
-    }
     ui.errandMedia = [];
     ui.errandAbsorb = "";
     ui.errandGuess = null;
+    ui.errandGuesses = [];
     ui.errandOpen = true;
-    if (amount) {
+    if (nCash || nOut || nIn || nLink) {
       if (!state.aiLogs) state.aiLogs = [];
-      const msg = cash
-        ? "已對帳：先前現金 " + money(amount) + " 轉入 " + company + "，金流不重複計算。"
-        : pendingBank
-          ? "已記收現行為 " + money(amount) + " 入現金，待之後存摺入帳再對帳。"
-          : cashType === "out"
-            ? "已記繳費支出 " + money(amount) + "（" + company + "）。"
-            : "已查看「" + title + "」" + money(amount) + "（" + company + "）。";
-      state.aiLogs.push({ role: "ai", text: msg });
+      state.aiLogs.push({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
     }
     save();
-    toast(cash ? "已對帳，同一筆錢不重複算" : (pendingBank ? "已記收現，待入銀行" : "登錄成功"));
+    toast("已登錄 " + (list.length || 1) + " 筆");
     ui.keepScroll = true;
     render();
     };
@@ -7897,8 +7924,10 @@ function bindAdminAi() {
   });
   const errandPhoto = document.getElementById("errand-photo");
   if (errandPhoto) errandPhoto.onchange = async () => {
-    const files = errandPhoto.files;
-    ui.errandGuess = inferFromUpload(files);
+    const files = [...(errandPhoto.files || [])];
+    const shots = files.filter(f => !isSheetFile(f)).map(inferOneFile);
+    ui.errandGuesses = shots;
+    ui.errandGuess = shots[0] || null;
     const got = await absorbUploadFiles(files, "errand");
     errandPhoto.value = "";
     const box = document.getElementById("errand-absorb");
