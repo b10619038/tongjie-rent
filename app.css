@@ -759,6 +759,7 @@ input[type="file"] {
   z-index: 0;
   will-change: transform, width;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  transition: transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1);
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
@@ -771,13 +772,14 @@ input[type="file"] {
 }
 .tab.on {
   background: transparent; color: var(--on-teal, #fff);
-  font-size: 16px; font-weight: 800;
+  font-weight: 800;
+  transform: scale(1.08);
 }
-.tab.on.land { animation: tabPop .45s cubic-bezier(.22,1.35,.32,1); }
+.tab.on.land { animation: tabPop .45s cubic-bezier(.22,1.35,.32,1) forwards; }
 @keyframes tabPop {
   0% { transform: scale(1); }
-  40% { transform: scale(1.16); }
-  100% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1.08); }
 }
 .tabs.sorting { scroll-snap-type: none; overflow-x: hidden; touch-action: none; }
 .tabs.sorting .tab, .tab.dragging { touch-action: none; }

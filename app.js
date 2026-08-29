@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:30";
+const APP_VERSION = "2026-08-29-下午8:33";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:33", items: ["後台頂部分頁改為不重畫底條，滑動更順"] },
   { ver: "2026-08-29-下午8:30", items: ["後台頂部分頁滑順移動，點擊後文字放大"] },
   { ver: "2026-08-29-下午8:26", items: ["開發者預覽問候改為您好，開發者"] },
   { ver: "2026-08-29-下午8:24", items: ["問候白底塊取消黑邊"] },
@@ -3423,6 +3424,38 @@ function render() {
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
   if (ui.role === "admin") {
+    const track = document.querySelector(".tabs-track");
+    const sc = document.querySelector(".admin-scroll");
+    if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide")) {
+      document.querySelectorAll(".tabs .tab").forEach(t => {
+        const id = t.dataset.admin;
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
+        t.classList.toggle("on", on);
+        t.classList.remove("land");
+        t.style.transform = "";
+      });
+      bindTabPill();
+      sc.innerHTML = `<div class="admin-static">${adminBody()}</div>`;
+      bindAdmin();
+      bindInstallSheet();
+      bindNotifyGuide();
+      bindUpdateBar();
+      bindThemePicker();
+      if (ui.adminJump === "announce-form") {
+        const el = document.getElementById("announce-form");
+        const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
+        sc.scrollTop = Math.max(0, top);
+      } else if (!pageChanged) {
+        sc.scrollTop = oldAdmin;
+      } else {
+        sc.scrollTop = 0;
+      }
+      ui.adminJump = "";
+      lastRenderRole = ui.role;
+      lastRenderPage = ui.page;
+      ui.keepScroll = false;
+      return;
+    }
     root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
     ui.keepScroll = false;
     bindAdmin();
@@ -3431,16 +3464,16 @@ function render() {
     bindUpdateBar();
     bindThemePicker();
     bindPullRefresh();
-    const sc = document.querySelector(".admin-scroll");
-    if (sc) {
+    const sc2 = document.querySelector(".admin-scroll");
+    if (sc2) {
       if (ui.adminJump === "announce-form") {
         const el = document.getElementById("announce-form");
-        const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
-        sc.scrollTop = Math.max(0, top);
-        requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
+        const top = el ? (el.getBoundingClientRect().top - sc2.getBoundingClientRect().top + sc2.scrollTop - 8) : 0;
+        sc2.scrollTop = Math.max(0, top);
+        requestAnimationFrame(() => { sc2.scrollTop = Math.max(0, top); });
       } else if (!pageChanged) {
-        sc.scrollTop = oldAdmin;
-        requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
+        sc2.scrollTop = oldAdmin;
+        requestAnimationFrame(() => { sc2.scrollTop = oldAdmin; });
       }
     }
     ui.adminJump = "";
@@ -4223,27 +4256,23 @@ function bindTabPill() {
     bg.style.transform = "translate3d(" + on.offsetLeft + "px," + on.offsetTop + "px,0)";
   };
   const prev = ui.tabPill;
-  on.classList.remove("land");
-  if (prev && (prev.x !== on.offsetLeft || prev.w !== on.offsetWidth)) {
-    bg.style.transition = "none";
-    bg.style.width = prev.w + "px";
-    bg.style.height = prev.h + "px";
-    bg.style.transform = "translate3d(" + prev.x + "px," + (prev.y || 0) + "px,0)";
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      bg.style.transition = "transform .55s cubic-bezier(.22,.82,.22,1), width .55s cubic-bezier(.22,.82,.22,1), height .55s cubic-bezier(.22,.82,.22,1)";
-      go();
-      let done = false;
-      const land = () => {
-        if (done) return;
-        done = true;
-        on.classList.add("land");
-      };
-      bg.addEventListener("transitionend", land, { once: true });
-      setTimeout(land, 580);
-    }));
-  } else {
+  if (!prev) {
     bg.style.transition = "none";
     go();
+    requestAnimationFrame(() => {
+      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1)";
+    });
+  } else {
+    bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1), height .45s cubic-bezier(.22,.82,.22,1)";
+    go();
+    let done = false;
+    const land = () => {
+      if (done) return;
+      done = true;
+      on.classList.add("land");
+    };
+    bg.addEventListener("transitionend", land, { once: true });
+    setTimeout(land, 480);
   }
   ui.tabPill = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
 }
@@ -4254,7 +4283,8 @@ function saveTabOrder(ids) {
 }
 function bindTabReorder() {
   const bar = document.querySelector(".tabs-track") || document.querySelector(".tabs");
-  if (!bar) return;
+  if (!bar || bar.dataset.reorderBound === "1") return;
+  bar.dataset.reorderBound = "1";
   let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0;
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
   const pt = e => {
@@ -4352,7 +4382,8 @@ function bindTabReorder() {
 }
 function bindAdminPageSwipe() {
   const sc = document.querySelector(".admin-scroll");
-  if (!sc) return;
+  if (!sc || sc.dataset.swipeBound === "1") return;
+  sc.dataset.swipeBound = "1";
   let x0 = 0, y0 = 0, on = false;
   sc.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
