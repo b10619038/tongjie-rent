@@ -1008,7 +1008,23 @@ input[type="file"] {
 }
 .cal-card { overflow: visible; }
 .cal-toolbar { display: flex; gap: 8px; margin: 0; flex-shrink: 0; }
-.cal-search { margin: 8px 0 4px; padding: 8px 14px; }
+.cal-search { margin: 8px 0 4px; padding: 8px 14px; position: relative; z-index: 8; isolation: isolate; pointer-events: auto !important; overflow: visible; }
+.cal-search input,
+#cal-search {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+  background: #fff !important;
+  color: #111 !important;
+  caret-color: #111;
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  position: relative;
+  z-index: 9;
+  touch-action: manipulation;
+}
 .cal-cell.dim { opacity: .38; }
 .cal-toolbar .ghost { width: auto; margin: 0; padding: 8px 14px; }
 .xls-up {

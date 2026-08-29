@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午11:43";
+const APP_VERSION = "2026-08-29-下午11:45";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午11:45", items: ["本月進出帳搜尋可正常輸入"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -3203,6 +3204,85 @@ function bindReportPeriodSeg() {
     if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
   }, true);
 }
+function calDayListHtml(selected, rangeLabel, extra) {
+  return `<div class="small">${rangeLabel}${extra || ""}</div>
+    ${selected.length ? selected.map(x => `
+      <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
+        <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}</b>
+        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
+        ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
+      </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
+}
+function refreshCalSearchLive() {
+  ensureCalMonth();
+  const y = ui.calYear, m = ui.calMonth;
+  const key = `${y}-${String(m).padStart(2, "0")}`;
+  const q = normSearch(ui.calQ);
+  const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
+  const rows = allRows.filter(x => ledgerMatchesFilter(x, ui.calFilter || "", ui.calBank) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
+  document.querySelectorAll("[data-cal-day]").forEach(btn => {
+    const d = Number(btn.dataset.calDay);
+    btn.classList.toggle("dim", !!(q && !hitDays.has(d)));
+  });
+  const dim = new Date(y, m, 0).getDate();
+  const selA = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
+  const selB = ui.calDayEnd && ui.calDayEnd <= dim ? ui.calDayEnd : selA;
+  const rangeStart = selA ? Math.min(selA, selB || selA) : 0;
+  const rangeEnd = selA ? Math.max(selA, selB || selA) : 0;
+  const dayKey = d => `${key}-${String(d).padStart(2, "0")}`;
+  const selected = [];
+  if (rangeStart) {
+    for (let d = rangeStart; d <= rangeEnd; d++) selected.push(...rows.filter(x => x.date === dayKey(d)));
+  } else if (q) selected.push(...rows);
+  const rangeLabel = rangeStart
+    ? (rangeStart === rangeEnd ? `${m} 月 ${rangeStart} 日` : `${m} 月 ${rangeStart} 日－${rangeEnd} 日`)
+    : q ? "搜尋結果"
+    : "點選、拉選日期或搜尋查看進出帳";
+  const extra = rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : "";
+  const box = document.querySelector("#month-cash .cal-day");
+  if (box) {
+    box.innerHTML = calDayListHtml(selected, rangeLabel, extra);
+    bindCalLedgerRows();
+  }
+  const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+  const sum = document.querySelector("#month-cash .cal-sum");
+  if (sum) {
+    const spans = sum.querySelectorAll("span");
+    if (spans[0]) spans[0].textContent = "進帳 " + money(inn);
+    if (spans[1]) spans[1].textContent = "出帳 " + money(out);
+    if (spans[2]) spans[2].textContent = "結餘 " + money(inn - out);
+  }
+}
+function bindCalLedgerRows() {
+  const stay = () => { ui.keepScroll = true; render(); };
+  document.querySelectorAll("[data-del-book]").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      const id = btn.dataset.delBook;
+      state.books = (state.books || []).filter(x => x.id !== id);
+      if (ui.editBookId === id) ui.editBookId = null;
+      save(); stay();
+    };
+  });
+  document.querySelectorAll("[data-edit-led]").forEach(el => {
+    el.onclick = e => {
+      if (e.target.closest("[data-del-book]")) return;
+      const src = el.dataset.editSrc;
+      const id = el.dataset.editLed;
+      if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
+      if (src === "errand") { toast("這筆來自銀行業務，請到工作助手修改"); return; }
+      ui.editBookId = src === "book" ? id : null;
+      ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
+      stay();
+      requestAnimationFrame(() => {
+        const box = document.getElementById("book-form");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    };
+  });
+}
 function monthCashHtml() {
   ensureCalMonth();
   const editing = ui.editBookId ? (state.books || []).find(b => b.id === ui.editBookId) : null;
@@ -3281,13 +3361,7 @@ function monthCashHtml() {
       }).join("")}
     </div>
     <div class="cal-day">
-      <div class="small">${rangeLabel}${rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : ""}</div>
-      ${selected.length ? selected.map(x => `
-        <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}</b>
-          <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
-          ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
-        </div>`).join("") : ((rangeStart || q) ? `<div class="empty">${q ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}
+      ${calDayListHtml(selected, rangeLabel, rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : "")}
     </div>
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
@@ -7760,17 +7834,14 @@ function bindCashCal() {
   };
   const search = document.getElementById("cal-search");
   if (search) {
+    search.onpointerdown = e => { e.stopPropagation(); setTimeout(() => search.focus(), 0); };
+    search.onclick = e => { e.stopPropagation(); search.focus(); };
+    search.onkeydown = e => e.stopPropagation();
+    search.onkeyup = e => e.stopPropagation();
     search.oninput = () => {
       ui.calQ = String(search.value || "");
-      ui.calSearchFocus = search.selectionStart;
-      stay();
+      refreshCalSearchLive();
     };
-    if (ui.calSearchFocus != null) {
-      const pos = Number(ui.calSearchFocus);
-      ui.calSearchFocus = null;
-      search.focus();
-      try { search.setSelectionRange(pos, pos); } catch {}
-    }
   }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onclick = () => {
@@ -7819,31 +7890,7 @@ function bindCashCal() {
     grid.onpointerup = endDrag;
     grid.onpointercancel = endDrag;
   }
-  document.querySelectorAll("[data-del-book]").forEach(btn => {
-    btn.onclick = e => {
-      e.stopPropagation();
-      const id = btn.dataset.delBook;
-      state.books = (state.books || []).filter(x => x.id !== id);
-      if (ui.editBookId === id) ui.editBookId = null;
-      save(); stay();
-    };
-  });
-  document.querySelectorAll("[data-edit-led]").forEach(el => {
-    el.onclick = e => {
-      if (e.target.closest("[data-del-book]")) return;
-      const src = el.dataset.editSrc;
-      const id = el.dataset.editLed;
-      if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
-      if (src === "errand") { toast("這筆來自銀行業務，請到工作助手修改"); return; }
-      ui.editBookId = src === "book" ? id : null;
-      ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
-      stay();
-      requestAnimationFrame(() => {
-        const box = document.getElementById("book-form");
-        if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-    };
-  });
+  bindCalLedgerRows();
   const cancelEdit = document.getElementById("cancel-book-edit");
   if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
   const form = document.getElementById("book-form");
