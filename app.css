@@ -17,6 +17,8 @@
   --ok: #62765b;
   --ok-soft: #e6ede3;
   --chip: #f7f0e8;
+  --press: #f3f3f3;
+  --press-on: #d8e2d4;
   --shadow: 0 10px 30px rgba(23, 33, 31, 0.08);
   --radius: 22px;
   --safe-b: env(safe-area-inset-bottom, 0px);
@@ -165,12 +167,11 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .nav button.active {
   color: var(--teal);
-  background-color: #f3f3f3;
+  background-color: var(--press);
   animation: navPop .45s cubic-bezier(.2, 1.5, .35, 1) both;
 }
-.nav button:hover,
 .nav button:active {
-  background-color: #f3f3f3;
+  background-color: var(--press);
 }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
@@ -288,8 +289,9 @@ textarea { min-height: 92px; resize: vertical; }
 .issue-opt {
   border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; cursor: pointer;
+  color: var(--ink);
 }
-.issue-opt.selected { border-color: var(--teal); background: var(--ok-soft); color: var(--teal); }
+.issue-opt.selected { border-color: var(--teal); background: var(--press-on); color: var(--ink); }
 .media-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .media-thumb {
   background: var(--chip); border-radius: 14px; overflow: hidden; padding: 8px;
@@ -864,10 +866,20 @@ body.rev-zooming { overflow: hidden; }
 .role-btn:hover, .room-row:hover, .clickable:hover, .card.item:hover, .issue-opt:hover,
 .login-block:hover, .mini.clickable:hover, [data-room]:hover, .ghost:hover, .tab:hover,
 .nav button:hover, .linkish:hover, .section-title [data-page]:hover {
-  background-color: #f3f3f3;
+  background-color: var(--press);
 }
-.issue-opt.selected:hover { background-color: #d8e2d4; }
-.tab.on:hover { background-color: #4e5e49; }
+.issue-opt.selected:hover { background-color: var(--press-on); color: var(--ink); }
+.tab.on:hover { background-color: var(--teal-mid); color: var(--on-teal); }
+@media (hover: none) {
+  .role-btn:hover, .room-row:hover, .clickable:hover, .card.item:hover, .issue-opt:hover,
+  .login-block:hover, .mini.clickable:hover, [data-room]:hover, .ghost:hover, .tab:hover,
+  .nav button:hover, .linkish:hover, .section-title [data-page]:hover,
+  .issue-opt.selected:hover, .tab.on:hover {
+    background-color: inherit;
+  }
+  .nav button.active { background-color: var(--press); }
+  .issue-opt.selected { background-color: var(--press-on); color: var(--ink); }
+}
 .err { color: var(--rose); font-size: 13px; margin-top: 6px; }
 
 .swipe-wrap { position: relative; overflow: hidden; border-radius: 22px; touch-action: pan-y; }

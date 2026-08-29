@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-凌晨3:23";
+const APP_VERSION = "2026-08-29-上午11:54";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-上午11:54", items: ["極黑主題修正底部選單與報修選項對比"] },
   { ver: "2026-08-29-凌晨3:23", items: ["套房資產四棟封面統一為白模套房照"] },
   { ver: "2026-08-29-凌晨3:19", items: ["陽台、停車位、子母車詳情改為白模實景影片"] },
   { ver: "2026-08-29-凌晨3:16", items: ["房間詳情改為白模實景影片"] },
@@ -151,6 +152,10 @@ function applyTheme(id) {
   r.style.setProperty("--card", t.card || "#ffffff");
   r.style.setProperty("--on-teal", t.onTeal || "#ffffff");
   r.style.setProperty("--mask", t.bar === "#000000" ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
+  const dark = t.id === "void" || t.paper === "#000000";
+  r.style.setProperty("--press", dark ? "#262626" : "#f3f3f3");
+  r.style.setProperty("--press-on", dark ? "#3a3a3a" : "#d8e2d4");
+  r.dataset.theme = t.id;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", t.bar || t.teal);
   try { localStorage.setItem(THEME_KEY, t.id); } catch {}
