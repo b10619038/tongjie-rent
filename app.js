@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-02-29";
+const APP_STAMP = "2026-08-30-02-37";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房租客與廠房租客切換、搜尋恢復可點可打字"] },
+  { ver: APP_STAMP, items: ["登出與第一次進 App 全螢幕播城市模型影片，連點兩下進入登入"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -1516,6 +1516,67 @@ function clearSession() {
     sessionStorage.removeItem("tongjie_ui_v1");
     localStorage.removeItem("tongjie_ui_v1");
   } catch {}
+}
+function logoutToGate() {
+  audit("登出", "登出");
+  ui.playIntro = true;
+  try { sessionStorage.removeItem("tj-intro-seen"); } catch {}
+  clearSession();
+  ui.playIntro = true;
+  ui.page = "home";
+  lastRenderRole = "";
+  lastRenderPage = "";
+  render();
+}
+const INTRO_SRC = "images/intro-city.mp4?v=0237";
+const INTRO_POSTER = "images/intro-city.jpg?v=0237";
+function shouldPlayIntro() {
+  if (ui.role) return false;
+  if (ui.page && ui.page !== "home") return false;
+  if (ui.playIntro) return true;
+  try { return sessionStorage.getItem("tj-intro-seen") !== "1"; } catch { return true; }
+}
+function introHtml() {
+  if (!shouldPlayIntro()) return "";
+  return `<div class="intro-mask" id="intro-mask">
+    <video id="intro-video" autoplay muted playsinline webkit-playsinline poster="${INTRO_POSTER}">
+      <source src="${INTRO_SRC}" type="video/mp4">
+    </video>
+    <div class="intro-hint">連點兩下進入登入</div>
+  </div>`;
+}
+function skipIntro() {
+  const mask = document.getElementById("intro-mask");
+  if (!mask || mask.dataset.done === "1") return;
+  mask.dataset.done = "1";
+  ui.playIntro = false;
+  try { sessionStorage.setItem("tj-intro-seen", "1"); } catch {}
+  const v = document.getElementById("intro-video");
+  if (v) { try { v.pause(); } catch {} }
+  mask.classList.add("out");
+  setTimeout(() => { if (mask.parentNode) mask.remove(); }, 500);
+}
+function bindIntro() {
+  const mask = document.getElementById("intro-mask");
+  const v = document.getElementById("intro-video");
+  if (!mask) return;
+  hideSplash();
+  let lastTap = 0;
+  const tap = () => {
+    const now = Date.now();
+    if (now - lastTap < 420) skipIntro();
+    lastTap = now;
+  };
+  mask.addEventListener("pointerup", tap);
+  mask.addEventListener("dblclick", e => { e.preventDefault(); skipIntro(); });
+  if (v) {
+    v.muted = true;
+    v.playsInline = true;
+    v.addEventListener("ended", skipIntro);
+    const play = () => v.play().catch(() => {});
+    play();
+    mask.addEventListener("pointerdown", play, { once: true });
+  }
 }
 
 function syncRoomRepairStatus(roomId) {
@@ -3934,7 +3995,7 @@ function paintApp() {
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml();
-  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; safeBind(() => { bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); }); return; }
+  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme + introHtml(); safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); }); return; }
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
@@ -6757,7 +6818,7 @@ function bindTenant() {
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isDevPreview()) { exitDevPreview(); return; }
-    audit("登出", "登出"); clearSession(); render();
+    logoutToGate();
   };
   const exitPrev = document.getElementById("exit-preview");
   if (exitPrev) exitPrev.onclick = () => exitDevPreview();
@@ -7552,7 +7613,7 @@ function bindAdminLogs() {
 }
 function bindAdmin() {
   const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
+  if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
   if (previewBtn) previewBtn.onclick = () => enterDevPreview();
   bindAdminLogs();
