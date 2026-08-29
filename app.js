@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-32";
+const APP_STAMP = "2026-08-30-01-34";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客底欄報修旁新增設定，含調色盤與字體大小"] },
+  { ver: APP_STAMP, items: ["設定頁移除安裝圖塊"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5032,11 +5032,6 @@ function adminSettings() {
     </div>
     ${lookSettingsHtml()}
     <div class="card card-body">
-      <div class="label">安裝</div>
-      <p class="small">安裝到手機或電腦後，通知與更新會比較穩定。</p>
-      <button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝說明</button>
-    </div>
-    <div class="card card-body">
       <div class="label">資料</div>
       <div class="row"><span class="k">雲端</span><span class="v">${escapeHtml(cloud)}</span></div>
       <div class="row"><span class="k">版本</span><span class="v">${escapeHtml(APP_VERSION)}</span></div>
@@ -7972,11 +7967,6 @@ function tenantSettings() {
         <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
       </div>
       ${lookSettingsHtml()}
-      <div class="card card-body">
-        <div class="label">安裝</div>
-        <p class="small">安裝到手機後，通知會比較穩定。</p>
-        <button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝說明</button>
-      </div>
     </div>`;
 }
 function bindLookSettings() {
