@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:19";
+const APP_VERSION = "2026-08-29-下午6:26";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:26", items: ["天氣背景改為動態特效：太陽、飄雲、落雨、閃電"] },
   { ver: "2026-08-29-下午6:19", items: ["租客問候區依鳳山即時天氣顯示晴天／陰天／雨天／大雷雨"] },
   { ver: "2026-08-29-下午6:07", items: ["銀行入帳與銀行業務改為吸收檔案文字記入帳本，不再留圖片"] },
   { ver: "2026-08-29-下午5:55", items: ["後台分頁點擊時白色底塊改為滑順移動"] },
@@ -1519,9 +1520,29 @@ function skyFromCode(code) {
 function skyLabel(sky) {
   return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨" }[sky] || "陰天";
 }
+function skyFxHtml(sky) {
+  const s = sky || "cloud";
+  if (s === "sun") {
+    return `<span class="sun-ball"></span><span class="sun-rays"></span>${[0,1,2,3,4,5].map(i => `<span class="spark" style="--i:${i}"></span>`).join("")}`;
+  }
+  if (s === "cloud") {
+    return `<span class="cld a"></span><span class="cld b"></span><span class="cld c"></span><span class="cld d"></span>`;
+  }
+  const n = s === "storm" ? 40 : 30;
+  const drops = Array.from({ length: n }, (_, i) => {
+    const left = (i * 37) % 100;
+    const delay = ((i * 13) % 90) / 100;
+    const dur = (s === "storm" ? 0.42 : 0.72) + (i % 6) * 0.08;
+    return `<span class="drop" style="left:${left}%;animation-delay:${delay}s;animation-duration:${dur}s;height:${12 + (i % 7) * 2}px"></span>`;
+  }).join("");
+  return drops + (s === "storm" ? `<span class="flash"></span><span class="bolt"></span>` : "");
+}
 function applySkyDom() {
   document.querySelectorAll(".weather-hero").forEach(el => {
-    el.setAttribute("data-sky", ui.sky || "cloud");
+    const sky = ui.sky || "cloud";
+    el.setAttribute("data-sky", sky);
+    const fx = el.querySelector(".sky-fx");
+    if (fx) fx.innerHTML = skyFxHtml(sky);
   });
 }
 async function refreshSky(force) {
@@ -3581,7 +3602,7 @@ function homeView() {
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
-      <div class="sky-fx" aria-hidden="true"></div>
+      <div class="sky-fx" aria-hidden="true">${skyFxHtml(ui.sky)}</div>
       <div class="who-line slide-right">
         <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
         <div>
