@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:55";
+const APP_VERSION = "2026-08-29-下午6:07";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:07", items: ["銀行入帳與銀行業務改為吸收檔案文字記入帳本，不再留圖片"] },
   { ver: "2026-08-29-下午5:55", items: ["後台分頁點擊時白色底塊改為滑順移動"] },
   { ver: "2026-08-29-下午5:51", items: ["工作助手上傳按鈕改為上傳檔案"] },
   { ver: "2026-08-29-下午5:36", items: ["公告紀錄編輯後按儲存會真正寫入並關閉編輯"] },
@@ -968,6 +969,7 @@ function normalize(data) {
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
+  stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
@@ -3185,6 +3187,53 @@ async function importExcelBooks(file, after) {
     toast("Excel 讀取失敗，請另存 CSV 或 .xlsx 再試");
   }
 }
+function isSheetFile(f) {
+  const n = String((f && f.name) || "").toLowerCase();
+  const t = String((f && f.type) || "");
+  return /\.(xlsx|xls|csv|xml)$/.test(n) || /spreadsheet|excel|csv/.test(t);
+}
+function guessMetaFromName(name) {
+  const s = String(name || "");
+  const dm = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  const date = dm ? dm[1] + "-" + String(dm[2]).padStart(2, "0") + "-" + String(dm[3]).padStart(2, "0") : "";
+  const mm = s.replace(/\.[a-z0-9]+$/i, "").match(/(\d{4,})/);
+  const amount = mm ? Number(mm[1]) : 0;
+  return { date, amount: amount >= 100 ? amount : 0, company: cellAccount(s) || "", name: s };
+}
+function stripHeavyMedia(data) {
+  (data.bankSlips || []).forEach(s => {
+    if (s.media && s.media.length) {
+      const names = s.media.map(m => m.name).filter(Boolean);
+      if (names.length) s.summary = names.join("、");
+      s.media = [];
+    }
+  });
+  (data.errands || []).forEach(e => {
+    if (e.media && e.media.length) {
+      const names = e.media.map(m => m.name).filter(Boolean);
+      if (names.length) e.summary = names.join("、");
+      e.media = [];
+    }
+  });
+}
+async function absorbUploadFiles(files, where) {
+  const list = [...(files || [])];
+  const names = [];
+  let sheets = 0;
+  for (const f of list) {
+    names.push(f.name);
+    if (isSheetFile(f)) {
+      await importExcelBooks(f);
+      sheets++;
+    }
+  }
+  const line = names.length
+    ? ("已吸收：" + names.join("、") + (sheets ? "　表單已記入進出帳" : "　只記文字，檔案不留在畫面上"))
+    : "";
+  if (where === "bank") ui.bankAbsorb = line;
+  if (where === "errand") ui.errandAbsorb = line;
+  return { names, sheets, meta: names.map(guessMetaFromName), line };
+}
 function appointLabel(rep) {
   if (!rep.appointAt) return "";
   return `<div class="row"><span class="k">預約時間</span><button type="button" class="linkish appoint-link" data-gcal="${rep.id}">${formatDateTime12(String(rep.appointAt).replace("T", " "))}</button></div>`;
@@ -4245,7 +4294,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">每次去銀行都記一筆，之後會自動算出每個月該做的事。</p>
+          <p class="small" style="margin-top:10px">每次去銀行都記一筆。可上傳紙本或表單，系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
           <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
           <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 存提款／對帳" /></label>
           <label class="field"><span>銀行</span>
@@ -4264,22 +4313,18 @@ function adminAi() {
           </label>
           <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="備註" /></label>
           <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
-          <label class="upload">上傳照片（會計紙本）<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
-          <div id="errand-preview">${mediaPreviewHtml(ui.errandMedia || [], "data-del-errand-media")}</div>
+          <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
+          <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
           <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
         </div>
       </div>
     </form>
-    ${errands.length ? errands.map(e => {
-      const pics = (e.media || []).filter(m => m.kind === "image");
-      return `
+    ${errands.length ? errands.map(e => `
       <div class="card card-body">
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
-        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.note].filter(Boolean).join(" · "))}</div>
-        ${pics.length ? `<button type="button" class="ghost" data-view-media="${e.id}|image" style="margin-top:8px">查看會計紙本${pics.length > 1 ? "（" + pics.length + "）" : ""}</button>` : ""}
+        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.note, e.summary].filter(Boolean).join(" · "))}</div>
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
-      </div>`;
-    }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}`,
+      </div>`).join("") : `<div class="empty">還沒有銀行紀錄</div>`}`,
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="ai-fold">
@@ -4316,15 +4361,15 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">可上傳存摺、轉帳畫面或對帳單。填金額與金流帳戶後，會記入進出帳與整體報表；工作助手會去掉重複。</p>
+          <p class="small" style="margin-top:10px">可上傳存摺、轉帳畫面、對帳單或 Excel。系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
           <label class="field"><span>入帳日期</span><input id="bank-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
           <label class="field"><span>金額</span><input id="bank-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
           <label class="field"><span>金流帳戶</span>
             <select id="bank-company" name="company">${bookAccountOptions("統潔")}</select>
           </label>
           <label class="field"><span>備註</span><textarea id="bank-note" name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
-          <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
-          <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
+          <label class="upload">上傳檔案<input id="bank-file" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
+          <div class="small" id="bank-absorb">${escapeHtml(ui.bankAbsorb || "")}</div>
           <button class="btn-navy" type="submit">儲存入帳資料</button>
         </div>
       </div>
@@ -4332,8 +4377,7 @@ function adminAi() {
     ${slips.length ? slips.map(s => `
       <div class="card card-body">
         <div class="row"><span class="k">${escapeHtml(s.date || "銀行入帳")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
-        <div class="small">${escapeHtml(s.company || "統潔")}${s.note ? " · " + escapeHtml(s.note) : ""}</div>
-        ${(s.media || []).map(m => m.kind === "image" ? `<img src="${m.src}" alt="" style="width:100%;border-radius:12px;margin:8px 0">` : `<a class="ghost" href="${m.src}" download="${escapeHtml(m.name || "檔案")}" style="margin-top:8px;display:block;text-align:center">下載檔案</a>`).join("")}
+        <div class="small">${escapeHtml(s.company || "統潔")}${s.note ? " · " + escapeHtml(s.note) : ""}${s.summary ? " · " + escapeHtml(s.summary) : ""}</div>
         <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
       </div>`).join("") : ""}`
   };
@@ -7001,7 +7045,7 @@ function bindAdminAi() {
     const id = "er" + Date.now();
     const company = normalizeBookCompany(formVal(errand, "company") || cellAccount(note + title) || "統潔");
     if (!state.errands) state.errands = [];
-    state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, media: (ui.errandMedia || []).slice(), createdAt: nowStamp() });
+    state.errands.push({ id, kind: "bank", date, title, place, amount, note, company, summary: ui.errandAbsorb || "", createdAt: nowStamp() });
     const p = date.split("-");
     if (p.length === 3) {
       ui.calYear = Number(p[0]);
@@ -7009,6 +7053,7 @@ function bindAdminAi() {
       ui.calDay = Number(p[2]);
     }
     ui.errandMedia = [];
+    ui.errandAbsorb = "";
     ui.errandOpen = false;
     if (amount) {
       if (!state.aiLogs) state.aiLogs = [];
@@ -7033,14 +7078,20 @@ function bindAdminAi() {
   });
   const errandPhoto = document.getElementById("errand-photo");
   if (errandPhoto) errandPhoto.onchange = async () => {
-    if (!ui.errandMedia) ui.errandMedia = [];
-    for (const f of errandPhoto.files || []) {
-      try { ui.errandMedia.push({ kind: "image", src: await compressImage(f), name: f.name }); } catch {}
-    }
+    const got = await absorbUploadFiles(errandPhoto.files, "errand");
     errandPhoto.value = "";
-    const box = document.getElementById("errand-preview");
-    if (box) box.innerHTML = mediaPreviewHtml(ui.errandMedia, "data-del-errand-media");
-    bindAdminAi();
+    const dateEl = document.getElementById("errand-date");
+    const amtEl = document.getElementById("errand-amount");
+    const noteEl = document.getElementById("errand-note");
+    const coEl = document.getElementById("errand-company");
+    const meta = (got.meta || [])[0] || {};
+    if (dateEl && !dateEl.value && meta.date) dateEl.value = meta.date;
+    if (amtEl && !amtEl.value && meta.amount) amtEl.value = String(meta.amount);
+    if (noteEl && got.names.length) noteEl.value = [noteEl.value, got.names.join("、")].filter(Boolean).join(" · ");
+    if (coEl && meta.company) coEl.value = meta.company;
+    const box = document.getElementById("errand-absorb");
+    if (box) box.textContent = got.line || "";
+    toast(got.line || "已吸收檔案");
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
     btn.onclick = () => {
@@ -7061,17 +7112,20 @@ function bindAdminAi() {
   });
   const file = document.getElementById("bank-file");
   if (file) file.onchange = async () => {
-    if (!ui.bankMedia) ui.bankMedia = [];
-    for (const f of file.files || []) {
-      try {
-        if (f.type === "application/pdf") ui.bankMedia.push({ kind: "file", src: await readFileDataUrl(f), name: f.name });
-        else ui.bankMedia.push({ kind: "image", src: await compressImage(f), name: f.name });
-      } catch {}
-    }
+    const got = await absorbUploadFiles(file.files, "bank");
     file.value = "";
-    const box = document.getElementById("bank-preview");
-    if (box) box.innerHTML = mediaPreviewHtml(ui.bankMedia, "data-del-bank-media");
-    bindAdminAi();
+    const dateEl = document.getElementById("bank-date");
+    const amtEl = document.getElementById("bank-amount");
+    const noteEl = document.getElementById("bank-note");
+    const coEl = document.getElementById("bank-company");
+    const meta = (got.meta || [])[0] || {};
+    if (dateEl && !dateEl.value && meta.date) dateEl.value = meta.date;
+    if (amtEl && !amtEl.value && meta.amount) amtEl.value = String(meta.amount);
+    if (noteEl && got.names.length) noteEl.value = [noteEl.value, got.names.join("、")].filter(Boolean).join(" · ");
+    if (coEl && meta.company) coEl.value = meta.company;
+    const box = document.getElementById("bank-absorb");
+    if (box) box.textContent = got.line || "";
+    toast(got.line || "已吸收檔案");
   };
   const bank = document.getElementById("bank-form");
   if (bank) {
@@ -7097,10 +7151,11 @@ function bindAdminAi() {
       state.bankSlips.push({
         id: "slip" + Date.now(),
         date, amount, roomNo: "", note, company,
-        media: (ui.bankMedia || []).slice(),
+        summary: ui.bankAbsorb || "",
         createdAt: nowStamp()
       });
       ui.bankMedia = [];
+      ui.bankAbsorb = "";
       ui.bankOpen = false;
       if (amount) {
         if (!state.aiLogs) state.aiLogs = [];
