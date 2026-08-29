@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:12";
+const APP_VERSION = "2026-08-29-下午9:20";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:20", items: ["本月進出帳可拉選日期區間查看紀錄"] },
   { ver: "2026-08-29-下午9:12", items: ["本月進出帳匯出列印改到右上"] },
   { ver: "2026-08-29-下午9:11", items: ["銀行入帳與銀行業務合併為跑銀行上傳入帳"] },
   { ver: "2026-08-29-下午9:07", items: ["本月進出帳左上新增匯出與列印"] },
@@ -3079,8 +3080,17 @@ function monthCashHtml() {
   while (cells.length % 7) cells.push(null);
   const dayKey = d => `${key}-${String(d).padStart(2, "0")}`;
   const byDay = d => rows.filter(x => x.date === dayKey(d));
-  const sel = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
-  const selected = sel ? byDay(sel) : [];
+  const selA = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
+  const selB = ui.calDayEnd && ui.calDayEnd <= dim ? ui.calDayEnd : selA;
+  const rangeStart = selA ? Math.min(selA, selB || selA) : 0;
+  const rangeEnd = selA ? Math.max(selA, selB || selA) : 0;
+  const selected = [];
+  if (rangeStart) {
+    for (let d = rangeStart; d <= rangeEnd; d++) selected.push(...byDay(d));
+  }
+  const rangeLabel = !rangeStart ? "點選或拉選日期查看進出帳"
+    : rangeStart === rangeEnd ? `${m} 月 ${rangeStart} 日`
+    : `${m} 月 ${rangeStart} 日－${rangeEnd} 日`;
   return `<div class="card card-body cal-card" id="month-cash">
     <div class="row">
       <div>
@@ -3109,7 +3119,7 @@ function monthCashHtml() {
         const list = byDay(d);
         const di = list.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
         const dout = list.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
-        return `<button type="button" class="cal-cell ${sel === d ? "on" : ""}" data-cal-day="${d}">
+        return `<button type="button" class="cal-cell ${d >= rangeStart && d <= rangeEnd ? "on" : ""}" data-cal-day="${d}">
           <em>${d}</em>
           ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
           ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
@@ -3118,13 +3128,13 @@ function monthCashHtml() {
       }).join("")}
     </div>
     <div class="cal-day">
-      <div class="small">${sel ? `${m} 月 ${sel} 日` : "點日期查看當日進出帳"}</div>
+      <div class="small">${rangeLabel}${rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : ""}</div>
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
           <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(accountLabel(x.company || "統潔"))} · ${money(x.amount)}</b>
-          <span>${escapeHtml(x.note || "")}</span>
+          <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
-        </div>`).join("") : (sel ? `<div class="empty">這天尚無紀錄</div>` : "")}
+        </div>`).join("") : (rangeStart ? `<div class="empty">這段期間尚無紀錄</div>` : "")}
     </div>
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
@@ -3138,7 +3148,7 @@ function monthCashHtml() {
         </select>
       </div>
       <div class="cal-form-row">
-        <input name="date" type="date" value="${ed ? ymdOf(ed.date) : (sel ? dayKey(sel) : ymdOf(nowStamp()))}" />
+        <input name="date" type="date" value="${ed ? ymdOf(ed.date) : (rangeStart ? dayKey(rangeStart) : ymdOf(nowStamp()))}" />
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
       <div class="cal-form-row">
@@ -7515,13 +7525,48 @@ function bindCashCal() {
       let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
       if (m < 1) { m = 12; y -= 1; }
       if (m > 12) { m = 1; y += 1; }
-      ui.calYear = y; ui.calMonth = m; ui.calDay = 1;
+      ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
       stay();
     };
   });
-  document.querySelectorAll("[data-cal-day]").forEach(btn => {
-    btn.onclick = () => { ui.calDay = Number(btn.dataset.calDay); stay(); };
-  });
+  const grid = document.querySelector(".cal-grid");
+  if (grid) {
+    let a = 0, dragging = false;
+    const paint = (from, to) => {
+      const s = Math.min(from, to), e = Math.max(from, to);
+      grid.querySelectorAll("[data-cal-day]").forEach(btn => {
+        const d = Number(btn.dataset.calDay);
+        btn.classList.toggle("on", d >= s && d <= e);
+      });
+    };
+    grid.onpointerdown = e => {
+      const cell = e.target.closest("[data-cal-day]");
+      if (!cell) return;
+      a = Number(cell.dataset.calDay);
+      dragging = true;
+      try { grid.setPointerCapture(e.pointerId); } catch {}
+      paint(a, a);
+    };
+    grid.onpointermove = e => {
+      if (!dragging) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const cell = el && el.closest && el.closest("[data-cal-day]");
+      if (cell) paint(a, Number(cell.dataset.calDay));
+    };
+    const endDrag = e => {
+      if (!dragging) return;
+      dragging = false;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const cell = el && el.closest && el.closest("[data-cal-day]");
+      const b = cell ? Number(cell.dataset.calDay) : a;
+      ui.calDay = Math.min(a, b);
+      ui.calDayEnd = Math.max(a, b);
+      if (ui.calDayEnd === ui.calDay) ui.calDayEnd = 0;
+      stay();
+    };
+    grid.onpointerup = endDrag;
+    grid.onpointercancel = endDrag;
+  }
   document.querySelectorAll("[data-del-book]").forEach(btn => {
     btn.onclick = e => {
       e.stopPropagation();
