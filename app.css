@@ -394,43 +394,44 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .nav {
   position: relative; z-index: 41;
   margin: 8px 12px calc(34px + var(--safe-b));
-  background: var(--card); border-radius: 22px;
+  background: var(--card); border-radius: 999px;
   display: grid; grid-template-columns: repeat(4, 1fr);
-  padding: 6px 4px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
+  padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
+  overflow: visible;
 }
 .nav-bg {
-  position: absolute; top: 6px; bottom: 6px; left: 0;
+  position: absolute; top: 4px; bottom: 4px; left: 0;
   width: 0; pointer-events: none; z-index: 0;
   will-change: transform, width;
 }
 .nav-bg i {
   display: block; height: 100%;
   background: var(--press);
-  border-radius: 16px;
+  border-radius: 999px;
   transform-origin: center;
 }
-.nav-bg.land i { animation: navPop .38s cubic-bezier(.22,1.4,.32,1); }
+.nav-bg.land i { animation: navPop .42s cubic-bezier(.22,1.5,.32,1); }
 .nav button {
   position: relative; z-index: 1; border: 0; background: transparent; color: var(--muted);
-  font: inherit; font-size: 11px; font-weight: 600; padding: 8px 0; cursor: pointer;
+  font: inherit; font-size: 11px; font-weight: 600; padding: 10px 0; cursor: pointer;
   transform-origin: center;
-  border-radius: 16px;
-  margin: 0 2px;
+  border-radius: 999px;
+  margin: 0 4px;
 }
 .nav button.active {
   color: var(--teal);
   background-color: transparent;
 }
-.nav button.active.land { animation: navPop .38s cubic-bezier(.22,1.4,.32,1); }
-.nav button:active { background-color: transparent; }
+.nav button.active.land { animation: navPop .42s cubic-bezier(.22,1.5,.32,1); }
+.nav button:active { background-color: transparent; transform: scale(1.12); }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
 }
 .nav svg { display: block; margin: 0 auto 3px; }
 @keyframes navPop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.12); }
+  0% { transform: scale(.92); }
+  50% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
 .zoom-page { animation: none; transform: none; }

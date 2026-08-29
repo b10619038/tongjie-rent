@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:38";
+const APP_VERSION = "2026-08-29-下午6:42";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:42", items: ["底部分頁選中改為橢圓，點擊會放大"] },
   { ver: "2026-08-29-下午6:38", items: ["租客底部分頁改為滑順移動，到位後有縮放"] },
   { ver: "2026-08-29-下午6:37", items: ["租客切換頁面恢復左右滑入，報修標題靠左"] },
   { ver: "2026-08-29-下午6:30", items: ["天氣特效改為只留動態圖，不再換背景色"] },
@@ -3520,8 +3521,9 @@ function bindNavPill() {
   const on = bar && bar.querySelector("button.active");
   if (!bar || !bg || !on) return;
   const go = () => {
-    bg.style.width = on.offsetWidth + "px";
-    bg.style.transform = "translate3d(" + on.offsetLeft + "px,0,0)";
+    const extra = 6;
+    bg.style.width = (on.offsetWidth + extra) + "px";
+    bg.style.transform = "translate3d(" + Math.max(0, on.offsetLeft - extra / 2) + "px,0,0)";
   };
   const prev = ui.navPill;
   bg.classList.remove("land");
@@ -3547,7 +3549,7 @@ function bindNavPill() {
     bg.style.transition = "none";
     go();
   }
-  ui.navPill = { x: on.offsetLeft, w: on.offsetWidth };
+  ui.navPill = { x: Math.max(0, on.offsetLeft - 3), w: on.offsetWidth + 6 };
 }
 
 function tenantView() {
@@ -5936,7 +5938,7 @@ function bindTenant() {
       if (next === ui.page) return;
       if (el.closest(".nav")) {
         const on = document.querySelector(".nav button.active");
-        if (on) ui.navPill = { x: on.offsetLeft, w: on.offsetWidth };
+        if (on) ui.navPill = { x: Math.max(0, on.offsetLeft - 3), w: on.offsetWidth + 6 };
       }
       ui.page = next;
       if (ui.page === "repair" && ui.tenantId) {
