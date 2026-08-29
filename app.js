@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:09";
+const APP_VERSION = "2026-08-29-中午12:14";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:14", items: ["報修描述欄改為獨立輸入框，手機電腦都可打字"] },
   { ver: "2026-08-29-中午12:09", items: ["租客可線上簽署電子合約", "租客畫面靜止區塊不再跳動"] },
   { ver: "2026-08-29-中午12:04", items: ["報修描述欄可穩定輸入，不再整頁跳動"] },
   { ver: "2026-08-29-中午12:02", items: ["極黑主題下我的房間圖卡改為深底清楚字"] },
@@ -3791,15 +3792,17 @@ function repairView() {
       </div>`;
   }
   const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視"];
-  return `<div class="topbar"><div class="slide-right"><div class="eyebrow">REPAIR</div><h1>報修</h1></div></div>
+  return `<div class="topbar"><div class="eyebrow">REPAIR</div><h1>報修</h1></div>
     <div class="screen">
-      <div class="form-grid" id="repair-form">
-        ${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}
-        <textarea id="repair-note" class="repair-note" rows="4" autocomplete="off" enterkeyhint="done" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
+      <div id="repair-form">
+        <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}</div>
+        <div class="repair-note-box">
+          <textarea id="repair-note" name="repair-note" class="repair-note" rows="5" maxlength="800" autocapitalize="sentences" autocomplete="on" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
+        </div>
         <label class="upload">上傳照片<input id="repair-photo" type="file" accept="image/*" multiple hidden /></label>
         <label class="upload">上傳影片<input id="repair-video" type="file" accept="video/*" hidden /></label>
         <div id="media-preview">${pendingPreviewHtml()}</div>
-        <button class="btn-navy" id="submit-repair">提交報修</button>
+        <button class="btn-navy" id="submit-repair" type="button">提交報修</button>
       </div>
       <div class="section-title"><h2 class="slide-right">我的報修</h2></div>
       ${mine.length ? mine.map(rep => repairCard(rep)).join("") : `<div class="empty">還沒有報修紀錄</div>`}
@@ -5642,11 +5645,18 @@ function bindTenant() {
   });
   const repairNote = document.getElementById("repair-note");
   if (repairNote) {
-    repairNote.addEventListener("input", () => { ui.repairNote = repairNote.value; });
-    repairNote.addEventListener("focus", () => {
-      const z = document.querySelector(".zoom-page");
-      if (z) { z.classList.add("keep-still"); z.style.transform = "none"; z.style.animation = "none"; }
-    });
+    repairNote.readOnly = false;
+    repairNote.disabled = false;
+    repairNote.tabIndex = 0;
+    const keep = () => { ui.repairNote = repairNote.value; };
+    repairNote.oninput = keep;
+    repairNote.onchange = keep;
+    repairNote.onblur = keep;
+    const box = repairNote.closest(".repair-note-box");
+    if (box) box.onpointerdown = e => { e.stopPropagation(); };
+    repairNote.onpointerdown = e => { e.stopPropagation(); };
+    repairNote.onmousedown = e => { e.stopPropagation(); };
+    repairNote.onclick = e => { e.stopPropagation(); repairNote.focus(); };
   }
   bindMediaViewers();
   const contracts = (myRoom() && myRoom().contractImages) || [];
@@ -6776,6 +6786,11 @@ async function boot() {
       refreshOnlineBadges();
       if (changed === true && state.updatedAt !== prevUpdated && coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
+        if (ui.page === "repair" || ui.page === "lease-sign") {
+          const ae = document.getElementById("repair-note");
+          if (ae) ui.repairNote = ae.value;
+          return;
+        }
         const ae = document.activeElement;
         if (ae && (ae.id === "repair-note" || ae.tagName === "TEXTAREA" || ae.tagName === "INPUT")) {
           if (ae.id === "repair-note") ui.repairNote = ae.value;

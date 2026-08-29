@@ -299,20 +299,6 @@ textarea, input[type="text"], input[type="date"], input[type="datetime-local"], 
   -webkit-user-select: text; user-select: text;
 }
 textarea { min-height: 92px; resize: vertical; }
-#repair-note, .repair-note {
-  position: relative;
-  z-index: 6;
-  min-height: 120px;
-  font-size: 16px;
-  line-height: 1.5;
-  touch-action: manipulation;
-  transform: none !important;
-  animation: none !important;
-  pointer-events: auto;
-  -webkit-user-select: text;
-  user-select: text;
-}
-#repair-form { transform: none !important; animation: none !important; }
 .primary, .ghost, .danger, .btn-dark, .btn-navy {
   border: 0; border-radius: 14px; padding: 13px 16px;
   font: inherit; font-weight: 700; cursor: pointer; width: 100%;
@@ -341,6 +327,42 @@ textarea { min-height: 92px; resize: vertical; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .form-grid textarea, .form-grid .upload, .form-grid .btn-navy, .form-grid #media-preview,
 .form-grid #ann-media-preview { grid-column: 1 / -1; }
+#repair-form { display: block; transform: none !important; animation: none !important; }
+#repair-form .upload { margin-bottom: 8px; }
+#repair-form .btn-navy { margin-top: 8px; }
+.issue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.repair-note-box {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  position: relative;
+  z-index: 8;
+  transform: none;
+  overflow: visible;
+}
+#repair-note, .repair-note {
+  display: block;
+  width: 100%;
+  min-height: 128px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 16px;
+  line-height: 1.5;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff !important;
+  color: #111111 !important;
+  caret-color: #111111;
+  -webkit-appearance: none;
+  appearance: none;
+  resize: vertical;
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
+  transform: none !important;
+  animation: none !important;
+}
 .issue-opt {
   border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; cursor: pointer;
