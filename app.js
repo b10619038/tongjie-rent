@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-07";
+const APP_STAMP = "2026-08-30-01-09";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者提問時署名改為開發者"] },
+  { ver: APP_STAMP, items: ["提問工作助手改為類似 LINE 的對話視窗"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5039,10 +5039,20 @@ function adminAi() {
             <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
             <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
           </div>
-          <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "ai" ? "工作助手" : (m.role === "dev" || isDeveloper() ? "開發者" : "管理員")}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
+          <div class="ai-log" id="ai-log">${logs.length ? logs.map(m => {
+            const mine = m.role !== "ai";
+            const who = mine ? (m.role === "dev" || isDeveloper() ? "開發者" : "管理員") : "工作助手";
+            const t = String(m.at || "").match(/(上午|下午|中午)\s*\d{1,2}:\d{2}/);
+            const time = t ? t[0].replace(/\s+/g, "") : "";
+            return `<div class="ai-row ${mine ? "me" : "ai"}">
+              ${mine ? "" : `<i class="ai-ava">助</i>`}
+              <div class="ai-col">${mine ? "" : `<em class="ai-who">${who}</em>`}<div class="ai-bubble">${escapeHtml(m.text)}</div></div>
+              ${time ? `<span class="ai-time">${escapeHtml(time)}</span>` : ""}
+            </div>`;
+          }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" placeholder="例如：銀行通常哪一天去？這個月誰還沒繳？" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="btn-navy" type="submit">送出問題</button>
+            <textarea id="ai-q" name="q" rows="1" placeholder="輸入訊息" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <button class="ai-send" type="submit" aria-label="送出">送出</button>
           </form>
         </div>
       </div>
@@ -7867,6 +7877,8 @@ function bindAdminAi() {
     const box = document.getElementById("ai-q");
     ask(box && box.value);
   };
+  const pane = document.getElementById("ai-log");
+  if (pane) pane.scrollTop = pane.scrollHeight;
   const errand = document.getElementById("errand-form");
   if (errand) {
     const fold = document.getElementById("errand-fold");
