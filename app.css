@@ -1170,11 +1170,29 @@ img.avatar { object-fit: cover; display: block; }
   pointer-events: auto !important;
 }
 #announce-form.open { overflow: visible; }
-#rules-form {
+#ann-edit-form {
+  position: relative;
+  z-index: 4;
+  pointer-events: auto !important;
+}
+#ann-edit-form .field,
+#ann-edit-form input,
+#ann-edit-form textarea,
+#ann-edit-form label,
+#ann-edit-form .upload,
+#ann-edit-form button {
+  pointer-events: auto !important;
   position: relative;
   z-index: 2;
-  overflow: visible !important;
-  pointer-events: auto !important;
+}
+#ann-edit-form input,
+#ann-edit-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  background: #fff;
+  color: #111;
 }
 #announce-form .field,
 #announce-form input,

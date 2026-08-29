@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:27";
+const APP_VERSION = "2026-08-29-下午5:32";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:32", items: ["公告紀錄可在該圖塊直接編輯刪除，發布欄只負責發新公告"] },
   { ver: "2026-08-29-下午5:27", items: ["上傳圖塊隱藏系統的選擇檔案文字"] },
   { ver: "2026-08-29-下午5:26", items: ["修復公告編輯：點編輯會打開發布欄並帶入內容"] },
   { ver: "2026-08-29-下午5:22", items: ["發布公告標題恢復，並修正點其他地方會跳到此欄"] },
@@ -907,7 +908,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -3433,18 +3434,20 @@ function reactBarHtml(a) {
 function startAnnounceEdit(id) {
   const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
   if (!a) { toast("找不到這則公告"); return; }
-  ui.page = "announce";
   ui.announceEditId = a.id;
-  ui.announceMedia = (a.media || []).slice();
-  ui.announceOpen = true;
-  ui.adminJump = "announce-form";
+  ui.editAnnounceMedia = (a.media || []).slice();
   render();
 }
 function deleteAnnounce(id) {
   const key = String(id || "");
   state.announcements = (state.announcements || []).filter(a => String(a.id) !== key);
-  if (String(ui.announceEditId) === key) { ui.announceEditId = null; ui.announceMedia = []; }
+  if (String(ui.announceEditId) === key) { ui.announceEditId = null; ui.editAnnounceMedia = []; }
   save(); render();
+}
+function cancelAnnounceEdit() {
+  ui.announceEditId = null;
+  ui.editAnnounceMedia = [];
+  render();
 }
 function announcePosterLabel(a) {
   return String((a && a.postedBy) || "") === "1240" ? "開發者" : "管理員";
@@ -4393,7 +4396,6 @@ function aiAnswer(q) {
 }
 function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
-  const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
   const who = ui.adminCode === "1240" ? "開發者" : "管理員";
   const open = !!ui.announceOpen;
   return `<div class="admin-grid list">
@@ -4405,21 +4407,42 @@ function adminAnnounce() {
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
-          <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" /></label>
-          <label class="field"><span>內容</span><textarea id="ann-body" name="body">${editing ? escapeHtml(editing.body) : ""}</textarea></label>
+          <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" /></label>
+          <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容"></textarea></label>
           <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
           <label class="upload">上傳影片<input id="ann-video" type="file" accept="video/*" hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
-          <button class="btn-navy" type="submit">${editing ? "儲存公告" : "發布公告"}</button>
-          ${editing ? `<button class="ghost" type="button" id="cancel-announce-edit" style="margin-top:8px">取消編輯</button>` : ""}
+          <button class="btn-navy" type="submit">發布公告</button>
         </div>
       </div>
     </form>
-    ${list.length ? list.map(a => `
-      <div class="card card-body">
+    ${list.length ? list.map(a => {
+      const editing = String(ui.announceEditId) === String(a.id);
+      if (editing) {
+        const poster = announcePosterLabel(a);
+        return `<div class="card card-body" id="ann-edit-card">
+          <div class="ann-head">${staffAvatarHtml("sm", poster)}<div class="ann-meta">
+            <div class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</div>
+            <div class="k">編輯這則公告</div>
+          </div></div>
+          <form id="ann-edit-form" autocomplete="off">
+            <label class="field"><span>標題</span><input id="ann-edit-title" name="title" type="text" value="${escapeHtml(a.title)}" /></label>
+            <label class="field"><span>內容</span><textarea id="ann-edit-body" name="body">${escapeHtml(a.body)}</textarea></label>
+            <label class="upload">上傳照片<input id="ann-edit-photo" type="file" accept="image/*" multiple hidden /></label>
+            <label class="upload">上傳影片<input id="ann-edit-video" type="file" accept="video/*" hidden /></label>
+            <div id="ann-edit-preview">${mediaPreviewHtml(ui.editAnnounceMedia || [], "data-del-edit-ann-media")}</div>
+            <div class="ann-actions">
+              <button class="btn-navy" type="submit">儲存</button>
+              <button class="ghost" type="button" data-cancel-announce="${a.id}">取消</button>
+            </div>
+          </form>
+        </div>`;
+      }
+      return `<div class="card card-body">
         ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
             <button type="button" class="ghost" data-del-announce="${a.id}">刪除</button></div>`)}
-      </div>`).join("") : `<div class="empty">還沒有公告</div>`}
+      </div>`;
+    }).join("") : `<div class="empty">還沒有公告</div>`}
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
       <p class="small">修改後會同步顯示在租客「租約」頁、合約書上方。</p>
@@ -6072,6 +6095,17 @@ function bindAnnPending() {
     };
   });
 }
+function bindEditAnnPending() {
+  document.querySelectorAll("[data-del-edit-ann-media]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      (ui.editAnnounceMedia || []).splice(Number(btn.dataset.delEditAnnMedia), 1);
+      const box = document.getElementById("ann-edit-preview");
+      if (box) box.innerHTML = mediaPreviewHtml(ui.editAnnounceMedia || [], "data-del-edit-ann-media");
+      bindEditAnnPending();
+    };
+  });
+}
 
 function bindAdminRoomItems() {
   document.querySelectorAll("[data-admin-room]").forEach(el => {
@@ -6703,22 +6737,51 @@ function bindAdmin() {
       if (!title || !body) { toast("請填寫標題與內容"); return; }
       if (!state.announcements) state.announcements = [];
       const media = (ui.announceMedia || []).slice();
-      if (ui.announceEditId) {
-        const a = state.announcements.find(x => x.id === ui.announceEditId);
-        if (a) {
-          a.title = title; a.body = body; a.media = media; a.updatedAt = nowStamp();
-          if (!a.postedBy) a.postedBy = ui.adminCode || "";
-        }
-        ui.announceEditId = null; ui.announceMedia = []; save(); toast("已更新公告"); return;
-      }
       state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "" });
-      ui.announceMedia = []; save();
+      ui.announceMedia = [];
+      ui.announceOpen = false;
+      save();
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
     };
   }
-  const cancelAnn = document.getElementById("cancel-announce-edit");
-  if (cancelAnn) cancelAnn.onclick = () => { ui.announceEditId = null; ui.announceMedia = []; render(); };
+  const editForm = document.getElementById("ann-edit-form");
+  if (editForm) {
+    const addEditFiles = async (files, kind) => {
+      if (!ui.editAnnounceMedia) ui.editAnnounceMedia = [];
+      for (const file of files) {
+        if (kind === "video") {
+          if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
+          ui.editAnnounceMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
+        } else {
+          try { ui.editAnnounceMedia.push({ kind: "image", src: await compressImage(file), name: file.name }); } catch {}
+        }
+      }
+      const box = document.getElementById("ann-edit-preview");
+      if (box) box.innerHTML = mediaPreviewHtml(ui.editAnnounceMedia, "data-del-edit-ann-media");
+      bindEditAnnPending();
+    };
+    const ep = document.getElementById("ann-edit-photo");
+    const ev = document.getElementById("ann-edit-video");
+    if (ep) ep.onchange = () => { addEditFiles(ep.files, "image"); ep.value = ""; };
+    if (ev) ev.onchange = () => { addEditFiles(ev.files, "video"); ev.value = ""; };
+    bindEditAnnPending();
+    document.querySelectorAll("#ann-edit-form input, #ann-edit-form textarea").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    });
+    editForm.onsubmit = e => {
+      e.preventDefault();
+      const title = formVal(editForm, "title").trim();
+      const body = formVal(editForm, "body").trim();
+      if (!title || !body) { toast("請填寫標題與內容"); return; }
+      const a = (state.announcements || []).find(x => String(x.id) === String(ui.announceEditId));
+      if (a) {
+        a.title = title; a.body = body; a.media = (ui.editAnnounceMedia || []).slice(); a.updatedAt = nowStamp();
+      }
+      ui.announceEditId = null; ui.editAnnounceMedia = []; save(); toast("已更新公告");
+    };
+  }
   document.querySelectorAll("[data-edit-announce]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -7166,6 +7229,13 @@ document.getElementById("app").addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();
     deleteAnnounce(del.dataset.delAnnounce);
+    return;
+  }
+  const cancel = e.target.closest("[data-cancel-announce]");
+  if (cancel) {
+    e.preventDefault();
+    e.stopPropagation();
+    cancelAnnounceEdit();
   }
 }, true);
 function bindPullRefresh() {
