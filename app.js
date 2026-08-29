@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:11";
+const APP_VERSION = "2026-08-29-下午8:14";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:14", items: ["繳費租金與綁定 LINE 改回不跳動"] },
   { ver: "2026-08-29-下午8:11", items: ["未繳費三天前與未綁 LINE 的按鈕會跳動提醒"] },
   { ver: "2026-08-29-下午8:08", items: ["尚未簽約按鈕滑入定位後邊邊跳動"] },
   { ver: "2026-08-29-下午8:02", items: ["修復線上簽名筆畫會自動消失"] },
@@ -3726,8 +3727,6 @@ function announceCardsHtml() {
 function homeView() {
   const t = me(); const r = myRoom();
   const left = daysLeft(t.leaseEnd); const pay = payLabel(t);
-  const payNudge = payOverdueNudge(t);
-  const lineOk = !!(r && lineBindForRoom(r.no));
   const hasAnn = (state.announcements || []).length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
@@ -3762,8 +3761,8 @@ function homeView() {
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
         <button class="ghost" data-page="rooms">房間資訊</button>
-        <button class="ghost${payNudge ? " nudge-bounce" : ""}" data-page="pay">繳費租金</button>
-        <button class="ghost${lineOk ? "" : " nudge-bounce"}" id="bind-line" type="button">綁定 LINE</button>
+        <button class="ghost" data-page="pay">繳費租金</button>
+        <button class="ghost" id="bind-line" type="button">綁定 LINE</button>
         <button class="ghost" id="nearby-spots" type="button">周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
