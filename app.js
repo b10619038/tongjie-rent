@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:42";
+const APP_VERSION = "2026-08-29-中午12:46";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:46", items: ["套房／廠房與租客切換白塊改為點哪裡滑到哪裡"] },
   { ver: "2026-08-29-中午12:42", items: ["套房／廠房與租客切換白塊改為與月／年相同滑動"] },
   { ver: "2026-08-29-中午12:40", items: ["手機從頂部下拉可重新整理畫面"] },
   { ver: "2026-08-29-中午12:39", items: ["套房／廠房與租客左右切換改為與月／年相同滑順"] },
@@ -5055,36 +5056,66 @@ function tenantEntryCardHtml(kind, entry) {
 function tenantKindHint(kind) {
   return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
 }
+function placeSegPill(seg, btn, animate) {
+  if (!seg || !btn) return;
+  const bg = seg.querySelector(".seg-bg");
+  if (!bg) return;
+  const x = btn.offsetLeft;
+  const w = btn.offsetWidth;
+  bg.style.transition = animate
+    ? "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)"
+    : "none";
+  bg.style.width = w + "px";
+  bg.style.transform = `translate3d(${x}px,0,0)`;
+}
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
-  const bg = seg.querySelector(".seg-bg");
-  seg.classList.toggle(leftClass, !rightOn);
-  seg.classList.toggle(rightClass, !!rightOn);
-  if (!bg) return;
-  bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1)";
-  bg.style.transform = rightOn ? "translate3d(100%,0,0)" : "translate3d(0,0,0)";
-}
-function afterSegSlide(seg, fn) {
-  const bg = seg && seg.querySelector(".seg-bg");
-  let done = false;
-  const go = () => { if (done) return; done = true; fn(); };
-  if (bg) bg.addEventListener("transitionend", e => { if (e.propertyName === "transform") go(); }, { once: true });
-  setTimeout(go, 480);
+  const btns = [...seg.querySelectorAll(":scope > button")];
+  const btn = rightOn ? btns[1] : btns[0];
+  if (leftClass) seg.classList.toggle(leftClass, !rightOn);
+  if (rightClass) seg.classList.toggle(rightClass, !!rightOn);
+  btns.forEach((b, i) => b.classList.toggle("on", rightOn ? i === 1 : i === 0));
+  placeSegPill(seg, btn || btns[0], true);
 }
 function bindSegPills() {
   document.querySelectorAll(".seg").forEach(seg => {
-    const bg = seg.querySelector(".seg-bg");
-    if (!bg) return;
-    const right = seg.classList.contains("is-factory") || seg.classList.contains("is-year") || seg.classList.contains("is-done");
-    bg.style.transition = "none";
-    bg.style.transform = right ? "translate3d(100%,0,0)" : "translate3d(0,0,0)";
+    const btns = [...seg.querySelectorAll(":scope > button")];
+    const cur = btns.find(b => b.classList.contains("on")) || btns[0];
+    placeSegPill(seg, cur, false);
     requestAnimationFrame(() => {
-      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1)";
+      const bg = seg.querySelector(".seg-bg");
+      if (bg) bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
     });
   });
 }
+function bindSegSwipe(seg, onLeft, onRight) {
+  if (!seg) return;
+  let x0 = 0, y0 = 0, swiping = false;
+  seg.addEventListener("pointerdown", e => { x0 = e.clientX; y0 = e.clientY; swiping = false; });
+  seg.addEventListener("pointermove", e => {
+    if (!x0) return;
+    const dx = e.clientX - x0;
+    if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(e.clientY - y0)) swiping = true;
+  });
+  seg.addEventListener("pointerup", e => {
+    const dx = e.clientX - x0;
+    x0 = 0;
+    if (!swiping) return;
+    e.preventDefault();
+    if (dx < -24) onRight();
+    else if (dx > 24) onLeft();
+  });
+  seg.addEventListener("click", e => {
+    if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
+  }, true);
+}
 function applyTenantKind(kind) {
   const next = kind === "factory" ? "factory" : "studio";
+  if ((ui.tenantKind === "factory" ? "factory" : "studio") === next) {
+    const seg = document.getElementById("tenant-kind-seg");
+    if (seg) setSegSide(seg, next === "factory", "is-studio", "is-factory");
+    return;
+  }
   ui.tenantKind = next;
   const seg = document.getElementById("tenant-kind-seg");
   if (seg) {
@@ -5097,14 +5128,11 @@ function applyTenantKind(kind) {
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const box = document.getElementById("tenant-list");
   if (box) {
-    afterSegSlide(seg, () => {
-      if ((ui.tenantKind === "factory" ? "factory" : "studio") !== next) return;
-      box.innerHTML = tenantListInnerHtml(next);
-      bindAdminRoomItems();
-      bindLineSwipe();
-      bindTenantListTools();
-      bindTenantFold();
-    });
+    box.innerHTML = tenantListInnerHtml(next);
+    bindAdminRoomItems();
+    bindLineSwipe();
+    bindTenantListTools();
+    bindTenantFold();
   }
 }
 function bindTenantSearch() {
@@ -6250,16 +6278,17 @@ function bindAdmin() {
       }
       const box = document.getElementById("asset-list");
       if (box) {
-        afterSegSlide(seg, () => {
-          if (ui.assetKind !== kind) return;
-          box.innerHTML = adminRoomListHtml(kind);
-          bindAdminRoomItems();
-          bindStudioBuildings();
-          bindFactoryFold();
-        });
+        box.innerHTML = adminRoomListHtml(kind);
+        bindAdminRoomItems();
+        bindStudioBuildings();
+        bindFactoryFold();
       }
     };
   });
+  bindSegSwipe(document.getElementById("asset-kind-seg"),
+    () => { const b = document.querySelector("[data-asset-kind='studio']"); if (b) b.click(); },
+    () => { const b = document.querySelector("[data-asset-kind='factory']"); if (b) b.click(); }
+  );
   document.querySelectorAll("[data-tenant-kind]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -6268,6 +6297,10 @@ function bindAdmin() {
       applyTenantKind(kind);
     };
   });
+  bindSegSwipe(document.getElementById("tenant-kind-seg"),
+    () => applyTenantKind("studio"),
+    () => applyTenantKind("factory")
+  );
   const onTab = document.querySelector(".tab.on");
   if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   bindAdminRoomItems();
