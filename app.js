@@ -3226,7 +3226,6 @@ function render() {
       }
     }
     ui.adminJump = "";
-    }
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     ui.keepScroll = false;
