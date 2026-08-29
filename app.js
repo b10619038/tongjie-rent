@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-上午11:54";
+const APP_VERSION = "2026-08-29-上午11:59";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-上午11:59", items: ["報修選項與提交不再整頁滑動，描述欄可正常輸入"] },
   { ver: "2026-08-29-上午11:54", items: ["極黑主題修正底部選單與報修選項對比"] },
   { ver: "2026-08-29-凌晨3:23", items: ["套房資產四棟封面統一為白模套房照"] },
   { ver: "2026-08-29-凌晨3:19", items: ["陽台、停車位、子母車詳情改為白模實景影片"] },
@@ -854,7 +855,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -3682,9 +3683,9 @@ function repairView() {
   const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視"];
   return `<div class="topbar"><div class="slide-right"><div class="eyebrow">REPAIR</div><h1>報修</h1></div></div>
     <div class="screen">
-      <div class="form-grid slide-left" id="repair-form">
+      <div class="form-grid" id="repair-form">
         ${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}
-        <textarea id="repair-note" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…"></textarea>
+        <textarea id="repair-note" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
         <label class="upload">上傳照片<input id="repair-photo" type="file" accept="image/*" multiple hidden /></label>
         <label class="upload">上傳影片<input id="repair-video" type="file" accept="video/*" hidden /></label>
         <div id="media-preview">${pendingPreviewHtml()}</div>
@@ -5510,11 +5511,24 @@ function bindTenant() {
     el.onclick = () => { ui.roomId = el.dataset.room; ui.page = "room-detail"; render(); };
   });
   document.querySelectorAll("[data-type]").forEach(el => {
-    el.onclick = () => {
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
       ui.repairType = el.dataset.type;
       document.querySelectorAll("[data-type]").forEach(b => b.classList.toggle("selected", b.dataset.type === ui.repairType));
     };
   });
+  const repairNote = document.getElementById("repair-note");
+  if (repairNote) {
+    repairNote.addEventListener("input", () => { ui.repairNote = repairNote.value; });
+    repairNote.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+    repairNote.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+  }
+  const repairForm = document.getElementById("repair-form");
+  if (repairForm) {
+    repairForm.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+    repairForm.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+  }
   bindMediaViewers();
   const contracts = (myRoom() && myRoom().contractImages) || [];
   document.querySelectorAll("[data-contract]").forEach(img => {
@@ -5575,8 +5589,10 @@ function bindTenant() {
   bindPendingMedia();
   const submit = document.getElementById("submit-repair");
   if (submit) {
-    submit.onclick = () => {
-      const note = (document.getElementById("repair-note").value || "").trim();
+    submit.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const note = ((document.getElementById("repair-note") || {}).value || ui.repairNote || "").trim();
       if (!note) { toast("請先描述問題，才能提交報修"); return; }
       const media = (ui.repairMedia || []).slice();
       const stamp = nowStamp();
@@ -5589,9 +5605,8 @@ function bindTenant() {
       if (isDevPreview()) {
         if (!ui.devRepairs) ui.devRepairs = [];
         ui.devRepairs.push(rec);
-        ui.repairType = "冷氣"; ui.repairMedia = []; ui.page = "repair-done";
+        ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
         toast("預覽：已提交報修（不會寫入）");
-        render();
         return;
       }
       state.repairs.push(rec);
@@ -5602,7 +5617,7 @@ function bindTenant() {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
-      ui.repairType = "冷氣"; ui.repairMedia = []; ui.page = "repair-done";
+      ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
       toast("已提交報修");
     };
   }
@@ -6570,6 +6585,11 @@ async function boot() {
       refreshOnlineBadges();
       if (changed === true && state.updatedAt !== prevUpdated && coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
+        const ae = document.activeElement;
+        if (ae && (ae.id === "repair-note" || ae.tagName === "TEXTAREA" || ae.tagName === "INPUT")) {
+          if (ae.id === "repair-note") ui.repairNote = ae.value;
+          return;
+        }
         ui.keepScroll = true;
         render();
       }

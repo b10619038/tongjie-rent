@@ -184,10 +184,11 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   55% { transform: scale(1.32); }
   100% { transform: scale(1.1); }
 }
-.zoom-page { animation: pageZoom .5s ease both; transform-origin: 50% 18%; }
+.zoom-page { animation: pageZoom .45s ease; transform-origin: 50% 18%; }
+.zoom-page.keep-still { animation: none !important; transform: none !important; }
 @keyframes pageZoom {
   from { transform: scale(0.92); opacity: 0.4; }
-  to { transform: scale(1); opacity: 1; }
+  to { transform: none; opacity: 1; }
 }
 
 .gate { min-height: 100vh; padding: 28px 22px 40px; }
@@ -255,7 +256,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 
 textarea, input[type="text"], input[type="date"], input[type="datetime-local"], select {
   width: 100%; border: 1.5px solid var(--line); border-radius: 14px;
-  padding: 12px; font: inherit; background: var(--card); color: var(--ink);
+  padding: 12px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink);
+  -webkit-user-select: text; user-select: text;
 }
 textarea { min-height: 92px; resize: vertical; }
 .primary, .ghost, .danger, .btn-dark, .btn-navy {
