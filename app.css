@@ -411,7 +411,13 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   border-radius: 999px;
   transform-origin: center;
 }
-.nav-bg.land i { animation: navPop .42s cubic-bezier(.22,1.5,.32,1); }
+.nav-bg.land i { animation: navPop .28s cubic-bezier(.22,1.5,.32,1); }
+.nav button.active.land { animation: navPop .28s cubic-bezier(.22,1.5,.32,1); }
+.nav button:active { background-color: transparent; transform: scale(1.2); }
+@keyframes navPop {
+  0% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
 .nav button {
   position: relative; z-index: 1; border: 0; background: transparent; color: var(--muted);
   font: inherit; font-size: 11px; font-weight: 600; padding: 10px 0; cursor: pointer;
@@ -423,15 +429,13 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   color: var(--teal);
   background-color: transparent;
 }
-.nav button.active.land { animation: navPop .42s cubic-bezier(.22,1.5,.32,1); }
-.nav button:active { background-color: transparent; transform: scale(1.12); }
+.nav button:active { background-color: transparent; transform: scale(1.2); }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
 }
 .nav svg { display: block; margin: 0 auto 3px; }
 @keyframes navPop {
-  0% { transform: scale(.92); }
-  50% { transform: scale(1.18); }
+  0% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
 .zoom-page { animation: none; transform: none; }

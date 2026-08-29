@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:42";
+const APP_VERSION = "2026-08-29-下午6:44";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:44", items: ["底部分頁點下去立刻放大，不再延遲"] },
   { ver: "2026-08-29-下午6:42", items: ["底部分頁選中改為橢圓，點擊會放大"] },
   { ver: "2026-08-29-下午6:38", items: ["租客底部分頁改為滑順移動，到位後有縮放"] },
   { ver: "2026-08-29-下午6:37", items: ["租客切換頁面恢復左右滑入，報修標題靠左"] },
@@ -3520,34 +3521,24 @@ function bindNavPill() {
   const bg = bar && bar.querySelector(".nav-bg");
   const on = bar && bar.querySelector("button.active");
   if (!bar || !bg || !on) return;
-  const go = () => {
-    const extra = 6;
-    bg.style.width = (on.offsetWidth + extra) + "px";
-    bg.style.transform = "translate3d(" + Math.max(0, on.offsetLeft - extra / 2) + "px,0,0)";
-  };
+  const extra = 6;
+  const dest = (scale) => "translate3d(" + Math.max(0, on.offsetLeft - extra / 2) + "px,0,0) scale(" + scale + ")";
   const prev = ui.navPill;
-  bg.classList.remove("land");
-  on.classList.remove("land");
+  on.classList.add("land");
+  bg.classList.add("land");
   if (prev && prev.x !== on.offsetLeft) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
-    bg.style.transform = "translate3d(" + prev.x + "px,0,0)";
+    bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.2)";
     requestAnimationFrame(() => requestAnimationFrame(() => {
       bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
-      go();
-      let done = false;
-      const land = () => {
-        if (done) return;
-        done = true;
-        bg.classList.add("land");
-        on.classList.add("land");
-      };
-      bg.addEventListener("transitionend", land, { once: true });
-      setTimeout(land, 480);
+      bg.style.width = (on.offsetWidth + extra) + "px";
+      bg.style.transform = dest(1);
     }));
   } else {
     bg.style.transition = "none";
-    go();
+    bg.style.width = (on.offsetWidth + extra) + "px";
+    bg.style.transform = dest(1);
   }
   ui.navPill = { x: Math.max(0, on.offsetLeft - 3), w: on.offsetWidth + 6 };
 }
@@ -5932,6 +5923,17 @@ function bindTenant() {
       render();
     } catch { toast("照片讀取失敗"); }
   };
+  document.querySelectorAll(".nav [data-page]").forEach(el => {
+    el.addEventListener("pointerdown", () => {
+      el.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
+      el.style.transform = "scale(1.2)";
+      const inner = document.querySelector(".nav-bg i");
+      if (inner) {
+        inner.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
+        inner.style.transform = "scale(1.2)";
+      }
+    });
+  });
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
