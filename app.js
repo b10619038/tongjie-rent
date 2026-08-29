@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:46";
+const APP_VERSION = "2026-08-29-下午1:06";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午1:06", items: ["套房／廠房與租客白塊改為滑過去，不再瞬間跳亮"] },
   { ver: "2026-08-29-中午12:46", items: ["套房／廠房與租客切換白塊改為點哪裡滑到哪裡"] },
   { ver: "2026-08-29-中午12:42", items: ["套房／廠房與租客切換白塊改為與月／年相同滑動"] },
   { ver: "2026-08-29-中午12:40", items: ["手機從頂部下拉可重新整理畫面"] },
@@ -5061,11 +5062,27 @@ function placeSegPill(seg, btn, animate) {
   const bg = seg.querySelector(".seg-bg");
   if (!bg) return;
   const x = btn.offsetLeft;
-  const w = btn.offsetWidth;
-  bg.style.transition = animate
-    ? "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)"
-    : "none";
+  const w = Math.max(8, btn.offsetWidth);
+  if (!animate) {
+    bg.style.transition = "none";
+    bg.style.width = w + "px";
+    bg.style.transform = `translate3d(${x}px,0,0)`;
+    void bg.offsetWidth;
+    bg.style.transition = "";
+    return;
+  }
+  const from = bg.getBoundingClientRect().left;
+  bg.style.transition = "none";
   bg.style.width = w + "px";
+  bg.style.transform = `translate3d(${x}px,0,0)`;
+  const dx = from - bg.getBoundingClientRect().left;
+  if (Math.abs(dx) < 1) {
+    bg.style.transition = "";
+    return;
+  }
+  bg.style.transform = `translate3d(${x + dx}px,0,0)`;
+  void bg.offsetWidth;
+  bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1)";
   bg.style.transform = `translate3d(${x}px,0,0)`;
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
@@ -5128,11 +5145,14 @@ function applyTenantKind(kind) {
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const box = document.getElementById("tenant-list");
   if (box) {
-    box.innerHTML = tenantListInnerHtml(next);
-    bindAdminRoomItems();
-    bindLineSwipe();
-    bindTenantListTools();
-    bindTenantFold();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if ((ui.tenantKind === "factory" ? "factory" : "studio") !== next) return;
+      box.innerHTML = tenantListInnerHtml(next);
+      bindAdminRoomItems();
+      bindLineSwipe();
+      bindTenantListTools();
+      bindTenantFold();
+    }));
   }
 }
 function bindTenantSearch() {
@@ -6278,10 +6298,13 @@ function bindAdmin() {
       }
       const box = document.getElementById("asset-list");
       if (box) {
-        box.innerHTML = adminRoomListHtml(kind);
-        bindAdminRoomItems();
-        bindStudioBuildings();
-        bindFactoryFold();
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (ui.assetKind !== kind) return;
+          box.innerHTML = adminRoomListHtml(kind);
+          bindAdminRoomItems();
+          bindStudioBuildings();
+          bindFactoryFold();
+        }));
       }
     };
   });
