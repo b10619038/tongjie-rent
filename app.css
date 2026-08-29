@@ -69,6 +69,29 @@ input, textarea {
 .tenant-scroll, .admin-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
 .admin-scroll { padding-bottom: 28px; }
 
+.ptr {
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.ptr em {
+  width: 16px; height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  display: none;
+}
+.ptr.on { color: var(--teal); }
+.ptr.busy em { display: block; animation: ptrSpin .7s linear infinite; }
+@keyframes ptrSpin { to { transform: rotate(360deg); } }
+
 .topbar {
   padding: 18px 20px 22px;
   display: flex;

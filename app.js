@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:39";
+const APP_VERSION = "2026-08-29-中午12:40";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:40", items: ["手機從頂部下拉可重新整理畫面"] },
   { ver: "2026-08-29-中午12:39", items: ["套房／廠房與租客左右切換改為與月／年相同滑順"] },
   { ver: "2026-08-29-中午12:36", items: ["電子合約同意勾選可點，畫面文字可框選複製"] },
   { ver: "2026-08-29-中午12:31", items: ["套房／廠房與租客左右切換改為滑順"] },
@@ -3165,6 +3166,7 @@ function render() {
     bindNotifyGuide();
     bindUpdateBar();
     bindThemePicker();
+    bindPullRefresh();
     if (!pageChanged) {
       const sc = document.querySelector(".admin-scroll");
       if (sc) {
@@ -3185,6 +3187,7 @@ function render() {
   bindUpdateBar();
   bindThemePicker();
   playRoomHero();
+  bindPullRefresh();
   if (!pageChanged) {
     const ts = document.querySelector(".tenant-scroll");
     if (ts) {
@@ -6790,6 +6793,64 @@ document.getElementById("app").addEventListener("click", e => {
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); }
 });
+function bindPullRefresh() {
+  const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
+  if (!sc) return;
+  let ptr = sc.querySelector(":scope > .ptr");
+  if (!ptr) {
+    ptr = document.createElement("div");
+    ptr.className = "ptr";
+    ptr.innerHTML = "<em></em><span>下拉重新整理</span>";
+    sc.insertBefore(ptr, sc.firstChild);
+  }
+  let y0 = 0, pulling = false, dy = 0, busy = false;
+  const max = 92, need = 62;
+  const label = ptr.querySelector("span");
+  const setH = (h, text) => {
+    ptr.style.height = Math.max(0, h) + "px";
+    ptr.classList.toggle("on", h >= need);
+    if (label) label.textContent = text || (h >= need ? "放開後重新整理" : "下拉重新整理");
+  };
+  sc.addEventListener("touchstart", e => {
+    if (busy || sc.scrollTop > 2) { pulling = false; return; }
+    if (e.target.closest("input, textarea, select, canvas, .swipe-wrap, .seg, .tabs, button")) return;
+    y0 = e.touches[0].clientY;
+    pulling = true;
+    dy = 0;
+    ptr.style.transition = "none";
+  }, { passive: true });
+  sc.addEventListener("touchmove", e => {
+    if (!pulling || busy) return;
+    if (sc.scrollTop > 2) { pulling = false; setH(0); return; }
+    dy = Math.max(0, (e.touches[0].clientY - y0) * 0.45);
+    if (dy > 10) {
+      if (e.cancelable) e.preventDefault();
+      setH(Math.min(max, dy));
+    }
+  }, { passive: false });
+  sc.addEventListener("touchend", async () => {
+    if (!pulling || busy) return;
+    pulling = false;
+    ptr.style.transition = "height .25s ease";
+    if (dy >= need) {
+      busy = true;
+      ptr.classList.add("busy");
+      setH(56, "重新整理中…");
+      try {
+        await pullCloud();
+        if (window.__swReg) window.__swReg.update().catch(() => {});
+      } catch {}
+      lastRenderPage = ui.page;
+      lastRenderRole = ui.role;
+      ui.keepScroll = false;
+      render();
+      toast("已重新整理");
+      return;
+    }
+    setH(0);
+    dy = 0;
+  });
+}
 function hideSplash() {
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
