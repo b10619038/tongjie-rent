@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:36";
+const APP_VERSION = "2026-08-29-下午10:42";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:42", items: ["修復畫面無法顯示"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
   { ver: "2026-08-29-下午10:30", items: ["所有資產編輯欄位可正常填寫"] },
@@ -261,7 +262,7 @@ function applyTheme(id) {
   const dark = t.id === "void" || t.paper === "#000000";
   r.style.setProperty("--press", dark ? "#262626" : "#f3f3f3");
   r.style.setProperty("--press-on", dark ? "#3a3a3a" : "#d8e2d4");
-  r.dataset.theme = t.id;
+  try { if (r.dataset) r.dataset.theme = t.id; } catch {}
   r.style.backgroundColor = bar;
   if (document.body) document.body.style.backgroundColor = bar;
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
@@ -3209,7 +3210,7 @@ function monthCashHtml() {
   const ed = editing || editingSlip;
   const y = ui.calYear, m = ui.calMonth;
   const key = `${y}-${String(m).padStart(2, "0")}`;
-  const allRows = collectLedger().filter(x => x.date.slice(0, 7) === key);
+  const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
   const filter = ui.calFilter || "";
   const q = normSearch(ui.calQ);
   const rows = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
@@ -3600,6 +3601,7 @@ function render() {
         <div class="logo">TONG JIE</div>
         <h1>畫面暫時無法顯示</h1>
         <p class="lead">請再試一次，或回到登入頁。</p>
+        <p class="small">${escapeHtml(String((err && err.message) || err || ""))}</p>
         <button class="btn-navy" type="button" id="recover-home">回到登入</button>
       </div>`;
       const btn = document.getElementById("recover-home");
@@ -3610,6 +3612,9 @@ function render() {
     }
   }
   hideSplash();
+}
+function safeBind(fn) {
+  try { fn(); } catch (err) { try { console.error(err); } catch {} }
 }
 function paintApp() {
   persistUi();
@@ -3631,7 +3636,7 @@ function paintApp() {
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml();
-  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); return; }
+  if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme; safeBind(() => { bindGate(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); }); return; }
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
@@ -3647,11 +3652,13 @@ function paintApp() {
       });
       bindTabPill();
       sc.innerHTML = `<div class="admin-static">${adminBody()}</div>`;
-      bindAdmin();
-      bindInstallSheet();
-      bindNotifyGuide();
-      bindUpdateBar();
-      bindThemePicker();
+      safeBind(() => {
+        bindAdmin();
+        bindInstallSheet();
+        bindNotifyGuide();
+        bindUpdateBar();
+        bindThemePicker();
+      });
       if (ui.adminJump === "announce-form") {
         const el = document.getElementById("announce-form");
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
@@ -3669,12 +3676,14 @@ function paintApp() {
     }
     root.innerHTML = `${bar}<div class="shell admin-wide">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
     ui.keepScroll = false;
-    bindAdmin();
-    bindInstallSheet();
-    bindNotifyGuide();
-    bindUpdateBar();
-    bindThemePicker();
-    bindPullRefresh();
+    safeBind(() => {
+      bindAdmin();
+      bindInstallSheet();
+      bindNotifyGuide();
+      bindUpdateBar();
+      bindThemePicker();
+      bindPullRefresh();
+    });
     const sc2 = document.querySelector(".admin-scroll");
     if (sc2) {
       if (ui.adminJump === "announce-form") {
@@ -3695,19 +3704,21 @@ function paintApp() {
   }
   ui.keepScroll = false;
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
-  bindTenant();
-  bindNavPill();
-  attachSkyLive();
-  bindInstallSheet();
-  bindNotifyGuide();
-  bindUpdateBar();
-  bindThemePicker();
-  playRoomHero();
-  if (pageChanged) {
-    ui.slideLock = Date.now() + 1100;
-    requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
-  }
-  bindPullRefresh();
+  safeBind(() => {
+    bindTenant();
+    bindNavPill();
+    attachSkyLive();
+    bindInstallSheet();
+    bindNotifyGuide();
+    bindUpdateBar();
+    bindThemePicker();
+    playRoomHero();
+    if (pageChanged) {
+      ui.slideLock = Date.now() + 1100;
+      requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
+    }
+    bindPullRefresh();
+  });
   if (!pageChanged) {
     const ts = document.querySelector(".tenant-scroll");
     if (ts) {
@@ -4634,16 +4645,21 @@ function updateTabBadges() {
   });
 }
 function adminBody() {
-  const page = ui.page === "home" ? "dash" : ui.page;
-  if (page === "rooms") return adminRooms();
-  if (page === "room-edit") return adminRoomEdit();
-  if (page === "invoice") return adminInvoice();
-  if (page === "tenants") return adminTenants();
-  if (page === "repairs") return adminRepairs();
-  if (page === "ai") return adminAi();
-  if (page === "announce") return adminAnnounce();
-  if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
-  return adminDash();
+  try {
+    const page = ui.page === "home" ? "dash" : ui.page;
+    if (page === "rooms") return adminRooms();
+    if (page === "room-edit") return adminRoomEdit();
+    if (page === "invoice") return adminInvoice();
+    if (page === "tenants") return adminTenants();
+    if (page === "repairs") return adminRepairs();
+    if (page === "ai") return adminAi();
+    if (page === "announce") return adminAnnounce();
+    if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
+    return adminDash();
+  } catch (err) {
+    try { console.error(err); } catch {}
+    return `<div class="card card-body"><h2 class="dash-h">此頁載入失敗</h2><p class="small">${escapeHtml(String((err && err.message) || err || ""))}</p></div>`;
+  }
 }
 function adminLogs() {
   const filter = ui.logFilter || "all";
@@ -7854,7 +7870,8 @@ function bindCashCal() {
       if (!banks.length) { row.style.display = "none"; return; }
       row.style.display = "";
       const cur = form.bank && form.bank.value;
-      row.querySelector("select").outerHTML = bankSelectHtml(acct, cur);
+      const sel = row.querySelector("select");
+      if (sel) sel.outerHTML = bankSelectHtml(acct, cur);
     };
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
