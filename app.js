@@ -10,14 +10,15 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
+const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信潔": ["聯邦", "超商"] };
+const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午11:48";
+const APP_VERSION = "2026-08-29-下午11:55";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-29-下午11:48", items: ["本月進出帳可一鍵整月圈選"] },
+  { ver: "2026-08-29-下午11:55", items: ["銀行可複選，並新增超商"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -2864,11 +2865,15 @@ function ledgerMatchesFilter(row, filter, bank) {
     } else if (rowAccount(row) !== f) return false;
   }
   const bk = String(bank || "").trim();
-  if (bk && rowBank(row) !== bk) return false;
+  if (bk && !splitBanks(rowBank(row)).includes(bk) && rowBank(row) !== bk) return false;
   return true;
+}
+function splitBanks(s) {
+  return String(s || "").split(/[、,，/]+/).map(x => x.replace(/銀行/g, "").trim()).filter(Boolean);
 }
 function guessBank(text) {
   const s = String(text || "");
+  if (/超商|全家|7-?11|萊爾富|OK超商/.test(s)) return "超商";
   if (/農會/.test(s)) return "農會";
   if (/兆豐/.test(s)) return "兆豐";
   if (/聯邦/.test(s)) return "聯邦";
@@ -2880,12 +2885,14 @@ function banksOf(acct) {
 function rowBank(row) {
   const acct = rowAccount(row);
   const allowed = banksOf(acct);
-  if (!allowed.length) return "";
-  const raw = String(row.bank || row.place || "").trim().replace(/銀行/g, "");
-  if (allowed.includes(raw)) return raw;
-  const g = guessBank([row.bank, row.place, row.note, row.company].join(" "));
-  if (g && allowed.includes(g)) return g;
-  return allowed[0];
+  const extra = ["超商"];
+  const ok = allowed.length ? allowed.concat(extra.filter(x => !allowed.includes(x))) : extra;
+  const parts = splitBanks(row && (row.bank || row.place));
+  const hit = parts.filter(p => ok.includes(p));
+  if (hit.length) return [...new Set(hit)].join("、");
+  const g = guessBank([row && row.bank, row && row.place, row && row.note, row && row.company].join(" "));
+  if (g && (ok.includes(g) || !allowed.length)) return g;
+  return allowed[0] || "";
 }
 function ledgerLineLabel(row) {
   const acct = accountLabel(row.company || "統潔");
@@ -4828,12 +4835,10 @@ function adminAi() {
           <p class="small" style="margin-top:10px">去銀行記一筆，也可上傳存摺、轉帳畫面、對帳單或 Excel。系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
           <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
           <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 入帳／對帳／提款" /></label>
-          <label class="field"><span>銀行</span>
-            <select id="errand-place" name="place">
-              <option value="聯邦">聯邦</option>
-              <option value="兆豐">兆豐</option>
-              <option value="農會">農會</option>
-            </select>
+          <label class="field"><span>銀行（可複選）</span>
+            <div class="bank-picks" id="errand-place">
+              ${BANK_PLACES.map(b => `<label class="bank-pick"><input type="checkbox" value="${b}" ${b === "聯邦" ? "checked" : ""} /><span>${b}</span></label>`).join("")}
+            </div>
           </label>
           <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
           <label class="field"><span>帳戶</span>
@@ -7680,8 +7685,9 @@ function bindAdminAi() {
     const amount = Number(String(formVal(errand, "amount")).replace(/[^\d.]/g, "")) || 0;
     let title = formVal(errand, "item").trim() || (amount ? "入帳" : "");
     if (!title || !date) { toast("請填事項與日期"); return; }
-    const place = formVal(errand, "place").trim();
+    const place = [...errand.querySelectorAll("#errand-place input:checked")].map(x => x.value).join("、");
     const note = formVal(errand, "note").trim();
+    if (!place) { toast("請選擇銀行或超商"); return; }
     const id = "er" + Date.now();
     const company = normalizeBookCompany(formVal(errand, "company") || cellAccount(note + title) || "統潔");
     if (!state.errands) state.errands = [];
@@ -7701,10 +7707,12 @@ function bindAdminAi() {
     }
     save();
     toast(amount ? "登錄成功，已納入進出帳與整體報表" : "登錄成功");
+    ui.keepScroll = true;
+    render();
     };
-    document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea").forEach(el => {
-      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
-      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea, #errand-form .bank-pick").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => { if (el.focus) el.focus(); }, 0); });
+      el.addEventListener("click", e => e.stopPropagation());
     });
   }
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
