@@ -935,6 +935,19 @@ input[type="file"] {
   initial-value: 0;
 }
 .ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; }
+.solar-card { min-width: 0; }
+.solar-shot {
+  margin-left: auto;
+  width: 46%;
+  max-width: 240px;
+  height: 92px;
+  object-fit: contain;
+  object-position: right center;
+  background: transparent;
+  border-radius: 12px;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
 .ring-wrap {
   position: relative;
   width: 72px; height: 72px; flex: 0 0 72px;
