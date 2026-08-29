@@ -976,16 +976,23 @@ body.rev-zooming { overflow: hidden; }
 }
 .tenant-slim.open .fold-caret { transform: rotate(225deg); }
 .swipe-reveal {
-  position: absolute; inset: 0 0 0 auto; width: 88px;
+  position: absolute; top: 6px; right: 0; bottom: auto;
+  width: 48px; height: 32px;
   background: #06c755; color: #fff; display: grid; place-items: center;
-  text-align: center; font-weight: 800; font-size: 13px; line-height: 1.3;
+  text-align: center; font-weight: 800; font-size: 11px; line-height: 1.15;
+  border-radius: 10px 0 0 10px;
 }
+.swipe-wrap:not(.slim) .swipe-reveal { top: 14px; height: 28px; }
 .swipe-front { position: relative; background: var(--card); }
 .line-dock {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%);
-  background: var(--card); z-index: 45; transform: translateX(100%);
+  position: fixed; top: 80px; right: 12px; bottom: 24px;
+  width: min(280px, 78vw);
+  background: var(--card); z-index: 45; transform: translateX(calc(100% + 20px));
   transition: transform .5s ease;
   display: flex; flex-direction: column;
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.18);
+  overflow: hidden;
 }
 .line-dock.open { transform: translateX(0); }
 .line-dock-bar {

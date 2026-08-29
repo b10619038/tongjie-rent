@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:22";
+const APP_VERSION = "2026-08-29-中午12:24";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:24", items: ["套房租客圖卡往左小滑才開 LINE，綠色區塊縮小"] },
   { ver: "2026-08-29-中午12:22", items: ["點擊畫面維持原位置，不會跳回頂部"] },
   { ver: "2026-08-29-中午12:20", items: ["點擊畫面不再整頁跳動"] },
   { ver: "2026-08-29-中午12:18", items: ["套房設備新增飲水機"] },
@@ -5037,7 +5038,7 @@ function tenantEntryCardHtml(kind, entry) {
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>`;
       }).join("")}`;
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
-      <div class="swipe-reveal">LINE<br>私訊</div>
+      <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-dot${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}"></span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
@@ -5098,7 +5099,12 @@ function bindTenantFold() {
       ui.tenantOpen[id] = next;
       el.classList.toggle("open", next);
       const wrap = el.closest(".swipe-wrap");
-      if (wrap) wrap.classList.toggle("slim", !next);
+      if (wrap) {
+        wrap.classList.toggle("slim", !next);
+        wrap.dataset.swiping = "0";
+        const front = wrap.querySelector(".swipe-front");
+        if (front) front.style.transform = "";
+      }
     };
   });
 }
@@ -5936,7 +5942,7 @@ function bindLineSwipe() {
       const dock = document.getElementById("line-dock");
       if (dock && !dock.classList.contains("open")) {
         dock.style.transition = "none";
-        dock.style.transform = "translateX(100%)";
+        dock.style.transform = "translateX(calc(100% + 20px))";
       }
     };
     const onMove = e => {
@@ -5948,41 +5954,25 @@ function bindLineSwipe() {
       if (!moved && Math.abs(my) > Math.abs(mx)) { active = false; return; }
       moved = true;
       wrap.dataset.swiping = "1";
-      const w = wrap.getBoundingClientRect().width || 320;
-      dx = Math.max(-w * 0.85, Math.min(0, mx));
+      dx = Math.max(-48, Math.min(0, mx));
       front.style.transform = `translateX(${dx}px)`;
-      const mid = w * (2 / 3);
-      const reveal = Math.max(0, Math.min(1, (-dx - mid) / (w * 0.12)));
-      const dock = document.getElementById("line-dock");
-      if (dock && !dock.classList.contains("open")) {
-        dock.style.transition = "none";
-        dock.style.transform = `translateX(${(1 - reveal) * 100}%)`;
-      }
-      if (reveal > 0) {
-        const t = state.tenants.find(x => x.id === wrap.dataset.swipeTenant);
-        const r = t ? state.rooms.find(x => x.id === t.roomId) : null;
-        const who = document.getElementById("line-dock-who");
-        if (who) who.textContent = `${r ? r.no : ""} ${t ? t.name : ""}`;
-      }
       if (e.cancelable) e.preventDefault();
     };
     const onUp = () => {
       if (!active) return;
       active = false;
-      const w = wrap.getBoundingClientRect().width || 320;
-      const mid = w * (2 / 3);
-      front.style.transition = "transform .5s ease";
+      front.style.transition = "transform .28s ease";
       const dock = document.getElementById("line-dock");
       if (dock) dock.style.transition = "transform .5s ease";
-      if (-dx >= mid) {
-        front.style.transform = "translateX(-88px)";
+      if (-dx >= 36) {
+        front.style.transform = "translateX(-48px)";
         openLineChatFor(wrap.dataset.swipeTenant);
       } else {
         front.style.transform = "";
         wrap.dataset.swiping = "0";
-        if (dock && !dock.classList.contains("open")) dock.style.transform = "translateX(100%)";
+        if (dock && !dock.classList.contains("open")) dock.style.transform = "translateX(calc(100% + 20px))";
       }
-      setTimeout(() => { if (-dx < mid) wrap.dataset.swiping = "0"; }, 500);
+      setTimeout(() => { if (-dx < 36) wrap.dataset.swiping = "0"; }, 280);
     };
     wrap.addEventListener("pointerdown", onDown);
     wrap.addEventListener("pointermove", onMove);
