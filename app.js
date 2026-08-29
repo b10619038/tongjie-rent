@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:13";
+const APP_VERSION = "2026-08-29-下午5:14";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:14", items: ["公告編輯按鈕改為捲到上方表單，並加大點擊區"] },
   { ver: "2026-08-29-下午5:13", items: ["套房分組房間首頁圖統一換成白色套房模型"] },
   { ver: "2026-08-29-下午5:10", items: ["公告編輯與使用規範恢復可點擊填寫"] },
   { ver: "2026-08-29-下午5:08", items: ["套房改為和廠房一樣的綠色分組收合"] },
@@ -3214,12 +3215,17 @@ function render() {
     bindUpdateBar();
     bindThemePicker();
     bindPullRefresh();
-    if (!pageChanged) {
-      const sc = document.querySelector(".admin-scroll");
-      if (sc) {
+    const sc = document.querySelector(".admin-scroll");
+    if (sc) {
+      if (ui.adminJump === "top") {
+        sc.scrollTop = 0;
+        requestAnimationFrame(() => { sc.scrollTop = 0; });
+      } else if (!pageChanged) {
         sc.scrollTop = oldAdmin;
         requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
       }
+    }
+    ui.adminJump = "";
     }
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
@@ -3428,12 +3434,13 @@ function announceBodyHtml(a, actions) {
   return `<div class="ann-head">
       ${staffAvatarHtml("sm", poster)}
       <div class="ann-meta">
-        <div class="row"><span class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}${actions || ""}</div>
+        <div class="row"><span class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}</div>
         <div class="k">${escapeHtml(a.title)}</div>
       </div>
     </div>
     <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
     ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
+    ${actions || ""}
     ${reactBarHtml(a)}`;
 }
 function announceCardsHtml() {
@@ -4390,8 +4397,8 @@ function adminAnnounce() {
     </form>
     ${list.length ? list.map(a => `
       <div class="card card-body">
-        ${announceBodyHtml(a, `<div class="row-actions"><button type="button" class="ghost" data-edit-announce="${a.id}" style="width:auto">編輯</button>
-            <button type="button" class="ghost" data-del-announce="${a.id}" style="width:auto">刪除</button></div>`)}
+        ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
+            <button type="button" class="ghost" data-del-announce="${a.id}">刪除</button></div>`)}
       </div>`).join("") : `<div class="empty">還沒有公告</div>`}
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
@@ -6688,14 +6695,23 @@ function bindAdmin() {
   const cancelAnn = document.getElementById("cancel-announce-edit");
   if (cancelAnn) cancelAnn.onclick = () => { ui.announceEditId = null; ui.announceMedia = []; render(); };
   document.querySelectorAll("[data-edit-announce]").forEach(btn => {
-    btn.onclick = () => {
+    const go = e => {
+      e.preventDefault();
+      e.stopPropagation();
       const a = (state.announcements || []).find(x => x.id === btn.dataset.editAnnounce);
-      if (!a) return;
-      ui.announceEditId = a.id; ui.announceMedia = (a.media || []).slice(); ui.announceOpen = true; render();
+      if (!a) { toast("找不到這則公告"); return; }
+      ui.announceEditId = a.id;
+      ui.announceMedia = (a.media || []).slice();
+      ui.announceOpen = true;
+      ui.adminJump = "top";
+      render();
     };
+    btn.onclick = go;
   });
   document.querySelectorAll("[data-del-announce]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
       state.announcements = (state.announcements || []).filter(a => a.id !== btn.dataset.delAnnounce);
       if (ui.announceEditId === btn.dataset.delAnnounce) { ui.announceEditId = null; ui.announceMedia = []; }
       save(); render();
