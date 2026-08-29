@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-05";
+const APP_STAMP = "2026-08-30-01-07";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修復操作日誌無法點選與刪除"] },
+  { ver: APP_STAMP, items: ["開發者提問時署名改為開發者"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5039,7 +5039,7 @@ function adminAi() {
             <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
             <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
           </div>
-          <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "工作助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
+          <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "ai" ? "工作助手" : (m.role === "dev" || isDeveloper() ? "開發者" : "管理員")}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
             <textarea id="ai-q" name="q" placeholder="例如：銀行通常哪一天去？這個月誰還沒繳？" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
             <button class="btn-navy" type="submit">送出問題</button>
@@ -7828,7 +7828,7 @@ function bindAdminAi() {
     const text = String(q || "").trim();
     if (!text) return;
     if (!state.aiLogs) state.aiLogs = [];
-    state.aiLogs.push({ role: "admin", text, at: nowStamp() });
+    state.aiLogs.push({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
     state.aiLogs.push({ role: "ai", text: aiAnswer(text), at: nowStamp() });
     if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
     ui.aiDraft = "";
