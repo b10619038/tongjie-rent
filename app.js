@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:10";
+const APP_VERSION = "2026-08-29-下午5:13";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:13", items: ["套房分組房間首頁圖統一換成白色套房模型"] },
   { ver: "2026-08-29-下午5:10", items: ["公告編輯與使用規範恢復可點擊填寫"] },
   { ver: "2026-08-29-下午5:08", items: ["套房改為和廠房一樣的綠色分組收合"] },
   { ver: "2026-08-29-下午5:07", items: ["公告改為頭貼旁顯示管理員與時間，標題在下一行"] },
@@ -601,10 +602,10 @@ const FACTORY_TENANT_INFO = {
 };
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
 const PHOTO_SET = [
-  ["images/living.jpg", "images/kitchen.jpg"],
-  ["images/bedroom.jpg", "images/bath.jpg"],
-  ["images/kitchen.jpg", "images/living.jpg"],
-  ["images/bath.jpg", "images/bedroom.jpg"]
+  ["images/studio-room.jpg?v=1713", "images/kitchen.jpg"],
+  ["images/studio-room.jpg?v=1713", "images/bath.jpg"],
+  ["images/studio-room.jpg?v=1713", "images/living.jpg"],
+  ["images/studio-room.jpg?v=1713", "images/bedroom.jpg"]
 ];
 const FACTORY_PHOTO_SET = [
   ["images/factory-a.jpg?v=1441"],
@@ -614,7 +615,7 @@ const FACTORY_PHOTO_SET = [
 function isUsablePhoto(src) {
   return typeof src === "string" && (src.startsWith("data:image") || src.startsWith("images/") || src.startsWith("blob:") || src.startsWith("http"));
 }
-const PHOTO_STYLE_VER = "iso-white-1";
+const PHOTO_STYLE_VER = "iso-white-studio-home-2";
 const FACTORY_PHOTO_STYLE_VER = "iso-white-factory-park-1";
 function ensurePhotos(r) {
   if (!Array.isArray(r.photos)) r.photos = [];
@@ -3533,7 +3534,7 @@ function roomsView() {
   const mine = myRoom();
   return `<div class="topbar slide-right"><div><div class="eyebrow">ROOMS</div><h1>房間</h1></div></div>
     <div class="screen">
-      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1312")}
+      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1713")}
       <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
         <img src="images/balcony.jpg?v=1312" alt="公共陽台" />
         <div class="room-row-info">
@@ -3679,7 +3680,7 @@ function roomDetailView(id) {
   const media = r.kind === "factory"
     ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>`
-    : amenityVideoHtml("images/studio-room.mp4?v=1316", "images/studio-room.jpg?v=1312");
+    : amenityVideoHtml("images/studio-room.mp4?v=1316", "images/studio-room.jpg?v=1713");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
@@ -4958,7 +4959,7 @@ function adminRoomListHtml(kind) {
       const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
       lastFloor = String(floor);
       return `${head}<div class="card item clickable" data-admin-room="${r.id}">
-        ${photoEl(r.photos && r.photos[0], r.no)}
+        ${photoEl("images/studio-room.jpg?v=1713", r.no)}
         <div><strong>${r.no}　${r.title}</strong>
           <div class="small">${r.status === "office" ? "自用 · 統潔開發" : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
         </div>
