@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-31";
+const APP_STAMP = "2026-08-30-01-32";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定頁移除多餘標題圖塊"] },
+  { ver: APP_STAMP, items: ["租客底欄報修旁新增設定，含調色盤與字體大小"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -301,7 +301,7 @@ function applyFont(n) {
   return v;
 }
 function showThemeFab() {
-  return ui.role !== "admin";
+  return !ui.role;
 }
 function themePickerHtml() {
   if (!showThemeFab()) return "";
@@ -2495,7 +2495,8 @@ function icon(name) {
     fix: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
     line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v11H8.5L4 20.5V5.5z"/></svg>',
-    pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.2"/></svg>'
+    pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.2"/></svg>',
+    gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M4.6 6.5l1.6 1.6M17.8 16l1.6 1.6M3.5 12h2.2M18.3 12h2.2M4.6 17.5l1.6-1.6M17.8 8l1.6-1.6"/></svg>'
   };
   return map[name];
 }
@@ -4162,7 +4163,7 @@ function gateView() {
 }
 
 function nav() {
-  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"]];
+  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"]];
   return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
       : id === "home" ? unreadAnnouncements(ui.tenantId).length
@@ -4209,6 +4210,7 @@ function tenantView() {
   if (ui.page === "lease") return leaseView();
   if (ui.page === "lease-sign") return leaseSignView();
   if (ui.page === "repair" || ui.page === "repair-done") return repairView();
+  if (ui.page === "settings") return tenantSettings();
   if (ui.page === "pay") return payView();
   return homeView();
 }
@@ -5028,25 +5030,7 @@ function adminSettings() {
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
       <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
     </div>
-    <div class="card card-body">
-      <div class="label">調色盤</div>
-      <p class="small">選擇整體色調。</p>
-      <div class="theme-grid in-page">
-        ${THEMES.map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
-          <i></i><span>${t.name}</span>
-        </button>`).join("")}
-      </div>
-    </div>
-    <div class="card card-body">
-      <div class="label">版面字體大小</div>
-      <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
-      <div class="font-scale">
-        <span>小</span>
-        <input id="font-scale" type="range" min="85" max="130" step="1" value="${currentFontScale()}" />
-        <span>大</span>
-      </div>
-      <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
-    </div>
+    ${lookSettingsHtml()}
     <div class="card card-body">
       <div class="label">安裝</div>
       <p class="small">安裝到手機或電腦後，通知與更新會比較穩定。</p>
@@ -7036,6 +7020,21 @@ function bindTenant() {
   bindRepairDelete();
   bindSignPad();
   bindSignAgree();
+  bindLookSettings();
+  const notify = document.getElementById("set-notify");
+  if (notify) notify.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askTongjieNotify();
+  };
+  const install = document.getElementById("set-install");
+  if (install) install.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.installSheet = true;
+    ui.keepScroll = true;
+    render();
+  };
 }
 
 function bindSignAgree() {
@@ -7928,13 +7927,59 @@ function bindAdmin() {
   bindAdminSettings();
 }
 
-function bindAdminSettings() {
-  const notify = document.getElementById("set-notify");
-  if (notify) notify.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    askTongjieNotify();
-  };
+function lookSettingsHtml() {
+  return `<div class="card card-body">
+      <div class="label">調色盤</div>
+      <p class="small">選擇整體色調。</p>
+      <div class="theme-grid in-page">
+        ${THEMES.map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
+          <i></i><span>${t.name}</span>
+        </button>`).join("")}
+      </div>
+    </div>
+    <div class="card card-body">
+      <div class="label">版面字體大小</div>
+      <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
+      <div class="font-scale">
+        <span>小</span>
+        <input id="font-scale" type="range" min="85" max="130" step="1" value="${currentFontScale()}" />
+        <span>大</span>
+      </div>
+      <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
+    </div>`;
+}
+function tenantSettings() {
+  const t = me() || {};
+  const r = myRoom() || {};
+  const st = notifyStatus();
+  const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
+  return `
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">SETTINGS</div>
+        <h1>設定</h1>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="card card-body">
+        <div class="label">帳號</div>
+        <div class="row"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
+        <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
+      </div>
+      <div class="card card-body">
+        <div class="label">通知</div>
+        <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
+        <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
+      </div>
+      ${lookSettingsHtml()}
+      <div class="card card-body">
+        <div class="label">安裝</div>
+        <p class="small">安裝到手機後，通知會比較穩定。</p>
+        <button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝說明</button>
+      </div>
+    </div>`;
+}
+function bindLookSettings() {
   document.querySelectorAll("#app [data-theme]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -7952,6 +7997,15 @@ function bindAdminSettings() {
     slider.addEventListener("input", slide);
     slider.addEventListener("change", slide);
   }
+}
+function bindAdminSettings() {
+  bindLookSettings();
+  const notify = document.getElementById("set-notify");
+  if (notify) notify.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askTongjieNotify();
+  };
   const install = document.getElementById("set-install");
   if (install) install.onclick = e => {
     e.preventDefault();

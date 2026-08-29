@@ -416,7 +416,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   position: relative; z-index: 41;
   margin: 8px 12px calc(34px + var(--safe-b));
   background: var(--card); border-radius: 999px;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
   overflow: visible;
