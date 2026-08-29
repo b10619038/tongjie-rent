@@ -764,11 +764,21 @@ input[type="file"] {
 .tab {
   position: relative; z-index: 1; flex: 0 0 auto; scroll-snap-align: start;
   border: 0; background: transparent; border-radius: 999px; padding: 8px 14px;
-  font: inherit; font-weight: 700; color: var(--ink-soft); cursor: grab;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--ink-soft); cursor: grab;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: pan-x;
+  transform-origin: center;
 }
-.tab.on { background: transparent; color: var(--on-teal, #fff); }
+.tab.on {
+  background: transparent; color: var(--on-teal, #fff);
+  font-size: 16px; font-weight: 800;
+}
+.tab.on.land { animation: tabPop .45s cubic-bezier(.22,1.35,.32,1); }
+@keyframes tabPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
 .tabs.sorting { scroll-snap-type: none; overflow-x: hidden; touch-action: none; }
 .tabs.sorting .tab, .tab.dragging { touch-action: none; }
 .tab.dragging {

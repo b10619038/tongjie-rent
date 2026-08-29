@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:26";
+const APP_VERSION = "2026-08-29-下午8:30";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:30", items: ["後台頂部分頁滑順移動，點擊後文字放大"] },
   { ver: "2026-08-29-下午8:26", items: ["開發者預覽問候改為您好，開發者"] },
   { ver: "2026-08-29-下午8:24", items: ["問候白底塊取消黑邊"] },
   { ver: "2026-08-29-下午8:22", items: ["上傳照片與影片合併成一個按鈕"] },
@@ -4222,14 +4223,23 @@ function bindTabPill() {
     bg.style.transform = "translate3d(" + on.offsetLeft + "px," + on.offsetTop + "px,0)";
   };
   const prev = ui.tabPill;
+  on.classList.remove("land");
   if (prev && (prev.x !== on.offsetLeft || prev.w !== on.offsetWidth)) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
     bg.style.height = prev.h + "px";
     bg.style.transform = "translate3d(" + prev.x + "px," + (prev.y || 0) + "px,0)";
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
+      bg.style.transition = "transform .55s cubic-bezier(.22,.82,.22,1), width .55s cubic-bezier(.22,.82,.22,1), height .55s cubic-bezier(.22,.82,.22,1)";
       go();
+      let done = false;
+      const land = () => {
+        if (done) return;
+        done = true;
+        on.classList.add("land");
+      };
+      bg.addEventListener("transitionend", land, { once: true });
+      setTimeout(land, 580);
     }));
   } else {
     bg.style.transition = "none";
@@ -6768,6 +6778,12 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-admin]").forEach(btn => {
+    if (btn.classList.contains("tab")) {
+      btn.addEventListener("pointerdown", () => {
+        btn.style.transition = "transform .2s cubic-bezier(.22,.82,.22,1)";
+        btn.style.transform = "scale(1.12)";
+      });
+    }
     btn.onclick = e => {
       if (btn.classList.contains("tab") && btn.dataset.dragged === "1") {
         delete btn.dataset.dragged;
