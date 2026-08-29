@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:07";
+const APP_VERSION = "2026-08-29-下午9:11";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:11", items: ["銀行入帳與銀行業務合併為跑銀行上傳入帳"] },
   { ver: "2026-08-29-下午9:07", items: ["本月進出帳左上新增匯出與列印"] },
   { ver: "2026-08-29-下午9:06", items: ["內容四個按鈕左邊加上小圖"] },
   { ver: "2026-08-29-下午9:02", items: ["修復總覽新增一筆無法輸入與記入"] },
@@ -4506,7 +4507,7 @@ function adminLogs() {
     }).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
 }
-const AI_BLOCKS = ["plan", "errand", "ai", "bank"];
+const AI_BLOCKS = ["plan", "errand", "ai"];
 const AI_BLOCK_KEY = "tongjie_ai_blocks";
 function loadAiBlockOrder() {
   try {
@@ -4533,19 +4534,19 @@ function adminAi() {
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
     </div>`,
-    errand: `<form class="card card-body tenant-slim${ui.errandOpen ? " open" : ""}" id="errand-form" autocomplete="off">
+    errand: `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
-          <span class="k">記下銀行業務</span>
+          <span class="k">跑銀行上傳入帳</span>
           <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">每次去銀行都記一筆。可上傳紙本或表單，系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
+          <p class="small" style="margin-top:10px">去銀行記一筆，也可上傳存摺、轉帳畫面、對帳單或 Excel。系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
           <label class="field"><span>日期</span><input id="errand-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
-          <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 存提款／對帳" /></label>
+          <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 入帳／對帳／提款" /></label>
           <label class="field"><span>銀行</span>
             <select id="errand-place" name="place">
               <option value="聯邦銀行">聯邦銀行</option>
@@ -4554,13 +4555,13 @@ function adminAi() {
               <option value="郵局">郵局</option>
             </select>
           </label>
-          <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 5000" /></label>
+          <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
           <label class="field"><span>帳戶</span>
             <select id="errand-company" name="company">
               ${bookAccountOptions("統潔")}
             </select>
           </label>
-          <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="備註" /></label>
+          <label class="field"><span>備註（選填）</span><input id="errand-note" name="note" type="text" placeholder="例如 後五碼 35909" /></label>
           <p class="small">有金額且屬於統潔／信潔／聯名戶／個人戶八位／現金的，會自動記入進出帳與整體報表；重複的金流只計一筆。</p>
           <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
@@ -4573,7 +4574,14 @@ function adminAi() {
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
         <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.note, e.summary].filter(Boolean).join(" · "))}</div>
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : `<div class="empty">還沒有銀行紀錄</div>`}`,
+      </div>`).join("") : ""}
+    ${slips.length ? slips.map(s => `
+      <div class="card card-body">
+        <div class="row"><span class="k">銀行入帳 · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
+        <div class="small">${escapeHtml([s.company || "統潔", s.note, s.summary].filter(Boolean).join(" · "))}</div>
+        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
+      </div>`).join("") : ""}
+    ${!errands.length && !slips.length ? `<div class="empty">還沒有銀行紀錄</div>` : ""}`,
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="ai-fold">
@@ -4599,36 +4607,7 @@ function adminAi() {
           </form>
         </div>
       </div>
-    </div>`,
-    bank: `<form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
-      <div class="row tenant-slim-head">
-        <button type="button" class="fold-head" id="bank-fold">
-          <span class="k">上傳銀行入帳資料</span>
-          <span class="row-end"><span class="fold-caret"></span></span>
-        </button>
-        ${aiDragBtn()}
-      </div>
-      <div class="tenant-slim-body">
-        <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">可上傳存摺、轉帳畫面、對帳單或 Excel。系統只吸收文字與金額記入進出帳，檔案不會留在畫面上。</p>
-          <label class="field"><span>入帳日期</span><input id="bank-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
-          <label class="field"><span>金額</span><input id="bank-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
-          <label class="field"><span>金流帳戶</span>
-            <select id="bank-company" name="company">${bookAccountOptions("統潔")}</select>
-          </label>
-          <label class="field"><span>備註</span><textarea id="bank-note" name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
-          <label class="upload">上傳檔案<input id="bank-file" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
-          <div class="small" id="bank-absorb">${escapeHtml(ui.bankAbsorb || "")}</div>
-          <button class="btn-navy" type="submit">儲存入帳資料</button>
-        </div>
-      </div>
-    </form>
-    ${slips.length ? slips.map(s => `
-      <div class="card card-body">
-        <div class="row"><span class="k">${escapeHtml(s.date || "銀行入帳")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
-        <div class="small">${escapeHtml(s.company || "統潔")}${s.note ? " · " + escapeHtml(s.note) : ""}${s.summary ? " · " + escapeHtml(s.summary) : ""}</div>
-        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : ""}`
+    </div>`
   };
   return `<div class="admin-grid list" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
 }
@@ -7373,16 +7352,17 @@ function bindAdminAi() {
       const block = fold.closest(".ai-block");
       if (block && block.dataset.dragged === "1") { delete block.dataset.dragged; return; }
       ui.errandOpen = !errand.classList.contains("open");
+      ui.bankOpen = ui.errandOpen;
       errand.classList.toggle("open", ui.errandOpen);
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.errandOpen ? "點擊收起" : "點擊展開";
     };
     errand.onsubmit = e => {
     e.preventDefault();
-    const title = formVal(errand, "item").trim();
     const date = formVal(errand, "date").trim();
-    if (!title || !date) { toast("請填事項與日期"); return; }
     const amount = Number(String(formVal(errand, "amount")).replace(/[^\d.]/g, "")) || 0;
+    let title = formVal(errand, "item").trim() || (amount ? "入帳" : "");
+    if (!title || !date) { toast("請填事項與日期"); return; }
     const place = formVal(errand, "place").trim();
     const note = formVal(errand, "note").trim();
     const id = "er" + Date.now();
