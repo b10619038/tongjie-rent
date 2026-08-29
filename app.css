@@ -634,6 +634,7 @@ textarea { min-height: 92px; resize: vertical; }
   opacity: 0;
   animation: esignEdge 1.6s ease-out 1.5s infinite;
 }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .btn-row .btn-navy { grid-column: 1 / -1; }
 .copy-row {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 8px;
