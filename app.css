@@ -957,7 +957,7 @@ body.rev-zooming { overflow: hidden; }
   will-change: transform;
   transition: transform .45s cubic-bezier(.22,.82,.22,1);
 }
-#asset-list, #tenant-list { display: contents; }
+#asset-list, #tenant-list { display: grid; gap: 12px; }
 .seg.is-done .seg-bg, .seg.is-factory .seg-bg, .seg.is-year .seg-bg { transform: translate3d(100%,0,0); }
 .seg button {
   position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;

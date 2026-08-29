@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:36";
+const APP_VERSION = "2026-08-29-中午12:39";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:39", items: ["套房／廠房與租客左右切換改為與月／年相同滑順"] },
   { ver: "2026-08-29-中午12:36", items: ["電子合約同意勾選可點，畫面文字可框選複製"] },
   { ver: "2026-08-29-中午12:31", items: ["套房／廠房與租客左右切換改為滑順"] },
   { ver: "2026-08-29-中午12:26", items: ["修復畫面全白"] },
@@ -5052,9 +5053,11 @@ function tenantKindHint(kind) {
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
-  void seg.offsetWidth;
-  seg.classList.toggle(leftClass, !rightOn);
-  seg.classList.toggle(rightClass, !!rightOn);
+  seg.classList.remove(leftClass, rightClass);
+  seg.classList.add(rightOn ? rightClass : leftClass);
+}
+function afterSegSlide(fn) {
+  requestAnimationFrame(() => requestAnimationFrame(fn));
 }
 function applyTenantKind(kind) {
   const next = kind === "factory" ? "factory" : "studio";
@@ -5070,7 +5073,7 @@ function applyTenantKind(kind) {
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const box = document.getElementById("tenant-list");
   if (box) {
-    requestAnimationFrame(() => {
+    afterSegSlide(() => {
       box.innerHTML = tenantListInnerHtml(next);
       bindAdminRoomItems();
       bindLineSwipe();
@@ -6221,7 +6224,7 @@ function bindAdmin() {
       }
       const box = document.getElementById("asset-list");
       if (box) {
-        requestAnimationFrame(() => {
+        afterSegSlide(() => {
           box.innerHTML = adminRoomListHtml(kind);
           bindAdminRoomItems();
           bindStudioBuildings();
