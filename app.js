@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:18";
+const APP_VERSION = "2026-08-29-中午12:20";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:20", items: ["點擊畫面不再整頁跳動"] },
   { ver: "2026-08-29-中午12:18", items: ["套房設備新增飲水機"] },
   { ver: "2026-08-29-中午12:14", items: ["報修描述欄改為獨立輸入框，手機電腦都可打字"] },
   { ver: "2026-08-29-中午12:09", items: ["租客可線上簽署電子合約", "租客畫面靜止區塊不再跳動"] },
@@ -1907,17 +1908,19 @@ function showToastBanner(msg) {
 }
 function toast(msg) {
   ui.toast = msg;
-  ui.keepScroll = true;
   if (ui.role && msg && /^(已|登錄成功)/.test(String(msg))) audit("操作", String(msg));
-  const ae = document.activeElement;
-  const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT");
-  if (ui.page === "repair" || ui.page === "lease-sign" || typing) {
+  if (ui.role === "tenant") {
     showToastBanner(msg);
     return;
   }
+  ui.keepScroll = true;
   render();
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { ui.toast = ""; ui.keepScroll = true; render(); }, 1800);
+  toastTimer = setTimeout(() => {
+    ui.toast = "";
+    const n = document.querySelector(".toast");
+    if (n) n.remove();
+  }, 1800);
 }
 function sendRemoteNotify(target, title, body) {
   fetch(LINE_HOOK + "/api/push", {
@@ -3136,8 +3139,9 @@ function appointBlock(rep) {
 function render() {
   persistUi();
   maybeAuditBrowse();
-  const keep = ui.keepScroll;
-  const oldScroll = keep ? (document.querySelector(".admin-scroll") || {}).scrollTop : null;
+  const keepPos = !!ui.keepScroll;
+  const oldAdmin = keepPos ? (document.querySelector(".admin-scroll") || {}).scrollTop : 0;
+  const oldTenant = keepPos ? (document.querySelector(".tenant-scroll") || {}).scrollTop : 0;
   const root = document.getElementById("app");
   const guide = notifyGuideHtml();
   const ver = versionFooter();
@@ -3154,12 +3158,10 @@ function render() {
     bindNotifyGuide();
     bindUpdateBar();
     bindThemePicker();
-    if (oldScroll != null) {
-      const sc = document.querySelector(".admin-scroll");
-      if (sc) {
-        sc.scrollTop = oldScroll;
-        requestAnimationFrame(() => { sc.scrollTop = oldScroll; });
-      }
+    const sc = document.querySelector(".admin-scroll");
+    if (sc && oldAdmin != null) {
+      sc.scrollTop = oldAdmin;
+      requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
     }
     return;
   }
@@ -3171,6 +3173,11 @@ function render() {
   bindUpdateBar();
   bindThemePicker();
   playRoomHero();
+  const ts = document.querySelector(".tenant-scroll");
+  if (ts && oldTenant != null) {
+    ts.scrollTop = oldTenant;
+    requestAnimationFrame(() => { ts.scrollTop = oldTenant; });
+  }
 }
 
 function installSheetHtml() {
@@ -3827,7 +3834,7 @@ function adminView() {
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
     </div>
-    <div class="admin-scroll"><div class="${ui.keepScroll ? "admin-static" : "admin-in-right"}">${adminBody()}</div></div>`;
+    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌" };
@@ -5577,6 +5584,8 @@ function bindTenant() {
     markPaid.onclick = () => {
       markTenantPaid("app");
       toast("已回報本月已繳費");
+      ui.keepScroll = true;
+      render();
     };
   }
   const linePaid = document.getElementById("line-paid");
@@ -5683,6 +5692,7 @@ function bindTenant() {
         if (ui.devRenewals.some(x => x.tenantId === t.id && x.status !== "done")) { toast("已送出續約申請"); return; }
         ui.devRenewals.push({ id: "rn" + Date.now(), roomId: r.id, tenantId: t.id, status: "open", createdAt: nowStamp() });
         toast("預覽：已送出續約（不會寫入）");
+        ui.keepScroll = true;
         render();
         return;
       }
@@ -5696,9 +5706,8 @@ function bindTenant() {
       save();
       pushPhoneNotify("續約申請", `${r.no} ${t.name || ""} 申請續約`, "admin");
       toast("已送出續約申請");
-    };
-  }
-  const photo = document.getElementById("repair-photo");
+      ui.keepScroll = true;
+      render();
   const video = document.getElementById("repair-video");
   const addRepairFiles = async (files, kind) => {
     if (!ui.repairMedia) ui.repairMedia = [];
@@ -5737,6 +5746,7 @@ function bindTenant() {
         ui.devRepairs.push(rec);
         ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
         toast("預覽：已提交報修（不會寫入）");
+        render();
         return;
       }
       state.repairs.push(rec);
@@ -5749,6 +5759,7 @@ function bindTenant() {
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
       ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
       toast("已提交報修");
+      render();
     };
   }
   const backRepair = document.getElementById("back-repair");
@@ -5826,6 +5837,7 @@ function bindSignPad() {
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
     ui.page = "lease";
     toast("已完成電子簽署");
+    render();
   };
 }
 function bindAnnPending() {

@@ -24,12 +24,15 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
 }
 * { box-sizing: border-box; }
-html, body, #app { height: 100%; background: var(--paper); -webkit-tap-highlight-color: transparent; }
+html, body, #app {
+  height: 100%; background: var(--paper); -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none; touch-action: manipulation;
+}
 body { margin: 0; font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
 button, input, textarea, select { font: inherit; }
 .shell { height: 100%; display: flex; flex-direction: column; background: var(--paper); }
 .shell.admin-wide { overflow: hidden; }
-.tenant-scroll, .admin-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+.tenant-scroll, .admin-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
 .admin-scroll { padding-bottom: 28px; }
 
 .topbar {
@@ -934,28 +937,20 @@ body.rev-zooming { overflow: hidden; }
 .lightbox-nav button:disabled { opacity: .4; }
 
 .role-btn, .room-row, .clickable, .card.item, .issue-opt, .login-block, .mini.clickable, [data-room] {
-  border-radius: 22px; overflow: hidden; transition: background-color .16s ease;
+  border-radius: 22px; overflow: hidden;
 }
 .card.card-body.clickable { overflow: visible; }
 .ghost, .tab, .nav button, .linkish, .section-title [data-page], .btn-navy {
-  border-radius: 999px; transition: background-color .16s ease;
+  border-radius: 999px;
 }
-.role-btn:hover, .room-row.clickable:hover, .clickable:hover, .card.item:hover, .issue-opt:hover,
-.login-block:hover, .mini.clickable:hover, [data-room]:hover, .ghost:hover, .tab:hover,
-.nav button:hover, .linkish:hover, .section-title [data-page]:hover, .esign-cta:hover {
-  background-color: var(--press);
-}
-.issue-opt.selected:hover { background-color: var(--press-on); color: var(--ink); }
-.tab.on:hover { background-color: var(--teal-mid); color: var(--on-teal); }
-@media (hover: none) {
-  .role-btn:hover, .room-row:hover, .room-row.clickable:hover, .clickable:hover, .card.item:hover, .issue-opt:hover,
+@media (hover: hover) {
+  .role-btn:hover, .room-row.clickable:hover, .clickable:hover, .card.item:hover, .issue-opt:hover,
   .login-block:hover, .mini.clickable:hover, [data-room]:hover, .ghost:hover, .tab:hover,
-  .nav button:hover, .linkish:hover, .section-title [data-page]:hover,
-  .issue-opt.selected:hover, .tab.on:hover {
-    background-color: inherit;
+  .nav button:hover, .linkish:hover, .section-title [data-page]:hover, .esign-cta:hover {
+    background-color: var(--press);
   }
-  .nav button.active { background-color: var(--press); }
-  .issue-opt.selected { background-color: var(--press-on); color: var(--ink); }
+  .issue-opt.selected:hover { background-color: var(--press-on); color: var(--ink); }
+  .tab.on:hover { background-color: var(--teal-mid); color: var(--on-teal); }
 }
 .err { color: var(--rose); font-size: 13px; margin-top: 6px; }
 
@@ -1044,7 +1039,7 @@ body.rev-zooming { overflow: hidden; }
   user-select: none; line-height: 1;
 }
 .ann-react span.has { opacity: .92; }
-.ann-react span.on { opacity: 1; transform: scale(1.15); }
+.ann-react span.on { opacity: 1; transform: none; }
 .ann-react em {
   position: absolute; top: -6px; right: -8px;
   font-size: 10px; font-style: normal; font-weight: 800;
