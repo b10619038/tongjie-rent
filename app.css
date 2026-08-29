@@ -40,6 +40,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--paper);
+  color: var(--ink, #17211f);
   padding-top: env(safe-area-inset-top, 0px);
   box-sizing: border-box;
 }

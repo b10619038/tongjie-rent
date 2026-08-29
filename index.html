@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <title>統潔＆信潔開發有限公司 — 租房管理</title>
-  <link rel="stylesheet" href="app.css?v=2233" />
+  <link rel="stylesheet" href="app.css?v=2236" />
   <style>
     html, body { margin: 0; background: #ffffff; }
     #splash {
@@ -24,7 +24,7 @@
       width: 72px; height: 72px; opacity: 0;
       animation: splashHouse 1.8s ease forwards;
     }
-    #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; }
+    #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; display: none; }
     #splash.out svg { animation: none; opacity: 0; }
     @keyframes splashHouse {
       0% { opacity: 0; transform: translateY(18px) scale(.86); }
@@ -46,7 +46,7 @@
       width: 72px; height: 72px; opacity: 0;
       animation: splashHouse 1.8s ease forwards;
     }
-    #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; }
+    #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; display: none; }
     #splash.out svg { animation: none; opacity: 0; }
     @keyframes splashHouse {
       0% { opacity: 0; transform: translateY(18px) scale(.86); }
@@ -66,8 +66,8 @@
     </svg>
   </div>
   <div id="app"></div>
-  <!-- build 2026-08-29-下午10:33 -->
-  <script src="app.js?v=2233"></script>
+  <!-- build 2026-08-29-下午10:36 -->
+  <script src="app.js?v=2236"></script>
   <script>setTimeout(function(){ var s=document.getElementById("splash"); if(s) s.classList.add("out"); }, 3500);</script>
 </body>
 </html>

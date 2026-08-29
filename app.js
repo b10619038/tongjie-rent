@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:33";
+const APP_VERSION = "2026-08-29-下午10:36";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
   { ver: "2026-08-29-下午10:30", items: ["所有資產編輯欄位可正常填寫"] },
   { ver: "2026-08-29-下午10:28", items: ["總覽新增太陽能覆蓋率圓餅圖"] },
@@ -3589,6 +3590,28 @@ function appointBlock(rep) {
 let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
+  try {
+    paintApp();
+  } catch (err) {
+    try { console.error(err); } catch {}
+    const root = document.getElementById("app");
+    if (root) {
+      root.innerHTML = `<div class="gate" style="padding:28px 22px">
+        <div class="logo">TONG JIE</div>
+        <h1>畫面暫時無法顯示</h1>
+        <p class="lead">請再試一次，或回到登入頁。</p>
+        <button class="btn-navy" type="button" id="recover-home">回到登入</button>
+      </div>`;
+      const btn = document.getElementById("recover-home");
+      if (btn) btn.onclick = () => {
+        ui.role = null; ui.page = "home"; ui.keepScroll = false; lastRenderRole = ""; lastRenderPage = "";
+        try { paintApp(); } catch { location.reload(); }
+      };
+    }
+  }
+  hideSplash();
+}
+function paintApp() {
   persistUi();
   maybeAuditBrowse();
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
@@ -3601,6 +3624,7 @@ function render() {
   const oldAdmin = (document.querySelector(".admin-scroll") || {}).scrollTop || 0;
   const oldTenant = (document.querySelector(".tenant-scroll") || {}).scrollTop || 0;
   const root = document.getElementById("app");
+  if (!root) return;
   const guide = notifyGuideHtml();
   const ver = versionFooter();
   const bar = updateBarHtml();
@@ -6219,7 +6243,6 @@ function bindGate() {
   if (input) {
     input.onpointerdown = e => { e.stopPropagation(); setTimeout(() => input.focus(), 0); };
     input.onclick = e => { e.stopPropagation(); input.focus(); };
-    input.focus();
     input.addEventListener("keydown", e => { if (e.key === "Enter") {
       if (ui.page === "admin-login") tryLogin();
       else {
@@ -7928,7 +7951,9 @@ async function installApp(kind, fromSheet) {
   ui.installSheet = wantMobile ? "mobile" : "desktop";
   render();
 }
-document.getElementById("app").addEventListener("click", e => {
+document.addEventListener("click", e => {
+  const app = document.getElementById("app");
+  if (!app || !app.contains(e.target)) return;
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); return; }
   const edit = e.target.closest("[data-edit-announce]");
@@ -8029,6 +8054,7 @@ function hideSplash() {
   if (!el || el.dataset.done === "1") return;
   el.dataset.done = "1";
   el.classList.add("out");
+  el.style.display = "none";
   setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
 }
 async function boot() {
