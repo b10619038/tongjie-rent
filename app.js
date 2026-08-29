@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:17";
+const APP_VERSION = "2026-08-29-下午8:21";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:21", items: ["問候列改為白色底塊，與公告一起從左滑入"] },
   { ver: "2026-08-29-下午8:17", items: ["底部分頁圖示點擊時再放大"] },
   { ver: "2026-08-29-下午8:15", items: ["底部分頁縮放再加大一點"] },
   { ver: "2026-08-29-下午8:14", items: ["繳費租金與綁定 LINE 改回不跳動"] },
@@ -766,6 +767,7 @@ function playHomeSlides() {
   document.querySelectorAll(".ann-card").forEach((el, i) => {
     setTimeout(() => run(el, "translateX(-80%)"), i * 70);
   });
+  run(document.querySelector(".hello-card"), "translateX(-80%)");
   run(document.querySelector(".hero-card"), "translateX(80%)");
 }
 function amenityVideoHtml(src, poster) {
@@ -3733,11 +3735,13 @@ function homeView() {
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
-      <div class="who-line slide-right">
-        <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
-        <div>
-          <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : skyLabel(ui.sky)}</div>
-          <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
+      <div class="hello-card">
+        <div class="who-line">
+          <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
+          <div>
+            <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : skyLabel(ui.sky)}</div>
+            <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
+          </div>
         </div>
       </div>
       <button class="back" id="logout-tenant" type="button">${ui.devPreview ? "返回後台" : "登出"}</button>

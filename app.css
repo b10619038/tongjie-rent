@@ -170,7 +170,17 @@ input, textarea, select {
 .sky-live, .sky-live * { animation: none !important; }
 .sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .weather-hero .who-line,
+.weather-hero .hello-card,
 .weather-hero .back { position: relative; z-index: 1; }
+.hello-card {
+  flex: 1;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 22px rgba(23, 33, 31, 0.06);
+}
 
 .sky-fx .sun-ball {
   position: absolute; right: 26px; top: 6px;
