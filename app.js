@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:07";
+const APP_VERSION = "2026-08-29-下午5:08";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:08", items: ["套房改為和廠房一樣的綠色分組收合"] },
   { ver: "2026-08-29-下午5:07", items: ["公告改為頭貼旁顯示管理員與時間，標題在下一行"] },
   { ver: "2026-08-29-下午4:51", items: ["工作助手拖移點改為隱形，仍可從右上角拖排"] },
   { ver: "2026-08-29-下午4:50", items: ["工作助手拖移點改為單點"] },
@@ -4930,41 +4931,40 @@ function adminRoomListHtml(kind) {
       <div class="factory-pack${closed ? " folded" : ""}" data-factory-pack="${escapeHtml(g.group)}"${closed ? ' style="height:0"' : ""}><div class="factory-pack-inner">${cards}</div></div>`;
     }).join("");
   }
-  if (!ui.studioBldg) {
-    return STUDIO_BUILDINGS.map(b => {
-      const rooms = state.rooms.filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix);
-      const rented = rooms.filter(r => r.status === "rented").length;
-      const vacant = rooms.filter(r => r.status === "vacant" || !r.status).length;
-      return `<div class="card item clickable" data-studio-bldg="${b.prefix}">
-        <img src="images/studio-room.jpg?v=1323" alt="${escapeHtml(b.no)}" />
-        <div><strong>${b.no}</strong>
-          <div class="small">${b.street} · ${b.company}</div>
-          <div class="small">套房 ${rooms.length} 間 · 滿租 ${rented} · 空置 ${vacant}</div>
+  if (!ui.studioFold) ui.studioFold = {};
+  const groups = STUDIO_BUILDINGS.map(b => {
+    const rooms = roomsByFloor().filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix);
+    return { ...b, rooms };
+  }).filter(g => g.rooms.length);
+  if (!groups.length) return `<div class="empty">目前沒有套房</div>`;
+  const allClosed = groups.every(g => ui.studioFold[g.prefix]);
+  const bar = `<div class="fold-bar">
+    <span class="small">點綠色小標可收合分組</span>
+    <button type="button" class="ghost" id="studio-all">${allClosed ? "全部展開" : "全部收合"}</button>
+  </div>`;
+  return bar + groups.map(g => {
+    const closed = !!ui.studioFold[g.prefix];
+    let lastFloor = "";
+    const cards = g.rooms.map(r => {
+      const t = state.tenants.find(x => x.id === r.tenantId);
+      const floor = floorNo(r.no);
+      const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
+      lastFloor = String(floor);
+      return `${head}<div class="card item clickable" data-admin-room="${r.id}">
+        ${photoEl(r.photos && r.photos[0], r.no)}
+        <div><strong>${r.no}　${r.title}</strong>
+          <div class="small">${r.status === "office" ? "自用 · 統潔開發" : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
         </div>
+        <select class="select-mini" data-status="${r.id}">
+          <option value="rented" ${r.status === "rented" ? "selected" : ""}>滿租</option>
+          <option value="vacant" ${r.status === "vacant" ? "selected" : ""}>空置</option>
+          <option value="repair" ${r.status === "repair" ? "selected" : ""}>維修中</option>
+          <option value="office" ${r.status === "office" ? "selected" : ""}>辦公室</option>
+        </select>
       </div>`;
     }).join("");
-  }
-  const bldg = STUDIO_BUILDINGS.find(x => x.prefix === ui.studioBldg);
-  const list = roomsByFloor().filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === ui.studioBldg);
-  if (!list.length) return `<button type="button" class="ghost" data-studio-bldg="">← 返回棟別</button><div class="empty">這棟目前沒有套房</div>`;
-  let lastFloor = "";
-  return `<button type="button" class="ghost" data-studio-bldg="" style="margin-bottom:8px">← ${bldg ? bldg.no : "返回棟別"}</button>` + list.map(r => {
-    const t = state.tenants.find(x => x.id === r.tenantId);
-    const floor = floorNo(r.no);
-    const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
-    lastFloor = String(floor);
-    return `${head}<div class="card item clickable" data-admin-room="${r.id}">
-      ${photoEl(r.photos && r.photos[0], r.no)}
-      <div><strong>${r.no}　${r.title}</strong>
-        <div class="small">${r.status === "office" ? "自用 · 統潔開發" : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
-      </div>
-      <select class="select-mini" data-status="${r.id}">
-        <option value="rented" ${r.status === "rented" ? "selected" : ""}>滿租</option>
-        <option value="vacant" ${r.status === "vacant" ? "selected" : ""}>空置</option>
-        <option value="repair" ${r.status === "repair" ? "selected" : ""}>維修中</option>
-        <option value="office" ${r.status === "office" ? "selected" : ""}>辦公室</option>
-      </select>
-    </div>`;
+    return `<button type="button" class="floor-h fold-h${closed ? " closed" : ""}" data-studio-fold="${g.prefix}">${escapeHtml(g.no)} · ${escapeHtml(g.company)} · ${escapeHtml(g.street)}（${g.rooms.length} 間）</button>
+    <div class="factory-pack${closed ? " folded" : ""}" data-studio-pack="${g.prefix}"${closed ? ' style="height:0"' : ""}><div class="factory-pack-inner">${cards}</div></div>`;
   }).join("");
 }
 function adminRooms() {
@@ -6204,20 +6204,35 @@ function bindFactoryFold() {
     allBtn.textContent = close ? "全部展開" : "全部收合";
   };
 }
-function bindStudioBuildings() {
-  document.querySelectorAll("[data-studio-bldg]").forEach(btn => {
+function bindStudioFold() {
+  document.querySelectorAll("[data-studio-fold]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.studioBldg = btn.dataset.studioBldg || null;
-      const box = document.getElementById("asset-list");
-      if (box) {
-        box.innerHTML = adminRoomListHtml("studio");
-        bindAdminRoomItems();
-        bindStudioBuildings();
-      }
+      const g = btn.dataset.studioFold;
+      if (!ui.studioFold) ui.studioFold = {};
+      ui.studioFold[g] = !ui.studioFold[g];
+      const closed = !!ui.studioFold[g];
+      btn.classList.toggle("closed", closed);
+      document.querySelectorAll("[data-studio-pack]").forEach(p => {
+        if (p.dataset.studioPack === g) setFactoryPack(p, closed);
+      });
     };
   });
+  const allBtn = document.getElementById("studio-all");
+  if (allBtn) allBtn.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const heads = [...document.querySelectorAll("[data-studio-fold]")];
+    const close = heads.some(b => !b.classList.contains("closed"));
+    if (!ui.studioFold) ui.studioFold = {};
+    heads.forEach(b => {
+      ui.studioFold[b.dataset.studioFold] = close;
+      b.classList.toggle("closed", close);
+    });
+    document.querySelectorAll("[data-studio-pack]").forEach(p => setFactoryPack(p, close));
+    allBtn.textContent = close ? "全部展開" : "全部收合";
+  };
 }
 function applyAnnouncementReaction(id) {
   if (!ui.tenantId) return;
@@ -6364,7 +6379,7 @@ function bindAdmin() {
           if (ui.assetKind !== kind) return;
           box.innerHTML = adminRoomListHtml(kind);
           bindAdminRoomItems();
-          bindStudioBuildings();
+          bindStudioFold();
           bindFactoryFold();
         }));
       }
@@ -6390,7 +6405,7 @@ function bindAdmin() {
   const onTab = document.querySelector(".tab.on");
   if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   bindAdminRoomItems();
-  bindStudioBuildings();
+  bindStudioFold();
   bindFactoryFold();
   bindLineSwipe();
   bindTenantFold();
