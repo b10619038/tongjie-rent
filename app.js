@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午2:44";
+const APP_VERSION = "2026-08-29-下午2:51";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午2:51", items: ["管理員公告頭貼改為客服照片"] },
   { ver: "2026-08-29-下午2:44", items: ["套房／廠房與租客切換改為與年月相同的白塊滑動"] },
   { ver: "2026-08-29-下午2:40", items: ["整體報表切換改為年在左、月在右"] },
   { ver: "2026-08-29-下午2:29", items: ["電腦可用滑鼠框選文字複製，框選不會卡住"] },
@@ -2327,7 +2328,8 @@ function avatarHtml(t, size) {
 }
 function staffAvatarHtml(size, title) {
   const cls = "avatar staff" + (size === "sm" ? " sm" : "");
-  return `<span class="${cls}" title="${escapeHtml(title || "客服")}">${staffAvatarSvg()}</span>`;
+  const name = title || "管理員";
+  return `<img class="${cls}" src="images/staff-avatar.jpg?v=1451" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">`;
 }
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
