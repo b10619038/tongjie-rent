@@ -1001,6 +1001,23 @@ input[type="file"] {
   background: var(--ok-soft);
 }
 .errand-shot { display: grid; gap: 6px; margin-top: 8px; }
+#errand-guess-box { margin: 8px 0; }
+#errand-guess-box .mini {
+  display: grid;
+  gap: 6px;
+  align-items: start;
+  justify-content: stretch;
+}
+#errand-guess-box .mini b {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#errand-guess-box .mini span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  color: var(--muted);
+}
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; user-select: none; touch-action: none; }
 .cal-w { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; font-weight: 700; pointer-events: none; }
 .cal-cell {

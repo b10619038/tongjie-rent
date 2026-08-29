@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:36";
+const APP_VERSION = "2026-08-30-上午12:40";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:36", items: ["跑業務可打字記收現，不一定要拍照"] },
+  { ver: "2026-08-30-上午12:40", items: ["修正跑業務預判文字跑版"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -3708,7 +3708,7 @@ function errandGuessList() {
 }
 function errandGuessHtml(g) {
   const list = Array.isArray(g) ? g : errandGuessList();
-  if (!list.length) return `<div id="errand-guess-box"><div class="mini" id="errand-guess"><b>預判</b><span>一次可拍很多本、不用照順序。每張會分開預判，分不出公司或銀行才問你。</span></div></div>`;
+  if (!list.length) return `<div id="errand-guess-box"><p class="small" id="errand-guess">打字或上傳後，這裡會顯示預判。</p></div>`;
   return `<div id="errand-guess-box">${list.map((item, i) => {
     const bits = [
       item.fileName || ("照片 " + (i + 1)),
