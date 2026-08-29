@@ -433,7 +433,21 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .nav button.active svg {
   display: block; margin: 0 auto 3px;
 }
-.nav svg { display: block; margin: 0 auto 3px; }
+.nav svg { display: block; margin: 0; }
+.nav-ic {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  margin: 0 auto 3px;
+  transform-origin: center;
+}
+.nav button.active .nav-ic { transform: scale(1.15); }
+.nav button.land .nav-ic,
+.nav button:active .nav-ic { animation: navIconPop .28s cubic-bezier(.22,1.6,.32,1); }
+@keyframes navIconPop {
+  0% { transform: scale(1.45); }
+  100% { transform: scale(1.15); }
+}
 @keyframes navPop {
   0% { transform: scale(1.2); }
   100% { transform: scale(1); }

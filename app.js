@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:44";
+const APP_VERSION = "2026-08-29-下午6:47";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:47", items: ["底部分頁點擊時圖示也會立刻放大"] },
   { ver: "2026-08-29-下午6:44", items: ["底部分頁點下去立刻放大，不再延遲"] },
   { ver: "2026-08-29-下午6:42", items: ["底部分頁選中改為橢圓，點擊會放大"] },
   { ver: "2026-08-29-下午6:38", items: ["租客底部分頁改為滑順移動，到位後有縮放"] },
@@ -3513,7 +3514,7 @@ function nav() {
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
     const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease");
-    return `<button type="button" data-page="${id}" class="${on ? "active" : ""}">${icon(ic)}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
+    return `<button type="button" data-page="${id}" class="${on ? "active land" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
 function bindNavPill() {
@@ -5927,6 +5928,11 @@ function bindTenant() {
     el.addEventListener("pointerdown", () => {
       el.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
       el.style.transform = "scale(1.2)";
+      const ic = el.querySelector(".nav-ic");
+      if (ic) {
+        ic.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
+        ic.style.transform = "scale(1.45)";
+      }
       const inner = document.querySelector(".nav-bg i");
       if (inner) {
         inner.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
