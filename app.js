@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-上午11:59";
+const APP_VERSION = "2026-08-29-中午12:02";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:02", items: ["極黑主題下我的房間圖卡改為深底清楚字"] },
   { ver: "2026-08-29-上午11:59", items: ["報修選項與提交不再整頁滑動，描述欄可正常輸入"] },
   { ver: "2026-08-29-上午11:54", items: ["極黑主題修正底部選單與報修選項對比"] },
   { ver: "2026-08-29-凌晨3:23", items: ["套房資產四棟封面統一為白模套房照"] },
