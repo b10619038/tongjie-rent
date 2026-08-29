@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:51";
+const APP_VERSION = "2026-08-29-下午5:55";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:55", items: ["後台分頁點擊時白色底塊改為滑順移動"] },
   { ver: "2026-08-29-下午5:51", items: ["工作助手上傳按鈕改為上傳檔案"] },
   { ver: "2026-08-29-下午5:36", items: ["公告紀錄編輯後按儲存會真正寫入並關閉編輯"] },
   { ver: "2026-08-29-下午5:32", items: ["公告紀錄可在該圖塊直接編輯刪除，發布欄只負責發新公告"] },
@@ -3943,11 +3944,14 @@ function adminView() {
         : `<button class="ghost" id="logout" style="width:auto">登出</button>`}
     </div>
     <div class="tabs">
+      <div class="tabs-track">
+      <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
+      </div>
     </div>
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
@@ -3962,13 +3966,39 @@ function adminPages() {
   allowed.forEach(id => { if (!ids.includes(id)) ids.push(id); });
   return ids.map(id => [id, labels[id]]);
 }
+function bindTabPill() {
+  const track = document.querySelector(".tabs-track");
+  const bg = track && track.querySelector(".tab-bg");
+  const on = track && track.querySelector(".tab.on");
+  if (!track || !bg || !on) return;
+  const go = () => {
+    bg.style.width = on.offsetWidth + "px";
+    bg.style.height = on.offsetHeight + "px";
+    bg.style.transform = "translate3d(" + on.offsetLeft + "px," + on.offsetTop + "px,0)";
+  };
+  const prev = ui.tabPill;
+  if (prev && (prev.x !== on.offsetLeft || prev.w !== on.offsetWidth)) {
+    bg.style.transition = "none";
+    bg.style.width = prev.w + "px";
+    bg.style.height = prev.h + "px";
+    bg.style.transform = "translate3d(" + prev.x + "px," + (prev.y || 0) + "px,0)";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
+      go();
+    }));
+  } else {
+    bg.style.transition = "none";
+    go();
+  }
+  ui.tabPill = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
+}
 function saveTabOrder(ids) {
   try { localStorage.setItem(TAB_KEY, JSON.stringify(ids)); } catch {}
   state.tabOrder = ids.slice();
   save();
 }
 function bindTabReorder() {
-  const bar = document.querySelector(".tabs");
+  const bar = document.querySelector(".tabs-track") || document.querySelector(".tabs");
   if (!bar) return;
   let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0;
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
@@ -6440,11 +6470,17 @@ function bindAdmin() {
         e.preventDefault();
         return;
       }
-      ui.page = btn.dataset.admin;
+      const id = btn.dataset.admin;
+      const cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
+      if (btn.classList.contains("tab") && cur === id) return;
+      const on = document.querySelector(".tabs .tab.on");
+      if (on) ui.tabPill = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
+      ui.page = id;
       render();
     };
   });
   bindTabReorder();
+  bindTabPill();
   bindAdminPageSwipe();
   bindSegPills();
   document.querySelectorAll("[data-asset-kind]").forEach(btn => {
