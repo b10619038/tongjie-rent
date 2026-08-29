@@ -13,11 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午11:45";
+const APP_VERSION = "2026-08-29-下午11:48";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-29-下午11:45", items: ["本月進出帳搜尋可正常輸入"] },
+  { ver: "2026-08-29-下午11:48", items: ["本月進出帳可一鍵整月圈選"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -3343,6 +3343,7 @@ function monthCashHtml() {
       <span>進帳 ${money(inn)}</span>
       <span>出帳 ${money(out)}</span>
       <span>結餘 ${money(inn - out)}</span>
+      <button type="button" class="ghost" id="cal-month-all">整月圈選</button>
       ${filter ? `<button type="button" class="ghost" id="cal-filter-clear" style="width:auto;padding:6px 10px">全部帳戶</button>` : ""}
     </div>
     <div class="cal-grid">
@@ -7830,6 +7831,15 @@ function bindCashCal() {
     e.preventDefault();
     ui.calFilter = "";
     ui.calBank = "";
+    stay();
+  };
+  const allMonth = document.getElementById("cal-month-all");
+  if (allMonth) allMonth.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ensureCalMonth();
+    ui.calDay = 1;
+    ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
     stay();
   };
   const search = document.getElementById("cal-search");
