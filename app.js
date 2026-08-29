@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:47";
+const APP_VERSION = "2026-08-29-下午6:50";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:50", items: ["點首頁時公告圖塊從左邊滑入"] },
   { ver: "2026-08-29-下午6:47", items: ["底部分頁點擊時圖示也會立刻放大"] },
   { ver: "2026-08-29-下午6:44", items: ["底部分頁點下去立刻放大，不再延遲"] },
   { ver: "2026-08-29-下午6:42", items: ["底部分頁選中改為橢圓，點擊會放大"] },
@@ -3625,7 +3626,7 @@ function announceBodyHtml(a, actions) {
 function announceCardsHtml() {
   const list = (state.announcements || []).slice().reverse();
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
-  return list.map(a => `<div class="card card-body slide-left ann-card" data-read-announce="${a.id}">${announceBodyHtml(a)}</div>`).join("");
+  return list.map(a => `<div class="card card-body slide-right ann-card" data-read-announce="${a.id}">${announceBodyHtml(a)}</div>`).join("");
 }
 
 function homeView() {
@@ -5943,10 +5944,11 @@ function bindTenant() {
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
-      if (next === ui.page) return;
+      if (next === ui.page && !el.closest(".nav")) return;
       if (el.closest(".nav")) {
         const on = document.querySelector(".nav button.active");
         if (on) ui.navPill = { x: Math.max(0, on.offsetLeft - 3), w: on.offsetWidth + 6 };
+        lastRenderPage = "__anim__";
       }
       ui.page = next;
       if (ui.page === "repair" && ui.tenantId) {

@@ -1439,6 +1439,15 @@ img.avatar { object-fit: cover; display: block; }
   35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
 }
+.ann-card {
+  animation: annFromLeft .75s cubic-bezier(.22,.82,.22,1) both;
+}
+@keyframes annFromLeft {
+  from { transform: translateX(-56px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.tenant-still .ann-card,
+.keep-still .ann-card { animation: none !important; transform: none !important; }
 .ann-react {
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
 }
