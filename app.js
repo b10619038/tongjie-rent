@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:54";
+const APP_VERSION = "2026-08-29-下午7:15";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午7:15", items: ["底部分頁縮放改慢、更滑順"] },
   { ver: "2026-08-29-下午6:54", items: ["點首頁時房間圖塊從右邊滑入"] },
   { ver: "2026-08-29-下午6:52", items: ["天氣動態不因點擊畫面而重來"] },
   { ver: "2026-08-29-下午6:50", items: ["點首頁時公告圖塊從左邊滑入"] },
@@ -3586,9 +3587,9 @@ function bindNavPill() {
   if (prev && prev.x !== on.offsetLeft) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
-    bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.2)";
+    bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.14)";
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
+      bg.style.transition = "transform .55s cubic-bezier(.22,.82,.22,1), width .55s cubic-bezier(.22,.82,.22,1)";
       bg.style.width = (on.offsetWidth + extra) + "px";
       bg.style.transform = dest(1);
     }));
@@ -5981,17 +5982,17 @@ function bindTenant() {
   };
   document.querySelectorAll(".nav [data-page]").forEach(el => {
     el.addEventListener("pointerdown", () => {
-      el.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
-      el.style.transform = "scale(1.2)";
+      el.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
+      el.style.transform = "scale(1.14)";
       const ic = el.querySelector(".nav-ic");
       if (ic) {
-        ic.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
-        ic.style.transform = "scale(1.45)";
+        ic.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
+        ic.style.transform = "scale(1.28)";
       }
       const inner = document.querySelector(".nav-bg i");
       if (inner) {
-        inner.style.transition = "transform .1s cubic-bezier(.22,1.6,.32,1)";
-        inner.style.transform = "scale(1.2)";
+        inner.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
+        inner.style.transform = "scale(1.14)";
       }
     });
   });
