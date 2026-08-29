@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:28";
+const APP_VERSION = "2026-08-30-上午12:29";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:28", items: ["工作助手圖塊改為提問工作助手"] },
+  { ver: "2026-08-30-上午12:29", items: ["所有資產預設全部收合"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5751,13 +5751,13 @@ function adminRoomListHtml(kind) {
       if (!pack) { pack = { group: g, rooms: [], company: r.company || "", street: r.street || "" }; groups.push(pack); }
       pack.rooms.push(r);
     });
-    const allClosed = groups.every(g => ui.factoryFold[g.group]);
+    const allClosed = groups.every(g => ui.factoryFold[g.group] !== false);
     const bar = `<div class="fold-bar">
       <span class="small">點綠色小標可收合分組</span>
       <button type="button" class="ghost" id="factory-all">${allClosed ? "全部展開" : "全部收合"}</button>
     </div>`;
     return bar + groups.map(g => {
-      const closed = !!ui.factoryFold[g.group];
+      const closed = ui.factoryFold[g.group] !== false;
       const cards = g.rooms.map(r => {
         const t = state.tenants.find(x => x.id === r.tenantId);
         return `<div class="card item clickable" data-admin-room="${r.id}">
@@ -5783,13 +5783,13 @@ function adminRoomListHtml(kind) {
     return { ...b, rooms };
   }).filter(g => g.rooms.length);
   if (!groups.length) return `<div class="empty">目前沒有套房</div>`;
-  const allClosed = groups.every(g => ui.studioFold[g.prefix]);
+  const allClosed = groups.every(g => ui.studioFold[g.prefix] !== false);
   const bar = `<div class="fold-bar">
     <span class="small">點綠色小標可收合分組</span>
     <button type="button" class="ghost" id="studio-all">${allClosed ? "全部展開" : "全部收合"}</button>
   </div>`;
   return bar + groups.map(g => {
-    const closed = !!ui.studioFold[g.prefix];
+    const closed = ui.studioFold[g.prefix] !== false;
     let lastFloor = "";
     const cards = g.rooms.map(r => {
       const t = state.tenants.find(x => x.id === r.tenantId);
@@ -7117,8 +7117,8 @@ function bindFactoryFold() {
       e.stopPropagation();
       const g = btn.dataset.factoryFold;
       if (!ui.factoryFold) ui.factoryFold = {};
-      ui.factoryFold[g] = !ui.factoryFold[g];
-      const closed = !!ui.factoryFold[g];
+      ui.factoryFold[g] = ui.factoryFold[g] !== false ? false : true;
+      const closed = ui.factoryFold[g] !== false;
       btn.classList.toggle("closed", closed);
       document.querySelectorAll("[data-factory-pack]").forEach(p => {
         if (p.dataset.factoryPack === g) setFactoryPack(p, closed);
@@ -7147,8 +7147,8 @@ function bindStudioFold() {
       e.stopPropagation();
       const g = btn.dataset.studioFold;
       if (!ui.studioFold) ui.studioFold = {};
-      ui.studioFold[g] = !ui.studioFold[g];
-      const closed = !!ui.studioFold[g];
+      ui.studioFold[g] = ui.studioFold[g] !== false ? false : true;
+      const closed = ui.studioFold[g] !== false;
       btn.classList.toggle("closed", closed);
       document.querySelectorAll("[data-studio-pack]").forEach(p => {
         if (p.dataset.studioPack === g) setFactoryPack(p, closed);
