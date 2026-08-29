@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午7:59";
+const APP_VERSION = "2026-08-29-下午8:02";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:02", items: ["修復線上簽名筆畫會自動消失"] },
   { ver: "2026-08-29-下午7:59", items: ["修復首頁公告與房間圖塊滑入被重畫關掉的問題"] },
   { ver: "2026-08-29-下午7:58", items: ["房間圖塊改為由右到左整張滑入"] },
   { ver: "2026-08-29-下午7:57", items: ["公告圖塊改為由左到右整張滑入"] },
@@ -3388,6 +3389,7 @@ function render() {
   persistUi();
   maybeAuditBrowse();
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
+  if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
@@ -6306,56 +6308,102 @@ function bindSignPad() {
   if (!c) return;
   const wrap = c.parentElement;
   const ctx = c.getContext("2d");
-  const fit = () => {
-    const ratio = Math.max(1, window.devicePixelRatio || 1);
-    const w = Math.max(280, (wrap && wrap.clientWidth) || c.clientWidth || 320);
-    const h = 160;
-    c.style.width = w + "px";
-    c.style.height = h + "px";
-    c.width = Math.round(w * ratio);
-    c.height = Math.round(h * ratio);
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  if (!Array.isArray(ui.signStrokes)) ui.signStrokes = [];
+  const style = () => {
     ctx.lineWidth = 2.4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#111111";
   };
+  const redraw = () => {
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    style();
+    (ui.signStrokes || []).forEach(line => {
+      if (!line || line.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(line[0].x, line[0].y);
+      for (let i = 1; i < line.length; i++) ctx.lineTo(line[i].x, line[i].y);
+      ctx.stroke();
+    });
+    if (ui.signStrokes.length) c.dataset.ink = "1";
+  };
+  const fit = () => {
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    const w = Math.max(280, Math.round((wrap && wrap.clientWidth) || c.clientWidth || 320));
+    const h = Math.max(160, Math.round((wrap && wrap.clientHeight) || 160));
+    const bw = Math.round(w * ratio), bh = Math.round(h * ratio);
+    if (c.width !== bw || c.height !== bh) {
+      c.style.width = w + "px";
+      c.style.height = h + "px";
+      c.width = bw;
+      c.height = bh;
+    }
+    redraw();
+  };
   fit();
+  if (c.dataset.bound === "1") return;
+  c.dataset.bound = "1";
+  c.setAttribute("draggable", "false");
   let drawing = false, last = null;
   const pt = e => {
     const r = c.getBoundingClientRect();
-    const src = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    const src = e.touches && e.touches[0] ? e.touches[0] : e;
     return { x: src.clientX - r.left, y: src.clientY - r.top };
   };
-  const start = e => { e.preventDefault(); drawing = true; last = pt(e); };
+  const start = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.signing = true;
+    drawing = true;
+    last = pt(e);
+    ui.signStrokes.push([last]);
+  };
   const move = e => {
     if (!drawing) return;
     e.preventDefault();
+    e.stopPropagation();
     const p = pt(e);
     ctx.beginPath();
     ctx.moveTo(last.x, last.y);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
     last = p;
+    const line = ui.signStrokes[ui.signStrokes.length - 1];
+    if (line) line.push(p);
     c.dataset.ink = "1";
   };
-  const end = () => { drawing = false; };
-  c.addEventListener("pointerdown", e => { c.setPointerCapture(e.pointerId); start(e); });
+  const end = e => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    drawing = false;
+    ui.signing = false;
+  };
+  c.addEventListener("pointerdown", e => {
+    try { c.setPointerCapture(e.pointerId); } catch {}
+    start(e);
+  });
   c.addEventListener("pointermove", move);
   c.addEventListener("pointerup", end);
   c.addEventListener("pointercancel", end);
-  c.addEventListener("touchstart", start, { passive: false });
-  c.addEventListener("touchmove", move, { passive: false });
-  c.addEventListener("touchend", end);
+  c.addEventListener("dragstart", e => e.preventDefault());
+  c.addEventListener("selectstart", e => e.preventDefault());
   const clr = document.getElementById("sign-clear");
-  if (clr) clr.onclick = () => { fit(); c.dataset.ink = ""; };
+  if (clr) clr.onclick = () => {
+    ui.signStrokes = [];
+    c.dataset.ink = "";
+    fit();
+  };
   const ok = document.getElementById("sign-confirm");
   if (ok) ok.onclick = () => {
     const agree = document.getElementById("sign-agree");
     if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
-    if (c.dataset.ink !== "1") { toast("請先在白框內簽名"); return; }
+    if (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length)) { toast("請先在白框內簽名"); return; }
     const t = me(); const r = myRoom();
     const rec = { status: "signed", at: nowStamp(), sig: c.toDataURL("image/png"), name: (t && t.name) || "" };
+    ui.signStrokes = [];
+    ui.signing = false;
     if (isDevPreview()) {
       ui.devESign = rec;
       ui.page = "lease";
