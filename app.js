@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:32";
+const APP_VERSION = "2026-08-29-下午5:36";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:36", items: ["公告紀錄編輯後按儲存會真正寫入並關閉編輯"] },
   { ver: "2026-08-29-下午5:32", items: ["公告紀錄可在該圖塊直接編輯刪除，發布欄只負責發新公告"] },
   { ver: "2026-08-29-下午5:27", items: ["上傳圖塊隱藏系統的選擇檔案文字"] },
   { ver: "2026-08-29-下午5:26", items: ["修復公告編輯：點編輯會打開發布欄並帶入內容"] },
@@ -3449,6 +3450,22 @@ function cancelAnnounceEdit() {
   ui.editAnnounceMedia = [];
   render();
 }
+function saveAnnounceEdit() {
+  const title = String((document.getElementById("ann-edit-title") || {}).value || "").trim();
+  const body = String((document.getElementById("ann-edit-body") || {}).value || "").trim();
+  if (!title || !body) { toast("請填寫標題與內容"); return; }
+  const a = (state.announcements || []).find(x => String(x.id) === String(ui.announceEditId));
+  if (!a) { toast("找不到這則公告"); cancelAnnounceEdit(); return; }
+  a.title = title;
+  a.body = body;
+  a.media = (ui.editAnnounceMedia || []).slice();
+  a.updatedAt = nowStamp();
+  ui.announceEditId = null;
+  ui.editAnnounceMedia = [];
+  save();
+  toast("已更新公告");
+  render();
+}
 function announcePosterLabel(a) {
   return String((a && a.postedBy) || "") === "1240" ? "開發者" : "管理員";
 }
@@ -4432,7 +4449,7 @@ function adminAnnounce() {
             <label class="upload">上傳影片<input id="ann-edit-video" type="file" accept="video/*" hidden /></label>
             <div id="ann-edit-preview">${mediaPreviewHtml(ui.editAnnounceMedia || [], "data-del-edit-ann-media")}</div>
             <div class="ann-actions">
-              <button class="btn-navy" type="submit">儲存</button>
+              <button class="btn-navy" type="button" id="ann-edit-save" data-save-announce="${a.id}">儲存</button>
               <button class="ghost" type="button" data-cancel-announce="${a.id}">取消</button>
             </div>
           </form>
@@ -6743,6 +6760,7 @@ function bindAdmin() {
       save();
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
+      render();
     };
   }
   const editForm = document.getElementById("ann-edit-form");
@@ -6770,17 +6788,9 @@ function bindAdmin() {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
       el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
     });
-    editForm.onsubmit = e => {
-      e.preventDefault();
-      const title = formVal(editForm, "title").trim();
-      const body = formVal(editForm, "body").trim();
-      if (!title || !body) { toast("請填寫標題與內容"); return; }
-      const a = (state.announcements || []).find(x => String(x.id) === String(ui.announceEditId));
-      if (a) {
-        a.title = title; a.body = body; a.media = (ui.editAnnounceMedia || []).slice(); a.updatedAt = nowStamp();
-      }
-      ui.announceEditId = null; ui.editAnnounceMedia = []; save(); toast("已更新公告");
-    };
+    editForm.onsubmit = e => { e.preventDefault(); saveAnnounceEdit(); };
+    const saveBtn = document.getElementById("ann-edit-save");
+    if (saveBtn) saveBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); saveAnnounceEdit(); };
   }
   document.querySelectorAll("[data-edit-announce]").forEach(btn => {
     btn.onclick = e => {
@@ -7236,6 +7246,13 @@ document.getElementById("app").addEventListener("click", e => {
     e.preventDefault();
     e.stopPropagation();
     cancelAnnounceEdit();
+    return;
+  }
+  const saveAnn = e.target.closest("[data-save-announce]");
+  if (saveAnn) {
+    e.preventDefault();
+    e.stopPropagation();
+    saveAnnounceEdit();
   }
 }, true);
 function bindPullRefresh() {
