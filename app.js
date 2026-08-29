@@ -13,11 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:48";
+const APP_VERSION = "2026-08-29-下午11:43";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-29-下午10:48", items: ["修復總覽頁 rented is not defined"] },
+  { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
   { ver: "2026-08-29-下午10:30", items: ["所有資產編輯欄位可正常填寫"] },
@@ -5432,14 +5432,6 @@ function adminDash() {
   const rented = studioOcc.rented;
   const vacant = studioOcc.vacant;
   const repairing = studioOcc.repairing;
-  const studioTenants = state.tenants.filter(t => {
-    const room = state.rooms.find(x => x.id === t.roomId);
-    return room && room.kind !== "factory" && room.kind !== "store" && !isStoreNo(room.no) && room.status !== "office";
-  });
-  const dueAmt = studios.reduce((s, r) => s + (Number(r.rent) || 0), 0);
-  const paidAmt = studioTenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
-  const unpaidAmt = Math.max(dueAmt - paidAmt, 0);
-  const collectRate = dueAmt ? Math.round(paidAmt / dueAmt * 100) : 0;
   const solarFactory = factories.filter(r => SOLAR_FACTORY_NOS.includes(r.no));
   const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
   const solarTotal = factories.length + STUDIO_BUILDINGS.length;
@@ -5463,7 +5455,6 @@ function adminDash() {
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
-      <div class="card ring-card"><div class="ring-wrap"><div class="ring mint ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${studioTenants.filter(t => t.paid).length}／${studioTenants.length} 位租客</div></div></div>
       <div class="card ring-card ring-stack">
         <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div></div>
         <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div></div>
