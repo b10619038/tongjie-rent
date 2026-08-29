@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:14";
+const APP_VERSION = "2026-08-29-下午8:15";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:15", items: ["底部分頁縮放再加大一點"] },
   { ver: "2026-08-29-下午8:14", items: ["繳費租金與綁定 LINE 改回不跳動"] },
   { ver: "2026-08-29-下午8:11", items: ["未繳費三天前與未綁 LINE 的按鈕會跳動提醒"] },
   { ver: "2026-08-29-下午8:08", items: ["尚未簽約按鈕滑入定位後邊邊跳動"] },
@@ -3626,7 +3627,7 @@ function bindNavPill() {
   if (prev && prev.x !== on.offsetLeft) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
-    bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.14)";
+    bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.22)";
     requestAnimationFrame(() => requestAnimationFrame(() => {
       bg.style.transition = "transform .55s cubic-bezier(.22,.82,.22,1), width .55s cubic-bezier(.22,.82,.22,1)";
       bg.style.width = (on.offsetWidth + extra) + "px";
@@ -6022,16 +6023,16 @@ function bindTenant() {
   document.querySelectorAll(".nav [data-page]").forEach(el => {
     el.addEventListener("pointerdown", () => {
       el.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-      el.style.transform = "scale(1.14)";
+      el.style.transform = "scale(1.22)";
       const ic = el.querySelector(".nav-ic");
       if (ic) {
         ic.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-        ic.style.transform = "scale(1.28)";
+        ic.style.transform = "scale(1.42)";
       }
       const inner = document.querySelector(".nav-bg i");
       if (inner) {
         inner.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-        inner.style.transform = "scale(1.14)";
+        inner.style.transform = "scale(1.22)";
       }
     });
   });

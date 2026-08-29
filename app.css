@@ -410,9 +410,9 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .nav-bg.land i { animation: navPop .55s cubic-bezier(.22,.82,.22,1); }
 .nav button.active.land { animation: navPop .55s cubic-bezier(.22,.82,.22,1); }
-.nav button:active { background-color: transparent; transform: scale(1.14); transition: transform .38s cubic-bezier(.22,.82,.22,1); }
+.nav button:active { background-color: transparent; transform: scale(1.22); transition: transform .38s cubic-bezier(.22,.82,.22,1); }
 @keyframes navPop {
-  0% { transform: scale(1.16); }
+  0% { transform: scale(1.24); }
   100% { transform: scale(1); }
 }
 .nav button {
@@ -438,15 +438,15 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   margin: 0 auto 3px;
   transform-origin: center;
 }
-.nav button.active .nav-ic { transform: scale(1.15); }
+.nav button.active .nav-ic { transform: scale(1.22); }
 .nav button.land .nav-ic,
 .nav button:active .nav-ic { animation: navIconPop .55s cubic-bezier(.22,.82,.22,1); }
 @keyframes navIconPop {
-  0% { transform: scale(1.28); }
-  100% { transform: scale(1.15); }
+  0% { transform: scale(1.42); }
+  100% { transform: scale(1.22); }
 }
 @keyframes navPop {
-  0% { transform: scale(1.16); }
+  0% { transform: scale(1.24); }
   100% { transform: scale(1); }
 }
 .zoom-page { animation: none; transform: none; }
