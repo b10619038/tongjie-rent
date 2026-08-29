@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-34";
+const APP_STAMP = "2026-08-30-01-36";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定頁移除安裝圖塊"] },
+  { ver: APP_STAMP, items: ["設定新增權限與不得外流聲明"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5035,6 +5035,11 @@ function adminSettings() {
       <div class="label">資料</div>
       <div class="row"><span class="k">雲端</span><span class="v">${escapeHtml(cloud)}</span></div>
       <div class="row"><span class="k">版本</span><span class="v">${escapeHtml(APP_VERSION)}</span></div>
+    </div>
+    <div class="card card-body">
+      <div class="label">權限</div>
+      <p class="small" style="margin-top:8px">本系統僅供統潔＆信潔開發有限公司內部授權人員使用。租客資料、金流、合約、報修與帳務等，均屬公司內部資料及個人資料。</p>
+      <p class="small">禁止截圖、轉傳、外流、公開或提供給無關的第三人。未經授權擅自使用、複製或洩漏，可能違反《個人資料保護法》、《營業秘密法》及其他相關法令，公司將依法追究民、刑事及相關責任。</p>
     </div>
   </div>`;
 }
