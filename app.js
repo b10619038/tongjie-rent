@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-02-05";
+const APP_STAMP = "2026-08-30-02-14";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["太陽能板照片去背，只留本體"] },
+  { ver: APP_STAMP, items: ["套房廠房店面出租率右側加上模型照片"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -5879,9 +5879,9 @@ function adminDash() {
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card ring-stack">
-        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div><img class="occ-shot" src="images/occ-studio.jpg?v=0214" alt="套房"></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div><img class="occ-shot" src="images/occ-factory.jpg?v=0214" alt="廠房"></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div><img class="occ-shot" src="images/occ-store.jpg?v=0214" alt="店面"></div>
       </div>
       <div class="card ring-card solar-card">
         <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
