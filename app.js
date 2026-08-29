@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:41";
+const APP_VERSION = "2026-08-29-下午8:42";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:42", items: ["修復立即更新按鈕沒有反應"] },
   { ver: "2026-08-29-下午8:41", items: ["更新視窗標題改為這次更新內容如下"] },
   { ver: "2026-08-29-下午8:40", items: ["修復點更新列沒有跳出更新內容"] },
   { ver: "2026-08-29-下午8:38b", items: ["後台頂部分頁綠色底塊跟著文字一起放大"] },
@@ -382,13 +383,11 @@ function applyAppUpdate() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
   ui.updateNotes = false;
   ui.updateReady = false;
-  const reg = window.__swReg;
-  if (reg && reg.waiting) {
-    __reloading = true;
-    reg.waiting.postMessage("SKIP_WAITING");
-    return;
-  }
-  render();
+  try {
+    const reg = window.__swReg;
+    if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+  } catch {}
+  location.reload();
 }
 function promptAppUpdate(reg) {
   if (ui.updateReady) return;
@@ -3432,7 +3431,8 @@ function render() {
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
-    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml;
+    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml
+      || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
@@ -6049,7 +6049,7 @@ function bindUpdateBar() {
   const btn = document.getElementById("apply-update");
   if (btn) btn.onclick = () => { ui.updateNotes = true; render(); };
   const now = document.getElementById("apply-update-now");
-  if (now) now.onclick = applyAppUpdate;
+  if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
   const close = document.getElementById("update-close");
   if (close) close.onclick = () => { ui.updateNotes = false; render(); };
   const mask = document.getElementById("update-mask");
