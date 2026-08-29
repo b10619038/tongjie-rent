@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-30-上午12:33";
+const APP_VERSION = "2026-08-30-上午12:36";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: "2026-08-30-上午12:33", items: ["跑銀行上傳入帳改為跑業務上傳入帳"] },
+  { ver: "2026-08-30-上午12:36", items: ["跑業務可打字記收現，不一定要拍照"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -4993,8 +4993,11 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">一次可以拍很多本、不用照順序。每張照片會分開預判；分不出公司（統潔／信潔／聯名戶／個人／現金）或銀行（聯邦／兆豐／農會／超商）時，會跳出讓你選。</p>
-          ${errandGuessHtml(ui.errandGuess)}
+          <p class="small" style="margin-top:10px">去廠房或公司收現金，直接打字就能記，不一定要拍照。一次拍很多本也可以，分不出公司或銀行時會問你。同一筆錢之後存進銀行會自動對帳。</p>
+          <label class="field"><span>這次做了什麼</span>
+            <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
+          </label>
+          ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
           <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
@@ -7831,6 +7834,9 @@ function bindAdminAi() {
     };
     errand.onsubmit = e => {
     e.preventDefault();
+    if (!errandGuessList().length && String(ui.errandNote || "").trim()) {
+      ui.errandGuesses = [inferOneFile({ name: ui.errandNote.trim() })];
+    }
     const list = errandGuessList();
     if (!list.length) {
       if (ui.errandAbsorb) {
@@ -7840,7 +7846,7 @@ function bindAdminAi() {
         render();
         return;
       }
-      toast("請先上傳照片或檔案");
+      toast("請打字說明，或上傳照片／檔案");
       return;
     }
     const pending = list.filter(x => x.needCompany || x.needBank);
@@ -7898,6 +7904,7 @@ function bindAdminAi() {
     ui.errandAbsorb = "";
     ui.errandGuess = null;
     ui.errandGuesses = [];
+    ui.errandNote = "";
     ui.errandOpen = true;
     if (nCash || nOut || nIn || nLink) {
       if (!state.aiLogs) state.aiLogs = [];
@@ -7912,6 +7919,28 @@ function bindAdminAi() {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => { if (el.focus) el.focus(); }, 0); });
       el.addEventListener("click", e => e.stopPropagation());
     });
+    const memo = document.getElementById("errand-note-free");
+    if (memo) {
+      memo.oninput = () => {
+        ui.errandNote = String(memo.value || "");
+        const text = ui.errandNote.trim();
+        const photos = (ui.errandGuesses || []).filter(x => x.fromPhoto);
+        if (photos.length) {
+          photos.forEach(x => { x.note = [x.fileName, text].filter(Boolean).join(" · "); });
+          ui.errandGuesses = photos;
+        } else if (text) {
+          const g = inferOneFile({ name: text });
+          g.fileName = text;
+          g.note = text;
+          ui.errandGuesses = [g];
+          ui.errandGuess = g;
+        } else {
+          ui.errandGuesses = [];
+          ui.errandGuess = null;
+        }
+        refreshErrandGuessBox();
+      };
+    }
   }
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
     btn.onclick = e => {
@@ -7925,9 +7954,10 @@ function bindAdminAi() {
   const errandPhoto = document.getElementById("errand-photo");
   if (errandPhoto) errandPhoto.onchange = async () => {
     const files = [...(errandPhoto.files || [])];
-    const shots = files.filter(f => !isSheetFile(f)).map(inferOneFile);
-    ui.errandGuesses = shots;
-    ui.errandGuess = shots[0] || null;
+    const shots = files.filter(f => !isSheetFile(f)).map(f => Object.assign(inferOneFile(f), { fromPhoto: true }));
+    if (ui.errandNote) shots.forEach(x => { x.note = [x.note, ui.errandNote].filter(Boolean).join(" · "); });
+    ui.errandGuesses = shots.length ? shots : (ui.errandNote ? [inferOneFile({ name: ui.errandNote })] : []);
+    ui.errandGuess = ui.errandGuesses[0] || null;
     const got = await absorbUploadFiles(files, "errand");
     errandPhoto.value = "";
     const box = document.getElementById("errand-absorb");
