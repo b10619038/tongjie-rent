@@ -91,6 +91,31 @@ input, textarea, select {
   background: #fff;
   color: #111;
 }
+#bank-form {
+  position: relative;
+  z-index: 6;
+  isolation: isolate;
+  pointer-events: auto !important;
+}
+#bank-form .field,
+#bank-form input,
+#bank-form select,
+#bank-form textarea,
+#bank-form label {
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+#bank-form input,
+#bank-form select,
+#bank-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+  background: #fff;
+  color: #111;
+}
 .shell {
   flex: 1;
   min-height: 0;

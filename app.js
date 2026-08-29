@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:27";
+const APP_VERSION = "2026-08-29-下午4:30";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:30", items: ["上傳銀行入帳資料可填寫，並改為橫條展開"] },
   { ver: "2026-08-29-下午4:27", items: ["記下銀行業務改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:19", items: ["發布公告改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午3:32", items: ["記下銀行業務欄位改為可點擊填寫"] },
@@ -882,7 +883,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -4172,18 +4173,25 @@ function adminAi() {
         <button class="btn-navy" type="submit">送出問題</button>
       </form>
     </div>
-    <form class="card card-body" id="bank-form">
-      <h2 class="dash-h">上傳銀行入帳資料</h2>
-      <p class="small">可上傳存摺、轉帳畫面或對帳單。填金額與金流帳戶後，會記入進出帳與整體報表；工作助手會去掉重複。</p>
-      <label class="field"><span>入帳日期</span><input name="date" type="date" /></label>
-      <label class="field"><span>金額</span><input name="amount" type="text" placeholder="例如 10000" /></label>
-      <label class="field"><span>金流帳戶</span>
-        <select name="company">${bookAccountOptions("統潔")}</select>
-      </label>
-      <label class="field"><span>備註</span><textarea name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
-      <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
-      <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
-      <button class="btn-navy" type="submit">儲存入帳資料</button>
+    <form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
+      <button type="button" class="row tenant-slim-head fold-head" id="bank-fold">
+        <span class="k">上傳銀行入帳資料</span>
+        <span class="row-end"><span class="small">${ui.bankOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+      </button>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">可上傳存摺、轉帳畫面或對帳單。填金額與金流帳戶後，會記入進出帳與整體報表；工作助手會去掉重複。</p>
+          <label class="field"><span>入帳日期</span><input id="bank-date" name="date" type="date" value="${ymdOf(nowStamp())}" /></label>
+          <label class="field"><span>金額</span><input id="bank-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
+          <label class="field"><span>金流帳戶</span>
+            <select id="bank-company" name="company">${bookAccountOptions("統潔")}</select>
+          </label>
+          <label class="field"><span>備註</span><textarea id="bank-note" name="note" placeholder="例如 聯邦銀行 後五碼 35909"></textarea></label>
+          <label class="upload">上傳照片或檔案<input id="bank-file" type="file" accept="image/*,application/pdf" multiple hidden /></label>
+          <div id="bank-preview">${mediaPreviewHtml(ui.bankMedia || [], "data-del-bank-media")}</div>
+          <button class="btn-navy" type="submit">儲存入帳資料</button>
+        </div>
+      </div>
     </form>
     ${slips.length ? slips.map(s => `
       <div class="card card-body">
@@ -6733,30 +6741,46 @@ function bindAdminAi() {
     bindAdminAi();
   };
   const bank = document.getElementById("bank-form");
-  if (bank) bank.onsubmit = e => {
-    e.preventDefault();
-    const date = bank.date.value;
-    const amount = Number(String(bank.amount.value || "").replace(/[^\d.]/g, "")) || 0;
-    const note = (bank.note.value || "").trim();
-    const company = normalizeBookCompany((bank.company && bank.company.value) || cellAccount(note) || "統潔");
-    if (!state.bankSlips) state.bankSlips = [];
-    state.bankSlips.push({
-      id: "slip" + Date.now(),
-      date, amount, roomNo: "", note, company,
-      media: (ui.bankMedia || []).slice(),
-      createdAt: nowStamp()
+  if (bank) {
+    const fold = document.getElementById("bank-fold");
+    if (fold) fold.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.bankOpen = !bank.classList.contains("open");
+      bank.classList.toggle("open", ui.bankOpen);
+      const hint = fold.querySelector(".small");
+      if (hint) hint.textContent = ui.bankOpen ? "點擊收起" : "點擊展開";
+    };
+    bank.onsubmit = e => {
+      e.preventDefault();
+      const date = formVal(bank, "date").trim();
+      const amount = Number(String(formVal(bank, "amount")).replace(/[^\d.]/g, "")) || 0;
+      const note = formVal(bank, "note").trim();
+      const company = normalizeBookCompany(formVal(bank, "company") || cellAccount(note) || "統潔");
+      if (!date) { toast("請填入帳日期"); return; }
+      if (!state.bankSlips) state.bankSlips = [];
+      state.bankSlips.push({
+        id: "slip" + Date.now(),
+        date, amount, roomNo: "", note, company,
+        media: (ui.bankMedia || []).slice(),
+        createdAt: nowStamp()
+      });
+      ui.bankMedia = [];
+      ui.bankOpen = false;
+      if (amount) {
+        if (!state.aiLogs) state.aiLogs = [];
+        state.aiLogs.push({ role: "ai", text: "已查看銀行入帳 " + money(amount) + "（" + company + "）。同一天、同金額、同帳戶的重複資料，進出帳與整體報表只會算一筆。" });
+        const p = String(date || "").split("-");
+        if (p.length === 3) { ui.calYear = Number(p[0]); ui.calMonth = Number(p[1]); ui.calDay = Number(p[2]); }
+      }
+      save();
+      toast(amount ? "已納入進出帳與整體報表" : "已儲存入帳資料（未填金額，未記入進出帳）");
+    };
+    document.querySelectorAll("#bank-form input, #bank-form select, #bank-form textarea").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
     });
-    ui.bankMedia = [];
-    if (amount) {
-      if (!state.aiLogs) state.aiLogs = [];
-      state.aiLogs.push({ role: "ai", text: "已查看銀行入帳 " + money(amount) + "（" + company + "）。同一天、同金額、同帳戶的重複資料，進出帳與整體報表只會算一筆。" });
-      const p = String(date || "").split("-");
-      if (p.length === 3) { ui.calYear = Number(p[0]); ui.calMonth = Number(p[1]); ui.calDay = Number(p[2]); }
-    }
-    save();
-    toast(amount ? "已納入進出帳與整體報表" : "已儲存入帳資料（未填金額，未記入進出帳）");
-    render();
-  };
+  }
   document.querySelectorAll("[data-del-slip]").forEach(btn => {
     btn.onclick = () => {
       state.bankSlips = (state.bankSlips || []).filter(x => x.id !== btn.dataset.delSlip);
