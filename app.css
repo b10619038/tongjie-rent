@@ -1921,3 +1921,19 @@ img.avatar { object-fit: cover; display: block; }
 }
 .theme-swatch span { font-size: 12px; font-weight: 700; color: var(--ink); }
 .theme-swatch.on { border-color: var(--sw); background: var(--sw2); }
+.theme-grid.in-page { margin: 10px 0 0; }
+.font-scale {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+  pointer-events: auto !important;
+}
+.font-scale span { font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+.font-scale input[type="range"] {
+  flex: 1;
+  height: 28px;
+  margin: 0;
+  pointer-events: auto !important;
+  accent-color: var(--teal);
+}

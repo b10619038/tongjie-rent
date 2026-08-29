@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-24";
+const APP_STAMP = "2026-08-30-01-25";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台日誌右邊新增設定"] },
+  { ver: APP_STAMP, items: ["設定內可選調色盤，並可滑動調整版面字體大小"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -225,6 +225,7 @@ const CHANGELOG = [
 const APP_BUILD_NO = CHANGELOG.length;
 const APP_VERSION = APP_STAMP + "-" + String(APP_BUILD_NO);
 const THEME_KEY = "tongjie_theme";
+const FONT_KEY = "tongjie_font";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
   { id: "navy", name: "海霧藍", teal: "#3d5a80", mid: "#4f6f99", soft: "#e4edf6", chip: "#eef3f8", ink: "#1b2838" },
@@ -279,8 +280,28 @@ function applyTheme(id) {
   if (apple) apple.setAttribute("content", dark ? "black" : (t.id === "snow" || t.id === "mist") ? "default" : "black-translucent");
   try { localStorage.setItem(THEME_KEY, t.id); } catch {}
 }
+function currentFontScale() {
+  try {
+    const n = Number(localStorage.getItem(FONT_KEY) || 100);
+    return Math.min(130, Math.max(85, Number.isFinite(n) ? n : 100));
+  } catch { return 100; }
+}
+function applyFont(n) {
+  const v = Math.round(Math.min(130, Math.max(85, Number(n) || 100)));
+  const s = v / 100;
+  const r = document.documentElement;
+  r.style.setProperty("--ui-scale", String(s));
+  r.style.fontSize = (16 * s) + "px";
+  r.style.zoom = String(s);
+  try { localStorage.setItem(FONT_KEY, String(v)); } catch {}
+  const lab = document.getElementById("font-val");
+  if (lab) lab.textContent = v + "%";
+  const slider = document.getElementById("font-scale");
+  if (slider && slider.value !== String(v)) slider.value = String(v);
+  return v;
+}
 function showThemeFab() {
-  return true;
+  return ui.role !== "admin";
 }
 function themePickerHtml() {
   if (!showThemeFab()) return "";
@@ -4968,7 +4989,6 @@ function adminSettings() {
   const who = ui.adminCode === "1240" ? "開發者" : "管理員";
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
-  const theme = THEMES.find(t => t.id === currentThemeId()) || THEMES[0];
   const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
   return `<div class="admin-grid list">
     <div class="card card-body">
@@ -4986,9 +5006,23 @@ function adminSettings() {
       <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
     </div>
     <div class="card card-body">
-      <div class="label">外觀</div>
-      <div class="row"><span class="k">目前色調</span><span class="v">${escapeHtml(theme.name)}</span></div>
-      <button type="button" class="ghost" id="set-theme" style="margin-top:10px">選擇色調</button>
+      <div class="label">調色盤</div>
+      <p class="small">選擇整體色調。</p>
+      <div class="theme-grid in-page">
+        ${THEMES.map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
+          <i></i><span>${t.name}</span>
+        </button>`).join("")}
+      </div>
+    </div>
+    <div class="card card-body">
+      <div class="label">版面字體大小</div>
+      <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
+      <div class="font-scale">
+        <span>小</span>
+        <input id="font-scale" type="range" min="85" max="130" step="1" value="${currentFontScale()}" />
+        <span>大</span>
+      </div>
+      <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
     </div>
     <div class="card card-body">
       <div class="label">安裝</div>
@@ -7782,14 +7816,23 @@ function bindAdminSettings() {
     e.stopPropagation();
     askTongjieNotify();
   };
-  const theme = document.getElementById("set-theme");
-  if (theme) theme.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    ui.themeOpen = true;
-    ui.keepScroll = true;
-    render();
-  };
+  document.querySelectorAll("#app [data-theme]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      applyTheme(btn.dataset.theme);
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const slider = document.getElementById("font-scale");
+  if (slider) {
+    slider.addEventListener("pointerdown", e => e.stopPropagation());
+    slider.addEventListener("click", e => e.stopPropagation());
+    const slide = () => applyFont(slider.value);
+    slider.addEventListener("input", slide);
+    slider.addEventListener("change", slide);
+  }
   const install = document.getElementById("set-install");
   if (install) install.onclick = e => {
     e.preventDefault();
@@ -8515,6 +8558,7 @@ async function boot() {
   try {
     restoreUi();
     applyTheme(currentThemeId());
+    applyFont(currentFontScale());
     seedSeenVersion();
     if (hasUnseenUpdate()) ui.updateReady = true;
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
