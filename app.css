@@ -338,6 +338,7 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 }
 .pay-pill.paid { background: var(--ok-soft); color: var(--ok); }
 .pay-pill.unpaid { background: var(--rose-soft); color: var(--rose); }
+.pay-pill[data-page] { cursor: pointer; }
 
 .section-title {
   margin: 26px 0 12px;
