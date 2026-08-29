@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:21";
+const APP_VERSION = "2026-08-29-下午8:22";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:22", items: ["上傳照片與影片合併成一個按鈕"] },
   { ver: "2026-08-29-下午8:21", items: ["問候列改為白色底塊，與公告一起從左滑入"] },
   { ver: "2026-08-29-下午8:17", items: ["底部分頁圖示點擊時再放大"] },
   { ver: "2026-08-29-下午8:15", items: ["底部分頁縮放再加大一點"] },
@@ -4165,8 +4166,7 @@ function repairView() {
         <div class="repair-note-box">
           <textarea id="repair-note" name="repair-note" class="repair-note" rows="5" maxlength="800" autocapitalize="sentences" autocomplete="on" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
         </div>
-        <label class="upload">上傳照片<input id="repair-photo" type="file" accept="image/*" multiple hidden /></label>
-        <label class="upload">上傳影片<input id="repair-video" type="file" accept="video/*" hidden /></label>
+        <label class="upload">上傳照片/影片<input id="repair-media" type="file" accept="image/*,video/*" multiple hidden /></label>
         <div id="media-preview">${pendingPreviewHtml()}</div>
         <button class="btn-navy" id="submit-repair" type="button">提交報修</button>
       </div>
@@ -4695,8 +4695,7 @@ function adminAnnounce() {
           <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
           <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" /></label>
           <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容"></textarea></label>
-          <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
-          <label class="upload">上傳影片<input id="ann-video" type="file" accept="video/*" hidden /></label>
+          <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
           <button class="btn-navy" type="submit">發布公告</button>
         </div>
@@ -4714,8 +4713,7 @@ function adminAnnounce() {
           <form id="ann-edit-form" autocomplete="off">
             <label class="field"><span>標題</span><input id="ann-edit-title" name="title" type="text" value="${escapeHtml(a.title)}" /></label>
             <label class="field"><span>內容</span><textarea id="ann-edit-body" name="body">${escapeHtml(a.body)}</textarea></label>
-            <label class="upload">上傳照片<input id="ann-edit-photo" type="file" accept="image/*" multiple hidden /></label>
-            <label class="upload">上傳影片<input id="ann-edit-video" type="file" accept="video/*" hidden /></label>
+            <label class="upload">上傳照片/影片<input id="ann-edit-media" type="file" accept="image/*,video/*" multiple hidden /></label>
             <div id="ann-edit-preview">${mediaPreviewHtml(ui.editAnnounceMedia || [], "data-del-edit-ann-media")}</div>
             <div class="ann-actions">
               <button class="btn-navy" type="button" id="ann-edit-save" data-save-announce="${a.id}">儲存</button>
@@ -6238,12 +6236,12 @@ function bindTenant() {
       render();
     };
   }
-  const photo = document.getElementById("repair-photo");
-  const video = document.getElementById("repair-video");
-  const addRepairFiles = async (files, kind) => {
+  const mediaIn = document.getElementById("repair-media");
+  const addRepairFiles = async (files) => {
     if (!ui.repairMedia) ui.repairMedia = [];
     for (const file of files) {
-      if (kind === "video") {
+      const video = /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name || "");
+      if (video) {
         if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
         ui.repairMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
       } else {
@@ -6254,8 +6252,7 @@ function bindTenant() {
     if (box) box.innerHTML = pendingPreviewHtml();
     bindPendingMedia();
   };
-  if (photo) photo.onchange = () => { addRepairFiles(photo.files, "image"); photo.value = ""; };
-  if (video) video.onchange = () => { addRepairFiles(video.files, "video"); video.value = ""; };
+  if (mediaIn) mediaIn.onchange = () => { addRepairFiles(mediaIn.files); mediaIn.value = ""; };
   bindPendingMedia();
   const submit = document.getElementById("submit-repair");
   if (submit) {
@@ -7066,10 +7063,11 @@ function bindAdmin() {
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.announceOpen ? "點擊收起" : "點擊展開";
     };
-    const addAnnFiles = async (files, kind) => {
+    const addAnnFiles = async (files) => {
       if (!ui.announceMedia) ui.announceMedia = [];
       for (const file of files) {
-        if (kind === "video") {
+        const video = /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name || "");
+        if (video) {
           if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
           ui.announceMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
         } else {
@@ -7080,10 +7078,8 @@ function bindAdmin() {
       if (box) box.innerHTML = mediaPreviewHtml(ui.announceMedia, "data-del-ann-media");
       bindAnnPending();
     };
-    const photo = document.getElementById("ann-photo");
-    const video = document.getElementById("ann-video");
-    if (photo) photo.onchange = () => { addAnnFiles(photo.files, "image"); photo.value = ""; };
-    if (video) video.onchange = () => { addAnnFiles(video.files, "video"); video.value = ""; };
+    const media = document.getElementById("ann-media");
+    if (media) media.onchange = () => { addAnnFiles(media.files); media.value = ""; };
     bindAnnPending();
     document.querySelectorAll("#announce-form input, #announce-form textarea").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
@@ -7107,10 +7103,11 @@ function bindAdmin() {
   }
   const editForm = document.getElementById("ann-edit-form");
   if (editForm) {
-    const addEditFiles = async (files, kind) => {
+    const addEditFiles = async (files) => {
       if (!ui.editAnnounceMedia) ui.editAnnounceMedia = [];
       for (const file of files) {
-        if (kind === "video") {
+        const video = /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name || "");
+        if (video) {
           if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
           ui.editAnnounceMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
         } else {
@@ -7121,10 +7118,8 @@ function bindAdmin() {
       if (box) box.innerHTML = mediaPreviewHtml(ui.editAnnounceMedia, "data-del-edit-ann-media");
       bindEditAnnPending();
     };
-    const ep = document.getElementById("ann-edit-photo");
-    const ev = document.getElementById("ann-edit-video");
-    if (ep) ep.onchange = () => { addEditFiles(ep.files, "image"); ep.value = ""; };
-    if (ev) ev.onchange = () => { addEditFiles(ev.files, "video"); ev.value = ""; };
+    const em = document.getElementById("ann-edit-media");
+    if (em) em.onchange = () => { addEditFiles(em.files); em.value = ""; };
     bindEditAnnPending();
     document.querySelectorAll("#ann-edit-form input, #ann-edit-form textarea").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
