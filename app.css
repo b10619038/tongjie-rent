@@ -456,6 +456,16 @@ textarea { min-height: 92px; resize: vertical; }
 .upload {
   border: 1.5px dashed #b7c7c2; border-radius: 16px; padding: 16px; text-align: center;
   background: var(--card); color: var(--ink-soft); cursor: pointer; display: block;
+  position: relative;
+}
+input[type="file"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
 }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .form-grid textarea, .form-grid .upload, .form-grid .btn-navy, .form-grid #media-preview,
