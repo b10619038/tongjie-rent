@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:53";
+const APP_VERSION = "2026-08-29-下午9:01";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:01", items: ["整體報表移除個人戶明細表"] },
   { ver: "2026-08-29-下午8:53", items: ["內容按鈕改為左上繳費租金、右上綁定 LINE、左下房間資訊"] },
   { ver: "2026-08-29-下午8:44", items: ["後台頂部分頁改回原本樣式，不再放大跳動"] },
   { ver: "2026-08-29-下午8:42", items: ["修復立即更新按鈕沒有反應"] },
@@ -4866,23 +4867,6 @@ function revenueTableHtml() {
     </table>
     </div>
     <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
-    <div class="rev-caption">個人戶明細<span class="rev-hint">點擊放大</span></div>
-    <div class="rev-card" data-rev-zoom="個人戶明細" role="button" tabindex="0">
-    <table class="rev-table">
-      <thead>
-        <tr><th>成員</th><th>當月收入</th><th>當月支出</th><th>當月結餘</th><th>當年收入</th><th>當年支出</th><th>當年結餘</th><th>營收總額</th></tr>
-      </thead>
-      <tbody>
-        ${d.people.map(p => `<tr>
-          <th>${escapeHtml(p.name)}</th>${td(p.m.inn)}${td(p.m.out)}${td(p.m.net)}${td(p.y.inn)}${td(p.y.out)}${td(p.y.net)}${td(p.m.bal)}
-        </tr>`).join("")}
-        ${(() => {
-          const p = d.cols.find(c => c.name === "個人戶") || { m: { inn: 0, out: 0, net: 0, bal: 0 }, y: { inn: 0, out: 0, net: 0 } };
-          return `<tr class="tot"><th>個人戶合計</th>${td(p.m.inn)}${td(p.m.out)}${td(p.m.net)}${td(p.y.inn)}${td(p.y.out)}${td(p.y.net)}${td(p.m.bal)}</tr>`;
-        })()}
-      </tbody>
-    </table>
-    </div>
   </div>`;
 }
 function closeRevZoom() {
