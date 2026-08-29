@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:30";
+const APP_VERSION = "2026-08-29-下午4:35";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:35", items: ["手機頂部狀態列顏色會跟著主題改變"] },
   { ver: "2026-08-29-下午4:30", items: ["上傳銀行入帳資料可填寫，並改為橫條展開"] },
   { ver: "2026-08-29-下午4:27", items: ["記下銀行業務改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:19", items: ["發布公告改為橫條收起，點擊展開"] },
@@ -167,6 +168,7 @@ function currentThemeId() {
 function applyTheme(id) {
   const t = THEMES.find(x => x.id === id) || THEMES[0];
   const r = document.documentElement;
+  const bar = t.bar || t.teal;
   r.style.setProperty("--teal", t.teal);
   r.style.setProperty("--teal-mid", t.mid);
   r.style.setProperty("--ok", t.teal);
@@ -180,19 +182,25 @@ function applyTheme(id) {
   r.style.setProperty("--paper", t.paper || "#ffffff");
   r.style.setProperty("--card", t.card || "#ffffff");
   r.style.setProperty("--on-teal", t.onTeal || "#ffffff");
+  r.style.setProperty("--bar", bar);
   r.style.setProperty("--mask", t.bar === "#000000" ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
   const dark = t.id === "void" || t.paper === "#000000";
   r.style.setProperty("--press", dark ? "#262626" : "#f3f3f3");
   r.style.setProperty("--press-on", dark ? "#3a3a3a" : "#d8e2d4");
   r.dataset.theme = t.id;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", t.bar || t.teal);
+  r.style.backgroundColor = bar;
+  if (document.body) document.body.style.backgroundColor = bar;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
+  const meta = document.createElement("meta");
+  meta.setAttribute("name", "theme-color");
+  meta.setAttribute("content", bar);
+  document.head.appendChild(meta);
+  const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (apple) apple.setAttribute("content", dark ? "black" : t.id === "snow" ? "default" : "black-translucent");
   try { localStorage.setItem(THEME_KEY, t.id); } catch {}
 }
 function showThemeFab() {
-  if (!ui.role && (ui.page === "home" || !ui.page)) return true;
-  if (ui.role === "tenant" && ui.page === "home") return true;
-  return false;
+  return true;
 }
 function themePickerHtml() {
   if (!showThemeFab()) return "";
