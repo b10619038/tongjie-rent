@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:20";
+const APP_VERSION = "2026-08-29-中午12:22";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:22", items: ["點擊畫面維持原位置，不會跳回頂部"] },
   { ver: "2026-08-29-中午12:20", items: ["點擊畫面不再整頁跳動"] },
   { ver: "2026-08-29-中午12:18", items: ["套房設備新增飲水機"] },
   { ver: "2026-08-29-中午12:14", items: ["報修描述欄改為獨立輸入框，手機電腦都可打字"] },
@@ -3136,12 +3137,14 @@ function appointBlock(rep) {
   </div>`;
 }
 
+let lastRenderPage = "";
+let lastRenderRole = "";
 function render() {
   persistUi();
   maybeAuditBrowse();
-  const keepPos = !!ui.keepScroll;
-  const oldAdmin = keepPos ? (document.querySelector(".admin-scroll") || {}).scrollTop : 0;
-  const oldTenant = keepPos ? (document.querySelector(".tenant-scroll") || {}).scrollTop : 0;
+  const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
+  const oldAdmin = (document.querySelector(".admin-scroll") || {}).scrollTop || 0;
+  const oldTenant = (document.querySelector(".tenant-scroll") || {}).scrollTop || 0;
   const root = document.getElementById("app");
   const guide = notifyGuideHtml();
   const ver = versionFooter();
@@ -3158,11 +3161,16 @@ function render() {
     bindNotifyGuide();
     bindUpdateBar();
     bindThemePicker();
-    const sc = document.querySelector(".admin-scroll");
-    if (sc && oldAdmin != null) {
-      sc.scrollTop = oldAdmin;
-      requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
+    if (!pageChanged) {
+      const sc = document.querySelector(".admin-scroll");
+      if (sc) {
+        sc.scrollTop = oldAdmin;
+        requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
+      }
     }
+    lastRenderRole = ui.role;
+    lastRenderPage = ui.page;
+    ui.keepScroll = false;
     return;
   }
   ui.keepScroll = false;
@@ -3173,11 +3181,15 @@ function render() {
   bindUpdateBar();
   bindThemePicker();
   playRoomHero();
-  const ts = document.querySelector(".tenant-scroll");
-  if (ts && oldTenant != null) {
-    ts.scrollTop = oldTenant;
-    requestAnimationFrame(() => { ts.scrollTop = oldTenant; });
+  if (!pageChanged) {
+    const ts = document.querySelector(".tenant-scroll");
+    if (ts) {
+      ts.scrollTop = oldTenant;
+      requestAnimationFrame(() => { ts.scrollTop = oldTenant; });
+    }
   }
+  lastRenderRole = ui.role;
+  lastRenderPage = ui.page;
 }
 
 function installSheetHtml() {

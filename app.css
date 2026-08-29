@@ -26,7 +26,7 @@
 * { box-sizing: border-box; }
 html, body, #app {
   height: 100%; background: var(--paper); -webkit-tap-highlight-color: transparent;
-  overscroll-behavior: none; touch-action: manipulation;
+  overscroll-behavior: none; touch-action: manipulation; overflow: hidden;
 }
 body { margin: 0; font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
 button, input, textarea, select { font: inherit; }
