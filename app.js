@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:39";
+const APP_VERSION = "2026-08-29-下午4:44";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:44", items: ["拖移工作助手圖塊時維持圓角"] },
   { ver: "2026-08-29-下午4:39", items: ["工作助手圖塊可上下拖移排序"] },
   { ver: "2026-08-29-下午4:38", items: ["工作助手改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:35", items: ["手機頂部狀態列顏色會跟著主題改變"] },
