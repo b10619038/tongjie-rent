@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:35";
+const APP_VERSION = "2026-08-29-下午4:38";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:38", items: ["工作助手改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午4:35", items: ["手機頂部狀態列顏色會跟著主題改變"] },
   { ver: "2026-08-29-下午4:30", items: ["上傳銀行入帳資料可填寫，並改為橫條展開"] },
   { ver: "2026-08-29-下午4:27", items: ["記下銀行業務改為橫條收起，點擊展開"] },
@@ -891,7 +892,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -4165,21 +4166,28 @@ function adminAi() {
         <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
       </div>`;
     }).join("") : `<div class="empty">還沒有銀行紀錄</div>`}
-    <div class="card card-body">
-      <h2 class="dash-h">工作助手</h2>
-      <div class="small">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
-      <div class="ai-chips">
-        <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
-        <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
-        <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
-        <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
-        <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
+    <div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
+      <button type="button" class="row tenant-slim-head fold-head" id="ai-fold">
+        <span class="k">工作助手</span>
+        <span class="row-end"><span class="small">${ui.aiOpen ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+      </button>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <div class="small" style="margin-top:10px">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
+          <div class="ai-chips">
+            <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
+            <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
+            <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
+            <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
+            <button type="button" class="ghost" data-ai-q="銀行入帳對帳">銀行對帳</button>
+          </div>
+          <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "工作助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
+          <form id="ai-form">
+            <textarea id="ai-q" placeholder="例如：銀行通常哪一天去？這個月誰還沒繳？"></textarea>
+            <button class="btn-navy" type="submit">送出問題</button>
+          </form>
+        </div>
       </div>
-      <div class="ai-log">${logs.length ? logs.map(m => `<div class="ai-msg ${m.role}"><b>${m.role === "admin" ? "管理員" : "工作助手"}</b><p>${escapeHtml(m.text)}</p></div>`).join("") : `<div class="empty">直接提問，或點上面的分析。</div>`}</div>
-      <form id="ai-form">
-        <textarea id="ai-q" placeholder="例如：銀行通常哪一天去？這個月誰還沒繳？"></textarea>
-        <button class="btn-navy" type="submit">送出問題</button>
-      </form>
     </div>
     <form class="card card-body tenant-slim${ui.bankOpen ? " open" : ""}" id="bank-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head fold-head" id="bank-fold">
@@ -6643,7 +6651,18 @@ function bindAdminAi() {
     state.aiLogs.push({ role: "admin", text, at: nowStamp() });
     state.aiLogs.push({ role: "ai", text: aiAnswer(text), at: nowStamp() });
     if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
+    ui.aiOpen = true;
     save(); render();
+  };
+  const aiCard = document.getElementById("ai-card");
+  const aiFold = document.getElementById("ai-fold");
+  if (aiFold && aiCard) aiFold.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.aiOpen = !aiCard.classList.contains("open");
+    aiCard.classList.toggle("open", ui.aiOpen);
+    const hint = aiFold.querySelector(".small");
+    if (hint) hint.textContent = ui.aiOpen ? "點擊收起" : "點擊展開";
   };
   document.querySelectorAll("[data-ai-q]").forEach(btn => {
     btn.onclick = () => ask(btn.dataset.aiQ);
