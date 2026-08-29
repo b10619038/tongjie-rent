@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:51";
+const APP_VERSION = "2026-08-29-下午9:54";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:54", items: ["本月進出帳可搜尋帳戶備註金額並配合日期"] },
   { ver: "2026-08-29-下午9:51", items: ["點統潔信潔個人戶現金圖卡，進出帳只顯示該戶"] },
   { ver: "2026-08-29-下午9:28", items: ["手機後台總覽圓餅圖與邊距不再卡住"] },
   { ver: "2026-08-29-下午9:20", items: ["本月進出帳可拉選日期區間查看紀錄"] },
@@ -2828,6 +2829,9 @@ function ledgerMatchesFilter(row, filter) {
   }
   return rowAccount(row) === f;
 }
+function ledgerSearchHay(x) {
+  return [x.date, x.type === "in" ? "進帳收入" : "出帳支出", accountLabel(x.company), x.company, x.note, x.amount, money(x.amount)].join(" ");
+}
 function ensureReportPeriod() {
   const n = new Date();
   if (!ui.reportYear) ui.reportYear = n.getFullYear();
@@ -3100,7 +3104,9 @@ function monthCashHtml() {
   const key = `${y}-${String(m).padStart(2, "0")}`;
   const allRows = collectLedger().filter(x => x.date.slice(0, 7) === key);
   const filter = ui.calFilter || "";
-  const rows = filter ? allRows.filter(x => ledgerMatchesFilter(x, filter)) : allRows;
+  const q = normSearch(ui.calQ);
+  const rows = allRows.filter(x => (!filter || ledgerMatchesFilter(x, filter)) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
   const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
   const first = new Date(y, m - 1, 1);
@@ -3119,10 +3125,13 @@ function monthCashHtml() {
   const selected = [];
   if (rangeStart) {
     for (let d = rangeStart; d <= rangeEnd; d++) selected.push(...byDay(d));
+  } else if (q) {
+    selected.push(...rows);
   }
-  const rangeLabel = !rangeStart ? "點選或拉選日期查看進出帳"
-    : rangeStart === rangeEnd ? `${m} 月 ${rangeStart} 日`
-    : `${m} 月 ${rangeStart} 日－${rangeEnd} 日`;
+  const rangeLabel = rangeStart
+    ? (rangeStart === rangeEnd ? `${m} 月 ${rangeStart} 日` : `${m} 月 ${rangeStart} 日－${rangeEnd} 日`)
+    : q ? "搜尋結果"
+    : "點選、拉選日期或搜尋查看進出帳";
   return `<div class="card card-body cal-card" id="month-cash">
     <div class="row">
       <div>
@@ -3133,6 +3142,9 @@ function monthCashHtml() {
         <button type="button" class="ghost" id="export-cal">匯出</button>
         <button type="button" class="ghost" id="print-cal">列印</button>
       </div>
+    </div>
+    <div class="card card-body tenant-search cal-search no-print">
+      <input id="cal-search" type="search" enterkeyhint="search" placeholder="搜尋帳戶、備註、金額" value="${escapeHtml(ui.calQ || "")}" autocomplete="off" />
     </div>
     <div class="cal-nav">
       <button type="button" class="ghost" data-cal-nav="-1">上一月</button>
@@ -3152,7 +3164,7 @@ function monthCashHtml() {
         const list = byDay(d);
         const di = list.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
         const dout = list.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
-        return `<button type="button" class="cal-cell ${d >= rangeStart && d <= rangeEnd ? "on" : ""}" data-cal-day="${d}">
+        return `<button type="button" class="cal-cell ${d >= rangeStart && d <= rangeEnd ? "on" : ""}${q && !hitDays.has(d) ? " dim" : ""}" data-cal-day="${d}">
           <em>${d}</em>
           ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
           ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
@@ -3167,7 +3179,7 @@ function monthCashHtml() {
           <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(accountLabel(x.company || "統潔"))} · ${money(x.amount)}</b>
           <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
-        </div>`).join("") : (rangeStart ? `<div class="empty">這段期間尚無紀錄</div>` : "")}
+        </div>`).join("") : ((rangeStart || q) ? `<div class="empty">${q ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}
     </div>
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
@@ -7559,6 +7571,20 @@ function bindCashCal() {
     ui.calFilter = "";
     stay();
   };
+  const search = document.getElementById("cal-search");
+  if (search) {
+    search.oninput = () => {
+      ui.calQ = String(search.value || "");
+      ui.calSearchFocus = search.selectionStart;
+      stay();
+    };
+    if (ui.calSearchFocus != null) {
+      const pos = Number(ui.calSearchFocus);
+      ui.calSearchFocus = null;
+      search.focus();
+      try { search.setSelectionRange(pos, pos); } catch {}
+    }
+  }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onclick = () => {
       let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);

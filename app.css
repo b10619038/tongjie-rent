@@ -993,6 +993,8 @@ input[type="file"] {
 }
 .cal-card { overflow: visible; }
 .cal-toolbar { display: flex; gap: 8px; margin: 0; flex-shrink: 0; }
+.cal-search { margin: 8px 0 4px; padding: 8px 14px; }
+.cal-cell.dim { opacity: .38; }
 .cal-toolbar .ghost { width: auto; margin: 0; padding: 8px 14px; }
 .xls-up {
   display: flex; align-items: center; justify-content: center;
