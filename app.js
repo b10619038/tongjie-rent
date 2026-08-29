@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:13";
-const TENANT_ROSTER_VER = "20260829-0210";
+const APP_VERSION = "2026-08-29-下午10:25";
+const TENANT_ROSTER_VER = "20260829-2225";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:25", items: ["套房出租率圖塊加上廠房與店面出租率，並新增6811、7011、7211店面"] },
   { ver: "2026-08-29-下午10:13", items: ["統潔分聯邦農會兆豐、信潔分聯邦，進出帳明細會顯示銀行"] },
   { ver: "2026-08-29-下午9:54", items: ["本月進出帳可搜尋帳戶備註金額並配合日期"] },
   { ver: "2026-08-29-下午9:51", items: ["點統潔信潔個人戶現金圖卡，進出帳只顯示該戶"] },
@@ -516,11 +517,13 @@ const DEFAULT_RULES = `1. 每月租金請於繳費日前完成，逾期將依合
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
 const TODAY = new Date("2026-08-26T00:00:00");
 const STUDIO_NOS = [
-  "6821", "6822", "6823", "6831", "6832", "6841", "6842",
-  "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
-  "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
+  "6811", "6821", "6822", "6823", "6831", "6832", "6841", "6842",
+  "7011", "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
+  "7211", "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
   "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642"
 ];
+const STORE_NOS = ["6811", "7011", "7211", "7611"];
+function isStoreNo(no) { return STORE_NOS.includes(String(no)); }
 const TENANT_INFO = {
   "6821": { name: "黃宥宇", phone: "0980-330-332" },
   "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
@@ -545,7 +548,7 @@ const TENANT_INFO = {
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
   "7242": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30" },
   "7251": { name: "呂佳芸" },
-  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31" },
+  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", shop: "波波奇" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31" },
   "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
@@ -841,7 +844,10 @@ function buildSeed() {
     const name = info && info.name ? info.name : "";
     const tid = name ? "t" + ti++ : null;
     rooms.push({
-      id, no, title: "套房", rent: 10000, deposit: 25600, kind: "studio",
+      id, no, title: isStoreNo(no) ? "店面" : "套房",
+      rent: name ? 10000 : (isStoreNo(no) ? 0 : 10000), deposit: name ? 25600 : 0,
+      kind: isStoreNo(no) ? "store" : "studio",
+      shop: (info && info.shop) || "",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
       utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
@@ -1135,18 +1141,24 @@ function applyTenantRoster(data) {
       t.leaseStart = info.leaseStart || "";
       t.leaseEnd = info.leaseEnd || "";
       t.bankLast5 = info.bankLast5 || "";
-      if (room.kind !== "factory") room.rent = 10000;
+      t.note = info.shop ? ("店面：" + info.shop) : (t.note || "");
+      if (isStoreNo(no)) {
+        room.kind = "store";
+        room.title = "店面";
+        room.shop = info.shop || room.shop || "";
+        if (!room.rent) room.rent = 10000;
+      } else if (room.kind !== "factory") room.rent = 10000;
       room.tenantId = t.id;
       if (room.status !== "repair") room.status = "rented";
     } else {
+      if (isStoreNo(no)) {
+        room.kind = "store";
+        room.title = "店面";
+      }
       if (room.status !== "repair") room.status = "vacant";
       data.tenants = data.tenants.filter(x => x.roomId !== room.id);
       room.tenantId = null;
     }
-  });
-  ["6811", "7011", "7211"].forEach(no => {
-    data.rooms = (data.rooms || []).filter(r => r.no !== no);
-    data.tenants = (data.tenants || []).filter(t => t.roomId !== "r" + no);
   });
 }
 function loadLocal() {
@@ -5348,16 +5360,24 @@ function reportPiesHtml() {
       </div>
     </div>`;
 }
+function occBits(rooms) {
+  const fix = new Set((state.repairs || []).filter(x => x.status !== "done").map(x => x.roomId));
+  const rented = rooms.filter(r => r.status === "rented").length;
+  const vacant = rooms.filter(r => r.status === "vacant").length;
+  const repairing = rooms.filter(r => r.status === "repair" || fix.has(r.id)).length;
+  const occ = rooms.length ? Math.round(rented / rooms.length * 100) : 0;
+  return { rented, vacant, repairing, occ, total: rooms.length };
+}
 function adminDash() {
-  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory");
-  const rented = studios.filter(r => r.status === "rented").length;
-  const vacant = studios.filter(r => r.status === "vacant").length;
-  const fixRooms = new Set(state.repairs.filter(x => x.status !== "done").map(x => x.roomId));
-  const repairing = studios.filter(r => r.status === "repair" || fixRooms.has(r.id)).length;
-  const occ = studios.length ? Math.round(rented / studios.length * 100) : 0;
+  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no));
+  const factories = state.rooms.filter(r => r.kind === "factory");
+  const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
+  const studioOcc = occBits(studios);
+  const factoryOcc = occBits(factories);
+  const storeOcc = occBits(stores);
   const studioTenants = state.tenants.filter(t => {
     const room = state.rooms.find(x => x.id === t.roomId);
-    return room && room.kind !== "factory" && room.status !== "office";
+    return room && room.kind !== "factory" && room.kind !== "store" && !isStoreNo(room.no) && room.status !== "office";
   });
   const dueAmt = studios.reduce((s, r) => s + (Number(r.rent) || 0), 0);
   const paidAmt = studioTenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
@@ -5376,14 +5396,18 @@ function adminDash() {
     const full = list.filter(r => r.status === "rented").length;
     return { fl, total: list.length, full, pct: list.length ? Math.round(full / list.length * 100) : 0 };
   });
-  const avgRent = rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / rented) : 0;
+  const avgRent = studioOcc.rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / studioOcc.rented) : 0;
   return `<div class="dash">
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card"><div class="ring-wrap"><div class="ring mint ${ui.keepScroll ? "" : "spin-in"}" style="--p:${collectRate}"></div><b>${collectRate}%</b></div><div><div class="k">本月收租率</div><div class="small">已繳 ${studioTenants.filter(t => t.paid).length}／${studioTenants.length} 位租客</div></div></div>
-      <div class="card ring-card"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ}"></div><b>${occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${rented} · 空置 ${vacant} · 維修 ${repairing}</div></div></div>
+      <div class="card ring-card ring-stack">
+        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div></div>
+      </div>
     </div>
     ${overallReportHtml()}
     ${monthCashHtml()}
@@ -5499,7 +5523,7 @@ function adminRoomListHtml(kind) {
       lastFloor = String(floor);
       return `${head}<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl("images/studio-room.jpg?v=1713", r.no)}
-        <div><strong>${r.no}　${r.title}</strong>
+        <div><strong>${r.no}　${r.title}${r.shop ? "：" + escapeHtml(r.shop) : ""}</strong>
           <div class="small">${r.status === "office" ? "自用 · 統潔開發" : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
         </div>
         <select class="select-mini" data-status="${r.id}">
