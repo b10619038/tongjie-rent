@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:28";
+const APP_VERSION = "2026-08-29-下午9:51";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:51", items: ["點統潔信潔個人戶現金圖卡，進出帳只顯示該戶"] },
   { ver: "2026-08-29-下午9:28", items: ["手機後台總覽圓餅圖與邊距不再卡住"] },
   { ver: "2026-08-29-下午9:20", items: ["本月進出帳可拉選日期區間查看紀錄"] },
   { ver: "2026-08-29-下午9:12", items: ["本月進出帳匯出列印改到右上"] },
@@ -2818,6 +2819,15 @@ function rowAccount(row) {
   if (/信潔/.test(c)) return "信潔";
   return "統潔";
 }
+function ledgerMatchesFilter(row, filter) {
+  const f = String(filter || "").trim();
+  if (!f) return true;
+  if (f !== "個人戶" && isPersonalKey(f)) {
+    const p = personOfAccount(f);
+    return p && (personOfAccount(row.company) === p || String(row.company || "").indexOf(p) >= 0);
+  }
+  return rowAccount(row) === f;
+}
 function ensureReportPeriod() {
   const n = new Date();
   if (!ui.reportYear) ui.reportYear = n.getFullYear();
@@ -2891,7 +2901,7 @@ function overallReportBodyHtml() {
     </div>
     <div class="acct-grid">
       ${stats.map(s => `
-        <div class="acct-card">
+        <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
@@ -2990,9 +3000,28 @@ function bindReportBody() {
       }
     };
   });
+  document.querySelectorAll("[data-filter-acct]").forEach(card => {
+    card.onclick = e => {
+      if (e.target.closest("button")) return;
+      const name = card.dataset.filterAcct;
+      ui.calFilter = ui.calFilter === name ? "" : name;
+      ensureCalMonth();
+      if (ui.calFilter && !ui.calDay) {
+        ui.calDay = 1;
+        ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
+      }
+      ui.keepScroll = true;
+      render();
+      requestAnimationFrame(() => {
+        const box = document.getElementById("month-cash");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+  });
   document.querySelectorAll("[data-edit-acct]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
+      e.stopPropagation();
       ui.editAcct = btn.dataset.editAcct;
       ui.keepScroll = true;
       render();
@@ -3069,7 +3098,9 @@ function monthCashHtml() {
   const ed = editing || editingSlip;
   const y = ui.calYear, m = ui.calMonth;
   const key = `${y}-${String(m).padStart(2, "0")}`;
-  const rows = collectLedger().filter(x => x.date.slice(0, 7) === key);
+  const allRows = collectLedger().filter(x => x.date.slice(0, 7) === key);
+  const filter = ui.calFilter || "";
+  const rows = filter ? allRows.filter(x => ledgerMatchesFilter(x, filter)) : allRows;
   const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
   const first = new Date(y, m - 1, 1);
@@ -3096,7 +3127,7 @@ function monthCashHtml() {
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-        <div class="small">在平台上查看與登錄一個月的進帳、出帳</div>
+        <div class="small">${filter ? "目前顯示：" + escapeHtml(accountLabel(filter)) + "　點帳戶圖卡可切換" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳"}</div>
       </div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
@@ -3112,6 +3143,7 @@ function monthCashHtml() {
       <span>進帳 ${money(inn)}</span>
       <span>出帳 ${money(out)}</span>
       <span>結餘 ${money(inn - out)}</span>
+      ${filter ? `<button type="button" class="ghost" id="cal-filter-clear" style="width:auto;padding:6px 10px">全部帳戶</button>` : ""}
     </div>
     <div class="cal-grid">
       ${["日", "一", "二", "三", "四", "五", "六"].map(w => `<div class="cal-w">${w}</div>`).join("")}
@@ -7521,6 +7553,12 @@ function bindCashCal() {
   if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); exportMonthCash(); };
   const printCal = document.getElementById("print-cal");
   if (printCal) printCal.onclick = e => { e.preventDefault(); e.stopPropagation(); printMonthCash(); };
+  const clearFilter = document.getElementById("cal-filter-clear");
+  if (clearFilter) clearFilter.onclick = e => {
+    e.preventDefault();
+    ui.calFilter = "";
+    stay();
+  };
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onclick = () => {
       let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
