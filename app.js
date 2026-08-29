@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午8:44";
+const APP_VERSION = "2026-08-29-下午8:53";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午8:53", items: ["內容按鈕改為左上繳費租金、右上綁定 LINE、左下房間資訊"] },
   { ver: "2026-08-29-下午8:44", items: ["後台頂部分頁改回原本樣式，不再放大跳動"] },
   { ver: "2026-08-29-下午8:42", items: ["修復立即更新按鈕沒有反應"] },
   { ver: "2026-08-29-下午8:41", items: ["更新視窗標題改為這次更新內容如下"] },
@@ -3811,9 +3812,9 @@ function homeView() {
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
-        <button class="ghost" data-page="rooms">房間資訊</button>
         <button class="ghost" data-page="pay">繳費租金</button>
         <button class="ghost" id="bind-line" type="button">綁定 LINE</button>
+        <button class="ghost" data-page="rooms">房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button">周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
