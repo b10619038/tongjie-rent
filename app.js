@@ -10,12 +10,14 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
+const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:54";
+const APP_VERSION = "2026-08-29-下午10:13";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:13", items: ["統潔分聯邦農會兆豐、信潔分聯邦，進出帳明細會顯示銀行"] },
   { ver: "2026-08-29-下午9:54", items: ["本月進出帳可搜尋帳戶備註金額並配合日期"] },
   { ver: "2026-08-29-下午9:51", items: ["點統潔信潔個人戶現金圖卡，進出帳只顯示該戶"] },
   { ver: "2026-08-29-下午9:28", items: ["手機後台總覽圓餅圖與邊距不再卡住"] },
@@ -2706,6 +2708,7 @@ function collectLedger() {
     rows.push({
       id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount,
       roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔",
+      bank: b.bank || "", place: b.place || "",
       source: "book", canDel: true, canEdit: true
     });
   });
@@ -2717,6 +2720,7 @@ function collectLedger() {
     rows.push({
       id: "slip-" + s.id, type: guessCashType(s.note, "in"), date: ymdOf(s.date), amount,
       roomNo: s.roomNo || "", note: s.note || "銀行入帳", company,
+      bank: s.bank || "", place: s.place || "",
       source: "slip", canDel: false, canEdit: true
     });
   });
@@ -2731,7 +2735,8 @@ function collectLedger() {
       type: guessCashType(blob, "out"),
       date: ymdOf(e.date), amount,
       roomNo: "", note: ["銀行業務", e.title, e.place, e.note].filter(Boolean).join(" · "),
-      company, source: "errand", canDel: false, canEdit: false
+      company, bank: e.bank || e.place || "", place: e.place || "",
+      source: "errand", canDel: false, canEdit: false
     });
   });
   const taken = new Set(rows.filter(x => x.roomNo).map(x => String(x.roomNo)));
@@ -2745,6 +2750,7 @@ function collectLedger() {
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount,
       roomNo: room ? room.no : "", note: (t.name || "") + " 租金", company: roomCompany(room || {}),
+      bank: "聯邦",
       source: "rent", canDel: false, canEdit: false
     });
   });
@@ -2820,17 +2826,64 @@ function rowAccount(row) {
   if (/信潔/.test(c)) return "信潔";
   return "統潔";
 }
-function ledgerMatchesFilter(row, filter) {
+function ledgerMatchesFilter(row, filter, bank) {
   const f = String(filter || "").trim();
-  if (!f) return true;
-  if (f !== "個人戶" && isPersonalKey(f)) {
-    const p = personOfAccount(f);
-    return p && (personOfAccount(row.company) === p || String(row.company || "").indexOf(p) >= 0);
+  if (f) {
+    if (f !== "個人戶" && isPersonalKey(f)) {
+      const p = personOfAccount(f);
+      if (!(p && (personOfAccount(row.company) === p || String(row.company || "").indexOf(p) >= 0))) return false;
+    } else if (rowAccount(row) !== f) return false;
   }
-  return rowAccount(row) === f;
+  const bk = String(bank || "").trim();
+  if (bk && rowBank(row) !== bk) return false;
+  return true;
+}
+function guessBank(text) {
+  const s = String(text || "");
+  if (/農會/.test(s)) return "農會";
+  if (/兆豐/.test(s)) return "兆豐";
+  if (/聯邦/.test(s)) return "聯邦";
+  return "";
+}
+function banksOf(acct) {
+  return ACCOUNT_BANKS[acct] || [];
+}
+function rowBank(row) {
+  const acct = rowAccount(row);
+  const allowed = banksOf(acct);
+  if (!allowed.length) return "";
+  const raw = String(row.bank || row.place || "").trim().replace(/銀行/g, "");
+  if (allowed.includes(raw)) return raw;
+  const g = guessBank([row.bank, row.place, row.note, row.company].join(" "));
+  if (g && allowed.includes(g)) return g;
+  return allowed[0];
+}
+function ledgerLineLabel(row) {
+  const acct = accountLabel(row.company || "統潔");
+  const bank = rowBank(row);
+  return bank ? acct + " · " + bank : acct;
 }
 function ledgerSearchHay(x) {
-  return [x.date, x.type === "in" ? "進帳收入" : "出帳支出", accountLabel(x.company), x.company, x.note, x.amount, money(x.amount)].join(" ");
+  return [x.date, x.type === "in" ? "進帳收入" : "出帳支出", accountLabel(x.company), x.company, rowBank(x), x.note, x.amount, money(x.amount)].join(" ");
+}
+function bankPeriodBits(acct, start, end) {
+  const banks = banksOf(acct);
+  if (!banks.length) return [];
+  const rows = collectLedger().filter(x => rowAccount(x) === acct && x.date >= start && x.date <= end);
+  return banks.map(b => {
+    const hit = rows.filter(x => rowBank(x) === b);
+    return {
+      name: b,
+      inn: hit.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0),
+      out: hit.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0)
+    };
+  });
+}
+function bankSelectHtml(acct, selected) {
+  const banks = banksOf(acct);
+  if (!banks.length) return "";
+  const sel = banks.includes(selected) ? selected : banks[0];
+  return `<select name="bank">${banks.map(b => `<option value="${b}" ${b === sel ? "selected" : ""}>${b}</option>`).join("")}</select>`;
 }
 function ensureReportPeriod() {
   const n = new Date();
@@ -2909,6 +2962,11 @@ function overallReportBodyHtml() {
           <div class="k">${escapeHtml(s.name)}</div>
           <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          ${banksOf(s.name).length ? `<div class="acct-banks">${bankPeriodBits(s.name, b.start, b.end).map(bk => `
+            <button type="button" class="acct-bank${ui.calFilter === s.name && ui.calBank === bk.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" data-filter-bank="${escapeHtml(bk.name)}">
+              <span>${escapeHtml(bk.name)}</span>
+              <span>收 ${money(bk.inn)}　支 ${money(bk.out)}</span>
+            </button>`).join("")}</div>` : ""}
           ${s.name === "個人戶" ? `<button type="button" class="acct-drop-btn" id="acct-person-pick">請下拉選擇</button>` : ""}
           <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
         </div>`).join("")}
@@ -3008,7 +3066,29 @@ function bindReportBody() {
     card.onclick = e => {
       if (e.target.closest("button")) return;
       const name = card.dataset.filterAcct;
-      ui.calFilter = ui.calFilter === name ? "" : name;
+      ui.calFilter = ui.calFilter === name && !ui.calBank ? "" : name;
+      ui.calBank = "";
+      ensureCalMonth();
+      if (ui.calFilter && !ui.calDay) {
+        ui.calDay = 1;
+        ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
+      }
+      ui.keepScroll = true;
+      render();
+      requestAnimationFrame(() => {
+        const box = document.getElementById("month-cash");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+  });
+  document.querySelectorAll("[data-filter-bank]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const name = btn.dataset.filterAcct;
+      const bank = btn.dataset.filterBank;
+      if (ui.calFilter === name && ui.calBank === bank) ui.calBank = "";
+      else { ui.calFilter = name; ui.calBank = bank; }
       ensureCalMonth();
       if (ui.calFilter && !ui.calDay) {
         ui.calDay = 1;
@@ -3105,7 +3185,7 @@ function monthCashHtml() {
   const allRows = collectLedger().filter(x => x.date.slice(0, 7) === key);
   const filter = ui.calFilter || "";
   const q = normSearch(ui.calQ);
-  const rows = allRows.filter(x => (!filter || ledgerMatchesFilter(x, filter)) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const rows = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
   const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
   const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
@@ -3136,7 +3216,7 @@ function monthCashHtml() {
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-        <div class="small">${filter ? "目前顯示：" + escapeHtml(accountLabel(filter)) + "　點帳戶圖卡可切換" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳"}</div>
+        <div class="small">${filter ? "目前顯示：" + escapeHtml(accountLabel(filter)) + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點帳戶圖卡可切換" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳"}</div>
       </div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
@@ -3176,7 +3256,7 @@ function monthCashHtml() {
       <div class="small">${rangeLabel}${rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : ""}</div>
       ${selected.length ? selected.map(x => `
         <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(accountLabel(x.company || "統潔"))} · ${money(x.amount)}</b>
+          <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}</b>
           <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
           ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
         </div>`).join("") : ((rangeStart || q) ? `<div class="empty">${q ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}
@@ -3191,6 +3271,10 @@ function monthCashHtml() {
         <select name="company">
           ${bookAccountOptions(ed ? ed.company : "統潔")}
         </select>
+      </div>
+      <div class="cal-form-row" id="book-bank-row" style="${banksOf(normalizeBookCompany(ed ? ed.company : "統潔")).length ? "" : "display:none"}">
+        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : "統潔"), ed && ed.bank ? rowBank(ed) : "聯邦")}
+        <span class="small" style="align-self:center">統潔分聯邦／農會／兆豐，信潔為聯邦</span>
       </div>
       <div class="cal-form-row">
         <input name="date" type="date" value="${ed ? ymdOf(ed.date) : (rangeStart ? dayKey(rangeStart) : ymdOf(nowStamp()))}" />
@@ -3427,7 +3511,7 @@ function guessMetaFromName(name) {
   const date = dm ? dm[1] + "-" + String(dm[2]).padStart(2, "0") + "-" + String(dm[3]).padStart(2, "0") : "";
   const mm = s.replace(/\.[a-z0-9]+$/i, "").match(/(\d{4,})/);
   const amount = mm ? Number(mm[1]) : 0;
-  return { date, amount: amount >= 100 ? amount : 0, company: cellAccount(s) || "", name: s };
+  return { date, amount: amount >= 100 ? amount : 0, company: cellAccount(s) || "", bank: guessBank(s), name: s };
 }
 function stripHeavyMedia(data) {
   (data.bankSlips || []).forEach(s => {
@@ -4605,10 +4689,9 @@ function adminAi() {
           <label class="field"><span>事項</span><input id="errand-item" name="item" type="text" placeholder="例如 入帳／對帳／提款" /></label>
           <label class="field"><span>銀行</span>
             <select id="errand-place" name="place">
-              <option value="聯邦銀行">聯邦銀行</option>
-              <option value="兆豐銀行">兆豐銀行</option>
+              <option value="聯邦">聯邦</option>
+              <option value="兆豐">兆豐</option>
               <option value="農會">農會</option>
-              <option value="郵局">郵局</option>
             </select>
           </label>
           <label class="field"><span>金額（選填）</span><input id="errand-amount" name="amount" type="text" inputmode="decimal" placeholder="例如 10000" /></label>
@@ -5121,8 +5204,8 @@ function exportMonthCash() {
     .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)));
   const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
-  const head = ["日期", "類型", "帳戶", "金額", "備註"];
-  const body = rows.map(x => [x.date, x.type === "in" ? "進帳" : "出帳", accountLabel(x.company || "統潔"), x.amount, x.note || ""]);
+  const head = ["日期", "類型", "帳戶", "銀行", "金額", "備註"];
+  const body = rows.map(x => [x.date, x.type === "in" ? "進帳" : "出帳", accountLabel(x.company || "統潔"), rowBank(x) || "—", x.amount, x.note || ""]);
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
@@ -5135,14 +5218,14 @@ function exportMonthCash() {
   <Style ss:ID="MoneyB"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
 </Styles>
 <Worksheet ss:Name="本月進出帳"><Table>
-<Column ss:Width="92"/><Column ss:Width="64"/><Column ss:Width="100"/><Column ss:Width="100"/><Column ss:Width="220"/>
-<Row><Cell ss:StyleID="Title" ss:MergeAcross="4"><Data ss:Type="String">統潔＆信潔開發有限公司　本月進出帳</Data></Cell></Row>
-<Row><Cell ss:MergeAcross="4"><Data ss:Type="String">${xmlEsc(y + " 年 " + m + " 月")}</Data></Cell></Row>
-<Row><Cell ss:MergeAcross="4"><Data ss:Type="String">進帳 ${inn.toLocaleString("zh-TW")}　出帳 ${out.toLocaleString("zh-TW")}　結餘 ${(inn - out).toLocaleString("zh-TW")}</Data></Cell></Row>
+<Column ss:Width="92"/><Column ss:Width="64"/><Column ss:Width="100"/><Column ss:Width="64"/><Column ss:Width="100"/><Column ss:Width="220"/>
+<Row><Cell ss:StyleID="Title" ss:MergeAcross="5"><Data ss:Type="String">統潔＆信潔開發有限公司　本月進出帳</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="5"><Data ss:Type="String">${xmlEsc(y + " 年 " + m + " 月")}</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="5"><Data ss:Type="String">進帳 ${inn.toLocaleString("zh-TW")}　出帳 ${out.toLocaleString("zh-TW")}　結餘 ${(inn - out).toLocaleString("zh-TW")}</Data></Cell></Row>
 <Row></Row>
 ${xlsRow(head, head.map(() => "Head"))}
-${body.map(r => xlsRow(r, ["", "", "", "Money", ""])).join("")}
-${xlsRow(["合計", "", "", inn - out, "進帳 " + inn + "　出帳 " + out], ["LabelB", "LabelB", "LabelB", "MoneyB", "LabelB"])}
+${body.map(r => xlsRow(r, ["", "", "", "", "Money", ""])).join("")}
+${xlsRow(["合計", "", "", "", inn - out, "進帳 " + inn + "　出帳 " + out], ["LabelB", "LabelB", "LabelB", "LabelB", "MoneyB", "LabelB"])}
 </Table></Worksheet>
 </Workbook>`;
   const blob = new Blob(["\uFEFF" + xml], { type: "application/vnd.ms-excel" });
@@ -7569,6 +7652,7 @@ function bindCashCal() {
   if (clearFilter) clearFilter.onclick = e => {
     e.preventDefault();
     ui.calFilter = "";
+    ui.calBank = "";
     stay();
   };
   const search = document.getElementById("cal-search");
@@ -7669,6 +7753,16 @@ function bindCashCal() {
       form.type.classList.remove("in", "out");
       form.type.classList.add(form.type.value === "out" ? "out" : "in");
     };
+    if (form.company) form.company.onchange = () => {
+      const acct = normalizeBookCompany(form.company.value);
+      const row = document.getElementById("book-bank-row");
+      if (!row) return;
+      const banks = banksOf(acct);
+      if (!banks.length) { row.style.display = "none"; return; }
+      row.style.display = "";
+      const cur = form.bank && form.bank.value;
+      row.querySelector("select").outerHTML = bankSelectHtml(acct, cur);
+    };
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
       const date = form.date.value;
@@ -7677,6 +7771,7 @@ function bindCashCal() {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
         company: normalizeBookCompany(form.company && form.company.value),
+        bank: (form.bank && form.bank.value) || "",
         note: (form.note.value || "").trim()
       };
       if (ui.editBookId) {
@@ -7691,7 +7786,7 @@ function bindCashCal() {
       }
       if (ui.editSlipId) {
         const s = (state.bankSlips || []).find(x => x.id === ui.editSlipId);
-        if (s) { s.date = date; s.amount = amount; s.note = payload.note; }
+        if (s) { s.date = date; s.amount = amount; s.note = payload.note; s.company = payload.company; s.bank = payload.bank; }
         ui.editSlipId = null;
         ui.calDay = Number(date.slice(8, 10));
         save();
