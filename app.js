@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:25";
+const APP_VERSION = "2026-08-29-下午10:28";
 const TENANT_ROSTER_VER = "20260829-2225";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:28", items: ["總覽新增太陽能覆蓋率圓餅圖"] },
   { ver: "2026-08-29-下午10:25", items: ["套房出租率圖塊加上廠房與店面出租率，並新增6811、7011、7211店面"] },
   { ver: "2026-08-29-下午10:13", items: ["統潔分聯邦農會兆豐、信潔分聯邦，進出帳明細會顯示銀行"] },
   { ver: "2026-08-29-下午9:54", items: ["本月進出帳可搜尋帳戶備註金額並配合日期"] },
@@ -660,6 +661,7 @@ const FACTORY_TENANT_INFO = {
   "牛2-29": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" }
 };
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
+const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
 const PHOTO_SET = [
   ["images/studio-room.jpg?v=1713", "images/kitchen.jpg"],
   ["images/studio-room.jpg?v=1713", "images/bath.jpg"],
@@ -5383,6 +5385,10 @@ function adminDash() {
   const paidAmt = studioTenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
   const unpaidAmt = Math.max(dueAmt - paidAmt, 0);
   const collectRate = dueAmt ? Math.round(paidAmt / dueAmt * 100) : 0;
+  const solarFactory = factories.filter(r => SOLAR_FACTORY_NOS.includes(r.no));
+  const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
+  const solarTotal = factories.length + STUDIO_BUILDINGS.length;
+  const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
   const unpaidTenants = state.tenants.filter(t => !t.paid);
   const expiring = state.tenants.map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
@@ -5407,6 +5413,14 @@ function adminDash() {
         <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div></div>
         <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div></div>
         <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div></div>
+      </div>
+      <div class="card ring-card">
+        <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
+        <div>
+          <div class="k">太陽能覆蓋率</div>
+          <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
+          <div class="small">套房 4 棟　廠房牛1 五戶</div>
+        </div>
       </div>
     </div>
     ${overallReportHtml()}

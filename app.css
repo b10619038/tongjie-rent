@@ -924,6 +924,7 @@ input[type="file"] {
 .ring.sky { background: conic-gradient(from -90deg, #E0A84A calc(var(--p) * 1%), #F3EEE4 0); }
 .ring.leaf { background: conic-gradient(from -90deg, #3FA89A calc(var(--p) * 1%), #E8F3F0 0); }
 .ring.clay { background: conic-gradient(from -90deg, #6B7CB8 calc(var(--p) * 1%), #EEF0F6 0); }
+.ring.sun { background: conic-gradient(from -90deg, #E8B03A calc(var(--p) * 1%), #F7F1E2 0); }
 .ring-stack { display: grid; gap: 14px; align-items: stretch; }
 .ring-row { display: flex; align-items: center; gap: 12px; }
 .ring.teal { background: conic-gradient(from -90deg, #C96B8B calc(var(--p) * 1%), #EEE8EC 0); }
