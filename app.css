@@ -1081,7 +1081,13 @@ img.avatar { object-fit: cover; display: block; }
   transition: transform .28s ease;
   margin-left: 2px;
 }
-.tenant-slim.open .fold-caret { transform: rotate(225deg); }
+#announce-fold {
+  width: 100%; margin: 0; padding: 6px 0;
+  border: 0; background: transparent; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+#announce-form .tenant-slim-inner { padding-bottom: 4px; }
 .swipe-reveal {
   position: absolute; top: 6px; right: 0; bottom: auto;
   width: 48px; height: 32px;

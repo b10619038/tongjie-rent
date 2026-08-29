@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午3:32";
+const APP_VERSION = "2026-08-29-下午4:19";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:19", items: ["發布公告改為橫條收起，點擊展開"] },
   { ver: "2026-08-29-下午3:32", items: ["記下銀行業務欄位改為可點擊填寫"] },
   { ver: "2026-08-29-下午3:28", items: ["記下銀行業務欄位可點擊填寫"] },
   { ver: "2026-08-29-下午3:24", items: ["記下銀行業務可正常填寫並登錄"] },
@@ -880,7 +881,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, announceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -4291,17 +4292,27 @@ function aiAnswer(q) {
 function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
   const editing = ui.announceEditId && (state.announcements || []).find(a => a.id === ui.announceEditId);
+  const who = ui.adminCode === "1240" ? "開發者" : "管理員";
+  const open = !!(editing || ui.announceOpen);
+  if (editing) ui.announceOpen = true;
   return `<div class="admin-grid list">
-    <form class="card card-body" id="announce-form">
-      <h2 class="dash-h who-mini">${staffAvatarHtml("sm", ui.adminCode === "1240" ? "開發者" : "管理員")}<span>${editing ? "編輯公告" : "發布公告"}</span></h2>
-      <p class="small">7651 發布顯示管理員，1240 發布顯示開發者。</p>
-      <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" required /></label>
-      <label class="field"><span>內容</span><textarea name="body" required>${editing ? escapeHtml(editing.body) : ""}</textarea></label>
-      <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
-      <label class="upload">上傳影片<input id="ann-video" type="file" accept="video/*" hidden /></label>
-      <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
-      <button class="btn-navy" type="submit">${editing ? "儲存公告" : "發布公告"}</button>
-      ${editing ? `<button class="ghost" type="button" id="cancel-announce-edit" style="margin-top:8px">取消編輯</button>` : ""}
+    <form class="card card-body tenant-slim${open ? " open" : ""}" id="announce-form" autocomplete="off">
+      <button type="button" class="row tenant-slim-head" id="announce-fold">
+        <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">${editing ? "編輯公告" : "發布公告"}</span></span>
+        <span class="row-end"><span class="small">${open ? "點擊收起" : "點擊展開"}</span><span class="fold-caret"></span></span>
+      </button>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
+          <label class="field"><span>標題</span><input name="title" type="text" placeholder="例如：停水通知" value="${editing ? escapeHtml(editing.title) : ""}" /></label>
+          <label class="field"><span>內容</span><textarea name="body">${editing ? escapeHtml(editing.body) : ""}</textarea></label>
+          <label class="upload">上傳照片<input id="ann-photo" type="file" accept="image/*" multiple hidden /></label>
+          <label class="upload">上傳影片<input id="ann-video" type="file" accept="video/*" hidden /></label>
+          <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
+          <button class="btn-navy" type="submit">${editing ? "儲存公告" : "發布公告"}</button>
+          ${editing ? `<button class="ghost" type="button" id="cancel-announce-edit" style="margin-top:8px">取消編輯</button>` : ""}
+        </div>
+      </div>
     </form>
     ${list.length ? list.map(a => `
       <div class="card card-body">
@@ -6530,6 +6541,15 @@ function bindAdmin() {
   }
   const af = document.getElementById("announce-form");
   if (af) {
+    const fold = document.getElementById("announce-fold");
+    if (fold) fold.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.announceOpen = !af.classList.contains("open");
+      af.classList.toggle("open", ui.announceOpen);
+      const hint = fold.querySelector(".small");
+      if (hint) hint.textContent = ui.announceOpen ? "點擊收起" : "點擊展開";
+    };
     if (isInstalledApp() && "Notification" in window && Notification.permission === "default") Notification.requestPermission().then(p => { if (p === "granted") subscribePushOnly(); });
     const addAnnFiles = async (files, kind) => {
       if (!ui.announceMedia) ui.announceMedia = [];
@@ -6577,7 +6597,7 @@ function bindAdmin() {
     btn.onclick = () => {
       const a = (state.announcements || []).find(x => x.id === btn.dataset.editAnnounce);
       if (!a) return;
-      ui.announceEditId = a.id; ui.announceMedia = (a.media || []).slice(); render();
+      ui.announceEditId = a.id; ui.announceMedia = (a.media || []).slice(); ui.announceOpen = true; render();
     };
   });
   document.querySelectorAll("[data-del-announce]").forEach(btn => {
