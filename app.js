@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:01";
+const APP_VERSION = "2026-08-29-下午9:02";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:02", items: ["修復總覽新增一筆無法輸入與記入"] },
   { ver: "2026-08-29-下午9:01", items: ["整體報表移除個人戶明細表"] },
   { ver: "2026-08-29-下午8:53", items: ["內容按鈕改為左上繳費租金、右上綁定 LINE、左下房間資訊"] },
   { ver: "2026-08-29-下午8:44", items: ["後台頂部分頁改回原本樣式，不再放大跳動"] },
@@ -3073,7 +3074,7 @@ function monthCashHtml() {
   const byDay = d => rows.filter(x => x.date === dayKey(d));
   const sel = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
   const selected = sel ? byDay(sel) : [];
-  return `<div class="card card-body">
+  return `<div class="card card-body cal-card">
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
@@ -3134,7 +3135,7 @@ function monthCashHtml() {
         <label class="upload xls-up">上傳檔案<input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden /></label>
       </div>
       <div class="small">可把做好的 Excel 上傳，工作助手會自動辨識並記入本月進出帳與整體報表。</div>
-      <button class="btn-navy" type="submit">${ed ? "儲存變更" : "記入日曆"}</button>
+      <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
   </div>`;
@@ -7507,45 +7508,54 @@ function bindCashCal() {
   if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
   const form = document.getElementById("book-form");
   if (form) {
+    form.querySelectorAll("input, select").forEach(el => {
+      el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
+      el.onclick = e => { e.stopPropagation(); el.focus(); };
+    });
     if (form.type) form.type.onchange = () => {
       form.type.classList.remove("in", "out");
       form.type.classList.add(form.type.value === "out" ? "out" : "in");
     };
-    form.onsubmit = e => {
-    e.preventDefault();
-    const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
-    const date = form.date.value;
-    if (!amount || !date) { toast("請填日期與金額"); return; }
-    const payload = {
-      type: form.type.value === "out" ? "out" : "in",
-      date, amount,
-      company: normalizeBookCompany(form.company && form.company.value),
-      note: (form.note.value || "").trim()
-    };
-    if (ui.editBookId) {
-      const b = (state.books || []).find(x => x.id === ui.editBookId);
-      if (b) Object.assign(b, payload);
-      ui.editBookId = null;
+    const saveBook = () => {
+      const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
+      const date = form.date.value;
+      if (!amount || !date) { toast("請填日期與金額"); return; }
+      const payload = {
+        type: form.type.value === "out" ? "out" : "in",
+        date, amount,
+        company: normalizeBookCompany(form.company && form.company.value),
+        note: (form.note.value || "").trim()
+      };
+      if (ui.editBookId) {
+        const b = (state.books || []).find(x => x.id === ui.editBookId);
+        if (b) Object.assign(b, payload);
+        ui.editBookId = null;
+        ui.calDay = Number(date.slice(8, 10));
+        save();
+        toast("已儲存變更");
+        stay();
+        return;
+      }
+      if (ui.editSlipId) {
+        const s = (state.bankSlips || []).find(x => x.id === ui.editSlipId);
+        if (s) { s.date = date; s.amount = amount; s.note = payload.note; }
+        ui.editSlipId = null;
+        ui.calDay = Number(date.slice(8, 10));
+        save();
+        toast("已儲存變更");
+        stay();
+        return;
+      }
+      if (!state.books) state.books = [];
+      state.books.push(Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload));
       ui.calDay = Number(date.slice(8, 10));
       save();
-      toast("已儲存變更");
-      return;
-    }
-    if (ui.editSlipId) {
-      const s = (state.bankSlips || []).find(x => x.id === ui.editSlipId);
-      if (s) { s.date = date; s.amount = amount; s.note = payload.note; }
-      ui.editSlipId = null;
-      ui.calDay = Number(date.slice(8, 10));
-      save();
-      toast("已儲存變更");
-      return;
-    }
-    if (!state.books) state.books = [];
-    state.books.push(Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload));
-    ui.calDay = Number(date.slice(8, 10));
-    save();
-    toast("已記入日曆");
+      toast("已記入日曆");
+      stay();
     };
+    form.onsubmit = e => { e.preventDefault(); e.stopPropagation(); saveBook(); };
+    const saveBtn = document.getElementById("book-save");
+    if (saveBtn) saveBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); saveBook(); };
   }
   const xls = document.getElementById("book-xls");
   if (xls) xls.onchange = () => {

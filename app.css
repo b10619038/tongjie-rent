@@ -953,7 +953,18 @@ input[type="file"] {
 .cal-cell .out { font-size: 10px; color: #b42318; }
 .cal-cell .mark { font-size: 10px; color: var(--teal); font-weight: 800; }
 .cal-day { margin-top: 12px; display: grid; gap: 8px; }
-.cal-form { margin-top: 12px; display: grid; gap: 8px; }
+.cal-form { margin-top: 12px; display: grid; gap: 8px; position: relative; z-index: 6; isolation: isolate; pointer-events: auto !important; }
+#book-form input,
+#book-form select {
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  min-height: 48px;
+  font-size: 16px;
+  background: #fff;
+  color: #111;
+}
+.cal-card { overflow: visible; }
 .xls-up {
   display: flex; align-items: center; justify-content: center;
   padding: 0 10px; min-height: 46px; margin: 0; font-size: 14px; font-weight: 800;
