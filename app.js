@@ -13,10 +13,11 @@ const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午10:30";
+const APP_VERSION = "2026-08-29-下午10:33";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
   { ver: "2026-08-29-下午10:30", items: ["所有資產編輯欄位可正常填寫"] },
   { ver: "2026-08-29-下午10:28", items: ["總覽新增太陽能覆蓋率圓餅圖"] },
   { ver: "2026-08-29-下午10:25", items: ["套房出租率圖塊加上廠房與店面出租率，並新增6811、7011、7211店面"] },
@@ -3801,11 +3802,11 @@ function gateView() {
         <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號與登入密碼。第一次進來請先建立密碼。"}</p>
       </div>
       <div class="login-block slide-left">
-        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(!isAdmin ? (ui.loginRoom || "") : "")}" />
+        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
         ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="建立密碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-        ${isAdmin ? "" : `<button class="btn-navy" id="do-login" type="button">登入</button>
-          <button class="forgot-link" id="go-forgot" type="button">忘記密碼</button>`}
+        <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
+        ${isAdmin ? "" : `<button class="forgot-link" id="go-forgot" type="button">忘記密碼</button>`}
       </div>
       ${isAdmin ? desktopInstallCardHtml() + installCardHtml("下載 App") : installCardHtml("下載 App")}
     </div>`;
@@ -6135,16 +6136,19 @@ function enterTenant(room, tenant) {
 }
 function tryLogin() {
   const input = document.getElementById("room-login");
-  const no = ((input && input.value) || ui.loginRoom || "").replace(/\s+/g, "");
+  const no = String((input && input.value) || ui.loginAdmin || ui.loginRoom || "")
+    .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/\s+/g, "");
   if (ui.page === "admin-login") {
+    ui.loginAdmin = no;
     if (ADMIN_CODES.includes(no)) {
-      ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = "";
+      ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; ui.loginAdmin = "";
       persistUi();
       audit("登入", "管理員密碼 " + no);
       beatPresence();
       render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
     }
-    ui.loginError = "密碼不正確";
+    ui.loginError = no ? "密碼不正確" : "請輸入管理員密碼";
     audit("登入失敗", "嘗試管理員密碼 " + no);
     render(); return;
   }
@@ -6213,6 +6217,8 @@ function bindGate() {
   };
   const input = document.getElementById("room-login");
   if (input) {
+    input.onpointerdown = e => { e.stopPropagation(); setTimeout(() => input.focus(), 0); };
+    input.onclick = e => { e.stopPropagation(); input.focus(); };
     input.focus();
     input.addEventListener("keydown", e => { if (e.key === "Enter") {
       if (ui.page === "admin-login") tryLogin();
@@ -6223,9 +6229,17 @@ function bindGate() {
       }
     }});
     if (ui.page === "admin-login") {
-      input.addEventListener("input", () => { if (input.value.replace(/\s+/g, "").length >= 4) tryLogin(); });
+      input.addEventListener("input", () => {
+        const v = input.value.replace(/\s+/g, "");
+        ui.loginAdmin = v;
+        if (v.length >= 4 && ADMIN_CODES.includes(v)) tryLogin();
+      });
     }
   }
+  document.querySelectorAll(".gate input").forEach(el => {
+    el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
+    el.onclick = e => { e.stopPropagation(); el.focus(); };
+  });
   const pass = document.getElementById("pass-login");
   if (pass) pass.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
   const doLogin = document.getElementById("do-login");

@@ -548,9 +548,18 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
 }
 .role-btn strong { display: block; font-size: 18px; margin-bottom: 6px; }
 .role-btn span { color: var(--muted); font-size: 13px; }
-.login-block { background: var(--ok-soft); border-radius: 22px; padding: 18px; display: grid; gap: 10px; }
+.login-block { background: var(--ok-soft); border-radius: 22px; padding: 18px; display: grid; gap: 10px; position: relative; z-index: 6; isolation: isolate; overflow: visible; pointer-events: auto !important; }
+.login-block input,
+.login-block button {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
 .login-block input {
   width: 100%; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 14px 16px;
+  min-height: 52px; font-size: 16px; color: #111; caret-color: #111;
 }
 .forgot-link {
   border: 0; background: transparent; color: var(--teal-mid);
@@ -1380,7 +1389,7 @@ img.avatar { object-fit: cover; display: block; }
 }
 .lightbox-nav button:disabled { opacity: .4; }
 
-.role-btn, .room-row, .clickable, .card.item, .issue-opt, .login-block, .mini.clickable, [data-room] {
+.role-btn, .room-row, .clickable, .card.item, .issue-opt, .mini.clickable, [data-room] {
   border-radius: 22px; overflow: hidden;
 }
 .card.card-body.clickable { overflow: visible; }
