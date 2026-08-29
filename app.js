@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午7:58";
+const APP_VERSION = "2026-08-29-下午7:59";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午7:59", items: ["修復首頁公告與房間圖塊滑入被重畫關掉的問題"] },
   { ver: "2026-08-29-下午7:58", items: ["房間圖塊改為由右到左整張滑入"] },
   { ver: "2026-08-29-下午7:57", items: ["公告圖塊改為由左到右整張滑入"] },
   { ver: "2026-08-29-下午7:15", items: ["底部分頁縮放改慢、更滑順"] },
@@ -744,6 +745,22 @@ function playRoomHero() {
     const p = v.play();
     if (p && p.catch) p.catch(() => {});
   });
+}
+function playHomeSlides() {
+  if (ui.page !== "home") return;
+  const ease = "cubic-bezier(.22,.82,.22,1)";
+  const run = (el, from) => {
+    if (!el || !el.animate) return;
+    try { el.getAnimations().forEach(a => a.cancel()); } catch {}
+    el.animate(
+      [{ transform: from, opacity: 1 }, { transform: "translateX(0)", opacity: 1 }],
+      { duration: 900, easing: ease, fill: "both" }
+    );
+  };
+  document.querySelectorAll(".ann-card").forEach((el, i) => {
+    setTimeout(() => run(el, "translateX(-80%)"), i * 70);
+  });
+  run(document.querySelector(".hero-card"), "translateX(80%)");
 }
 function amenityVideoHtml(src, poster) {
   return `<div class="photos photos-video slide-left">
@@ -3371,6 +3388,11 @@ function render() {
   persistUi();
   maybeAuditBrowse();
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
+  if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
+    lastRenderRole = ui.role;
+    lastRenderPage = ui.page;
+    return;
+  }
   const oldAdmin = (document.querySelector(".admin-scroll") || {}).scrollTop || 0;
   const oldTenant = (document.querySelector(".tenant-scroll") || {}).scrollTop || 0;
   const root = document.getElementById("app");
@@ -3418,6 +3440,10 @@ function render() {
   bindUpdateBar();
   bindThemePicker();
   playRoomHero();
+  if (pageChanged) {
+    ui.slideLock = Date.now() + 1100;
+    requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
+  }
   bindPullRefresh();
   if (!pageChanged) {
     const ts = document.querySelector(".tenant-scroll");

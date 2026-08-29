@@ -129,7 +129,7 @@ input, textarea, select {
   background: var(--paper);
 }
 .shell.admin-wide { overflow: hidden; }
-.tenant-scroll, .admin-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
+.tenant-scroll, .admin-scroll { flex: 1; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
 .admin-scroll { padding-bottom: 28px; }
 
 .ptr {
@@ -296,15 +296,8 @@ input, textarea, select {
   border-radius: 26px;
   padding: 20px;
   border: 1px solid #dedede;
-  animation: heroFromRight .9s cubic-bezier(.22,.82,.22,1) both;
 }
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
-.tenant-still .hero-card,
-.keep-still .hero-card { animation: none !important; transform: none !important; }
-@keyframes heroFromRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
 .hero-card .small { color: #7a8a85; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -1418,7 +1411,6 @@ img.avatar { object-fit: cover; display: block; }
   outline: none;
   -webkit-tap-highlight-color: transparent;
   tap-highlight-color: transparent;
-  animation: annFromLeft .9s cubic-bezier(.22,.82,.22,1) both;
 }
 .ann-card:hover,
 .ann-card:focus,
@@ -1444,12 +1436,6 @@ img.avatar { object-fit: cover; display: block; }
   35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
 }
-@keyframes annFromLeft {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-.tenant-still .ann-card,
-.keep-still .ann-card { animation: none !important; transform: none !important; }
 .ann-react {
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
 }
