@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-25";
+const APP_STAMP = "2026-08-30-01-27";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定內可選調色盤，並可滑動調整版面字體大小"] },
+  { ver: APP_STAMP, items: ["工作助手可記住行程並用對話回覆"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -1074,6 +1074,7 @@ function normalize(data) {
   if (!Array.isArray(data.renewals)) data.renewals = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
@@ -2744,6 +2745,14 @@ function calendarItems() {
       sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
     });
   });
+  (state.aiMemos || []).forEach(m => {
+    if (!m.date) return;
+    items.push({
+      at: m.date, kind: "memo", id: m.id, item: m,
+      title: m.text,
+      sub: "工作助手記下 · " + m.date
+    });
+  });
   return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
 }
 function ymdOf(value) {
@@ -2811,7 +2820,18 @@ function collectLedger() {
       source: "rent", canDel: false, canEdit: false
     });
   });
-  return dedupeLedger(rows);
+  return attachMemoRows(dedupeLedger(rows));
+}
+function attachMemoRows(rows) {
+  (state.aiMemos || []).forEach(m => {
+    if (!m.date) return;
+    rows.push({
+      id: m.id, type: "memo", date: ymdOf(m.date), amount: 0,
+      roomNo: "", note: m.text, company: "", bank: "",
+      source: "memo", canDel: true, canEdit: false
+    });
+  });
+  return rows;
 }
 function ledgerDupKey(row) {
   return [ymdOf(row.date), row.type === "out" ? "out" : "in", Number(row.amount) || 0, rowAccount(row)].join("|");
@@ -3242,8 +3262,10 @@ function calDayListHtml(selected, rangeLabel, extra) {
   return `<div class="small">${rangeLabel}${extra || ""}</div>
     ${selected.length ? selected.map(x => `
       <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-        <b><span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}</b>
-        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.note || ""))}</span>
+        <b>${x.type === "memo"
+          ? `<span class="led-in">行程</span> · ${escapeHtml(x.note || "記下的事")}`
+          : `<span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}`}</b>
+        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? "工作助手記下" : (x.note || "")))}</span>
         ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
       </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
 }
@@ -3295,6 +3317,11 @@ function bindCalLedgerRows() {
     btn.onclick = e => {
       e.stopPropagation();
       const id = btn.dataset.delBook;
+      if ((state.aiMemos || []).some(x => x.id === id)) {
+        state.aiMemos = state.aiMemos.filter(x => x.id !== id);
+        save(); stay();
+        return;
+      }
       state.books = (state.books || []).filter(x => x.id !== id);
       if (ui.editBookId === id) ui.editBookId = null;
       save(); stay();
@@ -3306,7 +3333,7 @@ function bindCalLedgerRows() {
       const src = el.dataset.editSrc;
       const id = el.dataset.editLed;
       if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
-      if (src === "errand") { toast("這筆來自銀行業務，請到工作助手修改"); return; }
+      if (src === "memo") { toast("這筆是工作助手記下的行程，可按刪除拿掉"); return; }
       ui.editBookId = src === "book" ? id : null;
       ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
       stay();
@@ -5105,7 +5132,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <div class="small" style="margin-top:10px">可分析報修、未繳、行事曆與銀行習慣，也可上傳實體銀行入帳資料協助對帳。</div>
+          <div class="small" style="margin-top:10px">可以直接跟我說話，例如「幫我記得星期五去農會」，或問未繳、報修、銀行。</div>
           <div class="ai-chips">
             <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
             <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
@@ -5125,7 +5152,7 @@ function adminAi() {
             </div>`;
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" rows="1" placeholder="輸入訊息" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記得下星期三去收現金" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
             <button class="ai-send" type="button" aria-label="送出">送出</button>
           </form>
         </div>
@@ -5172,72 +5199,168 @@ function monthlyErrandPlan() {
   parsed.forEach(e => { if (e.title) freq[e.title] = (freq[e.title] || 0) + 1; });
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 3);
   if (top.length) lines.push("最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。");
+  const memos = (state.aiMemos || []).filter(m => !m.done);
+  if (memos.length) {
+    lines.push("你交代我記得的事：");
+    memos.slice(0, 8).forEach(m => lines.push("· " + formatAiMemo(m)));
+  }
   return { monthLabel: y + " 年 " + m + " 月", lines, bankDay };
+}
+const WEEKDAY_ZH = ["日", "一", "二", "三", "四", "五", "六"];
+function parseWeekdayAsk(text) {
+  const s = String(text || "");
+  const next = /下(週|周|星期|禮拜)/.test(s);
+  const m = s.match(/(週|周|星期|禮拜)([日天一二三四五六])/);
+  if (!m) return null;
+  const map = { 日: 0, 天: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
+  return { w: map[m[2]], next };
+}
+function ymdFromWeekday(w, nextWeek) {
+  const now = new Date();
+  let add = (w - now.getDay() + 7) % 7;
+  if (add === 0) add = 7;
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + add);
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function cleanMemoAsk(text) {
+  return String(text || "")
+    .replace(/請?幫我(把|將)?/g, "")
+    .replace(/可以幫我/g, "")
+    .replace(/(記得|記住|記一下|記著|提醒我|加入日曆|排進日曆|放到行事曆|加到日曆)/g, "")
+    .replace(/在?(下)?(週|周|星期|禮拜)[日天一二三四五六](的)?(行程)?/g, "")
+    .replace(/嗎[？?]?$/g, "")
+    .replace(/[，。,.!！？?\s]+/g, " ")
+    .replace(/^(把|將|的)\s*/g, "")
+    .trim();
+}
+function formatAiMemo(m) {
+  if (m.date) {
+    const p = String(m.date).slice(5).split("-");
+    return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + "　" + m.text;
+  }
+  if (m.weekday != null) return "每週" + WEEKDAY_ZH[m.weekday] + "　" + m.text;
+  return m.text;
+}
+function rememberAiMemo(text) {
+  if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
+  const wd = parseWeekdayAsk(text);
+  const body = cleanMemoAsk(text) || "工作行程";
+  const rec = {
+    id: "memo" + Date.now().toString(36),
+    text: body,
+    weekday: wd ? wd.w : null,
+    date: wd ? ymdFromWeekday(wd.w, wd.next) : "",
+    createdAt: nowStamp()
+  };
+  state.aiMemos.push(rec);
+  save();
+  return rec;
+}
+function tenantLine(t) {
+  const r = state.rooms.find(x => x.id === t.roomId);
+  return (r ? r.no + " " : "") + (t.name || "") + (r ? "　" + money(r.rent) : "");
 }
 function aiAnswer(q) {
   const text = String(q || "").trim();
   const unpaid = state.tenants.filter(t => !t.paid);
-  const open = state.repairs.filter(r => r.status !== "done");
+  const open = (state.repairs || []).filter(r => r.status !== "done");
   const doing = open.filter(r => r.status === "doing");
   const wait = open.filter(r => r.status !== "doing");
   const cal = calendarItems();
   const slips = state.bankSlips || [];
   const studios = state.rooms.filter(r => r.kind !== "factory" && r.status !== "office");
   const rented = studios.filter(r => r.status === "rented").length;
-  const roomHit = text.match(/\d{4}/);
-  const lines = [];
-  if (/未繳|欠租|誰還沒|繳費|租金/.test(text) || /對帳|銀行|入帳/.test(text)) {
-    lines.push("本月未繳 " + unpaid.length + " 戶：");
-    lines.push(unpaid.length ? unpaid.map(t => {
-      const r = state.rooms.find(x => x.id === t.roomId);
-      return (r ? r.no : "") + " " + t.name + " " + money(r ? r.rent : 0);
-    }).join("\n") : "目前沒有未繳租客。");
+  const memos = (state.aiMemos || []).filter(m => !m.done);
+  const wantRemember = /記得|記住|記一下|提醒我|加入日曆|排進日曆|加到日曆|放到行事曆/.test(text);
+
+  if (/^(嗨|哈囉|你好|早安|午安|晚安|在嗎)/.test(text)) {
+    return "在，跟我說要記的事，或問未繳、報修、銀行、日曆都可以。";
+  }
+  if (/謝謝|感謝/.test(text)) return "不客氣，有要記的再跟我說。";
+
+  if (/你記得|記了什麼|我交代|有哪些行程|列出.*記/.test(text)) {
+    if (!memos.length) return "目前還沒有你交代要記的事。跟我說「幫我記得星期三去收現金」我就會記下。";
+    return "我這邊記著：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
+  }
+  if (/忘掉|刪掉.*記|不用記|取消行程/.test(text)) {
+    const hit = memos.find(m => text.indexOf(m.text) >= 0) || (memos.length === 1 ? memos[0] : null);
+    if (hit) {
+      state.aiMemos = state.aiMemos.filter(x => x.id !== hit.id);
+      save();
+      return "好，已經把「" + hit.text + "」拿掉了。";
+    }
+    if (!memos.length) return "目前沒有記下的行程。";
+    return "要拿掉哪一筆？跟我說關鍵字，現在有：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
+  }
+
+  if (wantRemember) {
+    const rec = rememberAiMemo(text);
+    const when = rec.date
+      ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.weekday != null ? "（" + (parseWeekdayAsk(text) && parseWeekdayAsk(text).next ? "下" : "") + "週" + WEEKDAY_ZH[rec.weekday] + "）" : "")
+      : "之後";
+    return "好，我記下了。\n" + formatAiMemo(rec) + "\n到時候我會算在行程裡，本月進出帳那天也會看到「行程」。";
+  }
+
+  const bits = [];
+  if (/未繳|欠租|誰還沒|繳費|租金/.test(text) && !/對帳|入帳|銀行/.test(text)) {
+    if (!unpaid.length) bits.push("租金這塊目前都齊了，沒有未繳的戶。");
+    else bits.push("還沒繳的有 " + unpaid.length + " 戶：\n" + unpaid.map(tenantLine).join("\n"));
   }
   if (/報修|維修|冷氣|熱水器|電燈/.test(text)) {
-    lines.push("報修待處理 " + wait.length + " 件、處理中 " + doing.length + " 件。");
-    if (open.length) lines.push(open.slice(0, 8).map(r => {
-      const room = state.rooms.find(x => x.id === r.roomId);
-      return (room ? room.no : "") + " " + r.type + "（" + (r.status === "doing" ? "處理中" : "待處理") + "）" + (r.note ? "：" + r.note : "");
-    }).join("\n"));
-  }
-  if (/每月該做|該做什麼|行程|銀行業務|跑銀行/.test(text)) {
-    const plan = monthlyErrandPlan();
-    lines.push(plan.monthLabel + "建議：");
-    lines.push(plan.lines.join("\n"));
-    const recent = (state.errands || []).filter(e => e.kind !== "doc").slice(-8).reverse();
-    if (recent.length) lines.push("最近紀錄：\n" + recent.map(e => (e.date || "") + " 銀行 " + (e.title || "") + (e.place ? " @" + e.place : "")).join("\n"));
-  }
-  if (/日曆|預約|行事曆|簽約/.test(text)) {
-    lines.push(cal.length ? "已排程：\n" + cal.map(ev => ev.sub + "　" + ev.title).join("\n") : "目前沒有維修或續約預約。");
+    if (!open.length) bits.push("報修現在沒有待辦，都處理完了。");
+    else {
+      bits.push("報修還有 " + wait.length + " 件待處理、" + doing.length + " 件處理中。");
+      bits.push(open.slice(0, 8).map(r => {
+        const room = state.rooms.find(x => x.id === r.roomId);
+        return "· " + (room ? room.no + " " : "") + r.type + (r.status === "doing" ? "（處理中）" : "") + (r.note ? "：" + r.note : "");
+      }).join("\n"));
+    }
   }
   if (/對帳|銀行|入帳|存摺/.test(text)) {
     const paidAmt = state.tenants.filter(t => t.paid).reduce((s, t) => s + (Number((state.rooms.find(x => x.id === t.roomId) || {}).rent) || 0), 0);
     const slipAmt = slips.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-    lines.push("已上傳入帳 " + slips.length + " 筆，合計 " + money(slipAmt) + "。App 已繳合計 " + money(paidAmt) + "。");
-    if (slips.length) lines.push(slips.slice(-6).map(s => (s.date || "") + " " + (s.roomNo || "") + " " + (s.amount ? money(s.amount) : "") + " " + (s.note || "")).join("\n"));
+    bits.push("銀行入帳我這邊看到 " + slips.length + " 筆，合計 " + money(slipAmt) + "；App 已繳合計 " + money(paidAmt) + "。");
     const unmatched = unpaid.filter(t => {
       const r = state.rooms.find(x => x.id === t.roomId);
       return r && !slips.some(s => String(s.roomNo) === String(r.no));
     });
-    if (unmatched.length) lines.push("尚未對到入帳的未繳：" + unmatched.map(t => {
+    if (unmatched.length) bits.push("還沒對到入帳的未繳：" + unmatched.map(t => {
       const r = state.rooms.find(x => x.id === t.roomId);
       return r ? r.no : "";
-    }).join("、"));
+    }).filter(Boolean).join("、") + "。");
+    else if (!unpaid.length) bits.push("未繳的都對上了。");
   }
+  if (/每月該做|該做什麼|今天要做|本月.*做/.test(text) || (/行程|跑銀行|銀行業務/.test(text) && !wantRemember)) {
+    const plan = monthlyErrandPlan();
+    bits.push(plan.monthLabel + "我幫你整理這樣：\n" + plan.lines.map(x => "· " + x).join("\n"));
+  }
+  if (/日曆|行事曆|預約|簽約/.test(text) && !wantRemember) {
+    const upcoming = cal.filter(ev => String(ev.at || "") >= ymdOf(nowStamp()));
+    if (!upcoming.length && !memos.length) bits.push("日曆上暫時沒有維修或續約預約。有要排的日子直接跟我說，例如「幫我記得下星期三去收禹旺」。");
+    else {
+      if (upcoming.length) bits.push("已經排進去的：\n" + upcoming.slice(0, 8).map(ev => "· " + ev.sub + "　" + ev.title).join("\n"));
+      if (memos.length) bits.push("另外你交代我記的：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n"));
+    }
+  }
+  const roomHit = text.match(/\d{4}/);
   if (roomHit) {
     const no = roomHit[0];
     const r = state.rooms.find(x => String(x.no) === no);
     const t = r ? state.tenants.find(x => x.roomId === r.id) : null;
     if (r) {
-      lines.push(r.no + " " + r.title + "，狀態 " + statusLabel(r.status) + "，租金 " + money(r.rent) + "。");
-      if (t) lines.push("租客 " + t.name + "，" + (t.paid ? "本月已繳" : "本月未繳") + "，合約 " + t.leaseStart + " 至 " + t.leaseEnd + "。");
+      bits.push(r.no + " 是" + (r.title || "房間") + "，現在" + statusLabel(r.status) + "，租金 " + money(r.rent) + "。");
+      if (t) bits.push("租客是 " + t.name + "，" + (t.paid ? "這個月已繳" : "這個月還沒繳") + "，合約 " + t.leaseStart + " 到 " + t.leaseEnd + "。");
+      else bits.push("這間目前沒有登記租客。");
     }
   }
-  if (!lines.length) {
-    lines.push("目前套房出租 " + rented + "／" + studios.length + "。未繳 " + unpaid.length + " 戶，報修未完成 " + open.length + " 件，已排程 " + cal.length + " 筆，銀行入帳資料 " + slips.length + " 筆。");
-    lines.push("可以問：本月該做什麼、分析銀行、誰還沒繳、報修，或輸入房號。");
-  }
-  return lines.join("\n");
+  if (bits.length) return bits.join("\n");
+
+  const snap = [];
+  snap.push("我先看一下現況：套房 " + rented + "／" + studios.length + " 間在租，未繳 " + unpaid.length + " 戶，報修未完成 " + open.length + " 件。");
+  if (memos.length) snap.push("你先前交代我記的有 " + memos.length + " 件，例如「" + memos[0].text + "」。");
+  snap.push("可以直接跟我說「幫我記得星期五去農會」，或問誰還沒繳、報修、銀行對帳。");
+  return snap.join("\n");
 }
 function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
