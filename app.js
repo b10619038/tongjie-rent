@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:47";
+const APP_VERSION = "2026-08-29-下午4:49";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:49", items: ["廠房分組全開全關合併為一個切換鈕"] },
   { ver: "2026-08-29-下午4:47", items: ["工作助手圖塊改為右上角拖移點才能拖排"] },
   { ver: "2026-08-29-下午4:44", items: ["拖移工作助手圖塊時維持圓角"] },
   { ver: "2026-08-29-下午4:39", items: ["工作助手圖塊可上下拖移排序"] },
@@ -4900,12 +4901,10 @@ function adminRoomListHtml(kind) {
       if (!pack) { pack = { group: g, rooms: [], company: r.company || "", street: r.street || "" }; groups.push(pack); }
       pack.rooms.push(r);
     });
+    const allClosed = groups.every(g => ui.factoryFold[g.group]);
     const bar = `<div class="fold-bar">
       <span class="small">點綠色小標可收合分組</span>
-      <div class="fold-actions">
-        <button type="button" class="ghost" data-factory-all="open">全開</button>
-        <button type="button" class="ghost" data-factory-all="close">全關</button>
-      </div>
+      <button type="button" class="ghost" id="factory-all">${allClosed ? "全部展開" : "全部收合"}</button>
     </div>`;
     return bar + groups.map(g => {
       const closed = !!ui.factoryFold[g.group];
@@ -6187,19 +6186,20 @@ function bindFactoryFold() {
       });
     };
   });
-  document.querySelectorAll("[data-factory-all]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const close = btn.dataset.factoryAll === "close";
-      if (!ui.factoryFold) ui.factoryFold = {};
-      document.querySelectorAll("[data-factory-fold]").forEach(b => {
-        ui.factoryFold[b.dataset.factoryFold] = close;
-        b.classList.toggle("closed", close);
-      });
-      document.querySelectorAll("[data-factory-pack]").forEach(p => setFactoryPack(p, close));
-    };
-  });
+  const allBtn = document.getElementById("factory-all");
+  if (allBtn) allBtn.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const heads = [...document.querySelectorAll("[data-factory-fold]")];
+    const close = heads.some(b => !b.classList.contains("closed"));
+    if (!ui.factoryFold) ui.factoryFold = {};
+    heads.forEach(b => {
+      ui.factoryFold[b.dataset.factoryFold] = close;
+      b.classList.toggle("closed", close);
+    });
+    document.querySelectorAll("[data-factory-pack]").forEach(p => setFactoryPack(p, close));
+    allBtn.textContent = close ? "全部展開" : "全部收合";
+  };
 }
 function bindStudioBuildings() {
   document.querySelectorAll("[data-studio-bldg]").forEach(btn => {
