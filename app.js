@@ -7959,10 +7959,13 @@ function bindPullRefresh() {
   sc.dataset.ptrBound = "1";
   let y0 = 0, pulling = false, dy = 0, busy = false;
   const max = 92, need = 62;
-  const label = ptr.querySelector("span");
+  const live = () => sc.querySelector(":scope > .ptr");
   const setH = (h, text) => {
-    ptr.style.height = Math.max(0, h) + "px";
-    ptr.classList.toggle("on", h >= need);
+    const box = live();
+    if (!box) return;
+    box.style.height = Math.max(0, h) + "px";
+    box.classList.toggle("on", h >= need);
+    const label = box.querySelector("span");
     if (label) label.textContent = text || (h >= need ? "放開後重新整理" : "下拉重新整理");
   };
   sc.addEventListener("touchstart", e => {
@@ -7971,7 +7974,8 @@ function bindPullRefresh() {
     y0 = e.touches[0].clientY;
     pulling = true;
     dy = 0;
-    ptr.style.transition = "none";
+    const box = live();
+    if (box) box.style.transition = "none";
   }, { passive: true });
   sc.addEventListener("touchmove", e => {
     if (!pulling || busy) return;
@@ -7985,10 +7989,11 @@ function bindPullRefresh() {
   sc.addEventListener("touchend", async () => {
     if (!pulling || busy) return;
     pulling = false;
-    ptr.style.transition = "height .25s ease";
+    const box = live();
+    if (box) box.style.transition = "height .25s ease";
     if (dy >= need) {
       busy = true;
-      ptr.classList.add("busy");
+      if (box) box.classList.add("busy");
       setH(56, "重新整理中…");
       try {
         await pullCloud();
