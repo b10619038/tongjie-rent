@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:11";
+const APP_VERSION = "2026-08-29-下午9:12";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:12", items: ["本月進出帳匯出列印改到右上"] },
   { ver: "2026-08-29-下午9:11", items: ["銀行入帳與銀行業務合併為跑銀行上傳入帳"] },
   { ver: "2026-08-29-下午9:07", items: ["本月進出帳左上新增匯出與列印"] },
   { ver: "2026-08-29-下午9:06", items: ["內容四個按鈕左邊加上小圖"] },
@@ -3081,14 +3082,14 @@ function monthCashHtml() {
   const sel = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
   const selected = sel ? byDay(sel) : [];
   return `<div class="card card-body cal-card" id="month-cash">
-    <div class="cal-toolbar no-print">
-      <button type="button" class="ghost" id="export-cal">匯出</button>
-      <button type="button" class="ghost" id="print-cal">列印</button>
-    </div>
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
         <div class="small">在平台上查看與登錄一個月的進帳、出帳</div>
+      </div>
+      <div class="cal-toolbar no-print">
+        <button type="button" class="ghost" id="export-cal">匯出</button>
+        <button type="button" class="ghost" id="print-cal">列印</button>
       </div>
     </div>
     <div class="cal-nav">

@@ -979,7 +979,7 @@ input[type="file"] {
   color: #111;
 }
 .cal-card { overflow: visible; }
-.cal-toolbar { display: flex; gap: 8px; margin: 0 0 10px; }
+.cal-toolbar { display: flex; gap: 8px; margin: 0; flex-shrink: 0; }
 .cal-toolbar .ghost { width: auto; margin: 0; padding: 8px 14px; }
 .xls-up {
   display: flex; align-items: center; justify-content: center;
