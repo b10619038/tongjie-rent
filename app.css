@@ -365,10 +365,35 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
 .card-body { padding: 16px; }
-.tenant-search { padding: 8px 14px; border-radius: 16px; }
-.tenant-search input {
-  width: 100%; border: 0; background: transparent; outline: none;
-  font: inherit; font-weight: 700; padding: 4px 0; color: var(--ink);
+.tenant-search {
+  padding: 8px 14px;
+  border-radius: 16px;
+  position: relative;
+  z-index: 8;
+  isolation: isolate;
+  pointer-events: auto !important;
+  overflow: visible;
+}
+.tenant-search input,
+#tenant-search {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 4px 0;
+  color: var(--ink);
+  caret-color: var(--ink);
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  position: relative;
+  z-index: 9;
+  touch-action: manipulation;
 }
 .tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
@@ -1509,8 +1534,9 @@ img.avatar { object-fit: cover; display: block; }
 .seg.is-done .seg-bg { transform: translate3d(100%,0,0); }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
 .seg button {
-  position: relative; z-index: 1; border: 0; background: transparent; border-radius: 999px;
+  position: relative; z-index: 2; border: 0; background: transparent; border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+  pointer-events: auto !important;
 }
 .seg button.on { color: var(--ink); }
 .seg button:hover, .seg button.on:hover { background-color: transparent; }

@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-02-27";
+const APP_STAMP = "2026-08-30-02-29";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["店面出租率改用指定近景照片"] },
+  { ver: APP_STAMP, items: ["套房租客與廠房租客切換、搜尋恢復可點可打字"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -6222,23 +6222,34 @@ function bindSegPills() {
 }
 function bindSegSwipe(seg, onLeft, onRight) {
   if (!seg) return;
-  let x0 = 0, y0 = 0, swiping = false;
-  seg.addEventListener("pointerdown", e => { x0 = e.clientX; y0 = e.clientY; swiping = false; });
+  let x0 = 0, y0 = 0, swiping = false, fired = false;
+  seg.addEventListener("pointerdown", e => {
+    x0 = e.clientX;
+    y0 = e.clientY;
+    swiping = false;
+    fired = false;
+  });
   seg.addEventListener("pointermove", e => {
-    if (!x0) return;
+    if (!x0 && x0 !== 0) return;
     const dx = e.clientX - x0;
-    if (Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(e.clientY - y0)) swiping = true;
+    const dy = e.clientY - y0;
+    if (Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy) * 1.5) swiping = true;
   });
   seg.addEventListener("pointerup", e => {
     const dx = e.clientX - x0;
+    const was = swiping;
+    swiping = false;
     x0 = 0;
-    if (!swiping) return;
-    e.preventDefault();
-    if (dx < -24) onRight();
-    else if (dx > 24) onLeft();
+    if (!was) return;
+    if (dx < -28) { fired = true; onRight(); }
+    else if (dx > 28) { fired = true; onLeft(); }
   });
   seg.addEventListener("click", e => {
-    if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
+    if (fired) {
+      e.preventDefault();
+      e.stopPropagation();
+      fired = false;
+    }
   }, true);
 }
 function applyTenantKind(kind) {
@@ -6273,7 +6284,10 @@ function applyTenantKind(kind) {
 function bindTenantSearch() {
   const inp = document.getElementById("tenant-search");
   if (!inp) return;
-  inp.oninput = () => {
+  inp.readOnly = false;
+  inp.disabled = false;
+  inp.tabIndex = 0;
+  const apply = () => {
     ui.tenantQ = String(inp.value || "");
     const box = document.getElementById("tenant-list");
     if (!box) return;
@@ -6284,6 +6298,18 @@ function bindTenantSearch() {
     bindTenantListTools();
     bindTenantFold();
   };
+  inp.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    setTimeout(() => inp.focus(), 0);
+  });
+  inp.addEventListener("click", e => {
+    e.stopPropagation();
+    inp.focus();
+  });
+  inp.addEventListener("keydown", e => e.stopPropagation());
+  inp.addEventListener("keyup", apply);
+  inp.addEventListener("input", apply);
+  inp.oninput = apply;
 }
 function bindTenantFold() {
   document.querySelectorAll("[data-fold-tenant]").forEach(el => {
