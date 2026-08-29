@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午2:40";
+const APP_VERSION = "2026-08-29-下午2:44";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午2:44", items: ["套房／廠房與租客切換改為與年月相同的白塊滑動"] },
   { ver: "2026-08-29-下午2:40", items: ["整體報表切換改為年在左、月在右"] },
   { ver: "2026-08-29-下午2:29", items: ["電腦可用滑鼠框選文字複製，框選不會卡住"] },
   { ver: "2026-08-29-下午2:28", items: ["套房／廠房與租客切換圖塊點擊有縮放回彈"] },
@@ -5060,57 +5061,24 @@ function tenantEntryCardHtml(kind, entry) {
 function tenantKindHint(kind) {
   return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
 }
-function placeSegPill(seg, btn, animate) {
-  if (!seg || !btn) return;
-  const bg = seg.querySelector(".seg-bg");
-  if (!bg) return;
-  const x = btn.offsetLeft;
-  const w = Math.max(8, btn.offsetWidth);
-  if (!animate) {
-    bg.style.transition = "none";
-    bg.style.width = w + "px";
-    bg.style.transform = `translate3d(${x}px,0,0)`;
-    void bg.offsetWidth;
-    bg.style.transition = "";
-    return;
-  }
-  const from = bg.getBoundingClientRect().left;
-  bg.style.transition = "none";
-  bg.style.width = w + "px";
-  bg.style.transform = `translate3d(${x}px,0,0)`;
-  const dx = from - bg.getBoundingClientRect().left;
-  if (Math.abs(dx) < 1) {
-    bg.style.transition = "";
-    return;
-  }
-  bg.style.transform = `translate3d(${x + dx}px,0,0)`;
-  void bg.offsetWidth;
-  bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1)";
-  bg.style.transform = `translate3d(${x}px,0,0)`;
-}
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
-  const btns = [...seg.querySelectorAll(":scope > button")];
-  const btn = rightOn ? btns[1] : btns[0];
+  const bg = seg.querySelector(".seg-bg");
+  if (bg) {
+    bg.style.transition = "";
+    bg.style.transform = "";
+    bg.style.width = "";
+  }
   if (leftClass) seg.classList.toggle(leftClass, !rightOn);
   if (rightClass) seg.classList.toggle(rightClass, !!rightOn);
+  const btns = [...seg.querySelectorAll(":scope > button")];
   btns.forEach((b, i) => b.classList.toggle("on", rightOn ? i === 1 : i === 0));
-  placeSegPill(seg, btn || btns[0], true);
-  if (seg.id === "asset-kind-seg" || seg.id === "tenant-kind-seg") {
-    seg.classList.remove("pop");
-    void seg.offsetWidth;
-    seg.classList.add("pop");
-  }
 }
 function bindSegPills() {
-  document.querySelectorAll(".seg").forEach(seg => {
-    const btns = [...seg.querySelectorAll(":scope > button")];
-    const cur = btns.find(b => b.classList.contains("on")) || btns[0];
-    placeSegPill(seg, cur, false);
-    requestAnimationFrame(() => {
-      const bg = seg.querySelector(".seg-bg");
-      if (bg) bg.style.transition = "transform .45s cubic-bezier(.22,.82,.22,1), width .45s cubic-bezier(.22,.82,.22,1)";
-    });
+  document.querySelectorAll(".seg .seg-bg").forEach(bg => {
+    bg.style.transition = "";
+    bg.style.transform = "";
+    bg.style.width = "";
   });
 }
 function bindSegSwipe(seg, onLeft, onRight) {
@@ -6295,6 +6263,7 @@ function bindAdmin() {
   document.querySelectorAll("[data-asset-kind]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
+      e.stopPropagation();
       const kind = btn.dataset.assetKind;
       if (ui.assetKind === kind) return;
       ui.assetKind = kind;
@@ -6323,6 +6292,7 @@ function bindAdmin() {
   document.querySelectorAll("[data-tenant-kind]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
+      e.stopPropagation();
       const kind = btn.dataset.tenantKind === "factory" ? "factory" : "studio";
       if ((ui.tenantKind === "factory" ? "factory" : "studio") === kind) return;
       applyTenantKind(kind);
