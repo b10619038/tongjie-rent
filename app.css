@@ -31,8 +31,6 @@ html, body {
   background: var(--paper);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  -webkit-user-select: none;
-  user-select: none;
 }
 #app {
   min-height: 100%;
@@ -53,9 +51,25 @@ button, .nav, .tab, .seg, .issue-opt, .ghost, .btn-navy, .theme-fab, .switch-til
   -webkit-touch-callout: default;
 }
 ::selection { background: #b5d7ff; color: inherit; }
-input, textarea {
-  -webkit-user-select: text;
-  user-select: text;
+input, textarea, select {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 2;
+}
+.cal-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  position: relative;
+  z-index: 2;
+}
+#errand-form input, #errand-form select, #errand-form textarea {
+  min-height: 44px;
+  font-size: 16px;
 }
 .shell {
   flex: 1;

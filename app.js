@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午3:24";
+const APP_VERSION = "2026-08-29-下午3:28";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午3:28", items: ["記下銀行業務欄位可點擊填寫"] },
   { ver: "2026-08-29-下午3:24", items: ["記下銀行業務可正常填寫並登錄"] },
   { ver: "2026-08-29-下午2:55", items: ["開發者公告改用男客服頭貼"] },
   { ver: "2026-08-29-下午2:51", items: ["管理員公告頭貼改為客服照片"] },
@@ -6863,17 +6864,21 @@ document.getElementById("app").addEventListener("click", e => {
 });
 (function bindTextSelectCopy() {
   let dragging = false, x0 = 0, y0 = 0;
+  const isField = el => el && el.closest && el.closest("input, textarea, select, button, a, label, option, .seg");
   document.addEventListener("mousedown", e => {
     if (e.button !== 0) return;
+    if (isField(e.target)) { dragging = false; return; }
     dragging = false;
     x0 = e.clientX;
     y0 = e.clientY;
   }, true);
   document.addEventListener("mousemove", e => {
     if (e.buttons !== 1) return;
+    if (isField(e.target)) return;
     if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) dragging = true;
   }, true);
   document.addEventListener("click", e => {
+    if (isField(e.target)) { dragging = false; return; }
     const sel = window.getSelection && window.getSelection();
     const text = sel ? String(sel.toString() || "").trim() : "";
     if (dragging && text) {
@@ -6882,7 +6887,7 @@ document.getElementById("app").addEventListener("click", e => {
       return;
     }
     dragging = false;
-    if (text && !e.target.closest("input, textarea, .k, .v, p, td, th, .small, .contract-doc, h1, h2, h3, h4, label, .chip")) {
+    if (text && !e.target.closest(".k, .v, p, td, th, .small, .contract-doc, h1, h2, h3, h4, .chip")) {
       sel.removeAllRanges();
     }
   }, true);
