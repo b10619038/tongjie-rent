@@ -4038,6 +4038,7 @@ function repairView() {
         <div id="media-preview">${pendingPreviewHtml()}</div>
         <button class="btn-navy" id="submit-repair" type="button">提交報修</button>
       </div>
+      </div>
       <div class="section-title"><h2 class="slide-right">我的報修</h2></div>
       ${mine.length ? mine.map(rep => repairCard(rep)).join("") : `<div class="empty">還沒有報修紀錄</div>`}
     </div>`;
