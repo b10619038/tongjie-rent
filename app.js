@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-01-03";
+const APP_STAMP = "2026-08-30-01-05";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["畫面下方版本改為西元-月-日-時-分-累積修改次數"] },
+  { ver: APP_STAMP, items: ["修復操作日誌無法點選與刪除"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -7232,16 +7232,22 @@ function bindAnnounceReactions() {
     });
   });
 }
-function bindAdmin() {
-  const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
-  const previewBtn = document.getElementById("preview-tenant");
-  if (previewBtn) previewBtn.onclick = () => enterDevPreview();
+function bindAdminLogs() {
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
-    btn.onclick = () => { ui.logFilter = btn.dataset.logFilter; ui.keepScroll = true; render(); };
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.logFilter = btn.dataset.logFilter;
+      ui.keepScroll = true;
+      render();
+    };
   });
   document.querySelectorAll("[data-log-pick]").forEach(inp => {
-    inp.onchange = () => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.onchange = e => {
+      e.stopPropagation();
       if (!ui.logPicked) ui.logPicked = {};
       if (inp.checked) ui.logPicked[inp.dataset.logPick] = true;
       else delete ui.logPicked[inp.dataset.logPick];
@@ -7249,40 +7255,63 @@ function bindAdmin() {
       render();
     };
   });
-  const logAll = document.getElementById("log-all");
-  if (logAll) logAll.onclick = () => {
+  const filtered = () => {
     const filter = ui.logFilter || "all";
     let list = (state.auditLogs || []).slice();
-    if (filter === "tenant") list = list.filter(x => x.kind === "tenant");
-    if (filter === "admin") list = list.filter(x => x.kind === "admin" || x.kind === "guest");
-    const picked = ui.logPicked || {};
-    const allOn = list.length && list.every(x => picked[x.id]);
-    ui.logPicked = {};
-    if (!allOn) list.forEach(x => { ui.logPicked[x.id] = true; });
-    ui.keepScroll = true;
-    render();
+    if (filter === "tenant") list = list.filter(x => logKind(x) === "tenant");
+    if (filter === "admin") list = list.filter(x => logKind(x) === "admin");
+    if (filter === "dev") list = list.filter(x => logKind(x) === "dev");
+    return list;
   };
+  const logAll = document.getElementById("log-all");
+  if (logAll) {
+    logAll.addEventListener("pointerdown", e => e.stopPropagation());
+    logAll.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const list = filtered();
+      const picked = ui.logPicked || {};
+      const allOn = list.length && list.every(x => picked[x.id]);
+      ui.logPicked = {};
+      if (!allOn) list.forEach(x => { ui.logPicked[x.id] = true; });
+      ui.keepScroll = true;
+      render();
+    };
+  }
   const logDelPicked = document.getElementById("log-del-picked");
-  if (logDelPicked) logDelPicked.onclick = () => {
-    const picked = ui.logPicked || {};
-    const ids = Object.keys(picked);
-    if (!ids.length) { toast("請先勾選要刪的紀錄"); return; }
-    state.auditLogs = (state.auditLogs || []).filter(x => !picked[x.id]);
-    ui.logPicked = {};
-    save();
-    ui.keepScroll = true;
-    toast("日誌已移除");
-  };
+  if (logDelPicked) {
+    logDelPicked.addEventListener("pointerdown", e => e.stopPropagation());
+    logDelPicked.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const picked = ui.logPicked || {};
+      const ids = Object.keys(picked);
+      if (!ids.length) { toast("請先勾選要刪的紀錄"); return; }
+      state.auditLogs = (state.auditLogs || []).filter(x => !picked[x.id]);
+      ui.logPicked = {};
+      save();
+      ui.keepScroll = true;
+      toast("日誌已移除");
+    };
+  }
   const logDelAll = document.getElementById("log-del-all");
-  if (logDelAll) logDelAll.onclick = () => {
-    state.auditLogs = [];
-    ui.logPicked = {};
-    save();
-    ui.keepScroll = true;
-    toast("日誌已清空");
-  };
+  if (logDelAll) {
+    logDelAll.addEventListener("pointerdown", e => e.stopPropagation());
+    logDelAll.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      state.auditLogs = [];
+      ui.logPicked = {};
+      save();
+      ui.keepScroll = true;
+      toast("日誌已清空");
+    };
+  }
   document.querySelectorAll("[data-del-log]").forEach(btn => {
-    btn.onclick = () => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
       const id = btn.dataset.delLog;
       state.auditLogs = (state.auditLogs || []).filter(x => x.id !== id);
       if (ui.logPicked) delete ui.logPicked[id];
@@ -7291,9 +7320,13 @@ function bindAdmin() {
       toast("日誌已移除");
     };
   });
-  bindMediaViewers();
-  bindRepairDelete();
-  bindAnnounceReactions();
+}
+function bindAdmin() {
+  const logout = document.getElementById("logout");
+  if (logout) logout.onclick = () => { audit("登出", "登出"); clearSession(); render(); };
+  const previewBtn = document.getElementById("preview-tenant");
+  if (previewBtn) previewBtn.onclick = () => enterDevPreview();
+  bindAdminLogs();
   document.querySelectorAll("[data-firm-period]").forEach(btn => {
     btn.onclick = e => {
       e.stopPropagation();
