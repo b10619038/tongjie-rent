@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午6:07";
+const APP_VERSION = "2026-08-29-下午6:19";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午6:19", items: ["租客問候區依鳳山即時天氣顯示晴天／陰天／雨天／大雷雨"] },
   { ver: "2026-08-29-下午6:07", items: ["銀行入帳與銀行業務改為吸收檔案文字記入帳本，不再留圖片"] },
   { ver: "2026-08-29-下午5:55", items: ["後台分頁點擊時白色底塊改為滑順移動"] },
   { ver: "2026-08-29-下午5:51", items: ["工作助手上傳按鈕改為上傳檔案"] },
@@ -1507,6 +1508,38 @@ async function refreshGeo() {
     backfillAuditAddress(addr);
   }
   return ui.geoAddr || "";
+}
+function skyFromCode(code) {
+  const c = Number(code);
+  if (c >= 95) return "storm";
+  if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82) || (c >= 71 && c <= 77) || (c >= 85 && c <= 86)) return "rain";
+  if (c === 0 || c === 1) return "sun";
+  return "cloud";
+}
+function skyLabel(sky) {
+  return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨" }[sky] || "陰天";
+}
+function applySkyDom() {
+  document.querySelectorAll(".weather-hero").forEach(el => {
+    el.setAttribute("data-sky", ui.sky || "cloud");
+  });
+}
+async function refreshSky(force) {
+  const now = Date.now();
+  if (!force && ui.skyAt && now - ui.skyAt < 15 * 60 * 1000 && ui.sky) {
+    applySkyDom();
+    return ui.sky;
+  }
+  try {
+    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=22.6438&longitude=120.3732&current=weather_code&timezone=Asia%2FTaipei");
+    const code = data && data.current && data.current.weather_code;
+    ui.sky = skyFromCode(code);
+    ui.skyAt = now;
+  } catch {
+    if (!ui.sky) ui.sky = "cloud";
+  }
+  applySkyDom();
+  return ui.sky;
 }
 async function fetchJson(url) {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -3547,11 +3580,12 @@ function homeView() {
   const hasAnn = (state.announcements || []).length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
-    <div class="topbar">
+    <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
+      <div class="sky-fx" aria-hidden="true"></div>
       <div class="who-line slide-right">
         <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
         <div>
-          <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : "GOOD EVENING"}</div>
+          <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : skyLabel(ui.sky)}</div>
           <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
         </div>
       </div>
@@ -7428,6 +7462,9 @@ async function boot() {
     restoreUi();
     beatPresence();
     render();
+    refreshSky(true).then(() => {
+      if (ui.role === "tenant") applySkyDom();
+    }).catch(() => {});
     if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()).catch(() => {}); armPushAsk(); }
   } catch (err) {
     try { console.error(err); } catch {}
@@ -7467,6 +7504,7 @@ async function boot() {
   setInterval(syncTick, 8000);
   setTimeout(syncTick, 2000);
   setInterval(beatPresence, 25000);
+  setInterval(() => { refreshSky().catch(() => {}); }, 15 * 60 * 1000);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       beatPresence();
