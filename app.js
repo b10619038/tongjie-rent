@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:51";
+const APP_VERSION = "2026-08-29-下午5:07";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:07", items: ["公告改為頭貼旁顯示管理員與時間，標題在下一行"] },
   { ver: "2026-08-29-下午4:51", items: ["工作助手拖移點改為隱形，仍可從右上角拖排"] },
   { ver: "2026-08-29-下午4:50", items: ["工作助手拖移點改為單點"] },
   { ver: "2026-08-29-下午4:49", items: ["廠房分組全開全關合併為一個切換鈕"] },
@@ -3418,8 +3419,8 @@ function announceBodyHtml(a, actions) {
   return `<div class="ann-head">
       ${staffAvatarHtml("sm", poster)}
       <div class="ann-meta">
-        <div class="row"><span class="k">${escapeHtml(a.title)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}${actions || ""}</div>
-        <div class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</div>
+        <div class="row"><span class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}${actions || ""}</div>
+        <div class="k">${escapeHtml(a.title)}</div>
       </div>
     </div>
     <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
