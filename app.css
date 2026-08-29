@@ -979,6 +979,8 @@ input[type="file"] {
   color: #111;
 }
 .cal-card { overflow: visible; }
+.cal-toolbar { display: flex; gap: 8px; margin: 0 0 10px; }
+.cal-toolbar .ghost { width: auto; margin: 0; padding: 8px 14px; }
 .xls-up {
   display: flex; align-items: center; justify-content: center;
   padding: 0 10px; min-height: 46px; margin: 0; font-size: 14px; font-weight: 800;
@@ -1072,6 +1074,9 @@ input[type="file"] {
   .inv-paper { break-inside: avoid; page-break-inside: avoid; margin-bottom: 16px; }
   body.print-report .dash > *:not(#overall-report) { display: none !important; }
   body.print-report #overall-report { box-shadow: none; border: 0; }
+  body.print-cal .dash > *:not(#month-cash) { display: none !important; }
+  body.print-cal #month-cash { box-shadow: none; border: 0; overflow: visible; }
+  body.print-cal .cal-form, body.print-cal .cal-toolbar { display: none !important; }
   body.print-report .report-wrap { max-height: none !important; overflow: visible !important; }
   body.print-report .admin-scroll { padding: 0 !important; }
   body.print-report .rev-sheet { overflow: visible; }

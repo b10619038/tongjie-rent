@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午9:06";
+const APP_VERSION = "2026-08-29-下午9:07";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午9:07", items: ["本月進出帳左上新增匯出與列印"] },
   { ver: "2026-08-29-下午9:06", items: ["內容四個按鈕左邊加上小圖"] },
   { ver: "2026-08-29-下午9:02", items: ["修復總覽新增一筆無法輸入與記入"] },
   { ver: "2026-08-29-下午9:01", items: ["整體報表移除個人戶明細表"] },
@@ -3078,7 +3079,11 @@ function monthCashHtml() {
   const byDay = d => rows.filter(x => x.date === dayKey(d));
   const sel = ui.calDay && ui.calDay <= dim ? ui.calDay : 0;
   const selected = sel ? byDay(sel) : [];
-  return `<div class="card card-body cal-card">
+  return `<div class="card card-body cal-card" id="month-cash">
+    <div class="cal-toolbar no-print">
+      <button type="button" class="ghost" id="export-cal">匯出</button>
+      <button type="button" class="ghost" id="print-cal">列印</button>
+    </div>
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
@@ -5069,6 +5074,55 @@ ${xlsSheet("報修", repairHead, repairRows)}
 function printOverallReport() {
   document.body.classList.add("print-report");
   const after = () => document.body.classList.remove("print-report");
+  window.addEventListener("afterprint", after, { once: true });
+  window.print();
+  setTimeout(after, 800);
+}
+function exportMonthCash() {
+  ensureCalMonth();
+  const y = ui.calYear, m = ui.calMonth;
+  const key = y + "-" + String(m).padStart(2, "0");
+  const rows = collectLedger().filter(x => x.date.slice(0, 7) === key)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)));
+  const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+  const head = ["日期", "類型", "帳戶", "金額", "備註"];
+  const body = rows.map(x => [x.date, x.type === "in" ? "進帳" : "出帳", accountLabel(x.company || "統潔"), x.amount, x.note || ""]);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+  <Style ss:ID="Default"><Alignment ss:Vertical="Center"/><Font ss:FontName="Microsoft JhengHei" ss:Size="11"/></Style>
+  <Style ss:ID="Title"><Font ss:FontName="Microsoft JhengHei" ss:Size="16" ss:Bold="1"/><Alignment ss:Vertical="Center"/></Style>
+  <Style ss:ID="Head"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#3FA89A" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/></Style>
+  <Style ss:ID="Money"><Font ss:FontName="Microsoft JhengHei" ss:Size="11"/><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+  <Style ss:ID="LabelB"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="MoneyB"><Font ss:FontName="Microsoft JhengHei" ss:Size="11" ss:Bold="1"/><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/><NumberFormat ss:Format="#,##0"/><Alignment ss:Horizontal="Right" ss:Vertical="Center"/></Style>
+</Styles>
+<Worksheet ss:Name="本月進出帳"><Table>
+<Column ss:Width="92"/><Column ss:Width="64"/><Column ss:Width="100"/><Column ss:Width="100"/><Column ss:Width="220"/>
+<Row><Cell ss:StyleID="Title" ss:MergeAcross="4"><Data ss:Type="String">統潔＆信潔開發有限公司　本月進出帳</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="4"><Data ss:Type="String">${xmlEsc(y + " 年 " + m + " 月")}</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="4"><Data ss:Type="String">進帳 ${inn.toLocaleString("zh-TW")}　出帳 ${out.toLocaleString("zh-TW")}　結餘 ${(inn - out).toLocaleString("zh-TW")}</Data></Cell></Row>
+<Row></Row>
+${xlsRow(head, head.map(() => "Head"))}
+${body.map(r => xlsRow(r, ["", "", "", "Money", ""])).join("")}
+${xlsRow(["合計", "", "", inn - out, "進帳 " + inn + "　出帳 " + out], ["LabelB", "LabelB", "LabelB", "MoneyB", "LabelB"])}
+</Table></Worksheet>
+</Workbook>`;
+  const blob = new Blob(["\uFEFF" + xml], { type: "application/vnd.ms-excel" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `統潔＆信潔開發有限公司-本月進出帳-${y}年${m}月.xls`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast("已匯出 Excel");
+}
+function printMonthCash() {
+  document.body.classList.add("print-cal");
+  const after = () => document.body.classList.remove("print-cal");
   window.addEventListener("afterprint", after, { once: true });
   window.print();
   setTimeout(after, 800);
@@ -7471,6 +7525,10 @@ function bindAdminAi() {
 function bindCashCal() {
   ensureCalMonth();
   const stay = () => { ui.keepScroll = true; render(); };
+  const exportCal = document.getElementById("export-cal");
+  if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); exportMonthCash(); };
+  const printCal = document.getElementById("print-cal");
+  if (printCal) printCal.onclick = e => { e.preventDefault(); e.stopPropagation(); printMonthCash(); };
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onclick = () => {
       let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
