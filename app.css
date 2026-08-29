@@ -1132,14 +1132,10 @@ img.avatar { object-fit: cover; display: block; }
   flex-shrink: 0;
   width: 36px; height: 36px; margin: -6px -4px -6px 0;
   border: 0; border-radius: 10px;
-  background: transparent; color: var(--muted);
-  display: grid; place-items: center;
+  background: transparent; color: transparent;
   cursor: grab; touch-action: none;
   -webkit-user-select: none; user-select: none;
 }
-.ai-drag svg { fill: currentColor; pointer-events: none; }
-.ai-drag:active { cursor: grabbing; color: var(--teal); }
-#ai-blocks.sorting .ai-drag { cursor: grabbing; }
 #announce-fold {
   width: 100%; margin: 0; padding: 6px 0;
   border: 0; background: transparent; cursor: pointer;

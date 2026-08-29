@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午4:50";
+const APP_VERSION = "2026-08-29-下午4:51";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午4:51", items: ["工作助手拖移點改為隱形，仍可從右上角拖排"] },
   { ver: "2026-08-29-下午4:50", items: ["工作助手拖移點改為單點"] },
   { ver: "2026-08-29-下午4:49", items: ["廠房分組全開全關合併為一個切換鈕"] },
   { ver: "2026-08-29-下午4:47", items: ["工作助手圖塊改為右上角拖移點才能拖排"] },
@@ -4132,7 +4133,7 @@ function saveAiBlockOrder(ids) {
   try { localStorage.setItem(AI_BLOCK_KEY, JSON.stringify(ids.filter(id => AI_BLOCKS.includes(id)))); } catch {}
 }
 function aiDragBtn() {
-  return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="3.2"/></svg></button>`;
+  return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"></button>`;
 }
 function adminAi() {
   const logs = (state.aiLogs || []).slice(-20);
