@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:04";
+const APP_VERSION = "2026-08-29-中午12:09";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:09", items: ["租客可線上簽署電子合約", "租客畫面靜止區塊不再跳動"] },
   { ver: "2026-08-29-中午12:04", items: ["報修描述欄可穩定輸入，不再整頁跳動"] },
   { ver: "2026-08-29-中午12:02", items: ["極黑主題下我的房間圖卡改為深底清楚字"] },
   { ver: "2026-08-29-上午11:59", items: ["報修選項與提交不再整頁滑動，描述欄可正常輸入"] },
@@ -1823,7 +1824,7 @@ function ensureDevPreview() {
     amenities: AMENITIES.slice(),
     photos: photos,
     utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
-    contractImages: sample.contractImages ? sample.contractImages.slice() : []
+    contractImages: []
   };
   ui.devTenant = Object.assign({
     id: "t-dev-preview",
@@ -1908,7 +1909,7 @@ function toast(msg) {
   if (ui.role && msg && /^(已|登錄成功)/.test(String(msg))) audit("操作", String(msg));
   const ae = document.activeElement;
   const typing = ae && (ae.tagName === "TEXTAREA" || ae.tagName === "INPUT");
-  if (ui.page === "repair" || typing) {
+  if (ui.page === "repair" || ui.page === "lease-sign" || typing) {
     showToastBanner(msg);
     return;
   }
@@ -3161,8 +3162,7 @@ function render() {
     return;
   }
   ui.keepScroll = false;
-  const still = keep || ui.page === "repair" || ui.page === "repair-done";
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${still ? " keep-still" : ""}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll tenant-still">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page keep-still">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   bindTenant();
   bindInstallSheet();
   bindNotifyGuide();
@@ -3313,7 +3313,7 @@ function nav() {
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
-    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home");
+    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease");
     return `<button data-page="${id}" class="${on ? "active" : ""}">${icon(ic)}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
@@ -3325,6 +3325,7 @@ function tenantView() {
   if (ui.page === "balcony") return balconyView();
   if (ui.page === "trash") return trashView();
   if (ui.page === "lease") return leaseView();
+  if (ui.page === "lease-sign") return leaseSignView();
   if (ui.page === "repair" || ui.page === "repair-done") return repairView();
   if (ui.page === "pay") return payView();
   return homeView();
@@ -3392,6 +3393,7 @@ function homeView() {
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
           <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
         </div>
+        ${tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : ""}
       </div>
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
@@ -3628,6 +3630,43 @@ function roomDetailView(id) {
       </div>`}
     </div>`;
 }
+function getESign(t) {
+  if (isDevPreview()) return ui.devESign || null;
+  return (t && t.eSign) || null;
+}
+function tenantContractStatus(t, r) {
+  const es = getESign(t);
+  if (es && es.status === "signed") return "signed";
+  if (r && r.contractImages && r.contractImages.length) return "paper";
+  return "unsigned";
+}
+function contractStatusLabel(t, r) {
+  const s = tenantContractStatus(t, r);
+  if (s === "signed") return "電子已簽";
+  if (s === "paper") return "紙本已建檔";
+  return "尚未簽約";
+}
+function eContractDocHtml(t, r) {
+  const lessor = "統潔＆信潔開發有限公司";
+  const firm = r.company || "統潔";
+  const es = getESign(t);
+  return `<div class="contract-doc">
+    <h3>房屋租賃電子合約</h3>
+    <p>出租人：${escapeHtml(lessor)}（${escapeHtml(firm)}）</p>
+    <p>承租人：${escapeHtml((t && t.name) || "—")}</p>
+    <p>身分證字號：${escapeHtml((t && t.idNo) || "（簽署時確認）")}</p>
+    <p>聯絡電話：${escapeHtml((t && t.phone) || "—")}</p>
+    <p>承租房間：${escapeHtml(r.no || "")}　${escapeHtml(r.title || "套房")}</p>
+    <p>房屋地址：${escapeHtml(r.location || roomAddress(r.no))}</p>
+    <p>租期：${escapeHtml((t && t.leaseStart) || "—")} 起至 ${escapeHtml((t && t.leaseEnd) || "—")} 止</p>
+    <p>每月租金：${money(r.rent)}　押金：${money(r.deposit)}</p>
+    <p>繳費日：每月 ${escapeHtml(String((t && t.dueDay) || 5))} 日前</p>
+    <h4>使用規範</h4>
+    ${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}
+    <p>雙方同意以電子方式簽署本合約，簽署後與紙本合約具相同效力，並由 App 保存簽署紀錄。</p>
+    ${es && es.status === "signed" ? `<div class="signed-block"><p>承租人簽名</p><img src="${es.sig}" alt="簽名"><p class="small">簽署時間　${escapeHtml(formatDateTime12(es.at))}</p></div>` : ""}
+  </div>`;
+}
 function leaseView() {
   const t = me(); const r = myRoom(); const left = daysLeft(t.leaseEnd);
   return `<div class="topbar"><div class="slide-right"><div class="eyebrow">LEASE</div><h1>租約</h1></div></div>
@@ -3644,12 +3683,28 @@ function leaseView() {
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
       <div class="card card-body slide-left rules">${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>
       <div class="section-title">
-        <h2 class="slide-right">合約書</h2>
+        <h2>合約書</h2>
         ${(r.contractImages && r.contractImages.length) ? `<button type="button" class="linkish" id="dl-all-contract">下載 PDF</button>` : ""}
       </div>
-      ${(r.contractImages && r.contractImages.length)
-        ? `<div class="contract-list slide-left">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
-        : `<div class="card card-body slide-left"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`}
+      ${(() => {
+        const st = tenantContractStatus(t, r);
+        const es = getESign(t);
+        if (st === "unsigned") {
+          return `<div class="card card-body">
+            <div class="row"><span class="k">合約狀態</span><span class="pay-pill unpaid">尚未簽約</span></div>
+            <p class="small" style="margin-top:8px">還沒有紙本或電子合約。點下面可閱讀條款並在手機上簽名。</p>
+            <button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:12px">線上簽署電子合約</button>
+          </div>`;
+        }
+        if (st === "signed") {
+          return `<div class="card card-body">${eContractDocHtml(t, r)}
+            <div class="row" style="margin-top:8px"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
+          </div>`;
+        }
+        return (r.contractImages && r.contractImages.length)
+          ? `<div class="contract-list">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
+          : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`;
+      })()}
       ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>` : ""}
       ${(() => {
         const pending = (isDevPreview() ? (ui.devRenewals || []) : (state.renewals || [])).filter(x => x.tenantId === t.id && x.status !== "done");
@@ -3662,6 +3717,33 @@ function leaseView() {
         <p class="small" style="margin-top:8px">點擊時間可加入 Google 日曆</p>
       </div>` : ""}`;
       })()}
+    </div>`;
+}
+function leaseSignView() {
+  const t = me(); const r = myRoom();
+  const es = getESign(t);
+  if (es && es.status === "signed") {
+    return `<div class="topbar"><div>
+      <button class="back" data-page="lease">← 返回</button>
+      <div class="eyebrow">LEASE</div><h1>電子合約</h1>
+    </div></div>
+    <div class="screen">
+      <div class="card card-body">${eContractDocHtml(t, r)}</div>
+    </div>`;
+  }
+  return `<div class="topbar"><div>
+      <button class="back" data-page="lease">← 返回</button>
+      <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
+    </div></div>
+    <div class="screen">
+      <div class="card card-body">${eContractDocHtml(t, r)}</div>
+      <label class="sign-agree"><input id="sign-agree" type="checkbox" /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
+      <div class="small" style="margin:8px 2px">請在白框內簽名</div>
+      <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
+      <div class="btn-row" style="margin-top:12px">
+        <button type="button" class="ghost" id="sign-clear">清除簽名</button>
+        <button type="button" class="btn-navy" id="sign-confirm">確認簽署</button>
+      </div>
     </div>`;
 }
 function deleteRepair(id) {
@@ -4923,6 +5005,7 @@ function tenantEntryCardHtml(kind, entry) {
             const rr = state.rooms.find(x => x.id === tt.roomId);
             return `<div class="row wrap"><span class="k">租期　${escapeHtml(rr ? rr.no : "")}</span><span class="v">${tt.leaseStart || "—"} → ${tt.leaseEnd || "—"}　${leaseLeftText(tt.leaseEnd)}</span></div>`;
           }).join("")}
+      <div class="row"><span class="k">合約</span><span class="pay-pill ${tenantContractStatus(t, r) === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(t, r)}</span></div>
       ${t.note && kind === "factory" ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
       ${tenants.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId);
@@ -5194,6 +5277,15 @@ function adminRoomEdit() {
           <button type="button" class="ghost" data-del-photo="${i}">刪除</button>
         </div>`).join("")}</div>
       <div class="section-title"><h2>合約書</h2></div>
+      ${(() => {
+        const ten = state.tenants.find(x => x.id === r.tenantId);
+        const st = tenantContractStatus(ten, r);
+        const es = ten && ten.eSign;
+        return `<div class="card card-body" style="margin-bottom:10px">
+          <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
+          ${st === "signed" && es && es.sig ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署。" : "已有紙本合約圖檔。"}</p>`}
+        </div>`;
+      })()}
       <label class="upload">上傳合約書圖檔<input id="contract-upload" type="file" accept="image/*" multiple hidden /></label>
       ${!(r.contractImages && r.contractImages.length) ? `<p class="small">上傳後會顯示在租客的「租約」頁。</p>` : ""}
       ${(r.contractImages || []).map((src, i) => `<div><img src="${src}" alt="" style="width:100%;border-radius:12px;margin:8px 0"><button type="button" class="ghost" data-del-contract="${i}">刪除圖檔</button></div>`).join("")}
@@ -5651,8 +5743,80 @@ function bindTenant() {
   const backRepair = document.getElementById("back-repair");
   if (backRepair) backRepair.onclick = () => { ui.page = "repair"; render(); };
   bindRepairDelete();
+  bindSignPad();
 }
 
+function bindSignPad() {
+  const c = document.getElementById("sign-pad");
+  if (!c) return;
+  const wrap = c.parentElement;
+  const ctx = c.getContext("2d");
+  const fit = () => {
+    const ratio = Math.max(1, window.devicePixelRatio || 1);
+    const w = Math.max(280, (wrap && wrap.clientWidth) || c.clientWidth || 320);
+    const h = 160;
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+    c.width = Math.round(w * ratio);
+    c.height = Math.round(h * ratio);
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#111111";
+  };
+  fit();
+  let drawing = false, last = null;
+  const pt = e => {
+    const r = c.getBoundingClientRect();
+    const src = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+  const start = e => { e.preventDefault(); drawing = true; last = pt(e); };
+  const move = e => {
+    if (!drawing) return;
+    e.preventDefault();
+    const p = pt(e);
+    ctx.beginPath();
+    ctx.moveTo(last.x, last.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    last = p;
+    c.dataset.ink = "1";
+  };
+  const end = () => { drawing = false; };
+  c.addEventListener("pointerdown", start);
+  c.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", end);
+  c.addEventListener("touchstart", start, { passive: false });
+  c.addEventListener("touchmove", move, { passive: false });
+  c.addEventListener("touchend", end);
+  const clr = document.getElementById("sign-clear");
+  if (clr) clr.onclick = () => { fit(); c.dataset.ink = ""; };
+  const ok = document.getElementById("sign-confirm");
+  if (ok) ok.onclick = () => {
+    const agree = document.getElementById("sign-agree");
+    if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
+    if (c.dataset.ink !== "1") { toast("請先在白框內簽名"); return; }
+    const t = me(); const r = myRoom();
+    const rec = { status: "signed", at: nowStamp(), sig: c.toDataURL("image/png"), name: (t && t.name) || "" };
+    if (isDevPreview()) {
+      ui.devESign = rec;
+      ui.page = "lease";
+      toast("預覽：已完成電子簽署（不會寫入）");
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    if (t) t.eSign = rec;
+    if (!state.notices) state.notices = [];
+    state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
+    save();
+    pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
+    ui.page = "lease";
+    toast("已完成電子簽署");
+  };
+}
 function bindAnnPending() {
   document.querySelectorAll("[data-del-ann-media]").forEach(btn => {
     btn.onclick = e => {
