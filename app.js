@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-下午5:36";
+const APP_VERSION = "2026-08-29-下午5:51";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-下午5:51", items: ["工作助手上傳按鈕改為上傳檔案"] },
   { ver: "2026-08-29-下午5:36", items: ["公告紀錄編輯後按儲存會真正寫入並關閉編輯"] },
   { ver: "2026-08-29-下午5:32", items: ["公告紀錄可在該圖塊直接編輯刪除，發布欄只負責發新公告"] },
   { ver: "2026-08-29-下午5:27", items: ["上傳圖塊隱藏系統的選擇檔案文字"] },
@@ -2965,7 +2966,7 @@ function monthCashHtml() {
       </div>
       <div class="cal-form-row">
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
-        <label class="upload xls-up">上傳 Excel<input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden /></label>
+        <label class="upload xls-up">上傳檔案<input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden /></label>
       </div>
       <div class="small">可把做好的 Excel 上傳，工作助手會自動辨識並記入本月進出帳與整體報表。</div>
       <button class="btn-navy" type="submit">${ed ? "儲存變更" : "記入日曆"}</button>
