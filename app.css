@@ -31,7 +31,9 @@ html, body {
   background: var(--paper);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-  touch-action: manipulation;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 #app {
   min-height: 100%;
@@ -42,6 +44,19 @@ html, body {
 }
 body { font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
 button, input, textarea, select { font: inherit; }
+button, .nav, .tab, .seg, .issue-opt, .ghost, .btn-navy, .theme-fab, .switch-tile {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.k, .v, p, h1, h2, h3, h4, .small, .chip, .room-name, .contract-doc, td, th, .lead, label {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
 .shell {
   flex: 1;
   min-height: 0;
@@ -242,8 +257,18 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
 .contract-doc p { margin: 0 0 8px; line-height: 1.65; font-size: 14px; }
 .signed-block { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
 .signed-block img { width: 100%; max-height: 140px; object-fit: contain; background: #fff; border-radius: 12px; }
-.sign-agree { display: flex; gap: 10px; align-items: flex-start; margin: 14px 2px 8px; font-size: 14px; line-height: 1.5; }
-.sign-agree input { margin-top: 3px; }
+.sign-agree {
+  display: flex; gap: 10px; align-items: flex-start;
+  margin: 14px 2px 8px; font-size: 14px; line-height: 1.5;
+  position: relative; z-index: 8; cursor: pointer; pointer-events: auto;
+}
+.sign-agree input[type="checkbox"] {
+  width: 22px; height: 22px; min-width: 22px; margin-top: 1px;
+  flex-shrink: 0; pointer-events: auto;
+  accent-color: var(--teal);
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
+}
 .sign-pad-wrap {
   background: #ffffff;
   border: 1.5px dashed var(--line);

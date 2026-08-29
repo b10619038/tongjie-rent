@@ -12,10 +12,11 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_VERSION = "2026-08-29-中午12:31";
+const APP_VERSION = "2026-08-29-中午12:36";
 const TENANT_ROSTER_VER = "20260829-0210";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
+  { ver: "2026-08-29-中午12:36", items: ["電子合約同意勾選可點，畫面文字可框選複製"] },
   { ver: "2026-08-29-中午12:31", items: ["套房／廠房與租客左右切換改為滑順"] },
   { ver: "2026-08-29-中午12:26", items: ["修復畫面全白"] },
   { ver: "2026-08-29-中午12:24", items: ["套房租客圖卡往左小滑才開 LINE，綠色區塊縮小"] },
@@ -3760,7 +3761,7 @@ function leaseSignView() {
     </div></div>
     <div class="screen">
       <div class="card card-body">${eContractDocHtml(t, r)}</div>
-      <label class="sign-agree"><input id="sign-agree" type="checkbox" /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
+      <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">請在白框內簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
       <div class="btn-row" style="margin-top:12px">
@@ -5795,8 +5796,27 @@ function bindTenant() {
   if (backRepair) backRepair.onclick = () => { ui.page = "repair"; render(); };
   bindRepairDelete();
   bindSignPad();
+  bindSignAgree();
 }
 
+function bindSignAgree() {
+  const box = document.getElementById("sign-agree");
+  const lab = document.querySelector("label.sign-agree");
+  if (!box) return;
+  box.checked = !!ui.signAgree;
+  const sync = () => { ui.signAgree = !!box.checked; };
+  box.onchange = sync;
+  box.onclick = e => e.stopPropagation();
+  if (lab) {
+    lab.onclick = e => {
+      if (e.target === box) return;
+      e.preventDefault();
+      e.stopPropagation();
+      box.checked = !box.checked;
+      sync();
+    };
+  }
+}
 function bindSignPad() {
   const c = document.getElementById("sign-pad");
   if (!c) return;
@@ -5836,9 +5856,10 @@ function bindSignPad() {
     c.dataset.ink = "1";
   };
   const end = () => { drawing = false; };
-  c.addEventListener("pointerdown", start);
+  c.addEventListener("pointerdown", e => { c.setPointerCapture(e.pointerId); start(e); });
   c.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", end);
+  c.addEventListener("pointerup", end);
+  c.addEventListener("pointercancel", end);
   c.addEventListener("touchstart", start, { passive: false });
   c.addEventListener("touchmove", move, { passive: false });
   c.addEventListener("touchend", end);
