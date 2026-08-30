@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-19-58";
-const APP_EDIT_COUNT = 224;
+const APP_STAMP = "2026-08-30-20-01";
+const APP_EDIT_COUNT = 225;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手提醒可加到 Google 日曆"] },
+  { ver: APP_STAMP, items: ["公告頁移除發布身分說明"] },
+  { ver: "2026-08-30-19-58", items: ["工作助手提醒可加到 Google 日曆"] },
   { ver: "2026-08-30-19-51", items: ["手機側邊返回可回到上一頁"] },
   { ver: "2026-08-30-17-12", items: ["退租單IC卡改為磁扣"] },
   { ver: "2026-08-30-17-09", items: ["退租欄位倒角並拉開上下間距"] },
@@ -6212,7 +6213,6 @@ function adminAnnounce() {
       </button>
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">7651 發布顯示管理員，1240 發布顯示開發者。</p>
           <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" /></label>
           <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容"></textarea></label>
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
