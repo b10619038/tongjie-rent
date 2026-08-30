@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-11-23";
+const APP_STAMP = "2026-08-30-11-30";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["點電費儲值說明可看5樓自助儲值機實景"] },
+  { ver: APP_STAMP, items: ["租客首頁問候改為只顯示名字"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -4361,7 +4361,7 @@ function homeView() {
           <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
           <div>
             <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : skyLabel(ui.sky)}</div>
-            <h1>您好${t.name ? "，" + escapeHtml(t.name) : ""}</h1>
+            <h1>${t.name ? escapeHtml(t.name) : "租客"}</h1>
           </div>
         </div>
       </div>
