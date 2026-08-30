@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-16-41";
-const APP_EDIT_COUNT = 218;
+const APP_STAMP = "2026-08-30-16-53";
+const APP_EDIT_COUNT = 219;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房租客圖卡顯示現任、本月收款與交接中"] },
+  { ver: APP_STAMP, items: ["套房本月已繳未繳依收款明細"] },
+  { ver: "2026-08-30-16-41", items: ["套房租客圖卡顯示現任、本月收款與交接中"] },
   { ver: "2026-08-30-14-01", items: ["後台刪除報修可點擊"] },
   { ver: "2026-08-30-13-58", items: ["套房租金依收款明細核對"] },
   { ver: "2026-08-30-13-54", items: ["統潔帳戶圖卡移除超商"] },
@@ -650,6 +651,24 @@ function studioHandover(t, r) {
   if (!pay || !pay.name) return false;
   return !sameTenantName(t.name, pay.name);
 }
+function applyStudioSheetPaid(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
+  data.tenants.forEach(t => {
+    if (!t || t.demo || t.former || t.paidTouched) return;
+    const room = data.rooms.find(r => r.id === t.roomId);
+    if (!room || room.demo || room.status === "office" || room.kind === "factory") return;
+    const pay = STUDIO_MONTH_PAY[String(room.no || "")];
+    if (!pay) return;
+    if (Number(pay.amount) > 0) {
+      t.paid = true;
+      if (pay.paidOn) t.paidAt = pay.paidOn + " 10:00";
+      if (!t.paidVia) t.paidVia = "sheet";
+    } else {
+      t.paid = false;
+      t.paidAt = "";
+    }
+  });
+}
 const TENANT_INFO = {
   "6821": { name: "黃宥宇", phone: "0980-330-332" },
   "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
@@ -1192,6 +1211,7 @@ function normalize(data) {
   }
   applyFactoryRoster(data);
   data.factoryRosterVer = FACTORY_ROSTER_VER;
+  applyStudioSheetPaid(data);
   applyJuly115Books(data);
   ensureDemoTenant(data);
   return data;
@@ -6496,7 +6516,7 @@ function adminDash() {
   const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
   const solarTotal = factories.length + STUDIO_BUILDINGS.length;
   const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
-  const unpaidTenants = state.tenants.filter(t => !t.paid && !isDemoTenant(t));
+  const unpaidTenants = state.tenants.filter(t => !t.paid && !t.former && !isDemoTenant(t));
   const expiring = state.tenants.filter(t => !isDemoTenant(t)).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
   const fixes = {
@@ -7014,6 +7034,7 @@ function bindTenantListTools() {
       const t = state.tenants.find(x => x.id === btn.dataset.togglePay);
       if (!t) return;
       t.paid = !t.paid;
+      t.paidTouched = true;
       if (t.paid) {
         if (!t.paidAt) t.paidAt = nowStamp();
         if (!t.paidVia) t.paidVia = "app";
@@ -8464,6 +8485,7 @@ function bindAdmin() {
     btn.onclick = () => {
       const t = state.tenants.find(x => x.id === btn.dataset.togglePay);
       t.paid = !t.paid;
+      t.paidTouched = true;
       if (t.paid) {
         if (!t.paidAt) t.paidAt = nowStamp();
         if (!t.paidVia) t.paidVia = "app";
