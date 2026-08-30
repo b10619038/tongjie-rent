@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-11-55";
+const APP_STAMP = "2026-08-30-12-05";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["未繳一鍵催繳、現金對帳、退租單"] },
+  { ver: APP_STAMP, items: ["套房租客最上方新增開發者測試租客"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -1100,6 +1100,7 @@ function normalize(data) {
   applyFactoryRoster(data);
   data.factoryRosterVer = FACTORY_ROSTER_VER;
   applyJuly115Books(data);
+  ensureDemoTenant(data);
   return data;
 }
 function applyJuly115Books(data) {
@@ -2153,7 +2154,62 @@ function floorNo(no) {
 function roomsByFloor() {
   return [...state.rooms].sort((a, b) => floorNo(a.no) - floorNo(b.no) || a.no.localeCompare(b.no, "zh-Hant"));
 }
-function isDevPreview() { return !!(ui.devPreview && ui.role === "tenant"); }
+function isDemoRoom(r) {
+  return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO"));
+}
+function isDemoTenant(t) {
+  if (!t) return false;
+  if (t.demo || t.id === "t-demo" || t.id === "t-dev-preview") return true;
+  const r = (state.rooms || []).find(x => x.id === t.roomId);
+  return isDemoRoom(r);
+}
+function ensureDemoTenant(data) {
+  if (!data) return;
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  const y = new Date().getFullYear();
+  let room = data.rooms.find(r => r.id === "r-demo" || String(r.no) === "DEMO");
+  if (!room) {
+    room = {
+      id: "r-demo", no: "DEMO", title: "套房", kind: "studio", status: "rented",
+      rent: 10000, deposit: 10000, demo: true,
+      location: "高雄市鳳山區文龍東路68號2樓-1室",
+      note: "開發者測試房間（不計入金額）",
+      tenantId: "t-demo",
+      amenities: AMENITIES.slice(),
+      photos: ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"],
+      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+      contractImages: []
+    };
+    data.rooms.push(room);
+  } else {
+    room.demo = true;
+    room.no = "DEMO";
+    if (!room.note) room.note = "開發者測試房間（不計入金額）";
+    if (!room.location) room.location = "高雄市鳳山區文龍東路68號2樓-1室";
+    if (!room.rent) room.rent = 10000;
+    if (!room.deposit) room.deposit = 10000;
+    if (typeof ensurePhotos === "function") ensurePhotos(room);
+  }
+  let t = data.tenants.find(x => x.id === "t-demo" || x.roomId === room.id);
+  if (!t) {
+    t = {
+      id: "t-demo", name: "開發者（測試）", roomId: room.id, paid: false, demo: true,
+      leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 5,
+      phone: "0912-345-678", loginPass: "DEMO"
+    };
+    data.tenants.push(t);
+  } else {
+    t.demo = true;
+    t.name = "開發者（測試）";
+    if (!t.phone) t.phone = "0912-345-678";
+    if (!t.loginPass) t.loginPass = "DEMO";
+    if (!t.leaseStart) t.leaseStart = y + "-01-01";
+    if (!t.leaseEnd) t.leaseEnd = (y + 1) + "-12-31";
+  }
+  room.tenantId = t.id;
+  t.roomId = room.id;
+}
 function ensureDevPreview() {
   const sample = (state.rooms || []).find(r => r.kind !== "factory" && r.status !== "office") || {};
   const y = new Date().getFullYear();
@@ -2871,7 +2927,7 @@ function collectLedger() {
     });
   });
   const taken = new Set(rows.filter(x => x.roomNo).map(x => String(x.roomNo)));
-  state.tenants.filter(t => t.paid).forEach(t => {
+  state.tenants.filter(t => t.paid && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     const date = ymdOf(t.paidAt);
     if (!date) return;
@@ -3897,7 +3953,7 @@ function findPendingCashBook(amount, date) {
 }
 function unpaidActiveTenants() {
   return (state.tenants || []).filter(t => {
-    if (t.paid || !(t.name || "").trim()) return false;
+    if (t.paid || !(t.name || "").trim() || isDemoTenant(t)) return false;
     const room = (state.rooms || []).find(r => r.id === t.roomId);
     if (room && room.status === "office") return false;
     return true;
@@ -5269,7 +5325,7 @@ function bindAdminPageSwipe() {
 function tabBadgeCount(id) {
   if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
   if (id === "tenants") {
-    const unpaid = state.tenants.filter(t => !t.paid).length;
+    const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
     const renew = (state.renewals || []).filter(x => x.status !== "done").length;
     return unpaid + renew;
   }
@@ -5498,7 +5554,7 @@ function monthlyErrandPlan() {
   const banks = parsed;
   const thisBanks = banks.filter(x => x.key === ym);
   const bankDay = typicalDay(banks);
-  const unpaid = state.tenants.filter(t => !t.paid).length;
+  const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
   const openFix = state.repairs.filter(r => r.status !== "done").length;
   const ending = state.tenants.filter(t => String(t.leaseEnd || "").slice(0, 7) === ym);
   const lines = [];
@@ -5583,7 +5639,7 @@ function tenantLine(t) {
 }
 function aiAnswer(q) {
   const text = String(q || "").trim();
-  const unpaid = state.tenants.filter(t => !t.paid);
+  const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t));
   const open = (state.repairs || []).filter(r => r.status !== "done");
   const doing = open.filter(r => r.status === "doing");
   const wait = open.filter(r => r.status !== "doing");
@@ -6186,7 +6242,7 @@ function occBits(rooms) {
   return { rented, vacant, repairing, occ, total: rooms.length };
 }
 function adminDash() {
-  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no));
+  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
   const factories = state.rooms.filter(r => r.kind === "factory");
   const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
   const studioOcc = occBits(studios);
@@ -6199,8 +6255,8 @@ function adminDash() {
   const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
   const solarTotal = factories.length + STUDIO_BUILDINGS.length;
   const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
-  const unpaidTenants = state.tenants.filter(t => !t.paid);
-  const expiring = state.tenants.map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
+  const unpaidTenants = state.tenants.filter(t => !t.paid && !isDemoTenant(t));
+  const expiring = state.tenants.filter(t => !isDemoTenant(t)).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
   const fixes = {
     open: state.repairs.filter(x => x.status === "open").length,
@@ -6409,6 +6465,9 @@ function tenantListOfKind(kind) {
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     return true;
   }).sort((a, b) => {
+    const da = isDemoTenant(a) ? 0 : 1;
+    const db = isDemoTenant(b) ? 0 : 1;
+    if (da !== db) return da - db;
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
@@ -6494,6 +6553,7 @@ function tenantEntryCardHtml(kind, entry) {
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
   const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
+      ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
       ${kind !== "factory" ? `<div class="row"><span class="k">租金</span><span class="v">${r && r.rent ? money(r.rent) : "—"}</span></div>` : ""}
       ${t.paidAt && tenants.length === 1 ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
