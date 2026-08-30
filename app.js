@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-32";
-const APP_EDIT_COUNT = 249;
+const APP_STAMP = "2026-08-30-21-34";
+const APP_EDIT_COUNT = 250;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手可選女客服或男客服頭貼"] },
+  { ver: APP_STAMP, items: ["管理員頭貼改為女客服，可改選男客服"] },
+  { ver: "2026-08-30-21-32", items: ["工作助手可選女客服或男客服頭貼"] },
   { ver: "2026-08-30-21-28", items: ["管理員工作助手與浮動球改用客服頭貼"] },
   { ver: "2026-08-30-21-26", items: ["點工作助手頭貼可換照片與個性"] },
   { ver: "2026-08-30-21-20", items: ["開發者工作助手與浮動球改用客服頭貼"] },
@@ -1300,7 +1301,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-try { stripDevMemosFromState(); stripDevLogsFromState(); } catch {}
+try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
@@ -3334,11 +3335,22 @@ function aiAvatarSrc() {
     if (custom === "male") return aiFaceMale();
     if (custom === "female") return aiFaceFemale();
     if (custom && String(custom).indexOf("data:") === 0) return custom;
+    if (custom && String(custom).indexOf("ai-avatar.png") >= 0) return aiFaceFemale();
   } catch {}
   return aiFaceFemale();
 }
 function aiAssistAvatarHtml() {
   return `<img class="ai-ava" src="${aiAvatarSrc()}" alt="工作助手">`;
+}
+function migrateAiAvatar() {
+  try {
+    ["7651", "1240", "1976"].forEach(code => {
+      const k = "tongjie_ai_avatar_" + code;
+      const v = localStorage.getItem(k) || "";
+      if (!v) return;
+      if (v.indexOf("ai-avatar.png") >= 0 || v === "cat") localStorage.removeItem(k);
+    });
+  } catch {}
 }
 const AI_PERSONAS = [
   { id: "cheer", name: "同理鼓勵", hint: "先講重點，再支持、讚美", extras: [
