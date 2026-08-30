@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-47";
-const APP_EDIT_COUNT = 258;
+const APP_STAMP = "2026-08-30-22-51";
+const APP_EDIT_COUNT = 259;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定新增鈴聲音量，可拉大小與自動最佳化"] },
+  { ver: APP_STAMP, items: ["公司資料儲存後換頁會保留"] },
+  { ver: "2026-08-30-22-47", items: ["設定新增鈴聲音量，可拉大小與自動最佳化"] },
   { ver: "2026-08-30-22-39", items: ["快速登入改放在帳號圖塊下方"] },
   { ver: "2026-08-30-22-33", items: ["畫面可再上下滑動"] },
   { ver: "2026-08-30-22-29", items: ["設定裡公司資料可正常輸入與儲存"] },
@@ -755,7 +756,7 @@ const DEFAULT_COMPANY = {
   phone: ""
 };
 function companyInfo() {
-  const c = (state && state.company) || {};
+  const c = (state && state.company) || loadPersistedCompany() || {};
   return {
     name: c.name || DEFAULT_COMPANY.name,
     bankCode: c.bankCode || DEFAULT_COMPANY.bankCode,
@@ -763,6 +764,31 @@ function companyInfo() {
     account: c.account || DEFAULT_COMPANY.account,
     phone: c.phone || ""
   };
+}
+const COMPANY_KEY = "tongjie_company";
+function loadPersistedCompany() {
+  try {
+    const c = JSON.parse(localStorage.getItem(COMPANY_KEY) || "null");
+    return c && typeof c === "object" ? c : null;
+  } catch { return null; }
+}
+function persistCompany(c) {
+  const row = Object.assign({}, DEFAULT_COMPANY, c || {}, { updatedAt: Date.now() });
+  try { localStorage.setItem(COMPANY_KEY, JSON.stringify(row)); } catch {}
+  return row;
+}
+function applyCompany(data) {
+  if (!data) return;
+  if (!data.company || typeof data.company !== "object") data.company = Object.assign({}, DEFAULT_COMPANY);
+  ["name", "bankCode", "bankName", "account", "phone"].forEach(k => {
+    if (data.company[k] == null) data.company[k] = DEFAULT_COMPANY[k] || "";
+  });
+  const local = loadPersistedCompany();
+  if (local) {
+    const la = Number(local.updatedAt) || 0;
+    const ca = Number(data.company.updatedAt) || 0;
+    if (la >= ca) data.company = Object.assign({}, data.company, local);
+  }
 }
 const NOTIFY_PREF_KEY = "tongjie_notify_prefs";
 const NOTIFY_PREF_ITEMS = [
@@ -1489,10 +1515,7 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
-  if (!data.company || typeof data.company !== "object") data.company = Object.assign({}, DEFAULT_COMPANY);
-  ["name", "bankCode", "bankName", "account", "phone"].forEach(k => {
-    if (data.company[k] == null) data.company[k] = DEFAULT_COMPANY[k] || "";
-  });
+  applyCompany(data);
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
@@ -1651,6 +1674,7 @@ async function pullCloud() {
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyTenantRoster(state);
       applyFactoryRoster(state);
+      applyCompany(state);
       ui.cloudOk = true;
       return "local-newer";
     }
@@ -1660,9 +1684,19 @@ async function pullCloud() {
     }
     const mine = state.presence;
     const mineAdmin = (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
+    const mineCompany = (state.company && Number(state.company.updatedAt) > 0) ? state.company : loadPersistedCompany();
     state = normalize(data);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
+    if (mineCompany) {
+      const la = Number(mineCompany.updatedAt) || 0;
+      const ca = Number((state.company && state.company.updatedAt) || 0);
+      if (la >= ca) {
+        state.company = Object.assign({}, state.company || {}, mineCompany);
+        persistCompany(state.company);
+      }
+    }
+    applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -1926,12 +1960,12 @@ async function pushCloud() {
   try {
     applyTenantRoster(state);
     applyFactoryRoster(state);
+    applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
-    const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
-    if (need && factoryNamedCount(state) < need) { ui.cloudOk = false; return; }
     state.updatedAt = Date.now();
     const payload = Object.assign({}, state, {
+      company: state.company,
       aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240"),
       aiLogs: [],
     });
@@ -10091,14 +10125,20 @@ function bindAdminSettings() {
   });
   const coForm = document.getElementById("company-form");
   const saveCompany = () => {
-    if (!state.company) state.company = Object.assign({}, DEFAULT_COMPANY);
-    const val = id => String((document.getElementById(id) || {}).value || "").trim();
-    state.company.name = val("co-name") || DEFAULT_COMPANY.name;
-    state.company.bankCode = val("co-bank-code") || DEFAULT_COMPANY.bankCode;
-    state.company.bankName = val("co-bank-name") || DEFAULT_COMPANY.bankName;
-    state.company.account = val("co-account") || DEFAULT_COMPANY.account;
-    state.company.phone = val("co-phone");
-    save();
+    const val = id => {
+      const el = document.getElementById(id);
+      return el ? String(el.value || "").trim() : "";
+    };
+    const row = persistCompany({
+      name: val("co-name") || DEFAULT_COMPANY.name,
+      bankCode: val("co-bank-code") || DEFAULT_COMPANY.bankCode,
+      bankName: val("co-bank-name") || DEFAULT_COMPANY.bankName,
+      account: val("co-account") || DEFAULT_COMPANY.account,
+      phone: val("co-phone")
+    });
+    state.company = Object.assign({}, row);
+    save(true);
+    try { pushCloud(); } catch {}
     toast("公司資料已儲存");
     ui.keepScroll = true;
     render();
