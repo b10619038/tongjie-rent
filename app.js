@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-28";
-const APP_EDIT_COUNT = 208;
+const APP_STAMP = "2026-08-30-13-29";
+const APP_EDIT_COUNT = 209;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["匯出可選 PDF 或 Excel"] },
+  { ver: APP_STAMP, items: ["開發者提交的報修會顯示在後台"] },
+  { ver: "2026-08-30-13-28", items: ["匯出可選 PDF 或 Excel"] },
   { ver: "2026-08-30-13-22", items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
   { ver: "2026-08-30-13-10", items: ["同一支手機催繳開發者測試戶也能收到通知"] },
   { ver: "2026-08-30-13-07", items: ["手機畫面左右與底部不再卡住"] },
@@ -1440,8 +1441,8 @@ async function pushCloud() {
   } catch { ui.cloudOk = false; }
   finally { if (timer) clearTimeout(timer); }
 }
-function save() {
-  if (isDevPreview()) return;
+function save(force) {
+  if (isDevPreview() && !force) return;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
@@ -5174,7 +5175,7 @@ function deleteRepair(id) {
   state.repairs = state.repairs.filter(x => x.id !== id);
   if (state.notices) state.notices = state.notices.filter(n => n.repairId !== id);
   syncRoomRepairStatus(roomId);
-  save();
+  save(isDevPreview());
   toast("已刪除報修");
   render();
 }
@@ -5201,7 +5202,8 @@ function repairCard(rep, extraClass) {
   </div>`;
 }
 function repairView() {
-  const mine = (isDevPreview() ? (ui.devRepairs || []) : state.repairs.filter(r => r.tenantId === ui.tenantId)).slice().reverse();
+  const tid = (me() && me().id) || ui.tenantId;
+  const mine = (state.repairs || []).filter(r => r.tenantId === tid).slice().reverse();
   if (ui.page === "repair-done") {
     return `<div class="topbar"><div class="slide-right"><div class="eyebrow">REPAIR</div><h1>報修</h1></div></div>
       <div class="screen">
@@ -7003,7 +7005,7 @@ function adminRepairs() {
     const t = state.tenants.find(x => x.id === rep.tenantId);
     return `<div class="card card-body">
       <div class="row"><span class="k">${rep.type} · ${r ? r.no : ""}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
-      <div class="small">${escapeHtml(t ? t.name : "")} · ${formatDateTime12(rep.createdAt)}</div>
+      <div class="small">${escapeHtml(t ? t.name : "")} · ${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
@@ -7589,26 +7591,19 @@ function bindTenant() {
       const rid = "r" + Date.now();
       const rec = {
         id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, note,
-        photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp
+        photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp,
+        roomNo: room.no || "", demo: !!(isDevPreview() || (room && room.demo))
       };
-      if (isDevPreview()) {
-        if (!ui.devRepairs) ui.devRepairs = [];
-        ui.devRepairs.push(rec);
-        ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
-        toast("預覽：已提交報修（不會寫入）");
-        render();
-        return;
-      }
       state.repairs.push(rec);
       if (!state.notices) state.notices = [];
       state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
-      try { save(); } catch {
+      try { save(true); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
       ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
-      toast("已提交報修");
+      toast(isDevPreview() ? "已提交報修，後台可查看" : "已提交報修");
       render();
     };
   }
