@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-02-48";
-const APP_EDIT_COUNT = 312;
+const APP_STAMP = "2026-08-31-02-51";
+const APP_EDIT_COUNT = 313;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作點一筆才出現日曆與完成"] },
+  { ver: APP_STAMP, items: ["本月工作改顯示8月5日，不再寫每月"] },
+  { ver: "2026-08-31-02-48", items: ["本月工作點一筆才出現日曆與完成"] },
   { ver: "2026-08-31-02-44", items: ["本月狀況文字左邊不被切到"] },
   { ver: "2026-08-31-02-40", items: ["本月工作長字改為自動換行不被擋住"] },
   { ver: "2026-08-31-02-30", items: ["本月自動分析與即將提醒合併成本月工作"] },
@@ -6807,7 +6808,7 @@ function adminAi() {
         const on = ui.workMemoId === m.id;
         return `
             <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
-              <span>${escapeHtml(formatAiMemo(m))}</span>
+              <span>${escapeHtml(formatWorkMemo(m))}</span>
             </div>
             ${on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
@@ -7067,6 +7068,23 @@ function formatAiMemo(m) {
     return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
   }
   if (m.weekday != null) return "每週" + WEEKDAY_ZH[m.weekday] + time + "　" + m.text;
+  return m.text;
+}
+function formatWorkMemo(m) {
+  const time = m.time ? " " + m.time : "";
+  const flex = m.flexDays ? "（信件可差幾天）" : "";
+  const mo = new Date().getMonth() + 1;
+  const fromYmd = d => {
+    const s = String(d || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+    return Number(s.slice(5, 7)) + "月" + Number(s.slice(8, 10)) + "日";
+  };
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    return (fromYmd(nextCycleDate(m)) || ("約" + Number(m.monthDay || 11) + "日")) + flex + time + "　" + m.text;
+  }
+  if (m.monthDay) return (m.flexDays ? "約" : "") + mo + "月" + Number(m.monthDay) + "日" + flex + time + "　" + m.text;
+  if (m.date) return (fromYmd(m.date) || m.date) + time + "　" + m.text;
+  if (m.weekday != null) return (fromYmd(m.date) || ("週" + WEEKDAY_ZH[m.weekday])) + time + "　" + m.text;
   return m.text;
 }
 function rememberAiMemo(text) {
