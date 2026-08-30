@@ -10,12 +10,12 @@ const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
-const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信潔": ["聯邦", "超商"] };
+const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信潔": ["聯邦"] };
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-51";
-const APP_EDIT_COUNT = 213;
+const APP_STAMP = "2026-08-30-13-52";
+const APP_EDIT_COUNT = 214;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["太陽能照片改成和其他三張同形狀"] },
+  { ver: APP_STAMP, items: ["信潔帳戶圖卡移除超商"] },
+  { ver: "2026-08-30-13-51", items: ["太陽能照片改成和其他三張同形狀"] },
   { ver: "2026-08-30-13-43", items: ["報修金額可填待報價"] },
   { ver: "2026-08-30-13-41", items: ["後台報修圖卡可收成一條"] },
   { ver: "2026-08-30-13-38", items: ["後台可查看報修照片，工錢改為金額"] },
