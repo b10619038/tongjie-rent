@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-00-41";
-const APP_EDIT_COUNT = 271;
+const APP_STAMP = "2026-08-31-00-48";
+const APP_EDIT_COUNT = 272;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票改為底圖套印，資料疊在手開格式上"] },
+  { ver: APP_STAMP, items: ["發票改用新底圖並對準格子，避免文字黏在一起"] },
+  { ver: "2026-08-31-00-41", items: ["發票改為底圖套印，資料疊在手開格式上"] },
   { ver: "2026-08-31-00-35", items: ["發票格子改為手開三聯／二聯空白格式"] },
   { ver: "2026-08-31-00-18", items: ["發票改成手開二聯／三聯模板，橘色欄位可改"] },
   { ver: "2026-08-30-23-45", items: ["收電費現金會記成收入，不再誤判成繳費"] },
@@ -2908,11 +2909,15 @@ function moneyCnParts(n) {
     return n && (started || d === digits[8]) ? han[v] : "";
   });
 }
+function invBox(W, H, x, y, w, h) {
+  return [(x / W * 100).toFixed(2), (y / H * 100).toFixed(2), (w / W * 100).toFixed(2), (h / H * 100).toFixed(2)];
+}
 function invAbs(key, val, l, t, w, h, cls) {
   const extra = /inv-tid/.test(cls || "") ? " maxlength=\"1\"" : "";
   return `<input class="inv-abs${cls ? " " + cls : ""}" data-inv="${key}" value="${escapeHtml(String(val ?? ""))}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%"${extra} />`;
 }
 function invMark(txt, l, t, w, h) {
+  if (!txt) return "";
   return `<span class="inv-abs inv-mark" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%">${escapeHtml(txt)}</span>`;
 }
 function invoiceCopyHtml(r, t, copyName) {
@@ -2927,68 +2932,75 @@ function invoiceCopyHtml(r, t, copyName) {
   const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(total || "");
   const taxId = (ui.invoiceTaxId != null && ui.invoiceTaxId !== "" ? ui.invoiceTaxId : ((t && t.taxId) || "")).replace(/\D/g, "").slice(0, 8);
   const untax = Number(r.rentUntaxed) || (total ? Math.round(total / 1.05) : 0);
-  const tax = total ? Math.max(0, total - untax) : 0;
+  const taxAmt = total ? Math.max(0, total - untax) : 0;
   const y = ui.invoiceY || p.y;
   const mo = ui.invoiceMo || p.m;
   const day = ui.invoiceDay || p.day;
   const hans = moneyCnParts(total);
-  const copy = copyName && !/第一聯/.test(copyName) ? invMark(copyName, 72, 92.6, 24, 4) : "";
+  const at = (W, H, x, y0, w, h, key, val, cls) => invAbs(key, val, ...invBox(W, H, x, y0, w, h), cls);
+  const mk = (W, H, x, y0, w, h, txt) => invMark(txt, ...invBox(W, H, x, y0, w, h));
   if (triple) {
-    const boxes = Array.from({ length: 8 }, (_, i) => invAbs("invoiceTax" + i, taxId[i] || "", (13.4 + i * 4.1).toFixed(2), 19.6, 3.8, 3.4, "inv-tid")).join("");
-    const cn = hans.map((ch, i) => invMark(ch, (18.2 + i * 5.6).toFixed(2), 84.6, 5.2, 4.6)).join("");
+    const W = 1776, H = 1120;
+    const taxLines = [233, 302, 367, 431, 495, 559, 622, 686, 749, 813];
+    const boxes = taxLines.slice(0, 8).map((x, i) => {
+      const rgt = taxLines[i + 1];
+      return at(W, H, x + 8, 226, rgt - x - 16, 30, "invoiceTax" + i, taxId[i] || "", "inv-tid");
+    }).join("");
+    const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
+    const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 22, 944, 44, 28, ch)).join("");
     return `<section class="inv-photo triple">
-      ${invAbs("invoiceNum", num, 12.5, 5.4, 18, 5.2, "inv-big")}
-      ${invAbs("invoiceBuyer", buyer, 15.5, 14.6, 78, 4.2, "inv-left")}
+      ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
+      ${at(W, H, 250, 168, 1420, 36, "invoiceBuyer", buyer, "inv-left")}
       ${boxes}
-      ${invAbs("invoiceY", y, 56.5, 19.4, 7, 3.8)}
-      ${invAbs("invoiceMo", mo, 70.5, 19.4, 6, 3.8)}
-      ${invAbs("invoiceDay", day, 82.2, 19.4, 6, 3.8)}
-      ${invAbs("invoiceCity", addr.city, 12, 23.2, 10, 3.4)}
-      ${invAbs("invoiceDist", addr.dist, 26.5, 23.2, 11, 3.4)}
-      ${invAbs("invoiceRoad", addr.road, 41, 23.2, 12, 3.4)}
-      ${invAbs("invoiceSec", addr.sec || "", 55, 23.2, 6, 3.4)}
-      ${invAbs("invoiceLane", addr.lane || "", 63.5, 23.2, 6, 3.4)}
-      ${invAbs("invoiceAlley", addr.alley || "", 71.5, 23.2, 6, 3.4)}
-      ${invAbs("invoiceNo", addr.no, 79.5, 23.2, 5.5, 3.4)}
-      ${invAbs("invoiceFloor", addr.floor, 86.5, 23.2, 4.5, 3.4)}
-      ${invAbs("invoiceRoom", addr.room, 92.2, 23.2, 4.5, 3.4)}
-      ${invAbs("invoiceItem", item, 6.2, 36.2, 18.8, 5.4, "inv-left")}
-      ${invAbs("invoiceQty", qty, 25.6, 36.2, 13, 5.4)}
-      ${invAbs("invoicePrice", price, 39.2, 36.2, 11.5, 5.4)}
-      ${invAbs("invoiceAmt", total ? String(total) : "", 51.2, 36.2, 16.8, 5.4)}
-      ${invMark(untax ? String(untax) : "", 51.2, 65.6, 16.8, 5.2)}
-      ${invMark("√", 27.2, 73.6, 6, 3.6)}
-      ${invMark(tax ? String(tax) : "", 51.2, 71.2, 16.8, 7)}
-      ${invMark(total ? String(total) : "", 51.2, 78.6, 16.8, 5)}
+      ${at(W, H, 922, 224, 78, 32, "invoiceY", y)}
+      ${at(W, H, 1048, 224, 68, 32, "invoiceMo", mo)}
+      ${at(W, H, 1158, 224, 72, 32, "invoiceDay", day)}
+      ${at(W, H, 210, 250, 150, 28, "invoiceCity", addr.city)}
+      ${at(W, H, 430, 250, 170, 28, "invoiceDist", addr.dist)}
+      ${at(W, H, 720, 250, 160, 28, "invoiceRoad", addr.road)}
+      ${at(W, H, 930, 250, 70, 28, "invoiceSec", addr.sec || "")}
+      ${at(W, H, 1040, 250, 70, 28, "invoiceLane", addr.lane || "")}
+      ${at(W, H, 1155, 250, 70, 28, "invoiceAlley", addr.alley || "")}
+      ${at(W, H, 1285, 250, 70, 28, "invoiceNo", addr.no)}
+      ${at(W, H, 1415, 250, 70, 28, "invoiceFloor", addr.floor)}
+      ${at(W, H, 1545, 250, 80, 28, "invoiceRoom", addr.room)}
+      ${at(W, H, 118, 408, 310, 50, "invoiceItem", item, "inv-left")}
+      ${at(W, H, 458, 408, 210, 50, "invoiceQty", qty)}
+      ${at(W, H, 704, 408, 170, 50, "invoicePrice", price)}
+      ${at(W, H, 914, 408, 270, 50, "invoiceAmt", total ? String(total) : "")}
+      ${mk(W, H, 914, 742, 270, 44, untax ? String(untax) : "")}
+      ${mk(W, H, 468, 838, 90, 32, "√")}
+      ${mk(W, H, 914, 806, 270, 62, taxAmt ? String(taxAmt) : "")}
+      ${mk(W, H, 914, 888, 270, 42, total ? String(total) : "")}
       ${cn}
-      ${copy}
     </section>`;
   }
-  const cn = hans.map((ch, i) => invMark(ch, (16.8 + i * 5.4).toFixed(2), 82.4, 5, 4.4)).join("");
+  const W = 1840, H = 1072;
+  const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
+  const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 22, 882, 44, 26, ch)).join("");
   return `<section class="inv-photo double">
-    ${invAbs("invoiceNum", num, 11.5, 6.2, 16, 5, "inv-big")}
-    ${invAbs("invoiceYY", rocYearCn(y), 48, 11.2, 12, 4)}
-    ${invAbs("invoiceY", y, 48, 16.4, 8, 3.6)}
-    ${invAbs("invoiceMo", mo, 62, 16.4, 6, 3.6)}
-    ${invAbs("invoiceDay", day, 74, 16.4, 6, 3.6)}
-    ${invAbs("invoiceBuyer", buyer, 14.5, 20.6, 78, 4, "inv-left")}
-    ${invAbs("invoiceCity", addr.city, 13, 25.8, 10, 3.4)}
-    ${invAbs("invoiceDist", addr.dist, 28, 25.8, 11, 3.4)}
-    ${invAbs("invoiceRoad", addr.road, 43, 25.8, 12, 3.4)}
-    ${invAbs("invoiceSec", addr.sec || "", 57, 25.8, 6, 3.4)}
-    ${invAbs("invoiceLane", addr.lane || "", 65, 25.8, 6, 3.4)}
-    ${invAbs("invoiceAlley", addr.alley || "", 73, 25.8, 6, 3.4)}
-    ${invAbs("invoiceNo", addr.no, 81, 25.8, 5, 3.4)}
-    ${invAbs("invoiceFloor", addr.floor, 87.5, 25.8, 4.5, 3.4)}
-    ${invAbs("invoiceRoom", addr.room, 93, 25.8, 4.5, 3.4)}
-    ${invAbs("invoiceItem", item, 3.8, 37, 23.5, 5.2, "inv-left")}
-    ${invAbs("invoiceQty", qty, 28, 37, 10, 5.2)}
-    ${invAbs("invoicePrice", price, 38.4, 37, 10, 5.2)}
-    ${invAbs("invoiceAmt", total ? String(total) : "", 48.8, 37, 18, 5.2)}
-    ${invMark(total ? String(total) : "", 48.8, 76.6, 18, 5)}
+    ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
+    ${at(W, H, 820, 98, 140, 32, "invoiceYY", rocYearCn(y))}
+    ${at(W, H, 980, 158, 80, 32, "invoiceY", y)}
+    ${at(W, H, 1098, 158, 70, 32, "invoiceMo", mo)}
+    ${at(W, H, 1215, 158, 70, 32, "invoiceDay", day)}
+    ${at(W, H, 250, 208, 1500, 34, "invoiceBuyer", buyer, "inv-left")}
+    ${at(W, H, 250, 268, 170, 28, "invoiceCity", addr.city)}
+    ${at(W, H, 510, 268, 160, 28, "invoiceDist", addr.dist)}
+    ${at(W, H, 760, 268, 100, 28, "invoiceRoad", addr.road)}
+    ${at(W, H, 940, 268, 70, 28, "invoiceSec", addr.sec || "")}
+    ${at(W, H, 1080, 268, 70, 28, "invoiceLane", addr.lane || "")}
+    ${at(W, H, 1220, 268, 70, 28, "invoiceAlley", addr.alley || "")}
+    ${at(W, H, 1355, 268, 80, 28, "invoiceNo", addr.no)}
+    ${at(W, H, 1505, 268, 75, 28, "invoiceFloor", addr.floor)}
+    ${at(W, H, 1648, 268, 90, 28, "invoiceRoom", addr.room)}
+    ${at(W, H, 78, 400, 418, 46, "invoiceItem", item, "inv-left")}
+    ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
+    ${at(W, H, 716, 400, 158, 46, "invoicePrice", price)}
+    ${at(W, H, 908, 400, 304, 46, "invoiceAmt", total ? String(total) : "")}
+    ${mk(W, H, 908, 826, 304, 44, total ? String(total) : "")}
     ${cn}
-    ${invMark("√", 29.6, 88.4, 5, 3.4)}
-    ${copy}
+    ${mk(W, H, 430, 948, 70, 36, "√")}
   </section>`;
 }
 function adminInvoice() {
@@ -2996,7 +3008,7 @@ function adminInvoice() {
   if (!r) return `<div class="empty">找不到房間</div>`;
   const t = state.tenants.find(x => x.roomId === r.id || x.id === r.tenantId);
   const triple = r.kind === "factory";
-  const copies = triple ? ["第一聯 存根聯", "第二聯 扣抵聯", "第三聯 收執聯"] : ["第一聯 存根聯", "第二聯 收執聯"];
+  const copies = ["第一聯 存根聯"];
   const back = ui.invoiceFrom === "room-edit" ? "room-edit" : "tenants";
   return `<div class="admin-grid list invoice-page">
     <div class="card card-body no-print">

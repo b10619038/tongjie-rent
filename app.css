@@ -1380,12 +1380,13 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   color: #c2410c;
   font-weight: 700;
   font-family: "PMingLiU", "PingFang TC", "Noto Serif TC", serif;
-  font-size: clamp(11px, 1.55vw, 16px);
+  font-size: clamp(11px, 1.35vw, 15px);
   padding: 0;
   margin: 0;
   text-align: center;
   overflow: hidden;
-  line-height: 1.15;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .inv-abs.inv-left { text-align: left; padding-left: 4px; }
 .inv-abs.inv-big { font-size: clamp(16px, 2.2vw, 22px); letter-spacing: .12em; }
