@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-09";
-const APP_EDIT_COUNT = 264;
+const APP_STAMP = "2026-08-30-23-11";
+const APP_EDIT_COUNT = 265;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月自動分析可收起"] },
+  { ver: APP_STAMP, items: ["設定裡儲存公司資料改為可穩定寫入"] },
+  { ver: "2026-08-30-23-09", items: ["本月自動分析可收起"] },
   { ver: "2026-08-30-23-06", items: ["租客設定登入密碼改為更改密碼"] },
   { ver: "2026-08-30-23-02", items: ["管理員即將提醒開發者也可以看到"] },
   { ver: "2026-08-30-22-59", items: ["即將提醒完成狀態管理員與開發者會同步"] },
@@ -761,13 +762,17 @@ const DEFAULT_COMPANY = {
   phone: ""
 };
 function companyInfo() {
-  const c = (state && state.company) || loadPersistedCompany() || {};
+  const c = (state && state.company) || {};
+  const local = loadPersistedCompany() || {};
+  const la = Number(local.updatedAt) || 0;
+  const ca = Number(c.updatedAt) || 0;
+  const src = la >= ca ? Object.assign({}, c, local) : Object.assign({}, local, c);
   return {
-    name: c.name || DEFAULT_COMPANY.name,
-    bankCode: c.bankCode || DEFAULT_COMPANY.bankCode,
-    bankName: c.bankName || DEFAULT_COMPANY.bankName,
-    account: c.account || DEFAULT_COMPANY.account,
-    phone: c.phone || ""
+    name: src.name || DEFAULT_COMPANY.name,
+    bankCode: src.bankCode || DEFAULT_COMPANY.bankCode,
+    bankName: src.bankName || DEFAULT_COMPANY.bankName,
+    account: src.account || DEFAULT_COMPANY.account,
+    phone: src.phone || ""
   };
 }
 const COMPANY_KEY = "tongjie_company";
@@ -781,6 +786,49 @@ function persistCompany(c) {
   const row = Object.assign({}, DEFAULT_COMPANY, c || {}, { updatedAt: Date.now() });
   try { localStorage.setItem(COMPANY_KEY, JSON.stringify(row)); } catch {}
   return row;
+}
+function saveCompanyFromDom() {
+  const form = document.getElementById("company-form");
+  if (!form) { toast("找不到公司資料欄位"); return; }
+  const pick = (name, id) => {
+    const el = form.querySelector("[name=\"" + name + "\"]") || document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  };
+  const row = persistCompany({
+    name: pick("coName", "co-name") || DEFAULT_COMPANY.name,
+    bankCode: pick("bankCode", "co-bank-code") || DEFAULT_COMPANY.bankCode,
+    bankName: pick("bankName", "co-bank-name") || DEFAULT_COMPANY.bankName,
+    account: pick("account", "co-account") || DEFAULT_COMPANY.account,
+    phone: pick("phone", "co-phone")
+  });
+  state.company = Object.assign({}, row);
+  try {
+    state.updatedAt = Date.now();
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {}
+  save(true);
+  try { pushCloud(); } catch {}
+  toast("公司資料已儲存");
+  ui.keepScroll = true;
+  render();
+}
+function armCompanySave() {
+  if (window.__tjCoSave) return;
+  window.__tjCoSave = true;
+  document.addEventListener("click", e => {
+    const btn = e.target && e.target.closest && e.target.closest("#co-save");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    saveCompanyFromDom();
+  }, true);
+  document.addEventListener("submit", e => {
+    if (e.target && e.target.id === "company-form") {
+      e.preventDefault();
+      e.stopPropagation();
+      saveCompanyFromDom();
+    }
+  }, true);
 }
 function applyCompany(data) {
   if (!data) return;
@@ -9787,6 +9835,7 @@ function bindAdmin() {
       save();
     };
   });
+  bindAdminSettings();
   const rulesForm = document.getElementById("rules-form");
   if (rulesForm) {
     rulesForm.onsubmit = e => {
@@ -9900,7 +9949,6 @@ function bindAdmin() {
   });
   bindAdminAi();
   bindCashCal();
-  bindAdminSettings();
   bindOps();
 }
 
@@ -10160,38 +10208,12 @@ function bindAdminSettings() {
     };
   });
   const coForm = document.getElementById("company-form");
-  const saveCompany = () => {
-    const val = id => {
-      const el = document.getElementById(id);
-      return el ? String(el.value || "").trim() : "";
-    };
-    const row = persistCompany({
-      name: val("co-name") || DEFAULT_COMPANY.name,
-      bankCode: val("co-bank-code") || DEFAULT_COMPANY.bankCode,
-      bankName: val("co-bank-name") || DEFAULT_COMPANY.bankName,
-      account: val("co-account") || DEFAULT_COMPANY.account,
-      phone: val("co-phone")
-    });
-    state.company = Object.assign({}, row);
-    save(true);
-    try { pushCloud(); } catch {}
-    toast("公司資料已儲存");
-    ui.keepScroll = true;
-    render();
-  };
   if (coForm) {
-    coForm.onsubmit = e => { e.preventDefault(); saveCompany(); };
     coForm.querySelectorAll("input").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => { try { el.focus(); } catch {} }, 0); });
       el.addEventListener("click", e => { e.stopPropagation(); try { el.focus(); } catch {} });
     });
   }
-  const coSave = document.getElementById("co-save");
-  if (coSave) coSave.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    saveCompany();
-  };
 }
 function bindAiBlockReorder() {
   const box = document.getElementById("ai-blocks");
@@ -11056,6 +11078,7 @@ function hideSplash() {
 async function boot() {
   const splashAt = setTimeout(hideSplash, 2200);
   try {
+    armCompanySave();
     restoreUi();
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
