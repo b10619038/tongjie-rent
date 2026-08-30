@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-07";
-const APP_EDIT_COUNT = 283;
+const APP_STAMP = "2026-08-31-01-08";
+const APP_EDIT_COUNT = 284;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票應稅V改到稅字右邊空格"] },
+  { ver: APP_STAMP, items: ["發票應稅V再往右1.5公分"] },
+  { ver: "2026-08-31-01-07", items: ["發票應稅V改到稅字右邊空格"] },
   { ver: "2026-08-31-01-06", items: ["二聯發票備註房號放大"] },
   { ver: "2026-08-31-01-05", items: ["發票中文大寫紅字放大"] },
   { ver: "2026-08-31-01-04", items: ["發票應稅改打英文V並放右邊格"] },
@@ -2989,7 +2990,7 @@ function invoiceCopyHtml(r, t, copyName) {
     ${mk(W, H, 1288, 400, 440, 70, roomNote, "inv-note")}
     ${mk(W, H, 908, 826, 304, 44, total ? String(total) : "")}
     ${cn}
-    ${mk(W, H, 448, 948, 36, 36, "V")}
+    ${mk(W, H, 593, 946, 40, 38, "V")}
   </section>`;
 }
 function adminInvoice() {
