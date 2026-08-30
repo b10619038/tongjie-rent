@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-33";
-const APP_EDIT_COUNT = 256;
+const APP_STAMP = "2026-08-30-22-39";
+const APP_EDIT_COUNT = 257;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["畫面可再上下滑動"] },
+  { ver: APP_STAMP, items: ["快速登入改放在帳號圖塊下方"] },
+  { ver: "2026-08-30-22-33", items: ["畫面可再上下滑動"] },
   { ver: "2026-08-30-22-29", items: ["設定裡公司資料可正常輸入與儲存"] },
   { ver: "2026-08-30-22-27", items: ["設定可開啟指紋／面容快速登入"] },
   { ver: "2026-08-30-22-24", items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
@@ -6354,6 +6355,7 @@ function adminSettings() {
       <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
     </div>
+    ${bioSettingsHtml()}
     <div class="card card-body">
       <div class="label">通知</div>
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
@@ -9776,7 +9778,7 @@ function bindAdmin() {
   bindOps();
 }
 
-function lookSettingsHtml() {
+function bioSettingsHtml() {
   const on = bioEnrolled();
   return `<div class="card card-body">
       <div class="label">快速登入</div>
@@ -9785,8 +9787,10 @@ function lookSettingsHtml() {
         <button type="button" class="pref-knob${on ? " on" : ""}" id="bio-toggle" aria-pressed="${on ? "true" : "false"}"></button>
       </div>
       <p class="small">${bioSupport() ? "開啟後，登出再用這台手機的指紋或臉即可進入。僅這台裝置有效。" : "這台裝置或瀏覽器不支援。請用手機 Safari／Chrome，並加入主畫面後再試。"}</p>
-    </div>
-    <div class="card card-body">
+    </div>`;
+}
+function lookSettingsHtml() {
+  return `<div class="card card-body">
       <div class="label">調色盤</div>
       <p class="small">選擇整體色調。</p>
       <div class="theme-grid in-page">
@@ -9847,6 +9851,7 @@ function tenantSettings() {
         </div>
         <p class="small">點頭像可更換大頭貼。</p>
       </div>
+      ${bioSettingsHtml()}
       <form class="card card-body" id="set-pass-form" autocomplete="off">
         <div class="label">登入密碼</div>
         <label class="field"><span>目前密碼</span><input name="old" type="password" inputmode="numeric" /></label>
