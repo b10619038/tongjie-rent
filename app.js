@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-27";
-const APP_EDIT_COUNT = 233;
+const APP_STAMP = "2026-08-30-20-34";
+const APP_EDIT_COUNT = 234;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務可改為可拖曳浮動球"] },
+  { ver: APP_STAMP, items: ["開發者即將提醒不同步到管理員"] },
+  { ver: "2026-08-30-20-27", items: ["跑業務可改為可拖曳浮動球"] },
   { ver: "2026-08-30-20-22", items: ["開啟通知按鈕可測試通知"] },
   { ver: "2026-08-30-20-20", items: ["通知開關改為可點擊"] },
   { ver: "2026-08-30-20-19", items: ["通知開關報修改為租客報修"] },
@@ -1205,6 +1206,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
+try { stripDevMemosFromState(); } catch {}
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
@@ -1424,6 +1426,7 @@ async function pullCloud() {
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     mergePresenceInto(state, data);
+    mergeMemosInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyTenantRoster(state);
       applyFactoryRoster(state);
@@ -1435,8 +1438,11 @@ async function pullCloud() {
       return "same";
     }
     const mine = state.presence;
+    const mineAdmin = (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
     state = normalize(data);
     mergePresenceInto(state, { presence: mine });
+    mergeMemosInto(state, { aiMemos: mineAdmin });
+    stripDevMemosFromState();
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -1446,6 +1452,53 @@ async function pullCloud() {
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+function mergeMemosInto(target, other) {
+  if (!target || !Array.isArray(target.aiMemos)) target.aiMemos = [];
+  const src = ((other && other.aiMemos) || []).filter(m => m && (m.owner || "7651") !== "1240");
+  const map = new Map();
+  target.aiMemos.filter(m => m && (m.owner || "7651") !== "1240").forEach(m => { if (m && m.id) map.set(m.id, m); });
+  src.forEach(m => {
+    if (!m || !m.id) return;
+    const cur = map.get(m.id);
+    if (!cur) { map.set(m.id, m); return; }
+    const next = Object.assign({}, cur, m);
+    if (cur.done || m.done) next.done = true;
+    map.set(m.id, next);
+  });
+  target.aiMemos = [...map.values()];
+}
+function memoOwner() {
+  return (ui && (ui.adminCode === "1240" || ui.devPreview)) ? "1240" : "7651";
+}
+function loadDevMemos() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("tongjie_dev_memos") || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+function saveDevMemos(list) {
+  try { localStorage.setItem("tongjie_dev_memos", JSON.stringify(list || [])); } catch {}
+}
+function myMemos() {
+  if (memoOwner() === "1240") return loadDevMemos();
+  return (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
+}
+function stripDevMemosFromState() {
+  if (!state || !Array.isArray(state.aiMemos)) return;
+  const keep = [];
+  const dev = loadDevMemos();
+  const ids = new Set(dev.map(m => m && m.id).filter(Boolean));
+  state.aiMemos.forEach(m => {
+    if (!m) return;
+    if ((m.owner || "") === "1240") {
+      if (m.id && !ids.has(m.id)) { dev.push(m); ids.add(m.id); }
+      return;
+    }
+    keep.push(m);
+  });
+  state.aiMemos = keep;
+  saveDevMemos(dev);
 }
 function mergePresenceInto(target, other) {
   if (!target.presence || typeof target.presence !== "object") target.presence = {};
@@ -1461,7 +1514,7 @@ function coreSig(d) {
   try {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
-      n: d.renewals, s: d.bankSlips, e: d.errands,
+      n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos,
       t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent])
     });
@@ -1534,6 +1587,7 @@ async function pushPresence() {
     }
     if (!data.presence || typeof data.presence !== "object") data.presence = {};
     mergePresenceInto(data, state);
+    mergeMemosInto(data, state);
     data.presence[id] = Object.assign({}, beat, { at: Date.now() });
     state.presence = data.presence;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -1610,13 +1664,17 @@ async function pushCloud() {
   try {
     applyTenantRoster(state);
     applyFactoryRoster(state);
+    stripDevMemosFromState();
     const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
     if (need && factoryNamedCount(state) < need) { ui.cloudOk = false; return; }
     state.updatedAt = Date.now();
+    const payload = Object.assign({}, state, {
+      aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240")
+    });
     const res = await fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(state),
+      body: JSON.stringify(payload),
       signal: ctrl ? ctrl.signal : undefined
     });
     ui.cloudOk = res.ok;
@@ -1625,7 +1683,10 @@ async function pushCloud() {
 }
 function save(force) {
   if (isDevPreview() && !force) return;
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  try {
+    state.updatedAt = Date.now();
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {}
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
 }
@@ -2939,7 +3000,7 @@ function maybeNudgeNotifies() {
       showOsBanner("年度水費", waters.length + " 戶 45 天內到期", "admin-water");
     }
     const today = ymdOf(nowStamp());
-    (state.aiMemos || []).filter(m => !m.done && m.date).forEach(m => {
+    (myMemos() || []).filter(m => !m.done && m.date).forEach(m => {
       if (m.date > today) return;
       if (m.date === today && m.time) {
         const now = new Date();
@@ -3256,7 +3317,7 @@ function calendarItems() {
       sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
     });
   });
-  (state.aiMemos || []).forEach(m => {
+  (myMemos() || []).forEach(m => {
     if (!m.date) return;
     items.push({
       at: m.date, kind: "memo", id: m.id, item: m,
@@ -3334,7 +3395,7 @@ function collectLedger() {
   return attachMemoRows(dedupeLedger(rows));
 }
 function attachMemoRows(rows) {
-  (state.aiMemos || []).forEach(m => {
+  (myMemos() || []).forEach(m => {
     if (!m.date) return;
     rows.push({
       id: m.id, type: "memo", date: ymdOf(m.date), amount: 0,
@@ -3828,9 +3889,13 @@ function bindCalLedgerRows() {
     btn.onclick = e => {
       e.stopPropagation();
       const id = btn.dataset.delBook;
-      if ((state.aiMemos || []).some(x => x.id === id)) {
-        state.aiMemos = state.aiMemos.filter(x => x.id !== id);
-        save(); stay();
+      if ((myMemos() || []).some(x => x.id === id)) {
+        if (memoOwner() === "1240") saveDevMemos(loadDevMemos().filter(x => x.id !== id));
+        else {
+          state.aiMemos = (state.aiMemos || []).filter(x => x.id !== id);
+          save();
+        }
+        stay();
         return;
       }
       state.books = (state.books || []).filter(x => x.id !== id);
@@ -6196,7 +6261,7 @@ function monthlyErrandPlan() {
   parsed.forEach(e => { if (e.title) freq[e.title] = (freq[e.title] || 0) + 1; });
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 3);
   if (top.length) lines.push("最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。");
-  const memos = (state.aiMemos || []).filter(m => !m.done);
+  const memos = myMemos().filter(m => !m.done);
   if (memos.length) {
     lines.push("你交代我記得的事：");
     memos.slice(0, 8).forEach(m => lines.push("· " + formatAiMemo(m)));
@@ -6295,7 +6360,6 @@ function formatAiMemo(m) {
   return m.text;
 }
 function rememberAiMemo(text) {
-  if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
   const wd = parseWeekdayAsk(text);
   const clock = parseClockAsk(text);
   const body = cleanMemoAsk(text) || "工作行程";
@@ -6305,10 +6369,18 @@ function rememberAiMemo(text) {
     weekday: wd ? wd.w : null,
     date: parseYmdAsk(text) || (wd ? ymdFromWeekday(wd.w, wd.next) : ""),
     time: clock,
+    owner: memoOwner(),
     createdAt: nowStamp()
   };
-  state.aiMemos.push(rec);
-  save();
+  if (rec.owner === "1240") {
+    const list = loadDevMemos();
+    list.push(rec);
+    saveDevMemos(list);
+  } else {
+    if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
+    state.aiMemos.push(rec);
+    save();
+  }
   return rec;
 }
 function openGoogleMemo(m) {
@@ -6328,7 +6400,7 @@ function openGoogleMemo(m) {
   window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei", "_blank", "noopener");
 }
 function upcomingMemos() {
-  return (state.aiMemos || []).filter(m => !m.done).slice().sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")) || String(a.time || "").localeCompare(String(b.time || "")));
+  return myMemos().filter(m => !m.done).slice().sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")) || String(a.time || "").localeCompare(String(b.time || "")));
 }
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
@@ -6344,7 +6416,7 @@ function aiAnswer(q) {
   const slips = state.bankSlips || [];
   const studios = state.rooms.filter(r => r.kind !== "factory" && r.status !== "office");
   const rented = studios.filter(r => r.status === "rented").length;
-  const memos = (state.aiMemos || []).filter(m => !m.done);
+  const memos = myMemos().filter(m => !m.done);
   const wantRemember = /記得|記住|記一下|提醒我|加入日曆|排進日曆|加到日曆|放到行事曆/.test(text);
 
   if (/^(嗨|哈囉|你好|早安|午安|晚安|在嗎)/.test(text)) {
@@ -6360,8 +6432,11 @@ function aiAnswer(q) {
   if (/忘掉|刪掉.*記|不用記|取消行程/.test(text)) {
     const hit = memos.find(m => text.indexOf(m.text) >= 0) || (memos.length === 1 ? memos[0] : null);
     if (hit) {
-      state.aiMemos = state.aiMemos.filter(x => x.id !== hit.id);
-      save();
+      if (memoOwner() === "1240") saveDevMemos(loadDevMemos().filter(x => x.id !== hit.id));
+      else {
+        state.aiMemos = (state.aiMemos || []).filter(x => x.id !== hit.id);
+        save();
+      }
       return "好，已經把「" + hit.text + "」拿掉了。";
     }
     if (!memos.length) return "目前沒有記下的行程。";
@@ -9476,7 +9551,7 @@ function bindAdminAi() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const m = (state.aiMemos || []).find(x => x.id === btn.dataset.gcalMemo);
+      const m = myMemos().find(x => x.id === btn.dataset.gcalMemo);
       if (m) openGoogleMemo(m);
     };
   });
@@ -9485,10 +9560,11 @@ function bindAdminAi() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const m = (state.aiMemos || []).find(x => x.id === btn.dataset.doneMemo);
+      const m = myMemos().find(x => x.id === btn.dataset.doneMemo);
       if (!m) return;
       m.done = true;
-      save();
+      if (memoOwner() === "1240") saveDevMemos(loadDevMemos().map(x => x.id === m.id ? m : x));
+      else save();
       ui.keepScroll = true;
       toast("這筆提醒已完成");
       render();
