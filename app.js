@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-14-01";
-const APP_EDIT_COUNT = 217;
+const APP_STAMP = "2026-08-30-16-41";
+const APP_EDIT_COUNT = 218;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台刪除報修可點擊"] },
+  { ver: APP_STAMP, items: ["套房租客圖卡顯示現任、本月收款與交接中"] },
+  { ver: "2026-08-30-14-01", items: ["後台刪除報修可點擊"] },
   { ver: "2026-08-30-13-58", items: ["套房租金依收款明細核對"] },
   { ver: "2026-08-30-13-54", items: ["統潔帳戶圖卡移除超商"] },
   { ver: "2026-08-30-13-52", items: ["信潔帳戶圖卡移除超商"] },
@@ -595,6 +596,59 @@ function studioRentOf(no, fallback) {
   const n = Number(fallback);
   if (Number.isFinite(n) && n > 0) return n;
   return isStoreNo(key) ? 0 : 10000;
+}
+const STUDIO_MONTH_PAY = {
+  "6821": { name: "黃宥宇", paidOn: "2026-08-10", amount: 7000 },
+  "6822": { name: "吳孟書、黃莉晏", paidOn: "2026-08-01", amount: 7000 },
+  "6823": { name: "顏家蓁", paidOn: "2026-08-04", amount: 10000 },
+  "6831": { name: "吳昱瑋", paidOn: "2026-08-01", amount: 9000 },
+  "6832": { name: "高逸安、翁玟倫", paidOn: "2026-08-05", amount: 13500 },
+  "6841": { name: "劉冠德", paidOn: "2026-08-05", amount: 9000 },
+  "6842": { name: "蘇冠達、吳汶修", paidOn: "2026-08-10", amount: 14000 },
+  "7021": { name: "陳信安", paidOn: "2026-08-01", amount: 7000 },
+  "7022": { name: "郭雅萱", paidOn: "2026-08-21", amount: 7000 },
+  "7023": { name: "謝雯鶯", paidOn: "2026-08-03", amount: 10000 },
+  "7031": { name: "朱甫晟", paidOn: "2026-07-31", amount: 9000 },
+  "7032": { name: "楊旻憲", paidOn: "2026-08-05", amount: 12000 },
+  "7041": { name: "劉恩彤", paidOn: "2026-07-31", amount: 9000 },
+  "7042": { name: "周佳瑩", paidOn: "2026-08-07", amount: 14000 },
+  "7051": { name: "", paidOn: "", amount: 0 },
+  "7221": { name: "張智傑", paidOn: "2026-08-01", amount: 7000 },
+  "7222": { name: "林呈澔、廖晉億", paidOn: "2026-08-01", amount: 7000 },
+  "7223": { name: "許芸慈", paidOn: "2026-07-31", amount: 10000 },
+  "7231": { name: "林科承、朱宣羽", paidOn: "", amount: 0 },
+  "7232": { name: "林紘亦", paidOn: "2026-07-26", amount: 14000 },
+  "7241": { name: "陳逸仁", paidOn: "2026-08-04", amount: 8000 },
+  "7242": { name: "張育慈、周聖傑", paidOn: "2026-07-28", amount: 14000 },
+  "7251": { name: "", paidOn: "", amount: 0 },
+  "7611": { name: "曾郁翔", paidOn: "2026-08-03", amount: 50000 },
+  "7621": { name: "王俊典、曾郁庭", paidOn: "2026-08-05", amount: 7000 },
+  "7622": { name: "邱育琳", paidOn: "2026-08-10", amount: 7000 },
+  "7623": { name: "陳財源", paidOn: "2026-08-05", amount: 10000 },
+  "7631": { name: "蔡文銘", paidOn: "2026-08-15", amount: 9000 },
+  "7632": { name: "謝佩君", paidOn: "2026-08-05", amount: 14000 },
+  "7641": { name: "洪子軒", paidOn: "2026-08-05", amount: 9000 },
+  "7642": { name: "陳智泓", paidOn: "2026-08-04", amount: 14000 }
+};
+function personKey(s) {
+  return String(s || "").replace(/[、，,／/\s]/g, "").replace(/紘/g, "紜");
+}
+function sameTenantName(a, b) {
+  const ka = personKey(a), kb = personKey(b);
+  if (!ka || !kb) return false;
+  return ka === kb || ka.includes(kb) || kb.includes(ka);
+}
+function formerTenantsOf(roomId) {
+  return (state.tenants || []).filter(x => x && x.roomId === roomId && x.former && String(x.name || "").trim());
+}
+function studioMonthPay(no) {
+  return STUDIO_MONTH_PAY[String(no || "")] || null;
+}
+function studioHandover(t, r) {
+  if (!t || !r || r.demo || t.demo) return false;
+  const pay = studioMonthPay(r.no);
+  if (!pay || !pay.name) return false;
+  return !sameTenantName(t.name, pay.name);
 }
 const TENANT_INFO = {
   "6821": { name: "黃宥宇", phone: "0980-330-332" },
@@ -1218,12 +1272,13 @@ function applyTenantRoster(data) {
       if (!room.company) room.company = bld.company;
     }
     if (info && info.name) {
-      let t = data.tenants.find(x => x.roomId === room.id);
+      let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo);
       if (!t) {
         t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
         data.tenants.push(t);
       }
       t.name = info.name;
+      t.former = false;
       t.phone = info.phone || "";
       t.leaseStart = info.leaseStart || "";
       t.leaseEnd = info.leaseEnd || "";
@@ -1243,8 +1298,13 @@ function applyTenantRoster(data) {
         room.title = "店面";
       }
       room.rent = studioRentOf(no, room.rent);
+      (data.tenants || []).forEach(x => {
+        if (x.roomId === room.id && !x.demo) {
+          x.former = true;
+          if (!x.leftOn) x.leftOn = x.leaseEnd || "";
+        }
+      });
       if (room.status !== "repair") room.status = "vacant";
-      data.tenants = data.tenants.filter(x => x.roomId !== room.id);
       room.tenantId = null;
     }
   });
@@ -6632,6 +6692,9 @@ function tenantMatchesQ(t, r, q, kind) {
     return parts.some(x => normSearch(x).includes(q));
   }
   const parts = [t.name, t.phone, t.contactName, r && r.no];
+  const pay = r && studioMonthPay(r.no);
+  if (pay && pay.name) parts.push(pay.name);
+  formerTenantsOf(r && r.id).forEach(f => parts.push(f.name));
   return parts.some(x => normSearch(x).includes(q));
 }
 function tenantSearchPlaceholder(kind) {
@@ -6642,7 +6705,7 @@ function tenantListOfKind(kind) {
   const q = normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
-    if (!t || t.placeholder) return false;
+    if (!t || t.placeholder || t.former) return false;
     if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
@@ -6738,7 +6801,11 @@ function tenantEntryCardHtml(kind, entry) {
   const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
-      ${kind !== "factory" ? `<div class="row"><span class="k">租金</span><span class="v">${r && r.rent ? money(r.rent) : "—"}</span></div>` : ""}
+      ${kind !== "factory" ? `<div class="row"><span class="k">現任</span><span class="v">${escapeHtml(t.name)}</span></div>
+      <div class="row"><span class="k">租金</span><span class="v">${r && r.rent ? money(r.rent) : "—"}</span></div>` : ""}
+      ${kind !== "factory" && studioHandover(t, r) ? `<div class="row wrap"><span class="k">本月收款</span><span class="v">${escapeHtml(studioMonthPay(r.no).name)}${studioMonthPay(r.no).paidOn ? "　" + studioMonthPay(r.no).paidOn.replace(/-/g, "/") : ""}${studioMonthPay(r.no).amount ? "　" + money(studioMonthPay(r.no).amount) : ""}</span></div>
+      <div class="small">系統現任與本月收款不同，可能正在交接，尚未覆蓋姓名。</div>` : (kind !== "factory" && studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn ? `<div class="row"><span class="k">本月收款日</span><span class="v">${studioMonthPay(r.no).paidOn.replace(/-/g, "/")}</span></div>` : (kind !== "factory" && studioMonthPay(r && r.no) && !studioMonthPay(r.no).amount && studioMonthPay(r.no).name ? `<div class="row"><span class="k">本月收款</span><span class="v">尚未入帳</span></div>` : ""))}
+      ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidAt && tenants.length === 1 ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       ${kind !== "factory" ? `<div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>` : ""}
@@ -6787,13 +6854,13 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-dot${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}"></span>` : ""}</span><span class="row-end"><span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-dot${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}"></span>` : ""}</span><span class="row-end">${kind !== "factory" && studioHandover(t, r) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
 }
 function tenantKindHint(kind) {
-  return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "向左滑動租客圖卡，可同時打開官方 LINE 私訊視窗。";
+  return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "圖卡顯示現任；與本月收款不同會標交接中。向左滑可開官方 LINE。";
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
