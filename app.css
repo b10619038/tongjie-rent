@@ -2151,3 +2151,39 @@ img.avatar { object-fit: cover; display: block; }
 }
 .checkout-checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; pointer-events: auto !important; }
 .checkout-checks .log-check { display: flex; align-items: center; gap: 6px; }
+
+.errand-ball {
+  position: fixed;
+  z-index: 88;
+  width: 58px;
+  height: 58px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--teal);
+  color: var(--on-teal, #fff);
+  font: inherit;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.22);
+  touch-action: none;
+  cursor: grab;
+  pointer-events: auto !important;
+}
+.errand-ball-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  background: rgba(0,0,0,.38);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.errand-ball-sheet {
+  width: min(560px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--card);
+  border-radius: 22px 22px 0 0;
+  padding: 16px 16px calc(18px + var(--safe-b));
+  pointer-events: auto !important;
+}

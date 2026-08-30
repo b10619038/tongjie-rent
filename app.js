@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-22";
-const APP_EDIT_COUNT = 232;
+const APP_STAMP = "2026-08-30-20-27";
+const APP_EDIT_COUNT = 233;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開啟通知按鈕可測試通知"] },
+  { ver: APP_STAMP, items: ["跑業務可改為可拖曳浮動球"] },
+  { ver: "2026-08-30-20-22", items: ["開啟通知按鈕可測試通知"] },
   { ver: "2026-08-30-20-20", items: ["通知開關改為可點擊"] },
   { ver: "2026-08-30-20-19", items: ["通知開關報修改為租客報修"] },
   { ver: "2026-08-30-20-17", items: ["通知類別改為左右滑動開關"] },
@@ -4747,6 +4748,7 @@ function render() {
   hideSplash();
   try { syncHistory(); } catch {}
   try { ensureIntro(); } catch {}
+  try { ensureErrandBall(); } catch {}
 }
 function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
@@ -5925,6 +5927,158 @@ function loadAiBlockOrder() {
 function saveAiBlockOrder(ids) {
   try { localStorage.setItem(AI_BLOCK_KEY, JSON.stringify(ids.filter(id => AI_BLOCKS.includes(id)))); } catch {}
 }
+function errandMode() {
+  try { return localStorage.getItem("tongjie_errand_mode") === "ball" ? "ball" : "card"; } catch { return "card"; }
+}
+function setErrandMode(mode) {
+  try { localStorage.setItem("tongjie_errand_mode", mode === "ball" ? "ball" : "card"); } catch {}
+}
+function errandBallPos() {
+  try {
+    const p = JSON.parse(localStorage.getItem("tongjie_errand_ball") || "null");
+    if (p && typeof p.x === "number" && typeof p.y === "number") return p;
+  } catch {}
+  return null;
+}
+function saveErrandBallPos(p) {
+  try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
+}
+function errandFormInnerHtml() {
+  return `<p class="small" style="margin-top:10px">一次可拍很多本，分不出公司或銀行時會問你。同一筆錢之後存進銀行會自動對帳。</p>
+          <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
+          ${errandGuessHtml(errandGuessList())}
+          <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
+          <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
+          <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>`;
+}
+function errandRecordsHtml() {
+  const slips = (state.bankSlips || []).slice().reverse();
+  const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
+  return `${errands.length ? errands.map(e => `
+      <div class="card card-body">
+        <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
+        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.pendingBank ? "待入銀行" : (e.linkedId ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
+        <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
+      </div>`).join("") : ""}
+    ${slips.length ? slips.map(s => `
+      <div class="card card-body">
+        <div class="row"><span class="k">銀行入帳 · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
+        <div class="small">${escapeHtml([s.company || "統潔", s.note, s.summary].filter(Boolean).join(" · "))}</div>
+        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
+      </div>`).join("") : ""}
+    ${!errands.length && !slips.length ? `<div class="empty">還沒有銀行紀錄</div>` : ""}`;
+}
+function errandBlockHtml() {
+  if (errandMode() === "ball") return errandRecordsHtml();
+  return `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="errand-fold">
+          <span class="k">跑業務上傳入帳</span>
+          <span class="row-end"><span class="fold-caret"></span></span>
+        </button>
+        <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">改為浮動球</button>
+        ${aiDragBtn()}
+      </div>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">${errandFormInnerHtml()}</div>
+      </div>
+    </form>${errandRecordsHtml()}`;
+}
+function ensureErrandBall() {
+  const old = document.getElementById("errand-float");
+  if (ui.role !== "admin" || errandMode() !== "ball") {
+    if (old) old.remove();
+    return;
+  }
+  let wrap = old;
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "errand-float";
+    document.body.appendChild(wrap);
+  }
+  const saved = errandBallPos();
+  const size = 58;
+  const x = saved ? saved.x : Math.max(12, window.innerWidth - size - 16);
+  const y = saved ? saved.y : Math.max(72, window.innerHeight - size - 108);
+  wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px">跑</button>
+    ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
+      <div class="errand-ball-sheet">
+        <div class="row"><h2 class="dash-h" style="margin:0">跑業務上傳入帳</h2>
+          <button type="button" class="ghost" id="errand-to-card" style="width:auto">改回圖塊</button>
+        </div>
+        <form id="errand-form" autocomplete="off">${errandFormInnerHtml()}</form>
+      </div>
+    </div>` : ""}`;
+  bindErrandBall();
+  try { bindAdminAi(); } catch {}
+}
+function bindErrandBall() {
+  const ball = document.getElementById("errand-ball");
+  if (ball) {
+    let sx = 0, sy = 0, ox = 0, oy = 0, moved = false, dragging = false;
+    const size = 58;
+    const clamp = (nx, ny) => ({
+      x: Math.max(8, Math.min(window.innerWidth - size - 8, nx)),
+      y: Math.max(8, Math.min(window.innerHeight - size - 8, ny))
+    });
+    const onMove = e => {
+      if (!dragging) return;
+      const p = e.touches && e.touches[0] ? e.touches[0] : e;
+      const dx = p.clientX - sx, dy = p.clientY - sy;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+      const next = clamp(ox + dx, oy + dy);
+      ball.style.left = next.x + "px";
+      ball.style.top = next.y + "px";
+    };
+    const onEnd = e => {
+      if (!dragging) return;
+      dragging = false;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("touchend", onEnd);
+      const next = clamp(parseFloat(ball.style.left) || 0, parseFloat(ball.style.top) || 0);
+      saveErrandBallPos(next);
+      if (!moved) {
+        ui.errandBallOpen = true;
+        ensureErrandBall();
+      }
+    };
+    const onDown = e => {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const p = e.touches && e.touches[0] ? e.touches[0] : e;
+      sx = p.clientX; sy = p.clientY;
+      ox = parseFloat(ball.style.left) || 0;
+      oy = parseFloat(ball.style.top) || 0;
+      moved = false;
+      dragging = true;
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("touchmove", onMove, { passive: false });
+      window.addEventListener("pointerup", onEnd);
+      window.addEventListener("touchend", onEnd);
+    };
+    ball.addEventListener("pointerdown", onDown);
+    ball.addEventListener("touchstart", onDown, { passive: false });
+  }
+  const mask = document.getElementById("errand-ball-mask");
+  if (mask) mask.onclick = e => {
+    if (e.target.id === "errand-ball-mask") {
+      ui.errandBallOpen = false;
+      ensureErrandBall();
+    }
+  };
+  const toCard = document.getElementById("errand-to-card");
+  if (toCard) toCard.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setErrandMode("card");
+    ui.errandBallOpen = false;
+    ui.errandOpen = true;
+    render();
+  };
+}
 function aiDragBtn() {
   return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"></button>`;
 }
@@ -5964,38 +6118,7 @@ function adminAi() {
       </div>
     </div>`;
     })(),
-    errand: `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
-      <div class="row tenant-slim-head">
-        <button type="button" class="fold-head" id="errand-fold">
-          <span class="k">跑業務上傳入帳</span>
-          <span class="row-end"><span class="fold-caret"></span></span>
-        </button>
-        ${aiDragBtn()}
-      </div>
-      <div class="tenant-slim-body">
-        <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">一次可拍很多本，分不出公司或銀行時會問你。同一筆錢之後存進銀行會自動對帳。</p>
-          <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
-          ${errandGuessHtml(errandGuessList())}
-          <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
-          <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
-          <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>
-        </div>
-      </div>
-    </form>
-    ${errands.length ? errands.map(e => `
-      <div class="card card-body">
-        <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
-        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.pendingBank ? "待入銀行" : (e.linkedId ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
-        <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : ""}
-    ${slips.length ? slips.map(s => `
-      <div class="card card-body">
-        <div class="row"><span class="k">銀行入帳 · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
-        <div class="small">${escapeHtml([s.company || "統潔", s.note, s.summary].filter(Boolean).join(" · "))}</div>
-        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : ""}
-    ${!errands.length && !slips.length ? `<div class="empty">還沒有銀行紀錄</div>` : ""}`,
+    errand: errandBlockHtml(),
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="ai-fold">
@@ -9331,6 +9454,15 @@ function bindAiBlockReorder() {
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
+  const toBall = document.getElementById("errand-to-ball");
+  if (toBall) toBall.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setErrandMode("ball");
+    ui.errandOpen = false;
+    ui.errandBallOpen = false;
+    render();
+  };
   const calsFold = document.getElementById("cals-fold");
   const calsCard = document.getElementById("cals-card");
   if (calsFold && calsCard) calsFold.onclick = e => {
