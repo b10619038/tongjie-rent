@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-41";
-const APP_EDIT_COUNT = 211;
+const APP_STAMP = "2026-08-30-13-43";
+const APP_EDIT_COUNT = 212;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台報修圖卡可收成一條"] },
+  { ver: APP_STAMP, items: ["報修金額可填待報價"] },
+  { ver: "2026-08-30-13-41", items: ["後台報修圖卡可收成一條"] },
   { ver: "2026-08-30-13-38", items: ["後台可查看報修照片，工錢改為金額"] },
   { ver: "2026-08-30-13-29", items: ["開發者提交的報修會顯示在後台"] },
   { ver: "2026-08-30-13-28", items: ["匯出可選 PDF 或 Excel"] },
@@ -2679,6 +2680,14 @@ function getRepairMedia(rep) {
   if (rep.photo) return [{ kind: "image", src: rep.photo }];
   return [];
 }
+function repairCostLabel(v) {
+  const s = String(v == null ? "" : v).trim();
+  if (!s) return "";
+  if (/待報價/.test(s)) return "待報價";
+  const n = Number(String(s).replace(/[^\d.-]/g, ""));
+  if (String(s).replace(/[^\d.-]/g, "") !== "" && Number.isFinite(n)) return money(n);
+  return s;
+}
 function repairMediaButtons(rep) {
   const media = getRepairMedia(rep);
   const photos = media.filter(m => m.kind === "image").length;
@@ -5202,7 +5211,7 @@ function repairCard(rep, extraClass) {
     <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
     ${appointLabel(rep)}
     ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
-    ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${money(rep.cost)}</span></div>` : ""}
+    ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${escapeHtml(repairCostLabel(rep.cost))}</span></div>` : ""}
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
     <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
@@ -7021,7 +7030,7 @@ function adminRepairs() {
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
       <label class="field"><span>師傅／廠商</span><input data-rep-vendor="${rep.id}" type="text" value="${escapeHtml(rep.vendor || "")}" placeholder="例如 冷氣行" /></label>
-      <label class="field"><span>金額</span><input data-rep-cost="${rep.id}" type="number" inputmode="numeric" min="0" value="${rep.cost == null || String(rep.cost) === "" ? "" : Number(rep.cost)}" placeholder="沒有花費可填 0" /></label>
+      <label class="field"><span>金額</span><input data-rep-cost="${rep.id}" type="text" inputmode="decimal" value="${escapeHtml(rep.cost == null ? "" : String(rep.cost))}" placeholder="0 或 待報價" /></label>
       <label class="field"><span>完工說明</span><textarea data-rep-done-note="${rep.id}" rows="2" placeholder="更換零件、完工情形">${escapeHtml(rep.doneNote || "")}</textarea></label>
       <div class="seg ${rep.status === "done" ? "is-done" : rep.status === "doing" ? "is-doing" : ""}">
         <i class="seg-bg"></i>
@@ -8448,7 +8457,13 @@ function bindAdmin() {
     inp.onchange = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.repCost);
       if (!rep) return;
-      rep.cost = Number(inp.value) || 0;
+      const raw = String(inp.value || "").trim();
+      if (/待報價/.test(raw)) rep.cost = "待報價";
+      else if (raw === "") rep.cost = "";
+      else {
+        const n = Number(raw.replace(/[^\d.-]/g, ""));
+        rep.cost = Number.isFinite(n) ? n : raw;
+      }
       save();
     };
   });
