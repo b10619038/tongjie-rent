@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-01";
-const APP_EDIT_COUNT = 225;
+const APP_STAMP = "2026-08-30-20-04";
+const APP_EDIT_COUNT = 226;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["公告頁移除發布身分說明"] },
+  { ver: APP_STAMP, items: ["進場影片點一下不會重播"] },
+  { ver: "2026-08-30-20-01", items: ["公告頁移除發布身分說明"] },
   { ver: "2026-08-30-19-58", items: ["工作助手提醒可加到 Google 日曆"] },
   { ver: "2026-08-30-19-51", items: ["手機側邊返回可回到上一頁"] },
   { ver: "2026-08-30-17-12", items: ["退租單IC卡改為磁扣"] },
@@ -1778,13 +1779,22 @@ function shouldPlayIntro() {
   try { return sessionStorage.getItem("tj-intro-seen") !== "1"; } catch { return true; }
 }
 function introHtml() {
-  if (!shouldPlayIntro()) return "";
-  return `<div class="intro-mask" id="intro-mask">
+  return "";
+}
+function ensureIntro() {
+  const existing = document.getElementById("intro-mask");
+  if (!shouldPlayIntro()) {
+    if (existing && existing.dataset.done !== "1") skipIntro();
+    return;
+  }
+  if (existing) return;
+  document.body.insertAdjacentHTML("beforeend", `<div class="intro-mask" id="intro-mask">
     <video id="intro-video" autoplay muted playsinline webkit-playsinline poster="${INTRO_POSTER}">
       <source src="${INTRO_SRC}" type="video/mp4">
     </video>
     <div class="intro-hint">連點兩下進入登入</div>
-  </div>`;
+  </div>`);
+  bindIntro();
 }
 function skipIntro() {
   const mask = document.getElementById("intro-mask");
@@ -1800,7 +1810,8 @@ function skipIntro() {
 function bindIntro() {
   const mask = document.getElementById("intro-mask");
   const v = document.getElementById("intro-video");
-  if (!mask) return;
+  if (!mask || mask.dataset.bound === "1") return;
+  mask.dataset.bound = "1";
   hideSplash();
   let lastTap = 0;
   const tap = () => {
@@ -1813,10 +1824,16 @@ function bindIntro() {
   if (v) {
     v.muted = true;
     v.playsInline = true;
+    v.loop = false;
     v.addEventListener("ended", skipIntro);
-    const play = () => v.play().catch(() => {});
+    const play = () => {
+      if (!v.paused && v.currentTime > 0) return;
+      v.play().catch(() => {});
+    };
     play();
-    mask.addEventListener("pointerdown", play, { once: true });
+    mask.addEventListener("pointerdown", () => {
+      if (v.paused && !v.ended) play();
+    });
   }
 }
 
@@ -4658,6 +4675,7 @@ function render() {
   }
   hideSplash();
   try { syncHistory(); } catch {}
+  try { ensureIntro(); } catch {}
 }
 function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
