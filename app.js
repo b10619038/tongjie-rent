@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-03-16";
-const APP_EDIT_COUNT = 319;
+const APP_STAMP = "2026-08-31-03-23";
+const APP_EDIT_COUNT = 320;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作改為每月28日收鈺晟電費"] },
+  { ver: APP_STAMP, items: ["工作助手聽得懂幫我記、提醒我、請紀錄"] },
+  { ver: "2026-08-31-03-16", items: ["本月工作改為每月28日收鈺晟電費"] },
   { ver: "2026-08-31-03-15", items: ["本月工作會出現在總覽日曆細項"] },
   { ver: "2026-08-31-03-09", items: ["本月工作拿掉總結收支的10:00"] },
   { ver: "2026-08-31-03-06", items: ["本月工作拿掉「信件可差幾天」"] },
@@ -6872,7 +6873,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <div class="small" style="margin-top:10px">可以直接跟我說話，例如「幫我記得星期五去農會」，或問未繳、報修、銀行。</div>
+          <div class="small" style="margin-top:10px">可以直接跟我說話，例如「幫我記星期五去農會」、「提醒我明天收鈺晟」、「請紀錄下週對帳」，或問未繳、報修、銀行。</div>
           <div class="ai-chips">
             <button type="button" class="ghost" data-ai-q="即將提醒">本月工作</button>
             <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
@@ -6892,7 +6893,7 @@ function adminAi() {
             </div>`;
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記得下星期三去收現金" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
             <button class="ai-send" type="button" aria-label="送出">送出</button>
           </form>
         </div>
@@ -7008,9 +7009,12 @@ function ymdFromWeekday(w, nextWeek) {
 }
 function cleanMemoAsk(text) {
   return String(text || "")
-    .replace(/請?幫我(把|將)?/g, "")
-    .replace(/可以幫我/g, "")
-    .replace(/(記得|記住|記一下|記著|提醒我|加入日曆|排進日曆|放到行事曆|加到日曆|加進日曆)/g, "")
+    .replace(/可以?請?(你)?幫我/g, "")
+    .replace(/麻煩(你)?(幫我)?/g, "")
+    .replace(/請(你)?(幫我)?/g, "")
+    .replace(/幫我(再)?(把|將)?/g, "")
+    .replace(/(記得|記住|記一下|記著|記下|記一筆|提醒我|提醒一下|請提醒|紀[錄录](一下)?|記[錄录](一下)?|登記|備忘|加入日曆|排進日曆|放到行事曆|加到日曆|加進日曆|放到本月工作|寫進本月工作|加到本月工作|加進本月工作)/g, "")
+    .replace(/(^|\s)記(到|在|入)?(本月工作|日曆)?/g, " ")
     .replace(/在?(下)?(週|周|星期|禮拜)[日天一二三四五六](的)?(行程)?/g, "")
     .replace(/今天|明天|後天/g, "")
     .replace(/(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})\s*日?/g, "")
@@ -7022,6 +7026,16 @@ function cleanMemoAsk(text) {
     .replace(/[，。,.!！？?\s]+/g, " ")
     .replace(/^(把|將|的|去|要)\s*/g, "")
     .trim();
+}
+function isRememberAsk(text) {
+  const s = String(text || "").replace(/\s+/g, "");
+  if (!s) return false;
+  if (/忘掉|刪掉|不用記|取消行程|拿掉這/.test(s) && !/(幫我記|請記|提醒我)/.test(s)) return false;
+  if (/^(你記得|你記不記得|記了什麼|我交代|有哪些行程|即將提醒)/.test(s)) return false;
+  if (/(幫我|請你|請幫我|麻煩你|麻煩幫我|可以幫我|幫我再|請再)(把.{0,12})?(記得|記住|記下|記一下|記著|記一筆|紀錄|記錄|登記|備忘|提醒|記)/.test(s)) return true;
+  if (/^(請)?(記得|記住|記下|記一下|記著|記一筆|紀錄|記錄|登記|備忘|提醒我|提醒一下|記)/.test(s)) return true;
+  if (/(加入|排進|加到|放到|寫進|加進)(日曆|行事曆|本月工作)/.test(s)) return true;
+  return /提醒我|幫我記|請紀錄|請記錄|請記下|紀錄一下|記錄一下/.test(s);
 }
 function ymNow() {
   const n = new Date();
@@ -7094,11 +7108,11 @@ function isMemoDone(m) {
 }
 function parseMonthDayAsk(text) {
   const s = String(text || "");
-  const m = s.match(/每(個)?月\s*(\d{1,2})\s*[號日]/);
-  if (m) return Math.max(1, Math.min(31, Number(m[2])));
+  const m = s.match(/每(一)?(個)?月\s*(\d{1,2})\s*[號日]/);
+  if (m) return Math.max(1, Math.min(31, Number(m[3])));
   const zh = { 一:1, 二:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9, 十:10 };
-  const z = s.match(/每(個)?月\s*([一二三四五六七八九十])\s*[號日]/);
-  if (z && zh[z[2]]) return zh[z[2]];
+  const z = s.match(/每(一)?(個)?月\s*([一二三四五六七八九十])\s*[號日]/);
+  if (z && zh[z[3]]) return zh[z[3]];
   return 0;
 }
 function formatAiMemo(m) {
@@ -7242,16 +7256,27 @@ function aiAnswer(q) {
   const studios = state.rooms.filter(r => r.kind !== "factory" && r.status !== "office");
   const rented = studios.filter(r => r.status === "rented").length;
   const memos = myMemos().filter(m => !isMemoDone(m));
-  const wantRemember = /記得|記住|記一下|提醒我|加入日曆|排進日曆|加到日曆|放到行事曆/.test(text);
+  const wantRemember = isRememberAsk(text);
 
   if (/^(嗨|哈囉|你好|早安|午安|晚安|在嗎)/.test(text)) {
     return "在，跟我說要記的事，或問未繳、報修、銀行、日曆都可以。";
   }
   if (/謝謝|感謝/.test(text)) return "不客氣，有要記的再跟我說。";
 
+  if (wantRemember) {
+    const rec = rememberAiMemo(text);
+    ui.workOpen = true;
+    const when = rec.date
+      ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.time ? " " + rec.time : "")
+      : rec.monthDay
+        ? "每月 " + rec.monthDay + " 日"
+        : "之後（還沒指定日期）";
+    return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「本月工作」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
+  }
+
   if (/你記得|記了什麼|我交代|有哪些行程|列出.*記|即將提醒/.test(text)) {
     ui.workOpen = true;
-    if (!memos.length) return "目前還沒有你交代要記的事。跟我說「幫我記得星期三去收現金」我就會記下。";
+    if (!memos.length) return "目前還沒有你交代要記的事。跟我說「幫我記星期三去收現金」我就會記下。";
     return "我這邊記著：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
   }
   if (/忘掉|刪掉.*記|不用記|取消行程/.test(text)) {
@@ -7262,15 +7287,6 @@ function aiAnswer(q) {
     }
     if (!memos.length) return "目前沒有記下的行程。";
     return "要拿掉哪一筆？跟我說關鍵字，現在有：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
-  }
-
-  if (wantRemember) {
-    const rec = rememberAiMemo(text);
-    ui.workOpen = true;
-    const when = rec.date
-      ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.time ? " " + rec.time : "")
-      : "之後（還沒指定日期）";
-    return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「本月工作」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
   }
 
   const bits = [];
