@@ -301,6 +301,14 @@ input, textarea, select {
   border: 1px solid var(--line);
   border-radius: 22px;
 }
+.notify-prefs {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.notify-prefs .log-check {
+  min-height: 40px;
+}
 
 .slide-right { animation: slideRight .8s ease both; }
 .slide-left { animation: slideLeft .8s ease both; }

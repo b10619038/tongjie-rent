@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-04";
-const APP_EDIT_COUNT = 226;
+const APP_STAMP = "2026-08-30-20-08";
+const APP_EDIT_COUNT = 227;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["進場影片點一下不會重播"] },
+  { ver: APP_STAMP, items: ["設定新增通知類別、安裝、公司資料與租客密碼"] },
+  { ver: "2026-08-30-20-04", items: ["進場影片點一下不會重播"] },
   { ver: "2026-08-30-20-01", items: ["公告頁移除發布身分說明"] },
   { ver: "2026-08-30-19-58", items: ["工作助手提醒可加到 Google 日曆"] },
   { ver: "2026-08-30-19-51", items: ["手機側邊返回可回到上一頁"] },
@@ -553,6 +554,45 @@ function askTongjieNotify() {
 window.askTongjieNotify = askTongjieNotify;
 function versionFooter() {
   return `<div class="ver">${APP_VERSION}</div>`;
+}
+const DEFAULT_COMPANY = {
+  name: "統潔＆信潔開發有限公司",
+  bankCode: "803",
+  bankName: "聯邦銀行 高雄分行",
+  account: "010100035909",
+  phone: ""
+};
+function companyInfo() {
+  const c = (state && state.company) || {};
+  return {
+    name: c.name || DEFAULT_COMPANY.name,
+    bankCode: c.bankCode || DEFAULT_COMPANY.bankCode,
+    bankName: c.bankName || DEFAULT_COMPANY.bankName,
+    account: c.account || DEFAULT_COMPANY.account,
+    phone: c.phone || ""
+  };
+}
+const NOTIFY_PREF_KEY = "tongjie_notify_prefs";
+const NOTIFY_PREF_ITEMS = [
+  { id: "unpaid", label: "未繳租金" },
+  { id: "water", label: "年度水費" },
+  { id: "repair", label: "報修" },
+  { id: "memo", label: "工作提醒" }
+];
+function loadNotifyPrefs() {
+  const out = {};
+  NOTIFY_PREF_ITEMS.forEach(x => { out[x.id] = true; });
+  try {
+    const raw = JSON.parse(localStorage.getItem(NOTIFY_PREF_KEY) || "{}");
+    NOTIFY_PREF_ITEMS.forEach(x => { if (raw[x.id] === false) out[x.id] = false; });
+  } catch {}
+  return out;
+}
+function notifyPrefOn(id) {
+  return loadNotifyPrefs()[id] !== false;
+}
+function saveNotifyPrefs(p) {
+  try { localStorage.setItem(NOTIFY_PREF_KEY, JSON.stringify(p)); } catch {}
 }
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
@@ -1199,6 +1239,10 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
+  if (!data.company || typeof data.company !== "object") data.company = Object.assign({}, DEFAULT_COMPANY);
+  ["name", "bankCode", "bankName", "account", "phone"].forEach(k => {
+    if (data.company[k] == null) data.company[k] = DEFAULT_COMPANY[k] || "";
+  });
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
@@ -2834,7 +2878,7 @@ function maybeNudgeNotifies() {
         showOsBanner("管理員公告", a.title + (a.body ? "\n" + a.body : ""), "ann-" + a.id);
       }
     }
-    if (t && t.paid === false && !alreadyNudged("unpaid-" + t.id)) {
+    if (t && t.paid === false && notifyPrefOn("unpaid") && !alreadyNudged("unpaid-" + t.id)) {
       markNudged("unpaid-" + t.id);
       showOsBanner("本月租金尚未繳納", (room ? room.no + "　" : "") + "請至繳費租金完成轉帳。", "unpaid");
     }
@@ -2849,7 +2893,7 @@ function maybeNudgeNotifies() {
       const due = waterDueDate(t);
       if (due) {
         const left = Math.ceil((new Date(due + "T00:00:00") - new Date()) / 86400000);
-        if (left >= 0 && left <= 30 && !alreadyNudged("water-" + t.id + "-" + due.slice(0, 4))) {
+        if (left >= 0 && left <= 30 && notifyPrefOn("water") && !alreadyNudged("water-" + t.id + "-" + due.slice(0, 4))) {
           markNudged("water-" + t.id + "-" + due.slice(0, 4));
           showOsBanner("年度水費", "一年固定 NT$ 1,800，請於 " + due + " 前繳納。", "water");
         }
@@ -2858,12 +2902,12 @@ function maybeNudgeNotifies() {
   }
   if (ui.role === "admin") {
     const unpaid = (state.tenants || []).filter(t => t.paid === false && (t.name || "").trim());
-    if (unpaid.length && !alreadyNudged("admin-unpaid")) {
+    if (unpaid.length && notifyPrefOn("unpaid") && !alreadyNudged("admin-unpaid")) {
       markNudged("admin-unpaid");
       showOsBanner("本月未繳租金", unpaid.length + " 戶尚未繳費", "admin-unpaid");
     }
     const waters = waterDueSoon();
-    if (waters.length && !alreadyNudged("admin-water")) {
+    if (waters.length && notifyPrefOn("water") && !alreadyNudged("admin-water")) {
       markNudged("admin-water");
       showOsBanner("年度水費", waters.length + " 戶 45 天內到期", "admin-water");
     }
@@ -2877,7 +2921,7 @@ function maybeNudgeNotifies() {
         if (now.getHours() * 60 + now.getMinutes() + 10 < mins) return;
       }
       const tag = "memo-" + m.id + "-" + m.date;
-      if (alreadyNudged(tag)) return;
+      if (!notifyPrefOn("memo") || alreadyNudged(tag)) return;
       markNudged(tag);
       showOsBanner("工作提醒", (m.date || "") + (m.time ? " " + m.time : "") + "　" + m.text, tag);
     });
@@ -2892,6 +2936,7 @@ function notifyCloudChanges(before) {
   }
   if (ui.role === "admin") {
     (state.repairs || []).filter(r => !(before.repairIds || []).includes(r.id)).forEach(r => {
+      if (!notifyPrefOn("repair")) return;
       showOsBanner("新報修", (r.roomNo || "") + " " + (r.type || ""), "repair-" + r.id);
     });
     (state.renewals || []).filter(x => !(before.renewIds || []).includes(x.id)).forEach(x => {
@@ -5113,11 +5158,13 @@ function markTenantPaid(via) {
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
-  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：統潔＆信潔開發有限公司\n銀行：803 聯邦銀行 高雄分行\n帳號：010100035909`;
+  const co = companyInfo();
+  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：${co.name}\n銀行：${co.bankCode} ${co.bankName}\n帳號：${co.account}`;
 }
 function payView() {
   const t = me(); const r = myRoom();
   const paid = !!(t && t.paid);
+  const co = companyInfo();
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
@@ -5130,12 +5177,13 @@ function payView() {
         <div style="margin-top:10px"><span class="pay-pill ${paid ? "paid" : "unpaid"}">${paid ? "本月已繳" : "本月未繳"}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
       </div>
-      <div class="section-title"><h2 class="slide-right">統潔＆信潔開發有限公司帳戶</h2></div>
+      <div class="section-title"><h2 class="slide-right">${escapeHtml(co.name)}帳戶</h2></div>
       <div class="card card-body slide-left">
-        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">統潔＆信潔開發有限公司</span></div>
-        <div class="copy-row"><span class="k">銀行代號</span><span class="v">803</span><button type="button" class="ghost" data-copy="803">複製</button></div>
-        <div class="copy-row no-copy"><span class="k">銀行名稱</span><span class="v">聯邦銀行 高雄分行</span></div>
-        <div class="copy-row"><span class="k">帳號</span><span class="v">010100035909</span><button type="button" class="ghost" data-copy="010100035909">複製</button></div>
+        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">${escapeHtml(co.name)}</span></div>
+        <div class="copy-row"><span class="k">銀行代號</span><span class="v">${escapeHtml(co.bankCode)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.bankCode)}">複製</button></div>
+        <div class="copy-row no-copy"><span class="k">銀行名稱</span><span class="v">${escapeHtml(co.bankName)}</span></div>
+        <div class="copy-row"><span class="k">帳號</span><span class="v">${escapeHtml(co.account)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.account)}">複製</button></div>
+        ${co.phone ? `<div class="copy-row"><span class="k">客服電話</span><span class="v">${escapeHtml(co.phone)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.phone)}">複製</button></div>` : ""}
       </div>
       <button type="button" class="btn-navy slide-left" id="mark-paid" style="margin-top:14px" ${paid ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
       <button type="button" class="ghost slide-left" id="line-paid" style="margin-top:8px">${t && t.lineNotified ? "再次到官方 LINE 通知" : "到官方 LINE 通知已繳費"}</button>
@@ -5793,6 +5841,9 @@ function adminSettings() {
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
   const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
+  const prefs = loadNotifyPrefs();
+  const co = companyInfo();
+  const installed = typeof isInstalledApp === "function" && isInstalledApp();
   return `<div class="admin-grid list settings-stack">
     <div class="card card-body">
       <div class="label">帳號</div>
@@ -5803,7 +5854,25 @@ function adminSettings() {
       <div class="label">通知</div>
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
       <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
+      <div class="notify-prefs">
+        ${NOTIFY_PREF_ITEMS.map(x => `<label class="log-check"><input type="checkbox" data-notify-pref="${x.id}" ${prefs[x.id] ? "checked" : ""}> ${escapeHtml(x.label)}</label>`).join("")}
+      </div>
     </div>
+    <div class="card card-body">
+      <div class="label">安裝到手機</div>
+      <div class="row"><span class="k">狀態</span><span class="v">${installed ? "已安裝" : "尚未安裝"}</span></div>
+      ${installed ? `<p class="small" style="margin-top:8px">請用桌面上的圖示打開，通知才會比較穩。</p>` : `<button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝到主畫面</button>`}
+    </div>
+    <form class="card card-body" id="company-form" autocomplete="off">
+      <div class="label">公司資料</div>
+      <p class="small">會同步到租客繳費頁的匯款帳戶。</p>
+      <label class="field"><span>戶名</span><input name="name" type="text" value="${escapeHtml(co.name)}" /></label>
+      <label class="field"><span>銀行代號</span><input name="bankCode" type="text" value="${escapeHtml(co.bankCode)}" /></label>
+      <label class="field"><span>銀行名稱</span><input name="bankName" type="text" value="${escapeHtml(co.bankName)}" /></label>
+      <label class="field"><span>帳號</span><input name="account" type="text" value="${escapeHtml(co.account)}" /></label>
+      <label class="field"><span>客服電話</span><input name="phone" type="text" value="${escapeHtml(co.phone)}" placeholder="選填" /></label>
+      <button class="btn-navy" type="submit">儲存公司資料</button>
+    </form>
     ${lookSettingsHtml()}
     <div class="card card-body">
       <div class="label">資料</div>
@@ -7713,9 +7782,10 @@ function bindTenant() {
   const exitPrev = document.getElementById("exit-preview");
   if (exitPrev) exitPrev.onclick = () => exitDevPreview();
   const av = document.getElementById("tenant-avatar");
-  if (av) av.onchange = async () => {
-    const f = av.files && av.files[0];
-    av.value = "";
+  const avSet = document.getElementById("tenant-avatar-set");
+  const onAvatar = async (inp) => {
+    const f = inp.files && inp.files[0];
+    inp.value = "";
     if (!f) return;
     const t = me();
     if (!t) return;
@@ -7726,6 +7796,9 @@ function bindTenant() {
       render();
     } catch { toast("照片讀取失敗"); }
   };
+  if (av) av.onchange = () => onAvatar(av);
+  if (avSet) avSet.onchange = () => onAvatar(avSet);
+  bindTenantSettings();
   document.querySelectorAll(".nav [data-page]").forEach(el => {
     el.addEventListener("pointerdown", () => {
       el.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
@@ -8988,6 +9061,7 @@ function tenantSettings() {
   const r = myRoom() || {};
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
+  const bound = r.no && lineBindForRoom(r.no);
   return `
     <div class="topbar">
       <div>
@@ -8998,8 +9072,27 @@ function tenantSettings() {
     <div class="screen settings-stack">
       <div class="card card-body">
         <div class="label">帳號</div>
-        <div class="row"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
-        <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
+        <div class="who-line" style="margin:8px 0 12px">
+          <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar-set" type="file" accept="image/*" hidden /></label>
+          <div>
+            <div class="row" style="padding-top:0"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
+            <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
+          </div>
+        </div>
+        <p class="small">點頭像可更換大頭貼。</p>
+      </div>
+      <form class="card card-body" id="set-pass-form" autocomplete="off">
+        <div class="label">登入密碼</div>
+        <label class="field"><span>目前密碼</span><input name="old" type="password" inputmode="numeric" /></label>
+        <label class="field"><span>新密碼</span><input name="n1" type="password" inputmode="numeric" /></label>
+        <label class="field"><span>再輸入一次</span><input name="n2" type="password" inputmode="numeric" /></label>
+        <button class="btn-navy" type="submit">儲存密碼</button>
+      </form>
+      <div class="card card-body">
+        <div class="label">綁定 LINE</div>
+        <div class="row"><span class="k">狀態</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>
+        <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px">${bound ? "再次綁定 LINE" : "綁定 LINE"}</button>
+        <p class="small" style="margin-top:8px">加入後傳送「房號 姓名」，例如 ${escapeHtml(r.no || "")} ${escapeHtml(t.name || "")}。</p>
       </div>
       <div class="card card-body">
         <div class="label">通知</div>
@@ -9007,6 +9100,9 @@ function tenantSettings() {
         <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
       </div>
       ${lookSettingsHtml()}
+      <div class="card card-body">
+        <button type="button" class="ghost" id="logout-set">${ui.devPreview ? "返回後台" : "登出"}</button>
+      </div>
     </div>`;
 }
 function bindLookSettings() {
@@ -9028,6 +9124,43 @@ function bindLookSettings() {
     slider.addEventListener("change", slide);
   }
 }
+function bindTenantSettings() {
+  bindLookSettings();
+  const notify = document.getElementById("set-notify");
+  if (notify) notify.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askTongjieNotify();
+  };
+  const bindLine = document.getElementById("bind-line-set");
+  if (bindLine) bindLine.onclick = () => {
+    const r = myRoom(); const t = me();
+    const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
+    window.open(lineOaMessageUrl(msg), "_blank", "noopener");
+    toast("請傳送「房號 姓名」完成綁定");
+  };
+  const out = document.getElementById("logout-set");
+  if (out) out.onclick = () => {
+    if (isDevPreview()) { exitDevPreview(); return; }
+    logoutToGate();
+  };
+  const form = document.getElementById("set-pass-form");
+  if (form) form.onsubmit = e => {
+    e.preventDefault();
+    const t = me();
+    if (!t) return;
+    const old = String(form.old.value || "");
+    const n1 = String(form.n1.value || "").trim();
+    const n2 = String(form.n2.value || "").trim();
+    if (t.loginPass && old !== String(t.loginPass)) { toast("目前密碼不正確"); return; }
+    if (!n1 || n1.length < 4) { toast("新密碼至少 4 碼"); return; }
+    if (n1 !== n2) { toast("兩次新密碼不一致"); return; }
+    t.loginPass = n1;
+    save();
+    form.reset();
+    toast("登入密碼已更新");
+  };
+}
 function bindAdminSettings() {
   bindLookSettings();
   const notify = document.getElementById("set-notify");
@@ -9040,7 +9173,29 @@ function bindAdminSettings() {
   if (install) install.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    ui.installSheet = true;
+    ui.installSheet = (typeof isIOS === "function" && isIOS()) || (typeof isAndroid === "function" && isAndroid()) || window.innerWidth < 800 ? "mobile" : "desktop";
+    ui.keepScroll = true;
+    render();
+  };
+  document.querySelectorAll("[data-notify-pref]").forEach(el => {
+    el.onchange = () => {
+      const prefs = loadNotifyPrefs();
+      prefs[el.dataset.notifyPref] = !!el.checked;
+      saveNotifyPrefs(prefs);
+      toast(el.checked ? "已開啟此類通知" : "已關閉此類通知");
+    };
+  });
+  const coForm = document.getElementById("company-form");
+  if (coForm) coForm.onsubmit = e => {
+    e.preventDefault();
+    if (!state.company) state.company = Object.assign({}, DEFAULT_COMPANY);
+    state.company.name = String(coForm.name.value || "").trim() || DEFAULT_COMPANY.name;
+    state.company.bankCode = String(coForm.bankCode.value || "").trim() || DEFAULT_COMPANY.bankCode;
+    state.company.bankName = String(coForm.bankName.value || "").trim() || DEFAULT_COMPANY.bankName;
+    state.company.account = String(coForm.account.value || "").trim() || DEFAULT_COMPANY.account;
+    state.company.phone = String(coForm.phone.value || "").trim();
+    save();
+    toast("公司資料已儲存");
     ui.keepScroll = true;
     render();
   };
