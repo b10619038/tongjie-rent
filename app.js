@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-55";
-const APP_EDIT_COUNT = 252;
+const APP_STAMP = "2026-08-30-22-24";
+const APP_EDIT_COUNT = 253;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
+  { ver: APP_STAMP, items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
+  { ver: "2026-08-30-21-55", items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
   { ver: "2026-08-30-21-38", items: ["更新通知不會一直重複跳，登錄這筆可點"] },
   { ver: "2026-08-30-21-34", items: ["管理員頭貼改為女客服，可改選男客服"] },
   { ver: "2026-08-30-21-32", items: ["工作助手可選女客服或男客服頭貼"] },
@@ -958,7 +959,7 @@ const FACTORY_GROUPS = [
 ];
 const FACTORY_TENANT_INFO = {
   "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000" },
-  "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, note: "" },
+  "拉皮-2A": { name: "咘然居", taxId: "", contactName: "孫小姐", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 0, rent: 45000, note: "93-2A 每月5日下午2:00收租" },
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, note: "" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, note: "" },
   "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, note: "116/9/1 未稅 $47,000；117/9/1 $48,000；118/9/1 $49,000；119/9/1 $50,000" },
@@ -984,16 +985,59 @@ const FACTORY_TENANT_INFO = {
   "牛2-29": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" }
 };
 const CYCLE_JOBS = [
-  { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 孫小姐（拉皮）", cycle: true, owner: "7651" },
+  { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 咘然居 孫小姐（拉皮）", cycle: true, owner: "7651" },
   { id: "cycle-rent-97-65b", monthDay: 5, time: "", text: "收租金　97-65B 倉庫斜對面（昱銘）", cycle: true, owner: "7651" },
-  { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" }
+  { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" },
+  { id: "cycle-mail-invoices", monthDay: 10, flexDays: 4, text: "分發票＋電單（等信件到，可差幾天）", cycle: true, owner: "7651" },
+  { id: "cycle-pay-fengxin", monthDay: 10, flexDays: 4, text: "繳費鳳信網路（信件到再繳）", cycle: true, owner: "7651" },
+  { id: "cycle-pay-heji", monthDay: 10, flexDays: 4, text: "繳費合吉（信件到再繳）", cycle: true, owner: "7651" },
+  { id: "cycle-trash-driver", monthDay: 10, flexDays: 4, text: "收垃圾桶費　老司機", cycle: true, owner: "7651" },
+  { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收垃圾桶費　莊記綠豆（97-71）", cycle: true, owner: "7651" },
+  { id: "cycle-rent-yuwang", monthDay: 15, time: "14:00", text: "收禹旺租金，並給電單（他們自繳電費）", cycle: true, owner: "7651" },
+  { id: "cycle-month-close", monthDay: 25, time: "10:00", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" }
+];
+const DEV_CYCLE_JOBS = [
+  { id: "cycle-dev-salary", monthDay: 5, text: "開發者薪資 NT$ 20,000", cycle: true, owner: "1240" }
 ];
 function ensureCycleJobs(data) {
   if (!data || !Array.isArray(data.aiMemos)) return;
   CYCLE_JOBS.forEach(job => {
-    if (data.aiMemos.some(m => m && m.id === job.id)) return;
+    const hit = data.aiMemos.find(m => m && m.id === job.id);
+    if (hit) {
+      hit.text = job.text;
+      hit.time = job.time || "";
+      hit.monthDay = job.monthDay;
+      hit.flexDays = job.flexDays || 0;
+      hit.intervalMonths = job.intervalMonths || 0;
+      hit.anchor = job.anchor || "";
+      hit.cycle = true;
+      hit.owner = "7651";
+      return;
+    }
     data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
+}
+function ensureDevCycleJobs() {
+  const list = loadDevMemos();
+  let changed = false;
+  DEV_CYCLE_JOBS.forEach(job => {
+    const hit = list.find(m => m && m.id === job.id);
+    if (hit) {
+      if (hit.text !== job.text || hit.monthDay !== job.monthDay) {
+        hit.text = job.text;
+        hit.monthDay = job.monthDay;
+        hit.cycle = true;
+        hit.owner = "1240";
+        changed = true;
+      }
+      return;
+    }
+    list.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
+    changed = true;
+  });
+  if (changed) saveDevMemos(list);
 }
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
 const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
@@ -1381,6 +1425,7 @@ function normalize(data) {
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   ensureCycleJobs(data);
+  try { ensureDevCycleJobs(); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
@@ -3551,11 +3596,16 @@ function calendarItems() {
   (myMemos() || []).forEach(m => {
     if (isMemoDone(m)) return;
     let at = m.date;
-    if (m.monthDay) {
+    if (m.monthDay || m.intervalMonths) {
+      at = nextCycleDate(m);
       ensureCalMonth();
-      const last = new Date(ui.calYear, ui.calMonth, 0).getDate();
-      const d = Math.min(Number(m.monthDay) || 1, last);
-      at = ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+      const ym = ui.calYear + "-" + String(ui.calMonth).padStart(2, "0");
+      if (m.intervalMonths && String(at).slice(0, 7) !== ym) return;
+      if (!m.intervalMonths) {
+        const last = new Date(ui.calYear, ui.calMonth, 0).getDate();
+        const d = Math.min(Number(m.monthDay) || 1, last);
+        at = ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+      }
     }
     if (!at) return;
     items.push({
@@ -6416,7 +6466,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">跟工作助手說「幫我記得下星期三去農會」，這裡會列出。點「加到 Google 日曆」會開你自己的日曆。</p>
+          <p class="small" style="margin-top:10px">固定每月／隔月的工作會列在這裡。繳費單等信件到，差幾天沒關係。點完成只算這一次，下次週期還會再出現。</p>
           ${list.length ? list.map(m => `
             <div class="mini" style="align-items:flex-start">
               <span>${escapeHtml(formatAiMemo(m))}</span>
@@ -6610,9 +6660,39 @@ function nextMonthDayDate(day, from) {
   const dd = Math.min(want, last);
   return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
 }
+function ymdParts(dt) {
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+}
+function nextCycleDate(m, from) {
+  if (!m) return "";
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    const day = Math.max(1, Math.min(31, Number(m.monthDay) || 11));
+    let d = new Date((m.anchor || "2026-10-11") + "T00:00:00");
+    if (isNaN(d.getTime())) d = new Date();
+    const now = from ? new Date(from) : new Date();
+    now.setHours(0, 0, 0, 0);
+    const step = Number(m.intervalMonths) || 2;
+    let guard = 0;
+    while (d < now && guard < 36) {
+      d.setMonth(d.getMonth() + step);
+      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, last));
+      guard += 1;
+    }
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return ymdParts(d);
+  }
+  if (m.monthDay) return nextMonthDayDate(m.monthDay, from);
+  return m.date || "";
+}
+function memoOccurKey(m) {
+  const d = nextCycleDate(m);
+  return d ? d.slice(0, 7) : ymNow();
+}
 function isMemoDone(m) {
   if (!m) return true;
-  if (m.monthDay) return (m.doneMonths || []).indexOf(ymNow()) >= 0;
+  if (m.monthDay || m.intervalMonths) return (m.doneMonths || []).indexOf(memoOccurKey(m)) >= 0;
   return !!m.done;
 }
 function parseMonthDayAsk(text) {
@@ -6626,7 +6706,11 @@ function parseMonthDayAsk(text) {
 }
 function formatAiMemo(m) {
   const time = m.time ? " " + m.time : "";
-  if (m.monthDay) return "每月" + Number(m.monthDay) + "日" + time + "　" + m.text;
+  const flex = m.flexDays ? "（信件可差幾天）" : "";
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    return "每" + m.intervalMonths + "個月約" + Number(m.monthDay || 11) + "日" + flex + time + "　" + m.text;
+  }
+  if (m.monthDay) return (m.flexDays ? "約每月" : "每月") + Number(m.monthDay) + "日" + flex + time + "　" + m.text;
   if (m.date) {
     const p = String(m.date).slice(5).split("-");
     return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
@@ -6648,7 +6732,7 @@ function rememberAiMemo(text) {
     owner: memoOwner(),
     createdAt: nowStamp()
   };
-  if (rec.monthDay) rec.date = nextMonthDayDate(rec.monthDay);
+  if (m.monthDay) rec.date = nextCycleDate(rec);
   if (rec.owner === "1240") {
     const list = loadDevMemos();
     list.push(rec);
@@ -6666,17 +6750,18 @@ function openGoogleMemo(m) {
   const details = encodeURIComponent("統潔工作助手提醒");
   let range = "";
   let recur = "";
-  if (m.monthDay) {
-    const next = nextMonthDayDate(m.monthDay);
+  if (m.monthDay || m.intervalMonths) {
+    const next = nextCycleDate(m);
     if (m.time) range = gcalRange(next + "T" + m.time);
     else {
-      const start = next.replace(/-/g, "");
+      const start = String(next).replace(/-/g, "");
       const nx = new Date(next + "T00:00:00");
       nx.setDate(nx.getDate() + 1);
       const p = n => String(n).padStart(2, "0");
       range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
     }
-    recur = "&recur=RRULE:FREQ=MONTHLY;BYMONTHDAY=" + Number(m.monthDay);
+    const interval = m.intervalMonths && m.intervalMonths > 1 ? (";INTERVAL=" + m.intervalMonths) : "";
+    recur = "&recur=RRULE:FREQ=MONTHLY" + interval + ";BYMONTHDAY=" + Number(m.monthDay || 1);
   } else if (m.date && m.time) range = gcalRange(m.date + "T" + m.time);
   else if (m.date) {
     const start = m.date.replace(/-/g, "");
@@ -6690,8 +6775,8 @@ function openGoogleMemo(m) {
 }
 function upcomingMemos() {
   return myMemos().filter(m => !isMemoDone(m)).slice().sort((a, b) => {
-    const da = (a.monthDay ? nextMonthDayDate(a.monthDay) : (a.date || "9999")) + (a.time || "");
-    const db = (b.monthDay ? nextMonthDayDate(b.monthDay) : (b.date || "9999")) + (b.time || "");
+    const da = nextCycleDate(a) + (a.time || "");
+    const db = nextCycleDate(b) + (b.time || "");
     return da.localeCompare(db);
   });
 }
@@ -10056,9 +10141,9 @@ function bindAdminAi() {
       e.stopPropagation();
       const m = myMemos().find(x => x.id === btn.dataset.doneMemo);
       if (!m) return;
-      if (m.monthDay) {
+      if (m.monthDay || m.intervalMonths) {
         m.doneMonths = m.doneMonths || [];
-        const key = ymNow();
+        const key = memoOccurKey(m);
         if (m.doneMonths.indexOf(key) < 0) m.doneMonths.push(key);
       } else m.done = true;
       if (m.cycle || ((m.owner || "7651") !== "1240" && memoOwner() !== "1240")) {
