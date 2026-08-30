@@ -1168,22 +1168,28 @@ input[type="file"] {
   min-width: 0;
   max-width: 100%;
   overflow-wrap: break-word;
+  padding-left: 4px;
+  padding-right: 6px;
 }
 #work-card .small {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 #work-card .mini {
   flex-wrap: wrap;
   min-width: 0;
   max-width: 100%;
   align-items: flex-start;
+  overflow: visible;
 }
 #work-card .mini span {
   white-space: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
   min-width: 0;
   flex: 1;
+  overflow: visible;
 }
 .report-sum { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 10px; }
 .report-sum span {
