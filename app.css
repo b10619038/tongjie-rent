@@ -1390,7 +1390,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .inv-abs.inv-left { text-align: left; padding-left: 4px; }
 .inv-abs.inv-big { font-size: clamp(16px, 2.2vw, 22px); letter-spacing: .12em; }
-.inv-abs.inv-tid { font-size: clamp(14px, 1.8vw, 18px); }
+.inv-abs.inv-han { font-size: clamp(18px, 2.4vw, 26px); font-weight: 800; }
 .inv-abs.inv-mark { pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .inv-abs:focus { outline: 1px dashed #c2410c; background: rgba(255,255,255,.35); }
 @media print {

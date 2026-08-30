@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-04";
-const APP_EDIT_COUNT = 280;
+const APP_STAMP = "2026-08-31-01-05";
+const APP_EDIT_COUNT = 281;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票應稅改打英文V並放右邊格"] },
+  { ver: APP_STAMP, items: ["發票中文大寫紅字放大"] },
+  { ver: "2026-08-31-01-04", items: ["發票應稅改打英文V並放右邊格"] },
   { ver: "2026-08-31-01-03", items: ["二聯發票備註固定填四碼房號"] },
   { ver: "2026-08-31-01-02", items: ["發票中文大寫紅字改到國字左邊"] },
   { ver: "2026-08-31-01-01", items: ["發票買受人紅字往右移"] },
@@ -2919,9 +2920,9 @@ function invAbs(key, val, l, t, w, h, cls) {
   const extra = /inv-tid/.test(cls || "") ? " maxlength=\"1\"" : "";
   return `<input class="inv-abs${cls ? " " + cls : ""}" data-inv="${key}" value="${escapeHtml(String(val ?? ""))}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%"${extra} />`;
 }
-function invMark(txt, l, t, w, h) {
+function invMark(txt, l, t, w, h, cls) {
   if (!txt) return "";
-  return `<span class="inv-abs inv-mark" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%">${escapeHtml(txt)}</span>`;
+  return `<span class="inv-abs inv-mark${cls ? " " + cls : ""}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%">${escapeHtml(txt)}</span>`;
 }
 function invoiceCopyHtml(r, t, copyName) {
   const triple = r.kind === "factory";
@@ -2941,7 +2942,7 @@ function invoiceCopyHtml(r, t, copyName) {
   const day = ui.invoiceDay || p.day;
   const hans = moneyCnParts(total);
   const at = (W, H, x, y0, w, h, key, val, cls) => invAbs(key, val, ...invBox(W, H, x, y0, w, h), cls);
-  const mk = (W, H, x, y0, w, h, txt) => invMark(txt, ...invBox(W, H, x, y0, w, h));
+  const mk = (W, H, x, y0, w, h, txt, cls) => invMark(txt, ...invBox(W, H, x, y0, w, h), cls);
   if (triple) {
     const W = 1776, H = 1120;
     const taxLines = [233, 302, 367, 431, 495, 559, 622, 686, 749, 813];
@@ -2950,7 +2951,7 @@ function invoiceCopyHtml(r, t, copyName) {
       return at(W, H, x + 8, 226, rgt - x - 16, 30, "invoiceTax" + i, taxId[i] || "", "inv-tid");
     }).join("");
     const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
-    const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 54, 948, 30, 36, ch)).join("");
+    const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 58, 942, 38, 44, ch, "inv-han")).join("");
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 340, 168, 1320, 36, "invoiceBuyer", buyer, "inv-left")}
@@ -2971,7 +2972,7 @@ function invoiceCopyHtml(r, t, copyName) {
   }
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
-  const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 54, 888, 30, 36, ch)).join("");
+  const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 58, 882, 38, 44, ch, "inv-han")).join("");
   const roomNote = (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
