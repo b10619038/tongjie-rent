@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-19";
-const APP_EDIT_COUNT = 230;
+const APP_STAMP = "2026-08-30-20-20";
+const APP_EDIT_COUNT = 231;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["通知開關報修改為租客報修"] },
+  { ver: APP_STAMP, items: ["通知開關改為可點擊"] },
+  { ver: "2026-08-30-20-19", items: ["通知開關報修改為租客報修"] },
   { ver: "2026-08-30-20-17", items: ["通知類別改為左右滑動開關"] },
   { ver: "2026-08-30-20-16", items: ["密碼欄位改為圓角"] },
   { ver: "2026-08-30-20-08", items: ["設定新增通知類別、安裝、公司資料與租客密碼"] },
@@ -5858,7 +5859,7 @@ function adminSettings() {
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
       <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
       <div class="notify-prefs">
-        ${NOTIFY_PREF_ITEMS.map(x => `<label class="pref-switch"><span>${escapeHtml(x.label)}</span><input type="checkbox" data-notify-pref="${x.id}" ${prefs[x.id] ? "checked" : ""}><i></i></label>`).join("")}
+        ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
       </div>
     </div>
     <div class="card card-body">
@@ -9180,12 +9181,17 @@ function bindAdminSettings() {
     ui.keepScroll = true;
     render();
   };
-  document.querySelectorAll("[data-notify-pref]").forEach(el => {
-    el.onchange = () => {
+  document.querySelectorAll("[data-notify-pref]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const on = !btn.classList.contains("on");
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
       const prefs = loadNotifyPrefs();
-      prefs[el.dataset.notifyPref] = !!el.checked;
+      prefs[btn.dataset.notifyPref] = on;
       saveNotifyPrefs(prefs);
-      toast(el.checked ? "已開啟此類通知" : "已關閉此類通知");
+      toast(on ? "已開啟此類通知" : "已關閉此類通知");
     };
   });
   const coForm = document.getElementById("company-form");

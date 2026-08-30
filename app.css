@@ -312,30 +312,27 @@ input, textarea, select {
   justify-content: space-between;
   gap: 12px;
   min-height: 46px;
-  cursor: pointer;
-  pointer-events: auto !important;
+  position: relative;
+  z-index: 6;
 }
 .pref-switch span {
   font-weight: 700;
   font-size: 15px;
 }
-.pref-switch input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-.pref-switch i {
+.pref-knob {
   width: 50px;
   height: 30px;
+  border: 0;
+  padding: 0;
   border-radius: 999px;
   background: #d5d5d5;
   position: relative;
   flex-shrink: 0;
+  cursor: pointer;
+  pointer-events: auto !important;
   transition: background .22s ease;
 }
-.pref-switch i::after {
+.pref-knob::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -346,9 +343,10 @@ input, textarea, select {
   background: #fff;
   box-shadow: 0 1px 4px rgba(0,0,0,.18);
   transition: transform .22s cubic-bezier(.22,.82,.22,1);
+  pointer-events: none;
 }
-.pref-switch input:checked + i { background: var(--teal); }
-.pref-switch input:checked + i::after { transform: translateX(20px); }
+.pref-knob.on { background: var(--teal); }
+.pref-knob.on::after { transform: translateX(20px); }
 
 .slide-right { animation: slideRight .8s ease both; }
 .slide-left { animation: slideLeft .8s ease both; }
