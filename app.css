@@ -1183,13 +1183,17 @@ input[type="file"] {
   align-items: flex-start;
   overflow: visible;
 }
-#work-card .mini span {
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  min-width: 0;
-  flex: 1;
-  overflow: visible;
+#work-card .work-memo {
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 8px 8px;
+  margin: 0 -4px;
+}
+#work-card .work-memo.open {
+  background: var(--chip);
+}
+#work-card .work-memo-tools {
+  margin: 4px 0 10px;
 }
 .report-sum { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 10px; }
 .report-sum span {

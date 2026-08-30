@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-02-44";
-const APP_EDIT_COUNT = 311;
+const APP_STAMP = "2026-08-31-02-48";
+const APP_EDIT_COUNT = 312;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月狀況文字左邊不被切到"] },
+  { ver: APP_STAMP, items: ["本月工作點一筆才出現日曆與完成"] },
+  { ver: "2026-08-31-02-44", items: ["本月狀況文字左邊不被切到"] },
   { ver: "2026-08-31-02-40", items: ["本月工作長字改為自動換行不被擋住"] },
   { ver: "2026-08-31-02-30", items: ["本月自動分析與即將提醒合併成本月工作"] },
   { ver: "2026-08-31-01-52", items: ["發票中文大寫紅字往下0.1公分"] },
@@ -6802,14 +6803,17 @@ function adminAi() {
       if (g.soon.length) bits.push("近3天 " + g.soon.length);
       if (plan.unpaid) bits.push("未繳 " + plan.unpaid);
       const summary = bits.join(" · ");
-      const memoRows = arr => arr.map(m => `
-            <div class="mini" style="align-items:flex-start">
+      const memoRows = arr => arr.map(m => {
+        const on = ui.workMemoId === m.id;
+        return `
+            <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
               <span>${escapeHtml(formatAiMemo(m))}</span>
             </div>
-            <div class="unpaid-tools" style="margin:6px 0 10px">
+            ${on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
-            </div>`).join("");
+            </div>` : ""}`;
+      }).join("");
       const sect = (title, arr) => arr.length ? `<div class="small" style="margin:12px 0 6px">${title}</div>` + memoRows(arr) : "";
       return `<div class="card card-body tenant-slim${ui.workOpen ? " open" : ""}" id="work-card">
       <div class="row tenant-slim-head">
@@ -6821,7 +6825,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">固定每月的工作，點完成只算這一次，下次週期還會再出現。狀況可點進去看。</p>
+          <p class="small" style="margin-top:10px">點一筆工作可加到日曆或完成。固定每月的，完成只算這一次。</p>
           ${g.all.length ? (sect("過期未完成", g.overdue) + sect("今天／3 天內", g.soon) + sect("本月其餘", g.later)) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
           <div class="small" style="margin:14px 0 6px">${escapeHtml(plan.monthLabel)}　本月狀況</div>
           ${plan.stats.map(s => s.go
@@ -10558,6 +10562,18 @@ function bindAdminAi() {
     ui.workOpen = !workCard.classList.contains("open");
     workCard.classList.toggle("open", ui.workOpen);
   };
+  document.querySelectorAll("[data-work-memo]").forEach(el => {
+    el.addEventListener("pointerdown", e => e.stopPropagation());
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = el.dataset.workMemo;
+      ui.workMemoId = ui.workMemoId === id ? "" : id;
+      ui.workOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-work-go]").forEach(el => {
     el.addEventListener("pointerdown", e => e.stopPropagation());
     el.onclick = e => {
