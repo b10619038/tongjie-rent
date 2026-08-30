@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-59";
-const APP_EDIT_COUNT = 241;
+const APP_STAMP = "2026-08-30-21-02";
+const APP_EDIT_COUNT = 242;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務浮動球改用橘貓頭貼"] },
+  { ver: APP_STAMP, items: ["跑業務浮動球按下有縮放"] },
+  { ver: "2026-08-30-20-59", items: ["跑業務浮動球改用橘貓頭貼"] },
   { ver: "2026-08-30-20-55", items: ["提問工作助手改用橘貓頭貼"] },
   { ver: "2026-08-30-20-53", items: ["開發者工作助手改用同一張頭貼"] },
   { ver: "2026-08-30-20-52", items: ["字體大小可一鍵自動最佳化"] },
@@ -6166,9 +6167,15 @@ function bindErrandBall() {
       window.removeEventListener("touchend", onEnd);
       const next = clamp(parseFloat(ball.style.left) || 0, parseFloat(ball.style.top) || 0);
       saveErrandBallPos(next);
+      ball.classList.remove("press");
       if (!moved) {
-        ui.errandBallOpen = true;
-        ensureErrandBall();
+        ball.classList.add("pop");
+        setTimeout(() => {
+          ui.errandBallOpen = true;
+          ensureErrandBall();
+        }, 140);
+      } else {
+        ball.classList.remove("pop");
       }
     };
     const onDown = e => {
@@ -6181,6 +6188,8 @@ function bindErrandBall() {
       oy = parseFloat(ball.style.top) || 0;
       moved = false;
       dragging = true;
+      ball.classList.remove("pop");
+      ball.classList.add("press");
       window.addEventListener("pointermove", onMove, { passive: false });
       window.addEventListener("touchmove", onMove, { passive: false });
       window.addEventListener("pointerup", onEnd);
