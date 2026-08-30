@@ -14,7 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-12-59";
+const APP_STAMP = "2026-08-30-13-03";
+const APP_EDIT_COUNT = 204;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -28,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["出租率與太陽能照片從右邊滑入"] },
+  { ver: APP_STAMP, items: ["版本號改為西元-月-日-時-分-累加修改次數"] },
+  { ver: "2026-08-30-12-59", items: ["出租率與太陽能照片從右邊滑入"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -232,8 +234,8 @@ const CHANGELOG = [
   { ver: "2026-08-28-上午1:33", items: ["電腦版安裝圖標改為圓角"] },
   { ver: "2026-08-28-上午1:28", items: ["管理員公告改為連點兩下按愛心，讚與笑臉已移除"] }
 ];
-const APP_BUILD_NO = CHANGELOG.length;
-const APP_VERSION = APP_STAMP + "-" + String(APP_BUILD_NO);
+const APP_BUILD_NO = APP_EDIT_COUNT;
+const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const THEME_KEY = "tongjie_theme";
 const FONT_KEY = "tongjie_font";
 const THEMES = [
