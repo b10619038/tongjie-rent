@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-24";
-const APP_EDIT_COUNT = 253;
+const APP_STAMP = "2026-08-30-22-27";
+const APP_EDIT_COUNT = 254;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
+  { ver: APP_STAMP, items: ["設定可開啟指紋／面容快速登入"] },
+  { ver: "2026-08-30-22-24", items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
   { ver: "2026-08-30-21-55", items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
   { ver: "2026-08-30-21-38", items: ["更新通知不會一直重複跳，登錄這筆可點"] },
   { ver: "2026-08-30-21-34", items: ["管理員頭貼改為女客服，可改選男客服"] },
@@ -2106,6 +2107,121 @@ function logoutToGate() {
   lastRenderRole = "";
   lastRenderPage = "";
   render();
+}
+const BIO_KEY = "tongjie_webauthn_v1";
+function bioSupport() {
+  return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create);
+}
+function loadBio() {
+  try { return JSON.parse(localStorage.getItem(BIO_KEY) || "null"); } catch { return null; }
+}
+function saveBio(obj) {
+  try { localStorage.setItem(BIO_KEY, JSON.stringify(obj)); } catch {}
+}
+function clearBio() {
+  try { localStorage.removeItem(BIO_KEY); } catch {}
+}
+function bioEnrolled() {
+  const rec = loadBio();
+  return !!(rec && rec.credId);
+}
+function bioLabel() {
+  return isIOS() ? "面容／指紋登入" : "指紋／臉部登入";
+}
+function bufToB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = "";
+  bytes.forEach(b => { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64ToBuf(s) {
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  const raw = atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + pad);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out.buffer;
+}
+async function enrollBiometric() {
+  if (!ui.role) { toast("請先登入再開啟"); return false; }
+  if (!bioSupport()) { toast("這台裝置不支援指紋或面容"); return false; }
+  try {
+    const rpId = location.hostname;
+    const who = ui.role === "admin" ? ("admin-" + (ui.adminCode || "staff")) : ("room-" + (ui.roomNo || ui.tenantId || "t"));
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: "統潔開發", id: rpId },
+        user: {
+          id: new TextEncoder().encode(who.slice(0, 64)),
+          name: who,
+          displayName: ui.role === "admin" ? (ui.adminCode === "1240" ? "開發者" : "管理員") : String(ui.roomNo || "租客")
+        },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
+        timeout: 60000,
+        attestation: "none"
+      }
+    });
+    if (!cred || !cred.rawId) { toast("沒有取得裝置驗證"); return false; }
+    saveBio({
+      credId: bufToB64(cred.rawId),
+      role: ui.role,
+      adminCode: ui.adminCode || "",
+      roomNo: ui.roomNo || "",
+      tenantId: ui.tenantId || ""
+    });
+    toast("已開啟" + bioLabel());
+    return true;
+  } catch (err) {
+    const name = err && err.name;
+    if (name === "NotAllowedError") toast("已取消");
+    else if (name === "InvalidStateError") toast("這台手機已經登錄過，改為沿用");
+    else toast("無法開啟，請用加入主畫面的 App 再試");
+    return false;
+  }
+}
+async function biometricLogin() {
+  const rec = loadBio();
+  if (!rec || !rec.credId) { toast("尚未在設定裡開啟快速登入"); return; }
+  if (!bioSupport()) { toast("這台裝置不支援指紋或面容"); return; }
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rpId: location.hostname,
+        allowCredentials: [{ type: "public-key", id: b64ToBuf(rec.credId) }],
+        userVerification: "required",
+        timeout: 60000
+      }
+    });
+  } catch (err) {
+    if (err && err.name === "NotAllowedError") toast("已取消");
+    else toast("辨識失敗，請改用密碼");
+    return;
+  }
+  if (rec.role === "admin" && ADMIN_CODES.includes(rec.adminCode)) {
+    ui.role = "admin";
+    ui.adminCode = rec.adminCode;
+    ui.page = "dash";
+    ui.loginError = "";
+    persistUi();
+    audit("登入", "快速登入 " + rec.adminCode);
+    beatPresence();
+    render();
+    enablePush().then(() => maybeNudgeNotifies());
+    armPushAsk();
+    return;
+  }
+  if (rec.role === "tenant") {
+    const found = tenantByRoomNo(rec.roomNo);
+    if (found.room && found.tenant) {
+      audit("登入", "快速登入房號 " + found.room.no);
+      enterTenant(found.room, found.tenant);
+      return;
+    }
+  }
+  clearBio();
+  toast("快速登入已失效，請用密碼登入後重新開啟");
 }
 const INTRO_SRC = "images/intro-city.mp4?v=0237";
 const INTRO_POSTER = "images/intro-city.jpg?v=0237";
@@ -5331,6 +5447,7 @@ function gateView() {
         ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="建立密碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
+        ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
         ${isAdmin ? "" : `<button class="forgot-link" id="go-forgot" type="button">忘記密碼</button>`}
       </div>
       ${isAdmin ? desktopInstallCardHtml() + installCardHtml("下載 App") : installCardHtml("下載 App")}
@@ -5351,6 +5468,10 @@ function gateView() {
       <strong>我是管理員</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
+    ${bioEnrolled() ? `<button class="role-btn slide-left delay" id="bio-login" type="button">
+      <strong>${bioLabel()}</strong>
+      <span>用這台手機的指紋或臉直接進入上次的帳號。</span>
+    </button>` : ""}
   </div>`;
 }
 
@@ -8322,6 +8443,12 @@ function bindGate() {
   document.querySelectorAll("[data-go]").forEach(btn => {
     btn.onclick = () => { ui.page = btn.dataset.go; ui.loginError = ""; ui.foundPass = null; render(); };
   });
+  const bioBtn = document.getElementById("bio-login");
+  if (bioBtn) bioBtn.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    biometricLogin();
+  };
   const back = document.getElementById("back-gate");
   if (back) back.onclick = () => {
     if (ui.page === "tenant-setpass" || ui.page === "tenant-forgot") {
@@ -9648,7 +9775,16 @@ function bindAdmin() {
 }
 
 function lookSettingsHtml() {
+  const on = bioEnrolled();
   return `<div class="card card-body">
+      <div class="label">快速登入</div>
+      <div class="pref-switch">
+        <span>${bioLabel()}</span>
+        <button type="button" class="pref-knob${on ? " on" : ""}" id="bio-toggle" aria-pressed="${on ? "true" : "false"}"></button>
+      </div>
+      <p class="small">${bioSupport() ? "開啟後，登出再用這台手機的指紋或臉即可進入。僅這台裝置有效。" : "這台裝置或瀏覽器不支援。請用手機 Safari／Chrome，並加入主畫面後再試。"}</p>
+    </div>
+    <div class="card card-body">
       <div class="label">調色盤</div>
       <p class="small">選擇整體色調。</p>
       <div class="theme-grid in-page">
@@ -9751,6 +9887,21 @@ function bindLookSettings() {
     slider.addEventListener("input", slide);
     slider.addEventListener("change", slide);
   }
+  const bio = document.getElementById("bio-toggle");
+  if (bio) bio.onclick = async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (bioEnrolled()) {
+      clearBio();
+      toast("已關閉快速登入");
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    const ok = await enrollBiometric();
+    ui.keepScroll = true;
+    if (ok) render();
+  };
   const auto = document.getElementById("font-auto");
   if (auto) auto.onclick = e => {
     e.preventDefault();
