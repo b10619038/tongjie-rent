@@ -952,7 +952,7 @@ input[type="file"] {
   .ring-card { padding: 12px; gap: 10px; overflow: hidden; }
   .ring-wrap { width: 64px; height: 64px; flex: 0 0 64px; }
   .occ-shot { width: min(96px, 26vw); height: min(62px, 17vw); border-radius: 12px; }
-  .solar-shot { width: min(42%, 150px); height: 86px; }
+  .solar-shot { width: min(96px, 26vw); height: min(62px, 17vw); border-radius: 12px; }
   .theme-fab { right: 12px; bottom: calc(16px + var(--safe-b)); }
   .ver { padding-left: 16px; padding-right: 16px; padding-bottom: calc(12px + var(--safe-b)); }
 }
@@ -979,13 +979,12 @@ input[type="file"] {
 .solar-card { min-width: 0; }
 .solar-shot {
   margin-left: auto;
-  width: 48%;
-  max-width: 260px;
-  height: 110px;
-  object-fit: contain;
-  object-position: right center;
-  background: transparent;
-  border-radius: 0;
+  width: min(118px, 30vw);
+  height: min(74px, 19vw);
+  object-fit: cover;
+  object-position: center;
+  background: #ececec;
+  border-radius: 14px;
   flex: 0 0 auto;
   pointer-events: none;
 }
@@ -1036,6 +1035,7 @@ input[type="file"] {
 }
 @media (min-width: 860px) {
   .occ-shot { width: 160px; height: 92px; }
+  .solar-shot { width: 160px; height: 92px; }
 }
 .ring.teal { background: conic-gradient(from -90deg, #C96B8B calc(var(--p) * 1%), #EEE8EC 0); }
 .ring-wrap b {

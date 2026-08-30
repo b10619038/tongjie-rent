@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-43";
-const APP_EDIT_COUNT = 212;
+const APP_STAMP = "2026-08-30-13-51";
+const APP_EDIT_COUNT = 213;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["報修金額可填待報價"] },
+  { ver: APP_STAMP, items: ["太陽能照片改成和其他三張同形狀"] },
+  { ver: "2026-08-30-13-43", items: ["報修金額可填待報價"] },
   { ver: "2026-08-30-13-41", items: ["後台報修圖卡可收成一條"] },
   { ver: "2026-08-30-13-38", items: ["後台可查看報修照片，工錢改為金額"] },
   { ver: "2026-08-30-13-29", items: ["開發者提交的報修會顯示在後台"] },
@@ -6446,7 +6447,7 @@ function adminDash() {
           <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
           <div class="small">套房 4 棟　廠房牛1 五戶</div>
         </div>
-        <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.png?v=0205" alt="太陽能板">
+        <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
     </div>
     ${overallReportHtml()}
