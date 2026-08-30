@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v323";
-const BUILD = "20260830-2134";
+const CACHE = "tongjie-app-v324";
+const BUILD = "20260830-2138";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -8,13 +8,8 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.map(k => caches.delete(k)));
+    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
-    const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    await Promise.all(cl.map(c => {
-      try { c.postMessage({ type: "APPLY_UPDATE" }); } catch {}
-      return c.navigate ? c.navigate(c.url).catch(() => {}) : Promise.resolve();
-    }));
   })());
 });
 self.addEventListener("message", e => {

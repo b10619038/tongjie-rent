@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-34";
-const APP_EDIT_COUNT = 250;
+const APP_STAMP = "2026-08-30-21-38";
+const APP_EDIT_COUNT = 251;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["管理員頭貼改為女客服，可改選男客服"] },
+  { ver: APP_STAMP, items: ["更新通知不會一直重複跳，登錄這筆可點"] },
+  { ver: "2026-08-30-21-34", items: ["管理員頭貼改為女客服，可改選男客服"] },
   { ver: "2026-08-30-21-32", items: ["工作助手可選女客服或男客服頭貼"] },
   { ver: "2026-08-30-21-28", items: ["管理員工作助手與浮動球改用客服頭貼"] },
   { ver: "2026-08-30-21-26", items: ["點工作助手頭貼可換照片與個性"] },
@@ -487,6 +488,11 @@ function hasUnseenUpdate() {
   if (!last) return false;
   return last !== APP_VERSION;
 }
+function markVersionSeen() {
+  try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+  ui.updateReady = false;
+  ui.updateNotes = false;
+}
 function unseenChangelog() {
   const last = lastSeenVersion();
   if (last === APP_VERSION) return [];
@@ -563,16 +569,18 @@ function updateBarHtml() {
   return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此查看更新內容</div>`;
 }
 function applyAppUpdate() {
-  try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
-  ui.updateNotes = false;
-  ui.updateReady = false;
+  markVersionSeen();
   try {
     const reg = window.__swReg;
-    if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+    if (reg && reg.waiting) {
+      __reloading = true;
+      reg.waiting.postMessage("SKIP_WAITING");
+    }
   } catch {}
   location.reload();
 }
 function promptAppUpdate(reg) {
+  if (lastSeenVersion() === APP_VERSION) return;
   if (ui.updateReady) return;
   ui.updateReady = true;
   try { render(); } catch {}
@@ -6217,7 +6225,7 @@ function errandFormInnerHtml() {
           ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
-          <button class="btn-navy" type="submit" style="margin-top:10px">登錄這筆</button>`;
+          <button class="btn-navy" type="button" id="errand-submit" style="margin-top:10px">登錄這筆</button>`;
 }
 function errandRecordsHtml() {
   const slips = (state.bankSlips || []).slice().reverse();
@@ -8212,9 +8220,9 @@ function bindUpdateBar() {
   const now = document.getElementById("apply-update-now");
   if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
   const close = document.getElementById("update-close");
-  if (close) close.onclick = () => { ui.updateNotes = false; render(); };
+  if (close) close.onclick = () => { markVersionSeen(); render(); };
   const mask = document.getElementById("update-mask");
-  if (mask) mask.onclick = e => { if (e.target.id === "update-mask") { ui.updateNotes = false; render(); } };
+  if (mask) mask.onclick = e => { if (e.target.id === "update-mask") { markVersionSeen(); render(); } };
 }
 
 function bindTenant() {
@@ -9790,6 +9798,87 @@ function bindAiBlockReorder() {
     if (e.target.closest(".ai-drag")) { e.preventDefault(); e.stopPropagation(); }
   }, true);
 }
+function submitErrandNow() {
+  if (!errandGuessList().length && String(ui.errandNote || "").trim()) {
+    ui.errandGuesses = [inferOneFile({ name: ui.errandNote.trim() })];
+  }
+  const list = errandGuessList();
+  if (!list.length) {
+    if (ui.errandAbsorb) {
+      toast("Excel 已記入進出帳");
+      ui.errandAbsorb = "";
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    toast("請打字說明，或上傳照片／檔案");
+    return;
+  }
+  const pending = list.filter(x => x.needCompany || x.needBank);
+  if (pending.length) { toast("還有 " + pending.length + " 張還沒選公司或銀行"); return; }
+  if (!state.errands) state.errands = [];
+  if (!state.books) state.books = [];
+  let nCash = 0, nOut = 0, nIn = 0, nLink = 0;
+  list.forEach((g, idx) => {
+    const date = ymdOf((g && g.date) || nowStamp());
+    const amount = Number(g && g.amount) || 0;
+    const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
+    const place = (g && g.place) || "";
+    const note = (g && g.note) || "";
+    const company = normalizeBookCompany((g && g.company) || "統潔");
+    const id = "er" + Date.now() + "-" + idx;
+    const pendingBank = !!(g && g.pendingBank);
+    const cashType = (g && g.cashType) === "out" ? "out" : "in";
+    const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子/.test(title) || /聯邦|兆豐|農會/.test(place));
+    const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
+    if (amount && cash) {
+      cash.linkedId = id;
+      cash.pendingBank = false;
+      state.books.push({
+        id: "bk" + Date.now() + "-c" + idx, type: "out", date, amount, company: "現金(保險箱)",
+        bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id
+      });
+      state.books.push({
+        id: "bk" + Date.now() + "-b" + idx, type: "in", date, amount, company: company === "現金(保險箱)" ? "統潔" : company,
+        bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id
+      });
+      nLink += 1;
+    } else if (amount) {
+      state.books.push({
+        id: "bk" + Date.now() + "-" + idx, type: cashType,
+        date, amount, company, bank: place, note: note || title,
+        pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)")
+      });
+      if (cashType === "out") nOut += 1;
+      else if (pendingBank) nCash += 1;
+      else nIn += 1;
+    }
+    state.errands.push({
+      id, kind: "bank", date, title, place, amount, note, company,
+      pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : "",
+      skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
+    });
+    const p = date.split("-");
+    if (p.length === 3) {
+      ui.calYear = Number(p[0]);
+      ui.calMonth = Number(p[1]);
+      ui.calDay = Number(p[2]);
+    }
+  });
+  ui.errandMedia = [];
+  ui.errandAbsorb = "";
+  ui.errandGuess = null;
+  ui.errandGuesses = [];
+  ui.errandNote = "";
+  ui.errandOpen = true;
+  if (nCash || nOut || nIn || nLink) {
+    pushAiLog({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
+  }
+  save();
+  toast("已登錄 " + (list.length || 1) + " 筆");
+  ui.keepScroll = true;
+  render();
+}
 function bindAdminAi() {
   bindErrandGuessPicks();
   const openSheet = e => {
@@ -9985,86 +10074,17 @@ function bindAdminAi() {
     };
     errand.onsubmit = e => {
     e.preventDefault();
-    if (!errandGuessList().length && String(ui.errandNote || "").trim()) {
-      ui.errandGuesses = [inferOneFile({ name: ui.errandNote.trim() })];
-    }
-    const list = errandGuessList();
-    if (!list.length) {
-      if (ui.errandAbsorb) {
-        toast("Excel 已記入進出帳");
-        ui.errandAbsorb = "";
-        ui.keepScroll = true;
-        render();
-        return;
-      }
-      toast("請打字說明，或上傳照片／檔案");
-      return;
-    }
-    const pending = list.filter(x => x.needCompany || x.needBank);
-    if (pending.length) { toast("還有 " + pending.length + " 張還沒選公司或銀行"); return; }
-    if (!state.errands) state.errands = [];
-    if (!state.books) state.books = [];
-    let nCash = 0, nOut = 0, nIn = 0, nLink = 0;
-    list.forEach((g, idx) => {
-      const date = ymdOf((g && g.date) || nowStamp());
-      const amount = Number(g && g.amount) || 0;
-      const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
-      const place = (g && g.place) || "";
-      const note = (g && g.note) || "";
-      const company = normalizeBookCompany((g && g.company) || "統潔");
-      const id = "er" + Date.now() + "-" + idx;
-      const pendingBank = !!(g && g.pendingBank);
-      const cashType = (g && g.cashType) === "out" ? "out" : "in";
-      const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子/.test(title) || /聯邦|兆豐|農會/.test(place));
-      const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
-      if (amount && cash) {
-        cash.linkedId = id;
-        cash.pendingBank = false;
-        state.books.push({
-          id: "bk" + Date.now() + "-c" + idx, type: "out", date, amount, company: "現金(保險箱)",
-          bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id
-        });
-        state.books.push({
-          id: "bk" + Date.now() + "-b" + idx, type: "in", date, amount, company: company === "現金(保險箱)" ? "統潔" : company,
-          bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id
-        });
-        nLink += 1;
-      } else if (amount) {
-        state.books.push({
-          id: "bk" + Date.now() + "-" + idx, type: cashType,
-          date, amount, company, bank: place, note: note || title,
-          pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)")
-        });
-        if (cashType === "out") nOut += 1;
-        else if (pendingBank) nCash += 1;
-        else nIn += 1;
-      }
-      state.errands.push({
-        id, kind: "bank", date, title, place, amount, note, company,
-        pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : "",
-        skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
-      });
-      const p = date.split("-");
-      if (p.length === 3) {
-        ui.calYear = Number(p[0]);
-        ui.calMonth = Number(p[1]);
-        ui.calDay = Number(p[2]);
-      }
-    });
-    ui.errandMedia = [];
-    ui.errandAbsorb = "";
-    ui.errandGuess = null;
-    ui.errandGuesses = [];
-    ui.errandNote = "";
-    ui.errandOpen = true;
-    if (nCash || nOut || nIn || nLink) {
-      pushAiLog({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
-    }
-    save();
-    toast("已登錄 " + (list.length || 1) + " 筆");
-    ui.keepScroll = true;
-    render();
+    submitErrandNow();
     };
+    const sub = document.getElementById("errand-submit");
+    if (sub) {
+      sub.addEventListener("pointerdown", ev => ev.stopPropagation());
+      sub.onclick = ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        submitErrandNow();
+      };
+    }
     document.querySelectorAll("#errand-form input, #errand-form select, #errand-form textarea, #errand-form .bank-pick").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => { if (el.focus) el.focus(); }, 0); });
       el.addEventListener("click", e => e.stopPropagation());
