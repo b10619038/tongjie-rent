@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-27";
-const APP_EDIT_COUNT = 254;
+const APP_STAMP = "2026-08-30-22-29";
+const APP_EDIT_COUNT = 255;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定可開啟指紋／面容快速登入"] },
+  { ver: APP_STAMP, items: ["設定裡公司資料可正常輸入與儲存"] },
+  { ver: "2026-08-30-22-27", items: ["設定可開啟指紋／面容快速登入"] },
   { ver: "2026-08-30-22-24", items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
   { ver: "2026-08-30-21-55", items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
   { ver: "2026-08-30-21-38", items: ["更新通知不會一直重複跳，登錄這筆可點"] },
@@ -6368,12 +6369,12 @@ function adminSettings() {
     <form class="card card-body" id="company-form" autocomplete="off">
       <div class="label">公司資料</div>
       <p class="small">會同步到租客繳費頁的匯款帳戶。</p>
-      <label class="field"><span>戶名</span><input name="name" type="text" value="${escapeHtml(co.name)}" /></label>
-      <label class="field"><span>銀行代號</span><input name="bankCode" type="text" value="${escapeHtml(co.bankCode)}" /></label>
-      <label class="field"><span>銀行名稱</span><input name="bankName" type="text" value="${escapeHtml(co.bankName)}" /></label>
-      <label class="field"><span>帳號</span><input name="account" type="text" value="${escapeHtml(co.account)}" /></label>
-      <label class="field"><span>客服電話</span><input name="phone" type="text" value="${escapeHtml(co.phone)}" placeholder="選填" /></label>
-      <button class="btn-navy" type="submit">儲存公司資料</button>
+      <label class="field"><span>戶名</span><input id="co-name" name="coName" type="text" value="${escapeHtml(co.name)}" /></label>
+      <label class="field"><span>銀行代號</span><input id="co-bank-code" name="bankCode" type="text" value="${escapeHtml(co.bankCode)}" /></label>
+      <label class="field"><span>銀行名稱</span><input id="co-bank-name" name="bankName" type="text" value="${escapeHtml(co.bankName)}" /></label>
+      <label class="field"><span>帳號</span><input id="co-account" name="account" type="text" value="${escapeHtml(co.account)}" /></label>
+      <label class="field"><span>客服電話</span><input id="co-phone" name="phone" type="text" value="${escapeHtml(co.phone)}" placeholder="選填" /></label>
+      <button class="btn-navy" type="button" id="co-save">儲存公司資料</button>
     </form>
     ${lookSettingsHtml()}
     <div class="card card-body">
@@ -9995,18 +9996,31 @@ function bindAdminSettings() {
     };
   });
   const coForm = document.getElementById("company-form");
-  if (coForm) coForm.onsubmit = e => {
-    e.preventDefault();
+  const saveCompany = () => {
     if (!state.company) state.company = Object.assign({}, DEFAULT_COMPANY);
-    state.company.name = String(coForm.name.value || "").trim() || DEFAULT_COMPANY.name;
-    state.company.bankCode = String(coForm.bankCode.value || "").trim() || DEFAULT_COMPANY.bankCode;
-    state.company.bankName = String(coForm.bankName.value || "").trim() || DEFAULT_COMPANY.bankName;
-    state.company.account = String(coForm.account.value || "").trim() || DEFAULT_COMPANY.account;
-    state.company.phone = String(coForm.phone.value || "").trim();
+    const val = id => String((document.getElementById(id) || {}).value || "").trim();
+    state.company.name = val("co-name") || DEFAULT_COMPANY.name;
+    state.company.bankCode = val("co-bank-code") || DEFAULT_COMPANY.bankCode;
+    state.company.bankName = val("co-bank-name") || DEFAULT_COMPANY.bankName;
+    state.company.account = val("co-account") || DEFAULT_COMPANY.account;
+    state.company.phone = val("co-phone");
     save();
     toast("公司資料已儲存");
     ui.keepScroll = true;
     render();
+  };
+  if (coForm) {
+    coForm.onsubmit = e => { e.preventDefault(); saveCompany(); };
+    coForm.querySelectorAll("input").forEach(el => {
+      el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => { try { el.focus(); } catch {} }, 0); });
+      el.addEventListener("click", e => { e.stopPropagation(); try { el.focus(); } catch {} });
+    });
+  }
+  const coSave = document.getElementById("co-save");
+  if (coSave) coSave.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    saveCompany();
   };
 }
 function bindAiBlockReorder() {

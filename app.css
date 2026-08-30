@@ -132,6 +132,31 @@ input, textarea, select {
   width: 100%;
   min-height: 48px;
   font-size: 16px;
+}
+#company-form,
+#set-pass-form {
+  position: relative;
+  z-index: 8;
+  isolation: isolate;
+  pointer-events: auto !important;
+}
+#company-form .field,
+#company-form input,
+#company-form label,
+#company-form .btn-navy,
+#set-pass-form .field,
+#set-pass-form input,
+#set-pass-form button {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 8;
+}
+#company-form input,
+#set-pass-form input {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  touch-action: manipulation;
+}
   background: #fff;
   color: #111;
 }
