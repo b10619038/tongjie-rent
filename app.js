@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-40";
-const APP_EDIT_COUNT = 297;
+const APP_STAMP = "2026-08-31-01-41";
+const APP_EDIT_COUNT = 298;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票統編紅字往上0.1公分、往右0.2公分"] },
+  { ver: APP_STAMP, items: ["三聯發票日期紅字往左0.2公分"] },
+  { ver: "2026-08-31-01-40", items: ["發票統編紅字往上0.1公分、往右0.2公分"] },
   { ver: "2026-08-31-01-39", items: ["三聯發票日期紅字往右1.5公分"] },
   { ver: "2026-08-31-01-38", items: ["發票統編紅字往右0.5公分、往下0.2公分"] },
   { ver: "2026-08-31-01-34", items: ["手機看發票會等比例縮小，紅字一起縮"] },
@@ -2975,9 +2976,9 @@ function invoiceCopyHtml(r, t, copyName) {
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 301, 164, 1360, 42, "invoiceBuyer", buyer, "inv-left inv-buyer")}
       ${boxes}
-      ${at(W, H, 1062, 232, 78, 32, "invoiceY", y)}
-      ${at(W, H, 1188, 232, 68, 32, "invoiceMo", mo)}
-      ${at(W, H, 1298, 232, 72, 32, "invoiceDay", day)}
+      ${at(W, H, 1043, 232, 78, 32, "invoiceY", y)}
+      ${at(W, H, 1169, 232, 68, 32, "invoiceMo", mo)}
+      ${at(W, H, 1279, 232, 72, 32, "invoiceDay", day)}
       ${at(W, H, 118, 408, 310, 50, "invoiceItem", item)}
       ${at(W, H, 458, 408, 210, 50, "invoiceQty", qty)}
       ${at(W, H, 704, 408, 170, 50, "invoicePrice", price)}
