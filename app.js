@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-43";
-const APP_EDIT_COUNT = 236;
+const APP_STAMP = "2026-08-30-20-50";
+const APP_EDIT_COUNT = 237;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["管理員工作助手不保留聊天紀錄"] },
+  { ver: APP_STAMP, items: ["工作助手改用管理員／開發者頭貼"] },
+  { ver: "2026-08-30-20-43", items: ["管理員工作助手不保留聊天紀錄"] },
   { ver: "2026-08-30-20-38", items: ["開發者工作助手對話不同步到管理員"] },
   { ver: "2026-08-30-20-34", items: ["開發者即將提醒不同步到管理員"] },
   { ver: "2026-08-30-20-27", items: ["跑業務可改為可拖曳浮動球"] },
@@ -3226,6 +3227,11 @@ function staffAvatarHtml(size, title) {
   const src = name === "開發者" ? "images/dev-avatar.jpg?v=1455" : "images/staff-avatar.jpg?v=1451";
   return `<img class="${cls}" src="${src}" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">`;
 }
+function aiAssistAvatarHtml() {
+  const who = (ui.adminCode === "1240") ? "開發者" : "管理員";
+  const src = who === "開發者" ? "images/dev-avatar.jpg?v=1455" : "images/staff-avatar.jpg?v=1451";
+  return `<img class="ai-ava" src="${src}" alt="工作助手">`;
+}
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -6077,7 +6083,7 @@ function errandBlockHtml() {
   return `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
-          <span class="k">跑業務上傳入帳</span>
+          <span class="who-mini">${staffAvatarHtml("sm", ui.adminCode === "1240" ? "開發者" : "管理員")}<span class="k">跑業務上傳入帳</span></span>
           <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">改為浮動球</button>
@@ -6226,7 +6232,7 @@ function adminAi() {
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="ai-fold">
-          <span class="k">提問工作助手</span>
+          <span class="who-mini">${staffAvatarHtml("sm", ui.adminCode === "1240" ? "開發者" : "管理員")}<span class="k">提問工作助手</span></span>
           <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
@@ -6247,7 +6253,7 @@ function adminAi() {
             const t = String(m.at || "").match(/(上午|下午|中午)\s*\d{1,2}:\d{2}/);
             const time = t ? t[0].replace(/\s+/g, "") : "";
             return `<div class="ai-row ${mine ? "me" : "ai"}">
-              ${mine ? "" : `<i class="ai-ava">助</i>`}
+              ${mine ? "" : aiAssistAvatarHtml()}
               <div class="ai-col">${mine ? "" : `<em class="ai-who">${who}</em>`}<div class="ai-bubble">${escapeHtml(m.text)}</div></div>
               ${time ? `<span class="ai-time">${escapeHtml(time)}</span>` : ""}
             </div>`;

@@ -1152,9 +1152,9 @@ input[type="file"] {
 .ai-row.me { margin-left: auto; flex-direction: row-reverse; }
 .ai-ava {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-  display: grid; place-items: center;
-  background: #fff; color: #3f6b58;
-  font-size: 12px; font-weight: 800; font-style: normal;
+  display: block;
+  object-fit: cover;
+  background: #fff;
   box-shadow: 0 1px 2px rgba(0,0,0,.08);
 }
 .ai-col { display: grid; gap: 3px; min-width: 0; }
