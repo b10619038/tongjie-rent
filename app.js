@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-02-37";
+const APP_STAMP = "2026-08-30-11-23";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登出與第一次進 App 全螢幕播城市模型影片，連點兩下進入登入"] },
+  { ver: APP_STAMP, items: ["點電費儲值說明可看5樓自助儲值機實景"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -2601,17 +2601,19 @@ function openMediaViewer(list, index) {
   const wrap = document.createElement("div");
   wrap.className = "lightbox"; wrap.id = "media-box";
   wrap.innerHTML = `
-    <div class="lightbox-bar"><button type="button" id="lb-close">關閉</button><span>${item.kind === "video" ? "影片" : "照片"} ${index + 1} / ${list.length}</span><span></span></div>
+    <div class="lightbox-bar"><button type="button" id="lb-close">關閉</button><span>${item.title || (item.kind === "video" ? "影片" : "照片")}${list.length > 1 ? " " + (index + 1) + " / " + list.length : ""}</span><span></span></div>
     ${item.kind === "video" ? `<video src="${item.src}" controls autoplay playsinline></video>` : `<img src="${item.src}" alt="">`}
-    <div class="lightbox-nav">
+    ${list.length > 1 ? `<div class="lightbox-nav">
       <button type="button" id="lb-prev" ${index === 0 ? "disabled" : ""}>上一則</button>
       <button type="button" id="lb-next" ${index === list.length - 1 ? "disabled" : ""}>下一則</button>
-    </div>`;
+    </div>` : ""}`;
   (document.querySelector(".shell") || document.body).appendChild(wrap);
   document.getElementById("lb-close").onclick = closeMediaViewer;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeMediaViewer(); });
-  document.getElementById("lb-prev").onclick = () => { if (index > 0) openMediaViewer(list, index - 1); };
-  document.getElementById("lb-next").onclick = () => { if (index < list.length - 1) openMediaViewer(list, index + 1); };
+  const prev = document.getElementById("lb-prev");
+  const next = document.getElementById("lb-next");
+  if (prev) prev.onclick = () => { if (index > 0) openMediaViewer(list, index - 1); };
+  if (next) next.onclick = () => { if (index < list.length - 1) openMediaViewer(list, index + 1); };
 }
 function bindMediaViewers() {
   document.querySelectorAll("[data-view-media]").forEach(btn => {
@@ -4564,7 +4566,10 @@ function roomExtrasHtml(r) {
       <div class="chips slide-left">${am.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join("")}</div>
       <div class="section-title"><h2 class="slide-right">水電</h2></div>
       <div class="card card-body slide-left">
-        <div class="row"><span class="k">電費</span><span class="v">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span></div>
+        <div class="row clickable" data-open-topup role="button">
+          <span class="k">電費</span>
+          <span class="v linkish">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span>
+        </div>
         <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || "一年固定 $1,800")}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
@@ -7008,6 +7013,13 @@ function bindTenant() {
     repairNote.onclick = e => { e.stopPropagation(); repairNote.focus(); };
   }
   bindMediaViewers();
+  document.querySelectorAll("[data-open-topup]").forEach(el => {
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0);
+    };
+  });
   const contracts = (myRoom() && myRoom().contractImages) || [];
   document.querySelectorAll("[data-contract]").forEach(img => {
     img.onclick = () => openContractViewer(contracts, Number(img.dataset.contract));
