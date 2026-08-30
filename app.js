@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-12";
-const APP_EDIT_COUNT = 266;
+const APP_STAMP = "2026-08-30-23-17";
+const APP_EDIT_COUNT = 267;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務改為浮動球改成浮動球，放在箭頭左邊"] },
+  { ver: APP_STAMP, items: ["管理員後台公告改到報修右邊"] },
+  { ver: "2026-08-30-23-12", items: ["跑業務改為浮動球改成浮動球，放在箭頭左邊"] },
   { ver: "2026-08-30-23-11", items: ["設定裡儲存公司資料改為可穩定寫入"] },
   { ver: "2026-08-30-23-09", items: ["本月自動分析可收起"] },
   { ver: "2026-08-30-23-06", items: ["租客設定登入密碼改為更改密碼"] },
@@ -6253,7 +6254,7 @@ function adminView() {
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定" };
-  const allowed = ["dash", "rooms", "tenants", "announce", "repairs", "ai"];
+  const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("logs");
   allowed.push("settings");
   let ids = [];
@@ -6261,6 +6262,17 @@ function adminPages() {
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
   ids = ids.filter(id => allowed.includes(id));
   allowed.forEach(id => { if (!ids.includes(id)) ids.push(id); });
+  try {
+    if (localStorage.getItem("tongjie_tab_ann_after_rep") !== "1") {
+      const a = ids.indexOf("announce");
+      if (a >= 0) ids.splice(a, 1);
+      const r = ids.indexOf("repairs");
+      if (r >= 0) ids.splice(r + 1, 0, "announce");
+      else ids.push("announce");
+      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
+      localStorage.setItem("tongjie_tab_ann_after_rep", "1");
+    }
+  } catch {}
   return ids.map(id => [id, labels[id]]);
 }
 function bindTabPill() {
