@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-02-54";
-const APP_EDIT_COUNT = 314;
+const APP_STAMP = "2026-08-31-03-02";
+const APP_EDIT_COUNT = 315;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作可左右滑查看完整內容"] },
+  { ver: APP_STAMP, items: ["本月工作只顯示當月，10月水錶等到10月才出現"] },
+  { ver: "2026-08-31-02-54", items: ["本月工作可左右滑查看完整內容"] },
   { ver: "2026-08-31-02-51", items: ["本月工作改顯示8月5日，不再寫每月"] },
   { ver: "2026-08-31-02-48", items: ["本月工作點一筆才出現日曆與完成"] },
   { ver: "2026-08-31-02-44", items: ["本月狀況文字左邊不被切到"] },
@@ -7044,6 +7045,7 @@ function nextCycleDate(m, from) {
   return m.date || "";
 }
 function memoOccurKey(m) {
+  if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) return ymNow();
   const d = nextCycleDate(m);
   return d ? d.slice(0, 7) : ymNow();
 }
@@ -7154,14 +7156,25 @@ function upcomingMemos() {
     return da.localeCompare(db);
   });
 }
+function workOccurYmd(m) {
+  if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) {
+    const n = new Date();
+    const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+    const dd = Math.min(Number(m.monthDay) || 1, last);
+    return ymNow() + "-" + String(dd).padStart(2, "0");
+  }
+  return nextCycleDate(m) || (m && m.date) || "";
+}
 function groupUpcomingMemos() {
   const today = ymdParts(new Date());
+  const ym = today.slice(0, 7);
   const soonDt = new Date();
   soonDt.setDate(soonDt.getDate() + 3);
   const soonYmd = ymdParts(soonDt);
   const overdue = [], soon = [], later = [];
   upcomingMemos().forEach(m => {
-    const d = nextCycleDate(m) || m.date || "";
+    const d = workOccurYmd(m);
+    if (d && d.slice(0, 7) > ym) return;
     if (d && d < today) overdue.push(m);
     else if (!d || d <= soonYmd) soon.push(m);
     else later.push(m);
