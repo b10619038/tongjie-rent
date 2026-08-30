@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-28";
-const APP_EDIT_COUNT = 248;
+const APP_STAMP = "2026-08-30-21-32";
+const APP_EDIT_COUNT = 249;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["管理員工作助手與浮動球改用客服頭貼"] },
+  { ver: APP_STAMP, items: ["工作助手可選女客服或男客服頭貼"] },
+  { ver: "2026-08-30-21-28", items: ["管理員工作助手與浮動球改用客服頭貼"] },
   { ver: "2026-08-30-21-26", items: ["點工作助手頭貼可換照片與個性"] },
   { ver: "2026-08-30-21-20", items: ["開發者工作助手與浮動球改用客服頭貼"] },
   { ver: "2026-08-30-21-13", items: ["工作助手可換頭貼，回覆會先講重點再鼓勵"] },
@@ -537,12 +538,13 @@ function aiPersonaSheetHtml() {
     <div class="install-sheet">
       <div class="label">工作助手 · ${escapeHtml(who)}</div>
       <h2>頭貼與個性</h2>
-      <div class="who-line" style="margin:8px 0 12px">
-        <img class="avatar" src="${aiAvatarSrc()}" alt="">
-        <div>
-          <button type="button" class="ghost" id="ai-avatar-pick" style="width:auto;margin-top:0">更換頭貼</button>
-          <button type="button" class="ghost" id="ai-avatar-reset" style="width:auto;margin-top:8px">恢復預設</button>
-        </div>
+      <div class="ai-face-row">
+        <button type="button" class="ai-face-btn${aiFaceKey() === "female" ? " on" : ""}" data-ai-face="female" title="女客服"><img src="${aiFaceFemale()}" alt="女"></button>
+        <button type="button" class="ai-face-btn${aiFaceKey() === "male" ? " on" : ""}" data-ai-face="male" title="男客服"><img src="${aiFaceMale()}" alt="男"></button>
+      </div>
+      <div class="unpaid-tools" style="margin-bottom:10px">
+        <button type="button" class="ghost" id="ai-avatar-pick" style="width:auto">更換頭貼</button>
+        <button type="button" class="ghost" id="ai-avatar-reset" style="width:auto">恢復預設</button>
       </div>
       <input id="ai-avatar-file" type="file" accept="image/*" hidden />
       <p class="small">只存在這台裝置、這個登入身分，不會同步到另一邊。</p>
@@ -3316,12 +3318,24 @@ function staffAvatarHtml(size, title) {
   const src = name === "開發者" ? "images/dev-avatar.jpg?v=1455" : "images/staff-avatar.jpg?v=1451";
   return `<img class="${cls}" src="${src}" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">`;
 }
+function aiFaceFemale() { return "images/ai-avatar-dev.jpg?v=2132"; }
+function aiFaceMale() { return "images/ai-avatar-male.jpg?v=2132"; }
+function aiFaceKey() {
+  try {
+    const custom = localStorage.getItem("tongjie_ai_avatar_" + memoOwner());
+    if (custom === "male" || custom === "female") return custom;
+    if (custom && String(custom).indexOf("data:") === 0) return "custom";
+  } catch {}
+  return "female";
+}
 function aiAvatarSrc() {
   try {
     const custom = localStorage.getItem("tongjie_ai_avatar_" + memoOwner());
-    if (custom) return custom;
+    if (custom === "male") return aiFaceMale();
+    if (custom === "female") return aiFaceFemale();
+    if (custom && String(custom).indexOf("data:") === 0) return custom;
   } catch {}
-  return memoOwner() === "1240" ? "images/ai-avatar-dev.jpg?v=2120" : "images/ai-avatar.png?v=2055";
+  return aiFaceFemale();
 }
 function aiAssistAvatarHtml() {
   return `<img class="ai-ava" src="${aiAvatarSrc()}" alt="工作助手">`;
@@ -9803,13 +9817,26 @@ function bindAdminAi() {
   const reset = document.getElementById("ai-avatar-reset");
   if (reset) reset.onclick = e => {
     e.preventDefault();
-    try { localStorage.removeItem("tongjie_ai_avatar_" + memoOwner()); } catch {}
+    try { localStorage.setItem("tongjie_ai_avatar_" + memoOwner(), "female"); } catch {}
     toast("已恢復預設頭貼");
     ui.aiAvatarSheet = true;
     ui.aiOpen = true;
     ui.keepScroll = true;
     render();
   };
+  document.querySelectorAll("[data-ai-face]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const face = btn.dataset.aiFace;
+      try { localStorage.setItem("tongjie_ai_avatar_" + memoOwner(), face); } catch {}
+      toast(face === "male" ? "已選男客服頭貼" : "已選女客服頭貼");
+      ui.aiAvatarSheet = true;
+      ui.aiOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-ai-persona]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();

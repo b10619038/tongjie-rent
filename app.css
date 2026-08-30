@@ -1171,6 +1171,15 @@ input[type="file"] {
 }
 .ai-ava-pick .ai-ava { width: 32px; height: 32px; }
 .ai-log .ai-ava { cursor: pointer; }
+.ai-face-row { display: flex; gap: 14px; align-items: center; margin: 8px 0 12px; }
+.ai-face-btn {
+  width: 64px; height: 64px; padding: 0; border-radius: 50%;
+  overflow: hidden; background: #fff; cursor: pointer;
+  border: 2px solid var(--line);
+  pointer-events: auto !important;
+}
+.ai-face-btn.on { border-color: var(--teal); box-shadow: 0 0 0 3px var(--ok-soft); }
+.ai-face-btn img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
 .ai-col { display: grid; gap: 3px; min-width: 0; }
 .ai-who { font-size: 11px; color: #5c6b75; font-style: normal; padding: 0 4px; }
 .ai-bubble {
