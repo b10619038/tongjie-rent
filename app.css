@@ -303,12 +303,52 @@ input, textarea, select {
 }
 .notify-prefs {
   display: grid;
-  gap: 8px;
+  gap: 2px;
   margin-top: 12px;
 }
-.notify-prefs .log-check {
-  min-height: 40px;
+.pref-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  cursor: pointer;
+  pointer-events: auto !important;
 }
+.pref-switch span {
+  font-weight: 700;
+  font-size: 15px;
+}
+.pref-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.pref-switch i {
+  width: 50px;
+  height: 30px;
+  border-radius: 999px;
+  background: #d5d5d5;
+  position: relative;
+  flex-shrink: 0;
+  transition: background .22s ease;
+}
+.pref-switch i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  transition: transform .22s cubic-bezier(.22,.82,.22,1);
+}
+.pref-switch input:checked + i { background: var(--teal); }
+.pref-switch input:checked + i::after { transform: translateX(20px); }
 
 .slide-right { animation: slideRight .8s ease both; }
 .slide-left { animation: slideLeft .8s ease both; }
