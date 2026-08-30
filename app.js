@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-39";
-const APP_EDIT_COUNT = 257;
+const APP_STAMP = "2026-08-30-22-47";
+const APP_EDIT_COUNT = 258;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["快速登入改放在帳號圖塊下方"] },
+  { ver: APP_STAMP, items: ["設定新增鈴聲音量，可拉大小與自動最佳化"] },
+  { ver: "2026-08-30-22-39", items: ["快速登入改放在帳號圖塊下方"] },
   { ver: "2026-08-30-22-33", items: ["畫面可再上下滑動"] },
   { ver: "2026-08-30-22-29", items: ["設定裡公司資料可正常輸入與儲存"] },
   { ver: "2026-08-30-22-27", items: ["設定可開啟指紋／面容快速登入"] },
@@ -417,6 +418,60 @@ function buzz(ms) {
   if (n <= 0) return;
   const dur = Math.round(ms || (8 + n * 0.28));
   try { if (navigator.vibrate) navigator.vibrate(dur); } catch {}
+}
+function currentRing() {
+  try {
+    const raw = localStorage.getItem("tongjie_ring");
+    if (raw == null || raw === "") return 50;
+    const n = Number(raw);
+    return Math.min(100, Math.max(0, Number.isFinite(n) ? n : 50));
+  } catch { return 50; }
+}
+function applyRing(n) {
+  const v = Math.round(Math.min(100, Math.max(0, Number(n) || 0)));
+  try { localStorage.setItem("tongjie_ring", String(v)); } catch {}
+  const lab = document.getElementById("ring-val");
+  if (lab) lab.textContent = v === 0 ? "關閉" : v + "%";
+  const slider = document.getElementById("ring-scale");
+  if (slider && slider.value !== String(v)) slider.value = String(v);
+  return v;
+}
+function autoRing() {
+  const v = window.innerWidth < 800 ? 55 : 42;
+  applyRing(v);
+  ringChime();
+  toast("已依這台裝置調整鈴聲為 " + v + "%");
+  return v;
+}
+let __ringCtx = null;
+function ringChime() {
+  const n = currentRing();
+  if (n <= 0) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!__ringCtx) __ringCtx = new AC();
+    const ctx = __ringCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    const t0 = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    const vol = 0.04 + n * 0.0024;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(vol * 0.35, t0 + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
+    const beep = (freq, start, dur) => {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, start);
+      o.connect(gain);
+      o.start(start);
+      o.stop(start + dur);
+    };
+    beep(880, t0, 0.16);
+    beep(1174, t0 + 0.12, 0.22);
+  } catch {}
 }
 function showThemeFab() {
   return !ui.role;
@@ -3239,6 +3294,7 @@ function showOsBanner(title, body, tag) {
   const viaPage = () => { try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); n.close(); }; } catch {} };
   if (navigator.serviceWorker) viaSw().catch(viaPage);
   else viaPage();
+  try { ringChime(); } catch {}
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
@@ -9824,6 +9880,19 @@ function lookSettingsHtml() {
         <span>強</span>
       </div>
       <div class="row"><span class="k">目前強度</span><span class="v" id="haptic-val">${currentHaptic() === 0 ? "關閉" : currentHaptic() + "%"}</span></div>
+    </div>
+    <div class="card card-body">
+      <div class="row" style="align-items:center">
+        <div class="label" style="margin:0">鈴聲</div>
+        <button type="button" class="ghost" id="ring-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
+      </div>
+      <p class="small">左右滑動調整音量，最左邊是關閉。通知與重要提醒會用這個音量。</p>
+      <div class="font-scale">
+        <span>關</span>
+        <input id="ring-scale" type="range" min="0" max="100" step="1" value="${currentRing()}" />
+        <span>強</span>
+      </div>
+      <div class="row"><span class="k">目前音量</span><span class="v" id="ring-val">${currentRing() === 0 ? "關閉" : currentRing() + "%"}</span></div>
     </div>`;
 }
 function tenantSettings() {
@@ -9933,6 +10002,25 @@ function bindLookSettings() {
     };
     hapSlider.addEventListener("input", slide);
     hapSlider.addEventListener("change", () => { applyHaptic(hapSlider.value); buzz(); });
+  }
+  const ringAuto = document.getElementById("ring-auto");
+  if (ringAuto) ringAuto.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    autoRing();
+  };
+  const ringSlider = document.getElementById("ring-scale");
+  if (ringSlider) {
+    ringSlider.addEventListener("pointerdown", e => e.stopPropagation());
+    ringSlider.addEventListener("click", e => e.stopPropagation());
+    let last = 0;
+    const slide = () => {
+      applyRing(ringSlider.value);
+      const now = Date.now();
+      if (now - last > 220) { last = now; ringChime(); }
+    };
+    ringSlider.addEventListener("input", slide);
+    ringSlider.addEventListener("change", () => { applyRing(ringSlider.value); ringChime(); });
   };
 }
 function bindTenantSettings() {
