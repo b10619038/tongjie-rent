@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-34";
-const APP_EDIT_COUNT = 234;
+const APP_STAMP = "2026-08-30-20-38";
+const APP_EDIT_COUNT = 235;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者即將提醒不同步到管理員"] },
+  { ver: APP_STAMP, items: ["開發者工作助手對話不同步到管理員"] },
+  { ver: "2026-08-30-20-34", items: ["開發者即將提醒不同步到管理員"] },
   { ver: "2026-08-30-20-27", items: ["跑業務可改為可拖曳浮動球"] },
   { ver: "2026-08-30-20-22", items: ["開啟通知按鈕可測試通知"] },
   { ver: "2026-08-30-20-20", items: ["通知開關改為可點擊"] },
@@ -1206,7 +1207,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
-try { stripDevMemosFromState(); } catch {}
+try { stripDevMemosFromState(); stripDevLogsFromState(); } catch {}
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
@@ -1443,6 +1444,7 @@ async function pullCloud() {
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
     stripDevMemosFromState();
+    stripDevLogsFromState();
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -1499,6 +1501,46 @@ function stripDevMemosFromState() {
   });
   state.aiMemos = keep;
   saveDevMemos(dev);
+}
+function loadDevLogs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("tongjie_dev_ailogs") || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+function saveDevLogs(list) {
+  try { localStorage.setItem("tongjie_dev_ailogs", JSON.stringify((list || []).slice(-40))); } catch {}
+}
+function myAiLogs() {
+  if (memoOwner() === "1240") return loadDevLogs();
+  return (state.aiLogs || []).filter(m => (m.owner || "7651") !== "1240" && m.role !== "dev");
+}
+function pushAiLog(entry) {
+  const rec = Object.assign({ at: nowStamp(), owner: memoOwner() }, entry);
+  if (rec.owner === "1240") {
+    const list = loadDevLogs();
+    list.push(rec);
+    saveDevLogs(list);
+    return;
+  }
+  if (!state.aiLogs) state.aiLogs = [];
+  state.aiLogs.push(rec);
+  if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
+}
+function stripDevLogsFromState() {
+  if (!state || !Array.isArray(state.aiLogs)) return;
+  const keep = [];
+  const dev = loadDevLogs();
+  state.aiLogs.forEach(m => {
+    if (!m) return;
+    if ((m.owner || "") === "1240" || m.role === "dev") {
+      dev.push(m);
+      return;
+    }
+    keep.push(m);
+  });
+  state.aiLogs = keep;
+  saveDevLogs(dev);
 }
 function mergePresenceInto(target, other) {
   if (!target.presence || typeof target.presence !== "object") target.presence = {};
@@ -1665,11 +1707,13 @@ async function pushCloud() {
     applyTenantRoster(state);
     applyFactoryRoster(state);
     stripDevMemosFromState();
+    stripDevLogsFromState();
     const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
     if (need && factoryNamedCount(state) < need) { ui.cloudOk = false; return; }
     state.updatedAt = Date.now();
     const payload = Object.assign({}, state, {
-      aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240")
+      aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240"),
+      aiLogs: (state.aiLogs || []).filter(m => (m.owner || "7651") !== "1240" && m.role !== "dev")
     });
     const res = await fetch(DATA_API, {
       method: "PUT",
@@ -4204,8 +4248,7 @@ function importBooksFromRows(list, fileName) {
     ui.calDay = Number(first.slice(8, 10));
   }
   if (n) {
-    if (!state.aiLogs) state.aiLogs = [];
-    state.aiLogs.push({
+    pushAiLog({
       role: "ai",
       text: "已查看「" + (fileName || "Excel") + "」，辨識 " + n + " 筆記帳並記入本月進出帳與整體報表。"
     });
@@ -6148,7 +6191,7 @@ function aiDragBtn() {
   return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"></button>`;
 }
 function adminAi() {
-  const logs = (state.aiLogs || []).slice(-20);
+  const logs = myAiLogs().slice(-20);
   const slips = (state.bankSlips || []).slice().reverse();
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
   const plan = monthlyErrandPlan();
@@ -9574,15 +9617,13 @@ function bindAdminAi() {
     const text = String(q || "").trim();
     if (!text) return;
     try {
-      if (!state.aiLogs) state.aiLogs = [];
-      state.aiLogs.push({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
+      pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
       let ans = "";
       try { ans = aiAnswer(text); } catch (err) { ans = "先收到了。這題我再整理一次。"; }
-      state.aiLogs.push({ role: "ai", text: ans, at: nowStamp() });
-      if (state.aiLogs.length > 40) state.aiLogs = state.aiLogs.slice(-40);
+      pushAiLog({ role: "ai", text: ans, at: nowStamp() });
       ui.aiDraft = "";
       ui.aiOpen = true;
-      save();
+      if (memoOwner() !== "1240") save();
     } catch {}
     ui.keepScroll = true;
     render();
@@ -9729,8 +9770,7 @@ function bindAdminAi() {
     ui.errandNote = "";
     ui.errandOpen = true;
     if (nCash || nOut || nIn || nLink) {
-      if (!state.aiLogs) state.aiLogs = [];
-      state.aiLogs.push({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
+      pushAiLog({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
     }
     save();
     toast("已登錄 " + (list.length || 1) + " 筆");
@@ -9854,8 +9894,7 @@ function bindAdminAi() {
       ui.bankAbsorb = "";
       ui.bankOpen = false;
       if (amount) {
-        if (!state.aiLogs) state.aiLogs = [];
-        state.aiLogs.push({ role: "ai", text: "已查看銀行入帳 " + money(amount) + "（" + company + "）。同一天、同金額、同帳戶的重複資料，進出帳與整體報表只會算一筆。" });
+        pushAiLog({ role: "ai", text: "已查看銀行入帳 " + money(amount) + "（" + company + "）。同一天、同金額、同帳戶的重複資料，進出帳與整體報表只會算一筆。" });
         const p = String(date || "").split("-");
         if (p.length === 3) { ui.calYear = Number(p[0]); ui.calMonth = Number(p[1]); ui.calDay = Number(p[2]); }
       }
