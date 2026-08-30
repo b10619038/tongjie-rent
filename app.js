@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-17-09";
-const APP_EDIT_COUNT = 221;
+const APP_STAMP = "2026-08-30-17-12";
+const APP_EDIT_COUNT = 222;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["退租欄位倒角並拉開上下間距"] },
+  { ver: APP_STAMP, items: ["退租單IC卡改為磁扣"] },
+  { ver: "2026-08-30-17-09", items: ["退租欄位倒角並拉開上下間距"] },
   { ver: "2026-08-30-17-00", items: ["沒有表上金額的套房租金顯示為 —"] },
   { ver: "2026-08-30-16-53", items: ["套房本月已繳未繳依收款明細"] },
   { ver: "2026-08-30-16-41", items: ["套房租客圖卡顯示現任、本月收款與交接中"] },
@@ -4312,7 +4313,7 @@ function checkoutFormHtml() {
     <label class="field"><span>水表迄</span><input id="co-water-e" type="text" value="${escapeHtml(co.waterEnd || "")}" /></label>
     <div class="checkout-checks">
       <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
-      <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> IC卡已交還</label>
+      <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> 磁扣已交還</label>
     </div>
     <label class="field"><span>備註</span><textarea id="co-note" rows="2">${escapeHtml(co.note || "")}</textarea></label>
     <div class="unpaid-tools">
