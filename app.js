@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-22";
-const APP_EDIT_COUNT = 207;
+const APP_STAMP = "2026-08-30-13-28";
+const APP_EDIT_COUNT = 208;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
+  { ver: APP_STAMP, items: ["匯出可選 PDF 或 Excel"] },
+  { ver: "2026-08-30-13-22", items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
   { ver: "2026-08-30-13-10", items: ["同一支手機催繳開發者測試戶也能收到通知"] },
   { ver: "2026-08-30-13-07", items: ["手機畫面左右與底部不再卡住"] },
   { ver: "2026-08-30-13-03", items: ["版本號改為西元-月-日-時-分-累加修改次數"] },
@@ -6236,6 +6237,41 @@ function printMonthCash() {
   window.print();
   setTimeout(after, 800);
 }
+function closeExportPick() {
+  const el = document.getElementById("export-pick-mask");
+  if (el) el.remove();
+}
+function showExportPick(kind) {
+  try {
+    closeExportPick();
+    const mask = document.createElement("div");
+    mask.className = "install-mask";
+    mask.id = "export-pick-mask";
+    mask.innerHTML = `<div class="install-sheet">
+      <div class="label">匯出檔案</div>
+      <h2>${kind === "cal" ? "本月進出帳" : "整體報表"}</h2>
+      <p class="small">請選擇檔案格式。PDF 會開啟預覽，再選「儲存為 PDF」即可下載。</p>
+      <button type="button" class="btn-navy" id="export-as-pdf">匯出 PDF</button>
+      <button type="button" class="ghost" id="export-as-xls" style="margin-top:8px">匯出 Excel</button>
+      <button type="button" class="ghost" id="export-pick-cancel" style="margin-top:8px">取消</button>
+    </div>`;
+    document.body.appendChild(mask);
+    const run = fn => {
+      closeExportPick();
+      try { fn(); } catch (err) { try { console.error(err); } catch {} toast("匯出失敗"); }
+    };
+    const pdf = document.getElementById("export-as-pdf");
+    const xls = document.getElementById("export-as-xls");
+    const cancel = document.getElementById("export-pick-cancel");
+    if (pdf) pdf.onclick = e => { e.preventDefault(); e.stopPropagation(); run(kind === "cal" ? printMonthCash : printOverallReport); };
+    if (xls) xls.onclick = e => { e.preventDefault(); e.stopPropagation(); run(kind === "cal" ? exportMonthCash : exportOverallReport); };
+    if (cancel) cancel.onclick = e => { e.preventDefault(); e.stopPropagation(); closeExportPick(); };
+    mask.onclick = e => { if (e.target === mask) closeExportPick(); };
+  } catch (err) {
+    try { console.error(err); } catch {}
+    toast("無法開啟匯出選單");
+  }
+}
 function roomCompany(r) {
   const c = String((r && r.company) || "").trim();
   if (/信潔/.test(c)) return "信潔";
@@ -8194,7 +8230,7 @@ function bindAdmin() {
   if (invTrack) invTrack.onchange = () => { ui.invoiceTrack = String(invTrack.value || "").trim().toUpperCase(); };
   if (invNum) invNum.onchange = () => { ui.invoiceNum = String(invNum.value || "").trim(); };
   const exportBtn = document.getElementById("export-report");
-  if (exportBtn) exportBtn.onclick = exportOverallReport;
+  if (exportBtn) exportBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("report"); };
   const printReport = document.getElementById("print-report");
   if (printReport) printReport.onclick = printOverallReport;
   bindReportBody();
@@ -9011,7 +9047,7 @@ function bindCashCal() {
   ensureCalMonth();
   const stay = () => { ui.keepScroll = true; render(); };
   const exportCal = document.getElementById("export-cal");
-  if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); exportMonthCash(); };
+  if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("cal"); };
   const printCal = document.getElementById("print-cal");
   if (printCal) printCal.onclick = e => { e.preventDefault(); e.stopPropagation(); printMonthCash(); };
   const clearFilter = document.getElementById("cal-filter-clear");
