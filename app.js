@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-02";
-const APP_EDIT_COUNT = 242;
+const APP_STAMP = "2026-08-30-21-03";
+const APP_EDIT_COUNT = 243;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務浮動球按下有縮放"] },
+  { ver: APP_STAMP, items: ["設定可開關按鍵震動"] },
+  { ver: "2026-08-30-21-02", items: ["跑業務浮動球按下有縮放"] },
   { ver: "2026-08-30-20-59", items: ["跑業務浮動球改用橘貓頭貼"] },
   { ver: "2026-08-30-20-55", items: ["提問工作助手改用橘貓頭貼"] },
   { ver: "2026-08-30-20-53", items: ["開發者工作助手改用同一張頭貼"] },
@@ -364,6 +365,16 @@ function autoFontScale() {
   applyFont(v);
   toast("已依這台螢幕調整為 " + v + "%");
   return v;
+}
+function hapticEnabled() {
+  try { return localStorage.getItem("tongjie_haptic") !== "off"; } catch { return true; }
+}
+function setHaptic(on) {
+  try { localStorage.setItem("tongjie_haptic", on ? "on" : "off"); } catch {}
+}
+function buzz(ms) {
+  if (!hapticEnabled()) return;
+  try { if (navigator.vibrate) navigator.vibrate(ms || 12); } catch {}
 }
 function showThemeFab() {
   return !ui.role;
@@ -9352,6 +9363,14 @@ function lookSettingsHtml() {
         <span>大</span>
       </div>
       <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
+    </div>
+    <div class="card card-body">
+      <div class="label">觸感</div>
+      <div class="pref-switch">
+        <span>按鍵震動</span>
+        <button type="button" class="pref-knob${hapticEnabled() ? " on" : ""}" id="haptic-toggle" aria-pressed="${hapticEnabled() ? "true" : "false"}"></button>
+      </div>
+      <p class="small">Android 按按鈕會輕震。iPhone 多數不支援網頁震動。</p>
     </div>`;
 }
 function tenantSettings() {
@@ -9426,6 +9445,17 @@ function bindLookSettings() {
     e.preventDefault();
     e.stopPropagation();
     autoFontScale();
+  };
+  const hap = document.getElementById("haptic-toggle");
+  if (hap) hap.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const on = !hap.classList.contains("on");
+    hap.classList.toggle("on", on);
+    hap.setAttribute("aria-pressed", on ? "true" : "false");
+    setHaptic(on);
+    if (on) buzz(20);
+    toast(on ? "已開啟按鍵震動" : "已關閉按鍵震動");
   };
 }
 function bindTenantSettings() {
