@@ -1161,7 +1161,7 @@ input[type="file"] {
 .dot.office { background: #888; }
 .fix-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .fix-pills span { background: #e6f1fb; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1d4e89; }
-.mini { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.mini.clickable { width: 100%; cursor: pointer; }
 .mini span { color: var(--muted); white-space: nowrap; }
 .mini span.overdue { color: var(--rose); font-weight: 700; }
 .report-sum { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 10px; }

@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-52";
-const APP_EDIT_COUNT = 308;
+const APP_STAMP = "2026-08-31-02-30";
+const APP_EDIT_COUNT = 309;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票中文大寫紅字往下0.1公分"] },
+  { ver: APP_STAMP, items: ["本月自動分析與即將提醒合併成本月工作"] },
+  { ver: "2026-08-31-01-52", items: ["發票中文大寫紅字往下0.1公分"] },
   { ver: "2026-08-31-01-50", items: ["三聯品名與一式再往右0.3公分"] },
   { ver: "2026-08-31-01-49", items: ["三聯數量一式往右0.3公分"] },
   { ver: "2026-08-31-01-48", items: ["三聯品名紅字往右0.2公分"] },
@@ -6606,14 +6607,18 @@ function adminSettings() {
     </div>
   </div>`;
 }
-const AI_BLOCKS = ["plan", "cals", "errand", "ai"];
+const AI_BLOCKS = ["work", "errand", "ai"];
 const AI_BLOCK_KEY = "tongjie_ai_blocks";
 function loadAiBlockOrder() {
   try {
     const raw = JSON.parse(localStorage.getItem(AI_BLOCK_KEY) || "[]");
     if (!Array.isArray(raw)) return AI_BLOCKS.slice();
-    const keep = raw.filter(id => AI_BLOCKS.includes(id));
-    return keep.concat(AI_BLOCKS.filter(id => !keep.includes(id)));
+    const mapped = [];
+    raw.forEach(id => {
+      const next = (id === "plan" || id === "cals") ? "work" : id;
+      if (AI_BLOCKS.includes(next) && !mapped.includes(next)) mapped.push(next);
+    });
+    return mapped.concat(AI_BLOCKS.filter(id => !mapped.includes(id)));
   } catch { return AI_BLOCKS.slice(); }
 }
 function saveAiBlockOrder(ids) {
@@ -6786,44 +6791,40 @@ function adminAi() {
   const logs = myAiLogs().slice(-20);
   const slips = (state.bankSlips || []).slice().reverse();
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
-  const plan = monthlyErrandPlan();
   const parts = {
-    plan: `<div class="card card-body tenant-slim${ui.planOpen ? " open" : ""}" id="plan-card">
-      <div class="row tenant-slim-head">
-        <button type="button" class="fold-head" id="plan-fold">
-          <span class="k">本月自動分析</span>
-          <span class="row-end"><span class="small">${plan.lines.length ? plan.lines.length + " 項" : ""}</span><span class="fold-caret"></span></span>
-        </button>
-        ${aiDragBtn()}
-      </div>
-      <div class="tenant-slim-body">
-        <div class="tenant-slim-inner">
-          <div class="small" style="margin-top:10px">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
-          ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
-        </div>
-      </div>
-    </div>`,
-    cals: (() => {
-      const list = upcomingMemos();
-      return `<div class="card card-body tenant-slim${ui.calsOpen ? " open" : ""}" id="cals-card">
-      <div class="row tenant-slim-head">
-        <button type="button" class="fold-head" id="cals-fold">
-          <span class="k">即將提醒</span>
-          <span class="row-end"><span class="small">${list.length ? list.length + " 件" : ""}</span><span class="fold-caret"></span></span>
-        </button>
-        ${aiDragBtn()}
-      </div>
-      <div class="tenant-slim-body">
-        <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">固定每月／隔月的工作會列在這裡。繳費單等信件到，差幾天沒關係。點完成只算這一次，下次週期還會再出現。</p>
-          ${list.length ? list.map(m => `
+    work: (() => {
+      const plan = monthlyErrandPlan();
+      const g = groupUpcomingMemos();
+      const bits = [];
+      if (g.overdue.length) bits.push("過期 " + g.overdue.length);
+      if (g.soon.length) bits.push("近3天 " + g.soon.length);
+      if (plan.unpaid) bits.push("未繳 " + plan.unpaid);
+      const summary = bits.join(" · ");
+      const memoRows = arr => arr.map(m => `
             <div class="mini" style="align-items:flex-start">
               <span>${escapeHtml(formatAiMemo(m))}</span>
             </div>
             <div class="unpaid-tools" style="margin:6px 0 10px">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
-            </div>`).join("") : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
+            </div>`).join("");
+      const sect = (title, arr) => arr.length ? `<div class="small" style="margin:12px 0 6px">${title}</div>` + memoRows(arr) : "";
+      return `<div class="card card-body tenant-slim${ui.workOpen ? " open" : ""}" id="work-card">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="work-fold">
+          <span class="k">本月工作</span>
+          <span class="row-end"><span class="small">${escapeHtml(summary)}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">固定每月的工作點完成只算這一次，下次週期還會再出現。狀況數字可點進去看。</p>
+          ${g.all.length ? (sect("過期未完成", g.overdue) + sect("今天／3 天內", g.soon) + sect("本月其餘", g.later)) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
+          <div class="small" style="margin:14px 0 6px">${escapeHtml(plan.monthLabel)}　本月狀況</div>
+          ${plan.stats.map(s => s.go
+            ? `<div class="mini clickable" data-work-go="${s.go}"><span>${escapeHtml(s.text)}</span></div>`
+            : `<div class="mini"><span>${escapeHtml(s.text)}</span></div>`).join("")}
         </div>
       </div>
     </div>`;
@@ -6842,7 +6843,7 @@ function adminAi() {
         <div class="tenant-slim-inner">
           <div class="small" style="margin-top:10px">可以直接跟我說話，例如「幫我記得星期五去農會」，或問未繳、報修、銀行。</div>
           <div class="ai-chips">
-            <button type="button" class="ghost" data-ai-q="即將提醒">即將提醒</button>
+            <button type="button" class="ghost" data-ai-q="即將提醒">本月工作</button>
             <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
             <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
             <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
@@ -6889,30 +6890,25 @@ function monthlyErrandPlan() {
   const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
   const openFix = state.repairs.filter(r => r.status !== "done").length;
   const ending = state.tenants.filter(t => String(t.leaseEnd || "").slice(0, 7) === ym);
-  const lines = [];
+  const stats = [];
   if (bankDay) {
-    if (thisBanks.length) lines.push("銀行業務：過去多在每月 " + bankDay + " 日左右。本月已登錄 " + thisBanks.length + " 筆。");
-    else if (today < bankDay) lines.push("銀行業務：依過去紀錄，建議本月 " + bankDay + " 日前完成存提、對帳。");
-    else lines.push("銀行業務：慣例約每月 " + bankDay + " 日。本月尚未登錄，建議盡快辦理或補記。");
-  } else lines.push("銀行業務：尚無紀錄。上傳照片後按「登錄這筆」，之後會自動抓出每月習慣。");
+    if (thisBanks.length) stats.push({ go: "dash", text: "銀行業務：過去多在每月 " + bankDay + " 日左右。本月已登錄 " + thisBanks.length + " 筆。" });
+    else if (today < bankDay) stats.push({ go: "dash", text: "銀行業務：依過去紀錄，建議本月 " + bankDay + " 日前完成存提、對帳。" });
+    else stats.push({ go: "dash", text: "銀行業務：慣例約每月 " + bankDay + " 日。本月尚未登錄，建議盡快辦理或補記。" });
+  } else stats.push({ go: "dash", text: "銀行業務：尚無紀錄。上傳照片後按「登錄這筆」，之後會自動抓出每月習慣。" });
   const pendingCash = (state.books || []).filter(b => b.pendingBank && !b.linkedId).reduce((s, b) => s + (Number(b.amount) || 0), 0);
-  if (pendingCash) lines.push("現金待入銀行：" + money(pendingCash) + "。之後存摺入帳會自動對成轉存，不會重複計算。");
-  lines.push("收租：多為每月 5 日前。目前未繳 " + unpaid + " 戶。");
-  if (ending.length) lines.push("本月合約到期 " + ending.length + " 戶：" + ending.map(t => {
+  if (pendingCash) stats.push({ go: "dash", text: "現金待入銀行：" + money(pendingCash) + "。之後存摺入帳會自動對成轉存，不會重複計算。" });
+  stats.push({ go: "tenants", text: "收租：多為每月 5 日前。目前未繳 " + unpaid + " 戶。" });
+  if (ending.length) stats.push({ go: "tenants", text: "本月合約到期 " + ending.length + " 戶：" + ending.map(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     return (r ? r.no : "") + " " + (t.name || "");
-  }).join("、") + "，建議提前確認續約。");
-  if (openFix) lines.push("報修未完成 " + openFix + " 件，可一併排維修行程。");
+  }).join("、") + "，建議提前確認續約。" });
+  if (openFix) stats.push({ go: "repairs", text: "報修未完成 " + openFix + " 件，可一併排維修行程。" });
   const freq = {};
   parsed.forEach(e => { if (e.title) freq[e.title] = (freq[e.title] || 0) + 1; });
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 3);
-  if (top.length) lines.push("最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。");
-  const memos = myMemos().filter(m => !isMemoDone(m));
-  if (memos.length) {
-    lines.push("你交代我記得的事：");
-    memos.slice(0, 8).forEach(m => lines.push("· " + formatAiMemo(m)));
-  }
-  return { monthLabel: y + " 年 " + m + " 月", lines, bankDay };
+  if (top.length) stats.push({ go: "", text: "最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。" });
+  return { monthLabel: y + " 年 " + m + " 月", stats, unpaid, openFix, bankDay };
 }
 const WEEKDAY_ZH = ["日", "一", "二", "三", "四", "五", "六"];
 function parseWeekdayAsk(text) {
@@ -7129,6 +7125,20 @@ function upcomingMemos() {
     return da.localeCompare(db);
   });
 }
+function groupUpcomingMemos() {
+  const today = ymdParts(new Date());
+  const soonDt = new Date();
+  soonDt.setDate(soonDt.getDate() + 3);
+  const soonYmd = ymdParts(soonDt);
+  const overdue = [], soon = [], later = [];
+  upcomingMemos().forEach(m => {
+    const d = nextCycleDate(m) || m.date || "";
+    if (d && d < today) overdue.push(m);
+    else if (!d || d <= soonYmd) soon.push(m);
+    else later.push(m);
+  });
+  return { overdue, soon, later, all: overdue.concat(soon, later) };
+}
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
   return (r ? r.no + " " : "") + (t.name || "") + (r ? "　" + money(r.rent) : "");
@@ -7162,7 +7172,7 @@ function aiAnswer(q) {
   if (/謝謝|感謝/.test(text)) return "不客氣，有要記的再跟我說。";
 
   if (/你記得|記了什麼|我交代|有哪些行程|列出.*記|即將提醒/.test(text)) {
-    ui.calsOpen = true;
+    ui.workOpen = true;
     if (!memos.length) return "目前還沒有你交代要記的事。跟我說「幫我記得星期三去收現金」我就會記下。";
     return "我這邊記著：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
   }
@@ -7178,11 +7188,11 @@ function aiAnswer(q) {
 
   if (wantRemember) {
     const rec = rememberAiMemo(text);
-    ui.calsOpen = true;
+    ui.workOpen = true;
     const when = rec.date
       ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.time ? " " + rec.time : "")
       : "之後（還沒指定日期）";
-    return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「即將提醒」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
+    return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「本月工作」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
   }
 
   const bits = [];
@@ -7216,7 +7226,7 @@ function aiAnswer(q) {
   }
   if (/每月該做|該做什麼|今天要做|本月.*做/.test(text) || (/行程|跑銀行|銀行業務/.test(text) && !wantRemember)) {
     const plan = monthlyErrandPlan();
-    bits.push(plan.monthLabel + "我幫你整理這樣：\n" + plan.lines.map(x => "· " + x).join("\n"));
+    bits.push(plan.monthLabel + "我幫你整理這樣：\n" + plan.stats.map(x => "· " + x.text).join("\n"));
   }
   if (/日曆|行事曆|預約|簽約/.test(text) && !wantRemember) {
     const upcoming = cal.filter(ev => String(ev.at || "") >= ymdOf(nowStamp()));
@@ -10538,22 +10548,26 @@ function bindAdminAi() {
     ui.errandBallOpen = false;
     render();
   };
-  const calsFold = document.getElementById("cals-fold");
-  const calsCard = document.getElementById("cals-card");
-  if (calsFold && calsCard) calsFold.onclick = e => {
+  const workFold = document.getElementById("work-fold");
+  const workCard = document.getElementById("work-card");
+  if (workFold && workCard) workFold.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    ui.calsOpen = !calsCard.classList.contains("open");
-    calsCard.classList.toggle("open", ui.calsOpen);
+    ui.workOpen = !workCard.classList.contains("open");
+    workCard.classList.toggle("open", ui.workOpen);
   };
-  const planFold = document.getElementById("plan-fold");
-  const planCard = document.getElementById("plan-card");
-  if (planFold && planCard) planFold.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    ui.planOpen = !planCard.classList.contains("open");
-    planCard.classList.toggle("open", ui.planOpen);
-  };
+  document.querySelectorAll("[data-work-go]").forEach(el => {
+    el.addEventListener("pointerdown", e => e.stopPropagation());
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const go = el.dataset.workGo;
+      if (!go) return;
+      ui.page = go;
+      ui.keepScroll = false;
+      render();
+    };
+  });
   document.querySelectorAll("[data-gcal-memo]").forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
