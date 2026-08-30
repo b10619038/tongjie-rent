@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-07";
-const APP_EDIT_COUNT = 205;
+const APP_STAMP = "2026-08-30-13-10";
+const APP_EDIT_COUNT = 206;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["手機畫面左右與底部不再卡住"] },
+  { ver: APP_STAMP, items: ["同一支手機催繳開發者測試戶也能收到通知"] },
+  { ver: "2026-08-30-13-07", items: ["手機畫面左右與底部不再卡住"] },
   { ver: "2026-08-30-13-03", items: ["版本號改為西元-月-日-時-分-累加修改次數"] },
   { ver: "2026-08-30-12-59", items: ["出租率與太陽能照片從右邊滑入"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
@@ -2253,14 +2254,18 @@ function ensureDevPreview() {
 function enterDevPreview() {
   ui.devPreview = true;
   ui.adminCode = "1240";
+  ensureDemoTenant(state);
   ensureDevPreview();
+  const room = (state.rooms || []).find(x => x.demo || x.id === "r-demo" || String(x.no) === "DEMO");
+  const t = (state.tenants || []).find(x => x.demo || x.id === "t-demo");
   ui.role = "tenant";
-  ui.tenantId = ui.devTenant.id;
-  ui.roomId = ui.devRoom.id;
-  ui.roomNo = ui.devRoom.no;
+  ui.tenantId = (t && t.id) || "t-demo";
+  ui.roomId = (room && room.id) || "r-demo";
+  ui.roomNo = "DEMO";
   ui.page = "home";
   persistUi();
   render();
+  flushTenantInbox();
 }
 function exitDevPreview() {
   ui.devPreview = false;
@@ -2275,11 +2280,21 @@ function exitDevPreview() {
   render();
 }
 function me() {
-  if (isDevPreview()) { ensureDevPreview(); return ui.devTenant; }
+  if (isDevPreview()) {
+    const live = (state.tenants || []).find(x => x.demo || x.id === "t-demo");
+    if (live) return live;
+    ensureDevPreview();
+    return ui.devTenant;
+  }
   return state.tenants.find(t => t.id === ui.tenantId);
 }
 function myRoom() {
-  if (isDevPreview()) { ensureDevPreview(); return ui.devRoom; }
+  if (isDevPreview()) {
+    const live = (state.rooms || []).find(x => x.demo || x.id === "r-demo" || String(x.no) === "DEMO");
+    if (live) return live;
+    ensureDevPreview();
+    return ui.devRoom;
+  }
   const t = me();
   return t ? state.rooms.find(r => r.id === t.roomId) : null;
 }
@@ -2500,7 +2515,8 @@ function shouldShowLocalBanner(target) {
   if (!target || target === "all") return true;
   if (target === "admin") return ui.role === "admin";
   if (target === "tenants") return ui.role === "tenant";
-  const room = myRoom();
+  if (String(target) === "DEMO") return true;
+  const room = typeof myRoom === "function" ? myRoom() : null;
   return !!(ui.role === "tenant" && room && String(room.no) === String(target));
 }
 function canOsNotify() {
@@ -2527,10 +2543,9 @@ function showOsBanner(title, body, tag) {
   else viaPage();
 }
 function pushPhoneNotify(title, body, target) {
-  if (isDevPreview()) return;
   const text = body || "";
-  if (target) sendRemoteNotify(target, title, text);
-  if (!shouldShowLocalBanner(target)) return;
+  if (target && !isDevPreview()) sendRemoteNotify(target, title, text);
+  if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
   const show = () => showOsBanner(title, text);
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") { show(); return; }
@@ -2549,9 +2564,24 @@ function todayStamp() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
+function flushTenantInbox() {
+  const t = typeof me === "function" ? me() : null;
+  if (!t || !Array.isArray(t.inbox) || !t.inbox.length) return;
+  const unread = t.inbox.filter(n => n && !n.read);
+  if (!unread.length) return;
+  unread.forEach(n => {
+    n.read = true;
+    showOsBanner(n.title || "通知", n.body || "", n.id);
+  });
+  if (unread.length) {
+    toast(unread[unread.length - 1].title + "　" + (unread[unread.length - 1].body || ""));
+    if (!isDevPreview()) save();
+  }
+}
 function maybeNudgeNotifies() {
   if (!canOsNotify()) return;
   if (ui.role === "tenant" && ui.tenantId) {
+    flushTenantInbox();
     const t = me();
     const room = myRoom();
     const unread = unreadAnnouncements(ui.tenantId);
@@ -3976,6 +4006,8 @@ function nudgePayOne(t, silent) {
   const rent = room ? money(room.rent) : "";
   const bound = no && typeof lineBindForRoom === "function" && lineBindForRoom(no);
   const body = `${no} ${t.name || ""}　本月租金 ${rent} 尚未入帳，請於每月 ${due} 日前繳納。`.replace(/\s+/g, " ").trim();
+  if (!Array.isArray(t.inbox)) t.inbox = [];
+  t.inbox.push({ id: "n" + Date.now(), title: "租金催繳", body, at: nowStamp(), read: false, kind: "pay" });
   pushPhoneNotify("租金催繳", body, no || "tenants");
   t.lastNudgeAt = Date.now();
   t.lastNudgeHow = bound ? "line" : "app";
@@ -7172,6 +7204,7 @@ function bindUpdateBar() {
 }
 
 function bindTenant() {
+  flushTenantInbox();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isDevPreview()) { exitDevPreview(); return; }
