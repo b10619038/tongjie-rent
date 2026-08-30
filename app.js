@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-02";
-const APP_EDIT_COUNT = 262;
+const APP_STAMP = "2026-08-30-23-06";
+const APP_EDIT_COUNT = 263;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["管理員即將提醒開發者也可以看到"] },
+  { ver: APP_STAMP, items: ["租客設定登入密碼改為更改密碼"] },
+  { ver: "2026-08-30-23-02", items: ["管理員即將提醒開發者也可以看到"] },
   { ver: "2026-08-30-22-59", items: ["即將提醒完成狀態管理員與開發者會同步"] },
   { ver: "2026-08-30-22-54", items: ["後台分類列不再被下面圖塊卡住"] },
   { ver: "2026-08-30-22-51", items: ["公司資料儲存後換頁會保留"] },
@@ -9980,7 +9981,7 @@ function tenantSettings() {
       </div>
       ${bioSettingsHtml()}
       <form class="card card-body" id="set-pass-form" autocomplete="off">
-        <div class="label">登入密碼</div>
+        <div class="label">更改密碼</div>
         <label class="field"><span>目前密碼</span><input name="old" type="password" inputmode="numeric" /></label>
         <label class="field"><span>新密碼</span><input name="n1" type="password" inputmode="numeric" /></label>
         <label class="field"><span>再輸入一次</span><input name="n2" type="password" inputmode="numeric" /></label>
