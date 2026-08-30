@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-09";
-const APP_EDIT_COUNT = 285;
+const APP_STAMP = "2026-08-31-01-10";
+const APP_EDIT_COUNT = 286;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["二聯備註房號往下移一點"] },
+  { ver: APP_STAMP, items: ["發票日期紅字往下移一點"] },
+  { ver: "2026-08-31-01-09", items: ["二聯備註房號往下移一點"] },
   { ver: "2026-08-31-01-08", items: ["發票應稅V再往右1.5公分"] },
   { ver: "2026-08-31-01-07", items: ["發票應稅V改到稅字右邊空格"] },
   { ver: "2026-08-31-01-06", items: ["二聯發票備註房號放大"] },
@@ -2960,9 +2961,9 @@ function invoiceCopyHtml(r, t, copyName) {
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 340, 168, 1320, 36, "invoiceBuyer", buyer, "inv-left")}
       ${boxes}
-      ${at(W, H, 922, 224, 78, 32, "invoiceY", y)}
-      ${at(W, H, 1048, 224, 68, 32, "invoiceMo", mo)}
-      ${at(W, H, 1158, 224, 72, 32, "invoiceDay", day)}
+      ${at(W, H, 922, 232, 78, 32, "invoiceY", y)}
+      ${at(W, H, 1048, 232, 68, 32, "invoiceMo", mo)}
+      ${at(W, H, 1158, 232, 72, 32, "invoiceDay", day)}
       ${at(W, H, 118, 408, 310, 50, "invoiceItem", item)}
       ${at(W, H, 458, 408, 210, 50, "invoiceQty", qty)}
       ${at(W, H, 704, 408, 170, 50, "invoicePrice", price)}
@@ -2980,9 +2981,9 @@ function invoiceCopyHtml(r, t, copyName) {
   const roomNote = (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
-    ${at(W, H, 980, 158, 80, 32, "invoiceY", y)}
-    ${at(W, H, 1098, 158, 70, 32, "invoiceMo", mo)}
-    ${at(W, H, 1215, 158, 70, 32, "invoiceDay", day)}
+    ${at(W, H, 980, 168, 80, 32, "invoiceY", y)}
+    ${at(W, H, 1098, 168, 70, 32, "invoiceMo", mo)}
+    ${at(W, H, 1215, 168, 70, 32, "invoiceDay", day)}
     ${at(W, H, 340, 208, 1400, 34, "invoiceBuyer", buyer, "inv-left")}
     ${at(W, H, 78, 400, 418, 46, "invoiceItem", item)}
     ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
