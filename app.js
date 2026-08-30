@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-06";
-const APP_EDIT_COUNT = 263;
+const APP_STAMP = "2026-08-30-23-09";
+const APP_EDIT_COUNT = 264;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客設定登入密碼改為更改密碼"] },
+  { ver: APP_STAMP, items: ["本月自動分析可收起"] },
+  { ver: "2026-08-30-23-06", items: ["租客設定登入密碼改為更改密碼"] },
   { ver: "2026-08-30-23-02", items: ["管理員即將提醒開發者也可以看到"] },
   { ver: "2026-08-30-22-59", items: ["即將提醒完成狀態管理員與開發者會同步"] },
   { ver: "2026-08-30-22-54", items: ["後台分類列不再被下面圖塊卡住"] },
@@ -6693,10 +6694,20 @@ function adminAi() {
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
   const plan = monthlyErrandPlan();
   const parts = {
-    plan: `<div class="card card-body">
-      <div class="row"><h2 class="dash-h" style="margin:0">本月自動分析</h2>${aiDragBtn()}</div>
-      <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
-      ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
+    plan: `<div class="card card-body tenant-slim${ui.planOpen ? " open" : ""}" id="plan-card">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="plan-fold">
+          <span class="k">本月自動分析</span>
+          <span class="row-end"><span class="small">${plan.lines.length ? plan.lines.length + " 項" : ""}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <div class="small" style="margin-top:10px">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
+          ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
+        </div>
+      </div>
     </div>`,
     cals: (() => {
       const list = upcomingMemos();
@@ -10448,6 +10459,14 @@ function bindAdminAi() {
     e.stopPropagation();
     ui.calsOpen = !calsCard.classList.contains("open");
     calsCard.classList.toggle("open", ui.calsOpen);
+  };
+  const planFold = document.getElementById("plan-fold");
+  const planCard = document.getElementById("plan-card");
+  if (planFold && planCard) planFold.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.planOpen = !planCard.classList.contains("open");
+    planCard.classList.toggle("open", ui.planOpen);
   };
   document.querySelectorAll("[data-gcal-memo]").forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
