@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-26";
-const APP_EDIT_COUNT = 293;
+const APP_STAMP = "2026-08-31-01-34";
+const APP_EDIT_COUNT = 294;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票買受人紅字往左0.4公分"] },
+  { ver: APP_STAMP, items: ["手機看發票會等比例縮小，紅字一起縮"] },
+  { ver: "2026-08-31-01-26", items: ["發票買受人紅字往左0.4公分"] },
   { ver: "2026-08-31-01-23", items: ["二聯備註房號再放大"] },
   { ver: "2026-08-31-01-22", items: ["發票買受人紅字放大"] },
   { ver: "2026-08-31-01-21", items: ["發票中文大寫紅字往左0.2公分"] },
@@ -3025,7 +3026,7 @@ function adminInvoice() {
       </div>
       <button type="button" class="btn-navy" id="print-invoice" style="margin-top:8px">列印發票</button>
     </div>
-    ${copies.map(c => invoiceCopyHtml(r, t, c)).join("")}
+    ${copies.map(c => `<div class="inv-wrap">${invoiceCopyHtml(r, t, c)}</div>`).join("")}
   </div>`;
 }
 function statusLabel(s) { return { rented: "滿租", vacant: "空置", repair: "維修中", office: "辦公室" }[s] || s; }
