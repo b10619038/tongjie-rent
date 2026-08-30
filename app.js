@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-58";
-const APP_EDIT_COUNT = 216;
+const APP_STAMP = "2026-08-30-14-01";
+const APP_EDIT_COUNT = 217;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房租金依收款明細核對"] },
+  { ver: APP_STAMP, items: ["後台刪除報修可點擊"] },
+  { ver: "2026-08-30-13-58", items: ["套房租金依收款明細核對"] },
   { ver: "2026-08-30-13-54", items: ["統潔帳戶圖卡移除超商"] },
   { ver: "2026-08-30-13-52", items: ["信潔帳戶圖卡移除超商"] },
   { ver: "2026-08-30-13-51", items: ["太陽能照片改成和其他三張同形狀"] },
@@ -5216,6 +5217,7 @@ function deleteRepair(id) {
 }
 function bindRepairDelete() {
   document.querySelectorAll("[data-del-repair]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -8173,6 +8175,7 @@ function bindRepairFold() {
 function bindAdmin() {
   bindMediaViewers();
   bindRepairFold();
+  bindRepairDelete();
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
