@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-29";
-const APP_EDIT_COUNT = 209;
+const APP_STAMP = "2026-08-30-13-38";
+const APP_EDIT_COUNT = 210;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者提交的報修會顯示在後台"] },
+  { ver: APP_STAMP, items: ["後台可查看報修照片，工錢改為金額"] },
+  { ver: "2026-08-30-13-29", items: ["開發者提交的報修會顯示在後台"] },
   { ver: "2026-08-30-13-28", items: ["匯出可選 PDF 或 Excel"] },
   { ver: "2026-08-30-13-22", items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
   { ver: "2026-08-30-13-10", items: ["同一支手機催繳開發者測試戶也能收到通知"] },
@@ -2716,7 +2717,7 @@ function openMediaViewer(list, index) {
       <button type="button" id="lb-prev" ${index === 0 ? "disabled" : ""}>上一則</button>
       <button type="button" id="lb-next" ${index === list.length - 1 ? "disabled" : ""}>下一則</button>
     </div>` : ""}`;
-  (document.querySelector(".shell") || document.body).appendChild(wrap);
+  document.body.appendChild(wrap);
   document.getElementById("lb-close").onclick = closeMediaViewer;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeMediaViewer(); });
   const prev = document.getElementById("lb-prev");
@@ -2727,17 +2728,22 @@ function openMediaViewer(list, index) {
 function bindMediaViewers() {
   document.querySelectorAll("[data-view-media]").forEach(btn => {
     btn.onclick = e => {
+      e.preventDefault();
       e.stopPropagation();
-      const [id, kind] = btn.dataset.viewMedia.split("|");
-      const rep = state.repairs.find(x => x.id === id);
-      const ann = (state.announcements || []).find(x => x.id === id);
-      const err = (state.errands || []).find(x => x.id === id);
-      const media = rep ? getRepairMedia(rep) : (ann ? (ann.media || []) : (err ? (err.media || []) : []));
-      if (ann && ui.tenantId) {
-        if (!ann.readBy) ann.readBy = [];
-        if (!ann.readBy.includes(ui.tenantId)) { ann.readBy.push(ui.tenantId); save(); }
-      }
-      openMediaViewer(media.filter(m => m.kind === kind), 0);
+      try {
+        const [id, kind] = String(btn.dataset.viewMedia || "").split("|");
+        const rep = (state.repairs || []).find(x => x.id === id);
+        const ann = (state.announcements || []).find(x => x.id === id);
+        const err = (state.errands || []).find(x => x.id === id);
+        const media = rep ? getRepairMedia(rep) : (ann ? (ann.media || []) : (err ? (err.media || []) : []));
+        if (ann && ui.tenantId) {
+          if (!ann.readBy) ann.readBy = [];
+          if (!ann.readBy.includes(ui.tenantId)) { ann.readBy.push(ui.tenantId); save(); }
+        }
+        const list = media.filter(m => m && m.src && (!kind || m.kind === kind));
+        if (!list.length) { toast("沒有可查看的照片或影片"); return; }
+        openMediaViewer(list, 0);
+      } catch (err) { try { console.error(err); } catch {} toast("無法開啟照片"); }
     };
   });
 }
@@ -2866,7 +2872,7 @@ function openContractViewer(images, index) {
       <button type="button" id="lb-prev" ${index === 0 ? "disabled" : ""}>上一張</button>
       <button type="button" id="lb-next" ${index === images.length - 1 ? "disabled" : ""}>下一張</button>
     </div>`;
-  (document.querySelector(".shell") || document.body).appendChild(wrap);
+  document.body.appendChild(wrap);
   document.getElementById("lb-close").onclick = closeContractViewer;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeContractViewer(); });
   document.getElementById("lb-pdf").onclick = e => { e.preventDefault(); e.stopPropagation(); downloadContractsPdf([images[index]], contractPdfName(index + 1)); };
@@ -5195,7 +5201,7 @@ function repairCard(rep, extraClass) {
     <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
     ${appointLabel(rep)}
     ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
-    ${rep.cost ? `<div class="row"><span class="k">工錢</span><span class="v">${money(rep.cost)}</span></div>` : ""}
+    ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${money(rep.cost)}</span></div>` : ""}
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
     <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
@@ -7010,7 +7016,7 @@ function adminRepairs() {
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
       <label class="field"><span>師傅／廠商</span><input data-rep-vendor="${rep.id}" type="text" value="${escapeHtml(rep.vendor || "")}" placeholder="例如 冷氣行" /></label>
-      <label class="field"><span>工錢</span><input data-rep-cost="${rep.id}" type="number" inputmode="numeric" value="${rep.cost || ""}" placeholder="例如 1500" /></label>
+      <label class="field"><span>金額</span><input data-rep-cost="${rep.id}" type="number" inputmode="numeric" min="0" value="${rep.cost == null || String(rep.cost) === "" ? "" : Number(rep.cost)}" placeholder="沒有花費可填 0" /></label>
       <label class="field"><span>完工說明</span><textarea data-rep-done-note="${rep.id}" rows="2" placeholder="更換零件、完工情形">${escapeHtml(rep.doneNote || "")}</textarea></label>
       <div class="seg ${rep.status === "done" ? "is-done" : rep.status === "doing" ? "is-doing" : ""}">
         <i class="seg-bg"></i>
@@ -8116,6 +8122,7 @@ function bindAdminLogs() {
   });
 }
 function bindAdmin() {
+  bindMediaViewers();
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
