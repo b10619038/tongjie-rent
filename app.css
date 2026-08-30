@@ -157,9 +157,6 @@ input, textarea, select {
   user-select: text !important;
   touch-action: manipulation;
 }
-  background: #fff;
-  color: #111;
-}
 .shell {
   flex: 1;
   min-height: 0;
@@ -167,9 +164,18 @@ input, textarea, select {
   display: flex;
   flex-direction: column;
   background: var(--paper);
+  overflow: hidden;
 }
 .shell.admin-wide { overflow: hidden; }
-.tenant-scroll, .admin-scroll { flex: 1; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
+.tenant-scroll, .admin-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
 .admin-scroll { padding-bottom: calc(72px + var(--safe-b)); }
 .tenant-scroll { padding-bottom: calc(88px + var(--safe-b)); }
 
@@ -1279,7 +1285,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   text-align: left;
   color: var(--muted);
 }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; user-select: none; touch-action: none; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; user-select: none; touch-action: pan-y; }
 .cal-w { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; font-weight: 700; pointer-events: none; }
 .cal-cell {
   min-height: 64px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);

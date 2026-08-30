@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-22-29";
-const APP_EDIT_COUNT = 255;
+const APP_STAMP = "2026-08-30-22-33";
+const APP_EDIT_COUNT = 256;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定裡公司資料可正常輸入與儲存"] },
+  { ver: APP_STAMP, items: ["畫面可再上下滑動"] },
+  { ver: "2026-08-30-22-29", items: ["設定裡公司資料可正常輸入與儲存"] },
   { ver: "2026-08-30-22-27", items: ["設定可開啟指紋／面容快速登入"] },
   { ver: "2026-08-30-22-24", items: ["補上每月10／15／25固定工作，水錶隔兩月，開發者薪資僅自己可見"] },
   { ver: "2026-08-30-21-55", items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
@@ -10826,19 +10827,25 @@ function bindPullRefresh() {
     if (label) label.textContent = text || (h >= need ? "放開後重新整理" : "下拉重新整理");
   };
   sc.addEventListener("touchstart", e => {
-    if (busy || sc.scrollTop > 2) { pulling = false; return; }
-    if (e.target.closest("form, input, textarea, select, canvas, .swipe-wrap, .seg, .tabs, button, label")) return;
+    pulling = false;
+    dy = 0;
+    if (busy || sc.scrollTop > 2) return;
+    if (e.target.closest("form, input, textarea, select, canvas, .swipe-wrap, .seg, .tabs, button, label, a")) return;
     y0 = e.touches[0].clientY;
     pulling = true;
-    dy = 0;
     const box = live();
     if (box) box.style.transition = "none";
   }, { passive: true });
   sc.addEventListener("touchmove", e => {
     if (!pulling || busy) return;
-    if (sc.scrollTop > 2) { pulling = false; setH(0); return; }
-    dy = Math.max(0, (e.touches[0].clientY - y0) * 0.45);
-    if (dy > 10) {
+    const raw = e.touches[0].clientY - y0;
+    if (raw < -6 || sc.scrollTop > 2) {
+      pulling = false;
+      setH(0);
+      return;
+    }
+    dy = Math.max(0, raw * 0.45);
+    if (dy > 14 && sc.scrollTop <= 0) {
       if (e.cancelable) e.preventDefault();
       setH(Math.min(max, dy));
     }
