@@ -5085,7 +5085,7 @@ function adminSettings() {
   const st = notifyStatus();
   const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
   const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
-  return `<div class="admin-grid list">
+  return `<div class="admin-grid list settings-stack">
     <div class="card card-body">
       <div class="label">帳號</div>
       <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
