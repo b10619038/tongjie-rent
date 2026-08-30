@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-10";
-const APP_EDIT_COUNT = 206;
+const APP_STAMP = "2026-08-30-13-22";
+const APP_EDIT_COUNT = 207;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["同一支手機催繳開發者測試戶也能收到通知"] },
+  { ver: APP_STAMP, items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
+  { ver: "2026-08-30-13-10", items: ["同一支手機催繳開發者測試戶也能收到通知"] },
   { ver: "2026-08-30-13-07", items: ["手機畫面左右與底部不再卡住"] },
   { ver: "2026-08-30-13-03", items: ["版本號改為西元-月-日-時-分-累加修改次數"] },
   { ver: "2026-08-30-12-59", items: ["出租率與太陽能照片從右邊滑入"] },
@@ -2603,12 +2604,27 @@ function maybeNudgeNotifies() {
         showOsBanner("合約即將到期", `將於 ${t.leaseEnd} 到期，還有 ${left} 天，建議確認是否續約。`, "lease");
       }
     }
+    if (t && room && /1,?800|一年/.test(String((room.utilities || {}).water || "一年固定 $1,800"))) {
+      const due = waterDueDate(t);
+      if (due) {
+        const left = Math.ceil((new Date(due + "T00:00:00") - new Date()) / 86400000);
+        if (left >= 0 && left <= 30 && !alreadyNudged("water-" + t.id + "-" + due.slice(0, 4))) {
+          markNudged("water-" + t.id + "-" + due.slice(0, 4));
+          showOsBanner("年度水費", "一年固定 NT$ 1,800，請於 " + due + " 前繳納。", "water");
+        }
+      }
+    }
   }
   if (ui.role === "admin") {
     const unpaid = (state.tenants || []).filter(t => t.paid === false && (t.name || "").trim());
     if (unpaid.length && !alreadyNudged("admin-unpaid")) {
       markNudged("admin-unpaid");
       showOsBanner("本月未繳租金", unpaid.length + " 戶尚未繳費", "admin-unpaid");
+    }
+    const waters = waterDueSoon();
+    if (waters.length && !alreadyNudged("admin-water")) {
+      markNudged("admin-water");
+      showOsBanner("年度水費", waters.length + " 戶 45 天內到期", "admin-water");
     }
   }
 }
@@ -3993,6 +4009,40 @@ function unpaidActiveTenants() {
     return true;
   });
 }
+function waterDueDate(t) {
+  try {
+    const start = String((t && t.leaseStart) || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return "";
+    const y = new Date().getFullYear();
+    const md = start.slice(4);
+    let due = y + md;
+    const today = ymdOf(nowStamp());
+    if (due < today) due = (y + 1) + md;
+    return due;
+  } catch { return ""; }
+}
+function waterDueSoon() {
+  try {
+    const today = ymdOf(nowStamp());
+    const t0 = new Date(today + "T00:00:00").getTime();
+    return (state.tenants || []).filter(t => {
+      if (!t || isDemoTenant(t) || !(t.name || "").trim()) return false;
+      const r = (state.rooms || []).find(x => x.id === t.roomId);
+      if (!r || r.kind === "factory" || r.status === "office") return false;
+      const water = String((r.utilities || {}).water || "一年固定 $1,800");
+      if (!/1,?800|一年/.test(water)) return false;
+      const due = waterDueDate(t);
+      if (!due) return false;
+      const days = Math.round((new Date(due + "T00:00:00").getTime() - t0) / 86400000);
+      return Number.isFinite(days) && days >= 0 && days <= 45;
+    }).map(t => {
+      const r = (state.rooms || []).find(x => x.id === t.roomId);
+      const due = waterDueDate(t);
+      const days = Math.round((new Date(due + "T00:00:00").getTime() - t0) / 86400000);
+      return { t, r, due, days };
+    }).sort((a, b) => a.days - b.days);
+  } catch { return []; }
+}
 function canNudgePay(t) {
   if (!t || t.paid) return false;
   const at = Number(t.lastNudgeAt) || 0;
@@ -4147,6 +4197,7 @@ function checkoutFormHtml() {
     <div class="unpaid-tools">
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
+      ${co.status === "done" && r.status !== "vacant" ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
     </div>
   </div>`;
 }
@@ -4244,6 +4295,22 @@ function bindOps() {
   if (saveCo) saveCo.onclick = e => { e.preventDefault(); e.stopPropagation(); saveCheckout(false); };
   const doneCo = document.getElementById("co-done");
   if (doneCo) doneCo.onclick = e => { e.preventDefault(); e.stopPropagation(); saveCheckout(true); };
+  const vacateCo = document.getElementById("co-vacate");
+  if (vacateCo) vacateCo.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
+      const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+      if (!r) { toast("找不到房間"); return; }
+      r.status = "vacant";
+      save();
+      audit("退租改空置", (r.no || "") + " " + (t && t.name || ""));
+      toast("已改為空置，租客資料仍保留");
+      ui.keepScroll = true;
+      render();
+    } catch (err) { try { console.error(err); } catch {} toast("改空置失敗"); }
+  };
   const dep = document.getElementById("co-deposit");
   const ded = document.getElementById("co-deduct");
   const refund = document.getElementById("co-refund");
@@ -4936,7 +5003,7 @@ function roomExtrasHtml(r) {
           <span class="k">電費</span>
           <span class="v linkish">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span>
         </div>
-        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || "一年固定 $1,800")}</span></div>
+        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || "一年固定 $1,800")}${(() => { try { const t = me(); const d = t ? waterDueDate(t) : ""; return d ? "　下次 " + d : ""; } catch { return ""; } })()}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">
@@ -5125,6 +5192,9 @@ function repairCard(rep, extraClass) {
     <div class="small">${formatDateTime12(rep.createdAt)}</div>
     <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
     ${appointLabel(rep)}
+    ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
+    ${rep.cost ? `<div class="row"><span class="k">工錢</span><span class="v">${money(rep.cost)}</span></div>` : ""}
+    ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
     <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
   </div>`;
@@ -6377,6 +6447,9 @@ function adminDash() {
           return `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days < 0 ? "已到期" : x.days + " 天"} · ${x.t.leaseEnd}</span></div>`;
         }).join("") : `<div class="empty">近 90 天沒有到期合約</div>`}
       </div>
+      <div class="card card-body"><h2 class="dash-h">年度水費（45 天內）</h2>
+        ${(() => { const list = waterDueSoon(); return list.length ? list.map(x => `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${x.r ? x.r.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days} 天 · ${x.due} · NT$ 1,800</span></div>`).join("") : `<div class="empty">近 45 天沒有套房水費到期</div>`; })()}
+      </div>
     </div>
   </div>`;
 }
@@ -6898,6 +6971,9 @@ function adminRepairs() {
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
+      <label class="field"><span>師傅／廠商</span><input data-rep-vendor="${rep.id}" type="text" value="${escapeHtml(rep.vendor || "")}" placeholder="例如 冷氣行" /></label>
+      <label class="field"><span>工錢</span><input data-rep-cost="${rep.id}" type="number" inputmode="numeric" value="${rep.cost || ""}" placeholder="例如 1500" /></label>
+      <label class="field"><span>完工說明</span><textarea data-rep-done-note="${rep.id}" rows="2" placeholder="更換零件、完工情形">${escapeHtml(rep.doneNote || "")}</textarea></label>
       <div class="seg ${rep.status === "done" ? "is-done" : rep.status === "doing" ? "is-doing" : ""}">
         <i class="seg-bg"></i>
         <button type="button" class="${rep.status === "doing" ? "on" : ""}" data-rep-status="${rep.id}|doing">處理中</button>
@@ -8294,6 +8370,36 @@ function bindAdmin() {
         const room = state.rooms.find(x => x.id === rep.roomId);
         pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
       }
+    };
+  });
+  document.querySelectorAll("[data-rep-vendor]").forEach(inp => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("click", e => { e.stopPropagation(); try { inp.focus(); } catch {} });
+    inp.onchange = () => {
+      const rep = state.repairs.find(x => x.id === inp.dataset.repVendor);
+      if (!rep) return;
+      rep.vendor = String(inp.value || "").trim();
+      save();
+    };
+  });
+  document.querySelectorAll("[data-rep-cost]").forEach(inp => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("click", e => { e.stopPropagation(); try { inp.focus(); } catch {} });
+    inp.onchange = () => {
+      const rep = state.repairs.find(x => x.id === inp.dataset.repCost);
+      if (!rep) return;
+      rep.cost = Number(inp.value) || 0;
+      save();
+    };
+  });
+  document.querySelectorAll("[data-rep-done-note]").forEach(inp => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("click", e => { e.stopPropagation(); try { inp.focus(); } catch {} });
+    inp.onchange = () => {
+      const rep = state.repairs.find(x => x.id === inp.dataset.repDoneNote);
+      if (!rep) return;
+      rep.doneNote = String(inp.value || "").trim();
+      save();
     };
   });
   const rulesForm = document.getElementById("rules-form");
