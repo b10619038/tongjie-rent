@@ -42,6 +42,8 @@ html, body {
   background: var(--paper);
   color: var(--ink, #17211f);
   padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   box-sizing: border-box;
 }
 body { font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
@@ -143,7 +145,8 @@ input, textarea, select {
 }
 .shell.admin-wide { overflow: hidden; }
 .tenant-scroll, .admin-scroll { flex: 1; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; }
-.admin-scroll { padding-bottom: 88px; }
+.admin-scroll { padding-bottom: calc(72px + var(--safe-b)); }
+.tenant-scroll { padding-bottom: calc(88px + var(--safe-b)); }
 
 .ptr {
   height: 0;
@@ -932,13 +935,13 @@ input[type="file"] {
 .firm-legend i.net { background: var(--ink); }
 .net-row { font-weight: 800; }
 @media (max-width: 640px) {
-  .admin-bar { padding: 12px 14px 4px; gap: 8px; }
+  .admin-bar { padding: 12px 16px 4px; gap: 8px; }
   .admin-bar h1 { font-size: 22px; margin-top: 4px; }
   .switch-tile { min-width: 56px; padding: 8px 12px; }
   .tabs { padding: 8px 12px 12px; }
-  .dash { padding: 0 12px 100px; }
-  .admin-scroll { padding-bottom: 100px; }
-  .firm-card { padding: 12px; }
+  .dash { padding: 0 14px calc(88px + var(--safe-b)); }
+  .admin-scroll { padding-bottom: calc(88px + var(--safe-b)); }
+  .firm-card { padding: 12px; overflow: hidden; }
   .pie-wrap { width: 64px; height: 64px; flex: 0 0 64px; }
   .pie-center { inset: 15px; }
   .firm-body { gap: 10px; align-items: flex-start; }
@@ -946,9 +949,12 @@ input[type="file"] {
   .firm-legend div { font-size: 12px; gap: 6px; }
   .firm-legend span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .firm-legend strong { font-size: 11px; letter-spacing: -0.03em; margin-left: 4px; }
-  .ring-card { padding: 12px; gap: 10px; }
+  .ring-card { padding: 12px; gap: 10px; overflow: hidden; }
+  .ring-wrap { width: 64px; height: 64px; flex: 0 0 64px; }
+  .occ-shot { width: min(96px, 26vw); height: min(62px, 17vw); border-radius: 12px; }
+  .solar-shot { width: min(42%, 150px); height: 86px; }
   .theme-fab { right: 12px; bottom: calc(16px + var(--safe-b)); }
-  .ver { padding-left: 12px; padding-right: 12px; padding-bottom: 18px; }
+  .ver { padding-left: 16px; padding-right: 16px; padding-bottom: calc(12px + var(--safe-b)); }
 }
 .dash-hero { display: grid; gap: 12px; grid-template-columns: 1fr; }
 .dash-two { display: grid; gap: 12px; }
@@ -969,7 +975,7 @@ input[type="file"] {
   inherits: true;
   initial-value: 0;
 }
-.ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; }
+.ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; overflow: hidden; min-width: 0; }
 .solar-card { min-width: 0; }
 .solar-shot {
   margin-left: auto;
@@ -996,13 +1002,13 @@ input[type="file"] {
 .ring.leaf { background: conic-gradient(from -90deg, #3FA89A calc(var(--p) * 1%), #E8F3F0 0); }
 .ring.clay { background: conic-gradient(from -90deg, #6B7CB8 calc(var(--p) * 1%), #EEF0F6 0); }
 .ring.sun { background: conic-gradient(from -90deg, #E8B03A calc(var(--p) * 1%), #F7F1E2 0); }
-.ring-stack { display: grid; gap: 14px; align-items: stretch; }
-.ring-row { display: flex; align-items: center; gap: 12px; }
+.ring-stack { display: grid; gap: 14px; align-items: stretch; min-width: 0; overflow: hidden; }
+.ring-row { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
 .ring-row > div:not(.ring-wrap) { flex: 1; min-width: 0; }
 .occ-shot {
   margin-left: auto;
-  width: 118px;
-  height: 74px;
+  width: min(118px, 30vw);
+  height: min(74px, 19vw);
   object-fit: cover;
   object-position: center;
   border-radius: 14px;
@@ -1866,14 +1872,16 @@ img.avatar { object-fit: cover; display: block; }
   bottom: 0;
   z-index: 40;
   margin: 0;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
   text-align: center;
   font-size: 11px;
   color: var(--muted);
   letter-spacing: .04em;
   pointer-events: none;
-  background: linear-gradient(transparent, var(--paper) 36%);
+  background: var(--paper);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .home-upd {
   position: fixed;
