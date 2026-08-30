@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-03-23";
-const APP_EDIT_COUNT = 320;
+const APP_STAMP = "2026-08-31-03-28";
+const APP_EDIT_COUNT = 321;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手聽得懂幫我記、提醒我、請紀錄"] },
+  { ver: APP_STAMP, items: ["本月工作完成左邊新增編輯"] },
+  { ver: "2026-08-31-03-23", items: ["工作助手聽得懂幫我記、提醒我、請紀錄"] },
   { ver: "2026-08-31-03-16", items: ["本月工作改為每月28日收鈺晟電費"] },
   { ver: "2026-08-31-03-15", items: ["本月工作會出現在總覽日曆細項"] },
   { ver: "2026-08-31-03-09", items: ["本月工作拿掉總結收支的10:00"] },
@@ -1199,7 +1200,7 @@ function ensureCycleJobs(data) {
   CYCLE_JOBS.forEach(job => {
     const hit = data.aiMemos.find(m => m && m.id === job.id);
     if (hit) {
-      hit.text = job.text;
+      if (!hit.edited) hit.text = job.text;
       hit.time = job.time || "";
       hit.monthDay = job.monthDay;
       hit.flexDays = job.flexDays || 0;
@@ -1218,7 +1219,7 @@ function ensureDevCycleJobs() {
   DEV_CYCLE_JOBS.forEach(job => {
     const hit = list.find(m => m && m.id === job.id);
     if (hit) {
-      if (hit.text !== job.text || hit.monthDay !== job.monthDay) {
+      if (!hit.edited && (hit.text !== job.text || hit.monthDay !== job.monthDay)) {
         hit.text = job.text;
         hit.monthDay = job.monthDay;
         hit.cycle = true;
@@ -6827,12 +6828,22 @@ function adminAi() {
       const summary = bits.join(" · ");
       const memoRows = arr => arr.map(m => {
         const on = ui.workMemoId === m.id;
+        const editing = on && ui.workEditId === m.id;
+        const dateVal = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : (typeof workOccurYmd === "function" ? workOccurYmd(m) : "");
         return `
             <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
               <span>${escapeHtml(formatWorkMemo(m))}</span>
             </div>
-            ${on ? `<div class="unpaid-tools work-memo-tools">
+            ${editing ? `<form class="work-edit" data-work-save="${m.id}">
+              <input name="text" type="text" value="${escapeHtml(m.text || "")}" placeholder="工作內容" autocomplete="off" />
+              <input name="date" type="date" value="${escapeHtml(dateVal || "")}" />
+              <div class="unpaid-tools work-memo-tools">
+                <button type="submit" class="ghost">儲存</button>
+                <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
+              </div>
+            </form>` : on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
+              <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
             </div>` : ""}`;
       }).join("");
@@ -6847,7 +6858,7 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">點一筆工作可加到日曆或完成。長字可左右滑查看。</p>
+          <p class="small" style="margin-top:10px">點一筆工作可加到日曆、編輯或完成。長字可左右滑查看。</p>
           <div class="work-scroll">
             <div class="work-scroller">
           ${g.all.length ? (sect("過期未完成", g.overdue) + sect("今天／3 天內", g.soon) + sect("本月其餘", g.later)) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
@@ -10657,6 +10668,7 @@ function bindAdminAi() {
       e.stopPropagation();
       const id = el.dataset.workMemo;
       ui.workMemoId = ui.workMemoId === id ? "" : id;
+      if (ui.workMemoId !== id) ui.workEditId = "";
       ui.workOpen = true;
       ui.keepScroll = true;
       render();
@@ -10671,6 +10683,58 @@ function bindAdminAi() {
       if (!go) return;
       ui.page = go;
       ui.keepScroll = false;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-edit-memo]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.workMemoId = btn.dataset.editMemo;
+      ui.workEditId = btn.dataset.editMemo;
+      ui.workOpen = true;
+      ui.keepScroll = true;
+      render();
+      requestAnimationFrame(() => {
+        const box = document.querySelector("[data-work-save='" + btn.dataset.editMemo + "'] input[name='text']");
+        if (box) { box.focus(); box.select(); }
+      });
+    };
+  });
+  document.querySelectorAll("[data-work-edit-cancel]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.workEditId = "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-work-save]").forEach(form => {
+    form.addEventListener("pointerdown", e => e.stopPropagation());
+    form.onsubmit = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = form.dataset.workSave;
+      const m = myMemos().find(x => x.id === id);
+      if (!m) return;
+      const fd = new FormData(form);
+      const text = String(fd.get("text") || "").trim();
+      const date = String(fd.get("date") || "").trim();
+      if (!text) { toast("請先填工作內容"); return; }
+      m.text = text;
+      m.edited = true;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        m.date = date;
+        if (m.monthDay) m.monthDay = Number(date.slice(8, 10));
+      }
+      saveMemoChange(m);
+      ui.workEditId = "";
+      ui.workMemoId = id;
+      ui.keepScroll = true;
+      toast("已更新這筆工作");
       render();
     };
   });
