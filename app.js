@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-00-18";
-const APP_EDIT_COUNT = 269;
+const APP_STAMP = "2026-08-31-00-35";
+const APP_EDIT_COUNT = 270;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票改成手開二聯／三聯模板，橘色欄位可改"] },
+  { ver: APP_STAMP, items: ["發票格子改為手開三聯／二聯空白格式"] },
+  { ver: "2026-08-31-00-18", items: ["發票改成手開二聯／三聯模板，橘色欄位可改"] },
   { ver: "2026-08-30-23-45", items: ["收電費現金會記成收入，不再誤判成繳費"] },
   { ver: "2026-08-30-23-17", items: ["管理員後台公告改到報修右邊"] },
   { ver: "2026-08-30-23-12", items: ["跑業務改為浮動球改成浮動球，放在箭頭左邊"] },
@@ -2900,7 +2901,13 @@ function moneyCnBoxes(n) {
   const digits = String(n).padStart(9, "0").slice(-9).split("");
   const han = "零壹貳參肆伍陸柒捌玖";
   const labels = ["億", "仟", "佰", "拾", "萬", "仟", "佰", "拾", "元"];
-  return digits.map((d, i) => `<span class="inv-han"><b>${han[Number(d)]}</b>${labels[i]}</span>`).join("");
+  let started = false;
+  return digits.map((d, i) => {
+    const v = Number(d);
+    if (v) started = true;
+    const ch = n && (started || i === 8) ? han[v] : "";
+    return `<span class="inv-han"><b>${ch}</b><em>${labels[i]}</em></span>`;
+  }).join("");
 }
 function invFill(key, val, cls) {
   return `<input class="inv-fill${cls ? " " + cls : ""}" data-inv="${key}" value="${escapeHtml(String(val ?? ""))}" />`;
@@ -2916,36 +2923,37 @@ function invoiceCopyHtml(r, t, copyName) {
   const qty = ui.invoiceQty != null && ui.invoiceQty !== "" ? ui.invoiceQty : "1";
   const total = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "" ? Number(ui.invoiceAmt) : Number(r.rent) || 0;
   const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(total || "");
-  const note = ui.invoiceNote != null ? ui.invoiceNote : (r.no || "");
   const taxId = (ui.invoiceTaxId != null && ui.invoiceTaxId !== "" ? ui.invoiceTaxId : ((t && t.taxId) || "")).replace(/\D/g, "").slice(0, 8);
   const taxBoxes = Array.from({ length: 8 }, (_, i) => `<i class="inv-tid">${escapeHtml(taxId[i] || "")}</i>`).join("");
-  const untax = Number(r.rentUntaxed) || Math.round(total / 1.05);
-  const tax = Math.max(0, total - untax);
-  const m1 = ui.invoiceM1 || p.start;
-  const m2 = ui.invoiceM2 || p.end;
-  const cn = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"];
+  const untax = Number(r.rentUntaxed) || (total ? Math.round(total / 1.05) : 0);
+  const tax = total ? Math.max(0, total - untax) : 0;
   const y = ui.invoiceY || p.y;
   const mo = ui.invoiceMo || p.m;
   const day = ui.invoiceDay || p.day;
-  const itemRows = [1, 2, 3, 4].map(() => `<tr><td></td><td></td><td></td><td class="inv-empty"></td></tr>`).join("");
-  const stamp = `<td class="c-side stamp-lab" rowspan="${triple ? 9 : 8}">
-              <div class="inv-note-top">${invFill("invoiceNote", note)}</div>
-              <div class="inv-chop-cap">營業人蓋用統一發票專用章</div>
-              <div class="inv-chop-mark">要蓋<br>發票章喔</div>
-            </td>`;
+  const empty = `<tr><td></td><td></td><td></td><td></td></tr>`;
+  const first = `<tr>
+            <td class="c-name">${invFill("invoiceItem", item)}</td>
+            <td>${invFill("invoiceQty", qty)}</td>
+            <td>${invFill("invoicePrice", price)}</td>
+            <td class="c-amt">${invFill("invoiceAmt", total ? String(total) : "")}</td>
+            <td class="c-side" rowspan="2"></td>
+          </tr>`;
+  const dateBits = `中華民國　${invFill("invoiceY", y, "inv-y")}　年　${invFill("invoiceMo", mo, "inv-mo")}　月　${invFill("invoiceDay", day, "inv-mo")}　日`;
+  const cnRow = `<tr class="inv-cnline">
+            <td colspan="4"><span class="inv-cnlab">總計新臺幣<br>（中文大寫）</span><span class="inv-boxes">${moneyCnBoxes(total)}</span></td>
+          </tr>`;
   return `<section class="inv-paper ${triple ? "triple" : "double"}">
     <div class="inv-top">
-      <div class="inv-no">${invFill("invoiceTrack", track, "inv-track")} ${invFill("invoiceNum", num, "inv-digits")}</div>
+      <div class="inv-no">${invFill("invoiceTrack", track || "AB", "inv-track")} ${invFill("invoiceNum", num, "inv-digits")}</div>
       <div class="inv-title">
-        <div class="inv-main-title">統　一　發　票（${triple ? "三聯式" : "二聯式"}）</div>
-        <div class="inv-period">${rocYearCn(y)}年　${invFill("invoiceM1", cn[m1] || m1, "inv-mo")}、${invFill("invoiceM2", cn[m2] || m2, "inv-mo")}　月份</div>
-        ${triple ? "" : `<div class="inv-date">中華民國${invFill("invoiceY", y, "inv-y")}年 ${invFill("invoiceMo", mo, "inv-mo")} 月 ${invFill("invoiceDay", day, "inv-mo")}日</div>`}
+        <div class="inv-main-title">統　　一　　發　　票（${triple ? "三聯式" : "二聯式"}）</div>
+        ${triple ? "" : `<div class="inv-period">${invFill("invoiceYY", rocYearCn(y), "inv-y")}　年</div>
+        <div class="inv-date">${dateBits}</div>`}
       </div>
     </div>
     <div class="inv-buyer">
       <div class="inv-line"><span>買　受　人：</span>${invFill("invoiceBuyer", buyer, "inv-wide")}</div>
-      ${triple ? `<div class="inv-idline"><span>統一編號：</span><span class="inv-tids" data-inv-tax>${taxBoxes}</span>
-        <span class="inv-date-inline">中華民國${invFill("invoiceY", y, "inv-y")}年 ${invFill("invoiceMo", mo, "inv-mo")} 月 ${invFill("invoiceDay", day, "inv-mo")} 日</span></div>` : ""}
+      ${triple ? `<div class="inv-idline"><span>統一編號：</span><span class="inv-tids">${taxBoxes}</span><span class="inv-date-inline">${dateBits}</span></div>` : ""}
       <div class="inv-addr">
         <span>地　　址：</span>
         ${invFill("invoiceCity", addr.city)}<i>縣市</i>
@@ -2959,57 +2967,61 @@ function invoiceCopyHtml(r, t, copyName) {
         ${invFill("invoiceRoom", addr.room)}<i>室</i>
       </div>
     </div>
-    <div class="inv-body">
-      <table class="inv-sheet">
-        <thead>
-          <tr>
-            <th class="c-name">品　　名</th>
-            <th class="c-qty">數　量</th>
-            <th class="c-price">單　價</th>
-            <th class="c-amt">金　　額</th>
-            <th class="c-side">備　　註</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="c-name">${invFill("invoiceItem", item)}</td>
-            <td>${invFill("invoiceQty", qty)}</td>
-            <td>${invFill("invoicePrice", price)}</td>
-            <td class="c-amt">${invFill("invoiceAmt", total ? String(total) : "")}</td>
-            ${stamp}
-          </tr>
-          ${itemRows}
-          ${triple ? `
-          <tr class="inv-sumline">
-            <td colspan="3">銷　　售　　額　　合　　計</td>
-            <td class="c-amt">${untax ? untax.toLocaleString("zh-Hant-TW") : ""}</td>
-          </tr>
-          <tr class="inv-taxline">
-            <td>營　　業　　稅</td>
-            <td colspan="2" class="inv-taxcells"><span>應　稅</span><b class="inv-fill">V</b><span>零稅率</span><span>免　稅</span></td>
-            <td class="c-amt">${tax ? tax.toLocaleString("zh-Hant-TW") : ""}</td>
-          </tr>
-          <tr class="inv-sumline">
-            <td colspan="3">總　　　　　　　　計</td>
-            <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
-          </tr>
-          <tr class="inv-cnline">
-            <td colspan="4"><span class="inv-cnlab">總計新臺幣<br>（中文大寫）</span><span class="inv-boxes">${moneyCnBoxes(total)}</span></td>
-          </tr>` : `
-          <tr class="inv-sumline">
-            <td colspan="3">總　　　　　　　　計</td>
-            <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
-          </tr>
-          <tr class="inv-cnline">
-            <td colspan="4"><span class="inv-cnlab">總計新臺幣<br>（中文大寫）</span><span class="inv-boxes">${moneyCnBoxes(total)}</span></td>
-          </tr>
-          <tr class="inv-taxline">
-            <td colspan="4" class="inv-taxcells">課　稅　別　<span>應　稅</span><b class="inv-fill">V</b><span>零稅率</span><span>免　稅</span></td>
-          </tr>`}
-        </tbody>
-      </table>
-      <div class="inv-slash" aria-hidden="true"></div>
-    </div>
+    <table class="inv-sheet">
+      <thead>
+        <tr>
+          <th class="c-name">品　　名</th>
+          <th class="c-qty">數　量</th>
+          <th class="c-price">單　價</th>
+          <th class="c-amt">金　　額</th>
+          <th class="c-side">備　　註</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${first}
+        ${empty}
+        <tr><td></td><td></td><td></td><td></td><td class="c-side inv-chop-cap">營業人蓋用統一發票專用章</td></tr>
+        ${triple ? `${empty}${empty}
+        <tr class="inv-sumline">
+          <td colspan="3">銷　　售　　額　　合　　計</td>
+          <td class="c-amt">${untax ? untax.toLocaleString("zh-Hant-TW") : ""}</td>
+          <td class="c-side stamp-cell" rowspan="4"></td>
+        </tr>
+        <tr class="inv-vatrow">
+          <td>營　　業　　稅</td>
+          <td colspan="2" class="pad0">
+            <table class="inv-vat">
+              <tr><td>應　稅</td><td>零稅率</td><td>免　稅</td></tr>
+              <tr><td><b class="inv-tick">√</b></td><td></td><td></td></tr>
+            </table>
+          </td>
+          <td class="c-amt">${tax ? tax.toLocaleString("zh-Hant-TW") : ""}</td>
+        </tr>
+        <tr class="inv-sumline">
+          <td colspan="3">總　　　　　　　　計</td>
+          <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
+        </tr>
+        ${cnRow}` : `${empty}${empty}${empty}
+        <tr class="inv-sumline">
+          <td colspan="3">總　　　　　　　　計</td>
+          <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
+          <td class="c-side stamp-cell" rowspan="3"></td>
+        </tr>
+        ${cnRow}
+        <tr class="inv-taxline">
+          <td>課　稅　別</td>
+          <td colspan="3" class="pad0">
+            <table class="inv-vat dual">
+              <tr>
+                <td>應　稅</td><td><b class="inv-tick">√</b></td>
+                <td>零稅率</td><td></td>
+                <td>免　稅</td><td></td>
+              </tr>
+            </table>
+          </td>
+        </tr>`}
+      </tbody>
+    </table>
     <div class="inv-bottom">
       <span>※應稅、零稅率、免稅之銷售額應分別開立統一發票，並應於各該欄打「√」。</span>
       <b>${copyName}</b>
@@ -3027,7 +3039,7 @@ function adminInvoice() {
     <div class="card card-body no-print">
       <button class="back" type="button" data-admin="${back}">← 返回</button>
       <h2 class="dash-h">${r.no}　${triple ? "三聯式統一發票" : "二聯式統一發票"}</h2>
-      <p class="small">橘色欄位可直接改。列印前請填字軌與號碼。章的位置列印後再蓋。</p>
+      <p class="small">格子依手開統一發票。橘色是可改的內容，右邊空白處列印後再蓋發票章。</p>
       <div class="inv-inputs">
         <label class="field"><span>字軌（2 碼）</span><input id="inv-track" type="text" maxlength="2" value="${escapeHtml(ui.invoiceTrack || "")}" placeholder="例如 TP" /></label>
         <label class="field"><span>號碼（8 碼）</span><input id="inv-num" type="text" maxlength="8" value="${escapeHtml(ui.invoiceNum || "")}" placeholder="例如 21751800" /></label>
