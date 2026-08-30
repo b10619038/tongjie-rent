@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-00-56";
-const APP_EDIT_COUNT = 273;
+const APP_STAMP = "2026-08-31-00-58";
+const APP_EDIT_COUNT = 274;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["二聯發票拿掉多餘的紅色一一五"] },
+  { ver: APP_STAMP, items: ["發票地址那行的紅色套印拿掉"] },
+  { ver: "2026-08-31-00-56", items: ["二聯發票拿掉多餘的紅色一一五"] },
   { ver: "2026-08-31-00-48", items: ["發票改用新底圖並對準格子，避免文字黏在一起"] },
   { ver: "2026-08-31-00-41", items: ["發票改為底圖套印，資料疊在手開格式上"] },
   { ver: "2026-08-31-00-35", items: ["發票格子改為手開三聯／二聯空白格式"] },
@@ -2956,15 +2957,6 @@ function invoiceCopyHtml(r, t, copyName) {
       ${at(W, H, 922, 224, 78, 32, "invoiceY", y)}
       ${at(W, H, 1048, 224, 68, 32, "invoiceMo", mo)}
       ${at(W, H, 1158, 224, 72, 32, "invoiceDay", day)}
-      ${at(W, H, 210, 250, 150, 28, "invoiceCity", addr.city)}
-      ${at(W, H, 430, 250, 170, 28, "invoiceDist", addr.dist)}
-      ${at(W, H, 720, 250, 160, 28, "invoiceRoad", addr.road)}
-      ${at(W, H, 930, 250, 70, 28, "invoiceSec", addr.sec || "")}
-      ${at(W, H, 1040, 250, 70, 28, "invoiceLane", addr.lane || "")}
-      ${at(W, H, 1155, 250, 70, 28, "invoiceAlley", addr.alley || "")}
-      ${at(W, H, 1285, 250, 70, 28, "invoiceNo", addr.no)}
-      ${at(W, H, 1415, 250, 70, 28, "invoiceFloor", addr.floor)}
-      ${at(W, H, 1545, 250, 80, 28, "invoiceRoom", addr.room)}
       ${at(W, H, 118, 408, 310, 50, "invoiceItem", item, "inv-left")}
       ${at(W, H, 458, 408, 210, 50, "invoiceQty", qty)}
       ${at(W, H, 704, 408, 170, 50, "invoicePrice", price)}
@@ -2985,15 +2977,6 @@ function invoiceCopyHtml(r, t, copyName) {
     ${at(W, H, 1098, 158, 70, 32, "invoiceMo", mo)}
     ${at(W, H, 1215, 158, 70, 32, "invoiceDay", day)}
     ${at(W, H, 250, 208, 1500, 34, "invoiceBuyer", buyer, "inv-left")}
-    ${at(W, H, 250, 268, 170, 28, "invoiceCity", addr.city)}
-    ${at(W, H, 510, 268, 160, 28, "invoiceDist", addr.dist)}
-    ${at(W, H, 760, 268, 100, 28, "invoiceRoad", addr.road)}
-    ${at(W, H, 940, 268, 70, 28, "invoiceSec", addr.sec || "")}
-    ${at(W, H, 1080, 268, 70, 28, "invoiceLane", addr.lane || "")}
-    ${at(W, H, 1220, 268, 70, 28, "invoiceAlley", addr.alley || "")}
-    ${at(W, H, 1355, 268, 80, 28, "invoiceNo", addr.no)}
-    ${at(W, H, 1505, 268, 75, 28, "invoiceFloor", addr.floor)}
-    ${at(W, H, 1648, 268, 90, 28, "invoiceRoom", addr.room)}
     ${at(W, H, 78, 400, 418, 46, "invoiceItem", item, "inv-left")}
     ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
     ${at(W, H, 716, 400, 158, 46, "invoicePrice", price)}
