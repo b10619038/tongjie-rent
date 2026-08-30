@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-02";
-const APP_EDIT_COUNT = 278;
+const APP_STAMP = "2026-08-31-01-03";
+const APP_EDIT_COUNT = 279;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票中文大寫紅字改到國字左邊"] },
+  { ver: APP_STAMP, items: ["二聯發票備註固定填四碼房號"] },
+  { ver: "2026-08-31-01-02", items: ["發票中文大寫紅字改到國字左邊"] },
   { ver: "2026-08-31-01-01", items: ["發票買受人紅字往右移"] },
   { ver: "2026-08-31-01-00", items: ["發票數量改寫一式"] },
   { ver: "2026-08-31-00-59", items: ["發票品名改為月份租金收入並置中"] },
@@ -2970,6 +2971,7 @@ function invoiceCopyHtml(r, t, copyName) {
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
   const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 54, 888, 30, 36, ch)).join("");
+  const roomNote = (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
     ${at(W, H, 980, 158, 80, 32, "invoiceY", y)}
@@ -2980,6 +2982,7 @@ function invoiceCopyHtml(r, t, copyName) {
     ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
     ${at(W, H, 716, 400, 158, 46, "invoicePrice", price)}
     ${at(W, H, 908, 400, 304, 46, "invoiceAmt", total ? String(total) : "")}
+    ${mk(W, H, 1288, 410, 440, 50, roomNote)}
     ${mk(W, H, 908, 826, 304, 44, total ? String(total) : "")}
     ${cn}
     ${mk(W, H, 430, 948, 70, 36, "√")}
