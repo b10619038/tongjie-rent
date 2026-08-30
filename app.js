@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-17-12";
-const APP_EDIT_COUNT = 222;
+const APP_STAMP = "2026-08-30-19-51";
+const APP_EDIT_COUNT = 223;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["退租單IC卡改為磁扣"] },
+  { ver: APP_STAMP, items: ["手機側邊返回可回到上一頁"] },
+  { ver: "2026-08-30-17-12", items: ["退租單IC卡改為磁扣"] },
   { ver: "2026-08-30-17-09", items: ["退租欄位倒角並拉開上下間距"] },
   { ver: "2026-08-30-17-00", items: ["沒有表上金額的套房租金顯示為 —"] },
   { ver: "2026-08-30-16-53", items: ["套房本月已繳未繳依收款明細"] },
@@ -1576,6 +1577,118 @@ function persistUi() {
     localStorage.removeItem("tongjie_ui_v1");
     sessionStorage.removeItem("tongjie_ui_v1");
   } catch {}
+}
+function navSnap() {
+  return {
+    role: ui.role || null,
+    page: ui.page || "home",
+    roomId: ui.roomId || null,
+    tenantId: ui.tenantId || null,
+    roomNo: ui.roomNo || "",
+    checkoutTenantId: ui.checkoutTenantId || "",
+    editAcct: ui.editAcct || "",
+    invoiceRoomId: ui.invoiceRoomId || "",
+    nearbyOpen: !!ui.nearbyOpen,
+    themeOpen: !!ui.themeOpen,
+    d: navDepth()
+  };
+}
+function navDepth() {
+  if (ui.themeOpen || ui.nearbyOpen) return 70;
+  if (ui.checkoutTenantId) return 50;
+  if (ui.editAcct) return 40;
+  if (!ui.role) {
+    if (ui.page === "tenant-setpass" || ui.page === "tenant-forgot") return 20;
+    if (ui.page === "tenant-login" || ui.page === "admin-login") return 10;
+    return 0;
+  }
+  const deep = {
+    pay: 10,
+    "room-detail": 20,
+    balcony: 20,
+    parking: 20,
+    trash: 20,
+    "lease-sign": 15,
+    "repair-done": 12,
+    "room-edit": 20,
+    invoice: 20
+  };
+  return deep[ui.page] || 0;
+}
+function navKey(s) {
+  return [s.role, s.page, s.roomId, s.checkoutTenantId, s.editAcct, s.invoiceRoomId, s.nearbyOpen ? 1 : 0, s.themeOpen ? 1 : 0, s.d].join("|");
+}
+function applyNavSnap(s) {
+  if (!s) return;
+  ui.role = s.role;
+  ui.page = s.page || (s.role === "admin" ? "dash" : "home");
+  if (s.roomId) ui.roomId = s.roomId;
+  if (s.tenantId) ui.tenantId = s.tenantId;
+  if (s.roomNo) ui.roomNo = s.roomNo;
+  ui.checkoutTenantId = s.checkoutTenantId || "";
+  ui.editAcct = s.editAcct || "";
+  if (s.invoiceRoomId) ui.invoiceRoomId = s.invoiceRoomId;
+  ui.nearbyOpen = !!s.nearbyOpen;
+  ui.themeOpen = !!s.themeOpen;
+}
+function syncHistory() {
+  if (!ui || ui.navPop) return;
+  const snap = navSnap();
+  const key = navKey(snap);
+  if (key === ui.navKey) return;
+  try {
+    const prev = history.state && history.state.tj;
+    if (!prev) {
+      history.replaceState({ tj: snap }, "", location.pathname + location.search);
+    } else if ((snap.d || 0) > (prev.d || 0)) {
+      history.pushState({ tj: snap }, "", location.pathname + location.search);
+    } else {
+      history.replaceState({ tj: snap }, "", location.pathname + location.search);
+    }
+    ui.navKey = key;
+  } catch {}
+}
+function tryHistoryBack() {
+  if (!ui || ui.navPop) return false;
+  try {
+    const s = history.state && history.state.tj;
+    if (s && (s.d || 0) > 0) {
+      history.back();
+      return true;
+    }
+  } catch {}
+  return false;
+}
+function bindHistoryBack() {
+  document.querySelectorAll(".back, #back-gate, #back-repair, #acct-bal-back").forEach(btn => {
+    if (!btn || btn.dataset.histBound === "1") return;
+    btn.dataset.histBound = "1";
+    btn.addEventListener("click", e => {
+      if (tryHistoryBack()) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
+  });
+}
+function onTongjiePop(e) {
+  const s = e.state && e.state.tj;
+  if (!s) return;
+  ui.navPop = true;
+  try {
+    applyNavSnap(s);
+    ui.navKey = navKey(navSnap());
+    lastRenderRole = "";
+    lastRenderPage = "";
+    ui.keepScroll = false;
+    render();
+  } finally {
+    ui.navPop = false;
+  }
+}
+if (typeof window !== "undefined" && !window.__tjPopBound) {
+  window.__tjPopBound = true;
+  window.addEventListener("popstate", onTongjiePop);
 }
 function readUiSnap() {
   const parse = raw => {
@@ -4528,6 +4641,7 @@ function render() {
     }
   }
   hideSplash();
+  try { syncHistory(); } catch {}
 }
 function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
@@ -7387,6 +7501,7 @@ function tryForgot() {
 }
 
 function bindGate() {
+  bindHistoryBack();
   document.querySelectorAll("[data-go]").forEach(btn => {
     btn.onclick = () => { ui.page = btn.dataset.go; ui.loginError = ""; ui.foundPass = null; render(); };
   });
@@ -7452,6 +7567,7 @@ function bindUpdateBar() {
 }
 
 function bindTenant() {
+  bindHistoryBack();
   flushTenantInbox();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
@@ -8265,6 +8381,7 @@ function bindRepairFold() {
   });
 }
 function bindAdmin() {
+  bindHistoryBack();
   bindMediaViewers();
   bindRepairFold();
   bindRepairDelete();
