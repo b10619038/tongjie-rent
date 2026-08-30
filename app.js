@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-03-09";
-const APP_EDIT_COUNT = 317;
+const APP_STAMP = "2026-08-31-03-16";
+const APP_EDIT_COUNT = 319;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,9 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作拿掉總結收支的10:00"] },
+  { ver: APP_STAMP, items: ["本月工作改為每月28日收鈺晟電費"] },
+  { ver: "2026-08-31-03-15", items: ["本月工作會出現在總覽日曆細項"] },
+  { ver: "2026-08-31-03-09", items: ["本月工作拿掉總結收支的10:00"] },
   { ver: "2026-08-31-03-06", items: ["本月工作拿掉「信件可差幾天」"] },
   { ver: "2026-08-31-03-02", items: ["本月工作只顯示當月，10月水錶等到10月才出現"] },
   { ver: "2026-08-31-02-54", items: ["本月工作可左右滑查看完整內容"] },
@@ -1184,6 +1186,7 @@ const CYCLE_JOBS = [
   { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收垃圾桶費　莊記綠豆（97-71）", cycle: true, owner: "7651" },
   { id: "cycle-rent-yuwang", monthDay: 15, time: "14:00", text: "收禹旺租金，並給電單（他們自繳電費）", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
+  { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　拉皮93-1B", cycle: true, owner: "7651" },
   { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
   { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" }
 ];
@@ -4009,12 +4012,24 @@ function collectLedger() {
   return attachMemoRows(dedupeLedger(rows));
 }
 function attachMemoRows(rows) {
-  (myMemos() || []).forEach(m => {
-    if (!m.date) return;
+  ensureCalMonth();
+  const y = ui.calYear, m = ui.calMonth;
+  const ym = y + "-" + String(m).padStart(2, "0");
+  (myMemos() || []).forEach(memo => {
+    let date = "";
+    if (memo.monthDay || memo.intervalMonths) {
+      date = cycleDateInMonth(memo, y, m);
+      if (!date) return;
+      if ((memo.doneMonths || []).indexOf(ym) >= 0) return;
+    } else {
+      date = ymdOf(memo.date);
+      if (!date) return;
+      if (memo.done) return;
+    }
     rows.push({
-      id: m.id, type: "memo", date: ymdOf(m.date), amount: 0,
-      roomNo: "", note: m.text, company: "", bank: "",
-      source: "memo", canDel: true, canEdit: false
+      id: memo.id, type: "memo", date, amount: 0,
+      roomNo: "", note: memo.text || "", company: "", bank: "",
+      source: "memo", canDel: !memo.cycle, canEdit: false, cycle: !!memo.cycle
     });
   });
   return rows;
@@ -4090,6 +4105,7 @@ function rowAccount(row) {
   return "統潔";
 }
 function ledgerMatchesFilter(row, filter, bank) {
+  if (row && row.type === "memo") return true;
   const f = String(filter || "").trim();
   if (f) {
     if (f !== "個人戶" && isPersonalKey(f)) {
@@ -4451,7 +4467,7 @@ function calDayListHtml(selected, rangeLabel, extra) {
         <b>${x.type === "memo"
           ? `<span class="led-in">行程</span> · ${escapeHtml(x.note || "記下的事")}`
           : `<span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}`}</b>
-        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? "工作助手記下" : (x.note || "")))}</span>
+        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.cycle ? "本月工作" : "工作助手記下") : (x.note || "")))}</span>
         ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
       </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
 }
@@ -7022,6 +7038,26 @@ function nextMonthDayDate(day, from) {
 }
 function ymdParts(dt) {
   return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+}
+function cycleDateInMonth(m, y, mo) {
+  if (!m) return "";
+  const ym = y + "-" + String(mo).padStart(2, "0");
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    const day = Math.max(1, Math.min(31, Number(m.monthDay) || 11));
+    const d = new Date((m.anchor || "2026-10-11") + "T00:00:00");
+    if (isNaN(d.getTime())) return "";
+    const step = Number(m.intervalMonths) || 2;
+    const diff = (y - d.getFullYear()) * 12 + ((mo - 1) - d.getMonth());
+    if (diff < 0 || diff % step !== 0) return "";
+    const last = new Date(y, mo, 0).getDate();
+    return ym + "-" + String(Math.min(day, last)).padStart(2, "0");
+  }
+  if (m.monthDay) {
+    const last = new Date(y, mo, 0).getDate();
+    return ym + "-" + String(Math.min(Number(m.monthDay) || 1, last)).padStart(2, "0");
+  }
+  const date = ymdOf(m.date);
+  return date && date.slice(0, 7) === ym ? date : "";
 }
 function nextCycleDate(m, from) {
   if (!m) return "";
