@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-20";
-const APP_EDIT_COUNT = 231;
+const APP_STAMP = "2026-08-30-20-22";
+const APP_EDIT_COUNT = 232;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["通知開關改為可點擊"] },
+  { ver: APP_STAMP, items: ["開啟通知按鈕可測試通知"] },
+  { ver: "2026-08-30-20-20", items: ["通知開關改為可點擊"] },
   { ver: "2026-08-30-20-19", items: ["通知開關報修改為租客報修"] },
   { ver: "2026-08-30-20-17", items: ["通知類別改為左右滑動開關"] },
   { ver: "2026-08-30-20-16", items: ["密碼欄位改為圓角"] },
@@ -531,29 +532,50 @@ function urlBase64ToUint8Array(b64) {
   return out;
 }
 function askTongjieNotify() {
-  if (typeof Notification === "undefined" || typeof Notification.requestPermission !== "function") {
-    alert(isIOS() ? "請先加入主畫面，再用桌面圖示打開 App" : "請用 Chrome 開啟這個網址");
-    return;
-  }
-  const key = urlBase64ToUint8Array(VAPID_PUBLIC);
-  if (window.__swReg && window.__swReg.pushManager) {
-    window.__swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }).catch(() => {});
-  }
-  const ret = Notification.requestPermission();
-  const after = perm => {
-    perm = perm || Notification.permission;
-    if (perm === "granted") {
-      subscribePushOnly();
-      try { new Notification("統潔開發", { body: "通知已開啟", lang: "zh-Hant", subtitle: "統潔開發" }); } catch {}
-      toast("通知已開啟");
-    } else if (perm === "denied") {
-      toast(isIOS() ? "請到設定 → 通知 → 統潔開發，打開允許" : "請到設定 → 應用程式 → 統潔開發 → 通知，改為允許");
-    } else {
-      toast("沒有跳出系統視窗。請用 Chrome 或 Safari，不要從 LINE 裡面開啟");
+  try {
+    if (typeof Notification === "undefined" || typeof Notification.requestPermission !== "function") {
+      toast(isIOS() ? "請先加入主畫面，再用桌面圖示打開 App" : "請用 Chrome 開啟這個網址");
+      return;
     }
-    render();
-  };
-  if (ret && typeof ret.then === "function") ret.then(after, () => after("denied"));
+    const finish = perm => {
+      perm = perm || Notification.permission || "";
+      if (perm === "granted") {
+        try { subscribePushOnly(); } catch {}
+        try {
+          new Notification("統潔開發", {
+            body: "通知已開啟，之後重要訊息會顯示在螢幕上方",
+            lang: "zh-Hant",
+            tag: "notify-test",
+            renotify: true,
+            icon: "/icon-192.png"
+          });
+        } catch {}
+        try { showOsBanner("統潔開發", "通知已開啟，之後重要訊息會顯示在螢幕上方", "notify-on"); } catch {}
+        toast("通知已開啟");
+      } else if (perm === "denied") {
+        toast(isIOS() ? "請到設定 → 通知 → 統潔開發，打開允許" : "請到設定 → 應用程式 → 統潔開發 → 通知，改為允許");
+      } else {
+        toast("沒有跳出系統視窗。請用 Chrome 或 Safari，不要從 LINE 裡面開啟");
+      }
+      render();
+    };
+    if (Notification.permission === "granted") {
+      finish("granted");
+      return;
+    }
+    toast("請在跳出的視窗選允許");
+    try {
+      const key = urlBase64ToUint8Array(VAPID_PUBLIC);
+      if (window.__swReg && window.__swReg.pushManager) {
+        window.__swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }).catch(() => {});
+      }
+    } catch {}
+    const ret = Notification.requestPermission();
+    if (ret && typeof ret.then === "function") ret.then(finish, () => finish("denied"));
+    else finish(Notification.permission);
+  } catch {
+    toast("開啟通知失敗，請用 Chrome 或已安裝的 App");
+  }
 }
 window.askTongjieNotify = askTongjieNotify;
 function versionFooter() {
@@ -5857,7 +5879,7 @@ function adminSettings() {
     <div class="card card-body">
       <div class="label">通知</div>
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
-      <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
+      <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
       <div class="notify-prefs">
         ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
       </div>
@@ -9101,7 +9123,7 @@ function tenantSettings() {
       <div class="card card-body">
         <div class="label">通知</div>
         <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
-        <button type="button" class="ghost" id="set-notify" style="margin-top:10px">開啟通知</button>
+        <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
       </div>
       ${lookSettingsHtml()}
       <div class="card card-body">
@@ -9850,6 +9872,13 @@ document.addEventListener("click", e => {
   if (!app || !app.contains(e.target)) return;
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); return; }
+  const ntf = e.target.closest("#set-notify");
+  if (ntf) {
+    e.preventDefault();
+    e.stopPropagation();
+    askTongjieNotify();
+    return;
+  }
   const edit = e.target.closest("[data-edit-announce]");
   if (edit) {
     e.preventDefault();
