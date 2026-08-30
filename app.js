@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-13-38";
-const APP_EDIT_COUNT = 210;
+const APP_STAMP = "2026-08-30-13-41";
+const APP_EDIT_COUNT = 211;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台可查看報修照片，工錢改為金額"] },
+  { ver: APP_STAMP, items: ["後台報修圖卡可收成一條"] },
+  { ver: "2026-08-30-13-38", items: ["後台可查看報修照片，工錢改為金額"] },
   { ver: "2026-08-30-13-29", items: ["開發者提交的報修會顯示在後台"] },
   { ver: "2026-08-30-13-28", items: ["匯出可選 PDF 或 Excel"] },
   { ver: "2026-08-30-13-22", items: ["水費到期提醒、退租改空置、報修師傅與工錢"] },
@@ -7006,12 +7007,16 @@ function adminTenants() {
 }
 function adminRepairs() {
   if (!state.repairs.length) return `<div class="empty">目前沒有報修</div>`;
+  if (!ui.repairOpen) ui.repairOpen = {};
   return `<div class="admin-grid list">${state.repairs.slice().reverse().map(rep => {
     const r = state.rooms.find(x => x.id === rep.roomId);
     const t = state.tenants.find(x => x.id === rep.tenantId);
-    return `<div class="card card-body">
-      <div class="row"><span class="k">${rep.type} · ${r ? r.no : ""}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
-      <div class="small">${escapeHtml(t ? t.name : "")} · ${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
+    const open = !!ui.repairOpen[rep.id];
+    const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
+    return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
+      <div class="row tenant-slim-head"><span class="k">${escapeHtml(rep.type)} · ${escapeHtml(r ? r.no : "")}${t && t.name ? "　" + escapeHtml(t.name) : ""}</span><span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner">
+      <div class="small" style="margin-top:8px">${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
@@ -7024,6 +7029,7 @@ function adminRepairs() {
         <button type="button" class="${rep.status === "done" ? "on" : ""}" data-rep-status="${rep.id}|done">已完成</button>
       </div>
       <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
+      </div></div>
     </div>`;
   }).join("")}</div>`;
 }
@@ -8121,8 +8127,24 @@ function bindAdminLogs() {
     };
   });
 }
+function bindRepairFold() {
+  document.querySelectorAll("[data-fold-repair]").forEach(el => {
+    const id = el.dataset.foldRepair;
+    if (!id) return;
+    el.onclick = e => {
+      if (e.target.closest("button,select,a,input,textarea,label,.seg,.field,.media-actions,.appoint-box")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!ui.repairOpen) ui.repairOpen = {};
+      const next = !ui.repairOpen[id];
+      ui.repairOpen[id] = next;
+      el.classList.toggle("open", next);
+    };
+  });
+}
 function bindAdmin() {
   bindMediaViewers();
+  bindRepairFold();
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
