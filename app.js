@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-03";
-const APP_EDIT_COUNT = 243;
+const APP_STAMP = "2026-08-30-21-07";
+const APP_EDIT_COUNT = 244;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定可開關按鍵震動"] },
+  { ver: APP_STAMP, items: ["按鍵震動可滑動調整並自動最佳化"] },
+  { ver: "2026-08-30-21-03", items: ["設定可開關按鍵震動"] },
   { ver: "2026-08-30-21-02", items: ["跑業務浮動球按下有縮放"] },
   { ver: "2026-08-30-20-59", items: ["跑業務浮動球改用橘貓頭貼"] },
   { ver: "2026-08-30-20-55", items: ["提問工作助手改用橘貓頭貼"] },
@@ -367,14 +368,42 @@ function autoFontScale() {
   return v;
 }
 function hapticEnabled() {
-  try { return localStorage.getItem("tongjie_haptic") !== "off"; } catch { return true; }
+  return currentHaptic() > 0;
+}
+function currentHaptic() {
+  try {
+    const raw = localStorage.getItem("tongjie_haptic");
+    if (raw === "off") return 0;
+    if (raw === "on" || raw == null || raw === "") return 50;
+    const n = Number(raw);
+    return Math.min(100, Math.max(0, Number.isFinite(n) ? n : 50));
+  } catch { return 50; }
+}
+function applyHaptic(n) {
+  const v = Math.round(Math.min(100, Math.max(0, Number(n) || 0)));
+  try { localStorage.setItem("tongjie_haptic", String(v)); } catch {}
+  const lab = document.getElementById("haptic-val");
+  if (lab) lab.textContent = v === 0 ? "關閉" : v + "%";
+  const slider = document.getElementById("haptic-scale");
+  if (slider && slider.value !== String(v)) slider.value = String(v);
+  return v;
+}
+function autoHaptic() {
+  const ok = typeof navigator.vibrate === "function";
+  const v = ok ? 45 : 0;
+  applyHaptic(v);
+  if (v) buzz();
+  toast(v ? "已依這台手機調整震動為 " + v + "%" : "這台手機不支援網頁震動");
+  return v;
 }
 function setHaptic(on) {
-  try { localStorage.setItem("tongjie_haptic", on ? "on" : "off"); } catch {}
+  applyHaptic(on ? Math.max(currentHaptic(), 45) : 0);
 }
 function buzz(ms) {
-  if (!hapticEnabled()) return;
-  try { if (navigator.vibrate) navigator.vibrate(ms || 12); } catch {}
+  const n = currentHaptic();
+  if (n <= 0) return;
+  const dur = Math.round(ms || (8 + n * 0.28));
+  try { if (navigator.vibrate) navigator.vibrate(dur); } catch {}
 }
 function showThemeFab() {
   return !ui.role;
@@ -9365,12 +9394,17 @@ function lookSettingsHtml() {
       <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
     </div>
     <div class="card card-body">
-      <div class="label">觸感</div>
-      <div class="pref-switch">
-        <span>按鍵震動</span>
-        <button type="button" class="pref-knob${hapticEnabled() ? " on" : ""}" id="haptic-toggle" aria-pressed="${hapticEnabled() ? "true" : "false"}"></button>
+      <div class="row" style="align-items:center">
+        <div class="label" style="margin:0">按鍵震動</div>
+        <button type="button" class="ghost" id="haptic-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
       </div>
-      <p class="small">Android 按按鈕會輕震。iPhone 多數不支援網頁震動。</p>
+      <p class="small">左右滑動調整輕重，最左邊是關閉。Android 會震，iPhone 多數不會。</p>
+      <div class="font-scale">
+        <span>關</span>
+        <input id="haptic-scale" type="range" min="0" max="100" step="1" value="${currentHaptic()}" />
+        <span>強</span>
+      </div>
+      <div class="row"><span class="k">目前強度</span><span class="v" id="haptic-val">${currentHaptic() === 0 ? "關閉" : currentHaptic() + "%"}</span></div>
     </div>`;
 }
 function tenantSettings() {
@@ -9446,16 +9480,24 @@ function bindLookSettings() {
     e.stopPropagation();
     autoFontScale();
   };
-  const hap = document.getElementById("haptic-toggle");
-  if (hap) hap.onclick = e => {
+  const hapAuto = document.getElementById("haptic-auto");
+  if (hapAuto) hapAuto.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    const on = !hap.classList.contains("on");
-    hap.classList.toggle("on", on);
-    hap.setAttribute("aria-pressed", on ? "true" : "false");
-    setHaptic(on);
-    if (on) buzz(20);
-    toast(on ? "已開啟按鍵震動" : "已關閉按鍵震動");
+    autoHaptic();
+  };
+  const hapSlider = document.getElementById("haptic-scale");
+  if (hapSlider) {
+    hapSlider.addEventListener("pointerdown", e => e.stopPropagation());
+    hapSlider.addEventListener("click", e => e.stopPropagation());
+    let last = 0;
+    const slide = () => {
+      applyHaptic(hapSlider.value);
+      const now = Date.now();
+      if (now - last > 140) { last = now; buzz(); }
+    };
+    hapSlider.addEventListener("input", slide);
+    hapSlider.addEventListener("change", () => { applyHaptic(hapSlider.value); buzz(); });
   };
 }
 function bindTenantSettings() {
