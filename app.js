@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-11-40";
+const APP_STAMP = "2026-08-30-11-55";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客設定補回帳號圖塊，圖塊之間拉開間距"] },
+  { ver: APP_STAMP, items: ["未繳一鍵催繳、現金對帳、退租單"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -1078,6 +1078,7 @@ function normalize(data) {
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
+  if (!Array.isArray(data.checkouts)) data.checkouts = [];
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
@@ -3894,6 +3895,279 @@ function findPendingCashBook(amount, date) {
     return Number.isFinite(dt) && t - dt >= 0 && t - dt <= window;
   }) || null;
 }
+function unpaidActiveTenants() {
+  return (state.tenants || []).filter(t => {
+    if (t.paid || !(t.name || "").trim()) return false;
+    const room = (state.rooms || []).find(r => r.id === t.roomId);
+    if (room && room.status === "office") return false;
+    return true;
+  });
+}
+function canNudgePay(t) {
+  if (!t || t.paid) return false;
+  const at = Number(t.lastNudgeAt) || 0;
+  return !at || (Date.now() - at > 6 * 3600 * 1000);
+}
+function nudgePayOne(t, silent) {
+  if (!t || t.paid) return { ok: false, reason: "已繳" };
+  const room = (state.rooms || []).find(r => r.id === t.roomId);
+  const no = room ? room.no : "";
+  const due = t.dueDay || 5;
+  const rent = room ? money(room.rent) : "";
+  const bound = no && typeof lineBindForRoom === "function" && lineBindForRoom(no);
+  const body = `${no} ${t.name || ""}　本月租金 ${rent} 尚未入帳，請於每月 ${due} 日前繳納。`.replace(/\s+/g, " ").trim();
+  pushPhoneNotify("租金催繳", body, no || "tenants");
+  t.lastNudgeAt = Date.now();
+  t.lastNudgeHow = bound ? "line" : "app";
+  if (!silent) audit("催繳", (no || "") + " " + (t.name || ""));
+  return { ok: true, bound: !!bound, no };
+}
+function nudgePayAll() {
+  const list = unpaidActiveTenants().filter(canNudgePay);
+  if (!list.length) { toast("沒有可催繳的未繳戶（或六小時內已催過）"); return; }
+  let n = 0, line = 0;
+  list.forEach(t => {
+    const r = nudgePayOne(t, true);
+    if (r.ok) { n += 1; if (r.bound) line += 1; }
+  });
+  save();
+  toast("已催繳 " + n + " 戶" + (line ? "（其中 " + line + " 戶已綁 LINE）" : ""));
+}
+function pendingCashBooks() {
+  return (state.books || []).filter(b => b && b.pendingBank && !b.linkedId && b.type !== "out");
+}
+function unpairedBankIns() {
+  const books = (state.books || []).filter(b =>
+    b && !b.pendingBank && !b.linkedId && b.type === "in" &&
+    String(b.company || "") !== "現金(保險箱)" && (Number(b.amount) || 0) > 0
+  );
+  const slips = (state.bankSlips || []).filter(s => s && !s.linkedId && (Number(s.amount) || 0) > 0).map(s => ({
+    id: "slip:" + s.id, date: ymdOf(s.date), amount: Number(s.amount) || 0,
+    company: s.company || "統潔", bank: s.bank || s.place || "", note: s.note || "銀行入帳", source: "slip", raw: s
+  }));
+  return books.map(b => ({
+    id: "book:" + b.id, date: ymdOf(b.date), amount: Number(b.amount) || 0,
+    company: b.company || "統潔", bank: b.bank || "", note: b.note || "", source: "book", raw: b
+  })).concat(slips);
+}
+function pairCashToBank(cashId, bankKey) {
+  const cash = (state.books || []).find(b => b.id === cashId);
+  if (!cash) { toast("找不到這筆現金"); return; }
+  const [kind, id] = String(bankKey || "").split(":");
+  if (!kind || !id) { toast("請先選銀行入帳"); return; }
+  let bankNote = "";
+  let amount = Number(cash.amount) || 0;
+  if (kind === "book") {
+    const b = (state.books || []).find(x => x.id === id);
+    if (!b) { toast("找不到銀行入帳"); return; }
+    b.linkedId = cash.id;
+    bankNote = b.note || b.company || "";
+    amount = Number(b.amount) || amount;
+  } else if (kind === "slip") {
+    const s = (state.bankSlips || []).find(x => x.id === id);
+    if (!s) { toast("找不到銀行入帳"); return; }
+    s.linkedId = cash.id;
+    bankNote = s.note || "";
+    amount = Number(s.amount) || amount;
+  } else return;
+  cash.linkedId = id;
+  cash.pendingBank = false;
+  const outId = "bk" + Date.now() + "-x";
+  cash.pairOutId = outId;
+  state.books.push({
+    id: outId, type: "out", date: ymdOf(cash.date) || ymdOf(nowStamp()),
+    amount, company: "現金(保險箱)", bank: "",
+    note: "轉存銀行（對應 " + (cash.note || "現金收租") + (bankNote ? "／" + bankNote : "") + "）",
+    linkedId: cash.id
+  });
+  save();
+  toast("已對上，現金改為轉存銀行");
+}
+function unpairCash(cashId) {
+  const cash = (state.books || []).find(b => b.id === cashId);
+  if (!cash || !cash.linkedId) return;
+  const linked = cash.linkedId;
+  (state.books || []).forEach(b => {
+    if (b.id === cash.pairOutId) b._drop = true;
+    if (b.linkedId === cash.id || b.id === linked) b.linkedId = "";
+  });
+  state.books = (state.books || []).filter(b => !b._drop);
+  (state.bankSlips || []).forEach(s => {
+    if (s.id === linked || s.linkedId === cash.id) s.linkedId = "";
+  });
+  cash.linkedId = "";
+  cash.pairOutId = "";
+  cash.pendingBank = true;
+  save();
+  toast("已取消對帳，這筆現金回到未入帳");
+}
+function cashPairHtml() {
+  const pending = pendingCashBooks();
+  const banks = unpairedBankIns();
+  const linked = (state.books || []).filter(b => b && b.linkedId && b.pendingBank === false && String(b.company || "") === "現金(保險箱)" && b.type !== "out" && b.pairOutId);
+  const opts = (amt) => banks.map(b => {
+    const same = Number(b.amount) === Number(amt);
+    return `<option value="${escapeHtml(b.id)}"${same ? " selected" : ""}>${escapeHtml((same ? "同金額 · " : "") + (b.date || "") + " " + accountLabel(b.company) + " " + money(b.amount) + (b.bank ? " " + b.bank : ""))}</option>`;
+  }).join("");
+  return `<div class="card card-body" id="cash-pair-card">
+    <h2 class="dash-h">現金對帳</h2>
+    <div class="small">現場收現先記未入帳；跑銀行刷簿子後在這裡對上，就不會把同一筆錢算兩次。</div>
+    ${pending.length ? pending.map(b => `<div class="pair-row">
+      <div class="row"><span class="k">${escapeHtml(ymdOf(b.date) || "")}　${escapeHtml(b.note || "現金收租")}</span><span class="v">${money(b.amount)}</span></div>
+      <div class="row wrap unpaid-tools">
+        <select data-pair-select="${b.id}">${banks.length ? opts(b.amount) : `<option value="">目前沒有可對的銀行入帳</option>`}</select>
+        <button type="button" class="ghost" data-pair-go="${b.id}">對上</button>
+      </div>
+    </div>`).join("") : `<div class="empty">目前沒有待入銀行的現金</div>`}
+    ${linked.length ? `<div class="small" style="margin-top:10px">最近已對上</div>` + linked.slice(-6).reverse().map(b => `<div class="row"><span class="k">${escapeHtml(ymdOf(b.date) || "")}　${escapeHtml(b.note || "")}</span><span class="row-end"><span class="v">${money(b.amount)}</span><button type="button" class="ghost" data-unpair="${b.id}" style="width:auto;padding:6px 10px">取消</button></span></div>`).join("") : ""}
+  </div>`;
+}
+function lastCheckout(tenantId) {
+  const list = (state.checkouts || []).filter(c => c.tenantId === tenantId);
+  return list.length ? list[list.length - 1] : null;
+}
+function checkoutFormHtml() {
+  const id = ui.checkoutTenantId;
+  if (!id) return "";
+  const t = (state.tenants || []).find(x => x.id === id);
+  if (!t) return "";
+  const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
+  const co = lastCheckout(t.id) || {};
+  const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
+  const deduct = Number(co.deduct) || 0;
+  const today = ymdOf(nowStamp());
+  return `<div class="card card-body" id="checkout-form-card">
+    <div class="row"><h2 class="dash-h" style="margin:0">退租單　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></div>
+    <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後退租紀錄會留下來，房間狀態請再到所有資產改。"}</div>
+    <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
+    <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
+    <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
+    <div class="row"><span class="k">應退押金</span><span class="v" id="co-refund">${money(Math.max(0, deposit - deduct))}</span></div>
+    <label class="field"><span>電表起</span><input id="co-elec-s" type="text" value="${escapeHtml(co.elecStart || "")}" placeholder="例如 12345" /></label>
+    <label class="field"><span>電表迄</span><input id="co-elec-e" type="text" value="${escapeHtml(co.elecEnd || "")}" placeholder="例如 12880" /></label>
+    <label class="field"><span>水表起</span><input id="co-water-s" type="text" value="${escapeHtml(co.waterStart || "")}" /></label>
+    <label class="field"><span>水表迄</span><input id="co-water-e" type="text" value="${escapeHtml(co.waterEnd || "")}" /></label>
+    <div class="checkout-checks">
+      <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
+      <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> IC卡已交還</label>
+    </div>
+    <label class="field"><span>備註</span><textarea id="co-note" rows="2">${escapeHtml(co.note || "")}</textarea></label>
+    <div class="unpaid-tools">
+      <button type="button" class="ghost" id="co-save">儲存草稿</button>
+      <button type="button" class="btn-navy" id="co-done">完成退租</button>
+    </div>
+  </div>`;
+}
+function readCheckoutForm() {
+  const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
+  if (!t) return null;
+  const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
+  const num = id => Number((document.getElementById(id) || {}).value) || 0;
+  const val = id => String((document.getElementById(id) || {}).value || "").trim();
+  const chk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
+  const deposit = num("co-deposit");
+  const deduct = num("co-deduct");
+  return {
+    tenantId: t.id, tenantName: t.name || "", roomId: r.id || t.roomId, roomNo: r.no || "",
+    at: val("co-date") || ymdOf(nowStamp()),
+    deposit, deduct, refund: Math.max(0, deposit - deduct),
+    elecStart: val("co-elec-s"), elecEnd: val("co-elec-e"),
+    waterStart: val("co-water-s"), waterEnd: val("co-water-e"),
+    keys: chk("co-keys"), icCard: chk("co-ic"),
+    note: val("co-note")
+  };
+}
+function saveCheckout(done) {
+  const data = readCheckoutForm();
+  if (!data) return;
+  if (!state.checkouts) state.checkouts = [];
+  const prev = lastCheckout(data.tenantId);
+  const row = Object.assign({}, prev || {}, data, {
+    id: (prev && prev.id) || ("co" + Date.now()),
+    status: done ? "done" : (prev && prev.status === "done" ? "done" : "draft"),
+    updatedAt: nowStamp()
+  });
+  const i = state.checkouts.findIndex(c => c.id === row.id);
+  if (i >= 0) state.checkouts[i] = row;
+  else state.checkouts.push(row);
+  save();
+  audit(done ? "完成退租" : "退租單", (data.roomNo || "") + " " + (data.tenantName || ""));
+  toast(done ? "退租單已完成" : "退租單已儲存");
+  if (done) ui.checkoutTenantId = "";
+  ui.keepScroll = true;
+  render();
+}
+function bindOps() {
+  const all = document.getElementById("nudge-all-pay");
+  if (all) all.onclick = e => { e.preventDefault(); e.stopPropagation(); nudgePayAll(); };
+  document.querySelectorAll("[data-nudge-pay]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x.id === btn.dataset.nudgePay);
+      if (!t) return;
+      if (!canNudgePay(t) && t.lastNudgeAt) { toast("這戶六小時內已催過"); return; }
+      const r = nudgePayOne(t);
+      if (r.ok) { save(); toast(r.bound ? "已催繳（App＋LINE）" : "已催繳（App 通知）"); }
+    };
+  });
+  document.querySelectorAll("[data-pair-go]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const row = btn.closest(".pair-row");
+      const sel = row && row.querySelector("[data-pair-select]");
+      pairCashToBank(btn.dataset.pairGo, sel ? sel.value : "");
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-unpair]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      unpairCash(btn.dataset.unpair);
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-checkout-open]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x.id === btn.dataset.checkoutOpen);
+      const room = t && (state.rooms || []).find(r => r.id === t.roomId);
+      ui.checkoutTenantId = btn.dataset.checkoutOpen;
+      ui.page = "tenants";
+      ui.tenantKind = room && room.kind === "factory" ? "factory" : "studio";
+      if (!ui.tenantOpen) ui.tenantOpen = {};
+      ui.tenantOpen[t && t.id ? t.id : btn.dataset.checkoutOpen] = true;
+      ui.keepScroll = false;
+      render();
+    };
+  });
+  const closeCo = document.getElementById("checkout-close");
+  if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.keepScroll = true; render(); };
+  const saveCo = document.getElementById("co-save");
+  if (saveCo) saveCo.onclick = e => { e.preventDefault(); e.stopPropagation(); saveCheckout(false); };
+  const doneCo = document.getElementById("co-done");
+  if (doneCo) doneCo.onclick = e => { e.preventDefault(); e.stopPropagation(); saveCheckout(true); };
+  const dep = document.getElementById("co-deposit");
+  const ded = document.getElementById("co-deduct");
+  const refund = document.getElementById("co-refund");
+  const syncRefund = () => {
+    if (!refund) return;
+    const a = Number((dep || {}).value) || 0;
+    const b = Number((ded || {}).value) || 0;
+    refund.textContent = money(Math.max(0, a - b));
+  };
+  if (dep) dep.oninput = syncRefund;
+  if (ded) ded.oninput = syncRefund;
+  document.querySelectorAll("#checkout-form-card input, #checkout-form-card textarea, #checkout-form-card select").forEach(el => {
+    el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
+    el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+  });
+}
 function guessMetaFromName(name) {
   const s = String(name || "");
   const dm = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
@@ -5961,6 +6235,7 @@ function adminDash() {
     </div>
     ${overallReportHtml()}
     ${monthCashHtml()}
+    ${cashPairHtml()}
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">樓層出租概況</h2>
         ${floors.map(f => `<div class="bar-row"><span>${f.fl}樓</span><div class="bar"><i style="width:${f.pct}%"></i></div><em>${f.full}/${f.total}</em></div>`).join("")}
@@ -5986,10 +6261,14 @@ function adminDash() {
           : `<div class="empty">目前沒有續約申請</div>`}
       </div>
       <div class="card card-body"><h2 class="dash-h">未繳租客</h2>
+        ${unpaidTenants.length ? `<div class="unpaid-tools"><button type="button" class="btn-navy" id="nudge-all-pay">一鍵催繳</button><span class="small">${unpaidTenants.length} 戶未繳</span></div>` : ""}
         ${unpaidTenants.length ? unpaidTenants.map(t => {
           const room = state.rooms.find(x => x.id === t.roomId);
           const late = rentOverdueDays();
-          return `<div class="mini clickable" data-admin-room="${t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(t.name)} · ${money(room?.rent || 0)}</b><span class="overdue">${late > 0 ? "逾期 " + late + " 日" : "今日到期"}</span></div>`;
+          return `<div class="mini unpaid-row">
+            <div class="clickable" data-admin-room="${t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(t.name)} · ${money(room?.rent || 0)}</b><span class="overdue">${late > 0 ? "逾期 " + late + " 日" : "今日到期"}</span></div>
+            <button type="button" class="ghost" data-nudge-pay="${t.id}">催繳</button>
+          </div>`;
         }).join("") : `<div class="empty">本月已全部收款</div>`}
       </div>
       <div class="card card-body"><h2 class="dash-h">繳費回報</h2>
@@ -6249,11 +6528,17 @@ function tenantEntryCardHtml(kind, entry) {
           }).join("")}
       <div class="row"><span class="k">合約</span><span class="pay-pill ${tenantContractStatus(t, r) === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(t, r)}</span></div>
       ${t.note && kind === "factory" ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
+      ${(() => {
+        const co = lastCheckout(t.id);
+        return co ? `<div class="row"><span class="k">退租單</span><span class="v">${co.status === "done" ? "已完成　應退 " + money(co.refund) : "草稿"}</span></div>` : "";
+      })()}
       ${tenants.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId);
         const label = tenants.length > 1 && rr ? escapeHtml(rr.no) + "　" : "";
         return `<button class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">${label}產出發票</button>
-      <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>`;
+      <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
+      ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
+      <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${lastCheckout(tt.id) ? (lastCheckout(tt.id).status === "done" ? "查看退租單" : "繼續退租單") : "辦理退租"}</button>`;
       }).join("")}`;
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
@@ -6471,10 +6756,12 @@ function bindTenantListTools() {
       }
     };
   });
+  bindOps();
 }
 function adminTenants() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
   return `<div class="admin-grid list">
+    ${checkoutFormHtml()}
     <div class="card card-body">
       <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
         <i class="seg-bg"></i>
@@ -6612,6 +6899,7 @@ function adminRoomEdit() {
       ${!(r.contractImages && r.contractImages.length) ? `<p class="small">上傳後會顯示在租客的「租約」頁。</p>` : ""}
       ${(r.contractImages || []).map((src, i) => `<div><img src="${src}" alt="" style="width:100%;border-radius:12px;margin:8px 0"><button type="button" class="ghost" data-del-contract="${i}">刪除圖檔</button></div>`).join("")}
       <button type="button" class="ghost" data-invoice="${r.id}" style="margin-top:12px">產出發票</button>
+      ${t ? `<button type="button" class="ghost" data-checkout-open="${t.id}" style="margin-top:12px">辦理退租</button>` : ""}
       <button class="btn-navy" type="submit" style="margin-top:12px">儲存</button>
     </form>
   </div>`;
@@ -8025,6 +8313,7 @@ function bindAdmin() {
   bindAdminAi();
   bindCashCal();
   bindAdminSettings();
+  bindOps();
 }
 
 function lookSettingsHtml() {

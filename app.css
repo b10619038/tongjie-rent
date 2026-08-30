@@ -2027,3 +2027,37 @@ img.avatar { object-fit: cover; display: block; }
   pointer-events: none;
   transition: opacity .45s ease;
 }
+.unpaid-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 4px;
+  pointer-events: auto !important;
+}
+.unpaid-tools .ghost, .unpaid-tools .btn-navy { width: auto; padding: 8px 14px; }
+.unpaid-row {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.unpaid-row .clickable { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.unpaid-row .ghost { width: auto; padding: 6px 12px; justify-self: end; }
+.pair-row { padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.pair-row select {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  font: inherit;
+  pointer-events: auto !important;
+}
+#checkout-form-card input,
+#checkout-form-card textarea,
+#checkout-form-card select {
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+.checkout-checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; pointer-events: auto !important; }
+.checkout-checks .log-check { display: flex; align-items: center; gap: 6px; }
