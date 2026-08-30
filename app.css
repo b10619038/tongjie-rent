@@ -670,7 +670,7 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   letter-spacing: 0; text-align: center;
 }
 
-textarea, input[type="text"], input[type="date"], input[type="datetime-local"], input[type="number"], input[type="search"], select {
+textarea, input[type="text"], input[type="password"], input[type="date"], input[type="datetime-local"], input[type="number"], input[type="search"], select {
   width: 100%; border: 1.5px solid var(--line); border-radius: 16px;
   padding: 12px 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink);
   -webkit-user-select: text; user-select: text;
