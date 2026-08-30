@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-07";
-const APP_EDIT_COUNT = 244;
+const APP_STAMP = "2026-08-30-21-13";
+const APP_EDIT_COUNT = 245;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["按鍵震動可滑動調整並自動最佳化"] },
+  { ver: APP_STAMP, items: ["工作助手可換頭貼，回覆會先講重點再鼓勵"] },
+  { ver: "2026-08-30-21-07", items: ["按鍵震動可滑動調整並自動最佳化"] },
   { ver: "2026-08-30-21-03", items: ["設定可開關按鍵震動"] },
   { ver: "2026-08-30-21-02", items: ["跑業務浮動球按下有縮放"] },
   { ver: "2026-08-30-20-59", items: ["跑業務浮動球改用橘貓頭貼"] },
@@ -3287,8 +3288,15 @@ function staffAvatarHtml(size, title) {
   const src = name === "開發者" ? "images/dev-avatar.jpg?v=1455" : "images/staff-avatar.jpg?v=1451";
   return `<img class="${cls}" src="${src}" alt="${escapeHtml(name)}" title="${escapeHtml(name)}">`;
 }
+function aiAvatarSrc() {
+  try {
+    const custom = localStorage.getItem("tongjie_ai_avatar_" + memoOwner());
+    if (custom) return custom;
+  } catch {}
+  return "images/ai-avatar.png?v=2055";
+}
 function aiAssistAvatarHtml() {
-  return `<img class="ai-ava" src="images/ai-avatar.png?v=2055" alt="工作助手">`;
+  return `<img class="ai-ava" src="${aiAvatarSrc()}" alt="工作助手">`;
 }
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -6297,8 +6305,9 @@ function adminAi() {
     errand: errandBlockHtml(),
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
+        <label class="ai-ava-pick" title="點擊更換頭貼">${aiAssistAvatarHtml()}<input id="ai-avatar-file" type="file" accept="image/*" hidden /></label>
         <button type="button" class="fold-head" id="ai-fold">
-          <span class="who-mini">${aiAssistAvatarHtml()}<span class="k">提問工作助手</span></span>
+          <span class="k">提問工作助手</span>
           <span class="row-end"><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
@@ -6516,6 +6525,22 @@ function upcomingMemos() {
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
   return (r ? r.no + " " : "") + (t.name || "") + (r ? "　" + money(r.rent) : "");
+}
+function warmAi(body) {
+  const s = String(body || "").trim();
+  if (!s) return s;
+  const extras = [
+    "你今天願意把事情釐清，這一步就已經很棒了。慢慢來，我在旁邊。",
+    "重點我都幫你對好了。剩下的我們拆開處理，你不是一個人。",
+    "辛苦了。工作先對齊，其他的按你的節奏補就好，我挺你。",
+    "你有把細節講出來，這就是把工作顧好的樣子。有卡住再叫我。",
+    "先把該做的對上，已經很盡責了。給自己一點空間，我接著幫你記。",
+    "謝謝你交代我。有我在，你可以先喘一口氣，下一步我們一起走。"
+  ];
+  let n = s.length;
+  for (let i = 0; i < s.length; i++) n += s.charCodeAt(i) * (i + 3);
+  n = Math.abs(n + (Date.now() / 30000 | 0)) % extras.length;
+  return s + "\n\n" + extras[n];
 }
 function aiAnswer(q) {
   const text = String(q || "").trim();
@@ -9681,6 +9706,28 @@ function bindAiBlockReorder() {
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
+  const avFile = document.getElementById("ai-avatar-file");
+  if (avFile) avFile.onchange = async () => {
+    const f = avFile.files && avFile.files[0];
+    avFile.value = "";
+    if (!f) return;
+    try {
+      const url = await compressImage(f, 480);
+      localStorage.setItem("tongjie_ai_avatar_" + memoOwner(), url);
+      toast("工作助手頭貼已更換");
+      ui.aiOpen = true;
+      ui.keepScroll = true;
+      render();
+    } catch { toast("照片讀取失敗，請換較小的圖"); }
+  };
+  document.querySelectorAll(".ai-log .ai-ava").forEach(img => {
+    img.style.cursor = "pointer";
+    img.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (avFile) avFile.click();
+    };
+  });
   const toBall = document.getElementById("errand-to-ball");
   if (toBall) toBall.onclick = e => {
     e.preventDefault();
@@ -9728,7 +9775,7 @@ function bindAdminAi() {
     try {
       pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
       let ans = "";
-      try { ans = aiAnswer(text); } catch (err) { ans = "先收到了。這題我再整理一次。"; }
+      try { ans = warmAi(aiAnswer(text)); } catch (err) { ans = warmAi("先收到了。這題我再整理一次。"); }
       pushAiLog({ role: "ai", text: ans, at: nowStamp() });
       ui.aiDraft = "";
       ui.aiOpen = true;
