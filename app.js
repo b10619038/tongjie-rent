@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-00-35";
-const APP_EDIT_COUNT = 270;
+const APP_STAMP = "2026-08-31-00-41";
+const APP_EDIT_COUNT = 271;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票格子改為手開三聯／二聯空白格式"] },
+  { ver: APP_STAMP, items: ["發票改為底圖套印，資料疊在手開格式上"] },
+  { ver: "2026-08-31-00-35", items: ["發票格子改為手開三聯／二聯空白格式"] },
   { ver: "2026-08-31-00-18", items: ["發票改成手開二聯／三聯模板，橘色欄位可改"] },
   { ver: "2026-08-30-23-45", items: ["收電費現金會記成收入，不再誤判成繳費"] },
   { ver: "2026-08-30-23-17", items: ["管理員後台公告改到報修右邊"] },
@@ -2896,136 +2897,98 @@ function invoicePeriod(d) {
     dateLine: `中華民國 ${y} 年　${m}　月　${d.getDate()}　日`
   };
 }
-function moneyCnBoxes(n) {
+function moneyCnParts(n) {
   n = Math.round(Math.abs(Number(n) || 0));
   const digits = String(n).padStart(9, "0").slice(-9).split("");
   const han = "零壹貳參肆伍陸柒捌玖";
-  const labels = ["億", "仟", "佰", "拾", "萬", "仟", "佰", "拾", "元"];
   let started = false;
-  return digits.map((d, i) => {
+  return digits.map(d => {
     const v = Number(d);
     if (v) started = true;
-    const ch = n && (started || i === 8) ? han[v] : "";
-    return `<span class="inv-han"><b>${ch}</b><em>${labels[i]}</em></span>`;
-  }).join("");
+    return n && (started || d === digits[8]) ? han[v] : "";
+  });
 }
-function invFill(key, val, cls) {
-  return `<input class="inv-fill${cls ? " " + cls : ""}" data-inv="${key}" value="${escapeHtml(String(val ?? ""))}" />`;
+function invAbs(key, val, l, t, w, h, cls) {
+  const extra = /inv-tid/.test(cls || "") ? " maxlength=\"1\"" : "";
+  return `<input class="inv-abs${cls ? " " + cls : ""}" data-inv="${key}" value="${escapeHtml(String(val ?? ""))}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%"${extra} />`;
+}
+function invMark(txt, l, t, w, h) {
+  return `<span class="inv-abs inv-mark" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%">${escapeHtml(txt)}</span>`;
 }
 function invoiceCopyHtml(r, t, copyName) {
   const triple = r.kind === "factory";
   const p = invoicePeriod();
   const addr = invoiceAddr(r, t);
   const buyer = ui.invoiceBuyer != null && ui.invoiceBuyer !== "" ? ui.invoiceBuyer : invoiceBuyer(r, t);
-  const track = (ui.invoiceTrack || "").toUpperCase();
   const num = ui.invoiceNum || "";
   const item = ui.invoiceItem != null && ui.invoiceItem !== "" ? ui.invoiceItem : (p.m + "月租金");
   const qty = ui.invoiceQty != null && ui.invoiceQty !== "" ? ui.invoiceQty : "1";
   const total = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "" ? Number(ui.invoiceAmt) : Number(r.rent) || 0;
   const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(total || "");
   const taxId = (ui.invoiceTaxId != null && ui.invoiceTaxId !== "" ? ui.invoiceTaxId : ((t && t.taxId) || "")).replace(/\D/g, "").slice(0, 8);
-  const taxBoxes = Array.from({ length: 8 }, (_, i) => `<i class="inv-tid">${escapeHtml(taxId[i] || "")}</i>`).join("");
   const untax = Number(r.rentUntaxed) || (total ? Math.round(total / 1.05) : 0);
   const tax = total ? Math.max(0, total - untax) : 0;
   const y = ui.invoiceY || p.y;
   const mo = ui.invoiceMo || p.m;
   const day = ui.invoiceDay || p.day;
-  const empty = `<tr><td></td><td></td><td></td><td></td></tr>`;
-  const first = `<tr>
-            <td class="c-name">${invFill("invoiceItem", item)}</td>
-            <td>${invFill("invoiceQty", qty)}</td>
-            <td>${invFill("invoicePrice", price)}</td>
-            <td class="c-amt">${invFill("invoiceAmt", total ? String(total) : "")}</td>
-            <td class="c-side" rowspan="2"></td>
-          </tr>`;
-  const dateBits = `中華民國　${invFill("invoiceY", y, "inv-y")}　年　${invFill("invoiceMo", mo, "inv-mo")}　月　${invFill("invoiceDay", day, "inv-mo")}　日`;
-  const cnRow = `<tr class="inv-cnline">
-            <td colspan="4"><span class="inv-cnlab">總計新臺幣<br>（中文大寫）</span><span class="inv-boxes">${moneyCnBoxes(total)}</span></td>
-          </tr>`;
-  return `<section class="inv-paper ${triple ? "triple" : "double"}">
-    <div class="inv-top">
-      <div class="inv-no">${invFill("invoiceTrack", track || "AB", "inv-track")} ${invFill("invoiceNum", num, "inv-digits")}</div>
-      <div class="inv-title">
-        <div class="inv-main-title">統　　一　　發　　票（${triple ? "三聯式" : "二聯式"}）</div>
-        ${triple ? "" : `<div class="inv-period">${invFill("invoiceYY", rocYearCn(y), "inv-y")}　年</div>
-        <div class="inv-date">${dateBits}</div>`}
-      </div>
-    </div>
-    <div class="inv-buyer">
-      <div class="inv-line"><span>買　受　人：</span>${invFill("invoiceBuyer", buyer, "inv-wide")}</div>
-      ${triple ? `<div class="inv-idline"><span>統一編號：</span><span class="inv-tids">${taxBoxes}</span><span class="inv-date-inline">${dateBits}</span></div>` : ""}
-      <div class="inv-addr">
-        <span>地　　址：</span>
-        ${invFill("invoiceCity", addr.city)}<i>縣市</i>
-        ${invFill("invoiceDist", addr.dist)}<i>鄉鎮市區</i>
-        ${invFill("invoiceRoad", addr.road)}<i>路街</i>
-        ${invFill("invoiceSec", addr.sec || "")}<i>段</i>
-        ${invFill("invoiceLane", addr.lane || "")}<i>巷</i>
-        ${invFill("invoiceAlley", addr.alley || "")}<i>弄</i>
-        ${invFill("invoiceNo", addr.no)}<i>號</i>
-        ${invFill("invoiceFloor", addr.floor)}<i>樓</i>
-        ${invFill("invoiceRoom", addr.room)}<i>室</i>
-      </div>
-    </div>
-    <table class="inv-sheet">
-      <thead>
-        <tr>
-          <th class="c-name">品　　名</th>
-          <th class="c-qty">數　量</th>
-          <th class="c-price">單　價</th>
-          <th class="c-amt">金　　額</th>
-          <th class="c-side">備　　註</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${first}
-        ${empty}
-        <tr><td></td><td></td><td></td><td></td><td class="c-side inv-chop-cap">營業人蓋用統一發票專用章</td></tr>
-        ${triple ? `${empty}${empty}
-        <tr class="inv-sumline">
-          <td colspan="3">銷　　售　　額　　合　　計</td>
-          <td class="c-amt">${untax ? untax.toLocaleString("zh-Hant-TW") : ""}</td>
-          <td class="c-side stamp-cell" rowspan="4"></td>
-        </tr>
-        <tr class="inv-vatrow">
-          <td>營　　業　　稅</td>
-          <td colspan="2" class="pad0">
-            <table class="inv-vat">
-              <tr><td>應　稅</td><td>零稅率</td><td>免　稅</td></tr>
-              <tr><td><b class="inv-tick">√</b></td><td></td><td></td></tr>
-            </table>
-          </td>
-          <td class="c-amt">${tax ? tax.toLocaleString("zh-Hant-TW") : ""}</td>
-        </tr>
-        <tr class="inv-sumline">
-          <td colspan="3">總　　　　　　　　計</td>
-          <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
-        </tr>
-        ${cnRow}` : `${empty}${empty}${empty}
-        <tr class="inv-sumline">
-          <td colspan="3">總　　　　　　　　計</td>
-          <td class="c-amt">${total ? total.toLocaleString("zh-Hant-TW") : ""}</td>
-          <td class="c-side stamp-cell" rowspan="3"></td>
-        </tr>
-        ${cnRow}
-        <tr class="inv-taxline">
-          <td>課　稅　別</td>
-          <td colspan="3" class="pad0">
-            <table class="inv-vat dual">
-              <tr>
-                <td>應　稅</td><td><b class="inv-tick">√</b></td>
-                <td>零稅率</td><td></td>
-                <td>免　稅</td><td></td>
-              </tr>
-            </table>
-          </td>
-        </tr>`}
-      </tbody>
-    </table>
-    <div class="inv-bottom">
-      <span>※應稅、零稅率、免稅之銷售額應分別開立統一發票，並應於各該欄打「√」。</span>
-      <b>${copyName}</b>
-    </div>
+  const hans = moneyCnParts(total);
+  const copy = copyName && !/第一聯/.test(copyName) ? invMark(copyName, 72, 92.6, 24, 4) : "";
+  if (triple) {
+    const boxes = Array.from({ length: 8 }, (_, i) => invAbs("invoiceTax" + i, taxId[i] || "", (13.4 + i * 4.1).toFixed(2), 19.6, 3.8, 3.4, "inv-tid")).join("");
+    const cn = hans.map((ch, i) => invMark(ch, (18.2 + i * 5.6).toFixed(2), 84.6, 5.2, 4.6)).join("");
+    return `<section class="inv-photo triple">
+      ${invAbs("invoiceNum", num, 12.5, 5.4, 18, 5.2, "inv-big")}
+      ${invAbs("invoiceBuyer", buyer, 15.5, 14.6, 78, 4.2, "inv-left")}
+      ${boxes}
+      ${invAbs("invoiceY", y, 56.5, 19.4, 7, 3.8)}
+      ${invAbs("invoiceMo", mo, 70.5, 19.4, 6, 3.8)}
+      ${invAbs("invoiceDay", day, 82.2, 19.4, 6, 3.8)}
+      ${invAbs("invoiceCity", addr.city, 12, 23.2, 10, 3.4)}
+      ${invAbs("invoiceDist", addr.dist, 26.5, 23.2, 11, 3.4)}
+      ${invAbs("invoiceRoad", addr.road, 41, 23.2, 12, 3.4)}
+      ${invAbs("invoiceSec", addr.sec || "", 55, 23.2, 6, 3.4)}
+      ${invAbs("invoiceLane", addr.lane || "", 63.5, 23.2, 6, 3.4)}
+      ${invAbs("invoiceAlley", addr.alley || "", 71.5, 23.2, 6, 3.4)}
+      ${invAbs("invoiceNo", addr.no, 79.5, 23.2, 5.5, 3.4)}
+      ${invAbs("invoiceFloor", addr.floor, 86.5, 23.2, 4.5, 3.4)}
+      ${invAbs("invoiceRoom", addr.room, 92.2, 23.2, 4.5, 3.4)}
+      ${invAbs("invoiceItem", item, 6.2, 36.2, 18.8, 5.4, "inv-left")}
+      ${invAbs("invoiceQty", qty, 25.6, 36.2, 13, 5.4)}
+      ${invAbs("invoicePrice", price, 39.2, 36.2, 11.5, 5.4)}
+      ${invAbs("invoiceAmt", total ? String(total) : "", 51.2, 36.2, 16.8, 5.4)}
+      ${invMark(untax ? String(untax) : "", 51.2, 65.6, 16.8, 5.2)}
+      ${invMark("√", 27.2, 73.6, 6, 3.6)}
+      ${invMark(tax ? String(tax) : "", 51.2, 71.2, 16.8, 7)}
+      ${invMark(total ? String(total) : "", 51.2, 78.6, 16.8, 5)}
+      ${cn}
+      ${copy}
+    </section>`;
+  }
+  const cn = hans.map((ch, i) => invMark(ch, (16.8 + i * 5.4).toFixed(2), 82.4, 5, 4.4)).join("");
+  return `<section class="inv-photo double">
+    ${invAbs("invoiceNum", num, 11.5, 6.2, 16, 5, "inv-big")}
+    ${invAbs("invoiceYY", rocYearCn(y), 48, 11.2, 12, 4)}
+    ${invAbs("invoiceY", y, 48, 16.4, 8, 3.6)}
+    ${invAbs("invoiceMo", mo, 62, 16.4, 6, 3.6)}
+    ${invAbs("invoiceDay", day, 74, 16.4, 6, 3.6)}
+    ${invAbs("invoiceBuyer", buyer, 14.5, 20.6, 78, 4, "inv-left")}
+    ${invAbs("invoiceCity", addr.city, 13, 25.8, 10, 3.4)}
+    ${invAbs("invoiceDist", addr.dist, 28, 25.8, 11, 3.4)}
+    ${invAbs("invoiceRoad", addr.road, 43, 25.8, 12, 3.4)}
+    ${invAbs("invoiceSec", addr.sec || "", 57, 25.8, 6, 3.4)}
+    ${invAbs("invoiceLane", addr.lane || "", 65, 25.8, 6, 3.4)}
+    ${invAbs("invoiceAlley", addr.alley || "", 73, 25.8, 6, 3.4)}
+    ${invAbs("invoiceNo", addr.no, 81, 25.8, 5, 3.4)}
+    ${invAbs("invoiceFloor", addr.floor, 87.5, 25.8, 4.5, 3.4)}
+    ${invAbs("invoiceRoom", addr.room, 93, 25.8, 4.5, 3.4)}
+    ${invAbs("invoiceItem", item, 3.8, 37, 23.5, 5.2, "inv-left")}
+    ${invAbs("invoiceQty", qty, 28, 37, 10, 5.2)}
+    ${invAbs("invoicePrice", price, 38.4, 37, 10, 5.2)}
+    ${invAbs("invoiceAmt", total ? String(total) : "", 48.8, 37, 18, 5.2)}
+    ${invMark(total ? String(total) : "", 48.8, 76.6, 18, 5)}
+    ${cn}
+    ${invMark("√", 29.6, 88.4, 5, 3.4)}
+    ${copy}
   </section>`;
 }
 function adminInvoice() {
@@ -3039,7 +3002,7 @@ function adminInvoice() {
     <div class="card card-body no-print">
       <button class="back" type="button" data-admin="${back}">← 返回</button>
       <h2 class="dash-h">${r.no}　${triple ? "三聯式統一發票" : "二聯式統一發票"}</h2>
-      <p class="small">格子依手開統一發票。橘色是可改的內容，右邊空白處列印後再蓋發票章。</p>
+      <p class="small">底圖是手開發票。橘色字可改，列印後在右邊蓋章。</p>
       <div class="inv-inputs">
         <label class="field"><span>字軌（2 碼）</span><input id="inv-track" type="text" maxlength="2" value="${escapeHtml(ui.invoiceTrack || "")}" placeholder="例如 TP" /></label>
         <label class="field"><span>號碼（8 碼）</span><input id="inv-num" type="text" maxlength="8" value="${escapeHtml(ui.invoiceNum || "")}" placeholder="例如 21751800" /></label>
@@ -9674,6 +9637,12 @@ function bindAdmin() {
     el.addEventListener("click", e => { e.stopPropagation(); try { el.focus(); } catch {} });
     el.onchange = () => {
       ui[el.dataset.inv] = el.value;
+      if (/^invoiceTax\d$/.test(el.dataset.inv)) {
+        ui.invoiceTaxId = [0,1,2,3,4,5,6,7].map(i => {
+          const n = document.querySelector("[data-inv=\"invoiceTax" + i + "\"]");
+          return n ? String(n.value || "").slice(0, 1) : "";
+        }).join("");
+      }
       if (el.dataset.inv === "invoiceAmt") ui.invoicePrice = el.value;
       ui.keepScroll = true;
       render();
