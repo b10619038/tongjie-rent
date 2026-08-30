@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-20";
-const APP_EDIT_COUNT = 246;
+const APP_STAMP = "2026-08-30-21-26";
+const APP_EDIT_COUNT = 247;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者工作助手與浮動球改用客服頭貼"] },
+  { ver: APP_STAMP, items: ["點工作助手頭貼可換照片與個性"] },
+  { ver: "2026-08-30-21-20", items: ["開發者工作助手與浮動球改用客服頭貼"] },
   { ver: "2026-08-30-21-13", items: ["工作助手可換頭貼，回覆會先講重點再鼓勵"] },
   { ver: "2026-08-30-21-07", items: ["按鍵震動可滑動調整並自動最佳化"] },
   { ver: "2026-08-30-21-03", items: ["設定可開關按鍵震動"] },
@@ -524,6 +525,31 @@ function personPickSheetHtml() {
         }).join("")}
       </div>
       <button class="ghost" id="person-pick-cancel" type="button">取消</button>
+    </div>
+  </div>`;
+}
+function aiPersonaSheetHtml() {
+  if (!ui.aiAvatarSheet) return "";
+  const who = memoOwner() === "1240" ? "開發者" : "管理員";
+  const on = currentPersona();
+  return `<div class="install-mask" id="ai-persona-mask">
+    <div class="install-sheet">
+      <div class="label">工作助手 · ${escapeHtml(who)}</div>
+      <h2>頭貼與個性</h2>
+      <div class="who-line" style="margin:8px 0 12px">
+        <img class="avatar" src="${aiAvatarSrc()}" alt="">
+        <div>
+          <button type="button" class="ghost" id="ai-avatar-pick" style="width:auto;margin-top:0">更換頭貼</button>
+          <button type="button" class="ghost" id="ai-avatar-reset" style="width:auto;margin-top:8px">恢復預設</button>
+        </div>
+      </div>
+      <input id="ai-avatar-file" type="file" accept="image/*" hidden />
+      <p class="small">只存在這台裝置、這個登入身分，不會同步到另一邊。</p>
+      <div class="label" style="margin-top:8px">助手個性</div>
+      <div class="pick-list">
+        ${AI_PERSONAS.map(p => `<button type="button" class="pick-item${p.id === on ? " on" : ""}" data-ai-persona="${p.id}"><span>${escapeHtml(p.name)}<br><em class="small">${escapeHtml(p.hint)}</em></span>${p.id === on ? "<strong>使用中</strong>" : ""}</button>`).join("")}
+      </div>
+      <button class="btn-navy" id="ai-persona-close" type="button">完成</button>
     </div>
   </div>`;
 }
@@ -3299,6 +3325,44 @@ function aiAvatarSrc() {
 function aiAssistAvatarHtml() {
   return `<img class="ai-ava" src="${aiAvatarSrc()}" alt="工作助手">`;
 }
+const AI_PERSONAS = [
+  { id: "cheer", name: "同理鼓勵", hint: "先講重點，再支持、讚美", extras: [
+    "你今天願意把事情釐清，這一步就已經很棒了。慢慢來，我在旁邊。",
+    "重點我都幫你對好了。剩下的我們拆開處理，你不是一個人。",
+    "辛苦了。工作先對齊，其他的按你的節奏補就好，我挺你。",
+    "你有把細節講出來，這就是把工作顧好的樣子。有卡住再叫我。",
+    "先把該做的對上，已經很盡責了。給自己一點空間，我接著幫你記。",
+    "謝謝你交代我。有我在，你可以先喘一口氣，下一步我們一起走。"
+  ]},
+  { id: "calm", name: "溫柔細心", hint: "語氣軟，幫你把步驟拆開", extras: [
+    "我們一件一件來就好，不急。",
+    "你已經有在處理了，剩下的我幫你接著記。",
+    "先照顧好眼前這件，其他的我們再排。",
+    "你願意講出來，我就能幫你分擔。"
+  ]},
+  { id: "pro", name: "簡潔專業", hint: "只講重點，少客套", extras: [] },
+  { id: "direct", name: "直接俐落", hint: "短句、立刻給下一步", extras: ["做完這步再跟我說即可。"] },
+  { id: "funny", name: "輕鬆幽默", hint: "重點講完再輕鬆一句", extras: [
+    "這題我們拿下了，下一個也沒在怕。",
+    "帳目乖乖的，你也給自己點個讚。",
+    "事情在紙上比在心裡好打，我們繼續。",
+    "咖啡可以再續，這單我幫你盯著。"
+  ]}
+];
+function currentPersona() {
+  try {
+    const id = localStorage.getItem("tongjie_ai_persona_" + memoOwner());
+    if (AI_PERSONAS.some(p => p.id === id)) return id;
+  } catch {}
+  return "cheer";
+}
+function setPersona(id) {
+  if (!AI_PERSONAS.some(p => p.id === id)) return;
+  try { localStorage.setItem("tongjie_ai_persona_" + memoOwner(), id); } catch {}
+}
+function personaOf() {
+  return AI_PERSONAS.find(p => p.id === currentPersona()) || AI_PERSONAS[0];
+}
 function readFileDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -4949,12 +5013,12 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme + introHtml(); safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); }); return; }
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
-    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml
+    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
       || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
@@ -6306,7 +6370,7 @@ function adminAi() {
     errand: errandBlockHtml(),
     ai: `<div class="card card-body tenant-slim${ui.aiOpen ? " open" : ""}" id="ai-card">
       <div class="row tenant-slim-head">
-        <label class="ai-ava-pick" title="點擊更換頭貼">${aiAssistAvatarHtml()}<input id="ai-avatar-file" type="file" accept="image/*" hidden /></label>
+        <button type="button" class="ai-ava-pick" id="ai-ava-open" title="更換頭貼與個性">${aiAssistAvatarHtml()}</button>
         <button type="button" class="fold-head" id="ai-fold">
           <span class="k">提問工作助手</span>
           <span class="row-end"><span class="fold-caret"></span></span>
@@ -6530,14 +6594,8 @@ function tenantLine(t) {
 function warmAi(body) {
   const s = String(body || "").trim();
   if (!s) return s;
-  const extras = [
-    "你今天願意把事情釐清，這一步就已經很棒了。慢慢來，我在旁邊。",
-    "重點我都幫你對好了。剩下的我們拆開處理，你不是一個人。",
-    "辛苦了。工作先對齊，其他的按你的節奏補就好，我挺你。",
-    "你有把細節講出來，這就是把工作顧好的樣子。有卡住再叫我。",
-    "先把該做的對上，已經很盡責了。給自己一點空間，我接著幫你記。",
-    "謝謝你交代我。有我在，你可以先喘一口氣，下一步我們一起走。"
-  ];
+  const extras = (personaOf().extras || []);
+  if (!extras.length) return s;
   let n = s.length;
   for (let i = 0; i < s.length; i++) n += s.charCodeAt(i) * (i + 3);
   n = Math.abs(n + (Date.now() / 30000 | 0)) % extras.length;
@@ -9707,7 +9765,26 @@ function bindAiBlockReorder() {
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
+  const openSheet = e => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    ui.aiAvatarSheet = true;
+    ui.aiOpen = true;
+    render();
+  };
+  const avOpen = document.getElementById("ai-ava-open");
+  if (avOpen) avOpen.onclick = openSheet;
+  document.querySelectorAll(".ai-log .ai-ava").forEach(img => {
+    img.style.cursor = "pointer";
+    img.onclick = openSheet;
+  });
+  const closeSheet = () => { ui.aiAvatarSheet = false; ui.aiOpen = true; ui.keepScroll = true; render(); };
+  const mask = document.getElementById("ai-persona-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "ai-persona-mask") closeSheet(); };
+  const done = document.getElementById("ai-persona-close");
+  if (done) done.onclick = closeSheet;
   const avFile = document.getElementById("ai-avatar-file");
+  const pick = document.getElementById("ai-avatar-pick");
+  if (pick && avFile) pick.onclick = e => { e.preventDefault(); e.stopPropagation(); avFile.click(); };
   if (avFile) avFile.onchange = async () => {
     const f = avFile.files && avFile.files[0];
     avFile.value = "";
@@ -9716,17 +9793,32 @@ function bindAdminAi() {
       const url = await compressImage(f, 480);
       localStorage.setItem("tongjie_ai_avatar_" + memoOwner(), url);
       toast("工作助手頭貼已更換");
+      ui.aiAvatarSheet = true;
       ui.aiOpen = true;
       ui.keepScroll = true;
       render();
     } catch { toast("照片讀取失敗，請換較小的圖"); }
   };
-  document.querySelectorAll(".ai-log .ai-ava").forEach(img => {
-    img.style.cursor = "pointer";
-    img.onclick = e => {
+  const reset = document.getElementById("ai-avatar-reset");
+  if (reset) reset.onclick = e => {
+    e.preventDefault();
+    try { localStorage.removeItem("tongjie_ai_avatar_" + memoOwner()); } catch {}
+    toast("已恢復預設頭貼");
+    ui.aiAvatarSheet = true;
+    ui.aiOpen = true;
+    ui.keepScroll = true;
+    render();
+  };
+  document.querySelectorAll("[data-ai-persona]").forEach(btn => {
+    btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      if (avFile) avFile.click();
+      setPersona(btn.dataset.aiPersona);
+      toast("已套用「" + (personaOf().name || "") + "」");
+      ui.aiAvatarSheet = true;
+      ui.aiOpen = true;
+      ui.keepScroll = true;
+      render();
     };
   });
   const toBall = document.getElementById("errand-to-ball");

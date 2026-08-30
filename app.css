@@ -1165,6 +1165,9 @@ input[type="file"] {
   flex-shrink: 0;
   pointer-events: auto !important;
   margin-right: 2px;
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 .ai-ava-pick .ai-ava { width: 32px; height: 32px; }
 .ai-log .ai-ava { cursor: pointer; }
@@ -1516,6 +1519,8 @@ body.rev-zooming { overflow: hidden; }
 }
 .pick-item:last-child { border-bottom: 0; }
 .pick-item strong { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.pick-item.on { background: var(--ok-soft); border-radius: 14px; border-bottom-color: transparent; }
+.pick-item em.small { font-style: normal; font-weight: 500; }
 .acct-people {
   display: grid;
   grid-template-columns: 1fr 1fr;
