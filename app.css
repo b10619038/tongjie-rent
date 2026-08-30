@@ -662,11 +662,27 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   letter-spacing: 0; text-align: center;
 }
 
-textarea, input[type="text"], input[type="date"], input[type="datetime-local"], select {
-  width: 100%; border: 1.5px solid var(--line); border-radius: 14px;
-  padding: 12px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink);
+textarea, input[type="text"], input[type="date"], input[type="datetime-local"], input[type="number"], input[type="search"], select {
+  width: 100%; border: 1.5px solid var(--line); border-radius: 16px;
+  padding: 12px 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink);
   -webkit-user-select: text; user-select: text;
+  box-sizing: border-box; min-height: 46px;
 }
+.field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin: 0 0 12px;
+  width: 100%;
+}
+.field > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+#checkout-form-card .field { margin-bottom: 14px; }
+#checkout-form-card .row { margin: 2px 0 10px; }
 textarea { min-height: 92px; resize: vertical; }
 .primary, .ghost, .danger, .btn-dark, .btn-navy {
   border: 0; border-radius: 14px; padding: 13px 16px;
