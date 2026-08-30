@@ -14,11 +14,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-11-30";
+const APP_STAMP = "2026-08-30-11-38";
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客首頁問候改為只顯示名字"] },
+  { ver: APP_STAMP, items: ["設定頁圖塊之間加上間距"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -8060,9 +8060,7 @@ function tenantSettings() {
         <h1>設定</h1>
       </div>
     </div>
-    <div class="screen">
-      <div class="card card-body">
-        <div class="label">帳號</div>
+    <div class="screen settings-stack">
         <div class="row"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
         <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
       </div>
