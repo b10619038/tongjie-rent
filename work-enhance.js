@@ -1,3 +1,32 @@
+function formatAiMemo(m) {
+  const time = m.time ? " " + m.time : "";
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    return "每" + m.intervalMonths + "個月約" + Number(m.monthDay || 11) + "日" + time + "　" + m.text;
+  }
+  if (m.monthDay) return (m.flexDays ? "約每月" : "每月") + Number(m.monthDay) + "日" + time + "　" + m.text;
+  if (m.date) {
+    const p = String(m.date).slice(5).split("-");
+    return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
+  }
+  if (m.weekday != null) return "每週" + WEEKDAY_ZH[m.weekday] + time + "　" + m.text;
+  return m.text;
+}
+function formatWorkMemo(m) {
+  const time = m.time ? " " + m.time : "";
+  const mo = new Date().getMonth() + 1;
+  const fromYmd = d => {
+    const s = String(d || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "";
+    return Number(s.slice(5, 7)) + "月" + Number(s.slice(8, 10)) + "日";
+  };
+  if (m.intervalMonths && m.intervalMonths > 1) {
+    return (fromYmd(nextCycleDate(m)) || ("約" + Number(m.monthDay || 11) + "日")) + time + "　" + m.text;
+  }
+  if (m.monthDay) return (m.flexDays ? "約" : "") + mo + "月" + Number(m.monthDay) + "日" + time + "　" + m.text;
+  if (m.date) return (fromYmd(m.date) || m.date) + time + "　" + m.text;
+  if (m.weekday != null) return (fromYmd(m.date) || ("週" + WEEKDAY_ZH[m.weekday])) + time + "　" + m.text;
+  return m.text;
+}
 function workOccurYmd(m) {
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) {
     const n = new Date();

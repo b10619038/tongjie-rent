@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-03-02";
-const APP_EDIT_COUNT = 315;
+const APP_STAMP = "2026-08-31-03-06";
+const APP_EDIT_COUNT = 316;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作只顯示當月，10月水錶等到10月才出現"] },
+  { ver: APP_STAMP, items: ["本月工作拿掉「信件可差幾天」"] },
+  { ver: "2026-08-31-03-02", items: ["本月工作只顯示當月，10月水錶等到10月才出現"] },
   { ver: "2026-08-31-02-54", items: ["本月工作可左右滑查看完整內容"] },
   { ver: "2026-08-31-02-51", items: ["本月工作改顯示8月5日，不再寫每月"] },
   { ver: "2026-08-31-02-48", items: ["本月工作點一筆才出現日曆與完成"] },
@@ -7065,11 +7066,10 @@ function parseMonthDayAsk(text) {
 }
 function formatAiMemo(m) {
   const time = m.time ? " " + m.time : "";
-  const flex = m.flexDays ? "（信件可差幾天）" : "";
   if (m.intervalMonths && m.intervalMonths > 1) {
-    return "每" + m.intervalMonths + "個月約" + Number(m.monthDay || 11) + "日" + flex + time + "　" + m.text;
+    return "每" + m.intervalMonths + "個月約" + Number(m.monthDay || 11) + "日" + time + "　" + m.text;
   }
-  if (m.monthDay) return (m.flexDays ? "約每月" : "每月") + Number(m.monthDay) + "日" + flex + time + "　" + m.text;
+  if (m.monthDay) return (m.flexDays ? "約每月" : "每月") + Number(m.monthDay) + "日" + time + "　" + m.text;
   if (m.date) {
     const p = String(m.date).slice(5).split("-");
     return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
@@ -7079,7 +7079,6 @@ function formatAiMemo(m) {
 }
 function formatWorkMemo(m) {
   const time = m.time ? " " + m.time : "";
-  const flex = m.flexDays ? "（信件可差幾天）" : "";
   const mo = new Date().getMonth() + 1;
   const fromYmd = d => {
     const s = String(d || "");
@@ -7087,9 +7086,9 @@ function formatWorkMemo(m) {
     return Number(s.slice(5, 7)) + "月" + Number(s.slice(8, 10)) + "日";
   };
   if (m.intervalMonths && m.intervalMonths > 1) {
-    return (fromYmd(nextCycleDate(m)) || ("約" + Number(m.monthDay || 11) + "日")) + flex + time + "　" + m.text;
+    return (fromYmd(nextCycleDate(m)) || ("約" + Number(m.monthDay || 11) + "日")) + time + "　" + m.text;
   }
-  if (m.monthDay) return (m.flexDays ? "約" : "") + mo + "月" + Number(m.monthDay) + "日" + flex + time + "　" + m.text;
+  if (m.monthDay) return (m.flexDays ? "約" : "") + mo + "月" + Number(m.monthDay) + "日" + time + "　" + m.text;
   if (m.date) return (fromYmd(m.date) || m.date) + time + "　" + m.text;
   if (m.weekday != null) return (fromYmd(m.date) || ("週" + WEEKDAY_ZH[m.weekday])) + time + "　" + m.text;
   return m.text;
