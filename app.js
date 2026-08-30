@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-38";
-const APP_EDIT_COUNT = 251;
+const APP_STAMP = "2026-08-30-21-55";
+const APP_EDIT_COUNT = 252;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["更新通知不會一直重複跳，登錄這筆可點"] },
+  { ver: APP_STAMP, items: ["每月5日固定：93-2A孫小姐、97-65B、農會名流放款單"] },
+  { ver: "2026-08-30-21-38", items: ["更新通知不會一直重複跳，登錄這筆可點"] },
   { ver: "2026-08-30-21-34", items: ["管理員頭貼改為女客服，可改選男客服"] },
   { ver: "2026-08-30-21-32", items: ["工作助手可選女客服或男客服頭貼"] },
   { ver: "2026-08-30-21-28", items: ["管理員工作助手與浮動球改用客服頭貼"] },
@@ -982,6 +983,18 @@ const FACTORY_TENANT_INFO = {
   "牛2-27": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" },
   "牛2-29": { name: "富強鑫精密工業股份有限公司", taxId: "22552976", contactName: "蔡承璋", phone: "0928-777-666／07-703-5456#203", leaseStart: "2024-08-01", leaseEnd: "2028-07-31", rentUntaxed: 115000, rent: 120750, note: "113/8/1～115/7/31 未稅 $110,000；115/8/1～117/7/31 未稅 $115,000" }
 };
+const CYCLE_JOBS = [
+  { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 孫小姐（拉皮）", cycle: true, owner: "7651" },
+  { id: "cycle-rent-97-65b", monthDay: 5, time: "", text: "收租金　97-65B 倉庫斜對面（昱銘）", cycle: true, owner: "7651" },
+  { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" }
+];
+function ensureCycleJobs(data) {
+  if (!data || !Array.isArray(data.aiMemos)) return;
+  CYCLE_JOBS.forEach(job => {
+    if (data.aiMemos.some(m => m && m.id === job.id)) return;
+    data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
+  });
+}
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
 const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
 const PHOTO_SET = [
@@ -1367,6 +1380,7 @@ function normalize(data) {
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  ensureCycleJobs(data);
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
@@ -1585,7 +1599,12 @@ function saveDevMemos(list) {
   try { localStorage.setItem("tongjie_dev_memos", JSON.stringify(list || [])); } catch {}
 }
 function myMemos() {
-  if (memoOwner() === "1240") return loadDevMemos();
+  const cycle = (state.aiMemos || []).filter(m => m && m.cycle);
+  if (memoOwner() === "1240") {
+    const mine = loadDevMemos();
+    const ids = new Set(mine.map(m => m && m.id));
+    return mine.concat(cycle.filter(m => m && !ids.has(m.id)));
+  }
   return (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
 }
 function stripDevMemosFromState() {
@@ -3530,11 +3549,19 @@ function calendarItems() {
     });
   });
   (myMemos() || []).forEach(m => {
-    if (!m.date) return;
+    if (isMemoDone(m)) return;
+    let at = m.date;
+    if (m.monthDay) {
+      ensureCalMonth();
+      const last = new Date(ui.calYear, ui.calMonth, 0).getDate();
+      const d = Math.min(Number(m.monthDay) || 1, last);
+      at = ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    }
+    if (!at) return;
     items.push({
-      at: m.date, kind: "memo", id: m.id, item: m,
+      at, kind: "memo", id: m.id, item: m,
       title: m.text,
-      sub: "工作助手記下 · " + m.date + (m.time ? " " + m.time : "")
+      sub: (m.cycle ? "每月固定 · " : "工作助手記下 · ") + at + (m.time ? " " + m.time : "")
     });
   });
   return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
@@ -6481,7 +6508,7 @@ function monthlyErrandPlan() {
   parsed.forEach(e => { if (e.title) freq[e.title] = (freq[e.title] || 0) + 1; });
   const top = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 3);
   if (top.length) lines.push("最常辦理：" + top.map(t => t + "（" + freq[t] + " 次）").join("、") + "。");
-  const memos = myMemos().filter(m => !m.done);
+  const memos = myMemos().filter(m => !isMemoDone(m));
   if (memos.length) {
     lines.push("你交代我記得的事：");
     memos.slice(0, 8).forEach(m => lines.push("· " + formatAiMemo(m)));
@@ -6570,8 +6597,36 @@ function cleanMemoAsk(text) {
     .replace(/^(把|將|的|去|要)\s*/g, "")
     .trim();
 }
+function ymNow() {
+  const n = new Date();
+  return n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0");
+}
+function nextMonthDayDate(day, from) {
+  const n = from ? new Date(from) : new Date();
+  let y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
+  const want = Math.max(1, Math.min(31, Number(day) || 1));
+  if (d > want) { m += 1; if (m > 11) { m = 0; y += 1; } }
+  const last = new Date(y, m + 1, 0).getDate();
+  const dd = Math.min(want, last);
+  return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+}
+function isMemoDone(m) {
+  if (!m) return true;
+  if (m.monthDay) return (m.doneMonths || []).indexOf(ymNow()) >= 0;
+  return !!m.done;
+}
+function parseMonthDayAsk(text) {
+  const s = String(text || "");
+  const m = s.match(/每(個)?月\s*(\d{1,2})\s*[號日]/);
+  if (m) return Math.max(1, Math.min(31, Number(m[2])));
+  const zh = { 一:1, 二:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9, 十:10 };
+  const z = s.match(/每(個)?月\s*([一二三四五六七八九十])\s*[號日]/);
+  if (z && zh[z[2]]) return zh[z[2]];
+  return 0;
+}
 function formatAiMemo(m) {
   const time = m.time ? " " + m.time : "";
+  if (m.monthDay) return "每月" + Number(m.monthDay) + "日" + time + "　" + m.text;
   if (m.date) {
     const p = String(m.date).slice(5).split("-");
     return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
@@ -6587,11 +6642,13 @@ function rememberAiMemo(text) {
     id: "memo" + Date.now().toString(36),
     text: body,
     weekday: wd ? wd.w : null,
+    monthDay: parseMonthDayAsk(text) || 0,
     date: parseYmdAsk(text) || (wd ? ymdFromWeekday(wd.w, wd.next) : ""),
     time: clock,
     owner: memoOwner(),
     createdAt: nowStamp()
   };
+  if (rec.monthDay) rec.date = nextMonthDayDate(rec.monthDay);
   if (rec.owner === "1240") {
     const list = loadDevMemos();
     list.push(rec);
@@ -6608,7 +6665,19 @@ function openGoogleMemo(m) {
   const title = encodeURIComponent(m.text || "工作提醒");
   const details = encodeURIComponent("統潔工作助手提醒");
   let range = "";
-  if (m.date && m.time) range = gcalRange(m.date + "T" + m.time);
+  let recur = "";
+  if (m.monthDay) {
+    const next = nextMonthDayDate(m.monthDay);
+    if (m.time) range = gcalRange(next + "T" + m.time);
+    else {
+      const start = next.replace(/-/g, "");
+      const nx = new Date(next + "T00:00:00");
+      nx.setDate(nx.getDate() + 1);
+      const p = n => String(n).padStart(2, "0");
+      range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
+    }
+    recur = "&recur=RRULE:FREQ=MONTHLY;BYMONTHDAY=" + Number(m.monthDay);
+  } else if (m.date && m.time) range = gcalRange(m.date + "T" + m.time);
   else if (m.date) {
     const start = m.date.replace(/-/g, "");
     const nx = new Date(m.date + "T00:00:00");
@@ -6617,10 +6686,14 @@ function openGoogleMemo(m) {
     range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
   }
   if (!range) { toast("這筆還沒有日期，跟助手說星期或幾月幾日"); return; }
-  window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei", "_blank", "noopener");
+  window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei" + recur, "_blank", "noopener");
 }
 function upcomingMemos() {
-  return myMemos().filter(m => !m.done).slice().sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")) || String(a.time || "").localeCompare(String(b.time || "")));
+  return myMemos().filter(m => !isMemoDone(m)).slice().sort((a, b) => {
+    const da = (a.monthDay ? nextMonthDayDate(a.monthDay) : (a.date || "9999")) + (a.time || "");
+    const db = (b.monthDay ? nextMonthDayDate(b.monthDay) : (b.date || "9999")) + (b.time || "");
+    return da.localeCompare(db);
+  });
 }
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
@@ -6646,7 +6719,7 @@ function aiAnswer(q) {
   const slips = state.bankSlips || [];
   const studios = state.rooms.filter(r => r.kind !== "factory" && r.status !== "office");
   const rented = studios.filter(r => r.status === "rented").length;
-  const memos = myMemos().filter(m => !m.done);
+  const memos = myMemos().filter(m => !isMemoDone(m));
   const wantRemember = /記得|記住|記一下|提醒我|加入日曆|排進日曆|加到日曆|放到行事曆/.test(text);
 
   if (/^(嗨|哈囉|你好|早安|午安|晚安|在嗎)/.test(text)) {
@@ -9983,11 +10056,20 @@ function bindAdminAi() {
       e.stopPropagation();
       const m = myMemos().find(x => x.id === btn.dataset.doneMemo);
       if (!m) return;
-      m.done = true;
-      if (memoOwner() === "1240") saveDevMemos(loadDevMemos().map(x => x.id === m.id ? m : x));
-      else save();
+      if (m.monthDay) {
+        m.doneMonths = m.doneMonths || [];
+        const key = ymNow();
+        if (m.doneMonths.indexOf(key) < 0) m.doneMonths.push(key);
+      } else m.done = true;
+      if (m.cycle || ((m.owner || "7651") !== "1240" && memoOwner() !== "1240")) {
+        const hit = (state.aiMemos || []).find(x => x.id === m.id);
+        if (hit) Object.assign(hit, m);
+        save();
+      } else if (memoOwner() === "1240") {
+        saveDevMemos(loadDevMemos().map(x => x.id === m.id ? m : x));
+      } else save();
       ui.keepScroll = true;
-      toast("這筆提醒已完成");
+      toast(m.monthDay ? "本月這筆已完成，下個月會再提醒" : "這筆提醒已完成");
       render();
     };
   });
