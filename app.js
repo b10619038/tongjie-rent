@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-17";
-const APP_EDIT_COUNT = 267;
+const APP_STAMP = "2026-08-30-23-45";
+const APP_EDIT_COUNT = 268;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["管理員後台公告改到報修右邊"] },
+  { ver: APP_STAMP, items: ["收電費現金會記成收入，不再誤判成繳費"] },
+  { ver: "2026-08-30-23-17", items: ["管理員後台公告改到報修右邊"] },
   { ver: "2026-08-30-23-12", items: ["跑業務改為浮動球改成浮動球，放在箭頭左邊"] },
   { ver: "2026-08-30-23-11", items: ["設定裡儲存公司資料改為可穩定寫入"] },
   { ver: "2026-08-30-23-09", items: ["本月自動分析可收起"] },
@@ -4690,7 +4691,9 @@ function cellAccount(v) {
 }
 function cellType(v, amountRaw) {
   const s = String(v || "");
-  if (/出帳|支出|付|借|withdraw|out|expense|繳費|繳款|帳單|水費|電費|瓦斯|稅/i.test(s)) return "out";
+  if (/收租|收現|收錢|收入|進帳|貸|deposit|\bincome\b/i.test(s) && /收/.test(s)) return "in";
+  if (/出帳|支出|付|借|withdraw|\bout\b|expense|繳費|繳款|帳單|瓦斯|稅/i.test(s)) return "out";
+  if (/水費|電費|台電|台水/.test(s) && !/收/.test(s)) return "out";
   if (/進帳|收入|收|貸|deposit|in|income/i.test(s)) return "in";
   if (typeof amountRaw === "number" && amountRaw < 0) return "out";
   if (/^-/.test(String(amountRaw || ""))) return "out";
@@ -4831,7 +4834,12 @@ function guessParty(text) {
     const n = String(info.name || "");
     if (!n) continue;
     const short = n.replace(/股份有限公司|有限公司|企業|公司/g, "");
-    if (s.indexOf(n) >= 0 || (short.length >= 2 && s.indexOf(short) >= 0)) {
+    const nick = short.length >= 2 ? short.slice(0, 2) : "";
+    const hit = s.indexOf(n) >= 0
+      || (short.length >= 2 && s.indexOf(short) >= 0)
+      || (nick.length >= 2 && nick !== "台灣" && nick !== "高雄" && s.indexOf(nick) >= 0)
+      || (info.contactName && String(info.contactName).length >= 2 && s.indexOf(info.contactName) >= 0);
+    if (hit) {
       return { no, name: n, rent: Number(info.rent) || 0, kind: "factory" };
     }
   }
@@ -4870,16 +4878,19 @@ function inferOneFile(file) {
   let pendingBank = false;
   let place = bank;
   let cashType = cellType(blob, amount) || "in";
-  if (bill) {
-    title = "繳費　" + bill.name;
-    cashType = "out";
-    place = place || bill.place;
-  } else if (/收租|租金|收現|現金|收錢/.test(blob) || (party && !bank && !/存摺|對帳|簿子/.test(blob))) {
-    title = party ? ("收租　" + party.name) : "收租／收現";
+  const collecting = /收租|租金|收現|現金|收錢/.test(blob);
+  if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款/.test(blob))) {
+    title = party
+      ? ("收" + (bill ? bill.name : "租") + "　" + party.name)
+      : (bill ? ("收" + bill.name + "／收現") : "收租／收現");
     company = "現金(保險箱)";
     pendingBank = true;
     place = place || "現金";
     cashType = "in";
+  } else if (bill) {
+    title = "繳費　" + bill.name;
+    cashType = "out";
+    place = place || bill.place;
   } else if (/超商/.test(blob) && !bank) {
     title = "超商";
     place = "超商";
