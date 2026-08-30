@@ -10220,6 +10220,14 @@ document.addEventListener("click", e => {
     saveAnnounceEdit();
   }
 }, true);
+document.addEventListener("pointerdown", e => {
+  if (e.button && e.button !== 0) return;
+  const t = e.target.closest("button, .nav, .tab, .seg, .theme-swatch, .issue-opt, .fold-head, .errand-ball, .pref-knob, .pay-pill.clickable, .ai-send");
+  if (!t) return;
+  if (t.closest("input, textarea, select")) return;
+  if (t.id === "font-scale" || t.type === "range") return;
+  buzz(12);
+}, { capture: true, passive: true });
 function bindPullRefresh() {
   const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
   if (!sc) return;
