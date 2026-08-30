@@ -8061,6 +8061,8 @@ function tenantSettings() {
       </div>
     </div>
     <div class="screen settings-stack">
+      <div class="card card-body">
+        <div class="label">帳號</div>
         <div class="row"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
         <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
       </div>
