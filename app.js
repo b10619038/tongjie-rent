@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-19-51";
-const APP_EDIT_COUNT = 223;
+const APP_STAMP = "2026-08-30-19-58";
+const APP_EDIT_COUNT = 224;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["手機側邊返回可回到上一頁"] },
+  { ver: APP_STAMP, items: ["工作助手提醒可加到 Google 日曆"] },
+  { ver: "2026-08-30-19-51", items: ["手機側邊返回可回到上一頁"] },
   { ver: "2026-08-30-17-12", items: ["退租單IC卡改為磁扣"] },
   { ver: "2026-08-30-17-09", items: ["退租欄位倒角並拉開上下間距"] },
   { ver: "2026-08-30-17-00", items: ["沒有表上金額的套房租金顯示為 —"] },
@@ -2848,6 +2849,20 @@ function maybeNudgeNotifies() {
       markNudged("admin-water");
       showOsBanner("年度水費", waters.length + " 戶 45 天內到期", "admin-water");
     }
+    const today = ymdOf(nowStamp());
+    (state.aiMemos || []).filter(m => !m.done && m.date).forEach(m => {
+      if (m.date > today) return;
+      if (m.date === today && m.time) {
+        const now = new Date();
+        const parts = String(m.time).split(":");
+        const mins = Number(parts[0]) * 60 + Number(parts[1] || 0);
+        if (now.getHours() * 60 + now.getMinutes() + 10 < mins) return;
+      }
+      const tag = "memo-" + m.id + "-" + m.date;
+      if (alreadyNudged(tag)) return;
+      markNudged(tag);
+      showOsBanner("工作提醒", (m.date || "") + (m.time ? " " + m.time : "") + "　" + m.text, tag);
+    });
   }
 }
 function notifyCloudChanges(before) {
@@ -3156,7 +3171,7 @@ function calendarItems() {
     items.push({
       at: m.date, kind: "memo", id: m.id, item: m,
       title: m.text,
-      sub: "工作助手記下 · " + m.date
+      sub: "工作助手記下 · " + m.date + (m.time ? " " + m.time : "")
     });
   });
   return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
@@ -5783,7 +5798,7 @@ function adminSettings() {
     </div>
   </div>`;
 }
-const AI_BLOCKS = ["plan", "errand", "ai"];
+const AI_BLOCKS = ["plan", "cals", "errand", "ai"];
 const AI_BLOCK_KEY = "tongjie_ai_blocks";
 function loadAiBlockOrder() {
   try {
@@ -5810,6 +5825,31 @@ function adminAi() {
       <div class="small">${plan.monthLabel}　依銀行紀錄與收租狀況整理</div>
       ${plan.lines.map(t => `<div class="mini"><span>${escapeHtml(t)}</span></div>`).join("")}
     </div>`,
+    cals: (() => {
+      const list = upcomingMemos();
+      return `<div class="card card-body tenant-slim${ui.calsOpen ? " open" : ""}" id="cals-card">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="cals-fold">
+          <span class="k">即將提醒</span>
+          <span class="row-end"><span class="small">${list.length ? list.length + " 件" : ""}</span><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">跟工作助手說「幫我記得下星期三去農會」，這裡會列出。點「加到 Google 日曆」會開你自己的日曆。</p>
+          ${list.length ? list.map(m => `
+            <div class="mini" style="align-items:flex-start">
+              <span>${escapeHtml(formatAiMemo(m))}</span>
+            </div>
+            <div class="unpaid-tools" style="margin:6px 0 10px">
+              <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
+              <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
+            </div>`).join("") : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
+        </div>
+      </div>
+    </div>`;
+    })(),
     errand: `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
@@ -5854,7 +5894,7 @@ function adminAi() {
         <div class="tenant-slim-inner">
           <div class="small" style="margin-top:10px">可以直接跟我說話，例如「幫我記得星期五去農會」，或問未繳、報修、銀行。</div>
           <div class="ai-chips">
-            <button type="button" class="ghost" data-ai-q="本月該做什麼">本月該做什麼</button>
+            <button type="button" class="ghost" data-ai-q="即將提醒">即將提醒</button>
             <button type="button" class="ghost" data-ai-q="分析銀行業務">分析銀行</button>
             <button type="button" class="ghost" data-ai-q="分析目前報修">分析報修</button>
             <button type="button" class="ghost" data-ai-q="誰還沒繳租金">分析未繳</button>
@@ -5935,6 +5975,54 @@ function parseWeekdayAsk(text) {
   const map = { 日: 0, 天: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
   return { w: map[m[2]], next };
 }
+function parseClockAsk(text) {
+  const s = String(text || "");
+  let h = null, m = 0;
+  const ampm = s.match(/(早上|上午|中午|下午|晚上|傍晚)\s*(\d{1,2})(?:\s*[點時:：](\d{1,2}))?/);
+  if (ampm) {
+    h = Number(ampm[2]);
+    m = ampm[3] ? Number(ampm[3]) : 0;
+    if ((ampm[1] === "下午" || ampm[1] === "晚上" || ampm[1] === "傍晚") && h < 12) h += 12;
+    if (ampm[1] === "中午" && h < 12) h = 12;
+  } else {
+    const t24 = s.match(/(?:^|[^\d])(\d{1,2})[:：](\d{2})/);
+    if (t24) { h = Number(t24[1]); m = Number(t24[2]); }
+    else {
+      const dian = s.match(/(\d{1,2})\s*[點時]/);
+      if (dian) h = Number(dian[1]);
+    }
+  }
+  if (h == null || h > 23) return "";
+  if (m > 59) m = 0;
+  const p = n => String(n).padStart(2, "0");
+  return p(h) + ":" + p(m);
+}
+function parseYmdAsk(text) {
+  const s = String(text || "");
+  const now = new Date();
+  const p = n => String(n).padStart(2, "0");
+  const ymd = (y, mo, d) => y + "-" + p(mo) + "-" + p(d);
+  if (/今天/.test(s)) return ymd(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  if (/明天/.test(s)) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  if (/後天/.test(s)) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+    return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  const iso = s.match(/(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})/);
+  if (iso) return ymd(iso[1], iso[2], iso[3]);
+  const md = s.match(/(\d{1,2})\s*[月/\.]\s*(\d{1,2})\s*日?/);
+  if (md) {
+    let y = now.getFullYear();
+    const mo = Number(md[1]), da = Number(md[2]);
+    const cand = new Date(y, mo - 1, da);
+    if (cand < new Date(now.getFullYear(), now.getMonth(), now.getDate())) y += 1;
+    return ymd(y, mo, da);
+  }
+  return "";
+}
 function ymdFromWeekday(w, nextWeek) {
   const now = new Date();
   let add = (w - now.getDay() + 7) % 7;
@@ -5947,35 +6035,63 @@ function cleanMemoAsk(text) {
   return String(text || "")
     .replace(/請?幫我(把|將)?/g, "")
     .replace(/可以幫我/g, "")
-    .replace(/(記得|記住|記一下|記著|提醒我|加入日曆|排進日曆|放到行事曆|加到日曆)/g, "")
+    .replace(/(記得|記住|記一下|記著|提醒我|加入日曆|排進日曆|放到行事曆|加到日曆|加進日曆)/g, "")
     .replace(/在?(下)?(週|周|星期|禮拜)[日天一二三四五六](的)?(行程)?/g, "")
+    .replace(/今天|明天|後天/g, "")
+    .replace(/(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})\s*日?/g, "")
+    .replace(/(\d{1,2})\s*[月/\.]\s*(\d{1,2})\s*日?/g, "")
+    .replace(/(早上|上午|中午|下午|晚上|傍晚)\s*\d{1,2}(\s*[點時:：]\d{1,2})?/g, "")
+    .replace(/\d{1,2}[:：]\d{2}/g, "")
+    .replace(/\d{1,2}\s*[點時]/g, "")
     .replace(/嗎[？?]?$/g, "")
     .replace(/[，。,.!！？?\s]+/g, " ")
-    .replace(/^(把|將|的)\s*/g, "")
+    .replace(/^(把|將|的|去|要)\s*/g, "")
     .trim();
 }
 function formatAiMemo(m) {
+  const time = m.time ? " " + m.time : "";
   if (m.date) {
     const p = String(m.date).slice(5).split("-");
-    return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + "　" + m.text;
+    return (p[0] ? Number(p[0]) + "/" + Number(p[1]) : m.date) + time + "　" + m.text;
   }
-  if (m.weekday != null) return "每週" + WEEKDAY_ZH[m.weekday] + "　" + m.text;
+  if (m.weekday != null) return "每週" + WEEKDAY_ZH[m.weekday] + time + "　" + m.text;
   return m.text;
 }
 function rememberAiMemo(text) {
   if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
   const wd = parseWeekdayAsk(text);
+  const clock = parseClockAsk(text);
   const body = cleanMemoAsk(text) || "工作行程";
   const rec = {
     id: "memo" + Date.now().toString(36),
     text: body,
     weekday: wd ? wd.w : null,
-    date: wd ? ymdFromWeekday(wd.w, wd.next) : "",
+    date: parseYmdAsk(text) || (wd ? ymdFromWeekday(wd.w, wd.next) : ""),
+    time: clock,
     createdAt: nowStamp()
   };
   state.aiMemos.push(rec);
   save();
   return rec;
+}
+function openGoogleMemo(m) {
+  if (!m) return;
+  const title = encodeURIComponent(m.text || "工作提醒");
+  const details = encodeURIComponent("統潔工作助手提醒");
+  let range = "";
+  if (m.date && m.time) range = gcalRange(m.date + "T" + m.time);
+  else if (m.date) {
+    const start = m.date.replace(/-/g, "");
+    const nx = new Date(m.date + "T00:00:00");
+    nx.setDate(nx.getDate() + 1);
+    const p = n => String(n).padStart(2, "0");
+    range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
+  }
+  if (!range) { toast("這筆還沒有日期，跟助手說星期或幾月幾日"); return; }
+  window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei", "_blank", "noopener");
+}
+function upcomingMemos() {
+  return (state.aiMemos || []).filter(m => !m.done).slice().sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")) || String(a.time || "").localeCompare(String(b.time || "")));
 }
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
@@ -5999,7 +6115,8 @@ function aiAnswer(q) {
   }
   if (/謝謝|感謝/.test(text)) return "不客氣，有要記的再跟我說。";
 
-  if (/你記得|記了什麼|我交代|有哪些行程|列出.*記/.test(text)) {
+  if (/你記得|記了什麼|我交代|有哪些行程|列出.*記|即將提醒/.test(text)) {
+    ui.calsOpen = true;
     if (!memos.length) return "目前還沒有你交代要記的事。跟我說「幫我記得星期三去收現金」我就會記下。";
     return "我這邊記著：\n" + memos.map(m => "· " + formatAiMemo(m)).join("\n");
   }
@@ -6016,10 +6133,11 @@ function aiAnswer(q) {
 
   if (wantRemember) {
     const rec = rememberAiMemo(text);
+    ui.calsOpen = true;
     const when = rec.date
-      ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.weekday != null ? "（" + (parseWeekdayAsk(text) && parseWeekdayAsk(text).next ? "下" : "") + "週" + WEEKDAY_ZH[rec.weekday] + "）" : "")
-      : "之後";
-    return "好，我記下了。\n" + formatAiMemo(rec) + "\n到時候我會算在行程裡，本月進出帳那天也會看到「行程」。";
+      ? rec.date.replace(/(\d{4})-(\d{2})-(\d{2})/, "$1年$2月$3日") + (rec.time ? " " + rec.time : "")
+      : "之後（還沒指定日期）";
+    return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「即將提醒」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
   }
 
   const bits = [];
@@ -9009,6 +9127,37 @@ function bindAiBlockReorder() {
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
+  const calsFold = document.getElementById("cals-fold");
+  const calsCard = document.getElementById("cals-card");
+  if (calsFold && calsCard) calsFold.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.calsOpen = !calsCard.classList.contains("open");
+    calsCard.classList.toggle("open", ui.calsOpen);
+  };
+  document.querySelectorAll("[data-gcal-memo]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const m = (state.aiMemos || []).find(x => x.id === btn.dataset.gcalMemo);
+      if (m) openGoogleMemo(m);
+    };
+  });
+  document.querySelectorAll("[data-done-memo]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const m = (state.aiMemos || []).find(x => x.id === btn.dataset.doneMemo);
+      if (!m) return;
+      m.done = true;
+      save();
+      ui.keepScroll = true;
+      toast("這筆提醒已完成");
+      render();
+    };
+  });
   const ask = q => {
     const text = String(q || "").trim();
     if (!text) return;
