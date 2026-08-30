@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-20-50";
-const APP_EDIT_COUNT = 237;
+const APP_STAMP = "2026-08-30-20-52";
+const APP_EDIT_COUNT = 238;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手改用管理員／開發者頭貼"] },
+  { ver: APP_STAMP, items: ["字體大小可一鍵自動最佳化"] },
+  { ver: "2026-08-30-20-50", items: ["工作助手改用管理員／開發者頭貼"] },
   { ver: "2026-08-30-20-43", items: ["管理員工作助手不保留聊天紀錄"] },
   { ver: "2026-08-30-20-38", items: ["開發者工作助手對話不同步到管理員"] },
   { ver: "2026-08-30-20-34", items: ["開發者即將提醒不同步到管理員"] },
@@ -343,6 +344,21 @@ function applyFont(n) {
   if (lab) lab.textContent = v + "%";
   const slider = document.getElementById("font-scale");
   if (slider && slider.value !== String(v)) slider.value = String(v);
+  return v;
+}
+function autoFontScale() {
+  const w = Math.round((window.visualViewport && visualViewport.width) || window.innerWidth || 390);
+  const h = Math.round((window.visualViewport && visualViewport.height) || window.innerHeight || 800);
+  let v = 100;
+  if (w <= 340) v = 90;
+  else if (w <= 360) v = 94;
+  else if (w <= 390) v = 98;
+  else if (w <= 430) v = 100;
+  else if (w <= 768) v = 102;
+  else v = 100;
+  if (h < 680 && v > 96) v = 96;
+  applyFont(v);
+  toast("已依這台螢幕調整為 " + v + "%");
   return v;
 }
 function showThemeFab() {
@@ -9315,7 +9331,10 @@ function lookSettingsHtml() {
       </div>
     </div>
     <div class="card card-body">
-      <div class="label">版面字體大小</div>
+      <div class="row" style="align-items:center">
+        <div class="label" style="margin:0">版面字體大小</div>
+        <button type="button" class="ghost" id="font-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
+      </div>
       <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
       <div class="font-scale">
         <span>小</span>
@@ -9392,6 +9411,12 @@ function bindLookSettings() {
     slider.addEventListener("input", slide);
     slider.addEventListener("change", slide);
   }
+  const auto = document.getElementById("font-auto");
+  if (auto) auto.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    autoFontScale();
+  };
 }
 function bindTenantSettings() {
   bindLookSettings();
