@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-21-13";
-const APP_EDIT_COUNT = 245;
+const APP_STAMP = "2026-08-30-21-20";
+const APP_EDIT_COUNT = 246;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手可換頭貼，回覆會先講重點再鼓勵"] },
+  { ver: APP_STAMP, items: ["開發者工作助手與浮動球改用客服頭貼"] },
+  { ver: "2026-08-30-21-13", items: ["工作助手可換頭貼，回覆會先講重點再鼓勵"] },
   { ver: "2026-08-30-21-07", items: ["按鍵震動可滑動調整並自動最佳化"] },
   { ver: "2026-08-30-21-03", items: ["設定可開關按鍵震動"] },
   { ver: "2026-08-30-21-02", items: ["跑業務浮動球按下有縮放"] },
@@ -3293,7 +3294,7 @@ function aiAvatarSrc() {
     const custom = localStorage.getItem("tongjie_ai_avatar_" + memoOwner());
     if (custom) return custom;
   } catch {}
-  return "images/ai-avatar.png?v=2055";
+  return memoOwner() === "1240" ? "images/ai-avatar-dev.jpg?v=2120" : "images/ai-avatar.png?v=2055";
 }
 function aiAssistAvatarHtml() {
   return `<img class="ai-ava" src="${aiAvatarSrc()}" alt="工作助手">`;
@@ -6176,7 +6177,7 @@ function ensureErrandBall() {
   const size = 58;
   const x = saved ? saved.x : Math.max(12, window.innerWidth - size - 16);
   const y = saved ? saved.y : Math.max(72, window.innerHeight - size - 108);
-  wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px"><img src="images/ai-avatar.png?v=2055" alt="跑業務"></button>
+  wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px"><img src="${aiAvatarSrc()}" alt="跑業務"></button>
     ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
       <div class="errand-ball-sheet">
         <div class="row"><h2 class="dash-h" style="margin:0">跑業務上傳入帳</h2>
