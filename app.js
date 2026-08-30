@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-00";
-const APP_EDIT_COUNT = 276;
+const APP_STAMP = "2026-08-31-01-01";
+const APP_EDIT_COUNT = 277;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票數量改寫一式"] },
+  { ver: APP_STAMP, items: ["發票買受人紅字往右移"] },
+  { ver: "2026-08-31-01-00", items: ["發票數量改寫一式"] },
   { ver: "2026-08-31-00-59", items: ["發票品名改為月份租金收入並置中"] },
   { ver: "2026-08-31-00-58", items: ["發票地址那行的紅色套印拿掉"] },
   { ver: "2026-08-31-00-56", items: ["二聯發票拿掉多餘的紅色一一五"] },
@@ -2954,7 +2955,7 @@ function invoiceCopyHtml(r, t, copyName) {
     const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 22, 944, 44, 28, ch)).join("");
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
-      ${at(W, H, 250, 168, 1420, 36, "invoiceBuyer", buyer, "inv-left")}
+      ${at(W, H, 340, 168, 1320, 36, "invoiceBuyer", buyer, "inv-left")}
       ${boxes}
       ${at(W, H, 922, 224, 78, 32, "invoiceY", y)}
       ${at(W, H, 1048, 224, 68, 32, "invoiceMo", mo)}
@@ -2978,7 +2979,7 @@ function invoiceCopyHtml(r, t, copyName) {
     ${at(W, H, 980, 158, 80, 32, "invoiceY", y)}
     ${at(W, H, 1098, 158, 70, 32, "invoiceMo", mo)}
     ${at(W, H, 1215, 158, 70, 32, "invoiceDay", day)}
-    ${at(W, H, 250, 208, 1500, 34, "invoiceBuyer", buyer, "inv-left")}
+    ${at(W, H, 340, 208, 1400, 34, "invoiceBuyer", buyer, "inv-left")}
     ${at(W, H, 78, 400, 418, 46, "invoiceItem", item)}
     ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
     ${at(W, H, 716, 400, 158, 46, "invoicePrice", price)}
