@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-23-11";
-const APP_EDIT_COUNT = 265;
+const APP_STAMP = "2026-08-30-23-12";
+const APP_EDIT_COUNT = 266;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定裡儲存公司資料改為可穩定寫入"] },
+  { ver: APP_STAMP, items: ["跑業務改為浮動球改成浮動球，放在箭頭左邊"] },
+  { ver: "2026-08-30-23-11", items: ["設定裡儲存公司資料改為可穩定寫入"] },
   { ver: "2026-08-30-23-09", items: ["本月自動分析可收起"] },
   { ver: "2026-08-30-23-06", items: ["租客設定登入密碼改為更改密碼"] },
   { ver: "2026-08-30-23-02", items: ["管理員即將提醒開發者也可以看到"] },
@@ -6620,9 +6621,9 @@ function errandBlockHtml() {
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
           <span class="k">跑業務上傳入帳</span>
-          <span class="row-end"><span class="fold-caret"></span></span>
         </button>
-        <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">改為浮動球</button>
+        <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">浮動球</button>
+        <span class="fold-caret" id="errand-caret"></span>
         ${aiDragBtn()}
       </div>
       <div class="tenant-slim-body">
@@ -10598,6 +10599,8 @@ function bindAdminAi() {
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.errandOpen ? "點擊收起" : "點擊展開";
     };
+    const caret = document.getElementById("errand-caret");
+    if (caret && fold) caret.onclick = e => { e.preventDefault(); e.stopPropagation(); fold.click(); };
     errand.onsubmit = e => {
     e.preventDefault();
     submitErrandNow();
