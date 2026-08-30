@@ -14,7 +14,7 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐", "超商"], "信
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-12-16";
+const APP_STAMP = "2026-08-30-12-59";
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -28,7 +28,7 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修復畫面暫時無法顯示"] },
+  { ver: APP_STAMP, items: ["出租率與太陽能照片從右邊滑入"] },
   { ver: "2026-08-29-下午11:43", items: ["總覽移除本月收租率"] },
   { ver: "2026-08-29-下午10:36", items: ["修復畫面全白"] },
   { ver: "2026-08-29-下午10:33", items: ["修復管理員密碼無法登入"] },
@@ -6276,9 +6276,9 @@ function adminDash() {
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card ring-stack">
-        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div><img class="occ-shot" src="images/occ-studio.jpg?v=0222" alt="套房"></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div><img class="occ-shot" src="images/occ-factory.jpg?v=0224" alt="廠房"></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div><img class="occ-shot" src="images/occ-store.jpg?v=0227" alt="店面"></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in"}" src="images/occ-studio.jpg?v=0222" alt="套房"></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s2"}" src="images/occ-factory.jpg?v=0224" alt="廠房"></div>
+        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s3"}" src="images/occ-store.jpg?v=0227" alt="店面"></div>
       </div>
       <div class="card ring-card solar-card">
         <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
@@ -6287,7 +6287,7 @@ function adminDash() {
           <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
           <div class="small">套房 4 棟　廠房牛1 五戶</div>
         </div>
-        <img class="solar-shot" src="images/solar-panels.png?v=0205" alt="太陽能板">
+        <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.png?v=0205" alt="太陽能板">
       </div>
     </div>
     ${overallReportHtml()}

@@ -1010,6 +1010,24 @@ input[type="file"] {
   background: #ececec;
   pointer-events: none;
 }
+.occ-shot.shot-in,
+.solar-shot.shot-in {
+  animation: shotIn .85s cubic-bezier(.22,.82,.22,1) both;
+}
+.occ-shot.shot-in.s2 { animation-delay: .12s; }
+.occ-shot.shot-in.s3 { animation-delay: .24s; }
+.solar-shot.shot-in { animation-delay: .16s; }
+.admin-static .occ-shot.shot-in,
+.admin-static .solar-shot.shot-in {
+  animation: shotIn .85s cubic-bezier(.22,.82,.22,1) both !important;
+}
+.admin-static .occ-shot.shot-in.s2 { animation-delay: .12s !important; }
+.admin-static .occ-shot.shot-in.s3 { animation-delay: .24s !important; }
+.admin-static .solar-shot.shot-in { animation-delay: .16s !important; }
+@keyframes shotIn {
+  from { transform: translateX(72px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 @media (min-width: 860px) {
   .occ-shot { width: 160px; height: 92px; }
 }
