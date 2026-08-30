@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-30-16-53";
-const APP_EDIT_COUNT = 219;
+const APP_STAMP = "2026-08-30-17-00";
+const APP_EDIT_COUNT = 220;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房本月已繳未繳依收款明細"] },
+  { ver: APP_STAMP, items: ["沒有表上金額的套房租金顯示為 —"] },
+  { ver: "2026-08-30-16-53", items: ["套房本月已繳未繳依收款明細"] },
   { ver: "2026-08-30-16-41", items: ["套房租客圖卡顯示現任、本月收款與交接中"] },
   { ver: "2026-08-30-14-01", items: ["後台刪除報修可點擊"] },
   { ver: "2026-08-30-13-58", items: ["套房租金依收款明細核對"] },
@@ -594,9 +595,8 @@ const STUDIO_RENTS = {
 function studioRentOf(no, fallback) {
   const key = String(no || "");
   if (Object.prototype.hasOwnProperty.call(STUDIO_RENTS, key)) return STUDIO_RENTS[key];
-  const n = Number(fallback);
-  if (Number.isFinite(n) && n > 0) return n;
-  return isStoreNo(key) ? 0 : 10000;
+  if (key === "DEMO") return 10000;
+  return null;
 }
 const STUDIO_MONTH_PAY = {
   "6821": { name: "黃宥宇", paidOn: "2026-08-10", amount: 7000 },
@@ -993,7 +993,7 @@ function buildSeed() {
     const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
     rooms.push({
       id, no, title: isStoreNo(no) ? "店面" : "套房",
-      rent: studioRentOf(no, name ? 10000 : 0), deposit: name ? 25600 : 0,
+      rent: studioRentOf(no), deposit: name ? 25600 : 0,
       kind: isStoreNo(no) ? "store" : "studio",
       shop: (info && info.shop) || "",
       group: bld ? bld.no : "",
@@ -1162,7 +1162,9 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
       if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
-      if (!r.rent) r.rent = 10000;
+      if (Object.prototype.hasOwnProperty.call(STUDIO_RENTS, String(r.no))) r.rent = STUDIO_RENTS[String(r.no)];
+      else if (r.demo || r.no === "DEMO") { if (!r.rent) r.rent = 10000; }
+      else r.rent = studioRentOf(r.no);
     }
     if (r.title === "套房" && Array.isArray(r.amenities)) {
       ["機車停車格", "床鋪", "電梯", "飲水機"].forEach(x => { if (!r.amenities.includes(x)) r.amenities.push(x); });
@@ -4926,13 +4928,13 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
-          <div class="stat"><div class="label">本月租金</div><b>${money(r.rent)}</b></div>
+          <div class="stat"><div class="label">本月租金</div><b>${r.rent ? money(r.rent) : "—"}</b></div>
         </div>
         ${tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : ""}
       </div>
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
-        <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${money(r.rent)}</span></div>
+        <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${r.rent ? money(r.rent) : "—"}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">每月 ${t.dueDay || 5} 日前</span></div>
       </div>
