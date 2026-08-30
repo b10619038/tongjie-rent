@@ -13,29 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <title>統潔＆信潔開發有限公司 — 租房管理</title>
-  <link rel="stylesheet" href="app.css?v=0248" />
-  <style>
-    html, body { margin: 0; background: #ffffff; }
-    #splash {
-      position: fixed; inset: 0; background: #ffffff; z-index: 9999;
-      display: grid; place-items: center;
-    }
-    #splash svg {
-      width: 72px; height: 72px; opacity: 0;
-      animation: splashHouse 1.8s ease forwards;
-    }
-    #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; display: none; }
-    #splash.out svg { animation: none; opacity: 0; }
-    @keyframes splashHouse {
-      0% { opacity: 0; transform: translateY(18px) scale(.86); }
-      28% { opacity: 1; transform: translateY(0) scale(1); }
-      62% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-12px) scale(1.05); }
-    }
-    @keyframes splashFade {
-      to { opacity: 0; visibility: hidden; }
-    }
-  </style>
+  <link rel="stylesheet" href="app.css?v=0254" />
   <style>
     html, body { margin: 0; background: #ffffff; }
     #splash {
@@ -66,14 +44,13 @@
     </svg>
   </div>
   <div id="app"></div>
-  <!-- build 2026-08-30-12-16 -->
   <script>
     function isDevPreview() {
       try { return !!(window.ui && ui.devPreview && ui.role === "tenant"); }
       catch (e) { return false; }
     }
   </script>
-  <script src="app.js?v=0251"></script>
+  <script src="app.js?v=0254"></script>
   <script>setTimeout(function(){ var s=document.getElementById("splash"); if(s) s.classList.add("out"); }, 3500);</script>
 </body>
 </html>
