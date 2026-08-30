@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-01-17";
-const APP_EDIT_COUNT = 288;
+const APP_STAMP = "2026-08-31-01-19";
+const APP_EDIT_COUNT = 289;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票中文大寫紅字往上0.1公分"] },
+  { ver: APP_STAMP, items: ["發票金額欄斜線改成紅線"] },
+  { ver: "2026-08-31-01-17", items: ["發票中文大寫紅字往上0.1公分"] },
   { ver: "2026-08-31-01-13", items: ["發票中文大寫紅字往下0.2公分"] },
   { ver: "2026-08-31-01-10", items: ["發票日期紅字往下移一點"] },
   { ver: "2026-08-31-01-09", items: ["二聯備註房號往下移一點"] },
@@ -2920,6 +2921,9 @@ function moneyCnParts(n) {
   const han = "零壹貳參肆伍陸柒捌玖";
   return digits.map(d => han[Number(d)]);
 }
+function invSlash(W, H, x1, y1, x2, y2) {
+  return `<svg class="inv-slash" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#c2410c" stroke-width="3.4" stroke-linecap="butt" /></svg>`;
+}
 function invBox(W, H, x, y, w, h) {
   return [(x / W * 100).toFixed(2), (y / H * 100).toFixed(2), (w / W * 100).toFixed(2), (h / H * 100).toFixed(2)];
 }
@@ -2975,6 +2979,7 @@ function invoiceCopyHtml(r, t, copyName) {
       ${mk(W, H, 914, 806, 270, 62, taxAmt ? String(taxAmt) : "")}
       ${mk(W, H, 914, 888, 270, 42, total ? String(total) : "")}
       ${cn}
+      ${invSlash(W, H, 1195, 477, 907, 722)}
     </section>`;
   }
   const W = 1840, H = 1072;
@@ -2995,6 +3000,7 @@ function invoiceCopyHtml(r, t, copyName) {
     ${mk(W, H, 908, 826, 304, 44, total ? String(total) : "")}
     ${cn}
     ${mk(W, H, 593, 946, 40, 38, "V")}
+    ${invSlash(W, H, 1218, 466, 901, 808)}
   </section>`;
 }
 function adminInvoice() {

@@ -1391,7 +1391,13 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .inv-abs.inv-left { text-align: left; padding-left: 4px; }
 .inv-abs.inv-big { font-size: clamp(16px, 2.2vw, 22px); letter-spacing: .12em; }
 .inv-abs.inv-han { font-size: clamp(18px, 2.4vw, 26px); font-weight: 800; }
-.inv-abs.inv-note { font-size: clamp(20px, 2.8vw, 30px); font-weight: 800; letter-spacing: 0.12em; }
+.inv-slash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .inv-abs.inv-mark { pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .inv-abs:focus { outline: 1px dashed #c2410c; background: rgba(255,255,255,.35); }
 @media print {
