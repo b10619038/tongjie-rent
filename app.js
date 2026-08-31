@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-32";
-const APP_EDIT_COUNT = 415;
+const APP_STAMP = "2026-09-01-02-34";
+const APP_EDIT_COUNT = 416;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["浮動球打開的入帳視窗改回不透明"] },
+  { ver: APP_STAMP, items: ["跑業務上傳檔案改成上傳照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -9162,7 +9162,7 @@ function errandFormInnerHtml() {
   return `<p class="small" style="margin-top:10px">一次可拍很多本，分不出公司或銀行時會問你。同一筆錢之後存進銀行會自動對帳。</p>
           <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
-          <label class="upload">上傳檔案<input id="errand-photo" type="file" accept="image/*,application/pdf,.xlsx,.xls,.csv,.xml" multiple hidden /></label>
+          <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
           <button class="btn-navy" type="button" id="errand-submit" style="margin-top:10px">登錄這筆</button>`;
 }
