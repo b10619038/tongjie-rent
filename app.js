@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-00-58";
-const APP_EDIT_COUNT = 396;
+const APP_STAMP = "2026-09-01-01-04";
+const APP_EDIT_COUNT = 397;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者後台套房租客新增測試租客"] },
+  { ver: APP_STAMP, items: ["手機和電腦會自動套用新版本，登入維持"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -616,7 +616,7 @@ window.addEventListener("beforeinstallprompt", e => {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => {
     window.__swReg = r;
-    if (r.waiting && !navigator.serviceWorker.controller) r.waiting.postMessage("SKIP_WAITING");
+    if (r.waiting) r.waiting.postMessage("SKIP_WAITING");
     watchAppUpdate(r);
     return navigator.serviceWorker.ready;
   }).then(r => { window.__swReg = r; }).catch(() => {});
@@ -765,17 +765,26 @@ function promptAppUpdate(reg) {
 }
 function watchAppUpdate(reg) {
   if (!reg) return;
+  const take = () => {
+    if (!reg.waiting) return;
+    try { persistUi(); } catch {}
+    try { reg.waiting.postMessage("SKIP_WAITING"); } catch {}
+  };
+  take();
   if (reg.waiting && navigator.serviceWorker.controller) promptAppUpdate(reg);
   reg.addEventListener("updatefound", () => {
     const sw = reg.installing;
     if (!sw) return;
     sw.addEventListener("statechange", () => {
-      if (sw.state === "installed" && navigator.serviceWorker.controller) promptAppUpdate(reg);
+      if (sw.state === "installed" && navigator.serviceWorker.controller) {
+        promptAppUpdate(reg);
+        take();
+      }
     });
   });
   const check = () => { try { reg.update(); } catch {} };
   check();
-  setInterval(check, 30 * 1000);
+  setInterval(check, 15 * 1000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") check(); });
 }
 let __reloading = false;
