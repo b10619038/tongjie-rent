@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-00";
-const APP_EDIT_COUNT = 361;
+const APP_STAMP = "2026-08-31-22-05";
+const APP_EDIT_COUNT = 362;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["辦理退租改為跳出選擇，點了會立刻出現"] },
+  { ver: APP_STAMP, items: ["發票中文大寫紅字往上0.1公分"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -3599,7 +3599,7 @@ function invoiceCopyHtml(r, t, copyName) {
       return at(W, H, x + 74, 236, rgt - x - 16, 30, "invoiceTax" + i, taxId[i] || "", "inv-tid");
     }).join("");
     const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
-    const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 960, 38, 44, ch, "inv-han")).join("");
+    const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 951, 38, 44, ch, "inv-han")).join("");
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 301, 164, 1360, 42, "invoiceBuyer", buyer, "inv-left inv-buyer")}
@@ -3621,7 +3621,7 @@ function invoiceCopyHtml(r, t, copyName) {
   }
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
-  const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 900, 38, 44, ch, "inv-han")).join("");
+  const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 891, 38, 44, ch, "inv-han")).join("");
   const roomNote = (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
