@@ -2650,7 +2650,7 @@ img.avatar { object-fit: cover; display: block; }
 
 .errand-ball {
   position: fixed;
-  z-index: 88;
+  z-index: 92;
   width: 58px;
   height: 58px;
   border: 0;
