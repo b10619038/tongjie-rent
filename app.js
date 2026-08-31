@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-52";
-const APP_EDIT_COUNT = 369;
+const APP_STAMP = "2026-08-31-21-58";
+const APP_EDIT_COUNT = 370;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡「編輯更多」可正常點進房間資料"] },
+  { ver: APP_STAMP, items: ["設定右邊新增資料分頁，公司資料帳戶發票門禁移入"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -3633,7 +3633,7 @@ function pageLabel() {
     "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
-    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", howto: "操作教學",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
     "tenant-login": "租客登入", "admin-login": "管理員登入",
     "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
   };
@@ -6806,7 +6806,7 @@ function paintApp() {
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm");
         t.classList.toggle("on", on);
         t.classList.remove("land");
         t.style.transform = "";
@@ -7632,7 +7632,7 @@ function adminView() {
       <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
@@ -7640,10 +7640,10 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("logs");
-  allowed.push("settings");
+  allowed.push("settings", "firm");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -7658,6 +7658,14 @@ function adminPages() {
       else ids.push("announce");
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
       localStorage.setItem("tongjie_tab_ann_after_rep", "1");
+    }
+    if (localStorage.getItem("tongjie_tab_firm_after_set") !== "1") {
+      ids = ids.filter(id => id !== "firm");
+      const s = ids.indexOf("settings");
+      if (s >= 0) ids.splice(s + 1, 0, "firm");
+      else ids.push("firm");
+      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
+      localStorage.setItem("tongjie_tab_firm_after_set", "1");
     }
   } catch {}
   return ids.map(id => [id, labels[id]]);
@@ -7851,6 +7859,7 @@ function adminBody() {
     if (page === "announce") return adminAnnounce();
     if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
     if (page === "settings") return adminSettings();
+    if (page === "firm") return adminFirm();
     if (page === "howto") return adminHowto();
     return adminDash();
   } catch (err) {
@@ -7910,35 +7919,9 @@ function adminLogs() {
     }).join("") : `<div class="empty">尚無日誌</div>`}
   </div>`;
 }
-function adminSettings() {
-  const who = ui.adminCode === "1240" ? "開發者" : "管理員";
-  const st = notifyStatus();
-  const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
-  const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
-  const prefs = loadNotifyPrefs();
+function adminFirm() {
   const co = companyInfo();
-  const installed = typeof isInstalledApp === "function" && isInstalledApp();
   return `<div class="admin-grid list settings-stack">
-    <div class="card card-body">
-      <div class="label">帳號</div>
-      <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
-      <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
-    </div>
-    ${bioSettingsHtml()}
-    <div class="card card-body">
-      <div class="label">通知</div>
-      <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
-      <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
-      <div class="notify-prefs">
-        ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
-      </div>
-    </div>
-    ${geoSettingsHtml()}
-    <div class="card card-body">
-      <div class="label">安裝到手機</div>
-      <div class="row"><span class="k">狀態</span><span class="v">${installed ? "已安裝" : "尚未安裝"}</span></div>
-      ${installed ? `<p class="small" style="margin-top:8px">請用桌面上的圖示打開，通知才會比較穩。</p>` : `<button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝到主畫面</button>`}
-    </div>
     <form class="card card-body" id="company-form" autocomplete="off">
       <div class="label">公司資料</div>
       <p class="small">會同步到租客繳費頁的匯款帳戶。統編、地址、信箱來自北興街紙本。</p>
@@ -8072,13 +8055,43 @@ function adminSettings() {
         </div>`;
       }).join("")}
     </div>
+  </div>`;
+}
+function adminSettings() {
+  const who = ui.adminCode === "1240" ? "開發者" : "管理員";
+  const st = notifyStatus();
+  const notifyLine = st === "granted" ? "已開啟" : st === "denied" ? "系統已關閉，請到手機設定打開" : st === "need-install" ? "請先安裝 App" : "尚未開啟";
+  const cloud = ui.cloudOk === false ? "尚未連上雲端" : "資料經 HTTPS 同步雲端";
+  const prefs = loadNotifyPrefs();
+  const installed = typeof isInstalledApp === "function" && isInstalledApp();
+  return `<div class="admin-grid list settings-stack">
+    <div class="card card-body">
+      <div class="label">帳號</div>
+      <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
+      <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
+    </div>
+    ${bioSettingsHtml()}
+    <div class="card card-body">
+      <div class="label">通知</div>
+      <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
+      <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
+      <div class="notify-prefs">
+        ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
+      </div>
+    </div>
+    ${geoSettingsHtml()}
+    <div class="card card-body">
+      <div class="label">安裝到手機</div>
+      <div class="row"><span class="k">狀態</span><span class="v">${installed ? "已安裝" : "尚未安裝"}</span></div>
+      ${installed ? `<p class="small" style="margin-top:8px">請用桌面上的圖示打開，通知才會比較穩。</p>` : `<button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝到主畫面</button>`}
+    </div>
     ${lookSettingsHtml()}
     <div class="card card-body clickable" data-page="howto">
       <div class="label">操作教學</div>
       <p class="small" style="margin-top:8px">點開看各頁用法。這份教學會依你現在的身分顯示。</p>
     </div>
     <div class="card card-body">
-      <div class="label">資料</div>
+      <div class="label">版本</div>
       <div class="row"><span class="k">雲端</span><span class="v">${escapeHtml(cloud)}</span></div>
       <div class="row"><span class="k">版本</span><span class="v">${escapeHtml(APP_VERSION)}</span></div>
     </div>
@@ -8113,7 +8126,8 @@ function howtoSections() {
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
-    { id: "a-set", h: "設定", p: "調色盤、字體、震動、鈴聲、快速登入、通知、精確位置、公司匯款資料與權限說明都在這裡。" }
+    { id: "a-set", h: "設定", p: "帳號、快速登入、通知、精確位置、安裝、調色盤、字體、震動、鈴聲與權限說明。" },
+    { id: "a-firm", h: "資料", p: "公司資料、公司帳戶、相關帳戶、每月寄發票與公司門禁都在這一頁。" }
   ];
   const dev = admin.concat([
     { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
