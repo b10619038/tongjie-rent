@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-17-25";
-const APP_EDIT_COUNT = 337;
+const APP_STAMP = "2026-08-31-17-40";
+const APP_EDIT_COUNT = 338;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡拿掉離線紅燈"] },
+  { ver: APP_STAMP, items: ["租客教學改放在設定裡"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -5975,14 +5975,14 @@ function gateView() {
 }
 
 function nav() {
-  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"], ["howto", "book", "教學"]];
-  return `<nav class="nav nav-6"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
+  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"]];
+  return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
       : id === "home" ? unreadAnnouncements(ui.tenantId).length
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
-    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease");
+    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease") || (ui.page === "howto" && id === "settings");
     return `<button type="button" data-page="${id}" class="${on ? "active land" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
@@ -7048,7 +7048,7 @@ function howtoSections() {
     { id: "t-room", h: "房間", p: "房間、公共陽台、停車位、子母車（垃圾桶）都可點進去看使用規範。5 樓有自助儲值機，可點開看實際照片。" },
     { id: "t-lease", h: "租約", p: "看租約剩餘天數與本月租金。若尚未簽約，可在線上閱讀後勾選同意並簽名。" },
     { id: "t-fix", h: "報修", p: "選類型、填「請描述問題」，可上傳照片或影片後送出。處理進度會回到這裡，也會通知你。" },
-    { id: "t-set", h: "設定", p: "可改密碼、頭像、開啟通知、綁定 LINE，以及調色盤與字體大小。極黑主題時字仍會保持清楚。" }
+    { id: "t-set", h: "設定", p: "可改密碼、頭像、開啟通知、綁定 LINE，以及調色盤與字體大小。操作教學也在這一頁。" }
   ];
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
@@ -7098,6 +7098,7 @@ function tenantHowto() {
   return `
     <div class="topbar">
       <div>
+        <button class="back" data-page="settings">← 設定</button>
         <div class="eyebrow">GUIDE</div>
         <h1>${escapeHtml(howtoTitle())}</h1>
       </div>
@@ -10774,6 +10775,13 @@ function tenantSettings() {
         <div class="label">通知</div>
         <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
         <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
+      </div>
+      <div class="card card-body clickable" data-page="howto">
+        <div class="row">
+          <span class="who-mini"><span class="nav-ic">${icon("book")}</span><span class="k">操作教學</span></span>
+          <span class="fold-caret"></span>
+        </div>
+        <p class="small" style="margin-top:8px">首頁、繳費、房間、租約與報修的用法。</p>
       </div>
       ${lookSettingsHtml()}
       <div class="card card-body">
