@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-34";
-const APP_EDIT_COUNT = 380;
+const APP_STAMP = "2026-08-31-22-36";
+const APP_EDIT_COUNT = 381;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["取消終止契約後，交接中圖塊會收掉"] },
+  { ver: APP_STAMP, items: ["手機送出改為螢幕底部輸入列，鍵盤打開也能按"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2576,7 +2576,7 @@ function aiBoxText() {
 }
 function sendAiQuestion(q) {
   const now = Date.now();
-  if (window.__aiSendAt && now - window.__aiSendAt < 500) return false;
+  if (window.__aiSendAt && now - window.__aiSendAt < 600) return false;
   const text = String(q != null && String(q).trim() ? q : aiBoxText()).trim();
   if (!text) {
     toast("請先輸入內容");
@@ -2600,51 +2600,60 @@ function sendAiQuestion(q) {
   }
   ui.keepScroll = true;
   render();
+  requestAnimationFrame(pinAiComposer);
   return true;
 }
 window.__sendAi = function (v) { sendAiQuestion(v); };
-function wireAiSendBtn() {
+function pinAiComposer() {
+  const form = document.getElementById("ai-form");
+  if (!form) return;
+  if (form.parentNode !== document.body) document.body.appendChild(form);
+  form.style.position = "fixed";
+  form.style.left = "12px";
+  form.style.right = "12px";
+  form.style.zIndex = "240";
+  form.style.margin = "0";
+  const vv = window.visualViewport;
+  const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+  form.style.bottom = (kb + 8) + "px";
+}
+function touchHitsSend(e) {
+  const t = (e.changedTouches && e.changedTouches[0]) || e;
   const btn = document.getElementById("ai-send-btn");
-  if (!btn || btn.dataset.wired === "1") return;
-  btn.dataset.wired = "1";
+  if (!btn || t.clientX == null) return false;
+  const r = btn.getBoundingClientRect();
+  const pad = 12;
+  return t.clientX >= r.left - pad && t.clientX <= r.right + pad && t.clientY >= r.top - pad && t.clientY <= r.bottom + pad;
+}
+function armAiSend() {
+  if (window.__aiSendBound5) return;
+  window.__aiSendBound5 = 1;
   const fire = e => {
     if (e) {
       try { e.preventDefault(); e.stopPropagation(); } catch {}
     }
-    const box = document.getElementById("ai-q");
-    if (box) ui.aiDraft = box.value;
-    sendAiQuestion((box && box.value) || ui.aiDraft);
+    sendAiQuestion(aiBoxText());
   };
-  btn.addEventListener("click", fire);
-  btn.addEventListener("touchend", fire, { passive: false });
-  btn.addEventListener("pointerup", fire);
-}
-function armAiSend() {
-  if (window.__aiSendBound4) return;
-  window.__aiSendBound4 = 1;
+  document.addEventListener("touchend", e => {
+    if (!document.getElementById("ai-send-btn")) return;
+    if (!touchHitsSend(e) && !(e.target && e.target.closest && e.target.closest(".ai-send"))) return;
+    fire(e);
+  }, { capture: true, passive: false });
   document.addEventListener("click", e => {
     const btn = e.target && e.target.closest && e.target.closest(".ai-send");
     if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const box = document.getElementById("ai-q");
-    sendAiQuestion((box && box.value) || ui.aiDraft);
+    fire(e);
   }, true);
-  document.addEventListener("touchend", e => {
-    const btn = e.target && e.target.closest && e.target.closest(".ai-send");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const box = document.getElementById("ai-q");
-    sendAiQuestion((box && box.value) || ui.aiDraft);
-  }, { capture: true, passive: false });
   document.addEventListener("submit", e => {
     if (!(e.target && e.target.id === "ai-form")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const box = document.getElementById("ai-q");
-    sendAiQuestion((box && box.value) || ui.aiDraft);
+    fire(e);
   }, true);
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener("resize", pinAiComposer);
+    vv.addEventListener("scroll", pinAiComposer);
+  }
+  window.addEventListener("resize", pinAiComposer);
 }
 function stripDevLogsFromState() {
   migrateDevLocalInto(state);
@@ -6902,6 +6911,10 @@ function paintApp() {
   persistUi();
   enforceTenantSession();
   maybeAuditBrowse();
+  try {
+    document.documentElement.classList.toggle("ai-page", ui.role === "admin" && ui.page === "ai");
+    document.querySelectorAll("body > #ai-form").forEach(n => n.remove());
+  } catch {}
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
@@ -8588,9 +8601,9 @@ function adminAi() {
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
         </div>
       </div>
-          <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" rows="2" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" enterkeyhint="send">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="btn-navy ai-send" id="ai-send-btn" type="submit">送出</button>
+          <form id="ai-form" autocomplete="off" action="#" method="post">
+            <input id="ai-q" name="q" type="text" inputmode="text" enterkeyhint="send" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" value="${escapeHtml(ui.aiDraft || "")}" />
+            <input class="btn-navy ai-send" id="ai-send-btn" type="submit" value="送出" />
           </form>
     </div>`
   };
@@ -12812,7 +12825,7 @@ function bindAdminAi() {
   const ask = q => sendAiQuestion(q);
   const sendNow = () => sendAiQuestion(aiBoxText());
   armAiSend();
-  wireAiSendBtn();
+  pinAiComposer();
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
   if (aiFold && aiCard) aiFold.onclick = e => {
@@ -12864,7 +12877,7 @@ function bindAdminAi() {
     sendBtn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      sendAiQuestion();
+      sendAiQuestion(aiBoxText());
     };
   }
   const pane = document.getElementById("ai-log");
