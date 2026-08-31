@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-45";
-const APP_EDIT_COUNT = 367;
+const APP_STAMP = "2026-08-31-21-50";
+const APP_EDIT_COUNT = 368;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["日誌細項分開、字變小且端正，並修正重複與地址"] },
+  { ver: APP_STAMP, items: ["舊客交接中會提示，完成後退自動登出並請新客重綁 LINE"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -978,7 +978,15 @@ function saveNotifyPrefs(p) {
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
   if (!v) return "";
-  return typeof v === "string" ? v : (v.userId || "");
+  const uid = typeof v === "string" ? v : (v.userId || "");
+  if (!uid) return "";
+  const room = (state.rooms || []).find(r => String(r.no) === String(no));
+  if (room && room.lineCleared) {
+    const t = (state.tenants || []).find(x => x.id === room.tenantId && !x.former && !x.incoming);
+    const nm = lineBindName(no);
+    if (!t || !nm || !sameTenantName(nm, t.name)) return "";
+  }
+  return uid;
 }
 function lineBindName(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
@@ -992,6 +1000,58 @@ async function refreshLineBinds() {
   } catch {
     ui.lineBinds = ui.lineBinds || { byRoom: {}, byUser: {} };
   }
+}
+function unbindRoomLine(no, oldT) {
+  if (!no) return;
+  const body = `${no}${oldT && oldT.name ? " " + oldT.name : ""}　租約已結束，之後通知不再寄到此對話。新客請加入官方 LINE，傳送「${no} 姓名」完成綁定。`;
+  fetch(LINE_HOOK + "/api/push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+    body: JSON.stringify({ target: String(no), title: "統潔開發", body })
+  }).catch(() => {});
+  fetch(LINE_HOOK + "/unbind", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+    body: JSON.stringify({ room: String(no), roomNo: String(no), action: "unbind" })
+  }).catch(() => {});
+  try {
+    if (ui.lineBinds && ui.lineBinds.byRoom) delete ui.lineBinds.byRoom[no];
+    if (ui.lineBinds && ui.lineBinds.byUser) {
+      Object.keys(ui.lineBinds.byUser).forEach(uid => {
+        const v = ui.lineBinds.byUser[uid];
+        if (v === no || (v && (v.room === no || v.roomNo === no))) delete ui.lineBinds.byUser[uid];
+      });
+    }
+  } catch {}
+}
+function tenantHandoverNoteHtml(t, r) {
+  if (!t || !r || t.demo || r.demo || t.former || t.incoming) return "";
+  if (!isHandoverRoom(r, t)) return "";
+  const inc = incomingOf(r.id);
+  const co = lastCheckout(t.id);
+  const leaving = co && co.status !== "done";
+  const when = inc && inc.leaseStart ? "新客預計 " + inc.leaseStart + " 起租。" : "";
+  const msg = leaving
+    ? "本房正在辦理退租。點交完成前，你仍可看自己的合約、繳費與報修。"
+    : "本房已開始交接。點交完成前，這仍是你的租客畫面。";
+  return `<div class="handover-note">
+      <div class="label">交接中</div>
+      <p>${escapeHtml(msg)}${when ? " " + escapeHtml(when) : ""}</p>
+    </div>`;
+}
+function enforceTenantSession() {
+  if (ui.role !== "tenant" || isDevPreview()) return;
+  const t = (state.tenants || []).find(x => x.id === ui.tenantId);
+  const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+  const ended = !t || t.former || t.incoming || !!(r && r.tenantId && r.tenantId !== t.id) || !!(r && r.status === "vacant" && r.tenantId !== t.id);
+  if (!ended) return;
+  const no = ui.roomNo || (r && r.no) || "";
+  try { audit("登出", "租約結束自動登出"); } catch {}
+  clearSession();
+  ui.loginError = "租約已結束，此房號已交接";
+  ui.loginRoom = no;
+  ui.page = "tenant-login";
+  ui.toast = "租約已結束，已自動登出";
 }
 function lineOaMessageUrl(text) {
   return "https://line.me/R/oaMessage/" + encodeURIComponent(LINE_OA_ID) + "/?" + encodeURIComponent(text || "");
@@ -2933,7 +2993,17 @@ function restoreUi() {
     if (s.role === "tenant") {
       let t = (state.tenants || []).find(x => x.id === s.tenantId);
       let room = (state.rooms || []).find(r => r.id === s.roomId) || (s.roomNo ? (state.rooms || []).find(r => r.no === s.roomNo) : null);
-      if (!t && room) t = (state.tenants || []).find(x => x.id === room.tenantId || x.roomId === room.id);
+      if (t && (t.former || t.incoming)) {
+        ui.role = null;
+        ui.tenantId = null;
+        ui.roomId = null;
+        ui.loginError = t.former ? "租約已結束，此房號已交接" : "新客尚未完成點交";
+        ui.page = "tenant-login";
+        ui.loginRoom = (room && room.no) || s.roomNo || "";
+        persistUi();
+        return;
+      }
+      if (!t && room) t = (state.tenants || []).find(x => x.id === room.tenantId && !x.former && !x.incoming);
       if (!room && t) room = (state.rooms || []).find(r => r.id === t.roomId);
       if (t) ui.tenantId = t.id;
       if (room) {
@@ -5985,7 +6055,7 @@ function findPendingCashBook(amount, date) {
 }
 function unpaidActiveTenants() {
   return (state.tenants || []).filter(t => {
-    if (t.paid || !(t.name || "").trim() || isDemoTenant(t)) return false;
+    if (t.paid || t.former || t.incoming || !(t.name || "").trim() || isDemoTenant(t)) return false;
     const room = (state.rooms || []).find(r => r.id === t.roomId);
     if (room && room.status === "office") return false;
     return true;
@@ -6197,8 +6267,12 @@ function completeHandover(oldT, r, co) {
     oldT.incoming = false;
     oldT.leftOn = (co && co.at) || ymdOf(nowStamp());
     oldT.edited = true;
+    oldT.sessionEnded = true;
   }
   const neu = incomingOf(r.id);
+  if (r.no) unbindRoomLine(r.no, oldT);
+  r.lineCleared = true;
+  r.lineExpectName = neu ? (neu.name || "") : "";
   if (neu) {
     neu.incoming = false;
     neu.former = false;
@@ -6703,6 +6777,7 @@ function safeBind(fn) {
 }
 function paintApp() {
   persistUi();
+  enforceTenantSession();
   maybeAuditBrowse();
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
@@ -7100,6 +7175,7 @@ function homeView() {
     </div>
     <div class="screen">
       ${hasAnn ? announceBlock : ""}
+      ${tenantHandoverNoteHtml(t, r)}
       <div class="hero-card">
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${r.title}</div>
@@ -7153,6 +7229,7 @@ function payView() {
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
     </div></div>
     <div class="screen">
+      ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
         <div class="small">本月應繳</div>
         <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(r.rent)}</div>
@@ -7392,6 +7469,7 @@ function leaseView() {
   const t = me(); const r = myRoom(); const left = daysLeft(t.leaseEnd);
   return `<div class="topbar"><div class="slide-right"><div class="eyebrow">LEASE</div><h1>租約</h1></div></div>
     <div class="screen">
+      ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
         <div class="row"><span class="k">承租房間</span><span class="v">${r.no} ${r.title}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
@@ -8021,7 +8099,7 @@ function howtoTitle() {
 function howtoSections() {
   const kind = howtoKind();
   const tenant = [
-    { id: "t-home", h: "首頁", p: "看本月租金、繳費狀態與管理員公告。點「繳費租金」可上傳轉帳明細；點「綁定 LINE」加入官方帳號後傳「房號 姓名」。周邊景點可開地圖並導航。" },
+    { id: "t-home", h: "首頁", p: "看本月租金、繳費狀態與管理員公告。若房間正在交接，會顯示「交接中」。點交完成後舊客會自動登出，新客用房號設自己的密碼，並重新綁定 LINE。" },
     { id: "t-pay", h: "繳費租金", p: "依畫面上的匯款帳戶轉帳，再上傳收據或轉帳明細。狀態會同步到後台，管理員可看到是否已繳。" },
     { id: "t-room", h: "房間", p: "房間、公共陽台、停車位、子母車（垃圾桶）都可點進去看使用規範。5 樓有自助儲值機，可點開看實際照片。" },
     { id: "t-lease", h: "租約", p: "看租約剩餘天數與本月租金。若尚未簽約，可在線上閱讀後勾選同意並簽名。" },
@@ -8031,7 +8109,7 @@ function howtoSections() {
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
-    { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；沒新客則改空置。" },
+    { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；舊客 App 會自動登出，LINE 請新客重綁。" },
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
@@ -10490,9 +10568,14 @@ function tryLogin() {
   if (!no) { ui.loginError = "請輸入房號"; render(); return; }
   const { room, tenant } = tenantByRoomNo(no);
   if (!room) { ui.loginError = "找不到這個房號"; audit("登入失敗", "嘗試房號 " + no); render(); return; }
-  if (room.status === "office" || !tenant) {
+  if (room.status === "office" || !tenant || tenant.former) {
     ui.loginError = room.status === "office" ? "7651 為辦公室，請改走管理員登入" : "此房號目前沒有租客";
     audit("登入失敗", "嘗試房號 " + no);
+    render(); return;
+  }
+  if (tenant.incoming) {
+    ui.loginError = "新客尚未完成點交，請點交後再登入";
+    audit("登入失敗", "新客尚未點交 " + no);
     render(); return;
   }
   ui.loginRoom = room.no;
@@ -12016,7 +12099,7 @@ function tenantSettings() {
         <div class="label">綁定 LINE</div>
         <div class="row"><span class="k">狀態</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>
         <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px">${bound ? "再次綁定 LINE" : "綁定 LINE"}</button>
-        <p class="small" style="margin-top:8px">加入後傳送「房號 姓名」，例如 ${escapeHtml(r.no || "")} ${escapeHtml(t.name || "")}。</p>
+        <p class="small" style="margin-top:8px">${isHandoverRoom(r, t) ? "交接完成前，LINE 仍是目前這位租客。點交後請新客重新傳送「房號 姓名」。" : (r.lineCleared && !bound ? "請加入官方 LINE，傳送「" + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "」完成綁定。" : "加入後傳送「房號 姓名」，例如 " + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "。")}</p>
       </div>
       <div class="card card-body">
         <div class="label">通知</div>

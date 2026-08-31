@@ -527,6 +527,14 @@ html[data-theme="void"] .stat b { color: #ffffff; }
   gap: 8px;
 }
 .handover-box .label { color: #8a5a22; font-weight: 700; }
+.handover-note {
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f7f1e8;
+}
+.handover-note .label { color: #8a5a22; font-weight: 700; margin-bottom: 4px; }
+.handover-note p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink); font-style: normal; }
 .pay-pill[data-page] { cursor: pointer; }
 
 .section-title {
