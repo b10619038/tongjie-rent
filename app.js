@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-30";
-const APP_EDIT_COUNT = 357;
+const APP_STAMP = "2026-08-31-21-40";
+const APP_EDIT_COUNT = 358;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務上傳入帳會留下來，重開總覽日曆還在"] },
+  { ver: APP_STAMP, items: ["跑業務入帳改為獨立備份，重開不會被雲端蓋掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2120,20 +2120,55 @@ function slimLedgerItem(x) {
 }
 function persistLedger(data) {
   if (!data) return;
+  const cur = loadLedgerBackup() || {};
+  const merged = {
+    books: unionById(cur.books, data.books).map(slimLedgerItem),
+    errands: unionById(cur.errands, data.errands).map(slimLedgerItem),
+    bankSlips: unionById(cur.bankSlips, data.bankSlips).map(slimLedgerItem),
+    accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {})
+  };
+  try { localStorage.setItem(LEDGER_KEY, JSON.stringify(merged)); } catch {}
   try {
-    localStorage.setItem(LEDGER_KEY, JSON.stringify({
-      books: (data.books || []).map(slimLedgerItem),
-      errands: (data.errands || []).map(slimLedgerItem),
-      bankSlips: (data.bankSlips || []).map(slimLedgerItem),
-      accountOpenings: data.accountOpenings || {}
-    }));
+    const req = indexedDB.open("tongjie-ledger", 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains("kv")) req.result.createObjectStore("kv");
+    };
+    req.onsuccess = () => {
+      try {
+        const tx = req.result.transaction("kv", "readwrite");
+        tx.objectStore("kv").put(merged, "ledger");
+      } catch {}
+    };
   } catch {}
+  mergeLedgerInto(data, merged);
 }
 function loadLedgerBackup() {
   try {
     const raw = JSON.parse(localStorage.getItem(LEDGER_KEY) || "null");
     return raw && typeof raw === "object" ? raw : null;
   } catch { return null; }
+}
+function loadLedgerIdb() {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (done) return; done = true; resolve(v || null); };
+    setTimeout(() => finish(null), 900);
+    try {
+      const req = indexedDB.open("tongjie-ledger", 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains("kv")) req.result.createObjectStore("kv");
+      };
+      req.onsuccess = () => {
+        try {
+          const tx = req.result.transaction("kv", "readonly");
+          const g = tx.objectStore("kv").get("ledger");
+          g.onsuccess = () => finish(g.result || null);
+          g.onerror = () => finish(null);
+        } catch { finish(null); }
+      };
+      req.onerror = () => finish(null);
+    } catch { finish(null); }
+  });
 }
 function unionById(a, b) {
   const map = new Map();
@@ -2479,25 +2514,14 @@ async function pushPresence() {
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) return;
     const need = Object.keys(FACTORY_TENANT_INFO || {}).length;
     if (need && factoryNamedCount(data) < need) return;
-    if (state.updatedAt && data.updatedAt && state.updatedAt > data.updatedAt) {
-      mergePresenceInto(state, data);
-      if (!state.presence) state.presence = {};
-      state.presence[id] = beat;
-      await pushCloud();
-      return;
-    }
-    if (!data.presence || typeof data.presence !== "object") data.presence = {};
-    mergePresenceInto(data, state);
-    mergeMemosInto(data, state);
-    data.presence[id] = Object.assign({}, beat, { at: Date.now() });
-    state.presence = data.presence;
+    mergePresenceInto(state, data);
+    mergeMemosInto(state, data);
+    mergeLedgerInto(state, data);
+    if (!state.presence) state.presence = {};
+    state.presence[id] = Object.assign({}, beat, { at: Date.now() });
+    persistLedger(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
-    await fetch(DATA_API, {
-      method: "PUT",
-      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      signal: ctrl ? ctrl.signal : undefined
-    });
+    await pushCloud();
   } catch {}
   finally { if (timer) clearTimeout(timer); }
 }
@@ -2603,6 +2627,11 @@ async function pushCloud() {
     } catch {}
     if (!payload.books) payload.books = [];
     if (!payload.accountOpenings) payload.accountOpenings = {};
+    mergeLedgerInto(payload, loadLedgerBackup());
+    persistLedger(payload);
+    payload.books = (payload.books || []).map(slimLedgerItem);
+    payload.errands = (payload.errands || []).map(slimLedgerItem);
+    payload.bankSlips = (payload.bankSlips || []).map(slimLedgerItem);
     const res = await fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
@@ -4503,9 +4532,17 @@ function collectLedger() {
     });
   });
   (state.errands || []).forEach(e => {
-    if (e.kind === "doc" || e.skipLedger) return;
+    if (e.kind === "doc") return;
     const amount = Number(e.amount) || 0;
     if (!amount) return;
+    if (e.skipLedger) {
+      const day = ymdOf(e.date);
+      const hasBook = (state.books || []).some(b => b && (
+        b.linkedId === e.id ||
+        (ymdOf(b.date) === day && Number(b.amount) === amount && String(b.note || "").indexOf(String(e.title || "")) >= 0)
+      ));
+      if (hasBook) return;
+    }
     const blob = [e.title, e.place, e.note, e.company].join(" ");
     const company = cellAccount(e.company || blob) || "統潔";
     rows.push({
@@ -11626,6 +11663,7 @@ function submitErrandNow() {
   toast("已登錄 " + (list.length || 1) + " 筆");
   ui.keepScroll = true;
   render();
+  try { pushCloud(); } catch {}
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
@@ -12398,6 +12436,12 @@ async function boot() {
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
+    try {
+      const idb = await loadLedgerIdb();
+      mergeLedgerInto(state, idb);
+      mergeLedgerInto(state, loadLedgerBackup());
+      persistLedger(state);
+    } catch {}
     const got = await pullCloud();
     if (got === false || got === "local-newer" || got === true) await pushCloud();
     restoreUi();
