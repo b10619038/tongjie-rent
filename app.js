@@ -15,9 +15,16 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-16";
-const APP_EDIT_COUNT = 373;
+const APP_STAMP = "2026-08-31-22-17";
+const APP_EDIT_COUNT = 374;
 const DOCS_IMPORT_VER = "aug31docs-v1";
+const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
+const AUG31_BOOKS = [
+  ["2026-08-17", "out", 97630, "統潔", "電費　93-1　115/7/2～7/29　台電 18-33-7421-01-4（鈺晟約 16,047 度 77,073／93-2A 4,307 度 20,660）義大世界超商繳", "超商"],
+  ["2026-08-19", "out", 19200, "統潔", "牛10　6832 高逸安翁玟倫　退租（押金13,500＋8月租金5,670＝19,170＋匯費30）匯翁玟倫中信西台南 222540083019", "農會"],
+  ["2026-08-25", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
+  ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -1979,12 +1986,6 @@ function applyJuly115Books(data) {
   Object.keys(JULY115_OPENINGS).forEach(k => { data.accountOpenings[k] = JULY115_OPENINGS[k]; });
   data.booksImportVer = BOOKS_IMPORT_VER;
 }
-const AUG31_BOOKS = [
-  ["2026-08-17", "out", 97630, "統潔", "電費　93-1　115/7/2～7/29　台電 18-33-7421-01-4（鈺晟約 16,047 度 77,073／93-2A 4,307 度 20,660）義大世界超商繳", "超商"],
-  ["2026-08-19", "out", 19200, "統潔", "牛10　6832 高逸安翁玟倫　退租（押金13,500＋8月租金5,670＝19,170＋匯費30）匯翁玟倫中信西台南 222540083019", "農會"],
-  ["2026-08-25", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
-  ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
-];
 function applyAug31Docs(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
@@ -2007,7 +2008,6 @@ function applyAug31Docs(data) {
   });
   data.docsImportVer = DOCS_IMPORT_VER;
 }
-const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
 function applyYushengElec(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
