@@ -1388,13 +1388,15 @@ input[type="file"] {
   gap: 10px;
   margin: 10px 0 12px;
   max-height: 420px;
-  overflow: auto;
-  padding: 14px 10px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 10px 36px;
   background: #c9d6df;
   border-radius: 16px;
 }
 .ai-empty { text-align: center; color: #5c6b75; font-size: 13px; padding: 28px 8px; }
-.ai-row { display: flex; align-items: flex-end; gap: 6px; max-width: 86%; }
+.ai-row { display: flex; align-items: flex-end; gap: 6px; max-width: 86%; flex-shrink: 0; }
 .ai-row.me { margin-left: auto; flex-direction: row-reverse; }
 .ai-ava {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
