@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-17-40";
-const APP_EDIT_COUNT = 338;
+const APP_STAMP = "2026-08-31-17-50";
+const APP_EDIT_COUNT = 339;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客教學改放在設定裡"] },
+  { ver: APP_STAMP, items: ["總覽帳本補回7月對帳與期初餘額"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1556,7 +1556,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v3";
+const BOOKS_IMPORT_VER = "july115-v4";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -1804,9 +1804,13 @@ function normalize(data) {
   return data;
 }
 function applyJuly115Books(data) {
-  if (!data || data.booksImportVer === BOOKS_IMPORT_VER) return;
+  if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
-  data.books = data.books.filter(b => b.importTag !== "july115");
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  const hasJuly = data.books.some(b => b && b.importTag === "july115");
+  const hasOpen = Number(data.accountOpenings["統潔"]) > 0 || Number(data.accountOpenings["現金(保險箱)"]) > 0;
+  if (data.booksImportVer === BOOKS_IMPORT_VER && hasJuly && hasOpen) return;
+  data.books = data.books.filter(b => b && b.importTag !== "july115");
   JULY115_BOOKS.forEach((row, i) => {
     data.books.push({
       id: "bk-j115-" + i,
@@ -1821,7 +1825,6 @@ function applyJuly115Books(data) {
       createdAt: "2026-07-31 12:00"
     });
   });
-  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   Object.keys(JULY115_OPENINGS).forEach(k => { data.accountOpenings[k] = JULY115_OPENINGS[k]; });
   data.booksImportVer = BOOKS_IMPORT_VER;
 }
@@ -1833,9 +1836,11 @@ const AUG31_BOOKS = [
   ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
 function applyAug31Docs(data) {
-  if (!data || data.docsImportVer === DOCS_IMPORT_VER) return;
+  if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
-  data.books = data.books.filter(b => b.importTag !== "aug31docs");
+  const hasDocs = data.books.some(b => b && b.importTag === "aug31docs");
+  if (data.docsImportVer === DOCS_IMPORT_VER && hasDocs) return;
+  data.books = data.books.filter(b => b && b.importTag !== "aug31docs");
   AUG31_BOOKS.forEach((row, i) => {
     data.books.push({
       id: "bk-a31-" + i,
@@ -2031,6 +2036,14 @@ async function pullCloud() {
     mergeMemosInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyCompany(state);
+      if ((!state.books || !state.books.length) && Array.isArray(data.books) && data.books.length) {
+        state.books = data.books;
+        if (data.accountOpenings) state.accountOpenings = Object.assign({}, data.accountOpenings, state.accountOpenings || {});
+        if (data.booksImportVer) state.booksImportVer = data.booksImportVer;
+        if (data.docsImportVer) state.docsImportVer = data.docsImportVer;
+      }
+      applyJuly115Books(state);
+      applyAug31Docs(state);
       ui.cloudOk = true;
       return "local-newer";
     }
@@ -2041,7 +2054,20 @@ async function pullCloud() {
     const mine = state.presence;
     const mineAdmin = (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
     const mineCompany = (state.company && Number(state.company.updatedAt) > 0) ? state.company : loadPersistedCompany();
+    const mineBooks = (state.books && state.books.length) ? state.books : null;
+    const mineOpen = (state.accountOpenings && Object.keys(state.accountOpenings).length) ? state.accountOpenings : null;
+    const mineBooksVer = state.booksImportVer;
+    const mineDocsVer = state.docsImportVer;
+    const mineCheckouts = (state.checkouts && state.checkouts.length) ? state.checkouts : null;
     state = normalize(data);
+    if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
+    if (mineOpen) state.accountOpenings = Object.assign({}, mineOpen, state.accountOpenings || {});
+    if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
+    if (mineDocsVer && !state.docsImportVer) state.docsImportVer = mineDocsVer;
+    if ((!state.checkouts || !state.checkouts.length) && mineCheckouts) state.checkouts = mineCheckouts;
+    applyJuly115Books(state);
+    applyAug31Docs(state);
+    ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
     if (mineCompany) {
@@ -2368,6 +2394,24 @@ async function pushCloud() {
       aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240"),
       aiLogs: [],
     });
+    if (!payload.books || !payload.books.length) {
+      try {
+        const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
+        if (cur.ok) {
+          const remote = await cur.json();
+          if (remote && Array.isArray(remote.books) && remote.books.length) {
+            payload.books = remote.books;
+            payload.accountOpenings = (payload.accountOpenings && Object.keys(payload.accountOpenings).length)
+              ? payload.accountOpenings
+              : (remote.accountOpenings || {});
+            payload.booksImportVer = payload.booksImportVer || remote.booksImportVer;
+            payload.docsImportVer = payload.docsImportVer || remote.docsImportVer;
+          }
+        }
+      } catch {}
+    }
+    if (!payload.books) payload.books = [];
+    if (!payload.accountOpenings) payload.accountOpenings = {};
     const res = await fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
@@ -11902,8 +11946,7 @@ async function boot() {
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
     const got = await pullCloud();
-    if (got === false) await pushCloud();
-    else if (got === "local-newer") await pushCloud();
+    if (got === false || got === "local-newer" || got === true) await pushCloud();
     restoreUi();
     beatPresence();
     render();
