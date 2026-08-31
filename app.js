@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-18-25";
-const APP_EDIT_COUNT = 342;
+const APP_STAMP = "2026-08-31-19-00";
+const APP_EDIT_COUNT = 343;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["總覽可切案場看各牛案場實收、支出與盈餘"] },
+  { ver: APP_STAMP, items: ["7月對帳同一天同金額不再被合併，數字對上紅字"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1600,7 +1600,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v4";
+const BOOKS_IMPORT_VER = "july115-v5";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -1694,10 +1694,14 @@ const JULY115_BOOKS = [
   ["2026-07-22", "in", 7000, "統潔", "牛10　7022 郭雅萱", "農會"],
   ["2026-07-23", "out", 7750, "統潔", "牛10　鳳信", "農會"],
   ["2026-07-25", "in", 13500, "統潔", "牛10　6832 高逸安翁玟倫", "農會"],
-  ["2026-07-31", "in", 56000, "統潔", "兆豐本期結餘（對帳總表）", "兆豐"],
+  ["2026-07-12", "in", 14000, "統潔", "牛10　7042 周佳瑩", "兆豐"],
+  ["2026-07-16", "in", 10000, "統潔", "牛10　7223 許芸慈", "兆豐"],
+  ["2026-07-16", "in", 42000, "統潔", "牛10　7242 張育慈周聖傑　押2租1", "兆豐"],
+  ["2026-07-16", "in", 28000, "統潔", "牛10　7042 周佳瑩　押2", "兆豐"],
+  ["2026-07-16", "out", 38000, "統潔", "牛10　租竣資產3戶", "兆豐"],
 
-  ["2026-07-01", "in", 42000, "信潔", "牛5　97-69 喜憨兒", "聯邦"],
-  ["2026-07-01", "in", 42000, "信潔", "牛5　97-70 第一肉品", "聯邦"],
+  ["2026-07-01", "in", 42000, "信潔", "牛5　97-69 喜憨兒　票號0865439", "聯邦"],
+  ["2026-07-16", "in", 42000, "信潔", "牛5　97-70 第一肉品", "聯邦"],
   ["2026-07-01", "in", 110250, "信潔", "牛6　93-56 鈺晟實業　六月份", "聯邦"],
   ["2026-07-06", "in", 42000, "信潔", "牛5　97-66 旭瑞食品　票號1979471", "聯邦"],
   ["2026-07-07", "in", 325500, "信潔", "牛6　93-55 誠家食品　七、八月份", "聯邦"],
@@ -1705,15 +1709,15 @@ const JULY115_BOOKS = [
   ["2026-07-08", "out", 21528, "信潔", "水費支出", "聯邦"],
   ["2026-07-09", "out", 13912, "信潔", "垃圾清運支出", "聯邦"],
   ["2026-07-10", "in", 105000, "信潔", "牛6　62 驊勝食品", "聯邦"],
-  ["2026-07-13", "in", 38000, "信潔", "牛5　97-76 陳雅淇", "聯邦"],
+  ["2026-07-13", "in", 38000, "信潔", "牛5　97-76 陳雅琪", "聯邦"],
   ["2026-07-14", "out", 23121, "信潔", "利息支出", "聯邦"],
   ["2026-07-14", "out", 95839, "信潔", "營業稅支出", "聯邦"],
   ["2026-07-15", "in", 42000, "信潔", "牛5　97-75 力胤", "聯邦"],
   ["2026-07-16", "in", 42000, "信潔", "牛5　97-71 莊記綠豆鑽", "聯邦"],
   ["2026-07-16", "in", 42000, "信潔", "牛5　97-73 映升", "聯邦"],
-  ["2026-07-21", "in", 44100, "信潔", "牛5　97-72 萬事達", "聯邦"],
-  ["2026-07-22", "in", 42000, "信潔", "牛5　97-67 弘翔音響　票號3872684", "聯邦"],
-  ["2026-07-28", "in", 42000, "信潔", "牛5　97-68 樂芃食品　票號0865439", "聯邦"],
+  ["2026-07-21", "in", 44100, "信潔", "牛5　97-72 萬事盈", "聯邦"],
+  ["2026-07-22", "in", 42000, "信潔", "牛5　97-67 弘翔音響", "聯邦"],
+  ["2026-07-28", "in", 42000, "信潔", "牛5　97-68 樂芯食品　票號3872684", "聯邦"],
   ["2026-07-31", "in", 110250, "信潔", "牛6　93-57 鈺晟實業　七月份", "聯邦"],
 
   ["2026-07-01", "in", 28302, "個人戶·趙文榮", "薪資／伙食"],
@@ -1847,6 +1851,12 @@ function normalize(data) {
   ensureDemoTenant(data);
   return data;
 }
+function roomNoFromBookNote(note) {
+  const s = String(note || "");
+  const m10 = s.match(/牛10\s+(\d{4})/);
+  if (m10) return m10[1];
+  return "";
+}
 function applyJuly115Books(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
@@ -1864,7 +1874,7 @@ function applyJuly115Books(data) {
       company: row[3],
       note: row[4],
       bank: row[5] || "",
-      roomNo: "",
+      roomNo: roomNoFromBookNote(row[4]),
       importTag: "july115",
       createdAt: "2026-07-31 12:00"
     });
@@ -4346,17 +4356,26 @@ function collectLedger() {
       source: "errand", canDel: false, canEdit: false
     });
   });
-  const taken = new Set(rows.filter(x => x.roomNo).map(x => String(x.roomNo)));
+  const takenYm = {};
+  rows.forEach(x => {
+    const no = String(x.roomNo || "");
+    const ym = String(x.date || "").slice(0, 7);
+    if (no && ym) takenYm[ym + "|" + no] = true;
+    const note = String(x.note || "");
+    const m = note.match(/牛10\s+(\d{4})/) || note.match(/\b([678]\d{3})\b/);
+    if (m && ym) takenYm[ym + "|" + m[1]] = true;
+  });
   state.tenants.filter(t => t.paid && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     const date = ymdOf(t.paidAt);
     if (!date) return;
-    if (room && taken.has(String(room.no))) return;
+    const no = room ? String(room.no) : "";
+    if (no && takenYm[date.slice(0, 7) + "|" + no]) return;
     const amount = Number(room && room.rent) || 0;
     if (!amount) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount,
-      roomNo: room ? room.no : "", note: (t.name || "") + " 租金", company: roomCompany(room || {}),
+      roomNo: no, note: (t.name || "") + " 租金", company: roomCompany(room || {}),
       bank: "聯邦",
       source: "rent", canDel: false, canEdit: false
     });
@@ -4387,7 +4406,10 @@ function attachMemoRows(rows) {
   return rows;
 }
 function ledgerDupKey(row) {
-  return [ymdOf(row.date), row.type === "out" ? "out" : "in", Number(row.amount) || 0, rowAccount(row)].join("|");
+  if (row && row.id && (row.source === "book" || row.source === "slip" || row.source === "errand" || row.source === "rent")) {
+    return row.source + ":" + row.id;
+  }
+  return [ymdOf(row.date), row.type === "out" ? "out" : "in", Number(row.amount) || 0, rowAccount(row), rowBank(row), String(row.note || ""), String(row.roomNo || "")].join("|");
 }
 function dedupeLedger(rows) {
   const rank = { book: 1, slip: 2, errand: 3, rent: 4 };
