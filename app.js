@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-16";
-const APP_EDIT_COUNT = 407;
+const APP_STAMP = "2026-09-01-02-18";
+const APP_EDIT_COUNT = 408;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["菜單照片點開後可放大縮小"] },
+  { ver: APP_STAMP, items: ["米尼豆加上你提供的菜單照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8492,10 +8492,11 @@ const DEFAULT_LUNCH_SPOTS = [
   {
     id: "minibean", name: "米尼豆均衡便當", near: "走路約 3 分鐘", tags: ["便當", "素食", "簡餐"],
     addr: "高雄市鳳山區文龍東路182號", phone: "07-733-3948",
-    hours: "每日 10:00–19:30",
+    hours: "週一至五 10:00–18:30",
     order: "https://shop.ichefpos.com/store/86B65PHf/ordering",
     menu: ["咖哩雞胸便當", "醬燒豬肉便當", "蔥薑大雞腿便當", "薄鹽烤鯖魚便當", "蔬食／銀髮餐盒"],
-    note: "可線上點餐"
+    note: "可線上點餐",
+    photos: ["images/food/minibean.jpg?v=0218"]
   },
   {
     id: "leo", name: "里歐歐式早午餐", near: "走路約 3 分鐘", tags: ["早午餐", "飲料", "簡餐"],
