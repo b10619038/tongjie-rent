@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-01-48";
-const APP_EDIT_COUNT = 401;
+const APP_STAMP = "2026-09-01-02-00";
+const APP_EDIT_COUNT = 402;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["飲食可搜尋早午餐便當飲料，用地圖找附近店家"] },
+  { ver: APP_STAMP, items: ["飲食常用店加早安美芝城、拉亞、麥味登、金圓山等"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8511,6 +8511,83 @@ const DEFAULT_LUNCH_SPOTS = [
     order: "https://shop.ichefpos.com/store/cj86NPpg/ordering",
     menu: ["藜麥原味燒肉飯 100", "藜麥蔥鹽燒肉飯 110", "藜麥芥末燒肉飯 110", "藜麥鯖魚飯", "藜麥醉雞飯 145"],
     note: "團體便當可預訂"
+  },
+  {
+    id: "macc", name: "早安美芝城 文龍概念店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料"],
+    addr: "高雄市鳳山區文龍東路238-1號", phone: "07-735-1405",
+    hours: "每日 06:00–12:50",
+    menu: ["里肌豬排吐司 79", "鮪魚沙拉蛋餅 65", "卡啦辣雞腿堡 99", "阿拉斯加鱈魚堡 90"],
+    note: "文龍東路，可電話預訂"
+  },
+  {
+    id: "laya", name: "拉亞漢堡 鳳山北文店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料"],
+    addr: "高雄市鳳山區北文街18號", phone: "07-735-3517",
+    hours: "每日 06:00–14:00",
+    menu: ["起司厚牛漢堡組合餐", "起司鱈魚漢堡組合餐", "XL 卡啦炸雞漢堡組合餐"],
+    note: "北文街，可 App 點餐"
+  },
+  {
+    id: "mwd", name: "麥味登 文龍東店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料", "簡餐"],
+    addr: "高雄市鳳山區文龍東路242號", phone: "07-735-3396",
+    hours: "早午餐時段，可電話預訂",
+    menu: ["漢堡套餐", "吐司／蛋餅", "紅茶拿鐵"],
+    note: "文龍東路 242 號"
+  },
+  {
+    id: "jinyuan", name: "金圓山自助餐", near: "騎車約 8 分鐘", tags: ["便當", "簡餐"],
+    addr: "高雄市鳳山區海洋一路143號", phone: "07-765-0868",
+    hours: "午餐供應",
+    menu: ["自助配菜便當", "雞腿飯", "排骨飯"],
+    note: "海洋一路，菜色依當日"
+  },
+  {
+    id: "liangshehan", name: "梁社漢排骨 鳳山青年店", near: "騎車約 8 分鐘", tags: ["便當"],
+    addr: "高雄市鳳山區青年路一段324號", phone: "07-740-5712",
+    hours: "10:30–20:30",
+    menu: ["炸排骨飯", "炸雞腿飯", "椒麻雞飯", "滷排骨飯"],
+    note: "可電話預訂、線上點餐"
+  },
+  {
+    id: "haoxifu", name: "鍋燒好媳婦", near: "文龍東路附近", tags: ["便當", "簡餐"],
+    addr: "高雄市鳳山區文龍東路附近", phone: "",
+    hours: "",
+    menu: ["鍋燒意麵", "便當"],
+    note: "請用地圖或編輯補上門市電話"
+  },
+  {
+    id: "macu", name: "麻古茶坊 鳳山文山店", near: "騎車約 6 分鐘", tags: ["飲料"],
+    addr: "高雄市鳳山區文德里濱山街6-3號", phone: "07-767-6988",
+    hours: "飲料店營業時段",
+    menu: ["鮮果茶", "芝芝系列", "綠茶／紅茶"],
+    note: "文山特區；青年店 07-777-7581"
+  },
+  {
+    id: "hachiyo", name: "八曜和茶 鳳山文山店", near: "騎車約 6 分鐘", tags: ["飲料"],
+    addr: "高雄市鳳山區青年路二段584號", phone: "07-777-6987",
+    hours: "每日 10:00–22:00",
+    menu: ["青茶", "鮮奶茶", "季節水果茶"],
+    note: "青年路二段文山門市"
+  },
+  {
+    id: "starbucks", name: "星巴克 澄清文衡門市", near: "騎車約 8 分鐘", tags: ["飲料", "早午餐"],
+    addr: "高雄市三民區文衡路505號", phone: "07-780-6128",
+    hours: "每日約 06:30–22:00",
+    menu: ["咖啡", "茶", "輕食"],
+    note: "文山特區、文衡路"
+  },
+  {
+    id: "blacktea", name: "紅茶老爹 鳳山文山店", near: "騎車約 6 分鐘", tags: ["飲料"],
+    addr: "高雄市鳳山區青年路二段542號", phone: "0966-450-542",
+    hours: "每日 09:00–21:00",
+    menu: ["招牌紅茶", "鮮奶茶", "緋鳥龍"],
+    note: "青年路二段，可電話預訂"
+  },
+  {
+    id: "nikko", name: "日光蔬食咖啡館", near: "騎車約 6 分鐘", tags: ["素食", "簡餐", "便當"],
+    addr: "高雄市鳳山區文龍東路745號", phone: "07-780-7696",
+    hours: "11:00–14:30、17:00–20:00，週一公休",
+    menu: ["蛋奶素簡餐", "蔬食便當", "咖啡"],
+    note: "同路文龍東路 745 號"
   }
 ];
 function lunchTel(p) { return "tel:" + String(p || "").replace(/[^\d+]/g, ""); }
@@ -8604,10 +8681,24 @@ function adminFood() {
     </form>` : `<button type="button" class="ghost" id="ln-add" style="margin:0 0 8px">＋ 新增店家</button>`}
     ${ui.foodLoading ? `<div class="empty">正在找公司附近的「${escapeHtml(q)}」…</div>` : ""}
     ${q && live.length ? `<div class="section-title"><h2>地圖上的店</h2></div>${live.map(s => lunchSpotCard(s, true)).join("")}` : ""}
-    <div class="section-title"><h2>${q ? "常用店家" : "常用店家"}</h2></div>
-    ${local.length ? local.map(s => lunchSpotCard(s, false)).join("") : (q ? "" : `<div class="empty">還沒有店家</div>`)}
+    ${lunchSavedHtml(local, nq)}
     ${q && !ui.foodLoading && !live.length ? `<p class="small" style="padding:0 4px">列表若較少，上面 Google 地圖裡仍可點店家看電話與菜單。</p>` : ""}
   </div>`;
+}
+function lunchSavedHtml(local, nq) {
+  if (nq && LUNCH_CHIPS.some(c => normSearch(c) === nq)) {
+    const chip = LUNCH_CHIPS.find(c => normSearch(c) === nq);
+    const list = lunchSpots().filter(s => (s.tags || []).includes(chip));
+    return `<div class="section-title"><h2>常用 · ${escapeHtml(chip)}</h2></div>` + (list.length ? list.map(s => lunchSpotCard(s, false)).join("") : `<div class="empty">這類還沒有常用店</div>`);
+  }
+  if (nq) {
+    return `<div class="section-title"><h2>常用店家</h2></div>` + (local.length ? local.map(s => lunchSpotCard(s, false)).join("") : "");
+  }
+  return LUNCH_CHIPS.map(chip => {
+    const list = lunchSpots().filter(s => (s.tags || []).includes(chip));
+    if (!list.length) return "";
+    return `<div class="section-title"><h2>${escapeHtml(chip)}</h2></div>` + list.map(s => lunchSpotCard(s, false)).join("");
+  }).join("");
 }
 async function searchFoodNear(q) {
   const text = String(q || "").trim();
