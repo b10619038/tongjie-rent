@@ -7,6 +7,7 @@ const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
+const LOGIN_KEY = "tongjie_login_v1";
 const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
@@ -15,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-33";
-const APP_EDIT_COUNT = 392;
+const APP_STAMP = "2026-08-31-23-38";
+const APP_EDIT_COUNT = 393;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["對話拿掉已登錄和多餘客套，記下工作只留重點"] },
+  { ver: APP_STAMP, items: ["更新軟體後維持登入，不會再被登出"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -724,6 +725,7 @@ function updateBarHtml() {
   return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此查看更新內容</div>`;
 }
 function applyAppUpdate() {
+  persistUi();
   markVersionSeen();
   try {
     const reg = window.__swReg;
@@ -781,6 +783,7 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
     __reloading = true;
+    try { persistUi(); } catch {}
     location.reload();
   });
 }
@@ -2907,7 +2910,7 @@ function persistUi() {
     const room = ui.role === "tenant"
       ? (state.rooms.find(r => r.id === ui.roomId) || (typeof myRoom === "function" ? myRoom() : null))
       : null;
-    const snap = JSON.stringify({
+    const snap = {
       role: ui.role,
       page: ui.page,
       roomId: ui.roomId,
@@ -2917,9 +2920,11 @@ function persistUi() {
       tenantKind: ui.tenantKind,
       adminCode: ui.adminCode || "",
       devPreview: !!ui.devPreview
-    });
-    localStorage.setItem(UI_KEY, snap);
-    sessionStorage.setItem(UI_KEY, snap);
+    };
+    const raw = JSON.stringify(snap);
+    localStorage.setItem(UI_KEY, raw);
+    sessionStorage.setItem(UI_KEY, raw);
+    localStorage.setItem(LOGIN_KEY, raw);
     localStorage.removeItem("tongjie_ui_v1");
     sessionStorage.removeItem("tongjie_ui_v1");
   } catch {}
@@ -3046,6 +3051,7 @@ function readUiSnap() {
   try {
     return parse(localStorage.getItem(UI_KEY))
       || parse(sessionStorage.getItem(UI_KEY))
+      || parse(localStorage.getItem(LOGIN_KEY))
       || parse(localStorage.getItem("tongjie_ui_v1"))
       || parse(sessionStorage.getItem("tongjie_ui_v1"));
   } catch { return null; }
@@ -3074,6 +3080,12 @@ function restoreUi() {
       ui.roomId = ui.devRoom.id;
       ui.roomNo = ui.devRoom.no;
       if (!ui.page || ui.page === "dash") ui.page = "home";
+      persistUi();
+      return;
+    }
+    if (s.role === "admin") {
+      ui.adminCode = s.adminCode || ui.adminCode || "";
+      if (!ui.page || ui.page === "home") ui.page = "dash";
       persistUi();
       return;
     }
@@ -3108,6 +3120,7 @@ function clearSession() {
   try {
     sessionStorage.removeItem(UI_KEY);
     localStorage.removeItem(UI_KEY);
+    localStorage.removeItem(LOGIN_KEY);
     sessionStorage.removeItem("tongjie_ui_v1");
     localStorage.removeItem("tongjie_ui_v1");
   } catch {}
@@ -7079,7 +7092,9 @@ function render() {
       </div>`;
       const btn = document.getElementById("recover-home");
       if (btn) btn.onclick = () => {
-        ui.role = null; ui.page = "home"; ui.keepScroll = false; lastRenderRole = ""; lastRenderPage = "";
+        try { restoreUi(); } catch {}
+        ui.keepScroll = false; lastRenderRole = ""; lastRenderPage = "";
+        if (!ui.role) { ui.page = "home"; }
         try { paintApp(); } catch { location.reload(); }
       };
     }

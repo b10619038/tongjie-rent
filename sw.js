@@ -1,8 +1,7 @@
-const CACHE = "tongjie-app-v459";
-const BUILD = "20260831-2333";
+const CACHE = "tongjie-app-v460";
+const BUILD = "20260831-2338";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
-  self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));
 });
 self.addEventListener("activate", e => {
@@ -32,8 +31,15 @@ self.addEventListener("fetch", e => {
       }
       return res;
     } catch {
-      const cached = await caches.match(e.request);
-      return cached || await caches.match("/index.html") || await caches.match("/");
+      const cached = await caches.match(e.request, { ignoreSearch: true })
+        || await caches.match(url.pathname)
+        || (url.pathname.endsWith(".js") ? await caches.match("/app.js") : null)
+        || (url.pathname.endsWith(".css") ? await caches.match("/app.css") : null);
+      if (cached) return cached;
+      if (url.pathname.endsWith(".js") || url.pathname.endsWith(".css")) {
+        return new Response("", { status: 504, statusText: "offline" });
+      }
+      return await caches.match("/index.html") || await caches.match("/");
     }
   })());
 });
