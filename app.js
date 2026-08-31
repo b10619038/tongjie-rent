@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-31";
-const APP_EDIT_COUNT = 391;
+const APP_STAMP = "2026-08-31-23-33";
+const APP_EDIT_COUNT = 392;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["對話最後一則不再被切掉，送出後會捲到最新"] },
+  { ver: APP_STAMP, items: ["對話拿掉已登錄和多餘客套，記下工作只留重點"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2486,8 +2486,8 @@ function migrateDevLocalInto(data) {
   data.devMemos = (data.devMemos || []).filter(m => !isMoneyMemo(m));
   if (money.length) data.aiMemos = unionMemos(data.aiMemos, money);
   const fromLogs = (data.aiLogs || []).filter(m => m && (isDevMemo(m) || m.role === "dev" || m.owner === "1240") && !isMoneyMemo(m));
-  data.devLogs = unionLogs(data.devLogs, unionLogs(loadDevLogs(), fromLogs), 80);
-  data.aiLogs = (data.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240");
+  data.devLogs = cleanAiLogs(unionLogs(data.devLogs, unionLogs(loadDevLogs(), fromLogs), 80));
+  data.aiLogs = cleanAiLogs((data.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"));
   saveDevMemos(data.devMemos);
   saveDevLogs(data.devLogs);
 }
@@ -2555,14 +2555,37 @@ function removeMemo(id) {
 function stripDevMemosFromState() {
   migrateDevLocalInto(state);
 }
+function isNoiseAiLog(m) {
+  const t = String((m && m.text) || "").replace(/\s+/g, "");
+  if (!t) return true;
+  if (/^已登錄\d+[張筆]/.test(t)) return true;
+  return false;
+}
+function stripPersonaTail(text) {
+  const s = String(text || "");
+  const extras = AI_PERSONAS.reduce((a, p) => a.concat(p.extras || []), []);
+  for (const x of extras) {
+    const i = s.indexOf("\n\n" + x);
+    if (i >= 0) return s.slice(0, i).trim();
+    if (s.trim() === x.trim()) return "";
+  }
+  return s;
+}
+function cleanAiLogs(list) {
+  return (list || []).filter(m => !isNoiseAiLog(m)).map(m => {
+    const t = stripPersonaTail(m.text);
+    if (!t) return null;
+    return t === m.text ? m : Object.assign({}, m, { text: t });
+  }).filter(Boolean);
+}
 function myAiLogs() {
   const admin = Array.isArray(state.aiLogs) ? state.aiLogs : [];
   if (memoOwner() === "1240") {
     const mine = Array.isArray(state.devLogs) ? state.devLogs : [];
-    return unionLogs(admin, mine, 80);
+    return cleanAiLogs(unionLogs(admin, mine, 80));
   }
-  if (admin.length) return admin;
-  return Array.isArray(ui.aiSession) ? ui.aiSession : [];
+  if (admin.length) return cleanAiLogs(admin);
+  return cleanAiLogs(Array.isArray(ui.aiSession) ? ui.aiSession : []);
 }
 function pushAiLog(entry) {
   const rec = Object.assign({ id: "log-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), at: nowStamp(), owner: memoOwner() }, entry);
@@ -9096,6 +9119,7 @@ function tenantLine(t) {
 function warmAi(body) {
   const s = String(body || "").trim();
   if (!s) return s;
+  if (/^好，我記下了|^已登錄|已放進「本月工作」/.test(s)) return s;
   const extras = (personaOf().extras || []);
   if (!extras.length) return s;
   let n = s.length;
@@ -12790,9 +12814,6 @@ function submitErrandNow() {
   ui.errandGuesses = [];
   ui.errandNote = "";
   ui.errandOpen = true;
-  if (nCash || nOut || nIn || nLink) {
-    pushAiLog({ role: "ai", text: "已登錄 " + list.length + " 張。" + [nLink ? "對帳 " + nLink : "", nCash ? "收現 " + nCash : "", nOut ? "繳費 " + nOut : "", nIn ? "入帳 " + nIn : ""].filter(Boolean).join("　") });
-  }
   save();
   toast("已登錄 " + (list.length || 1) + " 筆");
   ui.keepScroll = true;
