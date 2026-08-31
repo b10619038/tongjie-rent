@@ -1676,6 +1676,34 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
+.studio-lease-paper.lease-preview {
+  display: block;
+  width: 100%;
+}
+.lease-preview .lease-pg {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 14px 12px 22px;
+  font-size: 12px;
+  line-height: 1.7;
+  border-width: 2px;
+  margin: 0 0 12px;
+}
+.lease-preview .lease-pg.cover { min-height: 220px; }
+.lease-preview .lease-cover-mid h3 { font-size: 18px; padding: 8px 14px; letter-spacing: .18em; }
+.lease-preview .lease-cover-addr { font-size: 14px; }
+.lease-preview .lease-pg h4 { font-size: 16px; }
+.lease-preview .lease-pgno { position: static; margin-top: 10px; font-size: 11px; }
+.lease-esig {
+  display: inline-block;
+  height: 42px;
+  max-width: 150px;
+  object-fit: contain;
+  vertical-align: bottom;
+  margin: 0 6px -4px;
+}
+body.print-lease .lease-esig { height: 48px; max-width: 170px; }
 .lease-pg {
   position: relative;
   box-sizing: border-box;

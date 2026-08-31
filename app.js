@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-40";
-const APP_EDIT_COUNT = 394;
+const APP_STAMP = "2026-09-01-00-55";
+const APP_EDIT_COUNT = 395;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["刪除工作助手裡門禁密碼那兩則對話"] },
+  { ver: APP_STAMP, items: ["套房合約可線上簽署，後台列印後只蓋章"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2889,11 +2889,6 @@ function stripCloudMedia(data) {
     r.media = [];
   });
   (data.announcements || []).forEach(a => { if (a) a.media = []; });
-  (data.tenants || []).forEach(t => {
-    if (t && t.eSign && t.eSign.sig && String(t.eSign.sig).startsWith("data:")) {
-      t.eSign = Object.assign({}, t.eSign, { sig: "[signed]" });
-    }
-  });
 }
 function save(force) {
   if (isDevPreview() && !force) return;
@@ -6593,7 +6588,7 @@ function studioLeasePaperHtml(t, r) {
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
       <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
-      <p>承租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+      <p>承租人簽章：<span class="lease-sign-line">${tenantEsigHtml(t)}</span><span class="term-chop" title="蓋章"></span></p>
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
       <p>1、門牌：${u(door, "wide")}</p>
@@ -6709,17 +6704,25 @@ function studioLeasePaperHtml(t, r) {
         <p>聯絡電話：${escapeHtml(firm.phone || "07-3414196")}</p>
       </div>
       <div class="lease-sign-block">
-        <p>承租人：${u(name, "wide")}<span class="term-chop" title="蓋章"></span></p>
+        <p>承租人：${u(name, "wide")}${tenantEsigHtml(t)}<span class="term-chop" title="蓋章"></span></p>
         <p>身分證字號：${u(idNo)}</p>
         <p>聯絡電話：${u(phone)}</p>
         <p>緊急聯絡人：${u(emName)}</p>
         <p>電話：${u(emPhone)}</p>
       </div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
-      <p class="term-hint">列印後蓋章處留白，請自行蓋印。</p>
+      <p class="term-hint">列印後蓋章處留白，承租人已線上簽名者會印在上面，請自行蓋印。</p>
       <div class="lease-pgno">8</div>
     </section>
   </div>`;
+}
+function studioLeasePreviewHtml(t, r) {
+  return studioLeasePaperHtml(t, r)
+    .replace('id="studio-lease-paper"', 'id="lease-preview-paper"')
+    .replace('class="studio-lease-paper"', 'class="studio-lease-paper lease-preview"');
+}
+function isStudioLeaseRoom(r) {
+  return !!(r && r.kind !== "factory" && !isStoreNo(r.no));
 }
 function printStudioLease(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
@@ -7765,7 +7768,27 @@ function roomDetailView(id) {
 }
 function getESign(t) {
   if (isDevPreview()) return ui.devESign || null;
-  return (t && t.eSign) || null;
+  const rec = (t && t.eSign) || null;
+  if (rec && rec.sig && String(rec.sig).startsWith("data:")) return rec;
+  try {
+    const all = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
+    const local = t && t.id ? all[t.id] : null;
+    if (local) return Object.assign({}, rec || {}, local);
+  } catch {}
+  return rec;
+}
+function saveESignLocal(t, rec) {
+  if (!t || !t.id || !rec) return;
+  try {
+    const all = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
+    all[t.id] = rec;
+    localStorage.setItem("tongjie_esign_v1", JSON.stringify(all));
+  } catch {}
+}
+function tenantEsigHtml(t) {
+  const es = getESign(t);
+  if (!(es && es.sig && String(es.sig).startsWith("data:"))) return "";
+  return `<img class="lease-esig" src="${es.sig}" alt="簽名">`;
 }
 function tenantContractStatus(t, r) {
   const es = getESign(t);
@@ -7826,14 +7849,15 @@ function leaseView() {
         if (st === "unsigned") {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill unpaid">尚未簽約</span></div>
-            <p class="small" style="margin-top:8px">還沒有紙本或電子合約。點下面可閱讀條款並在手機上簽名。</p>
+            <p class="small" style="margin-top:8px">套房合約已套入你的姓名、房號、租金。閱讀後在手機上簽名，我們後台即可列印，現場只蓋章。</p>
             <button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:12px">線上簽署電子合約</button>
-            ${r && r.kind !== "factory" && !isStoreNo(r.no) ? `<button type="button" class="ghost" data-print-lease="${t.id}" style="margin-top:8px">下載紙本合約</button>` : ""}
           </div>`;
         }
         if (st === "signed") {
-          return `<div class="card card-body">${eContractDocHtml(t, r)}
-            <div class="row" style="margin-top:8px"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
+          return `<div class="card card-body">
+            <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
+            <p class="small" style="margin-top:8px">你已完成線上簽名。管理員列印後只蓋公司章。</p>
+            ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
           </div>`;
         }
         return (r.contractImages && r.contractImages.length)
@@ -7857,13 +7881,16 @@ function leaseView() {
 function leaseSignView() {
   const t = me(); const r = myRoom();
   const es = getESign(t);
+  const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
   if (es && es.status === "signed") {
     return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
       <div class="eyebrow">LEASE</div><h1>電子合約</h1>
     </div></div>
     <div class="screen">
-      <div class="card card-body">${eContractDocHtml(t, r)}</div>
+      <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
+      <p class="small" style="margin:8px 2px 12px">你的簽名已套進合約。管理員列印後只蓋章。</p>
+      ${paper}
     </div>`;
   }
   return `<div class="topbar"><div>
@@ -7871,7 +7898,8 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <div class="card card-body">${eContractDocHtml(t, r)}</div>
+      <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約（資料已自動套入）。同意後在白框簽名。</p>
+      ${paper}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">請在白框內簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
@@ -10255,7 +10283,7 @@ function tenantEntryCardHtml(kind, entry) {
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>
-      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${label}下載合約</button>` : ""}
+      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${label}${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>
       ${handoverBoxHtml(tt, rr)}`;
       }).join("")}`;
@@ -10787,10 +10815,11 @@ function adminRoomEdit() {
       ${(() => {
         const ten = state.tenants.find(x => x.id === r.tenantId);
         const st = tenantContractStatus(ten, r);
-        const es = ten && ten.eSign;
+        const es = getESign(ten);
         return `<div class="card card-body" style="margin-bottom:10px">
           <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
-          ${st === "signed" && es && es.sig ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署。" : "已有紙本合約圖檔。"}</p>`}
+          ${st === "signed" && es && es.sig && String(es.sig).startsWith("data:") ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}　列印後只蓋章</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署套房合約。" : "已有紙本合約圖檔。"}</p>`}
+          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
         </div>`;
       })()}
       <label class="upload">上傳合約書圖檔<input id="contract-upload" type="file" accept="image/*" multiple hidden /></label>
@@ -11507,6 +11536,7 @@ function bindSignPad() {
       return;
     }
     if (t) t.eSign = rec;
+    saveESignLocal(t, rec);
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
     save();
