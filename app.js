@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-57";
-const APP_EDIT_COUNT = 329;
+const APP_STAMP = "2026-08-31-16-15";
+const APP_EDIT_COUNT = 330;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -28,8 +28,9 @@ function isDemoTenant(t) {
 }
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
+const STUDIO_FEE_VER = "20260831-1615";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["店面後門密碼改為房號"] },
+  { ver: APP_STAMP, items: ["套房押金改兩個月、水費改每人每月150一年優惠1800"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -954,7 +955,7 @@ const DEFAULT_RULES = `1. 每月租金請於繳費日前完成，逾期將依合
 3. 垃圾請分類並依規定時間放置，勿堆放在走廊或樓梯間。
 4. 房間內禁止抽菸、開伙（簡易加熱除外）。
 5. 冷氣、熱水器等設備請正常使用，損壞請從 App 報修，勿自行拆修。
-6. 電費請至 5 樓自助儲值機刷卡儲值；水費為一年固定 $1,800。
+6. 電費請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
 7. 訪客請由承租人陪同，勿將房間轉租或借給他人長期居住。
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
 const TODAY = new Date("2026-08-26T00:00:00");
@@ -978,6 +979,11 @@ function studioRentOf(no, fallback) {
   if (key === "DEMO") return 10000;
   return null;
 }
+function studioDepositOf(rent) {
+  const n = Number(rent) || 0;
+  return n > 0 ? n * 2 : 0;
+}
+const WATER_FEE_TEXT = "每人每月 NT$ 150，一年優惠 NT$ 1,800";
 const STUDIO_MONTH_PAY = {
   "6821": { name: "黃宥宇", paidOn: "2026-08-10", amount: 7000 },
   "6822": { name: "吳孟書、黃莉晏", paidOn: "2026-08-01", amount: 7000 },
@@ -1429,7 +1435,7 @@ function buildSeed() {
     const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
     rooms.push({
       id, no, title: isStoreNo(no) ? "店面" : "套房",
-      rent: studioRentOf(no), deposit: name ? 25600 : 0,
+      rent: studioRentOf(no), deposit: studioDepositOf(studioRentOf(no)),
       kind: isStoreNo(no) ? "store" : "studio",
       shop: (info && info.shop) || "",
       group: bld ? bld.no : "",
@@ -1437,7 +1443,7 @@ function buildSeed() {
       company: bld ? bld.company : "統潔",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
-      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
       contractImages: [], location: roomAddress(no)
     });
     if (!name) return;
@@ -1598,7 +1604,7 @@ function normalize(data) {
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
-      if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
+      if (!r.utilities.water || /每月定額|一年固定/.test(r.utilities.water)) r.utilities.water = WATER_FEE_TEXT;
       if (r.rent == null || r.rent === "") {
         const listed = studioRentOf(r.no);
         if (listed != null) r.rent = listed;
@@ -1623,7 +1629,9 @@ function normalize(data) {
     else if (/1976/.test(who)) a.postedBy = "1976";
   });
   if (!data.houseRules) data.houseRules = DEFAULT_RULES;
-  else data.houseRules = String(data.houseRules).replace(/水費為每月定額[。]?/, "水費為一年固定 $1,800。");
+  else data.houseRules = String(data.houseRules)
+    .replace(/水費為每月定額[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。")
+    .replace(/水費為一年固定 \$1,800[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。");
   if (!Array.isArray(data.renewals)) data.renewals = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
@@ -1656,6 +1664,14 @@ function normalize(data) {
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
     applyFactoryRoster(data);
     data.factoryRosterVer = FACTORY_ROSTER_VER;
+  }
+  if (data.studioFeeVer !== STUDIO_FEE_VER) {
+    (data.rooms || []).forEach(r => {
+      if (!r || r.demo || r.status === "office" || r.kind === "factory" || isStoreNo(r.no)) return;
+      const rent = Number(r.rent) || 0;
+      if (rent > 0) r.deposit = rent * 2;
+    });
+    data.studioFeeVer = STUDIO_FEE_VER;
   }
   applyStudioSheetPaid(data);
   applyJuly115Books(data);
@@ -3118,7 +3134,7 @@ function ensureDemoTenant(data) {
       tenantId: "t-demo",
       amenities: AMENITIES.slice(),
       photos: ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"],
-      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
       contractImages: []
     };
     data.rooms.push(room);
@@ -3167,7 +3183,7 @@ function ensureDevPreview() {
     tenantId: "t-dev-preview",
     amenities: AMENITIES.slice(),
     photos: photos,
-    utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: "一年固定 $1,800" },
+    utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
     contractImages: []
   };
   ui.devTenant = Object.assign({
@@ -3539,13 +3555,13 @@ function maybeNudgeNotifies() {
         showOsBanner("合約即將到期", `將於 ${t.leaseEnd} 到期，還有 ${left} 天，建議確認是否續約。`, "lease");
       }
     }
-    if (t && room && /1,?800|一年/.test(String((room.utilities || {}).water || "一年固定 $1,800"))) {
+    if (t && room && /1,?800|150|一年/.test(String((room.utilities || {}).water || WATER_FEE_TEXT))) {
       const due = waterDueDate(t);
       if (due) {
         const left = Math.ceil((new Date(due + "T00:00:00") - new Date()) / 86400000);
         if (left >= 0 && left <= 30 && notifyPrefOn("water") && !alreadyNudged("water-" + t.id + "-" + due.slice(0, 4))) {
           markNudged("water-" + t.id + "-" + due.slice(0, 4));
-          showOsBanner("年度水費", "一年固定 NT$ 1,800，請於 " + due + " 前繳納。", "water");
+          showOsBanner("年度水費", "一年優惠 NT$ 1,800（每人每月 NT$ 150），請於 " + due + " 前繳納。", "water");
         }
       }
     }
@@ -5099,7 +5115,7 @@ function waterDueSoon() {
       if (!t || isDemoTenant(t) || !(t.name || "").trim()) return false;
       const r = (state.rooms || []).find(x => x.id === t.roomId);
       if (!r || r.kind === "factory" || r.status === "office") return false;
-      const water = String((r.utilities || {}).water || "一年固定 $1,800");
+      const water = String((r.utilities || {}).water || WATER_FEE_TEXT);
       if (!/1,?800|一年/.test(water)) return false;
       const due = waterDueDate(t);
       if (!due) return false;
@@ -6085,7 +6101,7 @@ function roomExtrasHtml(r) {
           <span class="k">電費</span>
           <span class="v linkish">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span>
         </div>
-        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || "一年固定 $1,800")}${(() => { try { const t = me(); const d = t ? waterDueDate(t) : ""; return d ? "　下次 " + d : ""; } catch { return ""; } })()}</span></div>
+        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || WATER_FEE_TEXT)}${(() => { try { const t = me(); const d = t ? waterDueDate(t) : ""; return d ? "　下次 " + d : ""; } catch { return ""; } })()}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">
