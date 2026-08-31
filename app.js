@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-55";
-const APP_EDIT_COUNT = 360;
+const APP_STAMP = "2026-08-31-22-00";
+const APP_EDIT_COUNT = 361;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["進出帳可刪除，1240／7651／1976 各裝置同一份帳"] },
+  { ver: APP_STAMP, items: ["辦理退租改為跳出選擇，點了會立刻出現"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -5987,14 +5987,26 @@ function checkoutBtnLabel(tt) {
   if (co.kind === "early") return co.status === "done" ? "查看終止契約" : "繼續終止契約";
   return co.status === "done" ? "查看退租單" : "繼續退租單";
 }
+function checkoutOverlayHtml() {
+  if (!ui.checkoutTenantId) return "";
+  const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
+  if (!t) return "";
+  const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
+  if (checkoutKindOf(lastCheckout(t.id) || {})) return "";
+  return checkoutPickHtml(t, r);
+}
 function checkoutPickHtml(t, r) {
-  return `<div class="card card-body" id="checkout-form-card">
-    <div class="row"><h2 class="dash-h" style="margin:0">辦理退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></div>
-    <p class="small">請選擇退租方式。</p>
-    <button type="button" class="ghost co-kind-btn" id="co-kind-normal">正常退租</button>
-    <p class="small">租期屆滿或依原約辦理。填電水表、鑰匙與押金。</p>
-    <button type="button" class="btn-navy co-kind-btn" id="co-kind-early">中途退租</button>
-    <p class="small">租期未滿提前終止。開立終止租賃契約。</p>
+  return `<div class="install-mask" id="checkout-pick-mask">
+    <div class="install-sheet" id="checkout-form-card">
+      <div class="label">辦理退租</div>
+      <h2>${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2>
+      <p class="small">請選擇退租方式。</p>
+      <button type="button" class="ghost co-kind-btn" id="co-kind-normal">正常退租</button>
+      <p class="small">租期屆滿或依原約辦理。填電水表、鑰匙與押金。</p>
+      <button type="button" class="btn-navy co-kind-btn" id="co-kind-early">中途退租</button>
+      <p class="small">租期未滿提前終止。開立終止租賃契約。</p>
+      <button type="button" class="ghost" id="checkout-close" style="margin-top:10px">取消</button>
+    </div>
   </div>`;
 }
 function termLeasePaperHtml(t, r, co) {
@@ -6046,7 +6058,7 @@ function checkoutFormHtml() {
   const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
   const co = lastCheckout(t.id) || {};
   const kind = checkoutKindOf(co);
-  if (!kind) return checkoutPickHtml(t, r);
+  if (!kind) return "";
   const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
   const deduct = Number(co.deduct) || 0;
   const refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct);
@@ -6152,7 +6164,34 @@ function saveCheckout(done, opt) {
   ui.keepScroll = true;
   render();
 }
+function openCheckout(tenantId) {
+  const t = (state.tenants || []).find(x => x.id === tenantId);
+  if (!t) { toast("找不到租客"); return; }
+  const room = (state.rooms || []).find(r => r.id === t.roomId);
+  const prev = lastCheckout(t.id);
+  ui.checkoutTenantId = t.id;
+  ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : "pick";
+  if (!ui.tenantOpen) ui.tenantOpen = {};
+  ui.tenantOpen[t.id] = true;
+  ui.adminJump = "checkout-form-card";
+  ui.keepScroll = false;
+  render();
+  requestAnimationFrame(() => {
+    const el = document.getElementById("checkout-form-card") || document.getElementById("checkout-pick-mask");
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+}
 function bindOps() {
+  if (!window.__coOpenBound) {
+    window.__coOpenBound = 1;
+    document.addEventListener("click", e => {
+      const btn = e.target.closest("[data-checkout-open]");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openCheckout(btn.dataset.checkoutOpen);
+    }, true);
+  }
   const all = document.getElementById("nudge-all-pay");
   if (all) all.onclick = e => { e.preventDefault(); e.stopPropagation(); nudgePayAll(); };
   document.querySelectorAll("[data-nudge-pay]").forEach(btn => {
@@ -6190,25 +6229,19 @@ function bindOps() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const t = (state.tenants || []).find(x => x.id === btn.dataset.checkoutOpen);
-      const room = t && (state.rooms || []).find(r => r.id === t.roomId);
-      const prev = t ? lastCheckout(t.id) : null;
-      ui.checkoutTenantId = btn.dataset.checkoutOpen;
-      ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : "pick";
-      ui.page = "tenants";
-      ui.tenantKind = room && room.kind === "factory" ? "factory" : "studio";
-      if (!ui.tenantOpen) ui.tenantOpen = {};
-      ui.tenantOpen[t && t.id ? t.id : btn.dataset.checkoutOpen] = true;
-      ui.keepScroll = false;
-      render();
+      openCheckout(btn.dataset.checkoutOpen);
     };
   });
   const closeCo = document.getElementById("checkout-close");
   if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  const pickMask = document.getElementById("checkout-pick-mask");
+  if (pickMask) pickMask.onclick = e => {
+    if (e.target === pickMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
+  };
   const pickNormal = document.getElementById("co-kind-normal");
-  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
+  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); ui.checkoutKind = "normal"; ui.adminJump = "checkout-form-card"; ui.keepScroll = false; render(); };
   const pickEarly = document.getElementById("co-kind-early");
-  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
+  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); ui.checkoutKind = "early"; ui.adminJump = "checkout-form-card"; ui.keepScroll = false; render(); };
   const resetKind = document.getElementById("co-kind-reset");
   if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
   const printTerm = document.getElementById("co-print-term");
@@ -6365,12 +6398,13 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml();
   if (!ui.role) { ui.keepScroll = false; root.innerHTML = bar + toastHtml + gateView() + sheet + ver + guide + theme + introHtml(); safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); }); return; }
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
     const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
+      || (ui.checkoutTenantId && ui.checkoutKind === "pick")
       || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
@@ -6389,8 +6423,8 @@ function paintApp() {
         bindUpdateBar();
         bindThemePicker();
       });
-      if (ui.adminJump === "announce-form") {
-        const el = document.getElementById("announce-form");
+      if (ui.adminJump) {
+        const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
         sc.scrollTop = Math.max(0, top);
       } else if (!pageChanged) {
@@ -6416,8 +6450,8 @@ function paintApp() {
     });
     const sc2 = document.querySelector(".admin-scroll");
     if (sc2) {
-      if (ui.adminJump === "announce-form") {
-        const el = document.getElementById("announce-form");
+      if (ui.adminJump) {
+        const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc2.getBoundingClientRect().top + sc2.scrollTop - 8) : 0;
         sc2.scrollTop = Math.max(0, top);
         requestAnimationFrame(() => { sc2.scrollTop = Math.max(0, top); });
@@ -9676,6 +9710,7 @@ function bindTenantListTools() {
         bindLineSwipe();
         bindTenantListTools();
         bindTenantFold();
+        bindOps();
       } else render();
     };
   });
@@ -9812,6 +9847,7 @@ function adminRoomEdit() {
   if (!r) return `<div class="empty">找不到房間</div>`;
   const t = state.tenants.find(x => x.id === r.tenantId);
   return `<div class="admin-grid list">
+    ${checkoutFormHtml()}
     <form class="card card-body" id="room-edit-form" novalidate>
       <button class="back" type="button" data-admin="rooms">← 所有資產</button>
       <h2 class="dash-h">${r.no}　${r.title}</h2>
