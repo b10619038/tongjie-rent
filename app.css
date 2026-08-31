@@ -2686,12 +2686,34 @@ img.avatar { object-fit: cover; display: block; }
 }
 .food-menu { margin: 8px 0 0; padding-left: 1.2em; }
 .food-menu li { margin: 3px 0; line-height: 1.45; }
-#food-search {
-  width: 100%;
+.food-search-row {
+  display: flex;
+  gap: 8px;
   margin-top: 10px;
+  align-items: center;
+}
+.food-search-row #food-search {
+  margin-top: 0;
+  flex: 1;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px 12px;
   font: inherit;
+}
+.food-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.food-chips .ghost { width: auto; padding: 6px 12px; }
+.food-map {
+  width: 100%;
+  height: 220px;
+  border: 0;
+  border-radius: 14px;
+  margin-top: 10px;
+  background: #e8eee8;
 }
 a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-box; }

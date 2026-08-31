@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-01-42";
-const APP_EDIT_COUNT = 400;
+const APP_STAMP = "2026-09-01-01-48";
+const APP_EDIT_COUNT = 401;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["資料右邊新增飲食，可打電話點公司附近中餐"] },
+  { ver: APP_STAMP, items: ["飲食可搜尋早午餐便當飲料，用地圖找附近店家"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8478,9 +8478,11 @@ function adminFirm() {
   </div>`;
 }
 const OFFICE_LUNCH_ADDR = "高雄市鳳山區文龍東路76號";
+const OFFICE_LUNCH_LL = { lat: 22.6402, lng: 120.3605 };
+const LUNCH_CHIPS = ["早午餐", "便當", "飲料", "素食", "簡餐"];
 const DEFAULT_LUNCH_SPOTS = [
   {
-    id: "bopoke", name: "波波奇健康餐", near: "同棟／樓下",
+    id: "bopoke", name: "波波奇健康餐", near: "同棟／樓下", tags: ["簡餐", "素食"],
     addr: "高雄市鳳山區文龍東路76號", phone: "0909-053-305",
     hours: "週一至六 10:30–20:30，週日公休", line: "@bopoke",
     order: "https://shop.ichefpos.com/store/6nUxkNRW/ordering",
@@ -8488,7 +8490,7 @@ const DEFAULT_LUNCH_SPOTS = [
     note: "1 公里內滿 300 可外送"
   },
   {
-    id: "minibean", name: "米尼豆均衡便當", near: "走路約 3 分鐘",
+    id: "minibean", name: "米尼豆均衡便當", near: "走路約 3 分鐘", tags: ["便當", "素食", "簡餐"],
     addr: "高雄市鳳山區文龍東路182號", phone: "07-733-3948",
     hours: "每日 10:00–19:30",
     order: "https://shop.ichefpos.com/store/86B65PHf/ordering",
@@ -8496,14 +8498,14 @@ const DEFAULT_LUNCH_SPOTS = [
     note: "可線上點餐"
   },
   {
-    id: "leo", name: "里歐歐式早午餐", near: "走路約 3 分鐘",
+    id: "leo", name: "里歐歐式早午餐", near: "走路約 3 分鐘", tags: ["早午餐", "飲料", "簡餐"],
     addr: "高雄市鳳山區文龍東路180號", phone: "07-735-4458",
     hours: "每日 06:30–13:30",
     menu: ["蛋沙拉丹麥 111 起", "腓力雞排吐司 111 起", "BBQ 豬排蛋堡 132 起", "鍋燒意麵 145", "里肌豬排蛋餅 80"],
     note: "電話預訂比較快"
   },
   {
-    id: "yakiniku", name: "燒肉食客", near: "騎車約 5 分鐘",
+    id: "yakiniku", name: "燒肉食客", near: "騎車約 5 分鐘", tags: ["便當", "簡餐"],
     addr: "高雄市鳳山區文龍東路670號", phone: "07-777-8588",
     hours: "09:00–13:00、16:00–19:30",
     order: "https://shop.ichefpos.com/store/cj86NPpg/ordering",
@@ -8512,6 +8514,24 @@ const DEFAULT_LUNCH_SPOTS = [
   }
 ];
 function lunchTel(p) { return "tel:" + String(p || "").replace(/[^\d+]/g, ""); }
+function foodGoogleUrl(q) {
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((q || "餐廳") + " " + OFFICE_LUNCH_ADDR);
+}
+function foodGoogleEmbed(q) {
+  return "https://maps.google.com/maps?q=" + encodeURIComponent((q || "餐廳") + " 靠近" + OFFICE_LUNCH_ADDR) + "&hl=zh-TW&z=15&output=embed";
+}
+function foodKm(lat, lng) {
+  const R = 6371, to = d => d * Math.PI / 180;
+  const dLat = to(lat - OFFICE_LUNCH_LL.lat), dLng = to(lng - OFFICE_LUNCH_LL.lng);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(to(OFFICE_LUNCH_LL.lat)) * Math.cos(to(lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function foodNearText(km) {
+  if (!(km >= 0)) return "";
+  if (km < 0.12) return "同棟附近";
+  if (km < 0.6) return "走路約 " + Math.max(1, Math.round(km * 14)) + " 分鐘";
+  return "約 " + km.toFixed(1) + " 公里";
+}
 function lunchSpots() {
   const hidden = new Set((state.lunchHidden || []).map(String));
   const extra = (state.lunchSpots || []).filter(x => x && x.id && !hidden.has(x.id));
@@ -8522,20 +8542,52 @@ function lunchSpots() {
   const more = extra.filter(e => !DEFAULT_LUNCH_SPOTS.some(d => d.id === e.id));
   return base.concat(more);
 }
+function lunchSpotCard(s, live) {
+  return `<div class="card card-body">
+    <div class="row"><span class="k">${escapeHtml(s.name)}</span>${s.near ? `<span class="pay-pill">${escapeHtml(s.near)}</span>` : ""}</div>
+    <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(s.addr || "—")}</span></div>
+    <div class="row"><span class="k">電話</span><span class="v">${escapeHtml(s.phone || "—")}</span></div>
+    ${s.hours ? `<div class="row wrap"><span class="k">時間</span><span class="v">${escapeHtml(s.hours)}</span></div>` : ""}
+    ${s.line ? `<div class="row"><span class="k">LINE</span><span class="v">${escapeHtml(s.line)}</span></div>` : ""}
+    ${(s.menu || []).length ? `<ul class="food-menu">${s.menu.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>` : ""}
+    ${s.note ? `<p class="small" style="margin-top:8px">${escapeHtml(s.note)}</p>` : ""}
+    <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
+      ${s.phone ? `<a class="btn-navy" href="${lunchTel(s.phone)}" style="width:auto;text-align:center">打電話</a>` : ""}
+      ${s.addr ? `<a class="ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((s.name || "") + " " + s.addr)}" target="_blank" rel="noopener" style="width:auto">地圖</a>` : ""}
+      ${s.order ? `<a class="ghost" href="${escapeHtml(s.order)}" target="_blank" rel="noopener" style="width:auto">線上點餐</a>` : ""}
+      ${s.line ? `<a class="ghost" href="https://line.me/R/ti/p/${encodeURIComponent(s.line)}" target="_blank" rel="noopener" style="width:auto">LINE</a>` : ""}
+      ${live ? `<button type="button" class="ghost" data-lunch-keep="${escapeHtml(s.id)}" style="width:auto">加入常用</button>` : `<button type="button" class="ghost" data-lunch-edit="${escapeHtml(s.id)}" style="width:auto">編輯</button>
+          <button type="button" class="ghost" data-lunch-del="${escapeHtml(s.id)}" style="width:auto">刪除</button>`}
+    </div>
+  </div>`;
+}
 function adminFood() {
-  const q = normSearch(ui.foodQ);
-  const list = lunchSpots().filter(s => {
-    if (!q) return true;
-    return [s.name, s.addr, s.phone, s.near, (s.menu || []).join(" ")].some(x => normSearch(x).includes(q));
+  const q = String(ui.foodQ || "").trim();
+  const nq = normSearch(q);
+  const saved = lunchSpots();
+  const local = !nq ? saved : saved.filter(s => {
+    const bag = [s.name, s.addr, s.near, (s.tags || []).join(" "), (s.menu || []).join(" ")];
+    return bag.some(x => normSearch(x).includes(nq)) || (s.tags || []).some(t => nq.includes(normSearch(t)));
   });
+  const live = Array.isArray(ui.foodLive) ? ui.foodLive : [];
   const form = ui.lunchForm || null;
   return `<div class="admin-grid list">
     <div class="card card-body">
       <div class="label">附近中餐</div>
       <h2 class="dash-h" style="margin:4px 0 6px">從公司點午餐</h2>
-      <p class="small">公司：${escapeHtml(OFFICE_LUNCH_ADDR)}。點電話可直接打，地址可開地圖。</p>
-      <input id="food-search" type="search" enterkeyhint="search" placeholder="搜尋店名、菜色、電話" value="${escapeHtml(ui.foodQ || "")}" autocomplete="off" />
+      <p class="small">公司：${escapeHtml(OFFICE_LUNCH_ADDR)}。可搜尋早午餐、便當、飲料、素食、簡餐，或任何 Google 地圖上的店。</p>
+      <div class="food-search-row">
+        <input id="food-search" type="search" enterkeyhint="search" placeholder="搜尋早午餐、便當、飲料、素食、簡餐" value="${escapeHtml(ui.foodQ || "")}" autocomplete="off" />
+        <button type="button" class="btn-navy" id="food-go" style="width:auto">搜尋</button>
+      </div>
+      <div class="food-chips">
+        ${LUNCH_CHIPS.map(c => `<button type="button" class="ghost${nq === normSearch(c) ? " on" : ""}" data-food-chip="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}
+      </div>
     </div>
+    ${q ? `<div class="card card-body">
+      <div class="row"><span class="k">Google 地圖</span><a class="linkish" href="${foodGoogleUrl(q)}" target="_blank" rel="noopener">開 Google 看全部</a></div>
+      <iframe class="food-map" src="${foodGoogleEmbed(q)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google 地圖搜尋"></iframe>
+    </div>` : ""}
     ${form ? `<form class="card card-body" id="lunch-edit-form" autocomplete="off">
       <div class="label">${form.id ? "編輯店家" : "新增店家"}</div>
       <label class="field"><span>店名</span><input id="ln-name" type="text" value="${escapeHtml(form.name || "")}" /></label>
@@ -8550,32 +8602,134 @@ function adminFood() {
         <button type="button" class="btn-navy" id="ln-save">儲存</button>
       </div>
     </form>` : `<button type="button" class="ghost" id="ln-add" style="margin:0 0 8px">＋ 新增店家</button>`}
-    ${list.length ? list.map(s => `
-      <div class="card card-body">
-        <div class="row"><span class="k">${escapeHtml(s.name)}</span>${s.near ? `<span class="pay-pill">${escapeHtml(s.near)}</span>` : ""}</div>
-        <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(s.addr || "—")}</span></div>
-        <div class="row"><span class="k">電話</span><span class="v">${escapeHtml(s.phone || "—")}</span></div>
-        ${s.hours ? `<div class="row wrap"><span class="k">時間</span><span class="v">${escapeHtml(s.hours)}</span></div>` : ""}
-        ${s.line ? `<div class="row"><span class="k">LINE</span><span class="v">${escapeHtml(s.line)}</span></div>` : ""}
-        ${(s.menu || []).length ? `<ul class="food-menu">${s.menu.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>` : ""}
-        ${s.note ? `<p class="small" style="margin-top:8px">${escapeHtml(s.note)}</p>` : ""}
-        <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
-          ${s.phone ? `<a class="btn-navy" href="${lunchTel(s.phone)}" style="width:auto;text-align:center">打電話</a>` : ""}
-          ${s.addr ? `<a class="ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.addr)}" target="_blank" rel="noopener" style="width:auto">地圖</a>` : ""}
-          ${s.order ? `<a class="ghost" href="${escapeHtml(s.order)}" target="_blank" rel="noopener" style="width:auto">線上點餐</a>` : ""}
-          ${s.line ? `<a class="ghost" href="https://line.me/R/ti/p/${encodeURIComponent(s.line)}" target="_blank" rel="noopener" style="width:auto">LINE</a>` : ""}
-          <button type="button" class="ghost" data-lunch-edit="${escapeHtml(s.id)}" style="width:auto">編輯</button>
-          <button type="button" class="ghost" data-lunch-del="${escapeHtml(s.id)}" style="width:auto">刪除</button>
-        </div>
-      </div>`).join("") : `<div class="empty">${q ? "找不到符合的店家" : "還沒有店家"}</div>`}
+    ${ui.foodLoading ? `<div class="empty">正在找公司附近的「${escapeHtml(q)}」…</div>` : ""}
+    ${q && live.length ? `<div class="section-title"><h2>地圖上的店</h2></div>${live.map(s => lunchSpotCard(s, true)).join("")}` : ""}
+    <div class="section-title"><h2>${q ? "常用店家" : "常用店家"}</h2></div>
+    ${local.length ? local.map(s => lunchSpotCard(s, false)).join("") : (q ? "" : `<div class="empty">還沒有店家</div>`)}
+    ${q && !ui.foodLoading && !live.length ? `<p class="small" style="padding:0 4px">列表若較少，上面 Google 地圖裡仍可點店家看電話與菜單。</p>` : ""}
   </div>`;
+}
+async function searchFoodNear(q) {
+  const text = String(q || "").trim();
+  if (!text) { ui.foodLive = []; return; }
+  ui.foodLoading = true;
+  const seen = new Set();
+  const out = [];
+  const add = rec => {
+    if (!rec || !rec.name) return;
+    const key = normSearch(rec.name + " " + (rec.addr || ""));
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(rec);
+  };
+  const photon = async () => {
+    const u = "https://photon.komoot.io/api/?" + new URLSearchParams({
+      q: text + " 鳳山", lat: String(OFFICE_LUNCH_LL.lat), lon: String(OFFICE_LUNCH_LL.lng), limit: "20", lang: "zh"
+    });
+    const r = await fetch(u);
+    const d = await r.json();
+    (d.features || []).forEach(f => {
+      const p = f.properties || {};
+      const c = (f.geometry && f.geometry.coordinates) || [];
+      const lng = Number(c[0]), lat = Number(c[1]);
+      const km = (lat && lng) ? foodKm(lat, lng) : null;
+      if (km != null && km > 4.5) return;
+      const addr = [p.housenumber, p.street, p.district, p.city || p.county].filter(Boolean).join("");
+      add({
+        id: "ph-" + (p.osm_id || Math.random().toString(36).slice(2, 8)),
+        name: p.name || text,
+        addr: addr || OFFICE_LUNCH_ADDR + " 附近",
+        phone: p.phone || "",
+        near: foodNearText(km),
+        menu: [p.osm_value, p.type].filter(Boolean),
+        note: "來自地圖搜尋，電話與菜單以店家為準",
+        lat, lng
+      });
+    });
+  };
+  const nomi = async () => {
+    const u = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({
+      q: text + " 高雄市鳳山區文龍東路", format: "jsonv2", addressdetails: "1", limit: "20", "accept-language": "zh-TW"
+    });
+    const r = await fetch(u, { headers: { Accept: "application/json" } });
+    const d = await r.json();
+    (Array.isArray(d) ? d : []).forEach(p => {
+      const lat = Number(p.lat), lng = Number(p.lon);
+      const km = (lat && lng) ? foodKm(lat, lng) : null;
+      if (km != null && km > 4.5) return;
+      const a = p.address || {};
+      const addr = p.display_name || [a.road, a.suburb, a.city].filter(Boolean).join("");
+      add({
+        id: "nm-" + p.place_id,
+        name: p.name || (a.amenity || text),
+        addr: addr,
+        phone: "",
+        near: foodNearText(km),
+        menu: [p.type, p.category].filter(Boolean),
+        note: "來自地圖搜尋，電話與菜單以店家為準",
+        lat, lng
+      });
+    });
+  };
+  try { await photon(); } catch {}
+  if (out.length < 4) { try { await nomi(); } catch {} }
+  ui.foodLive = out.slice(0, 20);
+  ui.foodLoading = false;
+}
+function runFoodSearch(q) {
+  ui.foodQ = String(q || "").trim();
+  ui.keepScroll = true;
+  if (!ui.foodQ) {
+    ui.foodLive = [];
+    ui.foodLoading = false;
+    render();
+    return;
+  }
+  ui.foodLoading = true;
+  ui.foodLive = [];
+  render();
+  searchFoodNear(ui.foodQ).then(() => {
+    ui.foodLoading = false;
+    ui.keepScroll = true;
+    render();
+  }).catch(() => {
+    ui.foodLoading = false;
+    ui.keepScroll = true;
+    render();
+  });
 }
 function bindLunch() {
   const search = document.getElementById("food-search");
   if (search) {
     search.oninput = () => { ui.foodQ = search.value; };
-    search.onchange = () => { ui.foodQ = search.value; ui.keepScroll = true; render(); };
+    search.onkeydown = e => {
+      if (e.key === "Enter") { e.preventDefault(); runFoodSearch(search.value); }
+    };
   }
+  const go = document.getElementById("food-go");
+  if (go) go.onclick = () => runFoodSearch((search && search.value) || ui.foodQ);
+  document.querySelectorAll("[data-food-chip]").forEach(btn => {
+    btn.onclick = e => { e.preventDefault(); runFoodSearch(btn.dataset.foodChip); };
+  });
+  document.querySelectorAll("[data-lunch-keep]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const s = (ui.foodLive || []).find(x => x.id === btn.dataset.lunchKeep);
+      if (!s) return;
+      if (!Array.isArray(state.lunchSpots)) state.lunchSpots = [];
+      if (!state.lunchSpots.some(x => x && x.name === s.name)) {
+        state.lunchSpots.push({
+          id: "ln-" + Date.now(),
+          name: s.name, phone: s.phone || "", addr: s.addr || "",
+          near: s.near || "", hours: "", menu: s.menu || [], note: s.note || ""
+        });
+        save();
+      }
+      toast("已加入常用");
+      ui.keepScroll = true;
+      render();
+    };
+  });
   const add = document.getElementById("ln-add");
   if (add) add.onclick = () => { ui.lunchForm = { id: "", name: "", phone: "", addr: "", near: "", hours: "", menu: [], note: "" }; ui.keepScroll = true; render(); };
   const cancel = document.getElementById("ln-cancel");
