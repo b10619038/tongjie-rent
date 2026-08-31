@@ -543,7 +543,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   overflow: visible;
 }
 .tenant-search input,
-#tenant-search {
+#tenant-search,
+#asset-search {
   display: block;
   width: 100%;
   min-height: 44px;

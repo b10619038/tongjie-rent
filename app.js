@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-05";
-const APP_EDIT_COUNT = 354;
+const APP_STAMP = "2026-08-31-21-15";
+const APP_EDIT_COUNT = 355;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +42,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["辦公室門鎖改為1976或7651皆可"] },
+  { ver: APP_STAMP, items: ["所有資產可搜尋房號、姓名、店名或牛案場"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1761,7 +1761,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -8866,15 +8866,32 @@ function adminDash() {
     </div>
   </div>`;
 }
+function roomMatchesQ(r, q) {
+  if (!q) return true;
+  if (!r || isDemoRoom(r)) return false;
+  const t = state.tenants.find(x => x.id === r.tenantId);
+  const parts = [r.no, r.title, r.shop, r.group, r.company, r.street, r.location, r.manager, r.status, statusLabel(r.status)];
+  if (t) parts.push(t.name, t.phone, t.contactName, t.taxId);
+  try { formerTenantsOf(r.id).forEach(f => parts.push(f.name)); } catch {}
+  try {
+    const pay = typeof studioMonthPay === "function" ? studioMonthPay(r.no) : null;
+    if (pay && pay.name) parts.push(pay.name);
+  } catch {}
+  return parts.some(x => normSearch(x).includes(q));
+}
+function assetSearchPlaceholder(kind) {
+  return kind === "factory" ? "搜尋房號、人名、公司、牛案場" : "搜尋房號、姓名、店名";
+}
 function adminRoomListHtml(kind) {
+  const q = normSearch(ui.assetQ);
   if (kind === "factory") {
-    const list = state.rooms.filter(r => r.kind === "factory").slice().sort((a, b) => {
+    const list = state.rooms.filter(r => r.kind === "factory" && roomMatchesQ(r, q)).slice().sort((a, b) => {
       const ga = FACTORY_GROUP_ORDER.indexOf(a.group);
       const gb = FACTORY_GROUP_ORDER.indexOf(b.group);
       if (ga !== gb) return (ga < 0 ? 99 : ga) - (gb < 0 ? 99 : gb);
       return String(a.no).localeCompare(String(b.no), "zh-Hant");
     });
-    if (!list.length) return `<div class="empty">目前沒有廠房</div>`;
+    if (!list.length) return `<div class="empty">${q ? "沒有符合的廠房" : "目前沒有廠房"}</div>`;
     if (!ui.factoryFold) ui.factoryFold = {};
     const groups = [];
     list.forEach(r => {
@@ -8883,13 +8900,13 @@ function adminRoomListHtml(kind) {
       if (!pack) { pack = { group: g, rooms: [], company: r.company || "", street: r.street || "" }; groups.push(pack); }
       pack.rooms.push(r);
     });
-    const allClosed = groups.every(g => ui.factoryFold[g.group] !== false);
+    const allClosed = !q && groups.every(g => ui.factoryFold[g.group] !== false);
     const bar = `<div class="fold-bar">
       <span class="small">點綠色小標可收合分組</span>
       <button type="button" class="ghost" id="factory-all">${allClosed ? "全部展開" : "全部收合"}</button>
     </div>`;
     return bar + groups.map(g => {
-      const closed = ui.factoryFold[g.group] !== false;
+      const closed = q ? false : (ui.factoryFold[g.group] !== false);
       const cards = g.rooms.map(r => {
         const t = state.tenants.find(x => x.id === r.tenantId);
         return `<div class="card item clickable" data-admin-room="${r.id}">
@@ -8911,17 +8928,17 @@ function adminRoomListHtml(kind) {
   }
   if (!ui.studioFold) ui.studioFold = {};
   const groups = STUDIO_BUILDINGS.map(b => {
-    const rooms = roomsByFloor().filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix);
+    const rooms = roomsByFloor().filter(r => (r.kind || "studio") !== "factory" && studioPrefix(r.no) === b.prefix && roomMatchesQ(r, q));
     return { ...b, rooms };
   }).filter(g => g.rooms.length);
-  if (!groups.length) return `<div class="empty">目前沒有套房</div>`;
-  const allClosed = groups.every(g => ui.studioFold[g.prefix] !== false);
+  if (!groups.length) return `<div class="empty">${q ? "沒有符合的套房" : "目前沒有套房"}</div>`;
+  const allClosed = !q && groups.every(g => ui.studioFold[g.prefix] !== false);
   const bar = `<div class="fold-bar">
     <span class="small">點綠色小標可收合分組</span>
     <button type="button" class="ghost" id="studio-all">${allClosed ? "全部展開" : "全部收合"}</button>
   </div>`;
   return bar + groups.map(g => {
-    const closed = ui.studioFold[g.prefix] !== false;
+    const closed = q ? false : (ui.studioFold[g.prefix] !== false);
     let lastFloor = "";
     const cards = g.rooms.map(r => {
       const t = state.tenants.find(x => x.id === r.tenantId);
@@ -8954,6 +8971,9 @@ function adminRooms() {
         <button type="button" class="${kind === "studio" ? "on" : ""}" data-asset-kind="studio">套房</button>
         <button type="button" class="${kind === "factory" ? "on" : ""}" data-asset-kind="factory">廠房</button>
       </div>
+    </div>
+    <div class="card card-body tenant-search">
+      <input id="asset-search" type="search" enterkeyhint="search" placeholder="${assetSearchPlaceholder(kind)}" value="${escapeHtml(ui.assetQ || "")}" autocomplete="off" />
     </div>
     <div id="asset-list">${adminRoomListHtml(kind)}</div>
   </div>`;
@@ -9239,6 +9259,35 @@ function bindTenantSearch() {
     bindLineSwipe();
     bindTenantListTools();
     bindTenantFold();
+  };
+  inp.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    setTimeout(() => inp.focus(), 0);
+  });
+  inp.addEventListener("click", e => {
+    e.stopPropagation();
+    inp.focus();
+  });
+  inp.addEventListener("keydown", e => e.stopPropagation());
+  inp.addEventListener("keyup", apply);
+  inp.addEventListener("input", apply);
+  inp.oninput = apply;
+}
+function bindAssetSearch() {
+  const inp = document.getElementById("asset-search");
+  if (!inp) return;
+  inp.readOnly = false;
+  inp.disabled = false;
+  inp.tabIndex = 0;
+  const apply = () => {
+    ui.assetQ = String(inp.value || "");
+    const box = document.getElementById("asset-list");
+    if (!box) return;
+    const kind = ui.assetKind === "factory" ? "factory" : "studio";
+    box.innerHTML = adminRoomListHtml(kind);
+    bindAdminRoomItems();
+    bindStudioFold();
+    bindFactoryFold();
   };
   inp.addEventListener("pointerdown", e => {
     e.stopPropagation();
@@ -10649,6 +10698,8 @@ function bindAdmin() {
       if (box) {
         requestAnimationFrame(() => requestAnimationFrame(() => {
           if (ui.assetKind !== kind) return;
+          const search = document.getElementById("asset-search");
+          if (search) search.placeholder = assetSearchPlaceholder(kind);
           box.innerHTML = adminRoomListHtml(kind);
           bindAdminRoomItems();
           bindStudioFold();
@@ -10682,6 +10733,7 @@ function bindAdmin() {
   bindLineSwipe();
   bindTenantFold();
   bindTenantSearch();
+  bindAssetSearch();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
