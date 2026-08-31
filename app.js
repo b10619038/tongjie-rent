@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-53";
-const APP_EDIT_COUNT = 327;
+const APP_STAMP = "2026-08-31-13-56";
+const APP_EDIT_COUNT = 328;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["公司門禁加上 M3F 密碼鎖說明"] },
+  { ver: APP_STAMP, items: ["公司門禁新增辦公室門鎖並移除複製"] },
+  { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
   { ver: "2026-08-31-13-45", items: ["房間資料按儲存會顯示已儲存"] },
   { ver: "2026-08-31-13-30", items: ["所有資產房間資料可編輯並儲存"] },
@@ -6663,12 +6664,14 @@ function adminSettings() {
       <div class="gate-row">
         <span class="k">1樓公廳門鎖</span>
         <span class="v">1976</span>
-        <button type="button" class="ghost" data-copy="1976">複製</button>
       </div>
       <div class="gate-row">
         <span class="k">車庫門鎖</span>
         <span class="v">2026</span>
-        <button type="button" class="ghost" data-copy="2026">複製</button>
+      </div>
+      <div class="gate-row">
+        <span class="k">辦公室門鎖</span>
+        <span class="v">1976</span>
       </div>
       <div class="gate-help${ui.gateHelpOpen ? " open" : ""}">
         <button type="button" class="fold-head" id="gate-help-fold">
@@ -6758,7 +6761,6 @@ function adminSettings() {
         return `<div class="gate-row">
           <span class="k">${escapeHtml(no + shop)}${loc ? `<span class="gate-loc">${escapeHtml(loc)}</span>` : ""}</span>
           <span class="v">1976　／　${escapeHtml(house)}</span>
-          <button type="button" class="ghost" data-copy="1976">複製 1976</button>
         </div>`;
       }).join("")}
     </div>

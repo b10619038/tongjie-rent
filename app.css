@@ -334,7 +334,7 @@ input, textarea, select {
 }
 #gate-card .gate-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 12px 0;
@@ -356,7 +356,6 @@ input, textarea, select {
   letter-spacing: .06em;
   white-space: nowrap;
 }
-#gate-card .gate-row .ghost { width: auto; padding: 8px 12px; flex-shrink: 0; }
 #gate-card .gate-sub {
   margin: 14px 0 2px;
   font-size: 13px;
