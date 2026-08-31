@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-00";
-const APP_EDIT_COUNT = 402;
+const APP_STAMP = "2026-09-01-02-08";
+const APP_EDIT_COUNT = 403;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["飲食常用店加早安美芝城、拉亞、麥味登、金圓山等"] },
+  { ver: APP_STAMP, items: ["常用店家加上菜單照片，點開可放大"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8517,21 +8517,24 @@ const DEFAULT_LUNCH_SPOTS = [
     addr: "高雄市鳳山區文龍東路238-1號", phone: "07-735-1405",
     hours: "每日 06:00–12:50",
     menu: ["里肌豬排吐司 79", "鮪魚沙拉蛋餅 65", "卡啦辣雞腿堡 99", "阿拉斯加鱈魚堡 90"],
-    note: "文龍東路，可電話預訂"
+    note: "文龍東路，可電話預訂",
+    photos: ["images/food/macc.jpg"]
   },
   {
     id: "laya", name: "拉亞漢堡 鳳山北文店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料"],
     addr: "高雄市鳳山區北文街18號", phone: "07-735-3517",
     hours: "每日 06:00–14:00",
     menu: ["起司厚牛漢堡組合餐", "起司鱈魚漢堡組合餐", "XL 卡啦炸雞漢堡組合餐"],
-    note: "北文街，可 App 點餐"
+    note: "北文街，可 App 點餐",
+    photos: ["images/food/laya.jpg"]
   },
   {
     id: "mwd", name: "麥味登 文龍東店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料", "簡餐"],
     addr: "高雄市鳳山區文龍東路242號", phone: "07-735-3396",
     hours: "早午餐時段，可電話預訂",
     menu: ["漢堡套餐", "吐司／蛋餅", "紅茶拿鐵"],
-    note: "文龍東路 242 號"
+    note: "文龍東路 242 號",
+    photos: ["images/food/mwd.jpg"]
   },
   {
     id: "jinyuan", name: "金圓山自助餐", near: "騎車約 8 分鐘", tags: ["便當", "簡餐"],
@@ -8545,7 +8548,8 @@ const DEFAULT_LUNCH_SPOTS = [
     addr: "高雄市鳳山區青年路一段324號", phone: "07-740-5712",
     hours: "10:30–20:30",
     menu: ["炸排骨飯", "炸雞腿飯", "椒麻雞飯", "滷排骨飯"],
-    note: "可電話預訂、線上點餐"
+    note: "可電話預訂、線上點餐",
+    photos: ["images/food/liangshehan.jpg"]
   },
   {
     id: "haoxifu", name: "鍋燒好媳婦", near: "文龍東路附近", tags: ["便當", "簡餐"],
@@ -8559,28 +8563,32 @@ const DEFAULT_LUNCH_SPOTS = [
     addr: "高雄市鳳山區文德里濱山街6-3號", phone: "07-767-6988",
     hours: "飲料店營業時段",
     menu: ["鮮果茶", "芝芝系列", "綠茶／紅茶"],
-    note: "文山特區；青年店 07-777-7581"
+    note: "文山特區；青年店 07-777-7581",
+    photos: ["images/food/macu.jpg"]
   },
   {
     id: "hachiyo", name: "八曜和茶 鳳山文山店", near: "騎車約 6 分鐘", tags: ["飲料"],
     addr: "高雄市鳳山區青年路二段584號", phone: "07-777-6987",
     hours: "每日 10:00–22:00",
     menu: ["青茶", "鮮奶茶", "季節水果茶"],
-    note: "青年路二段文山門市"
+    note: "青年路二段文山門市",
+    photos: ["images/food/hachiyo.jpg"]
   },
   {
     id: "starbucks", name: "星巴克 澄清文衡門市", near: "騎車約 8 分鐘", tags: ["飲料", "早午餐"],
     addr: "高雄市三民區文衡路505號", phone: "07-780-6128",
     hours: "每日約 06:30–22:00",
     menu: ["咖啡", "茶", "輕食"],
-    note: "文山特區、文衡路"
+    note: "文山特區、文衡路",
+    photos: ["images/food/starbucks.jpg"]
   },
   {
     id: "blacktea", name: "紅茶老爹 鳳山文山店", near: "騎車約 6 分鐘", tags: ["飲料"],
     addr: "高雄市鳳山區青年路二段542號", phone: "0966-450-542",
     hours: "每日 09:00–21:00",
     menu: ["招牌紅茶", "鮮奶茶", "緋鳥龍"],
-    note: "青年路二段，可電話預訂"
+    note: "青年路二段，可電話預訂",
+    photos: ["images/food/blacktea.jpg"]
   },
   {
     id: "nikko", name: "日光蔬食咖啡館", near: "騎車約 6 分鐘", tags: ["素食", "簡餐", "便當"],
@@ -8627,6 +8635,7 @@ function lunchSpotCard(s, live) {
     ${s.hours ? `<div class="row wrap"><span class="k">時間</span><span class="v">${escapeHtml(s.hours)}</span></div>` : ""}
     ${s.line ? `<div class="row"><span class="k">LINE</span><span class="v">${escapeHtml(s.line)}</span></div>` : ""}
     ${(s.menu || []).length ? `<ul class="food-menu">${s.menu.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>` : ""}
+    ${(s.photos || []).length ? `<div class="food-photos">${s.photos.map(p => `<button type="button" class="food-photo" data-food-photo="${escapeHtml(p)}"><img src="${escapeHtml(p)}" alt="菜單"></button>`).join("")}</div>` : ""}
     ${s.note ? `<p class="small" style="margin-top:8px">${escapeHtml(s.note)}</p>` : ""}
     <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
       ${s.phone ? `<a class="btn-navy" href="${lunchTel(s.phone)}" style="width:auto;text-align:center">打電話</a>` : ""}
@@ -8665,6 +8674,7 @@ function adminFood() {
       <div class="row"><span class="k">Google 地圖</span><a class="linkish" href="${foodGoogleUrl(q)}" target="_blank" rel="noopener">開 Google 看全部</a></div>
       <iframe class="food-map" src="${foodGoogleEmbed(q)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google 地圖搜尋"></iframe>
     </div>` : ""}
+    ${ui.foodPhoto ? `<div class="food-photo-mask" id="food-photo-mask"><img src="${escapeHtml(ui.foodPhoto)}" alt="菜單"></div>` : ""}
     ${form ? `<form class="card card-body" id="lunch-edit-form" autocomplete="off">
       <div class="label">${form.id ? "編輯店家" : "新增店家"}</div>
       <label class="field"><span>店名</span><input id="ln-name" type="text" value="${escapeHtml(form.name || "")}" /></label>
@@ -8802,6 +8812,16 @@ function bindLunch() {
   document.querySelectorAll("[data-food-chip]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); runFoodSearch(btn.dataset.foodChip); };
   });
+  document.querySelectorAll("[data-food-photo]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      ui.foodPhoto = btn.dataset.foodPhoto;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const photoMask = document.getElementById("food-photo-mask");
+  if (photoMask) photoMask.onclick = () => { ui.foodPhoto = ""; ui.keepScroll = true; render(); };
   document.querySelectorAll("[data-lunch-keep]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
