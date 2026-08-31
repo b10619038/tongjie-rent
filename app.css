@@ -2089,9 +2089,11 @@ img.avatar { object-fit: cover; display: block; }
   z-index: 12;
   isolation: isolate;
   pointer-events: auto !important;
-  display: flex;
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 8px;
-  align-items: flex-end;
   margin-top: 10px;
 }
 #ai-form textarea {
@@ -2101,21 +2103,28 @@ img.avatar { object-fit: cover; display: block; }
   position: relative;
   z-index: 12;
   display: block;
-  flex: 1;
-  width: auto;
-  min-height: 44px;
-  max-height: 120px;
+  flex: 1 1 0;
+  width: 0 !important;
+  min-width: 0;
+  min-height: 44px !important;
+  height: 44px;
+  max-height: 44px;
   font-size: 16px;
   background: var(--card);
   color: var(--ink);
   border-radius: 22px;
   padding: 10px 14px;
   resize: none;
+  box-sizing: border-box;
 }
+#ai-form .ai-send,
 .ai-send {
-  width: 44px;
+  flex: 0 0 44px;
+  width: 44px !important;
   min-width: 44px;
+  max-width: 44px;
   height: 44px;
+  margin: 0;
   border: 0;
   border-radius: 50%;
   padding: 0;
@@ -2124,8 +2133,9 @@ img.avatar { object-fit: cover; display: block; }
   font: inherit;
   font-size: 12px;
   font-weight: 800;
+  line-height: 44px;
+  text-align: center;
   cursor: pointer;
-  flex-shrink: 0;
   position: relative;
   z-index: 13;
   pointer-events: auto !important;
