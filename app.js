@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-20-00";
-const APP_EDIT_COUNT = 347;
+const APP_STAMP = "2026-08-31-20-05";
+const APP_EDIT_COUNT = 348;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +42,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["示範報修改掛開發者測試戶，管理員看不到"] },
+  { ver: APP_STAMP, items: ["整體報表匯出按鈕改為下載 PDF"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8571,7 +8571,7 @@ function showExportPick(kind) {
       <div class="label">匯出檔案</div>
       <h2>${kind === "cal" ? "本月進出帳" : "整體報表"}</h2>
       <p class="small">請選擇檔案格式。PDF 會開啟預覽，再選「儲存為 PDF」即可下載。</p>
-      <button type="button" class="btn-navy" id="export-as-pdf">匯出 PDF</button>
+      <button type="button" class="btn-navy" id="export-as-pdf">下載 PDF</button>
       <button type="button" class="ghost" id="export-as-xls" style="margin-top:8px">匯出 Excel</button>
       <button type="button" class="ghost" id="export-pick-cancel" style="margin-top:8px">取消</button>
     </div>`;
