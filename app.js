@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-26";
-const APP_EDIT_COUNT = 412;
+const APP_STAMP = "2026-09-01-02-28";
+const APP_EDIT_COUNT = 413;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["鍋燒好媳婦加上菜單照片與電話"] },
+  { ver: APP_STAMP, items: ["日光蔬食加上你提供的菜單照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8600,7 +8600,8 @@ const DEFAULT_LUNCH_SPOTS = [
     addr: "高雄市鳳山區文龍東路745號", phone: "07-780-7696",
     hours: "11:00–14:30、17:00–20:00，週一公休",
     menu: ["蛋奶素簡餐", "蔬食便當", "咖啡"],
-    note: "同路文龍東路 745 號"
+    note: "同路文龍東路 745 號",
+    photos: ["images/food/nikkovege.jpg?v=0228"]
   }
 ];
 function lunchTel(p) { return "tel:" + String(p || "").replace(/[^\d+]/g, ""); }
