@@ -2001,13 +2001,24 @@ img.avatar { object-fit: cover; display: block; }
 }
 #ai-form {
   position: relative;
-  z-index: 12;
+  z-index: 30;
   isolation: isolate;
   pointer-events: auto !important;
-  display: flex;
+  display: none;
   gap: 8px;
-  align-items: flex-end;
+  align-items: stretch;
   margin-top: 10px;
+  flex-wrap: nowrap;
+}
+#ai-card.open #ai-form,
+#ai-card.tenant-slim.open #ai-form {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+#ai-form, #ai-form * {
+  pointer-events: auto !important;
+  visibility: visible !important;
 }
 #ai-form textarea {
   pointer-events: auto !important;

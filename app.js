@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-06";
-const APP_EDIT_COUNT = 371;
+const APP_STAMP = "2026-08-31-22-12";
+const APP_EDIT_COUNT = 372;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手「送出」可正常送出提問"] },
+  { ver: APP_STAMP, items: ["工作助手送出改為直接觸發送出，不再沒反應"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2556,9 +2556,16 @@ function pushAiLog(entry) {
   save();
 }
 function sendAiQuestion(q) {
+  const now = Date.now();
+  if (window.__aiSendAt && now - window.__aiSendAt < 500) return false;
   const box = document.getElementById("ai-q");
   const text = String(q != null ? q : ((box && box.value) || ui.aiDraft || "")).trim();
-  if (!text) { toast("請先輸入內容"); return false; }
+  if (!text) {
+    toast("請先輸入內容");
+    showToastBanner("請先輸入內容");
+    return false;
+  }
+  window.__aiSendAt = now;
   try {
     pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
     let ans = "";
@@ -2568,22 +2575,30 @@ function sendAiQuestion(q) {
     ui.aiOpen = true;
   } catch {
     toast("送出失敗，請再試一次");
+    showToastBanner("送出失敗，請再試一次");
     return false;
   }
   ui.keepScroll = true;
   render();
   return true;
 }
+window.__sendAi = function () { sendAiQuestion(); };
 function armAiSend() {
   if (window.__aiSendBound) return;
   window.__aiSendBound = 1;
-  document.addEventListener("click", e => {
-    const btn = e.target.closest(".ai-send");
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
+  const hit = e => {
+    const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]);
+    const node = t ? document.elementFromPoint(t.clientX, t.clientY) : e.target;
+    return node && node.closest ? node.closest(".ai-send") : null;
+  };
+  const go = e => {
+    if (!hit(e) && !(e.target && e.target.closest && e.target.closest(".ai-send"))) return;
+    try { e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation(); } catch {}
     sendAiQuestion();
-  }, true);
+  };
+  document.addEventListener("pointerup", go, true);
+  document.addEventListener("click", go, true);
+  document.addEventListener("touchend", go, { capture: true, passive: false });
   document.addEventListener("submit", e => {
     if (!(e.target && e.target.id === "ai-form")) return;
     e.preventDefault();
@@ -8499,12 +8514,12 @@ function adminAi() {
               ${time ? `<span class="ai-time">${escapeHtml(time)}</span>` : ""}
             </div>`;
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
-          <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="ai-send" type="submit" aria-label="送出">送出</button>
-          </form>
         </div>
       </div>
+          <form id="ai-form" autocomplete="off">
+            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" enterkeyhint="send">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <button class="ai-send" id="ai-send-btn" type="button" onclick="window.__sendAi&&window.__sendAi();return false">送出</button>
+          </form>
     </div>`
   };
   return `<div class="admin-grid list" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
