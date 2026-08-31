@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-40";
-const APP_EDIT_COUNT = 358;
+const APP_STAMP = "2026-08-31-21-50";
+const APP_EDIT_COUNT = 359;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務入帳改為獨立備份，重開不會被雲端蓋掉"] },
+  { ver: APP_STAMP, items: ["辦理退租可選正常退租或中途退租，中途開終止契約"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1762,7 +1762,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -3418,6 +3418,18 @@ function money(n) { return "NT$ " + Number(n).toLocaleString("zh-TW"); }
 function rocDate(d) {
   d = d || new Date();
   return `中華民國 ${d.getFullYear() - 1911} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+}
+function rocPartsOf(ymd) {
+  const m = String(ymd || "").match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) {
+    const n = new Date();
+    return { y: n.getFullYear() - 1911, m: n.getMonth() + 1, d: n.getDate() };
+  }
+  return { y: Number(m[1]) - 1911, m: Number(m[2]), d: Number(m[3]) };
+}
+function ntd(n) {
+  const v = Math.round(Number(n) || 0);
+  return v ? v.toLocaleString("zh-TW") : "";
 }
 function moneyCN(n) {
   n = Math.round(Math.abs(Number(n) || 0));
@@ -5876,6 +5888,69 @@ function lastCheckout(tenantId) {
   const list = (state.checkouts || []).filter(c => c.tenantId === tenantId);
   return list.length ? list[list.length - 1] : null;
 }
+function checkoutKindOf(co) {
+  if (ui.checkoutKind === "pick") return "";
+  if (ui.checkoutKind === "early" || ui.checkoutKind === "normal") return ui.checkoutKind;
+  if (co && (co.kind === "early" || co.kind === "normal")) return co.kind;
+  return "";
+}
+function checkoutBtnLabel(tt) {
+  const co = lastCheckout(tt.id);
+  if (!co) return "辦理退租";
+  if (co.kind === "early") return co.status === "done" ? "查看終止契約" : "繼續終止契約";
+  return co.status === "done" ? "查看退租單" : "繼續退租單";
+}
+function checkoutPickHtml(t, r) {
+  return `<div class="card card-body" id="checkout-form-card">
+    <div class="row"><h2 class="dash-h" style="margin:0">辦理退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></div>
+    <p class="small">請選擇退租方式。</p>
+    <button type="button" class="ghost co-kind-btn" id="co-kind-normal">正常退租</button>
+    <p class="small">租期屆滿或依原約辦理。填電水表、鑰匙與押金。</p>
+    <button type="button" class="btn-navy co-kind-btn" id="co-kind-early">中途退租</button>
+    <p class="small">租期未滿提前終止。開立終止租賃契約。</p>
+  </div>`;
+}
+function termLeasePaperHtml(t, r, co) {
+  const today = ymdOf(nowStamp());
+  const end = rocPartsOf(co.at || today);
+  const sign = rocPartsOf(co.signedAt || today);
+  const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
+  const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0));
+  const prop = co.property || [r.no, r.shop, r.location || roomAddress(r.no)].filter(Boolean).join("　");
+  const idNo = co.idNo || t.idNo || "";
+  const phone = co.phone || t.phone || "";
+  return `<div class="term-lease-paper" id="term-lease-paper">
+    <h3>終 止 租 賃 契 約</h3>
+    <p>立約人　<b>統潔開發有限公司</b>　（及原出租人，簡稱甲方）</p>
+    <p>代表人：　趙正賢</p>
+    <p>立約人　<b>${escapeHtml(t.name || "")}</b>　（及原承租人，簡稱乙方）</p>
+    <p class="term-indent">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
+    <p>原租賃物標示及約定事項如下：</p>
+    <p>一、原租賃物標示：　${escapeHtml(prop)}</p>
+    <p>二、雙方同意終止日期：中華民國　${end.y}　年　${end.m}　月　${end.d}　日</p>
+    <p>退還費用：</p>
+    <p>一、甲方退還乙方</p>
+    <p class="term-indent">押金新台幣　${escapeHtml(ntd(deposit) || "　　　　")}　元整。</p>
+    <p class="term-indent">總退還費用　${escapeHtml(ntd(refund) || "　　　　")}　元整。</p>
+    <p class="term-sign">乙方簽收：____________________</p>
+    <p>備註：</p>
+    <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
+    <p>二、乙方將房屋恢復原狀交給甲方。</p>
+    ${co.note ? `<p>三、${escapeHtml(co.note)}</p>` : ""}
+    <div class="term-party">
+      <p>立約人（甲方）：　統潔開發有限公司</p>
+      <p>統一編號：　82934388</p>
+      <p>代表人：　趙正賢</p>
+      <p>電話：　07-3414159</p>
+    </div>
+    <div class="term-party">
+      <p>立約人（乙方）：　${escapeHtml(t.name || "")}</p>
+      <p>身分證字號：　${escapeHtml(idNo)}</p>
+      <p>電話：　${escapeHtml(phone)}</p>
+    </div>
+    <p class="term-date">中華民國　${sign.y}　年　${sign.m}　月　${sign.d}　日</p>
+  </div>`;
+}
 function checkoutFormHtml() {
   const id = ui.checkoutTenantId;
   if (!id) return "";
@@ -5883,11 +5958,41 @@ function checkoutFormHtml() {
   if (!t) return "";
   const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
   const co = lastCheckout(t.id) || {};
+  const kind = checkoutKindOf(co);
+  if (!kind) return checkoutPickHtml(t, r);
   const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
   const deduct = Number(co.deduct) || 0;
+  const refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct);
   const today = ymdOf(nowStamp());
+  const switcher = `<button type="button" class="ghost" id="co-kind-reset" style="width:auto">改選退租方式</button>`;
+  if (kind === "early") {
+    const prop = co.property || [r.no, r.shop, r.location || roomAddress(r.no)].filter(Boolean).join("　");
+    return `<div class="card card-body" id="checkout-form-card">
+    <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
+    <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額，可列印終止租賃契約。完成後退租紀錄會留下來。"}</div>
+    <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
+    <label class="field"><span>租賃物標示</span><input id="co-property" type="text" value="${escapeHtml(prop)}" /></label>
+    <label class="field"><span>身分證字號</span><input id="co-idno" type="text" value="${escapeHtml(co.idNo || t.idNo || "")}" /></label>
+    <label class="field"><span>電話</span><input id="co-phone" type="text" value="${escapeHtml(co.phone || t.phone || "")}" /></label>
+    <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
+    <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
+    <label class="field"><span>總退還費用</span><input id="co-refund-in" type="number" inputmode="numeric" value="${refund || ""}" /></label>
+    <div class="checkout-checks">
+      <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
+      <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> 磁扣已交還</label>
+    </div>
+    <label class="field"><span>備註</span><textarea id="co-note" rows="2">${escapeHtml(co.note || "")}</textarea></label>
+    <div class="unpaid-tools">
+      <button type="button" class="ghost" id="co-save">儲存草稿</button>
+      <button type="button" class="btn-navy" id="co-print-term">列印終止契約</button>
+      <button type="button" class="btn-navy" id="co-done">完成退租</button>
+      ${co.status === "done" && r.status !== "vacant" ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
+    </div>
+    ${termLeasePaperHtml(t, r, Object.assign({}, co, { at: co.at || today, deposit, deduct, refund, property: prop, idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || "" }))}
+  </div>`;
+  }
   return `<div class="card card-body" id="checkout-form-card">
-    <div class="row"><h2 class="dash-h" style="margin:0">退租單　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></div>
+    <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後退租紀錄會留下來，房間狀態請再到所有資產改。"}</div>
     <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
@@ -5918,33 +6023,45 @@ function readCheckoutForm() {
   const chk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
   const deposit = num("co-deposit");
   const deduct = num("co-deduct");
+  const kind = ui.checkoutKind === "early" ? "early" : "normal";
+  const refundEl = document.getElementById("co-refund-in");
+  const refund = refundEl ? num("co-refund-in") : Math.max(0, deposit - deduct);
   return {
     tenantId: t.id, tenantName: t.name || "", roomId: r.id || t.roomId, roomNo: r.no || "",
+    kind,
     at: val("co-date") || ymdOf(nowStamp()),
-    deposit, deduct, refund: Math.max(0, deposit - deduct),
+    deposit, deduct, refund,
     elecStart: val("co-elec-s"), elecEnd: val("co-elec-e"),
     waterStart: val("co-water-s"), waterEnd: val("co-water-e"),
     keys: chk("co-keys"), icCard: chk("co-ic"),
-    note: val("co-note")
+    note: val("co-note"),
+    idNo: val("co-idno"),
+    phone: val("co-phone"),
+    property: val("co-property"),
+    signedAt: ymdOf(nowStamp())
   };
 }
-function saveCheckout(done) {
+function saveCheckout(done, opt) {
   const data = readCheckoutForm();
   if (!data) return;
   if (!state.checkouts) state.checkouts = [];
   const prev = lastCheckout(data.tenantId);
   const row = Object.assign({}, prev || {}, data, {
     id: (prev && prev.id) || ("co" + Date.now()),
+    kind: data.kind || (prev && prev.kind) || "normal",
     status: done ? "done" : (prev && prev.status === "done" ? "done" : "draft"),
     updatedAt: nowStamp()
   });
   const i = state.checkouts.findIndex(c => c.id === row.id);
   if (i >= 0) state.checkouts[i] = row;
   else state.checkouts.push(row);
+  const t = (state.tenants || []).find(x => x.id === data.tenantId);
+  if (t && data.idNo) t.idNo = data.idNo;
+  if (t && data.phone && !t.phone) t.phone = data.phone;
   save();
-  audit(done ? "完成退租" : "退租單", (data.roomNo || "") + " " + (data.tenantName || ""));
-  toast(done ? "退租單已完成" : "退租單已儲存");
-  if (done) ui.checkoutTenantId = "";
+  audit(done ? "完成退租" : (row.kind === "early" ? "終止契約" : "退租單"), (data.roomNo || "") + " " + (data.tenantName || ""));
+  if (!(opt && opt.quiet)) toast(done ? "退租已完成" : (row.kind === "early" ? "終止契約已儲存" : "退租單已儲存"));
+  if (done && !(opt && opt.keepOpen)) ui.checkoutTenantId = "";
   ui.keepScroll = true;
   render();
 }
@@ -5988,7 +6105,9 @@ function bindOps() {
       e.stopPropagation();
       const t = (state.tenants || []).find(x => x.id === btn.dataset.checkoutOpen);
       const room = t && (state.rooms || []).find(r => r.id === t.roomId);
+      const prev = t ? lastCheckout(t.id) : null;
       ui.checkoutTenantId = btn.dataset.checkoutOpen;
+      ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : "pick";
       ui.page = "tenants";
       ui.tenantKind = room && room.kind === "factory" ? "factory" : "studio";
       if (!ui.tenantOpen) ui.tenantOpen = {};
@@ -5998,7 +6117,24 @@ function bindOps() {
     };
   });
   const closeCo = document.getElementById("checkout-close");
-  if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.keepScroll = true; render(); };
+  if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  const pickNormal = document.getElementById("co-kind-normal");
+  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
+  const pickEarly = document.getElementById("co-kind-early");
+  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
+  const resetKind = document.getElementById("co-kind-reset");
+  if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  const printTerm = document.getElementById("co-print-term");
+  if (printTerm) printTerm.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { saveCheckout(false, { quiet: true, keepOpen: true }); } catch {}
+    document.body.classList.add("print-term");
+    const after = () => document.body.classList.remove("print-term");
+    window.addEventListener("afterprint", after, { once: true });
+    window.print();
+    setTimeout(after, 800);
+  };
   const saveCo = document.getElementById("co-save");
   if (saveCo) saveCo.onclick = e => { e.preventDefault(); e.stopPropagation(); saveCheckout(false); };
   const doneCo = document.getElementById("co-done");
@@ -6022,11 +6158,13 @@ function bindOps() {
   const dep = document.getElementById("co-deposit");
   const ded = document.getElementById("co-deduct");
   const refund = document.getElementById("co-refund");
+  const refundIn = document.getElementById("co-refund-in");
   const syncRefund = () => {
-    if (!refund) return;
     const a = Number((dep || {}).value) || 0;
     const b = Number((ded || {}).value) || 0;
-    refund.textContent = money(Math.max(0, a - b));
+    const v = Math.max(0, a - b);
+    if (refund) refund.textContent = money(v);
+    if (refundIn && document.activeElement !== refundIn) refundIn.value = v ? String(v) : "";
   };
   if (dep) dep.oninput = syncRefund;
   if (ded) ded.oninput = syncRefund;
@@ -7449,7 +7587,7 @@ function howtoSections() {
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
-    { id: "a-tenants", h: "租客", p: "套房租客／廠房租客可搜尋房號、電話、人名或公司。圖卡可收合，綠燈在線、紅燈離線。可催繳、左滑開 LINE。" },
+    { id: "a-tenants", h: "租客", p: "套房租客／廠房租客可搜尋房號、電話、人名或公司。辦理退租可選正常退租或中途退租；中途退租會開終止租賃契約可列印。" },
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
@@ -9240,7 +9378,7 @@ function tenantEntryCardHtml(kind, entry) {
         return `<button class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">${label}產出發票</button>
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
-      <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${lastCheckout(tt.id) ? (lastCheckout(tt.id).status === "done" ? "查看退租單" : "繼續退租單") : "辦理退租"}</button>`;
+      <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>`;
       }).join("")}`;
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>

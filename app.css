@@ -1581,6 +1581,26 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   body.print-report .admin-scroll { padding: 0 !important; }
   body.print-report .rev-sheet { overflow: visible; }
   body.print-report .rev-table { min-width: 0; font-size: 11px; }
+  body.print-term .admin-bar,
+  body.print-term .tabs,
+  body.print-term .unpaid-tools,
+  body.print-term #checkout-form-card > :not(#term-lease-paper) { display: none !important; }
+  body.print-term .admin-grid.list > :not(#checkout-form-card) { display: none !important; }
+  body.print-term #checkout-form-card {
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  body.print-term .term-lease-paper {
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    padding: 12mm 14mm;
+    font-size: 14pt;
+    line-height: 1.95;
+  }
+  body.print-term .term-lease-paper h3 { font-size: 22pt; margin-bottom: 18pt; }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
@@ -2387,6 +2407,30 @@ img.avatar { object-fit: cover; display: block; }
 }
 .checkout-checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; pointer-events: auto !important; }
 .checkout-checks .log-check { display: flex; align-items: center; gap: 6px; }
+.co-kind-btn { border-radius: 999px !important; min-height: 52px; margin-top: 10px; font-weight: 800; }
+#checkout-form-card .row-end { gap: 8px; }
+.term-lease-paper {
+  margin-top: 18px;
+  padding: 28px 22px 32px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: #111;
+  font-size: 15px;
+  line-height: 1.9;
+}
+.term-lease-paper h3 {
+  text-align: center;
+  letter-spacing: .55em;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 26px;
+}
+.term-lease-paper p { margin: 0 0 6px; }
+.term-lease-paper .term-indent { padding-left: 1.5em; }
+.term-lease-paper .term-sign { text-align: right; margin: 10px 0 18px; }
+.term-lease-paper .term-party { margin: 18px 0 0; }
+.term-lease-paper .term-date { margin-top: 28px; text-align: center; letter-spacing: .2em; }
 
 .errand-ball {
   position: fixed;
