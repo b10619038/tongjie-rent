@@ -15,8 +15,9 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-12";
-const APP_EDIT_COUNT = 372;
+const APP_STAMP = "2026-08-31-22-16";
+const APP_EDIT_COUNT = 373;
+const DOCS_IMPORT_VER = "aug31docs-v1";
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +44,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手送出改為直接觸發送出，不再沒反應"] },
+  { ver: APP_STAMP, items: ["工作助手改為整列送出鈕，並修正帳本載入錯誤"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1822,7 +1823,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: true, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -1978,7 +1979,6 @@ function applyJuly115Books(data) {
   Object.keys(JULY115_OPENINGS).forEach(k => { data.accountOpenings[k] = JULY115_OPENINGS[k]; });
   data.booksImportVer = BOOKS_IMPORT_VER;
 }
-const DOCS_IMPORT_VER = "aug31docs-v1";
 const AUG31_BOOKS = [
   ["2026-08-17", "out", 97630, "統潔", "電費　93-1　115/7/2～7/29　台電 18-33-7421-01-4（鈺晟約 16,047 度 77,073／93-2A 4,307 度 20,660）義大世界超商繳", "超商"],
   ["2026-08-19", "out", 19200, "統潔", "牛10　6832 高逸安翁玟倫　退租（押金13,500＋8月租金5,670＝19,170＋匯費30）匯翁玟倫中信西台南 222540083019", "農會"],
@@ -8517,8 +8517,8 @@ function adminAi() {
         </div>
       </div>
           <form id="ai-form" autocomplete="off">
-            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" enterkeyhint="send">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="ai-send" id="ai-send-btn" type="button" onclick="window.__sendAi&&window.__sendAi();return false">送出</button>
+            <textarea id="ai-q" name="q" rows="2" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" enterkeyhint="send">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <button class="btn-navy ai-send" id="ai-send-btn" type="button">送出</button>
           </form>
     </div>`
   };
@@ -12778,14 +12778,13 @@ function bindAdminAi() {
     form.addEventListener("pointerdown", e => e.stopPropagation());
     form.addEventListener("submit", e => { e.preventDefault(); e.stopPropagation(); sendNow(); });
   }
-  const sendBtn = document.querySelector("#ai-form .ai-send");
+  const sendBtn = document.getElementById("ai-send-btn") || document.querySelector("#ai-form .ai-send");
   if (sendBtn) {
-    sendBtn.addEventListener("pointerdown", e => { e.stopPropagation(); });
-    sendBtn.addEventListener("click", e => {
+    sendBtn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      sendNow();
-    });
+      sendAiQuestion();
+    };
   }
   const pane = document.getElementById("ai-log");
   if (pane) pane.scrollTop = pane.scrollHeight;
