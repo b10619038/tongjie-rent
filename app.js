@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-50";
-const APP_EDIT_COUNT = 368;
+const APP_STAMP = "2026-08-31-21-52";
+const APP_EDIT_COUNT = 369;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["舊客交接中會提示，完成後退自動登出並請新客重綁 LINE"] },
+  { ver: APP_STAMP, items: ["租客圖卡「編輯更多」可正常點進房間資料"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -11173,13 +11173,27 @@ function bindEditAnnPending() {
 }
 
 function bindAdminRoomItems() {
-  document.querySelectorAll("[data-admin-room]").forEach(el => {
-    el.onclick = e => {
-      if (e.target.closest("select") || e.target.closest("button")) return;
+  if (!window.__adminRoomBound) {
+    window.__adminRoomBound = 1;
+    document.addEventListener("click", e => {
+      const el = e.target.closest("[data-admin-room]");
+      if (!el) return;
+      if (el.tagName !== "BUTTON") {
+        if (e.target.closest("select")) return;
+        const inner = e.target.closest("button");
+        if (inner && inner !== el) return;
+      }
       if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
-      ui.roomId = el.dataset.adminRoom; ui.page = "room-edit"; render();
-    };
-  });
+      e.preventDefault();
+      e.stopPropagation();
+      const id = el.dataset.adminRoom;
+      if (!id) return;
+      ui.roomId = id;
+      ui.page = "room-edit";
+      ui.keepScroll = false;
+      render();
+    }, true);
+  }
   document.querySelectorAll("[data-status]").forEach(sel => {
     sel.onclick = e => e.stopPropagation();
     sel.onchange = () => {
