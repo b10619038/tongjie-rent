@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-15";
-const APP_EDIT_COUNT = 355;
+const APP_STAMP = "2026-08-31-21-20";
+const APP_EDIT_COUNT = 356;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -38,11 +38,11 @@ function isDemoRepair(r) {
   } catch {}
   return false;
 }
-const TENANT_ROSTER_VER = "20260831-1710";
+const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
-const STUDIO_FEE_VER = "20260831-1650";
+const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["所有資產可搜尋房號、姓名、店名或牛案場"] },
+  { ver: APP_STAMP, items: ["7251 呂佳芸租金 5,000、押金 10,000"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1015,7 +1015,7 @@ function isStoreNo(no) { return STORE_NOS.includes(String(no)); }
 const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 13500, "6841": 9000, "6842": 14000,
   "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 0,
-  "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 0,
+  "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
   "7611": 50000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7652": 0
 };
 function studioRentOf(no, fallback) {
@@ -1052,7 +1052,7 @@ const STUDIO_MONTH_PAY = {
   "7232": { name: "林紘亦", paidOn: "2026-07-26", amount: 14000 },
   "7241": { name: "陳逸仁", paidOn: "2026-08-04", amount: 8000 },
   "7242": { name: "張育慈、周聖傑", paidOn: "2026-07-28", amount: 14000 },
-  "7251": { name: "", paidOn: "", amount: 0 },
+  "7251": { name: "呂佳芸", paidOn: "", amount: 5000 },
   "7611": { name: "曾郁翔", paidOn: "2026-08-03", amount: 50000 },
   "7621": { name: "王俊典、曾郁庭", paidOn: "2026-08-05", amount: 7000 },
   "7622": { name: "邱育琳", paidOn: "2026-08-10", amount: 7000 },
@@ -1124,7 +1124,7 @@ const TENANT_INFO = {
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
   "7242": { name: "張育慈、周聖傑", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, note: "現約 115/7/1～116/6/30。前任陳智泓於 114/11/30 換房至 7642" },
-  "7251": { name: "呂佳芸" },
+  "7251": { name: "呂佳芸", deposit: 10000 },
   "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", shop: "波波奇夏威夷拌飯" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, note: "押金 14,000；1/6–1/31 日租金 5,850；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000；11/30 收現金 12,300、12/8 補 9,000 已匯入" },
