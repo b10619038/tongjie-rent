@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-30";
-const APP_EDIT_COUNT = 324;
+const APP_STAMP = "2026-08-31-13-45";
+const APP_EDIT_COUNT = 325;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["所有資產房間資料可編輯並儲存"] },
+  { ver: APP_STAMP, items: ["房間資料按儲存會顯示已儲存"] },
+  { ver: "2026-08-31-13-30", items: ["所有資產房間資料可編輯並儲存"] },
   { ver: "2026-08-31-13-27", items: ["開發者薪資可正常點完成"] },
   { ver: "2026-08-31-03-35", items: ["設定右邊新增操作教學，從右側滑入"] },
   { ver: "2026-08-31-03-28", items: ["本月工作完成左邊新增編輯"] },
@@ -8695,7 +8696,7 @@ function adminRoomEdit() {
   if (!r) return `<div class="empty">找不到房間</div>`;
   const t = state.tenants.find(x => x.id === r.tenantId);
   return `<div class="admin-grid list">
-    <form class="card card-body" id="room-edit-form">
+    <form class="card card-body" id="room-edit-form" novalidate>
       <button class="back" type="button" data-admin="rooms">← 所有資產</button>
       <h2 class="dash-h">${r.no}　${r.title}</h2>
       ${field("房號", "no", r.no)}
@@ -8755,15 +8756,13 @@ function adminRoomEdit() {
       ${(r.contractImages || []).map((src, i) => `<div><img src="${src}" alt="" style="width:100%;border-radius:12px;margin:8px 0"><button type="button" class="ghost" data-del-contract="${i}">刪除圖檔</button></div>`).join("")}
       <button type="button" class="ghost" data-invoice="${r.id}" style="margin-top:12px">產出發票</button>
       ${t ? `<button type="button" class="ghost" data-checkout-open="${t.id}" style="margin-top:12px">辦理退租</button>` : ""}
-      <button class="btn-navy" type="submit" style="margin-top:12px">儲存</button>
+      <button class="btn-navy" type="button" id="room-save-btn" style="margin-top:12px">儲存</button>
     </form>
   </div>`;
 }
 function formVal(form, n) {
   if (!form) return "";
-  let el = null;
-  try { el = form.elements && form.elements.namedItem ? form.elements.namedItem(n) : null; } catch {}
-  if (!el) el = form.querySelector('[name="' + n + '"]');
+  const el = form.querySelector('[name="' + n + '"]');
   if (!el) return "";
   return String(el.value ?? "");
 }
@@ -8775,7 +8774,7 @@ function formNum(form, n, fallback) {
 }
 function saveRoomEdit(form) {
   const r = state.rooms.find(x => x.id === ui.roomId);
-  if (!r || !form) { toast("找不到房間"); return; }
+  if (!r || !form) { toast("找不到房間"); return false; }
   const g = n => formVal(form, n);
   r.no = g("no").trim() || r.no;
   r.location = g("location");
@@ -8812,13 +8811,30 @@ function saveRoomEdit(form) {
     if (!t.paid && !t.paidVia) t.lineNotified = false;
   }
   save();
-  toast("已儲存");
-  ui.keepScroll = true;
-  render();
+  const btn = document.getElementById("room-save-btn");
+  if (btn) {
+    btn.textContent = "已儲存";
+    btn.classList.add("saved-ok");
+    clearTimeout(window.__tjRoomSavedT);
+    window.__tjRoomSavedT = setTimeout(() => {
+      const b = document.getElementById("room-save-btn");
+      if (b) { b.textContent = "儲存"; b.classList.remove("saved-ok"); }
+    }, 1800);
+  }
+  showToastBanner("已儲存　租金 " + money(r.rent));
+  return true;
 }
 function armRoomEditSave() {
   if (window.__tjRoomSave) return;
   window.__tjRoomSave = true;
+  document.addEventListener("click", e => {
+    const btn = e.target && e.target.closest && e.target.closest("#room-save-btn");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const form = document.getElementById("room-edit-form");
+    if (form) saveRoomEdit(form);
+  }, true);
   document.addEventListener("submit", e => {
     if (!(e.target && e.target.id === "room-edit-form")) return;
     e.preventDefault();
@@ -9986,11 +10002,18 @@ function bindAdmin() {
   });
   const form = document.getElementById("room-edit-form");
   if (form) {
+    form.setAttribute("novalidate", "novalidate");
     form.onsubmit = e => { e.preventDefault(); e.stopPropagation(); saveRoomEdit(form); };
     form.querySelectorAll("input, select, textarea").forEach(el => {
       el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
       el.onclick = e => { e.stopPropagation(); el.focus(); };
     });
+    const saveBtn = document.getElementById("room-save-btn");
+    if (saveBtn) saveBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      saveRoomEdit(form);
+    };
   }
   const avAdmin = document.getElementById("tenant-avatar-admin");
   if (avAdmin) avAdmin.onchange = async () => {
