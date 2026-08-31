@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-58";
-const APP_EDIT_COUNT = 370;
+const APP_STAMP = "2026-08-31-22-06";
+const APP_EDIT_COUNT = 371;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定右邊新增資料分頁，公司資料帳戶發票門禁移入"] },
+  { ver: APP_STAMP, items: ["工作助手「送出」可正常送出提問"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2554,6 +2554,42 @@ function pushAiLog(entry) {
   ui.aiSession.push(rec);
   if (ui.aiSession.length > 8) ui.aiSession = ui.aiSession.slice(-8);
   save();
+}
+function sendAiQuestion(q) {
+  const box = document.getElementById("ai-q");
+  const text = String(q != null ? q : ((box && box.value) || ui.aiDraft || "")).trim();
+  if (!text) { toast("請先輸入內容"); return false; }
+  try {
+    pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
+    let ans = "";
+    try { ans = warmAi(aiAnswer(text)); } catch { ans = warmAi("先收到了。這題我再整理一次。"); }
+    pushAiLog({ role: "ai", text: ans, at: nowStamp() });
+    ui.aiDraft = "";
+    ui.aiOpen = true;
+  } catch {
+    toast("送出失敗，請再試一次");
+    return false;
+  }
+  ui.keepScroll = true;
+  render();
+  return true;
+}
+function armAiSend() {
+  if (window.__aiSendBound) return;
+  window.__aiSendBound = 1;
+  document.addEventListener("click", e => {
+    const btn = e.target.closest(".ai-send");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sendAiQuestion();
+  }, true);
+  document.addEventListener("submit", e => {
+    if (!(e.target && e.target.id === "ai-form")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sendAiQuestion();
+  }, true);
 }
 function stripDevLogsFromState() {
   migrateDevLocalInto(state);
@@ -8465,7 +8501,7 @@ function adminAi() {
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
           <form id="ai-form" autocomplete="off">
             <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="ai-send" type="button" aria-label="送出">送出</button>
+            <button class="ai-send" type="submit" aria-label="送出">送出</button>
           </form>
         </div>
       </div>
@@ -12686,24 +12722,9 @@ function bindAdminAi() {
       render();
     };
   });
-  const ask = q => {
-    const text = String(q || "").trim();
-    if (!text) return;
-    try {
-      pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
-      let ans = "";
-      try { ans = warmAi(aiAnswer(text)); } catch (err) { ans = warmAi("先收到了。這題我再整理一次。"); }
-      pushAiLog({ role: "ai", text: ans, at: nowStamp() });
-      ui.aiDraft = "";
-      ui.aiOpen = true;
-    } catch {}
-    ui.keepScroll = true;
-    render();
-  };
-  const sendNow = () => {
-    const box = document.getElementById("ai-q");
-    ask(box && box.value);
-  };
+  const ask = q => sendAiQuestion(q);
+  const sendNow = () => sendAiQuestion();
+  armAiSend();
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
   if (aiFold && aiCard) aiFold.onclick = e => {
@@ -13250,6 +13271,7 @@ async function boot() {
   const splashAt = setTimeout(hideSplash, 2200);
   try {
     armCompanySave();
+    armAiSend();
     armRoomEditSave();
     restoreUi();
     applyTheme(currentThemeId());
