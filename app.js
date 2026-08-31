@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-19-50";
-const APP_EDIT_COUNT = 346;
+const APP_STAMP = "2026-08-31-20-00";
+const APP_EDIT_COUNT = 347;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -26,11 +26,23 @@ function isDemoTenant(t) {
     return isDemoRoom(r);
   } catch { return false; }
 }
+function isDemoRepair(r) {
+  if (!r) return false;
+  if (r.demo || r.id === "rep-demo" || r.id === "rep1") return true;
+  if (r.roomId === "r-demo" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO") return true;
+  try {
+    const room = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === r.roomId);
+    if (isDemoRoom(room)) return true;
+    const t = (typeof state !== "undefined" && state.tenants || []).find(x => x.id === r.tenantId);
+    if (isDemoTenant(t)) return true;
+  } catch {}
+  return false;
+}
 const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["操作教學圖塊拉開間距，並拿掉示範用的6831熱水器報修"] },
+  { ver: APP_STAMP, items: ["示範報修改掛開發者測試戶，管理員看不到"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1821,8 +1833,8 @@ function normalize(data) {
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   data.rooms.forEach(r => {
-    if (r.status === "office" || r.kind === "factory") return;
-    const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done");
+    if (r.status === "office" || r.kind === "factory" || isDemoRoom(r)) return;
+    const busy = (data.repairs || []).some(x => x.roomId === r.id && x.status !== "done" && !isDemoRepair(x));
     if (busy) r.status = "repair";
   });
   data.tenants.forEach(t => {
@@ -1855,6 +1867,7 @@ function normalize(data) {
   applyAug31Docs(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
+  ensureDemoRepair(data);
   return data;
 }
 function roomNoFromBookNote(note) {
@@ -2887,8 +2900,8 @@ function bindIntro() {
 
 function syncRoomRepairStatus(roomId) {
   const room = state.rooms.find(r => r.id === roomId);
-  if (!room || room.status === "office") return;
-  const busy = state.repairs.some(x => x.roomId === roomId && x.status !== "done");
+  if (!room || room.status === "office" || isDemoRoom(room)) return;
+  const busy = state.repairs.some(x => x.roomId === roomId && x.status !== "done" && !isDemoRepair(x));
   if (busy) room.status = "repair";
   else if (room.status === "repair") room.status = room.tenantId ? "rented" : "vacant";
 }
@@ -3488,6 +3501,26 @@ function ensureDemoTenant(data) {
   room.tenantId = t.id;
   t.roomId = room.id;
 }
+function ensureDemoRepair(data) {
+  if (!data || data.demoRepairCleared) return;
+  if (!Array.isArray(data.repairs)) data.repairs = [];
+  const room = (data.rooms || []).find(r => r.id === "r-demo" || String(r.no) === "DEMO");
+  const t = (data.tenants || []).find(x => x.id === "t-demo" || x.demo);
+  if (!room || !t) return;
+  if (data.repairs.some(r => r && (r.id === "rep-demo" || (r.demo && r.roomId === room.id)))) return;
+  data.repairs.push({
+    id: "rep-demo",
+    roomId: room.id,
+    tenantId: t.id,
+    type: "熱水器",
+    note: "忽冷忽熱，晚上完全沒熱水（開發者測試，不計入）",
+    photo: null,
+    status: "open",
+    createdAt: "2026-08-24 21:10",
+    roomNo: "DEMO",
+    demo: true
+  });
+}
 function ensureDevPreview() {
   const sample = (state.rooms || []).find(r => r.kind !== "factory" && r.status !== "office") || {};
   const y = new Date().getFullYear();
@@ -3924,6 +3957,7 @@ function notifyCloudChanges(before) {
   }
   if (ui.role === "admin") {
     (state.repairs || []).filter(r => !(before.repairIds || []).includes(r.id)).forEach(r => {
+      if (isDemoRepair(r)) return;
       if (!notifyPrefOn("repair")) return;
       showOsBanner("新報修", (r.roomNo || "") + " " + (r.type || ""), "repair-" + r.id);
     });
@@ -6698,6 +6732,7 @@ function deleteRepair(id) {
   const rep = state.repairs.find(x => x.id === id);
   if (!rep) return;
   const roomId = rep.roomId;
+  if (isDemoRepair(rep)) state.demoRepairCleared = true;
   state.repairs = state.repairs.filter(x => x.id !== id);
   if (state.notices) state.notices = state.notices.filter(n => n.repairId !== id);
   syncRoomRepairStatus(roomId);
@@ -6979,7 +7014,7 @@ function bindAdminPageSwipe() {
   }, { passive: true });
 }
 function tabBadgeCount(id) {
-  if (id === "repairs") return state.repairs.filter(r => r.status !== "done").length;
+  if (id === "repairs") return adminRepairList().filter(r => r.status !== "done").length;
   if (id === "tenants") {
     const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
     const renew = (state.renewals || []).filter(x => x.status !== "done").length;
@@ -7626,7 +7661,7 @@ function monthlyErrandPlan() {
   const thisBanks = banks.filter(x => x.key === ym);
   const bankDay = typicalDay(banks);
   const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
-  const openFix = state.repairs.filter(r => r.status !== "done").length;
+  const openFix = state.repairs.filter(r => r.status !== "done" && !isDemoRepair(r)).length;
   const ending = state.tenants.filter(t => String(t.leaseEnd || "").slice(0, 7) === ym);
   const stats = [];
   if (bankDay) {
@@ -7954,7 +7989,7 @@ function warmAi(body) {
 function aiAnswer(q) {
   const text = String(q || "").trim();
   const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t));
-  const open = (state.repairs || []).filter(r => r.status !== "done");
+  const open = (state.repairs || []).filter(r => r.status !== "done" && !isDemoRepair(r));
   const doing = open.filter(r => r.status === "doing");
   const wait = open.filter(r => r.status !== "doing");
   const cal = calendarItems();
@@ -8432,7 +8467,7 @@ ${smk("當年盈餘", c => c.y.net, true)}
   const items = overallRows();
   const assetHead = ["房號", "類型", "樓層/組別", "狀態", "租客/管理人", "電話", "月租", "繳費", "起租日", "到期日", "剩餘天數", "LINE", "地址"];
   const repairHead = ["時間", "房號", "租客", "類型", "狀態", "說明", "預約時間"];
-  const repairRows = state.repairs.slice().reverse().map(rep => {
+  const repairRows = state.repairs.filter(r => !isDemoRepair(r)).slice().reverse().map(rep => {
     const r = state.rooms.find(x => x.id === rep.roomId);
     const t = state.tenants.find(x => x.id === rep.tenantId);
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
@@ -8661,7 +8696,7 @@ function reportPiesHtml() {
     </div>`;
 }
 function occBits(rooms) {
-  const fix = new Set((state.repairs || []).filter(x => x.status !== "done").map(x => x.roomId));
+  const fix = new Set((state.repairs || []).filter(x => x.status !== "done" && !isDemoRepair(x)).map(x => x.roomId));
   const rented = rooms.filter(r => r.status === "rented").length;
   const vacant = rooms.filter(r => r.status === "vacant").length;
   const repairing = rooms.filter(r => r.status === "repair" || fix.has(r.id)).length;
@@ -8686,9 +8721,9 @@ function adminDash() {
   const expiring = state.tenants.filter(t => !isDemoTenant(t)).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
   const fixes = {
-    open: state.repairs.filter(x => x.status === "open").length,
-    doing: state.repairs.filter(x => x.status === "doing").length,
-    done: state.repairs.filter(x => x.status === "done").length
+    open: state.repairs.filter(x => x.status === "open" && !isDemoRepair(x)).length,
+    doing: state.repairs.filter(x => x.status === "doing" && !isDemoRepair(x)).length,
+    done: state.repairs.filter(x => x.status === "done" && !isDemoRepair(x)).length
   };
   const floors = [1, 2, 3, 4, 5].map(fl => {
     const list = studios.filter(r => floorNo(r.no) === fl);
@@ -9291,16 +9326,23 @@ function adminTenants() {
     </div>
   </div>`;
 }
+function adminRepairList() {
+  const all = (state.repairs || []).filter(r => r);
+  if (ui.adminCode === "1240") return all;
+  return all.filter(r => !isDemoRepair(r));
+}
 function adminRepairs() {
-  if (!state.repairs.length) return `<div class="empty">目前沒有報修</div>`;
+  const list = adminRepairList();
+  if (!list.length) return `<div class="empty">目前沒有報修</div>`;
   if (!ui.repairOpen) ui.repairOpen = {};
-  return `<div class="admin-grid list">${state.repairs.slice().reverse().map(rep => {
+  return `<div class="admin-grid list">${list.slice().reverse().map(rep => {
     const r = state.rooms.find(x => x.id === rep.roomId);
     const t = state.tenants.find(x => x.id === rep.tenantId);
     const open = !!ui.repairOpen[rep.id];
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
+    const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? "　" + t.name : ""));
     return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
-      <div class="row tenant-slim-head"><span class="k">${escapeHtml(rep.type)} · ${escapeHtml(r ? r.no : "")}${t && t.name ? "　" + escapeHtml(t.name) : ""}</span><span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="k">${escapeHtml(rep.type)} · ${escapeHtml(who)}</span><span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">
       <div class="small" style="margin-top:8px">${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
