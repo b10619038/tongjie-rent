@@ -332,6 +332,37 @@ input, textarea, select {
   border: 1px solid var(--line);
   border-radius: 22px;
 }
+#gate-card .gate-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--line);
+}
+#gate-card .gate-row:last-child { border-bottom: 0; }
+#gate-card .gate-row .k {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#gate-card .gate-loc { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+#gate-card .gate-row .v {
+  font-weight: 800;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+#gate-card .gate-row .ghost { width: auto; padding: 8px 12px; flex-shrink: 0; }
+#gate-card .gate-sub {
+  margin: 14px 0 2px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
 .notify-prefs {
   display: grid;
   gap: 2px;

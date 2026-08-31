@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-45";
-const APP_EDIT_COUNT = 325;
+const APP_STAMP = "2026-08-31-13-52";
+const APP_EDIT_COUNT = 326;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["房間資料按儲存會顯示已儲存"] },
+  { ver: APP_STAMP, items: ["設定新增公司門禁密碼"] },
+  { ver: "2026-08-31-13-45", items: ["房間資料按儲存會顯示已儲存"] },
   { ver: "2026-08-31-13-30", items: ["所有資產房間資料可編輯並儲存"] },
   { ver: "2026-08-31-13-27", items: ["開發者薪資可正常點完成"] },
   { ver: "2026-08-31-03-35", items: ["設定右邊新增操作教學，從右側滑入"] },
@@ -6655,6 +6656,32 @@ function adminSettings() {
       <label class="field"><span>客服電話</span><input id="co-phone" name="phone" type="text" value="${escapeHtml(co.phone)}" placeholder="選填" /></label>
       <button class="btn-navy" type="button" id="co-save">儲存公司資料</button>
     </form>
+    <div class="card card-body" id="gate-card">
+      <div class="label">公司門禁</div>
+      <p class="small">內部門鎖密碼，請勿外流。</p>
+      <div class="gate-row">
+        <span class="k">1樓公廳門鎖</span>
+        <span class="v">1976</span>
+        <button type="button" class="ghost" data-copy="1976">複製</button>
+      </div>
+      <div class="gate-row">
+        <span class="k">車庫門鎖</span>
+        <span class="v">2026</span>
+        <button type="button" class="ghost" data-copy="2026">複製</button>
+      </div>
+      <div class="gate-sub">店面後門　可用 1976 或門牌號碼</div>
+      ${STORE_NOS.map(no => {
+        const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
+        const house = bld ? String(bld.street).replace(/\D/g, "") : String(no).slice(0, 2);
+        const shop = (TENANT_INFO[no] && TENANT_INFO[no].shop) ? "：" + TENANT_INFO[no].shop : "";
+        const loc = bld ? bld.street : "";
+        return `<div class="gate-row">
+          <span class="k">${escapeHtml(no + shop)}${loc ? `<span class="gate-loc">${escapeHtml(loc)}</span>` : ""}</span>
+          <span class="v">1976　／　${escapeHtml(house)}</span>
+          <button type="button" class="ghost" data-copy="1976">複製 1976</button>
+        </div>`;
+      }).join("")}
+    </div>
     ${lookSettingsHtml()}
     <div class="card card-body">
       <div class="label">資料</div>
