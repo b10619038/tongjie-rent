@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-20";
-const APP_EDIT_COUNT = 364;
+const APP_STAMP = "2026-08-31-21-28";
+const APP_EDIT_COUNT = 365;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡可直接改資料，改完自動套用"] },
+  { ver: APP_STAMP, items: ["交接中可同時看舊客新客，退租完成自動入帳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1087,7 +1087,7 @@ function studioHandover(t, r) {
 function applyStudioSheetPaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   data.tenants.forEach(t => {
-    if (!t || t.demo || t.former || t.paidTouched || t.edited) return;
+    if (!t || t.demo || t.former || t.incoming || t.paidTouched || t.edited) return;
     const room = data.rooms.find(r => r.id === t.roomId);
     if (!room || room.demo || room.status === "office" || room.kind === "factory") return;
     const pay = STUDIO_MONTH_PAY[String(room.no || "")];
@@ -1762,7 +1762,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -2012,7 +2012,7 @@ function applyFactoryRoster(data) {
     }
     const info = FACTORY_TENANT_INFO[room.no];
     if (!info || !info.name) return;
-    let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo);
+    let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
     if (!t) {
       t = { id: "tf-" + room.no, roomId: room.id, dueDay: 5, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
       data.tenants.push(t);
@@ -2057,7 +2057,7 @@ function applyTenantRoster(data) {
       if (!room.company) room.company = bld.company;
     }
     if (info && info.name) {
-      let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo);
+      let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
       if (!t) {
         t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
         data.tenants.push(t);
@@ -4675,7 +4675,7 @@ function collectLedger() {
     const m = note.match(/牛10\s+(\d{4})/) || note.match(/\b([678]\d{3})\b/);
     if (m && ym) takenYm[ym + "|" + m[1]] = true;
   });
-  state.tenants.filter(t => t.paid && !isDemoTenant(t)).forEach(t => {
+  state.tenants.filter(t => t.paid && !t.former && !t.incoming && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     const date = ymdOf(t.paidAt);
     if (!date) return;
@@ -6011,6 +6011,135 @@ function lastCheckout(tenantId) {
   const list = (state.checkouts || []).filter(c => c.tenantId === tenantId);
   return list.length ? list[list.length - 1] : null;
 }
+function incomingOf(roomId) {
+  return (state.tenants || []).find(x => x && x.roomId === roomId && x.incoming && !x.former) || null;
+}
+function isHandoverRoom(r, t) {
+  if (!r || r.demo) return false;
+  if (incomingOf(r.id)) return true;
+  const co = t && lastCheckout(t.id);
+  if (co && co.status !== "done") return true;
+  return studioHandover(t, r);
+}
+function addIncomingTenant(roomId, fields) {
+  const r = (state.rooms || []).find(x => x.id === roomId);
+  if (!r) return null;
+  if (incomingOf(roomId)) return incomingOf(roomId);
+  const name = String(fields.name || "").trim();
+  if (!name) return null;
+  const rent = Number(String(fields.rent || "").replace(/[^\d.-]/g, "")) || 0;
+  const deposit = Number(String(fields.deposit || "").replace(/[^\d.-]/g, "")) || (rent ? rent * 2 : 0);
+  const t = {
+    id: "tin" + Date.now(),
+    name,
+    phone: String(fields.phone || "").trim(),
+    roomId,
+    incoming: true,
+    former: false,
+    leaseStart: fields.leaseStart || "",
+    leaseEnd: fields.leaseEnd || "",
+    loginPass: String(fields.loginPass || "").trim(),
+    paid: false,
+    dueDay: 5,
+    edited: true,
+    rent: rent || undefined,
+    deposit: deposit || undefined
+  };
+  if (!state.tenants) state.tenants = [];
+  state.tenants.push(t);
+  r.incomingTenantId = t.id;
+  r.edited = true;
+  return t;
+}
+function completeHandover(oldT, r, co) {
+  if (!r) return;
+  if (oldT && !oldT.former) {
+    oldT.former = true;
+    oldT.incoming = false;
+    oldT.leftOn = (co && co.at) || ymdOf(nowStamp());
+    oldT.edited = true;
+  }
+  const neu = incomingOf(r.id);
+  if (neu) {
+    neu.incoming = false;
+    neu.former = false;
+    neu.edited = true;
+    r.tenantId = neu.id;
+    r.status = "rented";
+    if (Number(neu.rent) > 0) r.rent = Number(neu.rent);
+    if (Number(neu.deposit) > 0) r.deposit = Number(neu.deposit);
+    else if (Number(neu.rent) > 0) r.deposit = Number(neu.rent) * 2;
+    delete r.incomingTenantId;
+  } else {
+    r.tenantId = null;
+    if (r.status !== "repair") r.status = "vacant";
+  }
+  r.edited = true;
+}
+function postCheckoutBooks(co, t, r) {
+  if (!co || !t) return;
+  const refund = Number(co.refund) || 0;
+  if (refund <= 0) return;
+  if (!state.books) state.books = [];
+  const id = "bk-co-" + co.id + "-refund";
+  if (state.books.some(b => b && (b.id === id || b.importTag === "co-" + co.id))) return;
+  const prorate = Number(co.prorate) || 0;
+  const bits = ["退押金 " + money(Number(co.deposit) || 0)];
+  if (Number(co.deduct)) bits.push("扣 " + money(co.deduct));
+  if (prorate) bits.push("日租金 " + money(prorate));
+  state.books.push({
+    id,
+    type: "out",
+    date: co.at || ymdOf(nowStamp()),
+    amount: refund,
+    company: co.payAccount || "現金(保險箱)",
+    bank: co.payBank || "",
+    note: (co.kind === "early" ? "中途退租　" : "退租　") + (r && r.no || "") + " " + (t.name || "") + "　" + bits.join("＋"),
+    roomNo: (r && r.no) || "",
+    importTag: "co-" + co.id,
+    createdAt: nowStamp()
+  });
+}
+function payAcctFields(co) {
+  const acct = (co && co.payAccount) || "現金(保險箱)";
+  const bank = (co && co.payBank) || "";
+  return `<label class="field"><span>出帳帳戶</span><select id="co-pay-acct">${BOOK_ACCOUNTS.map(a => `<option${a === acct ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+    <label class="field"><span>銀行／通路</span><select id="co-pay-bank"><option value="">（無）</option>${BANK_PLACES.map(a => `<option${a === bank ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+    <label class="field"><span>日租金退還</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="不滿月退給舊客，沒有就空白" /></label>`;
+}
+function handoverBoxHtml(t, r) {
+  if (!r || !t || r.demo || t.demo || t.incoming) return "";
+  const inc = incomingOf(r.id);
+  if (inc) {
+    return `<div class="handover-box">
+      <div class="label">新客（交接中）</div>
+      ${teField("姓名", "name", inc.id, r.id, inc.name || "")}
+      ${teField("電話", "phone", inc.id, r.id, inc.phone || "", "tel", "手機號碼")}
+      ${teField("起租日", "leaseStart", inc.id, r.id, inc.leaseStart || "", "date")}
+      ${teField("到期日", "leaseEnd", inc.id, r.id, inc.leaseEnd || "", "date")}
+      ${teField("租金", "rent", inc.id, r.id, inc.rent != null ? inc.rent : (r.rent || ""), "number", "0")}
+      ${teField("押金", "deposit", inc.id, r.id, inc.deposit != null ? inc.deposit : "", "number", "空白＝兩個月")}
+      <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
+      <div class="small">舊客辦完退租後，新客會自動接手這間，租金押金一併套用。</div>
+    </div>`;
+  }
+  const open = !!(ui.handoverAdd && ui.handoverAdd[r.id]);
+  if (!open) return `<button type="button" class="ghost" data-handover-open="${r.id}" style="margin-top:8px">登記新客</button>`;
+  return `<div class="handover-box">
+    <div class="label">登記新客</div>
+    <div class="small">舊客還在也能先登記。完成退租後自動接手。</div>
+    <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
+    <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
+    <label class="field"><span>起租日</span><input data-hf="start" type="date" /></label>
+    <label class="field"><span>到期日</span><input data-hf="end" type="date" /></label>
+    <label class="field"><span>租金</span><input data-hf="rent" type="number" inputmode="numeric" placeholder="${r.rent || ""}" /></label>
+    <label class="field"><span>押金</span><input data-hf="deposit" type="number" inputmode="numeric" placeholder="空白＝兩個月" /></label>
+    <div class="unpaid-tools">
+      <button type="button" class="btn-navy" data-handover-save="${r.id}">儲存新客</button>
+      <button type="button" class="ghost" data-handover-close="${r.id}">取消</button>
+    </div>
+  </div>`;
+}
 function checkoutKindOf(co) {
   if (ui.checkoutKind === "pick") return "";
   if (ui.checkoutKind === "early" || ui.checkoutKind === "normal") return ui.checkoutKind;
@@ -6104,7 +6233,7 @@ function checkoutFormHtml() {
     const prop = co.property || [r.no, r.shop, r.location || roomAddress(r.no)].filter(Boolean).join("　");
     return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
-    <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額，可列印終止租賃契約。完成後退租紀錄會留下來。"}</div>
+    <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。"}</div>
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>租賃物標示</span><input id="co-property" type="text" value="${escapeHtml(prop)}" /></label>
     <label class="field"><span>身分證字號</span><input id="co-idno" type="text" value="${escapeHtml(co.idNo || t.idNo || "")}" /></label>
@@ -6112,6 +6241,7 @@ function checkoutFormHtml() {
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
     <label class="field"><span>總退還費用</span><input id="co-refund-in" type="number" inputmode="numeric" value="${refund || ""}" /></label>
+    ${payAcctFields(co)}
     <div class="checkout-checks">
       <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
       <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> 磁扣已交還</label>
@@ -6121,18 +6251,19 @@ function checkoutFormHtml() {
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
       <button type="button" class="btn-navy" id="co-print-term">列印終止契約</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
-      ${co.status === "done" && r.status !== "vacant" ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
+      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
     </div>
     ${termLeasePaperHtml(t, r, Object.assign({}, co, { at: co.at || today, deposit, deduct, refund, property: prop, idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || "" }))}
   </div>`;
   }
   return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
-    <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後退租紀錄會留下來，房間狀態請再到所有資產改。"}</div>
+    <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。"}</div>
     <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
-    <div class="row"><span class="k">應退押金</span><span class="v" id="co-refund">${money(Math.max(0, deposit - deduct))}</span></div>
+    ${payAcctFields(co)}
+    <div class="row"><span class="k">應退金額</span><span class="v" id="co-refund">${money(Math.max(0, deposit - deduct) + (Number(co.prorate) || 0))}</span></div>
     <label class="field"><span>電表起</span><input id="co-elec-s" type="text" value="${escapeHtml(co.elecStart || "")}" placeholder="例如 12345" /></label>
     <label class="field"><span>電表迄</span><input id="co-elec-e" type="text" value="${escapeHtml(co.elecEnd || "")}" placeholder="例如 12880" /></label>
     <label class="field"><span>水表起</span><input id="co-water-s" type="text" value="${escapeHtml(co.waterStart || "")}" /></label>
@@ -6145,7 +6276,7 @@ function checkoutFormHtml() {
     <div class="unpaid-tools">
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
-      ${co.status === "done" && r.status !== "vacant" ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
+      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
     </div>
   </div>`;
 }
@@ -6158,14 +6289,17 @@ function readCheckoutForm() {
   const chk = id => !!(document.getElementById(id) && document.getElementById(id).checked);
   const deposit = num("co-deposit");
   const deduct = num("co-deduct");
+  const prorate = num("co-prorate");
   const kind = ui.checkoutKind === "early" ? "early" : "normal";
   const refundEl = document.getElementById("co-refund-in");
-  const refund = refundEl ? num("co-refund-in") : Math.max(0, deposit - deduct);
+  const refund = refundEl ? num("co-refund-in") : Math.max(0, deposit - deduct) + prorate;
   return {
     tenantId: t.id, tenantName: t.name || "", roomId: r.id || t.roomId, roomNo: r.no || "",
     kind,
     at: val("co-date") || ymdOf(nowStamp()),
-    deposit, deduct, refund,
+    deposit, deduct, prorate, refund,
+    payAccount: val("co-pay-acct") || "現金(保險箱)",
+    payBank: val("co-pay-bank"),
     elecStart: val("co-elec-s"), elecEnd: val("co-elec-e"),
     waterStart: val("co-water-s"), waterEnd: val("co-water-e"),
     keys: chk("co-keys"), icCard: chk("co-ic"),
@@ -6193,9 +6327,19 @@ function saveCheckout(done, opt) {
   const t = (state.tenants || []).find(x => x.id === data.tenantId);
   if (t && data.idNo) t.idNo = data.idNo;
   if (t && data.phone && !t.phone) t.phone = data.phone;
+  let handed = false;
+  if (done) {
+    const r = (state.rooms || []).find(x => x.id === (t && t.roomId)) || {};
+    handed = !!incomingOf(r.id);
+    postCheckoutBooks(row, t, r);
+    completeHandover(t, r, row);
+  }
   save();
   audit(done ? "完成退租" : (row.kind === "early" ? "終止契約" : "退租單"), (data.roomNo || "") + " " + (data.tenantName || ""));
-  if (!(opt && opt.quiet)) toast(done ? "退租已完成" : (row.kind === "early" ? "終止契約已儲存" : "退租單已儲存"));
+  if (!(opt && opt.quiet)) {
+    if (!done) toast(row.kind === "early" ? "終止契約已儲存" : "退租單已儲存");
+    else toast(handed ? "退租已入帳，新客已接手" : (Number(row.refund) > 0 ? "退租已入帳，房間改空置" : "退租已完成，房間改空置"));
+  }
   if (done && !(opt && opt.keepOpen)) ui.checkoutTenantId = "";
   ui.keepScroll = true;
   render();
@@ -6313,17 +6457,20 @@ function bindOps() {
   };
   const dep = document.getElementById("co-deposit");
   const ded = document.getElementById("co-deduct");
+  const pro = document.getElementById("co-prorate");
   const refund = document.getElementById("co-refund");
   const refundIn = document.getElementById("co-refund-in");
   const syncRefund = () => {
     const a = Number((dep || {}).value) || 0;
     const b = Number((ded || {}).value) || 0;
-    const v = Math.max(0, a - b);
+    const p = Number((pro || {}).value) || 0;
+    const v = Math.max(0, a - b) + p;
     if (refund) refund.textContent = money(v);
     if (refundIn && document.activeElement !== refundIn) refundIn.value = v ? String(v) : "";
   };
   if (dep) dep.oninput = syncRefund;
   if (ded) ded.oninput = syncRefund;
+  if (pro) pro.oninput = syncRefund;
   document.querySelectorAll("#checkout-form-card input, #checkout-form-card textarea, #checkout-form-card select").forEach(el => {
     el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
     el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
@@ -7744,7 +7891,7 @@ function howtoSections() {
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
-    { id: "a-tenants", h: "租客", p: "圖卡可直接改姓名、租金、押金、收款日、密碼、電話、租期，改完自動套用到發票、日曆、登入與退租。辦理退租可選正常或中途。" },
+    { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；沒新客則改空置。" },
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
@@ -9379,6 +9526,8 @@ function tenantMatchesQ(t, r, q, kind) {
   const pay = r && studioMonthPay(r.no);
   if (pay && pay.name) parts.push(pay.name);
   formerTenantsOf(r && r.id).forEach(f => parts.push(f.name));
+  const inc = r && incomingOf(r.id);
+  if (inc) parts.push(inc.name, inc.phone);
   return parts.some(x => normSearch(x).includes(q));
 }
 function tenantSearchPlaceholder(kind) {
@@ -9389,7 +9538,7 @@ function tenantListOfKind(kind) {
   const q = normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
-    if (!t || t.placeholder || t.former) return false;
+    if (!t || t.placeholder || t.former || t.incoming) return false;
     if (isDemoTenant(t)) return false;
     if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
@@ -9487,7 +9636,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
-      ${kind !== "factory" ? teField("現任", "name", t.id, r && r.id, t.name)
+      ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0") : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, ymdOf(t.paidAt) || (studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn) || "", "date") : ""}
@@ -9536,12 +9685,13 @@ function tenantEntryCardHtml(kind, entry) {
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>
-      <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>`;
+      <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>
+      ${handoverBoxHtml(tt, rr)}`;
       }).join("")}`;
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="row-end">${kind !== "factory" && studioHandover(t, r) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
@@ -9571,13 +9721,18 @@ function applyLiveTenantEdit(el) {
     t.paidTouched = true;
     if (t.paid && !t.paidVia) t.paidVia = "app";
     if (!t.paid) t.paidVia = "";
-  } else if (key === "rent" && r) {
-    const old = Number(r.rent) || 0;
+  } else if (key === "rent") {
     const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
-    if (!Number(r.deposit) || Number(r.deposit) === old * 2) r.deposit = neu * 2;
-    r.rent = neu;
-  } else if (key === "deposit" && r) {
-    r.deposit = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
+    if (t && t.incoming) t.rent = neu;
+    else if (r) {
+      const old = Number(r.rent) || 0;
+      if (!Number(r.deposit) || Number(r.deposit) === old * 2) r.deposit = neu * 2;
+      r.rent = neu;
+    }
+  } else if (key === "deposit") {
+    const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
+    if (t && t.incoming) t.deposit = neu;
+    else if (r) r.deposit = neu;
   }
   save();
   toast("已套用");
@@ -9596,8 +9751,67 @@ function bindTenantEdits() {
     el.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } };
   });
 }
+function bindHandover() {
+  document.querySelectorAll("[data-handover-open]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      if (!ui.handoverAdd) ui.handoverAdd = {};
+      ui.handoverAdd[btn.dataset.handoverOpen] = true;
+      ui.keepScroll = true;
+      const t = (state.tenants || []).find(x => x.roomId === btn.dataset.handoverOpen && !x.former && !x.incoming);
+      if (t) { if (!ui.tenantOpen) ui.tenantOpen = {}; ui.tenantOpen[t.id] = true; ui.tenantOpen["fg-" + (String(t.taxId || "").trim() || String(t.name || "").trim() || t.id)] = true; }
+      render();
+    };
+  });
+  document.querySelectorAll("[data-handover-close]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverClose] = false;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-handover-save]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const box = btn.closest(".handover-box");
+      const g = k => String((box && box.querySelector('[data-hf="' + k + '"]') || {}).value || "").trim();
+      if (!g("name")) { toast("請填新客姓名"); return; }
+      const t = addIncomingTenant(btn.dataset.handoverSave, {
+        name: g("name"), phone: g("phone"), leaseStart: g("start"), leaseEnd: g("end"),
+        rent: g("rent"), deposit: g("deposit")
+      });
+      if (!t) { toast("登記失敗"); return; }
+      if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverSave] = false;
+      toast("已登記新客，舊客仍在交接中");
+      ui.keepScroll = true;
+      const old = (state.tenants || []).find(x => x.roomId === btn.dataset.handoverSave && !x.former && !x.incoming);
+      if (old) { if (!ui.tenantOpen) ui.tenantOpen = {}; ui.tenantOpen[old.id] = true; ui.tenantOpen["fg-" + (String(old.taxId || "").trim() || String(old.name || "").trim() || old.id)] = true; }
+      save();
+      render();
+    };
+  });
+  document.querySelectorAll("[data-handover-cancel]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const inc = (state.tenants || []).find(x => x.id === btn.dataset.handoverCancel);
+      if (!inc) return;
+      const r = (state.rooms || []).find(x => x.id === inc.roomId);
+      state.tenants = (state.tenants || []).filter(x => x.id !== inc.id);
+      if (r) { delete r.incomingTenantId; r.edited = true; }
+      toast("已取消新客");
+      ui.keepScroll = true;
+      save();
+      render();
+    };
+  });
+  document.querySelectorAll(".handover-box input, .handover-box button, .handover-box .v-edit").forEach(el => {
+    el.addEventListener("pointerdown", ev => ev.stopPropagation());
+    el.addEventListener("click", ev => ev.stopPropagation());
+  });
+}
 function tenantKindHint(kind) {
-  return kind === "factory" ? "已套入統潔／信潔租金表。圖卡欄位可直接改，會自動套用。" : "圖卡欄位可直接改姓名、租金、押金、租期，會自動套用。向左滑可開官方 LINE。";
+  return kind === "factory" ? "已套入統潔／信潔租金表。可登記新客，完成退租會入帳並交接。" : "可直接改資料。交接時先登記新客，舊客退租完成會入帳並接手。";
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
@@ -9838,6 +10052,7 @@ function bindTenantListTools() {
     };
   });
   bindTenantEdits();
+  bindHandover();
   bindOps();
 }
 function adminTenants() {
@@ -11178,6 +11393,7 @@ function bindAdmin() {
   bindTenantFold();
   bindTenantSearch();
   bindTenantEdits();
+  bindHandover();
   bindAssetSearch();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {

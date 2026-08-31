@@ -518,6 +518,15 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 .pay-pill.paid { background: var(--ok-soft); color: var(--ok); }
 .pay-pill.unpaid { background: var(--rose-soft); color: var(--rose); }
 .pay-pill.hand { background: #f3e4cf; color: #8a5a22; }
+.handover-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f7f1e8;
+  display: grid;
+  gap: 8px;
+}
+.handover-box .label { color: #8a5a22; font-weight: 700; }
 .pay-pill[data-page] { cursor: pointer; }
 
 .section-title {
