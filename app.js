@@ -1,4 +1,5 @@
 const KEY = "tongjie_rent_app_v8";
+const LEDGER_KEY = "tongjie_ledger_v1";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
 const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
@@ -14,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-20";
-const APP_EDIT_COUNT = 356;
+const APP_STAMP = "2026-08-31-21-30";
+const APP_EDIT_COUNT = 357;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7251 呂佳芸租金 5,000、押金 10,000"] },
+  { ver: APP_STAMP, items: ["跑業務上傳入帳會留下來，重開總覽日曆還在"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1879,6 +1880,8 @@ function normalize(data) {
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
+  mergeLedgerInto(data, loadLedgerBackup());
+  persistLedger(data);
   return data;
 }
 function roomNoFromBookNote(note) {
@@ -2108,6 +2111,48 @@ function loadLocal() {
   } catch {}
   return normalize(structuredClone(SEED));
 }
+function slimLedgerItem(x) {
+  if (!x || typeof x !== "object") return x;
+  const o = Object.assign({}, x);
+  delete o.media;
+  delete o.photo;
+  return o;
+}
+function persistLedger(data) {
+  if (!data) return;
+  try {
+    localStorage.setItem(LEDGER_KEY, JSON.stringify({
+      books: (data.books || []).map(slimLedgerItem),
+      errands: (data.errands || []).map(slimLedgerItem),
+      bankSlips: (data.bankSlips || []).map(slimLedgerItem),
+      accountOpenings: data.accountOpenings || {}
+    }));
+  } catch {}
+}
+function loadLedgerBackup() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LEDGER_KEY) || "null");
+    return raw && typeof raw === "object" ? raw : null;
+  } catch { return null; }
+}
+function unionById(a, b) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    const cur = map.get(x.id);
+    map.set(x.id, cur ? Object.assign({}, cur, x) : x);
+  });
+  return [...map.values()];
+}
+function mergeLedgerInto(target, other) {
+  if (!target || !other) return;
+  if (Array.isArray(other.books) && other.books.length) target.books = unionById(target.books, other.books);
+  if (Array.isArray(other.errands) && other.errands.length) target.errands = unionById(target.errands, other.errands);
+  if (Array.isArray(other.bankSlips) && other.bankSlips.length) target.bankSlips = unionById(target.bankSlips, other.bankSlips);
+  if (other.accountOpenings && typeof other.accountOpenings === "object") {
+    target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
+  }
+}
 async function pullCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
@@ -2121,6 +2166,7 @@ async function pullCloud() {
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
+      mergeLedgerInto(state, data);
       if ((!state.books || !state.books.length) && Array.isArray(data.books) && data.books.length) {
         state.books = data.books;
         if (data.accountOpenings) state.accountOpenings = Object.assign({}, data.accountOpenings, state.accountOpenings || {});
@@ -2129,6 +2175,7 @@ async function pullCloud() {
       }
       applyJuly115Books(state);
       applyAug31Docs(state);
+      persistLedger(state);
       ui.cloudOk = true;
       return "local-newer";
     }
@@ -2147,7 +2194,10 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     const mineCheckouts = (state.checkouts && state.checkouts.length) ? state.checkouts : null;
+    const mineErrands = (state.errands && state.errands.length) ? state.errands : null;
+    const mineSlips = (state.bankSlips && state.bankSlips.length) ? state.bankSlips : null;
     state = normalize(data);
+    mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen });
     if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
     if (mineOpen) state.accountOpenings = Object.assign({}, mineOpen, state.accountOpenings || {});
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
@@ -2170,6 +2220,7 @@ async function pullCloud() {
     applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
+    persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -2539,14 +2590,14 @@ async function pushCloud() {
             payload.aiLogs,
             80
           );
-          if ((!payload.books || !payload.books.length) && Array.isArray(remote.books) && remote.books.length) {
-            payload.books = remote.books;
-            payload.accountOpenings = (payload.accountOpenings && Object.keys(payload.accountOpenings).length)
-              ? payload.accountOpenings
-              : (remote.accountOpenings || {});
-            payload.booksImportVer = payload.booksImportVer || remote.booksImportVer;
-            payload.docsImportVer = payload.docsImportVer || remote.docsImportVer;
+          payload.books = unionById(remote.books, payload.books);
+          payload.errands = unionById(remote.errands, payload.errands);
+          payload.bankSlips = unionById(remote.bankSlips, payload.bankSlips);
+          if (remote.accountOpenings) {
+            payload.accountOpenings = Object.assign({}, remote.accountOpenings, payload.accountOpenings || {});
           }
+          payload.booksImportVer = payload.booksImportVer || remote.booksImportVer;
+          payload.docsImportVer = payload.docsImportVer || remote.docsImportVer;
         }
       }
     } catch {}
@@ -2566,8 +2617,11 @@ function save(force) {
   if (isDevPreview() && !force) return;
   try {
     state.updatedAt = Date.now();
+    persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {}
+  } catch {
+    try { persistLedger(state); } catch {}
+  }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
 }
