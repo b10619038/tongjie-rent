@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-20-20";
-const APP_EDIT_COUNT = 349;
+const APP_STAMP = "2026-08-31-20-30";
+const APP_EDIT_COUNT = 350;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +42,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者後台紀錄跨裝置同步，管理員紀錄開發者也看得到"] },
+  { ver: APP_STAMP, items: ["和錢有關的紀錄管理員與開發者都會同步看到"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1302,19 +1302,29 @@ function ensureCycleJobs(data) {
 function ensureDevCycleJobs(data) {
   if (!data) data = typeof state !== "undefined" ? state : null;
   if (!data) return;
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   if (!Array.isArray(data.devMemos)) data.devMemos = [];
   DEV_CYCLE_JOBS.forEach(job => {
-    const hit = data.devMemos.find(m => m && m.id === job.id);
+    const money = isMoneyText(job.text) || job.id === "cycle-dev-salary";
+    const list = money ? data.aiMemos : data.devMemos;
+    const other = money ? data.devMemos : data.aiMemos;
+    const ix = other.findIndex(m => m && m.id === job.id);
+    if (ix >= 0) {
+      const taken = other.splice(ix, 1)[0];
+      if (!list.some(m => m && m.id === job.id)) list.push(taken);
+    }
+    const hit = list.find(m => m && m.id === job.id);
     if (hit) {
       if (!hit.edited) {
         hit.text = job.text;
         hit.monthDay = job.monthDay;
       }
       hit.cycle = true;
-      hit.owner = "1240";
+      if (money && !hit.owner) hit.owner = "1240";
+      else if (!money) hit.owner = "1240";
       return;
     }
-    data.devMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
+    list.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
 }
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
@@ -2170,8 +2180,17 @@ async function pullCloud() {
     if (timer) clearTimeout(timer);
   }
 }
+function isMoneyText(s) {
+  return /薪資|薪水|工資|租金|房租|押金|收支|營收|盈餘|發票|匯款|轉帳|現金|銀行|對帳|帳本|進帳|出帳|支出|收入|NT\$|勞保|健保|勞退|營業稅|水費|電費|利息|仲介|工程款|垃圾|清運|退稅|稅|保險箱/.test(String(s || ""));
+}
+function isMoneyMemo(m) {
+  if (!m) return false;
+  if (m.id === "cycle-dev-salary") return true;
+  return isMoneyText(m.text || m.note || "");
+}
 function isDevMemo(m) {
-  return !!(m && ((m.owner || "") === "1240" || m.id === "cycle-dev-salary"));
+  if (!m || isMoneyMemo(m)) return false;
+  return (m.owner || "") === "1240";
 }
 function mergeMemoRow(a, b) {
   if (!a) return b;
@@ -2230,7 +2249,10 @@ function migrateDevLocalInto(data) {
   const fromAi = (data.aiMemos || []).filter(isDevMemo);
   data.devMemos = unionMemos(data.devMemos, unionMemos(loadDevMemos(), fromAi));
   data.aiMemos = (data.aiMemos || []).filter(m => m && !isDevMemo(m));
-  const fromLogs = (data.aiLogs || []).filter(m => m && (isDevMemo(m) || m.role === "dev" || m.owner === "1240"));
+  const money = (data.devMemos || []).filter(isMoneyMemo);
+  data.devMemos = (data.devMemos || []).filter(m => !isMoneyMemo(m));
+  if (money.length) data.aiMemos = unionMemos(data.aiMemos, money);
+  const fromLogs = (data.aiLogs || []).filter(m => m && (isDevMemo(m) || m.role === "dev" || m.owner === "1240") && !isMoneyMemo(m));
   data.devLogs = unionLogs(data.devLogs, unionLogs(loadDevLogs(), fromLogs), 80);
   data.aiLogs = (data.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240");
   saveDevMemos(data.devMemos);
@@ -2270,19 +2292,20 @@ function isSharedMemo(m) {
 }
 function saveMemoChange(m) {
   if (!m) return;
-  if (!isSharedMemo(m) || (m.owner || "") === "1240") {
-    if (!Array.isArray(state.devMemos)) state.devMemos = [];
-    const i = state.devMemos.findIndex(x => x && x.id === m.id);
-    if (i >= 0) state.devMemos[i] = m;
-    else state.devMemos.push(m);
-    saveDevMemos(state.devMemos);
+  if (isMoneyMemo(m) || isSharedMemo(m)) {
+    if (state.devMemos) state.devMemos = state.devMemos.filter(x => !x || x.id !== m.id);
+    if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
+    const hit = state.aiMemos.find(x => x.id === m.id);
+    if (hit) Object.assign(hit, m);
+    else state.aiMemos.push(m);
     save();
     return;
   }
-  if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
-  const hit = state.aiMemos.find(x => x.id === m.id);
-  if (hit) Object.assign(hit, m);
-  else state.aiMemos.push(m);
+  if (!Array.isArray(state.devMemos)) state.devMemos = [];
+  const i = state.devMemos.findIndex(x => x && x.id === m.id);
+  if (i >= 0) state.devMemos[i] = m;
+  else state.devMemos.push(m);
+  saveDevMemos(state.devMemos);
   save();
 }
 function removeMemo(id) {
@@ -7349,7 +7372,7 @@ function howtoSections() {
   const dev = admin.concat([
     { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
     { id: "d-prev", h: "租客預覽", p: "右上角「租客」可模擬已登入的租客畫面，方便試功能。預覽不計入任何金額。" },
-    { id: "d-priv", h: "只給開發者看的", p: "開發者的提問紀錄、即將提醒與開發者薪資會同步到其他開發者裝置，不會出現在管理員後台。管理員後台的紀錄會同步到所有裝置，開發者後台也看得到。" }
+    { id: "d-priv", h: "只給開發者看的", p: "開發者私事（提問紀錄、一般提醒）會同步到其他開發者裝置，不會出現在管理員後台。只要和錢有關（薪資、租金、帳務、發票等），管理員與開發者都會同步看到。" }
   ]);
   if (kind === "tenant") return tenant;
   if (kind === "dev") return dev;
@@ -7944,15 +7967,7 @@ function rememberAiMemo(text) {
     createdAt: nowStamp()
   };
   if (rec.monthDay) rec.date = nextCycleDate(rec);
-  if (rec.owner === "1240") {
-    const list = loadDevMemos();
-    list.push(rec);
-    saveDevMemos(list);
-  } else {
-    if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
-    state.aiMemos.push(rec);
-    save();
-  }
+  saveMemoChange(rec);
   return rec;
 }
 function openGoogleMemo(m) {
