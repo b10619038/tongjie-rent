@@ -2010,70 +2010,69 @@ img.avatar { object-fit: cover; display: block; }
   overflow: visible !important;
 }
 #ai-form {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(12px + var(--safe-b, 0px));
-  z-index: 240;
-  pointer-events: auto !important;
-  display: grid !important;
+  position: relative;
+  z-index: 30;
+  display: flex !important;
+  align-items: center;
   gap: 8px;
-  margin: 0;
-  padding: 10px 10px 12px;
-  background: var(--card, #fff);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 10px 28px rgba(0,0,0,.14);
+  margin-top: 10px;
+  margin-bottom: 4px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  pointer-events: auto !important;
   visibility: visible !important;
 }
 #ai-form, #ai-form * {
   pointer-events: auto !important;
   visibility: visible !important;
 }
-#ai-form input[type="text"],
 #ai-form #ai-q {
-  pointer-events: auto !important;
-  -webkit-user-select: text !important;
-  user-select: text !important;
-  display: block;
-  width: 100%;
-  min-height: 48px;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
   font-size: 16px;
   background: #fff;
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 22px;
+  padding: 10px 14px;
   box-sizing: border-box;
   -webkit-appearance: none;
   appearance: none;
+  -webkit-user-select: text !important;
+  user-select: text !important;
 }
-#ai-form .ai-send,
-#ai-form input[type="submit"] {
-  width: 100%;
-  min-height: 52px;
-  height: 52px;
+#ai-form .ai-send {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: 16px;
-  padding: 0 16px;
-  background: var(--navy, #1d4e89);
+  border-radius: 50%;
+  background: #06c755;
   color: #fff;
   font: inherit;
-  font-size: 18px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0;
+  line-height: 44px;
+  text-align: center;
   cursor: pointer;
-  position: relative;
-  z-index: 241;
-  pointer-events: auto !important;
+  z-index: 40;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
-  -webkit-tap-highlight-color: rgba(29,78,137,.25);
+  -webkit-tap-highlight-color: rgba(6,199,85,.28);
   appearance: none;
   -webkit-appearance: none;
+  box-shadow: 0 2px 6px rgba(6,199,85,.35);
 }
-html.ai-page .admin-scroll { padding-bottom: 168px; }
-html.ai-page #errand-float { display: none !important; }
 .tenant-slim:not(.open) .tenant-slim-body {
   pointer-events: none !important;
 }
