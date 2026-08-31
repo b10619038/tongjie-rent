@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-53";
-const APP_EDIT_COUNT = 383;
+const APP_STAMP = "2026-08-31-23-02";
+const APP_EDIT_COUNT = 384;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房合約依房號套入，新客舊客都可下載列印"] },
+  { ver: APP_STAMP, items: ["手機點綠色送出：輸入框不再擋住按鈕"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2618,47 +2618,48 @@ window.__aiTap = function (e) {
     try { e.stopPropagation(); } catch {}
   }
   const box = document.getElementById("ai-q");
-  if (box) ui.aiDraft = box.value;
-  const snap = String((box && box.value) || ui.aiDraft || "").trim();
-  const go = () => {
-    const text = snap || aiBoxText();
-    if (!text) {
-      if (!e || e.type === "click") {
-        toast("請先輸入內容");
-        showToastBanner("請先輸入內容");
-      }
-      return false;
-    }
-    if (e) { try { e.preventDefault(); } catch {} }
-    return sendAiQuestion(text);
-  };
-  if (snap) return go();
-  setTimeout(go, 40);
-  return false;
+  const text = String((box && box.value) || window.__aiLive || ui.aiDraft || "").trim();
+  if (!text) {
+    toast("請先輸入內容");
+    showToastBanner("請先輸入內容");
+    return false;
+  }
+  if (e && e.preventDefault) {
+    try { e.preventDefault(); } catch {}
+  }
+  return sendAiQuestion(text);
 };
 function bindAiSendDirect() {
   const btn = document.getElementById("ai-send-btn");
   const box = document.getElementById("ai-q");
   const form = document.getElementById("ai-form");
+  const save = () => {
+    if (!box) return;
+    ui.aiDraft = box.value;
+    window.__aiLive = box.value;
+  };
   if (box) {
-    box.oninput = () => { ui.aiDraft = box.value; };
-    box.onchange = () => { ui.aiDraft = box.value; };
-    box.oncompositionend = () => { ui.aiDraft = box.value; };
+    box.oninput = save;
+    box.onkeyup = save;
+    box.onchange = save;
+    box.oncompositionend = save;
+    box.onblur = save;
     box.onkeydown = e => {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
-        window.__aiTap(e);
+        sendAiQuestion(box.value || window.__aiLive || ui.aiDraft);
       }
     };
   }
-  if (form) {
-    form.onsubmit = e => { e.preventDefault(); window.__aiTap(e); return false; };
-  }
-  if (!btn) return;
-  btn.ontouchstart = window.__aiTap;
-  btn.ontouchend = window.__aiTap;
-  btn.onpointerdown = window.__aiTap;
-  btn.onclick = window.__aiTap;
+  if (form) form.onsubmit = e => { e.preventDefault(); window.__aiTap(e); return false; };
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.dataset.bound = "1";
+  const fire = e => window.__aiTap(e);
+  btn.addEventListener("click", fire);
+  btn.addEventListener("touchend", e => {
+    e.preventDefault();
+    fire(e);
+  }, { passive: false });
 }
 function armAiSend() {}
 function stripDevLogsFromState() {
@@ -8802,9 +8803,9 @@ function adminAi() {
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
         </div>
       </div>
-          <form id="ai-form" autocomplete="off" onsubmit="return window.__aiTap(event)">
+          <form id="ai-form" autocomplete="off" action="javascript:void(0)">
             <input id="ai-q" name="q" type="text" inputmode="text" enterkeyhint="send" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" value="${escapeHtml(ui.aiDraft || "")}" />
-            <button type="button" class="ai-send" id="ai-send-btn" ontouchstart="return window.__aiTap(event)" onclick="return window.__aiTap(event)">送出</button>
+            <span class="ai-send" id="ai-send-btn" role="button">送出</span>
           </form>
     </div>`
   };
@@ -13085,7 +13086,16 @@ function bindAdminAi() {
     });
   }
   if (form) {
-    form.addEventListener("pointerdown", e => e.stopPropagation());
+    form.addEventListener("pointerdown", e => {
+      if (e.target && e.target.closest && e.target.closest(".ai-send")) return;
+      e.stopPropagation();
+    });
+    form.addEventListener("touchend", e => {
+      if (!(e.target && e.target.closest && e.target.closest(".ai-send"))) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.__aiTap(e);
+    }, { passive: false });
   }
   bindAiSendDirect();
   const pane = document.getElementById("ai-log");
