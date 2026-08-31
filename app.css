@@ -1063,10 +1063,30 @@ input[type="file"] {
 .log-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; position: relative; z-index: 8; pointer-events: auto !important; }
 .log-filters .ghost { width: auto; padding: 8px 14px; pointer-events: auto !important; position: relative; z-index: 8; cursor: pointer; }
 .log-filters .ghost.on { background: var(--teal); color: var(--on-teal, #fff); border-color: var(--teal); }
-.log-card { position: relative; z-index: 2; }
+.log-card { position: relative; z-index: 2; font-style: normal; }
 .log-card .ghost { pointer-events: auto !important; position: relative; z-index: 6; cursor: pointer; }
-  display: flex; gap: 10px; align-items: flex-start;
-  margin-top: 8px; font-size: 14px; line-height: 1.45;
+.log-line {
+  display: grid;
+  grid-template-columns: 3.4em 1fr;
+  column-gap: 12px;
+  align-items: start;
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.55;
+  font-style: normal;
+}
+.log-line .log-k {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-style: normal;
+}
+.log-line .log-v {
+  min-width: 0;
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink);
+  word-break: break-word;
 }
 .log-card .log-line em {
   flex: 0 0 42px; font-style: normal; color: var(--muted);

@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-40";
-const APP_EDIT_COUNT = 366;
+const APP_STAMP = "2026-08-31-21-45";
+const APP_EDIT_COUNT = 367;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定新增位置資訊，預設開啟精確定位"] },
+  { ver: APP_STAMP, items: ["日誌細項分開、字變小且端正，並修正重複與地址"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -3037,6 +3037,7 @@ function applyPreciseFix(pos) {
       locFix.addr = addr;
       saveLocFix(locFix);
       ui.geoAddr = addr;
+      try { backfillAuditAddress(addr); } catch {}
       paintGeoCard();
     }).catch(() => {});
   }
@@ -3551,7 +3552,7 @@ function backfillAuditAddress(addr) {
   let n = 0;
   const mine = deviceInfo();
   state.auditLogs.forEach(x => {
-    if (x && !x.address && x.device === mine) { x.address = addr; n++; }
+    if (x && x.device === mine && (!x.address || x.address !== addr)) { x.address = addr; n++; }
   });
   if (n) try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
 }
@@ -3589,13 +3590,33 @@ function logKind(x) {
   if (x.kind === "tenant") return "tenant";
   return "admin";
 }
+function auditAddress() {
+  if (locFix && locFix.addr) return locFix.addr;
+  return ui.geoAddr || "";
+}
+function logActionText(x) {
+  const act = String((x && x.action) || "");
+  const d = String((x && x.detail) || "").trim();
+  if (!d || d === x.page) return act || "—";
+  if (act === "瀏覽") return act;
+  return act + "　" + d;
+}
+function logModelText(x) {
+  const m = String((x && x.model) || "").trim();
+  const d = String((x && x.device) || "");
+  if (!m) return "";
+  if (d.indexOf(m) >= 0) return "";
+  if (/^(Windows 電腦|Mac 電腦|電腦|Android 手機)$/.test(m)) return "";
+  return m;
+}
 let lastAuditBrowse = "";
 function audit(action, detail) {
   try {
     if (isDevPreview()) return;
     if (!state.auditLogs) state.auditLogs = [];
     const page = pageLabel();
-    const key = [ui.role, ui.tenantId || ui.adminCode || "", action, detail || "", page].join("|");
+    const det = action === "瀏覽" ? "" : (detail || "");
+    const key = [ui.role, ui.tenantId || ui.adminCode || "", action, det, page].join("|");
     if (action === "瀏覽" && key === lastAuditBrowse) return;
     if (action === "瀏覽") lastAuditBrowse = key;
     state.auditLogs.push({
@@ -3604,11 +3625,11 @@ function audit(action, detail) {
       kind: ui.role === "admin" && ui.adminCode === "1240" ? "dev" : (ui.role || "guest"),
       who: actorLabel(),
       action,
-      detail: detail || "",
+      detail: det,
       page,
       device: deviceInfo(),
       model: deviceModel(),
-      address: ui.geoAddr || ""
+      address: auditAddress()
     });
     if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
     save();
@@ -7801,11 +7822,11 @@ function adminLogs() {
           <span class="who-mini"><span class="k">${escapeHtml(x.who)}</span>${pid ? `<span class="live-pill${on ? " on" : ""}" data-online="${pid}">${on ? "在線中" : "離線中"}</span>` : ""}</span>
           <span class="small">${escapeHtml(x.at)}</span>
         </div>
-        <div class="log-line"><em>操作</em><span>${escapeHtml(x.action)}${x.detail ? " · " + escapeHtml(x.detail) : ""}</span></div>
-        <div class="log-line"><em>瀏覽</em><span>${escapeHtml(x.page || "—")}</span></div>
-        <div class="log-line"><em>裝置</em><span>${escapeHtml(x.device || "—")}</span></div>
-        ${logKind(x) !== "tenant" ? `<div class="log-line"><em>型號</em><span>${escapeHtml(x.model || "—")}</span></div>
-        <div class="log-line"><em>地址</em><span>${escapeHtml(x.address || "—")}</span></div>` : ""}
+        <div class="log-line"><span class="log-k">操作</span><span class="log-v">${escapeHtml(logActionText(x))}</span></div>
+        <div class="log-line"><span class="log-k">瀏覽</span><span class="log-v">${escapeHtml(x.page || "—")}</span></div>
+        <div class="log-line"><span class="log-k">裝置</span><span class="log-v">${escapeHtml(x.device || "—")}</span></div>
+        ${logKind(x) !== "tenant" && logModelText(x) ? `<div class="log-line"><span class="log-k">型號</span><span class="log-v">${escapeHtml(logModelText(x))}</span></div>` : ""}
+        ${logKind(x) !== "tenant" ? `<div class="log-line"><span class="log-k">地址</span><span class="log-v">${escapeHtml(x.address || auditAddress() || "—")}</span></div>` : ""}
         <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
       </div>`;
     }).join("") : `<div class="empty">尚無日誌</div>`}
