@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-27";
-const APP_EDIT_COUNT = 323;
+const APP_STAMP = "2026-08-31-13-30";
+const APP_EDIT_COUNT = 324;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者薪資可正常點完成"] },
+  { ver: APP_STAMP, items: ["所有資產房間資料可編輯並儲存"] },
+  { ver: "2026-08-31-13-27", items: ["開發者薪資可正常點完成"] },
   { ver: "2026-08-31-03-35", items: ["設定右邊新增操作教學，從右側滑入"] },
   { ver: "2026-08-31-03-28", items: ["本月工作完成左邊新增編輯"] },
   { ver: "2026-08-31-03-23", items: ["工作助手聽得懂幫我記、提醒我、請紀錄"] },
@@ -1593,9 +1594,11 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
       if (!r.utilities.water || /每月定額/.test(r.utilities.water)) r.utilities.water = "一年固定 $1,800";
-      if (Object.prototype.hasOwnProperty.call(STUDIO_RENTS, String(r.no))) r.rent = STUDIO_RENTS[String(r.no)];
-      else if (r.demo || r.no === "DEMO") { if (!r.rent) r.rent = 10000; }
-      else r.rent = studioRentOf(r.no);
+      if (r.rent == null || r.rent === "") {
+        const listed = studioRentOf(r.no);
+        if (listed != null) r.rent = listed;
+        else if (r.demo || r.no === "DEMO") r.rent = 10000;
+      }
     }
     if (r.title === "套房" && Array.isArray(r.amenities)) {
       ["機車停車格", "床鋪", "電梯", "飲水機"].forEach(x => { if (!r.amenities.includes(x)) r.amenities.push(x); });
@@ -1645,8 +1648,10 @@ function normalize(data) {
     applyTenantRoster(data);
     data.tenantRosterVer = TENANT_ROSTER_VER;
   }
-  applyFactoryRoster(data);
-  data.factoryRosterVer = FACTORY_ROSTER_VER;
+  if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
+    applyFactoryRoster(data);
+    data.factoryRosterVer = FACTORY_ROSTER_VER;
+  }
   applyStudioSheetPaid(data);
   applyJuly115Books(data);
   ensureDemoTenant(data);
@@ -1680,13 +1685,13 @@ function applyFactoryRoster(data) {
       room = structuredClone(seedRoom);
       data.rooms.push(room);
     } else {
-      room.group = seedRoom.group;
-      room.street = seedRoom.street;
-      room.company = seedRoom.company;
-      room.location = seedRoom.location;
-      room.manager = seedRoom.manager;
-      room.kind = "factory";
-      room.title = "廠房";
+      if (!room.group) room.group = seedRoom.group;
+      if (!room.street) room.street = seedRoom.street;
+      if (!room.company) room.company = seedRoom.company;
+      if (!room.location) room.location = seedRoom.location;
+      if (!room.manager) room.manager = seedRoom.manager;
+      if (!room.kind) room.kind = "factory";
+      if (!room.title) room.title = "廠房";
     }
     const info = FACTORY_TENANT_INFO[room.no];
     if (!info || !info.name) return;
@@ -1695,18 +1700,18 @@ function applyFactoryRoster(data) {
       t = { id: "tf-" + room.no, roomId: room.id, dueDay: 5, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
       data.tenants.push(t);
     }
-    t.name = info.name;
-    t.phone = info.phone || "";
-    t.taxId = info.taxId || "";
-    t.contactName = info.contactName || "";
-    t.leaseStart = info.leaseStart || "";
-    t.leaseEnd = info.leaseEnd || "";
-    t.note = info.note || "";
-    t.rentUntaxed = info.rentUntaxed || 0;
+    if (!t.name) t.name = info.name;
+    if (!t.phone && info.phone) t.phone = info.phone;
+    if (!t.taxId && info.taxId) t.taxId = info.taxId;
+    if (!t.contactName && info.contactName) t.contactName = info.contactName;
+    if (!t.leaseStart && info.leaseStart) t.leaseStart = info.leaseStart;
+    if (!t.leaseEnd && info.leaseEnd) t.leaseEnd = info.leaseEnd;
+    if (!t.note && info.note) t.note = info.note;
+    if (!t.rentUntaxed && info.rentUntaxed) t.rentUntaxed = info.rentUntaxed;
     room.tenantId = t.id;
-    room.rent = info.rent || room.rent;
-    room.rentUntaxed = info.rentUntaxed || 0;
-    if (room.status !== "repair") room.status = "rented";
+    if (room.rent == null || room.rent === "") room.rent = info.rent || 0;
+    if (room.rentUntaxed == null || room.rentUntaxed === "") room.rentUntaxed = info.rentUntaxed || 0;
+    if (room.status !== "repair" && room.status !== "vacant") room.status = "rented";
   });
 }
 function applyTenantRoster(data) {
@@ -1733,21 +1738,24 @@ function applyTenantRoster(data) {
         t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
         data.tenants.push(t);
       }
-      t.name = info.name;
+      if (!t.name) t.name = info.name;
       t.former = false;
-      t.phone = info.phone || "";
-      t.leaseStart = info.leaseStart || "";
-      t.leaseEnd = info.leaseEnd || "";
-      t.bankLast5 = info.bankLast5 || "";
-      t.note = info.shop ? ("店面：" + info.shop) : (t.note || "");
+      if (!t.phone && info.phone) t.phone = info.phone;
+      if (!t.leaseStart && info.leaseStart) t.leaseStart = info.leaseStart;
+      if (!t.leaseEnd && info.leaseEnd) t.leaseEnd = info.leaseEnd;
+      if (!t.bankLast5 && info.bankLast5) t.bankLast5 = info.bankLast5;
+      if (info.shop && !t.note) t.note = "店面：" + info.shop;
       if (isStoreNo(no)) {
         room.kind = "store";
-        room.title = "店面";
-        room.shop = info.shop || room.shop || "";
+        if (!room.title) room.title = "店面";
+        if (!room.shop) room.shop = info.shop || "";
       }
-      room.rent = studioRentOf(no, room.rent);
+      if (room.rent == null || room.rent === "") {
+        const listed = studioRentOf(no);
+        if (listed != null) room.rent = listed;
+      }
       room.tenantId = t.id;
-      if (room.status !== "repair") room.status = "rented";
+      if (room.status !== "repair" && room.status !== "vacant") room.status = "rented";
     } else {
       if (isStoreNo(no)) {
         room.kind = "store";
@@ -1783,8 +1791,6 @@ async function pullCloud() {
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
-      applyTenantRoster(state);
-      applyFactoryRoster(state);
       applyCompany(state);
       ui.cloudOk = true;
       return "local-newer";
@@ -2114,8 +2120,6 @@ async function pushCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
-    applyTenantRoster(state);
-    applyFactoryRoster(state);
     applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
@@ -8755,23 +8759,37 @@ function adminRoomEdit() {
     </form>
   </div>`;
 }
+function formVal(form, n) {
+  if (!form) return "";
+  let el = null;
+  try { el = form.elements && form.elements.namedItem ? form.elements.namedItem(n) : null; } catch {}
+  if (!el) el = form.querySelector('[name="' + n + '"]');
+  if (!el) return "";
+  return String(el.value ?? "");
+}
+function formNum(form, n, fallback) {
+  const s = formVal(form, n).trim().replace(/[^\d.-]/g, "");
+  if (s === "") return fallback;
+  const v = Number(s);
+  return Number.isFinite(v) ? v : fallback;
+}
 function saveRoomEdit(form) {
   const r = state.rooms.find(x => x.id === ui.roomId);
-  if (!r) return;
-  const g = n => form[n] ? form[n].value : "";
-  r.no = g("no") || r.no;
-  r.location = g("location") || r.location || (r.kind === "factory" ? "" : roomAddress(r.no));
+  if (!r || !form) { toast("找不到房間"); return; }
+  const g = n => formVal(form, n);
+  r.no = g("no").trim() || r.no;
+  r.location = g("location");
   r.group = g("group");
   r.street = g("street");
   r.company = g("company");
   r.manager = g("manager");
-  r.title = g("title") || r.title;
+  r.title = g("title").trim() || r.title;
   r.kind = g("kind") || r.kind || "studio";
-  r.rent = Number(g("rent")) || r.rent;
-  r.deposit = Number(g("deposit")) || r.deposit;
+  r.rent = formNum(form, "rent", r.rent);
+  r.deposit = formNum(form, "deposit", r.deposit);
   r.status = g("status") || r.status;
   let t = state.tenants.find(x => x.id === r.tenantId);
-  if (!t && g("name")) {
+  if (!t && g("name").trim()) {
     t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 5 };
     state.tenants.push(t); r.tenantId = t.id;
   }
@@ -8782,10 +8800,10 @@ function saveRoomEdit(form) {
     t.bankLast5 = String(g("bankLast5") || "").trim();
     t.taxId = String(g("taxId") || "").trim();
     t.contactName = String(g("contactName") || "").trim();
-    t.rentUntaxed = Number(g("rentUntaxed")) || 0;
+    t.rentUntaxed = formNum(form, "rentUntaxed", t.rentUntaxed || 0);
     r.rentUntaxed = t.rentUntaxed;
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
-    t.dueDay = Number(g("dueDay")) || t.dueDay || 5;
+    t.dueDay = formNum(form, "dueDay", t.dueDay || 5);
     t.paid = g("paid") === "1"; t.note = g("note");
     t.paidAt = fromDatetimeLocal(g("paidAt"));
     t.paidVia = g("paidVia") || "";
@@ -8793,7 +8811,20 @@ function saveRoomEdit(form) {
     if (!t.paidAt && t.paid) t.paidAt = nowStamp();
     if (!t.paid && !t.paidVia) t.lineNotified = false;
   }
-  save(); toast("已儲存");
+  save();
+  toast("已儲存");
+  ui.keepScroll = true;
+  render();
+}
+function armRoomEditSave() {
+  if (window.__tjRoomSave) return;
+  window.__tjRoomSave = true;
+  document.addEventListener("submit", e => {
+    if (!(e.target && e.target.id === "room-edit-form")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    saveRoomEdit(e.target);
+  }, true);
 }
 
 function tenantByRoomNo(no) {
@@ -11454,6 +11485,7 @@ async function boot() {
   const splashAt = setTimeout(hideSplash, 2200);
   try {
     armCompanySave();
+    armRoomEditSave();
     restoreUi();
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
