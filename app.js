@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-28";
-const APP_EDIT_COUNT = 378;
+const APP_STAMP = "2026-08-31-22-31";
+const APP_EDIT_COUNT = 379;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約後每月租金繳費日固定為1日"] },
+  { ver: APP_STAMP, items: ["手機也可送出工作助手訊息"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2570,64 +2570,80 @@ function pushAiLog(entry) {
   if (ui.aiSession.length > 8) ui.aiSession = ui.aiSession.slice(-8);
   save();
 }
+function aiBoxText() {
+  const box = document.getElementById("ai-q");
+  return String((box && box.value) || ui.aiDraft || "").trim();
+}
 function sendAiQuestion(q) {
   const now = Date.now();
-  if (window.__aiSendAt && now - window.__aiSendAt < 400) return false;
-  const box = document.getElementById("ai-q");
-  const take = () => String(
-    q != null && String(q).trim() ? q : ((box && box.value) || ui.aiDraft || "")
-  ).trim();
-  const run = () => {
-    const box2 = document.getElementById("ai-q");
-    const text = String(
-      q != null && String(q).trim() ? q : ((box2 && box2.value) || (box && box.value) || ui.aiDraft || "")
-    ).trim();
-    if (!text) {
-      toast("請先輸入內容");
-      showToastBanner("請先輸入內容");
-      return false;
-    }
-    window.__aiSendAt = Date.now();
-    try {
-      pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
-      let ans = "";
-      try { ans = warmAi(aiAnswer(text)); } catch { ans = warmAi("先收到了。這題我再整理一次。"); }
-      pushAiLog({ role: "ai", text: ans, at: nowStamp() });
-      ui.aiDraft = "";
-      ui.aiOpen = true;
-      if (box2) box2.value = "";
-      if (box && box !== box2) box.value = "";
-    } catch {
-      toast("送出失敗，請再試一次");
-      showToastBanner("送出失敗，請再試一次");
-      return false;
-    }
-    ui.keepScroll = true;
-    render();
-    return true;
-  };
-  if (q != null && String(q).trim()) return run();
-  if (take()) return run();
-  try { if (box) box.blur(); } catch {}
-  setTimeout(run, 40);
+  if (window.__aiSendAt && now - window.__aiSendAt < 500) return false;
+  const text = String(q != null && String(q).trim() ? q : aiBoxText()).trim();
+  if (!text) {
+    toast("請先輸入內容");
+    showToastBanner("請先輸入內容");
+    return false;
+  }
+  window.__aiSendAt = now;
+  try {
+    pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
+    let ans = "";
+    try { ans = warmAi(aiAnswer(text)); } catch { ans = warmAi("先收到了。這題我再整理一次。"); }
+    pushAiLog({ role: "ai", text: ans, at: nowStamp() });
+    ui.aiDraft = "";
+    ui.aiOpen = true;
+    const box = document.getElementById("ai-q");
+    if (box) box.value = "";
+  } catch {
+    toast("送出失敗，請再試一次");
+    showToastBanner("送出失敗，請再試一次");
+    return false;
+  }
+  ui.keepScroll = true;
+  render();
   return true;
 }
-window.__sendAi = function () { sendAiQuestion(); };
+window.__sendAi = function (v) { sendAiQuestion(v); };
+function wireAiSendBtn() {
+  const btn = document.getElementById("ai-send-btn");
+  if (!btn || btn.dataset.wired === "1") return;
+  btn.dataset.wired = "1";
+  const fire = e => {
+    if (e) {
+      try { e.preventDefault(); e.stopPropagation(); } catch {}
+    }
+    const box = document.getElementById("ai-q");
+    if (box) ui.aiDraft = box.value;
+    sendAiQuestion((box && box.value) || ui.aiDraft);
+  };
+  btn.addEventListener("click", fire);
+  btn.addEventListener("touchend", fire, { passive: false });
+  btn.addEventListener("pointerup", fire);
+}
 function armAiSend() {
-  if (window.__aiSendBound3) return;
-  window.__aiSendBound3 = 1;
+  if (window.__aiSendBound4) return;
+  window.__aiSendBound4 = 1;
   document.addEventListener("click", e => {
     const btn = e.target && e.target.closest && e.target.closest(".ai-send");
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    sendAiQuestion();
+    const box = document.getElementById("ai-q");
+    sendAiQuestion((box && box.value) || ui.aiDraft);
   }, true);
+  document.addEventListener("touchend", e => {
+    const btn = e.target && e.target.closest && e.target.closest(".ai-send");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = document.getElementById("ai-q");
+    sendAiQuestion((box && box.value) || ui.aiDraft);
+  }, { capture: true, passive: false });
   document.addEventListener("submit", e => {
     if (!(e.target && e.target.id === "ai-form")) return;
     e.preventDefault();
     e.stopPropagation();
-    sendAiQuestion();
+    const box = document.getElementById("ai-q");
+    sendAiQuestion((box && box.value) || ui.aiDraft);
   }, true);
 }
 function stripDevLogsFromState() {
@@ -8349,7 +8365,7 @@ function errandBlockHtml() {
 }
 function ensureErrandBall() {
   const old = document.getElementById("errand-float");
-  if (ui.role !== "admin" || errandMode() !== "ball") {
+  if (ui.role !== "admin" || errandMode() !== "ball" || ui.page === "ai") {
     if (old) old.remove();
     return;
   }
@@ -8547,7 +8563,7 @@ function adminAi() {
       </div>
           <form id="ai-form" autocomplete="off">
             <textarea id="ai-q" name="q" rows="2" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" enterkeyhint="send">${escapeHtml(ui.aiDraft || "")}</textarea>
-            <button class="btn-navy ai-send" id="ai-send-btn" type="button">送出</button>
+            <button class="btn-navy ai-send" id="ai-send-btn" type="submit">送出</button>
           </form>
     </div>`
   };
@@ -12767,8 +12783,9 @@ function bindAdminAi() {
     };
   });
   const ask = q => sendAiQuestion(q);
-  const sendNow = () => sendAiQuestion();
+  const sendNow = () => sendAiQuestion(aiBoxText());
   armAiSend();
+  wireAiSendBtn();
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
   if (aiFold && aiCard) aiFold.onclick = e => {

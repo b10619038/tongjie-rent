@@ -2007,13 +2007,16 @@ img.avatar { object-fit: cover; display: block; }
   overflow: hidden;
 }
 #ai-form {
-  position: relative;
-  z-index: 30;
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
   pointer-events: auto !important;
   display: grid !important;
   gap: 8px;
   margin-top: 10px;
-  margin-bottom: 72px;
+  margin-bottom: 12px;
+  padding: 8px 0 10px;
+  background: var(--card, #fff);
   visibility: visible !important;
 }
 #ai-form, #ai-form * {
