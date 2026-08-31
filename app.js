@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-14";
-const APP_EDIT_COUNT = 386;
+const APP_STAMP = "2026-08-31-23-20";
+const APP_EDIT_COUNT = 387;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手改回輸入框左邊、綠色送出在右邊"] },
+  { ver: APP_STAMP, items: ["工作助手改成和 LINE 一樣，輸入在左、綠色送出在右、固定在畫面底下"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2629,7 +2629,43 @@ window.__aiTap = function (e) {
   }
   return sendAiQuestion(text);
 };
-function dockAiForm() {}
+function dockAiForm() {
+  const dock = document.getElementById("ai-dock");
+  const sc = document.querySelector(".admin-scroll");
+  const on = ui.role === "admin" && ui.page === "ai";
+  try { document.documentElement.classList.toggle("ai-page", on); } catch {}
+  if (sc) sc.classList.toggle("ai-docked", on);
+  if (!dock) return;
+  const forms = document.querySelectorAll("#ai-form");
+  const form = forms.length ? forms[forms.length - 1] : null;
+  forms.forEach(f => { if (f !== form) f.remove(); });
+  if (on && form) {
+    dock.appendChild(form);
+    dock.classList.add("has-form");
+    pinAiDock();
+  } else {
+    dock.classList.remove("has-form");
+    dock.innerHTML = "";
+    dock.style.bottom = "";
+  }
+}
+function pinAiDock() {
+  const dock = document.getElementById("ai-dock");
+  if (!dock || !dock.classList.contains("has-form")) return;
+  const vv = window.visualViewport;
+  const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+  dock.style.bottom = kb + "px";
+}
+function armAiDockPin() {
+  if (window.__aiDockPin) return;
+  window.__aiDockPin = 1;
+  const vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener("resize", pinAiDock);
+    vv.addEventListener("scroll", pinAiDock);
+  }
+  window.addEventListener("resize", pinAiDock);
+}
 function bindAiSendDirect() {
   const btn = document.getElementById("ai-send-btn");
   const box = document.getElementById("ai-q");
@@ -7145,6 +7181,8 @@ function paintApp() {
         t.style.transform = "";
       });
       bindTabPill();
+      const dock0 = document.getElementById("ai-dock");
+      if (dock0) { dock0.classList.remove("has-form"); dock0.innerHTML = ""; }
       sc.innerHTML = `<div class="admin-static">${adminBody()}</div>`;
       safeBind(() => {
         bindAdmin();
@@ -7971,7 +8009,8 @@ function adminView() {
       }).join("")}
       </div>
     </div>
-    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
+    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>
+    <div id="ai-dock"></div>`;
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料" };
@@ -13038,6 +13077,7 @@ function bindAdminAi() {
   });
   const ask = q => sendAiQuestion(q);
   const sendNow = () => sendAiQuestion(aiBoxText());
+  armAiDockPin();
   dockAiForm();
   bindAiSendDirect();
   const aiCard = document.getElementById("ai-card");
