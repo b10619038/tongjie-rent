@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-25";
-const APP_EDIT_COUNT = 388;
+const APP_STAMP = "2026-08-31-23-27";
+const APP_EDIT_COUNT = 389;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手對話恢復成昨晚可運作的樣子，其他功能不變"] },
+  { ver: APP_STAMP, items: ["送出後輸入會清空，下一句不再疊在上一句上面"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2585,20 +2585,30 @@ function aiBoxText() {
   return String((box && box.value) || ui.aiDraft || "").trim();
 }
 function sendAiQuestion(q) {
-  const text = String(q != null && String(q).trim() ? q : aiBoxText()).trim();
+  const box = document.getElementById("ai-q");
+  const text = String(q != null && String(q).trim() ? q : ((box && box.value) || ui.aiDraft || "")).trim();
   if (!text) return false;
+  ui.aiDraft = "";
+  if (box) {
+    box.value = "";
+    try { box.blur(); } catch {}
+  }
   try {
     pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
     let ans = "";
     try { ans = warmAi(aiAnswer(text)); } catch { ans = warmAi("先收到了。這題我再整理一次。"); }
     pushAiLog({ role: "ai", text: ans, at: nowStamp() });
-    ui.aiDraft = "";
     ui.aiOpen = true;
-    const box = document.getElementById("ai-q");
-    if (box) box.value = "";
   } catch {}
   ui.keepScroll = true;
   render();
+  requestAnimationFrame(() => {
+    const pane = document.getElementById("ai-log");
+    if (pane) pane.scrollTop = pane.scrollHeight;
+    const next = document.getElementById("ai-q");
+    if (next) next.value = "";
+    ui.aiDraft = "";
+  });
   return true;
 }
 function stripDevLogsFromState() {
@@ -8809,7 +8819,7 @@ function parseClockAsk(text) {
     if ((ampm[1] === "下午" || ampm[1] === "晚上" || ampm[1] === "傍晚") && h < 12) h += 12;
     if (ampm[1] === "中午" && h < 12) h = 12;
   } else {
-    const t24 = s.match(/(?:^|[^\d])(\d{1,2})[:：](\d{2})/);
+    const t24 = s.match(/(?:^|[^\d])(\d{1,2})[:：;；.](\d{2})/);
     if (t24) { h = Number(t24[1]); m = Number(t24[2]); }
     else {
       const dian = s.match(/(\d{1,2})\s*[點時]/);
@@ -8868,7 +8878,7 @@ function cleanMemoAsk(text) {
     .replace(/(20\d{2})[-/年.](\d{1,2})[-/月.](\d{1,2})\s*日?/g, "")
     .replace(/(\d{1,2})\s*[月/\.]\s*(\d{1,2})\s*日?/g, "")
     .replace(/(早上|上午|中午|下午|晚上|傍晚)\s*\d{1,2}(\s*[點時:：]\d{1,2})?/g, "")
-    .replace(/\d{1,2}[:：]\d{2}/g, "")
+    .replace(/\d{1,2}[:：;；.]\d{2}/g, "")
     .replace(/\d{1,2}\s*[點時]/g, "")
     .replace(/嗎[？?]?$/g, "")
     .replace(/[，。,.!！？?\s]+/g, " ")
@@ -12982,6 +12992,9 @@ function bindAdminAi() {
   const ask = q => sendAiQuestion(q);
   const sendNow = () => {
     const box = document.getElementById("ai-q");
+    if (box) {
+      try { box.dispatchEvent(new Event("compositionend")); } catch {}
+    }
     ask(box && box.value);
   };
   const aiCard = document.getElementById("ai-card");
