@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-49";
-const APP_EDIT_COUNT = 382;
+const APP_STAMP = "2026-08-31-22-53";
+const APP_EDIT_COUNT = 383;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手改回綠色送出，手機按下立刻送出"] },
+  { ver: APP_STAMP, items: ["套房合約依房號套入，新客舊客都可下載列印"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1479,6 +1479,16 @@ function roomAddress(no) {
   const s = String(no).replace(/\D/g, "");
   if (s.length < 4) return "高雄市鳳山區文龍東路";
   return `高雄市鳳山區文龍東路${s.slice(0, 2)}號${s.charAt(2)}樓-${s.charAt(3)}室`;
+}
+function contractDoorplate(no) {
+  const s = String(no || "").replace(/\D/g, "");
+  if (s.length < 4) return roomAddress(no);
+  return `高雄市鳳山區文龍東路${s.slice(0, 2)}號（${s.charAt(2)}樓之${s.charAt(3)}室）`;
+}
+function contractRoomPart(no) {
+  const s = String(no || "").replace(/\D/g, "");
+  if (s.length < 4) return String(no || "");
+  return `${s.charAt(2)}樓之${s.charAt(3)}室`;
 }
 const NEARBY_AREAS = {
   wenlong: {
@@ -6348,6 +6358,9 @@ function addIncomingTenant(roomId, fields) {
     leaseStart: fields.leaseStart || "",
     leaseEnd: fields.leaseEnd || "",
     loginPass: String(fields.loginPass || "").trim(),
+    idNo: String(fields.idNo || "").trim(),
+    emergencyName: String(fields.emergencyName || "").trim(),
+    emergencyPhone: String(fields.emergencyPhone || "").trim(),
     paid: false,
     dueDay: 1,
     edited: true,
@@ -6429,11 +6442,15 @@ function handoverBoxHtml(t, r) {
       <div class="label">新客（交接中）</div>
       ${teField("姓名", "name", inc.id, r.id, inc.name || "")}
       ${teField("電話", "phone", inc.id, r.id, inc.phone || "", "tel", "手機號碼")}
+      ${teField("身分證", "idNo", inc.id, r.id, inc.idNo || "")}
+      ${teField("緊急聯絡人", "emergencyName", inc.id, r.id, inc.emergencyName || "")}
+      ${teField("緊急電話", "emergencyPhone", inc.id, r.id, inc.emergencyPhone || "", "tel")}
       ${teField("起租日", "leaseStart", inc.id, r.id, inc.leaseStart || "", "date")}
       ${teField("到期日", "leaseEnd", inc.id, r.id, inc.leaseEnd || "", "date")}
       ${teField("租金", "rent", inc.id, r.id, inc.rent != null ? inc.rent : (r.rent || ""), "number", "0")}
       ${teField("押金", "deposit", inc.id, r.id, inc.deposit != null ? inc.deposit : "", "number", "空白＝兩個月")}
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
+      <button type="button" class="btn-navy" data-print-lease="${inc.id}">下載合約</button>
       <div class="small">舊客辦完退租後，新客會自動接手這間，租金押金一併套用。</div>
     </div>`;
   }
@@ -6444,6 +6461,9 @@ function handoverBoxHtml(t, r) {
     <div class="small">舊客還在也能先登記。完成退租後自動接手。</div>
     <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
     <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
+    <label class="field"><span>身分證</span><input data-hf="idno" type="text" /></label>
+    <label class="field"><span>緊急聯絡人</span><input data-hf="emname" type="text" /></label>
+    <label class="field"><span>緊急電話</span><input data-hf="emphone" type="tel" /></label>
     <label class="field"><span>起租日</span><input data-hf="start" type="date" /></label>
     <label class="field"><span>到期日</span><input data-hf="end" type="date" /></label>
     <label class="field"><span>租金</span><input data-hf="rent" type="number" inputmode="numeric" placeholder="${r.rent || ""}" /></label>
@@ -6532,6 +6552,194 @@ function termLeasePaperHtml(t, r, co) {
     <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
     <p class="term-hint">列印後於簽收欄與蓋章框蓋印，系統不套印印章。</p>
   </div>`;
+}
+function leaseCk(on) {
+  return `<span class="lease-ck${on ? " on" : ""}">${on ? "■" : "□"}</span>`;
+}
+function leaseU(v, cls) {
+  const s = v == null || v === "" ? "　" : String(v);
+  return `<span class="lease-u${cls ? " " + cls : ""}">${escapeHtml(s)}</span>`;
+}
+function studioLeasePaperHtml(t, r) {
+  const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
+  const start = rocPartsOf((t && t.leaseStart) || "");
+  const end = rocPartsOf((t && t.leaseEnd) || "");
+  const sign = rocPartsOf(ymdOf(nowStamp()));
+  const rent = Number((t && t.rent) || (r && r.rent) || 0) || 0;
+  const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (rent * 2);
+  const door = contractDoorplate(r && r.no);
+  const part = contractRoomPart(r && r.no);
+  const name = (t && t.name) || "";
+  const idNo = (t && t.idNo) || "";
+  const phone = (t && t.phone) || "";
+  const emName = (t && t.emergencyName) || "";
+  const emPhone = (t && t.emergencyPhone) || "";
+  const due = rentDueDay(t);
+  const ck = leaseCk;
+  const u = leaseU;
+  return `<div class="studio-lease-paper" id="studio-lease-paper">
+    <section class="lease-pg cover">
+      <div class="lease-cover-mid">
+        <h3>房屋租賃契約書</h3>
+        <p class="lease-cover-addr">${escapeHtml(door)}</p>
+      </div>
+      <div class="lease-cover-dates">
+        <p>自中華民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日</p>
+        <p>至中華民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日</p>
+      </div>
+      <div class="lease-pgno">1</div>
+    </section>
+    <section class="lease-pg">
+      <h4>房屋租賃契約書</h4>
+      <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}</p>
+      <p>承租人　${u(name, "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
+      <p class="lease-art">第一條　契約審閱期</p>
+      <p>本契約自當日經出租人與承租人審閱無誤。</p>
+      <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+      <p>承租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+      <p class="lease-art">第二條　房屋租賃標的</p>
+      <p>（一）租賃標示：</p>
+      <p>1、門牌：${u(door, "wide")}</p>
+      <p>2、車位：${ck(false)}有（現況停車空間在本標的物地下一層）${ck(true)}無。</p>
+      <p>3、${ck(false)}有${ck(true)}無設定他項權利，若有，權利種類：最高限額抵押權。</p>
+      <p>4、${ck(false)}有${ck(true)}無查封登記。</p>
+      <p>（二）租賃範圍：</p>
+      <p>1、房屋${ck(false)}全部${ck(true)}部分：${u(part)}</p>
+      <p class="indent">（1）車位種類及編號：地下　　層${ck(false)}平面式停車位${ck(false)}機械式停車位，編號第　　號。</p>
+      <p class="indent">（2）機車停車位：一樓空間對號停車。</p>
+      <p class="indent">（3）使用時間：${ck(true)}全日${ck(false)}日間${ck(false)}夜間${ck(false)}其他。</p>
+      <p>3、租賃附屬設備：${ck(true)}有，依附件${ck(false)}無附屬設備。</p>
+      <p>4、其他：${u("套房宿舍使用")}</p>
+      <p class="lease-art">第三條　租賃期間</p>
+      <p>租賃期間自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止。</p>
+      <div class="lease-pgno">2</div>
+    </section>
+    <section class="lease-pg">
+      <p class="lease-art">第四條　租金約定及支付</p>
+      <p>承租人每月租金為新臺幣（下同）${u(ntd(rent) || "0")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>
+      <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
+      <p>金融機構：${u("兆豐銀行")}，戶名：${u(firm.name || "統潔開發有限公司", "wide")}</p>
+      <p>帳號：${u("040-09-03968-6")}，${ck(false)}其他：　　。</p>
+      <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
+      <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(ntd(deposit) || "0")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
+      <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
+      <p class="lease-art">第六條　租賃期間相關費用之支付</p>
+      <p>租賃期間，使用房屋所生之相關費用如下：</p>
+      <p>（一）管理費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}無。</p>
+      <p>（二）水費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每人每月 NT$ 150，一年優惠 NT$ 1,800。</p>
+      <div class="lease-pgno">3</div>
+    </section>
+    <section class="lease-pg">
+      <p>（三）電費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每度　　元整。</p>
+      <p>（四）瓦斯費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}其他：無。</p>
+      <p>（五）網路費：${ck(true)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}其他：　　。</p>
+      <p>（六）其他費用及其支付方式：　　。</p>
+      <p class="lease-art">第七條　稅費負擔之約定</p>
+      <p>本租賃契約有關稅費、代辦費，依下列約定辦理：</p>
+      <p>（一）租賃住宅之房屋稅、地價稅由出租人負擔。</p>
+      <p>（二）出租人收取現金者，其銀錢收據應貼用之印花稅票由出租人負擔。</p>
+      <p>（三）簽約代辦費　無　元整。${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}由租賃雙方平均負擔。</p>
+      <p>（四）公證費　無　元整。${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}由租賃雙方平均負擔。</p>
+      <div class="lease-pgno">4</div>
+    </section>
+    <section class="lease-pg">
+      <p>（五）公證代辦費　無　元整。</p>
+      <p>（六）其他稅費及其支付方式：　　。</p>
+      <p class="lease-art">第八條　使用租賃住宅之限制</p>
+      <p>（一）本租賃標的係宿舍使用，承租人得變更用途。</p>
+      <p>（二）承租人同意遵守住戶規約，不得違法使用、存放有爆炸性或易燃性物品，影響公共安全、公共衛生或居住安寧。</p>
+      <p>（三）出租人${ck(false)}同意${ck(true)}不同意承租人將本租賃標的之全部或一部分轉租、出借或以其他方式供他人使用，或將租賃權轉讓於他人。</p>
+      <p>（四）前項出租人同意轉租者，承租人應提示出租人同意轉租之證明文件。</p>
+      <p class="lease-art">第九條　修繕及改裝</p>
+      <p>（一）房屋或附屬設備損壞而有修繕之必要時，應由出租人負責修繕。但租賃雙方另有約定、習慣或因可歸責於承租人之事由者，不在此限。</p>
+      <p>（二）前項由出租人負責修繕者，如出租人未於承租人所定相當期限內修繕時，承租人得自行修繕，並請求出租人償還其費用或於第四條約定之租金中扣除。</p>
+      <p>（三）房屋有改裝設施之必要，承租人應經出租人同意，始得依相關法令自行裝設，但不得損害原有建築之結構安全。</p>
+      <p>（四）前項情形承租人返還租賃住宅時，${ck(true)}應負責回復原狀${ck(false)}現況返還${ck(false)}其他。</p>
+      <div class="lease-pgno">5</div>
+    </section>
+    <section class="lease-pg">
+      <p class="lease-art">第十條　承租人之責任</p>
+      <p>承租人應以善良管理人之注意義務保管或使用房屋，如違反此項義務，致房屋毀損或滅失者，應負損害賠償責任。但依約定之方法或依房屋之性質使用、收益，致房屋有變更、毀損或滅失者，不在此限。</p>
+      <p class="lease-art">第十一條　房屋部分滅失</p>
+      <p>租賃關係存續中，因不可歸責於承租人之事由，致房屋之一部滅失者，承租人得按滅失之部分，請求減少租金。</p>
+      <p class="lease-art">第十二條　提前終止租約</p>
+      <p>（一）本契約於期限屆滿前，租賃雙方${ck(false)}得${ck(true)}不得終止租約。</p>
+      <p>（二）依約定得終止租約者，租賃之一方應於${ck(true)}一個月前${ck(false)}　　個月前通知他方。一方未為先期通知而逕行終止租約者，應賠償他方　壹　個月租金額之違約金。</p>
+      <p>（三）前項承租人應賠償之違約金得由第五條之押金中扣抵。</p>
+      <p>（四）租期屆滿前，依第二項終止租約者，出租人已預收之租金應返還予承租人。</p>
+      <p class="lease-art">第十三條　房屋之返還</p>
+      <p>（一）租期屆滿或租賃契約終止時，承租人應立即將房屋返還出租人並遷出戶籍或其他登記。</p>
+      <p>（二）前項房屋之返還，應由租賃雙方共同完成屋況及附屬設備之點交手續。租賃之一方未會同點交，經他方定相當期限催告仍不會同者，視為完成點交。</p>
+      <p>（三）承租人未依第一項規定返還房屋時，出租人得向承租人請求未返還房屋期間之相當月租金額外，並得請求相當月租金額一倍（未足一個月者，以日租金折算）之違約金至返還為止。</p>
+      <p>（四）前項金額及承租人未繳清之相關費用，出租人得由第五條之擔保金（押金）中扣抵。</p>
+      <p class="lease-art">第十四條　房屋所有權之讓與</p>
+      <p>（一）出租人於房屋交付後，承租人占有中，縱將其所有權讓與第三人，本契約對於受讓人仍繼續存在。</p>
+      <p>（二）前項情形，出租人應移交擔保金（押金）及已預收之租金與受讓人，並以書面通知承租人。</p>
+      <div class="lease-pgno">6</div>
+    </section>
+    <section class="lease-pg">
+      <p>（三）本契約如未經公證，其期限逾五年或未定期限者，不適用第二項之約定。</p>
+      <p class="lease-art">第十五條　出租人提前終止租約</p>
+      <p>承租人有下列情形之一者，出租人得提前終止租約，且承租人不得要求任何賠償：</p>
+      <p>（一）承租人遲付租金之總額達二個月之金額，並經出租人定相當期限催告，承租人仍不為支付。</p>
+      <p>（二）違反第八條規定而為使用。</p>
+      <p>（三）違反第九條第三項規定而為使用。</p>
+      <p class="lease-art">第十六條　承租人提前終止租約</p>
+      <p>租賃期間有下列情形之一，致難以繼續居住者，承租人得提前終止租約，出租人不得要求任何賠償：</p>
+      <p>（一）房屋損害而有修繕之必要時，其應由出租人負責修繕者，經承租人定相當期限催告，仍未修繕完畢。</p>
+      <p>（二）有第十一條規定之情形，減少租金無法議定，或房屋存餘部分不能達租賃之目的。</p>
+      <p>（三）房屋有危及承租人或其同居人之安全或健康之瑕疵時。</p>
+      <p class="lease-art">第十七條　通知送達及寄送</p>
+      <p>除本契約另有約定外，租賃雙方相互間之通知，以郵寄為之者，應以本契約所記載之地址為準；並得以${ck(true)}電子郵件${ck(true)}簡訊${ck(true)}通訊軟體（例如 Line、WhatsApp 等文字顯示）${ck(false)}其他　　方式為之；如因地址變更未通知他方或因相關原因導致通知無法到達他方時（包括拒收），以他方第一次郵遞或通知之日期推定為到達日。</p>
+      <p class="lease-art">第十八條　其他約定</p>
+      <p>本契約租賃雙方${ck(false)}同意辦理公證${ck(true)}不同意辦理公證。</p>
+      <p>下列事項應逕受強制執行：</p>
+      <p>${ck(true)}（一）承租人如於租期屆滿後不返還租賃住宅。</p>
+      <p>${ck(true)}（二）承租人未依約給付之欠繳租金、費用及出租人或租賃標的所有權人代繳之違約時應支付之金額。</p>
+      <div class="lease-pgno">7</div>
+    </section>
+    <section class="lease-pg">
+      <p>${ck(false)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
+      <p>${ck(false)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
+      <p class="lease-art">第十九條　契約及其相關附件效力</p>
+      <p>（一）本契約自簽約日起生效，租賃雙方各執一份契約正本。</p>
+      <p>（二）本契約廣告及相關附件視為本契約之一部分。</p>
+      <p>（三）本契約所定之權利義務對租賃雙方之契約繼受人均有效力。</p>
+      <p>（四）特別約定：1.屋內禁止抽菸、拜拜。</p>
+      <div class="lease-sign-block">
+        <p>出租人：${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span></p>
+        <p>代表人：趙正賢</p>
+        <p>聯絡電話：${escapeHtml(firm.phone || "07-3414196")}</p>
+      </div>
+      <div class="lease-sign-block">
+        <p>承租人：${u(name, "wide")}<span class="term-chop" title="蓋章"></span></p>
+        <p>身分證字號：${u(idNo)}</p>
+        <p>聯絡電話：${u(phone)}</p>
+        <p>緊急聯絡人：${u(emName)}</p>
+        <p>電話：${u(emPhone)}</p>
+      </div>
+      <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
+      <p class="term-hint">列印後蓋章處留白，請自行蓋印。</p>
+      <div class="lease-pgno">8</div>
+    </section>
+  </div>`;
+}
+function printStudioLease(t, r) {
+  if (!t || !r) { toast("找不到租客"); return; }
+  const old = document.getElementById("studio-lease-paper");
+  if (old) old.remove();
+  const hold = document.createElement("div");
+  hold.innerHTML = studioLeasePaperHtml(t, r);
+  const paper = hold.firstElementChild;
+  document.body.appendChild(paper);
+  document.body.classList.add("print-lease");
+  const after = () => {
+    document.body.classList.remove("print-lease");
+    if (paper && paper.parentNode) paper.remove();
+  };
+  window.addEventListener("afterprint", after, { once: true });
+  window.print();
+  setTimeout(after, 1500);
 }
 function checkoutFormHtml() {
   const id = ui.checkoutTenantId;
@@ -7621,6 +7829,7 @@ function leaseView() {
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill unpaid">尚未簽約</span></div>
             <p class="small" style="margin-top:8px">還沒有紙本或電子合約。點下面可閱讀條款並在手機上簽名。</p>
             <button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:12px">線上簽署電子合約</button>
+            ${r && r.kind !== "factory" && !isStoreNo(r.no) ? `<button type="button" class="ghost" data-print-lease="${t.id}" style="margin-top:8px">下載紙本合約</button>` : ""}
           </div>`;
         }
         if (st === "signed") {
@@ -10015,6 +10224,7 @@ function tenantEntryCardHtml(kind, entry) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       ${teField("電話", "phone", t.id, r && r.id, t.phone || "", "tel", "手機號碼")}
+      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
       ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
       ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
       ${t.bankLast5 ? teField("帳戶後五碼", "bankLast5", t.id, r && r.id, t.bankLast5 || "") : ""}
@@ -10045,6 +10255,7 @@ function tenantEntryCardHtml(kind, entry) {
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>
+      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${label}下載合約</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>
       ${handoverBoxHtml(tt, rr)}`;
       }).join("")}`;
@@ -10069,6 +10280,9 @@ function applyLiveTenantEdit(el) {
   if (r) r.edited = true;
   if (key === "name" && t) t.name = val;
   else if (key === "phone" && t) t.phone = val;
+  else if (key === "idNo" && t) t.idNo = val;
+  else if (key === "emergencyName" && t) t.emergencyName = val;
+  else if (key === "emergencyPhone" && t) t.emergencyPhone = val;
   else if (key === "loginPass" && t) t.loginPass = val;
   else if (key === "contactName" && t) t.contactName = val;
   else if (key === "taxId" && t) t.taxId = val;
@@ -10139,7 +10353,8 @@ function bindHandover() {
       if (!g("name")) { toast("請填新客姓名"); return; }
       const t = addIncomingTenant(btn.dataset.handoverSave, {
         name: g("name"), phone: g("phone"), leaseStart: g("start"), leaseEnd: g("end"),
-        rent: g("rent"), deposit: g("deposit")
+        rent: g("rent"), deposit: g("deposit"),
+        idNo: g("idno"), emergencyName: g("emname"), emergencyPhone: g("emphone")
       });
       if (!t) { toast("登記失敗"); return; }
       if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverSave] = false;
@@ -10149,6 +10364,16 @@ function bindHandover() {
       if (old) { if (!ui.tenantOpen) ui.tenantOpen = {}; ui.tenantOpen[old.id] = true; ui.tenantOpen["fg-" + (String(old.taxId || "").trim() || String(old.name || "").trim() || old.id)] = true; }
       save();
       render();
+    };
+  });
+  document.querySelectorAll("[data-print-lease]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x.id === btn.dataset.printLease);
+      const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+      if (!t || !r) { toast("找不到租客"); return; }
+      printStudioLease(t, r);
     };
   });
   document.querySelectorAll("[data-handover-cancel]").forEach(btn => {
