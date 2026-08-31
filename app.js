@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-50";
-const APP_EDIT_COUNT = 359;
+const APP_STAMP = "2026-08-31-21-55";
+const APP_EDIT_COUNT = 360;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["辦理退租可選正常退租或中途退租，中途開終止契約"] },
+  { ver: APP_STAMP, items: ["進出帳可刪除，1240／7651／1976 各裝置同一份帳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1831,6 +1831,8 @@ function normalize(data) {
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
+  if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
+  if (!Array.isArray(data.ledgerGone)) data.ledgerGone = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
   if (!Array.isArray(data.repairs)) data.repairs = [];
   data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
@@ -2121,11 +2123,13 @@ function slimLedgerItem(x) {
 function persistLedger(data) {
   if (!data) return;
   const cur = loadLedgerBackup() || {};
+  const gone = unionGone(cur.ledgerGone, data.ledgerGone);
   const merged = {
-    books: unionById(cur.books, data.books).map(slimLedgerItem),
-    errands: unionById(cur.errands, data.errands).map(slimLedgerItem),
-    bankSlips: unionById(cur.bankSlips, data.bankSlips).map(slimLedgerItem),
-    accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {})
+    books: dropGone(unionById(cur.books, data.books), gone).map(slimLedgerItem),
+    errands: dropGone(unionById(cur.errands, data.errands), gone).map(slimLedgerItem),
+    bankSlips: dropGone(unionById(cur.bankSlips, data.bankSlips), gone).map(slimLedgerItem),
+    accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {}),
+    ledgerGone: gone
   };
   try { localStorage.setItem(LEDGER_KEY, JSON.stringify(merged)); } catch {}
   try {
@@ -2140,7 +2144,11 @@ function persistLedger(data) {
       } catch {}
     };
   } catch {}
-  mergeLedgerInto(data, merged);
+  data.books = merged.books;
+  data.errands = merged.errands;
+  data.bankSlips = merged.bankSlips;
+  data.accountOpenings = merged.accountOpenings;
+  data.ledgerGone = gone;
 }
 function loadLedgerBackup() {
   try {
@@ -2179,14 +2187,31 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
+function unionGone(a, b) {
+  return [...new Set([].concat(a || [], b || []).map(x => String(x || "")).filter(Boolean))];
+}
+function dropGone(list, gone) {
+  const g = new Set((gone || []).map(String));
+  return (list || []).filter(x => x && x.id && !g.has(String(x.id)));
+}
+function markLedgerGone(ids) {
+  state.ledgerGone = unionGone(state.ledgerGone, ids);
+  state.books = dropGone(state.books, state.ledgerGone);
+  state.errands = dropGone(state.errands, state.ledgerGone);
+  state.bankSlips = dropGone(state.bankSlips, state.ledgerGone);
+}
 function mergeLedgerInto(target, other) {
   if (!target || !other) return;
+  target.ledgerGone = unionGone(target.ledgerGone, other.ledgerGone);
   if (Array.isArray(other.books) && other.books.length) target.books = unionById(target.books, other.books);
   if (Array.isArray(other.errands) && other.errands.length) target.errands = unionById(target.errands, other.errands);
   if (Array.isArray(other.bankSlips) && other.bankSlips.length) target.bankSlips = unionById(target.bankSlips, other.bankSlips);
   if (other.accountOpenings && typeof other.accountOpenings === "object") {
     target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
   }
+  target.books = dropGone(target.books, target.ledgerGone);
+  target.errands = dropGone(target.errands, target.ledgerGone);
+  target.bankSlips = dropGone(target.bankSlips, target.ledgerGone);
 }
 async function pullCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -2231,8 +2256,9 @@ async function pullCloud() {
     const mineCheckouts = (state.checkouts && state.checkouts.length) ? state.checkouts : null;
     const mineErrands = (state.errands && state.errands.length) ? state.errands : null;
     const mineSlips = (state.bankSlips && state.bankSlips.length) ? state.bankSlips : null;
+    const mineGone = (state.ledgerGone && state.ledgerGone.length) ? state.ledgerGone : null;
     state = normalize(data);
-    mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen });
+    mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen, ledgerGone: mineGone });
     if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
     if (mineOpen) state.accountOpenings = Object.assign({}, mineOpen, state.accountOpenings || {});
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
@@ -2584,63 +2610,101 @@ function factoryNamedCount(data) {
 }
 async function pushCloud() {
   if (isDevPreview()) return;
-  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : 0;
   try {
     applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
     state.updatedAt = Date.now();
-    const payload = Object.assign({}, state, {
-      company: state.company,
-      aiMemos: (state.aiMemos || []).filter(m => m && !isDevMemo(m)),
-      devMemos: Array.isArray(state.devMemos) ? state.devMemos : [],
-      devLogs: Array.isArray(state.devLogs) ? state.devLogs : [],
-      aiLogs: (state.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
-    });
+    let remote = null;
     try {
-      const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
-      if (cur.ok) {
-        const remote = await cur.json();
-        if (remote) {
-          payload.devMemos = memoOwner() === "1240"
-            ? unionMemos(remote.devMemos, payload.devMemos)
-            : ((remote.devMemos && remote.devMemos.length) ? remote.devMemos : payload.devMemos);
-          payload.devLogs = memoOwner() === "1240"
-            ? unionLogs(remote.devLogs, payload.devLogs, 80)
-            : ((remote.devLogs && remote.devLogs.length) ? remote.devLogs : payload.devLogs);
-          payload.aiLogs = unionLogs(
-            (remote.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
-            payload.aiLogs,
-            80
-          );
-          payload.books = unionById(remote.books, payload.books);
-          payload.errands = unionById(remote.errands, payload.errands);
-          payload.bankSlips = unionById(remote.bankSlips, payload.bankSlips);
-          if (remote.accountOpenings) {
-            payload.accountOpenings = Object.assign({}, remote.accountOpenings, payload.accountOpenings || {});
-          }
-          payload.booksImportVer = payload.booksImportVer || remote.booksImportVer;
-          payload.docsImportVer = payload.docsImportVer || remote.docsImportVer;
-        }
-      }
+      const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+      if (cur.ok) remote = await cur.json();
     } catch {}
-    if (!payload.books) payload.books = [];
-    if (!payload.accountOpenings) payload.accountOpenings = {};
+    const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone);
+    const payload = Object.assign({}, remote || {}, state, {
+      updatedAt: state.updatedAt,
+      company: state.company,
+      ledgerGone: gone,
+      books: dropGone(unionById(remote && remote.books, state.books), gone),
+      errands: dropGone(unionById(remote && remote.errands, state.errands), gone),
+      bankSlips: dropGone(unionById(remote && remote.bankSlips, state.bankSlips), gone),
+      checkouts: unionById(remote && remote.checkouts, state.checkouts),
+      accountOpenings: Object.assign({}, (remote && remote.accountOpenings) || {}, state.accountOpenings || {}),
+      aiMemos: (state.aiMemos || []).filter(m => m && !isDevMemo(m)),
+      devMemos: memoOwner() === "1240"
+        ? unionMemos(remote && remote.devMemos, state.devMemos)
+        : ((remote && remote.devMemos && remote.devMemos.length) ? remote.devMemos : (state.devMemos || [])),
+      devLogs: memoOwner() === "1240"
+        ? unionLogs(remote && remote.devLogs, state.devLogs, 80)
+        : ((remote && remote.devLogs && remote.devLogs.length) ? remote.devLogs : (state.devLogs || [])),
+      aiLogs: unionLogs(
+        ((remote && remote.aiLogs) || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
+        (state.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
+        80
+      ),
+      booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
+      docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
+    });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
-    payload.books = (payload.books || []).map(slimLedgerItem);
-    payload.errands = (payload.errands || []).map(slimLedgerItem);
-    payload.bankSlips = (payload.bankSlips || []).map(slimLedgerItem);
-    const res = await fetch(DATA_API, {
+    state.ledgerGone = payload.ledgerGone;
+    state.books = payload.books;
+    state.errands = payload.errands;
+    state.bankSlips = payload.bankSlips;
+    if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
+    stripCloudMedia(payload);
+    const body = JSON.stringify(payload);
+    const put = async blob => fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: ctrl ? ctrl.signal : undefined
+      body: blob
     });
-    ui.cloudOk = res.ok;
+    let res = await put(body);
+    if (!res.ok && remote) {
+      const slim = Object.assign({}, remote, {
+        updatedAt: Date.now(),
+        books: payload.books,
+        errands: payload.errands,
+        bankSlips: payload.bankSlips,
+        ledgerGone: payload.ledgerGone,
+        accountOpenings: payload.accountOpenings,
+        checkouts: payload.checkouts,
+        aiMemos: payload.aiMemos,
+        devMemos: payload.devMemos,
+        devLogs: payload.devLogs,
+        aiLogs: payload.aiLogs,
+        tenants: payload.tenants,
+        repairs: payload.repairs,
+        company: payload.company
+      });
+      stripCloudMedia(slim);
+      res = await put(JSON.stringify(slim));
+    }
+    ui.cloudOk = !!(res && res.ok);
   } catch { ui.cloudOk = false; }
-  finally { if (timer) clearTimeout(timer); }
+}
+function stripCloudMedia(data) {
+  if (!data) return;
+  stripHeavyMedia(data);
+  (data.rooms || []).forEach(r => {
+    if (!r) return;
+    if (Array.isArray(r.photos)) r.photos = r.photos.filter(p => p && !String(p).startsWith("data:"));
+    if (Array.isArray(r.contractImages)) r.contractImages = r.contractImages.filter(p => {
+      const s = p && (p.src || p);
+      return s && !String(s).startsWith("data:");
+    });
+  });
+  (data.repairs || []).forEach(r => {
+    if (!r) return;
+    if (String(r.photo || "").startsWith("data:")) r.photo = "";
+    r.media = [];
+  });
+  (data.announcements || []).forEach(a => { if (a) a.media = []; });
+  (data.tenants || []).forEach(t => {
+    if (t && t.eSign && t.eSign.sig && String(t.eSign.sig).startsWith("data:")) {
+      t.eSign = Object.assign({}, t.eSign, { sig: "[signed]" });
+    }
+  });
 }
 function save(force) {
   if (isDevPreview() && !force) return;
@@ -4540,7 +4604,7 @@ function collectLedger() {
       id: "slip-" + s.id, type: guessCashType(s.note, "in"), date: ymdOf(s.date), amount,
       roomNo: s.roomNo || "", note: s.note || "銀行入帳", company,
       bank: s.bank || "", place: s.place || "",
-      source: "slip", canDel: false, canEdit: true
+      source: "slip", canDel: true, canEdit: true
     });
   });
   (state.errands || []).forEach(e => {
@@ -4551,7 +4615,7 @@ function collectLedger() {
       const day = ymdOf(e.date);
       const hasBook = (state.books || []).some(b => b && (
         b.linkedId === e.id ||
-        (ymdOf(b.date) === day && Number(b.amount) === amount && String(b.note || "").indexOf(String(e.title || "")) >= 0)
+        (ymdOf(b.date) === day && Number(b.amount) === amount)
       ));
       if (hasBook) return;
     }
@@ -4563,7 +4627,7 @@ function collectLedger() {
       date: ymdOf(e.date), amount,
       roomNo: "", note: ["銀行業務", e.title, e.place, e.note].filter(Boolean).join(" · "),
       company, bank: e.bank || e.place || "", place: e.place || "",
-      source: "errand", canDel: false, canEdit: false
+      source: "errand", canDel: true, canEdit: true
     });
   });
   const takenYm = {};
@@ -5193,20 +5257,43 @@ function refreshCalSearchLive() {
     if (spans[2]) spans[2].textContent = "結餘 " + money(inn - out);
   }
 }
+function deleteLedgerRow(id, src) {
+  const raw = String(id || "");
+  if (src === "memo" || (myMemos() || []).some(x => x.id === raw)) {
+    removeMemo(raw);
+    return;
+  }
+  const ids = [raw];
+  if (raw.startsWith("slip-")) ids.push(raw.slice(5));
+  if (raw.startsWith("errand-")) ids.push(raw.slice(7));
+  const book = (state.books || []).find(b => b && b.id === raw);
+  const errand = (state.errands || []).find(e => e && (e.id === raw || ("errand-" + e.id) === raw));
+  const slip = (state.bankSlips || []).find(s => s && (s.id === raw || ("slip-" + s.id) === raw));
+  if (errand) {
+    ids.push(errand.id, "errand-" + errand.id);
+    (state.books || []).forEach(b => { if (b && b.linkedId === errand.id) ids.push(b.id); });
+  }
+  if (book) {
+    ids.push(book.id);
+    (state.errands || []).forEach(e => {
+      if (e && (e.id === book.linkedId || book.linkedId === e.id)) ids.push(e.id, "errand-" + e.id);
+    });
+  }
+  if (slip) ids.push(slip.id, "slip-" + slip.id);
+  if (ui.editBookId && ids.indexOf(ui.editBookId) >= 0) ui.editBookId = null;
+  if (ui.editSlipId && ids.indexOf(ui.editSlipId) >= 0) ui.editSlipId = null;
+  markLedgerGone(ids);
+  save();
+}
 function bindCalLedgerRows() {
   const stay = () => { ui.keepScroll = true; render(); };
   document.querySelectorAll("[data-del-book]").forEach(btn => {
     btn.onclick = e => {
+      e.preventDefault();
       e.stopPropagation();
-      const id = btn.dataset.delBook;
-      if ((myMemos() || []).some(x => x.id === id)) {
-        removeMemo(id);
-        stay();
-        return;
-      }
-      state.books = (state.books || []).filter(x => x.id !== id);
-      if (ui.editBookId === id) ui.editBookId = null;
-      save(); stay();
+      const row = btn.closest("[data-edit-led]");
+      deleteLedgerRow(btn.dataset.delBook, row ? row.dataset.editSrc : "");
+      stay();
     };
   });
   document.querySelectorAll("[data-edit-led]").forEach(el => {
