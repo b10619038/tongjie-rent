@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-21-28";
-const APP_EDIT_COUNT = 365;
+const APP_STAMP = "2026-08-31-21-40";
+const APP_EDIT_COUNT = 366;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["交接中可同時看舊客新客，退租完成自動入帳"] },
+  { ver: APP_STAMP, items: ["設定新增位置資訊，預設開啟精確定位"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2979,6 +2979,122 @@ function saveBio(obj) {
 function clearBio() {
   try { localStorage.removeItem(BIO_KEY); } catch {}
 }
+const LOC_KEY = "tongjie_precise_loc_v1";
+const LOC_FIX_KEY = "tongjie_loc_fix_v1";
+function locPrefOn() {
+  try {
+    const v = localStorage.getItem(LOC_KEY);
+    if (v == null) return true;
+    return v !== "0";
+  } catch { return true; }
+}
+function setLocPref(on) {
+  try { localStorage.setItem(LOC_KEY, on ? "1" : "0"); } catch {}
+}
+function loadLocFix() {
+  try { return JSON.parse(localStorage.getItem(LOC_FIX_KEY) || "null") || {}; } catch { return {}; }
+}
+function saveLocFix(obj) {
+  try { localStorage.setItem(LOC_FIX_KEY, JSON.stringify(obj)); } catch {}
+}
+let locFix = loadLocFix();
+function geoStatusLine() {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return "這台裝置不支援定位";
+  if (!locPrefOn()) return "已關閉";
+  if (locFix.error === "denied") return "系統已關閉，請到手機設定打開";
+  if (locFix.lat != null) return "精確位置已開啟";
+  return "正在開啟精確位置…";
+}
+function geoFixRows() {
+  if (locFix.lat == null) return "";
+  const acc = locFix.acc != null ? Math.round(Number(locFix.acc)) : 0;
+  return `${locFix.addr ? `<div class="row wrap"><span class="k">地點</span><span class="v">${escapeHtml(locFix.addr)}</span></div>` : ""}
+    <div class="row"><span class="k">緯度</span><span class="v">${Number(locFix.lat).toFixed(6)}</span></div>
+    <div class="row"><span class="k">經度</span><span class="v">${Number(locFix.lng).toFixed(6)}</span></div>
+    <div class="row"><span class="k">精確度</span><span class="v">${acc ? acc + " 公尺" : "—"}</span></div>`;
+}
+function paintGeoCard() {
+  const st = document.getElementById("geo-status");
+  if (st) st.textContent = geoStatusLine();
+  const box = document.getElementById("geo-fix");
+  if (box) box.innerHTML = geoFixRows();
+}
+function applyPreciseFix(pos) {
+  if (!pos || !pos.coords) return;
+  locFix = {
+    lat: pos.coords.latitude,
+    lng: pos.coords.longitude,
+    acc: pos.coords.accuracy,
+    at: nowStamp(),
+    addr: locFix.addr || "",
+    error: ""
+  };
+  saveLocFix(locFix);
+  paintGeoCard();
+  if (typeof reverseTwAddr === "function") {
+    reverseTwAddr(locFix.lat, locFix.lng).then(addr => {
+      if (!addr) return;
+      locFix.addr = addr;
+      saveLocFix(locFix);
+      ui.geoAddr = addr;
+      paintGeoCard();
+    }).catch(() => {});
+  }
+}
+function askPreciseLocation(force) {
+  if (!locPrefOn()) return;
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    pos => applyPreciseFix(pos),
+    err => {
+      locFix.error = err && err.code === 1 ? "denied" : "fail";
+      saveLocFix(locFix);
+      paintGeoCard();
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: force ? 0 : 30000 }
+  );
+}
+function geoSettingsHtml() {
+  const on = locPrefOn();
+  return `<div class="card card-body" id="geo-card">
+      <div class="label">位置資訊</div>
+      <div class="pref-switch">
+        <span>精確位置</span>
+        <button type="button" class="pref-knob${on ? " on" : ""}" id="geo-toggle" aria-pressed="${on ? "true" : "false"}"></button>
+      </div>
+      <div class="row"><span class="k">狀態</span><span class="v" id="geo-status">${escapeHtml(geoStatusLine())}</span></div>
+      <div id="geo-fix">${geoFixRows()}</div>
+      <p class="small">預設開啟手機精確定位。僅這台裝置使用，可隨時關閉。若系統關掉權限，請到手機設定打開。</p>
+      ${on ? `<button type="button" class="ghost" id="geo-refresh" style="margin-top:10px">重新定位</button>` : ""}
+    </div>`;
+}
+function bindGeoSettings() {
+  const tog = document.getElementById("geo-toggle");
+  if (tog) tog.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = !locPrefOn();
+    setLocPref(next);
+    if (next) {
+      locFix.error = "";
+      saveLocFix(locFix);
+      askPreciseLocation(true);
+      toast("已開啟精確位置");
+    } else {
+      toast("已關閉精確位置");
+    }
+    ui.keepScroll = true;
+    render();
+  };
+  const go = document.getElementById("geo-refresh");
+  if (go) go.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askPreciseLocation(true);
+    toast("正在重新定位");
+  };
+  if (locPrefOn()) askPreciseLocation(false);
+}
 function bioEnrolled() {
   const rec = loadBio();
   return !!(rec && rec.credId);
@@ -3353,7 +3469,9 @@ async function refreshSky(force) {
     return ui.sky;
   }
   try {
-    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=22.6438&longitude=120.3732&current=weather_code&timezone=Asia%2FTaipei");
+    const lat = (locFix && isFinite(locFix.lat)) ? locFix.lat : 22.6438;
+    const lon = (locFix && isFinite(locFix.lng)) ? locFix.lng : 120.3732;
+    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=weather_code&timezone=Asia%2FTaipei");
     const code = data && data.current && data.current.weather_code;
     ui.sky = skyFromCode(code);
     ui.skyAt = now;
@@ -7716,6 +7834,7 @@ function adminSettings() {
         ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
       </div>
     </div>
+    ${geoSettingsHtml()}
     <div class="card card-body">
       <div class="label">安裝到手機</div>
       <div class="row"><span class="k">狀態</span><span class="v">${installed ? "已安裝" : "尚未安裝"}</span></div>
@@ -7895,7 +8014,7 @@ function howtoSections() {
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
-    { id: "a-set", h: "設定", p: "調色盤、字體、震動、鈴聲、快速登入（指紋／面容）、通知類別、公司匯款資料與權限說明都在這裡。" }
+    { id: "a-set", h: "設定", p: "調色盤、字體、震動、鈴聲、快速登入、通知、精確位置、公司匯款資料與權限說明都在這裡。" }
   ];
   const dev = admin.concat([
     { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
@@ -11883,6 +12002,7 @@ function tenantSettings() {
         <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
         <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
       </div>
+      ${geoSettingsHtml()}
       <div class="card card-body clickable" data-page="howto">
         <div class="label">操作教學</div>
         <p class="small" style="margin-top:8px">首頁、繳費、房間、租約與報修的用法。</p>
@@ -11894,6 +12014,7 @@ function tenantSettings() {
     </div>`;
 }
 function bindLookSettings() {
+  bindGeoSettings();
   document.querySelectorAll("#app [data-theme]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -13006,6 +13127,7 @@ async function boot() {
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
+    if (locPrefOn()) askPreciseLocation(false);
     try {
       const idb = await loadLedgerIdb();
       mergeLedgerInto(state, idb);
@@ -13064,6 +13186,7 @@ async function boot() {
     if (document.visibilityState === "visible") {
       beatPresence();
       syncTick();
+      if (locPrefOn()) askPreciseLocation(false);
     }
   });
 }
