@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-20-05";
-const APP_EDIT_COUNT = 348;
+const APP_STAMP = "2026-08-31-20-20";
+const APP_EDIT_COUNT = 349;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +42,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["整體報表匯出按鈕改為下載 PDF"] },
+  { ver: APP_STAMP, items: ["開發者後台紀錄跨裝置同步，管理員紀錄開發者也看得到"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1299,25 +1299,23 @@ function ensureCycleJobs(data) {
     data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
 }
-function ensureDevCycleJobs() {
-  const list = loadDevMemos();
-  let changed = false;
+function ensureDevCycleJobs(data) {
+  if (!data) data = typeof state !== "undefined" ? state : null;
+  if (!data) return;
+  if (!Array.isArray(data.devMemos)) data.devMemos = [];
   DEV_CYCLE_JOBS.forEach(job => {
-    const hit = list.find(m => m && m.id === job.id);
+    const hit = data.devMemos.find(m => m && m.id === job.id);
     if (hit) {
-      if (!hit.edited && (hit.text !== job.text || hit.monthDay !== job.monthDay)) {
+      if (!hit.edited) {
         hit.text = job.text;
         hit.monthDay = job.monthDay;
-        hit.cycle = true;
-        hit.owner = "1240";
-        changed = true;
       }
+      hit.cycle = true;
+      hit.owner = "1240";
       return;
     }
-    list.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
-    changed = true;
+    data.devMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
-  if (changed) saveDevMemos(list);
 }
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
 const SITE_ORDER = (() => {
@@ -1814,8 +1812,11 @@ function normalize(data) {
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  if (!Array.isArray(data.devMemos)) data.devMemos = [];
+  if (!Array.isArray(data.devLogs)) data.devLogs = [];
+  migrateDevLocalInto(data);
   ensureCycleJobs(data);
-  try { ensureDevCycleJobs(); } catch {}
+  try { ensureDevCycleJobs(data); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
@@ -2109,6 +2110,7 @@ async function pullCloud() {
     mergeMemosInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyCompany(state);
+      mergeDevBundle(state, data);
       if ((!state.books || !state.books.length) && Array.isArray(data.books) && data.books.length) {
         state.books = data.books;
         if (data.accountOpenings) state.accountOpenings = Object.assign({}, data.accountOpenings, state.accountOpenings || {});
@@ -2125,7 +2127,10 @@ async function pullCloud() {
       return "same";
     }
     const mine = state.presence;
-    const mineAdmin = (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240");
+    const mineAdmin = (state.aiMemos || []).filter(m => m && !isDevMemo(m));
+    const mineDevMemos = Array.isArray(state.devMemos) ? state.devMemos : [];
+    const mineDevLogs = Array.isArray(state.devLogs) ? state.devLogs : [];
+    const mineAiLogs = Array.isArray(state.aiLogs) ? state.aiLogs : [];
     const mineCompany = (state.company && Number(state.company.updatedAt) > 0) ? state.company : loadPersistedCompany();
     const mineBooks = (state.books && state.books.length) ? state.books : null;
     const mineOpen = (state.accountOpenings && Object.keys(state.accountOpenings).length) ? state.accountOpenings : null;
@@ -2143,6 +2148,7 @@ async function pullCloud() {
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
+    mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
     if (mineCompany) {
       const la = Number(mineCompany.updatedAt) || 0;
       const ca = Number((state.company && state.company.updatedAt) || 0);
@@ -2164,24 +2170,38 @@ async function pullCloud() {
     if (timer) clearTimeout(timer);
   }
 }
-function mergeMemosInto(target, other) {
-  if (!target || !Array.isArray(target.aiMemos)) target.aiMemos = [];
-  const src = ((other && other.aiMemos) || []).filter(m => m && (m.owner || "7651") !== "1240");
-  const map = new Map();
-  target.aiMemos.filter(m => m && (m.owner || "7651") !== "1240").forEach(m => { if (m && m.id) map.set(m.id, m); });
-  src.forEach(m => {
-    if (!m || !m.id) return;
-    const cur = map.get(m.id);
-    if (!cur) { map.set(m.id, m); return; }
-    const next = Object.assign({}, cur, m);
-    if (cur.done || m.done) next.done = true;
-    next.doneMonths = [...new Set([].concat(cur.doneMonths || [], m.doneMonths || []))];
-    map.set(m.id, next);
-  });
-  target.aiMemos = [...map.values()];
+function isDevMemo(m) {
+  return !!(m && ((m.owner || "") === "1240" || m.id === "cycle-dev-salary"));
 }
-function memoOwner() {
-  return (ui && (ui.adminCode === "1240" || ui.devPreview)) ? "1240" : "7651";
+function mergeMemoRow(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const next = Object.assign({}, a, b);
+  if (a.done || b.done) next.done = true;
+  next.doneMonths = [...new Set([].concat(a.doneMonths || [], b.doneMonths || []))];
+  if (a.edited && !b.edited) { next.text = a.text; next.edited = true; }
+  return next;
+}
+function unionMemos(a, b) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(m => {
+    if (!m || !m.id) return;
+    map.set(m.id, mergeMemoRow(map.get(m.id), m));
+  });
+  return [...map.values()];
+}
+function logKey(m) {
+  if (!m) return "";
+  return m.id || (String(m.at || "") + "|" + String(m.q || m.text || "") + "|" + String(m.owner || ""));
+}
+function unionLogs(a, b, cap) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(m => {
+    const k = logKey(m);
+    if (!k) return;
+    if (!map.has(k)) map.set(k, m);
+  });
+  return [...map.values()].sort((x, y) => String(x.at || "").localeCompare(String(y.at || ""))).slice(-(cap || 80));
 }
 function loadDevMemos() {
   try {
@@ -2192,30 +2212,71 @@ function loadDevMemos() {
 function saveDevMemos(list) {
   try { localStorage.setItem("tongjie_dev_memos", JSON.stringify(list || [])); } catch {}
 }
+function loadDevLogs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("tongjie_dev_ailogs") || "[]");
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+function saveDevLogs(list) {
+  try { localStorage.setItem("tongjie_dev_ailogs", JSON.stringify((list || []).slice(-80))); } catch {}
+}
+function migrateDevLocalInto(data) {
+  if (!data) return;
+  if (!Array.isArray(data.devMemos)) data.devMemos = [];
+  if (!Array.isArray(data.devLogs)) data.devLogs = [];
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
+  const fromAi = (data.aiMemos || []).filter(isDevMemo);
+  data.devMemos = unionMemos(data.devMemos, unionMemos(loadDevMemos(), fromAi));
+  data.aiMemos = (data.aiMemos || []).filter(m => m && !isDevMemo(m));
+  const fromLogs = (data.aiLogs || []).filter(m => m && (isDevMemo(m) || m.role === "dev" || m.owner === "1240"));
+  data.devLogs = unionLogs(data.devLogs, unionLogs(loadDevLogs(), fromLogs), 80);
+  data.aiLogs = (data.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240");
+  saveDevMemos(data.devMemos);
+  saveDevLogs(data.devLogs);
+}
+function mergeMemosInto(target, other) {
+  if (!target) return;
+  if (!Array.isArray(target.aiMemos)) target.aiMemos = [];
+  const src = ((other && other.aiMemos) || []).filter(m => m && !isDevMemo(m));
+  target.aiMemos = unionMemos(target.aiMemos.filter(m => m && !isDevMemo(m)), src);
+  mergeDevBundle(target, other);
+}
+function mergeDevBundle(target, other) {
+  if (!target) return;
+  if (!Array.isArray(target.devMemos)) target.devMemos = [];
+  if (!Array.isArray(target.devLogs)) target.devLogs = [];
+  if (!Array.isArray(target.aiLogs)) target.aiLogs = [];
+  target.devMemos = unionMemos(target.devMemos, other && other.devMemos);
+  target.devLogs = unionLogs(target.devLogs, other && other.devLogs, 80);
+  const adminLogs = ((other && other.aiLogs) || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240");
+  target.aiLogs = unionLogs(target.aiLogs.filter(m => m && !isDevMemo(m) && m.role !== "dev"), adminLogs, 80);
+}
+function memoOwner() {
+  return (ui && (ui.adminCode === "1240" || ui.devPreview)) ? "1240" : "7651";
+}
 function myMemos() {
-  const shared = (state.aiMemos || []).filter(m => m && (m.owner || "7651") !== "1240");
+  const shared = (state.aiMemos || []).filter(m => m && !isDevMemo(m));
   if (memoOwner() === "1240") {
-    const mine = loadDevMemos();
+    const mine = Array.isArray(state.devMemos) ? state.devMemos : [];
     const ids = new Set(mine.map(m => m && m.id));
     return mine.concat(shared.filter(m => m && !ids.has(m.id)));
   }
   return shared;
 }
 function isSharedMemo(m) {
-  return !!(m && (m.owner || "7651") !== "1240");
+  return !!(m && !isDevMemo(m));
 }
 function saveMemoChange(m) {
   if (!m) return;
   if (!isSharedMemo(m) || (m.owner || "") === "1240") {
-    const list = loadDevMemos();
-    const i = list.findIndex(x => x && x.id === m.id);
-    if (i >= 0) list[i] = m;
-    else list.push(m);
-    saveDevMemos(list);
-    if (Array.isArray(state.aiMemos) && state.aiMemos.some(x => x && x.id === m.id)) {
-      state.aiMemos = state.aiMemos.filter(x => !x || x.id !== m.id);
-      save();
-    }
+    if (!Array.isArray(state.devMemos)) state.devMemos = [];
+    const i = state.devMemos.findIndex(x => x && x.id === m.id);
+    if (i >= 0) state.devMemos[i] = m;
+    else state.devMemos.push(m);
+    saveDevMemos(state.devMemos);
+    save();
     return;
   }
   if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
@@ -2225,76 +2286,46 @@ function saveMemoChange(m) {
   save();
 }
 function removeMemo(id) {
-  const m = (myMemos() || []).find(x => x.id === id) || ((state.aiMemos || []).find(x => x.id === id));
+  const m = (myMemos() || []).find(x => x.id === id) || ((state.aiMemos || []).find(x => x.id === id)) || ((state.devMemos || []).find(x => x.id === id));
   if (m && isSharedMemo(m)) {
     state.aiMemos = (state.aiMemos || []).filter(x => x.id !== id);
     save();
     return;
   }
-  if (memoOwner() === "1240") saveDevMemos(loadDevMemos().filter(x => x.id !== id));
-  else {
-    state.aiMemos = (state.aiMemos || []).filter(x => x.id !== id);
-    save();
-  }
+  state.devMemos = (state.devMemos || []).filter(x => x.id !== id);
+  saveDevMemos(state.devMemos);
+  save();
 }
 function stripDevMemosFromState() {
-  if (!state || !Array.isArray(state.aiMemos)) return;
-  const keep = [];
-  const dev = loadDevMemos();
-  const ids = new Set(dev.map(m => m && m.id).filter(Boolean));
-  state.aiMemos.forEach(m => {
-    if (!m) return;
-    if ((m.owner || "") === "1240" || m.id === "cycle-dev-salary") {
-      const hit = dev.find(x => x && x.id === m.id);
-      if (hit) {
-        hit.doneMonths = [...new Set([].concat(hit.doneMonths || [], m.doneMonths || []))];
-        if (m.done) hit.done = true;
-        if (m.edited) { hit.text = m.text; hit.edited = true; }
-      } else if (m.id && !ids.has(m.id)) {
-        dev.push(m);
-        ids.add(m.id);
-      }
-      return;
-    }
-    keep.push(m);
-  });
-  state.aiMemos = keep;
-  saveDevMemos(dev);
-}
-function loadDevLogs() {
-  try {
-    const raw = JSON.parse(localStorage.getItem("tongjie_dev_ailogs") || "[]");
-    return Array.isArray(raw) ? raw : [];
-  } catch { return []; }
-}
-function saveDevLogs(list) {
-  try { localStorage.setItem("tongjie_dev_ailogs", JSON.stringify((list || []).slice(-40))); } catch {}
+  migrateDevLocalInto(state);
 }
 function myAiLogs() {
-  if (memoOwner() === "1240") return loadDevLogs();
+  const admin = Array.isArray(state.aiLogs) ? state.aiLogs : [];
+  if (memoOwner() === "1240") {
+    const mine = Array.isArray(state.devLogs) ? state.devLogs : [];
+    return unionLogs(admin, mine, 80);
+  }
+  if (admin.length) return admin;
   return Array.isArray(ui.aiSession) ? ui.aiSession : [];
 }
 function pushAiLog(entry) {
-  const rec = Object.assign({ at: nowStamp(), owner: memoOwner() }, entry);
+  const rec = Object.assign({ id: "log-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), at: nowStamp(), owner: memoOwner() }, entry);
   if (rec.owner === "1240") {
-    const list = loadDevLogs();
-    list.push(rec);
-    saveDevLogs(list);
+    if (!Array.isArray(state.devLogs)) state.devLogs = [];
+    state.devLogs = unionLogs(state.devLogs, [rec], 80);
+    saveDevLogs(state.devLogs);
+    save();
     return;
   }
+  if (!Array.isArray(state.aiLogs)) state.aiLogs = [];
+  state.aiLogs = unionLogs(state.aiLogs, [rec], 80);
   if (!ui.aiSession) ui.aiSession = [];
   ui.aiSession.push(rec);
   if (ui.aiSession.length > 8) ui.aiSession = ui.aiSession.slice(-8);
+  save();
 }
 function stripDevLogsFromState() {
-  if (!state || !Array.isArray(state.aiLogs)) { if (state) state.aiLogs = []; return; }
-  const dev = loadDevLogs();
-  state.aiLogs.forEach(m => {
-    if (!m) return;
-    if ((m.owner || "") === "1240" || m.role === "dev") dev.push(m);
-  });
-  saveDevLogs(dev);
-  state.aiLogs = [];
+  migrateDevLocalInto(state);
 }
 function mergePresenceInto(target, other) {
   if (!target.presence || typeof target.presence !== "object") target.presence = {};
@@ -2310,7 +2341,7 @@ function coreSig(d) {
   try {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
-      n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos,
+      n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
       t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent])
     });
@@ -2464,15 +2495,28 @@ async function pushCloud() {
     state.updatedAt = Date.now();
     const payload = Object.assign({}, state, {
       company: state.company,
-      aiMemos: (state.aiMemos || []).filter(m => (m.owner || "7651") !== "1240"),
-      aiLogs: [],
+      aiMemos: (state.aiMemos || []).filter(m => m && !isDevMemo(m)),
+      devMemos: Array.isArray(state.devMemos) ? state.devMemos : [],
+      devLogs: Array.isArray(state.devLogs) ? state.devLogs : [],
+      aiLogs: (state.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
     });
-    if (!payload.books || !payload.books.length) {
-      try {
-        const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
-        if (cur.ok) {
-          const remote = await cur.json();
-          if (remote && Array.isArray(remote.books) && remote.books.length) {
+    try {
+      const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
+      if (cur.ok) {
+        const remote = await cur.json();
+        if (remote) {
+          payload.devMemos = memoOwner() === "1240"
+            ? unionMemos(remote.devMemos, payload.devMemos)
+            : ((remote.devMemos && remote.devMemos.length) ? remote.devMemos : payload.devMemos);
+          payload.devLogs = memoOwner() === "1240"
+            ? unionLogs(remote.devLogs, payload.devLogs, 80)
+            : ((remote.devLogs && remote.devLogs.length) ? remote.devLogs : payload.devLogs);
+          payload.aiLogs = unionLogs(
+            (remote.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
+            payload.aiLogs,
+            80
+          );
+          if ((!payload.books || !payload.books.length) && Array.isArray(remote.books) && remote.books.length) {
             payload.books = remote.books;
             payload.accountOpenings = (payload.accountOpenings && Object.keys(payload.accountOpenings).length)
               ? payload.accountOpenings
@@ -2481,8 +2525,8 @@ async function pushCloud() {
             payload.docsImportVer = payload.docsImportVer || remote.docsImportVer;
           }
         }
-      } catch {}
-    }
+      }
+    } catch {}
     if (!payload.books) payload.books = [];
     if (!payload.accountOpenings) payload.accountOpenings = {};
     const res = await fetch(DATA_API, {
@@ -7305,7 +7349,7 @@ function howtoSections() {
   const dev = admin.concat([
     { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
     { id: "d-prev", h: "租客預覽", p: "右上角「租客」可模擬已登入的租客畫面，方便試功能。預覽不計入任何金額。" },
-    { id: "d-priv", h: "只給開發者看的", p: "開發者的提問紀錄、即將提醒與開發者薪資不會同步到管理員後台。管理員各自裝置的私事，若放進即將提醒，開發者仍看得到。" }
+    { id: "d-priv", h: "只給開發者看的", p: "開發者的提問紀錄、即將提醒與開發者薪資會同步到其他開發者裝置，不會出現在管理員後台。管理員後台的紀錄會同步到所有裝置，開發者後台也看得到。" }
   ]);
   if (kind === "tenant") return tenant;
   if (kind === "dev") return dev;
