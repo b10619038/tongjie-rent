@@ -2006,6 +2006,7 @@ img.avatar { object-fit: cover; display: block; }
   display: grid !important;
   gap: 8px;
   margin-top: 10px;
+  margin-bottom: 72px;
   visibility: visible !important;
 }
 #ai-form, #ai-form * {

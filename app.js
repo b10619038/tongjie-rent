@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-17";
-const APP_EDIT_COUNT = 374;
+const APP_STAMP = "2026-08-31-22-18";
+const APP_EDIT_COUNT = 375;
 const DOCS_IMPORT_VER = "aug31docs-v1";
 const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
 const AUG31_BOOKS = [
@@ -12766,6 +12766,12 @@ function bindAdminAi() {
     qBox.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => qBox.focus(), 0); });
     qBox.addEventListener("click", e => { e.stopPropagation(); qBox.focus(); });
     qBox.addEventListener("input", () => { ui.aiDraft = qBox.value; });
+    const hideBall = hide => {
+      const b = document.getElementById("errand-float");
+      if (b) b.style.display = hide ? "none" : "";
+    };
+    qBox.addEventListener("focus", () => hideBall(true));
+    qBox.addEventListener("blur", () => setTimeout(() => hideBall(false), 250));
     qBox.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
