@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-20";
-const APP_EDIT_COUNT = 387;
+const APP_STAMP = "2026-08-31-23-25";
+const APP_EDIT_COUNT = 388;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手改成和 LINE 一樣，輸入在左、綠色送出在右、固定在畫面底下"] },
+  { ver: APP_STAMP, items: ["工作助手對話恢復成昨晚可運作的樣子，其他功能不變"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2585,15 +2585,8 @@ function aiBoxText() {
   return String((box && box.value) || ui.aiDraft || "").trim();
 }
 function sendAiQuestion(q) {
-  const now = Date.now();
-  if (window.__aiSendAt && now - window.__aiSendAt < 600) return false;
   const text = String(q != null && String(q).trim() ? q : aiBoxText()).trim();
-  if (!text) {
-    toast("請先輸入內容");
-    showToastBanner("請先輸入內容");
-    return false;
-  }
-  window.__aiSendAt = now;
+  if (!text) return false;
   try {
     pushAiLog({ role: isDeveloper() ? "dev" : "admin", text, at: nowStamp() });
     let ans = "";
@@ -2603,97 +2596,11 @@ function sendAiQuestion(q) {
     ui.aiOpen = true;
     const box = document.getElementById("ai-q");
     if (box) box.value = "";
-  } catch {
-    toast("送出失敗，請再試一次");
-    showToastBanner("送出失敗，請再試一次");
-    return false;
-  }
+  } catch {}
   ui.keepScroll = true;
   render();
   return true;
 }
-window.__sendAi = function (v) { sendAiQuestion(v); };
-window.__aiTap = function (e) {
-  if (e) {
-    try { e.stopPropagation(); } catch {}
-  }
-  const box = document.getElementById("ai-q");
-  const text = String((box && box.value) || window.__aiLive || ui.aiDraft || "").trim();
-  if (!text) {
-    toast("請先輸入內容");
-    showToastBanner("請先輸入內容");
-    return false;
-  }
-  if (e && e.preventDefault) {
-    try { e.preventDefault(); } catch {}
-  }
-  return sendAiQuestion(text);
-};
-function dockAiForm() {
-  const dock = document.getElementById("ai-dock");
-  const sc = document.querySelector(".admin-scroll");
-  const on = ui.role === "admin" && ui.page === "ai";
-  try { document.documentElement.classList.toggle("ai-page", on); } catch {}
-  if (sc) sc.classList.toggle("ai-docked", on);
-  if (!dock) return;
-  const forms = document.querySelectorAll("#ai-form");
-  const form = forms.length ? forms[forms.length - 1] : null;
-  forms.forEach(f => { if (f !== form) f.remove(); });
-  if (on && form) {
-    dock.appendChild(form);
-    dock.classList.add("has-form");
-    pinAiDock();
-  } else {
-    dock.classList.remove("has-form");
-    dock.innerHTML = "";
-    dock.style.bottom = "";
-  }
-}
-function pinAiDock() {
-  const dock = document.getElementById("ai-dock");
-  if (!dock || !dock.classList.contains("has-form")) return;
-  const vv = window.visualViewport;
-  const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
-  dock.style.bottom = kb + "px";
-}
-function armAiDockPin() {
-  if (window.__aiDockPin) return;
-  window.__aiDockPin = 1;
-  const vv = window.visualViewport;
-  if (vv) {
-    vv.addEventListener("resize", pinAiDock);
-    vv.addEventListener("scroll", pinAiDock);
-  }
-  window.addEventListener("resize", pinAiDock);
-}
-function bindAiSendDirect() {
-  const btn = document.getElementById("ai-send-btn");
-  const box = document.getElementById("ai-q");
-  const form = document.getElementById("ai-form");
-  const save = () => {
-    if (!box) return;
-    ui.aiDraft = box.value;
-    window.__aiLive = box.value;
-  };
-  if (box) {
-    box.oninput = save;
-    box.onkeyup = save;
-    box.onchange = save;
-    box.oncompositionend = save;
-    box.onblur = save;
-    box.onkeydown = e => {
-      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
-        e.preventDefault();
-        sendAiQuestion(box.value || window.__aiLive || ui.aiDraft);
-      }
-    };
-  }
-  if (form) form.onsubmit = e => { e.preventDefault(); window.__aiTap(e); return false; };
-  if (!btn || btn.dataset.bound === "1") return;
-  btn.dataset.bound = "1";
-  btn.addEventListener("click", e => window.__aiTap(e));
-}
-function armAiSend() {}
 function stripDevLogsFromState() {
   migrateDevLocalInto(state);
 }
@@ -7181,8 +7088,6 @@ function paintApp() {
         t.style.transform = "";
       });
       bindTabPill();
-      const dock0 = document.getElementById("ai-dock");
-      if (dock0) { dock0.classList.remove("has-form"); dock0.innerHTML = ""; }
       sc.innerHTML = `<div class="admin-static">${adminBody()}</div>`;
       safeBind(() => {
         bindAdmin();
@@ -8009,8 +7914,7 @@ function adminView() {
       }).join("")}
       </div>
     </div>
-    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>
-    <div id="ai-dock"></div>`;
+    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料" };
@@ -8836,12 +8740,12 @@ function adminAi() {
               ${time ? `<span class="ai-time">${escapeHtml(time)}</span>` : ""}
             </div>`;
           }).join("") : `<div class="ai-empty">還沒有對話，直接提問或點上面的分析。</div>`}</div>
+          <form id="ai-form" autocomplete="off">
+            <textarea id="ai-q" name="q" rows="1" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off">${escapeHtml(ui.aiDraft || "")}</textarea>
+            <button class="ai-send" type="button" aria-label="送出">送出</button>
+          </form>
         </div>
       </div>
-          <form id="ai-form" autocomplete="off" action="javascript:void(0)">
-            <input id="ai-q" name="q" type="text" inputmode="text" enterkeyhint="send" placeholder="例如：幫我記、提醒我、請紀錄…" autocomplete="off" value="${escapeHtml(ui.aiDraft || "")}" />
-            <button type="submit" class="ai-send" id="ai-send-btn">送出</button>
-          </form>
     </div>`
   };
   return `<div class="admin-grid list" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
@@ -13076,10 +12980,10 @@ function bindAdminAi() {
     };
   });
   const ask = q => sendAiQuestion(q);
-  const sendNow = () => sendAiQuestion(aiBoxText());
-  armAiDockPin();
-  dockAiForm();
-  bindAiSendDirect();
+  const sendNow = () => {
+    const box = document.getElementById("ai-q");
+    ask(box && box.value);
+  };
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
   if (aiFold && aiCard) aiFold.onclick = e => {
@@ -13106,14 +13010,6 @@ function bindAdminAi() {
     qBox.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => qBox.focus(), 0); });
     qBox.addEventListener("click", e => { e.stopPropagation(); qBox.focus(); });
     qBox.addEventListener("input", () => { ui.aiDraft = qBox.value; });
-    qBox.addEventListener("change", () => { ui.aiDraft = qBox.value; });
-    qBox.addEventListener("compositionend", () => { ui.aiDraft = qBox.value; });
-    const hideBall = hide => {
-      const b = document.getElementById("errand-float");
-      if (b) b.style.display = hide ? "none" : "";
-    };
-    qBox.addEventListener("focus", () => hideBall(true));
-    qBox.addEventListener("blur", () => setTimeout(() => hideBall(false), 250));
     qBox.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
@@ -13123,13 +13019,18 @@ function bindAdminAi() {
     });
   }
   if (form) {
-    form.addEventListener("pointerdown", e => {
-      if (e.target && e.target.closest && e.target.closest(".ai-send")) return;
+    form.addEventListener("pointerdown", e => e.stopPropagation());
+    form.addEventListener("submit", e => { e.preventDefault(); e.stopPropagation(); sendNow(); });
+  }
+  const sendBtn = document.querySelector("#ai-form .ai-send");
+  if (sendBtn) {
+    sendBtn.addEventListener("pointerdown", e => { e.stopPropagation(); });
+    sendBtn.addEventListener("click", e => {
+      e.preventDefault();
       e.stopPropagation();
+      sendNow();
     });
   }
-  dockAiForm();
-  bindAiSendDirect();
   const pane = document.getElementById("ai-log");
   if (pane) pane.scrollTop = pane.scrollHeight;
   const errand = document.getElementById("errand-form");
