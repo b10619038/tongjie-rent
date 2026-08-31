@@ -395,12 +395,20 @@ input, textarea, select {
 .keep-still .slide-up,
 .keep-still .slide-up-card,
 .keep-still .room-seq,
-.keep-still .spin-in { animation: none !important; }
+.keep-still .spin-in,
+.keep-still .guide-slide { animation: none !important; }
 .slide-up-card { animation: slideUpCard .8s ease both; }
 @keyframes slideRight { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slideLeft { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(22px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slideUpCard { from { transform: translateY(48px); opacity: 0; } to { transform: none; opacity: 1; } }
+.guide-slide {
+  animation: guideFromRight .55s cubic-bezier(.22,.82,.22,1) both;
+}
+@keyframes guideFromRight {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
 .hero-card {
@@ -1220,6 +1228,14 @@ input[type="file"] {
 }
 #work-card .work-memo-tools {
   margin: 4px 0 10px;
+  position: relative;
+  z-index: 8;
+  pointer-events: auto !important;
+}
+#work-card .work-memo-tools .ghost {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 8;
 }
 #work-card .work-edit {
   display: grid;

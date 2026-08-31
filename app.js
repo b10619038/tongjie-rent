@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-03-28";
-const APP_EDIT_COUNT = 321;
+const APP_STAMP = "2026-08-31-13-27";
+const APP_EDIT_COUNT = 323;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,9 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作完成左邊新增編輯"] },
+  { ver: APP_STAMP, items: ["開發者薪資可正常點完成"] },
+  { ver: "2026-08-31-03-35", items: ["設定右邊新增操作教學，從右側滑入"] },
+  { ver: "2026-08-31-03-28", items: ["本月工作完成左邊新增編輯"] },
   { ver: "2026-08-31-03-23", items: ["工作助手聽得懂幫我記、提醒我、請紀錄"] },
   { ver: "2026-08-31-03-16", items: ["本月工作改為每月28日收鈺晟電費"] },
   { ver: "2026-08-31-03-15", items: ["本月工作會出現在總覽日曆細項"] },
@@ -1856,19 +1858,27 @@ function myMemos() {
   return shared;
 }
 function isSharedMemo(m) {
-  return !!(m && ((m.owner || "7651") !== "1240" || m.cycle));
+  return !!(m && (m.owner || "7651") !== "1240");
 }
 function saveMemoChange(m) {
   if (!m) return;
-  if (isSharedMemo(m)) {
-    if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
-    const hit = state.aiMemos.find(x => x.id === m.id);
-    if (hit) Object.assign(hit, m);
-    else state.aiMemos.push(m);
-    save();
+  if (!isSharedMemo(m) || (m.owner || "") === "1240") {
+    const list = loadDevMemos();
+    const i = list.findIndex(x => x && x.id === m.id);
+    if (i >= 0) list[i] = m;
+    else list.push(m);
+    saveDevMemos(list);
+    if (Array.isArray(state.aiMemos) && state.aiMemos.some(x => x && x.id === m.id)) {
+      state.aiMemos = state.aiMemos.filter(x => !x || x.id !== m.id);
+      save();
+    }
     return;
   }
-  saveDevMemos(loadDevMemos().map(x => x.id === m.id ? m : x));
+  if (!Array.isArray(state.aiMemos)) state.aiMemos = [];
+  const hit = state.aiMemos.find(x => x.id === m.id);
+  if (hit) Object.assign(hit, m);
+  else state.aiMemos.push(m);
+  save();
 }
 function removeMemo(id) {
   const m = (myMemos() || []).find(x => x.id === id) || ((state.aiMemos || []).find(x => x.id === id));
@@ -1890,8 +1900,16 @@ function stripDevMemosFromState() {
   const ids = new Set(dev.map(m => m && m.id).filter(Boolean));
   state.aiMemos.forEach(m => {
     if (!m) return;
-    if ((m.owner || "") === "1240") {
-      if (m.id && !ids.has(m.id)) { dev.push(m); ids.add(m.id); }
+    if ((m.owner || "") === "1240" || m.id === "cycle-dev-salary") {
+      const hit = dev.find(x => x && x.id === m.id);
+      if (hit) {
+        hit.doneMonths = [...new Set([].concat(hit.doneMonths || [], m.doneMonths || []))];
+        if (m.done) hit.done = true;
+        if (m.edited) { hit.text = m.text; hit.edited = true; }
+      } else if (m.id && !ids.has(m.id)) {
+        dev.push(m);
+        ids.add(m.id);
+      }
       return;
     }
     keep.push(m);
@@ -2816,7 +2834,7 @@ function pageLabel() {
     "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
-    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", howto: "操作教學",
     "tenant-login": "租客登入", "admin-login": "管理員登入",
     "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
   };
@@ -3587,6 +3605,7 @@ function icon(name) {
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
     line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5h16v11H8.5L4 20.5V5.5z"/></svg>',
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.2"/></svg>',
+    book: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5v16"/><path d="M8 7h8M8 11h8"/></svg>',
     gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
   };
   return map[name];
@@ -5709,8 +5728,8 @@ function gateView() {
 }
 
 function nav() {
-  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"]];
-  return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
+  const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"], ["howto", "book", "教學"]];
+  return `<nav class="nav nav-6"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
       : id === "home" ? unreadAnnouncements(ui.tenantId).length
       : id === "repair" ? unreadAppoints(ui.tenantId)
@@ -5757,6 +5776,7 @@ function tenantView() {
   if (ui.page === "lease-sign") return leaseSignView();
   if (ui.page === "repair" || ui.page === "repair-done") return repairView();
   if (ui.page === "settings") return tenantSettings();
+  if (ui.page === "howto") return tenantHowto();
   if (ui.page === "pay") return payView();
   return homeView();
 }
@@ -6313,10 +6333,11 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", howto: "操作教學" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("logs");
   allowed.push("settings");
+  allowed.push("howto");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -6331,6 +6352,14 @@ function adminPages() {
       else ids.push("announce");
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
       localStorage.setItem("tongjie_tab_ann_after_rep", "1");
+    }
+    if (localStorage.getItem("tongjie_tab_howto_after_set") !== "1") {
+      ids = ids.filter(id => id !== "howto");
+      const s = ids.indexOf("settings");
+      if (s >= 0) ids.splice(s + 1, 0, "howto");
+      else ids.push("howto");
+      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
+      localStorage.setItem("tongjie_tab_howto_after_set", "1");
     }
   } catch {}
   return ids.map(id => [id, labels[id]]);
@@ -6524,6 +6553,7 @@ function adminBody() {
     if (page === "announce") return adminAnnounce();
     if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
     if (page === "settings") return adminSettings();
+    if (page === "howto") return adminHowto();
     return adminDash();
   } catch (err) {
     try { console.error(err); } catch {}
@@ -6632,6 +6662,92 @@ function adminSettings() {
       <p class="small">禁止截圖、轉傳、外流、公開或提供給無關的第三人。未經授權擅自使用、複製或洩漏，可能違反《個人資料保護法》、《營業秘密法》及其他相關法令，公司將依法追究民、刑事及相關責任。</p>
     </div>
   </div>`;
+}
+function howtoKind() {
+  if (ui.role === "tenant") return "tenant";
+  return ui.adminCode === "1240" ? "dev" : "admin";
+}
+function howtoTitle() {
+  return { tenant: "租客操作教學", admin: "管理員操作教學", dev: "開發者教學" }[howtoKind()];
+}
+function howtoSections() {
+  const kind = howtoKind();
+  const tenant = [
+    { id: "t-home", h: "首頁", p: "看本月租金、繳費狀態與管理員公告。點「繳費租金」可上傳轉帳明細；點「綁定 LINE」加入官方帳號後傳「房號 姓名」。周邊景點可開地圖並導航。" },
+    { id: "t-pay", h: "繳費租金", p: "依畫面上的匯款帳戶轉帳，再上傳收據或轉帳明細。狀態會同步到後台，管理員可看到是否已繳。" },
+    { id: "t-room", h: "房間", p: "房間、公共陽台、停車位、子母車（垃圾桶）都可點進去看使用規範。5 樓有自助儲值機，可點開看實際照片。" },
+    { id: "t-lease", h: "租約", p: "看租約剩餘天數與本月租金。若尚未簽約，可在線上閱讀後勾選同意並簽名。" },
+    { id: "t-fix", h: "報修", p: "選類型、填「請描述問題」，可上傳照片或影片後送出。處理進度會回到這裡，也會通知你。" },
+    { id: "t-set", h: "設定", p: "可改密碼、頭像、開啟通知、綁定 LINE，以及調色盤與字體大小。極黑主題時字仍會保持清楚。" }
+  ];
+  const admin = [
+    { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
+    { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
+    { id: "a-tenants", h: "租客", p: "套房租客／廠房租客可搜尋房號、電話、人名或公司。圖卡可收合，綠燈在線、紅燈離線。可催繳、左滑開 LINE。" },
+    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
+    { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
+    { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
+    { id: "a-set", h: "設定", p: "調色盤、字體、震動、鈴聲、快速登入（指紋／面容）、通知類別、公司匯款資料與權限說明都在這裡。" }
+  ];
+  const dev = admin.concat([
+    { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
+    { id: "d-prev", h: "租客預覽", p: "右上角「租客」可模擬已登入的租客畫面，方便試功能。預覽不計入任何金額。" },
+    { id: "d-priv", h: "只給開發者看的", p: "開發者的提問紀錄、即將提醒與開發者薪資不會同步到管理員後台。管理員各自裝置的私事，若放進即將提醒，開發者仍看得到。" }
+  ]);
+  if (kind === "tenant") return tenant;
+  if (kind === "dev") return dev;
+  return admin;
+}
+function howtoBody() {
+  if (!ui.howtoFold) ui.howtoFold = {};
+  const items = howtoSections().map(s => {
+    const on = !!ui.howtoFold[s.id];
+    return `<div class="card card-body tenant-slim${on ? " open" : ""}" data-howto-fold="${s.id}">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head howto-fold">
+          <span class="k">${escapeHtml(s.h)}</span>
+          <span class="row-end"><span class="fold-caret"></span></span>
+        </button>
+      </div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner"><p class="small" style="margin-top:10px">${escapeHtml(s.p)}</p></div></div>
+    </div>`;
+  }).join("");
+  return `<div class="guide-slide">
+    <div class="card card-body" style="margin-bottom:12px">
+      <div class="eyebrow">GUIDE</div>
+      <h2 class="dash-h" style="margin:0">${escapeHtml(howtoTitle())}</h2>
+      <p class="small" style="margin-top:8px">點各項可展開說明。這份教學會依你現在的身分顯示。</p>
+    </div>
+    <div class="settings-stack">${items}</div>
+  </div>`;
+}
+function adminHowto() {
+  return `<div class="admin-grid list">${howtoBody()}</div>`;
+}
+function tenantHowto() {
+  return `
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">GUIDE</div>
+        <h1>${escapeHtml(howtoTitle())}</h1>
+      </div>
+    </div>
+    <div class="screen">${howtoBody()}</div>`;
+}
+function bindHowtoFold() {
+  document.querySelectorAll("[data-howto-fold]").forEach(card => {
+    const btn = card.querySelector(".howto-fold");
+    if (!btn) return;
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!ui.howtoFold) ui.howtoFold = {};
+      const id = card.dataset.howtoFold;
+      ui.howtoFold[id] = !ui.howtoFold[id];
+      ui.keepScroll = true;
+      render();
+    };
+  });
 }
 const AI_BLOCKS = ["work", "errand", "ai"];
 const AI_BLOCK_KEY = "tongjie_ai_blocks";
@@ -8852,6 +8968,7 @@ function bindUpdateBar() {
 function bindTenant() {
   bindHistoryBack();
   flushTenantInbox();
+  bindHowtoFold();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isDevPreview()) { exitDevPreview(); return; }
@@ -9672,6 +9789,7 @@ function bindAdmin() {
   bindMediaViewers();
   bindRepairFold();
   bindRepairDelete();
+  bindHowtoFold();
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
@@ -10322,6 +10440,7 @@ function bindLookSettings() {
 }
 function bindTenantSettings() {
   bindLookSettings();
+  bindHowtoFold();
   const notify = document.getElementById("set-notify");
   if (notify) notify.onclick = e => {
     e.preventDefault();
@@ -10752,14 +10871,20 @@ function bindAdminAi() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const m = myMemos().find(x => x.id === btn.dataset.doneMemo);
-      if (!m) return;
+      const id = btn.dataset.doneMemo;
+      const m = myMemos().find(x => x.id === id)
+        || loadDevMemos().find(x => x.id === id)
+        || (state.aiMemos || []).find(x => x.id === id);
+      if (!m) { toast("找不到這筆工作"); return; }
+      if ((m.owner || "") === "1240" || id === "cycle-dev-salary") m.owner = "1240";
       if (m.monthDay || m.intervalMonths) {
         m.doneMonths = m.doneMonths || [];
         const key = memoOccurKey(m);
         if (m.doneMonths.indexOf(key) < 0) m.doneMonths.push(key);
       } else m.done = true;
       saveMemoChange(m);
+      ui.workMemoId = "";
+      ui.workEditId = "";
       ui.keepScroll = true;
       toast(m.monthDay ? "本月這筆已完成，下個月會再提醒" : "這筆提醒已完成");
       render();
