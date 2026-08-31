@@ -363,6 +363,40 @@ input, textarea, select {
   font-weight: 800;
   color: var(--ink);
 }
+#gate-card .gate-help {
+  margin: 8px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 4px 12px;
+  background: var(--ok-soft);
+}
+#gate-card .gate-help .fold-head { padding: 10px 0; }
+#gate-card .gate-help.open .fold-caret { transform: rotate(225deg); }
+#gate-card .gate-help-body {
+  display: none;
+  padding: 0 0 12px;
+}
+#gate-card .gate-help.open .gate-help-body { display: grid; gap: 10px; }
+#gate-card .gate-step {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0 0;
+  border-top: 1px dashed var(--line);
+}
+#gate-card .gate-step b { font-size: 13px; color: var(--ink); }
+#gate-card .gate-step code {
+  display: block;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--teal);
+  user-select: text;
+  -webkit-user-select: text;
+}
+#gate-card .gate-step span { font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
 .notify-prefs {
   display: grid;
   gap: 2px;

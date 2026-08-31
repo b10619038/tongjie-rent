@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-13-52";
-const APP_EDIT_COUNT = 326;
+const APP_STAMP = "2026-08-31-13-53";
+const APP_EDIT_COUNT = 327;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -29,7 +29,8 @@ function isDemoTenant(t) {
 const TENANT_ROSTER_VER = "20260829-2230";
 const FACTORY_ROSTER_VER = "20260828-2030";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定新增公司門禁密碼"] },
+  { ver: APP_STAMP, items: ["公司門禁加上 M3F 密碼鎖說明"] },
+  { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
   { ver: "2026-08-31-13-45", items: ["房間資料按儲存會顯示已儲存"] },
   { ver: "2026-08-31-13-30", items: ["所有資產房間資料可編輯並儲存"] },
   { ver: "2026-08-31-13-27", items: ["開發者薪資可正常點完成"] },
@@ -6669,6 +6670,85 @@ function adminSettings() {
         <span class="v">2026</span>
         <button type="button" class="ghost" data-copy="2026">複製</button>
       </div>
+      <div class="gate-help${ui.gateHelpOpen ? " open" : ""}">
+        <button type="button" class="fold-head" id="gate-help-fold">
+          <span class="k">M3F 密碼鎖說明</span>
+          <span class="row-end"><span class="small">1樓公廳／車庫</span><span class="fold-caret"></span></span>
+        </button>
+        <div class="gate-help-body">
+          <p class="small">編程密碼出廠值 <b>123456</b>。所有密碼可為 3–6 位數字。更改後請勿忘記。</p>
+          <div class="gate-step">
+            <b>增加／修改公用開門密碼　※常用</b>
+            <code># 編程密碼 # 21 新密碼 #</code>
+            <span>公共開門密碼只能一組。開門時輸入密碼再按 #。1樓公廳目前 1976，車庫目前 2026。</span>
+          </div>
+          <div class="gate-step">
+            <b>增加用戶卡　※常用</b>
+            <code># 編程密碼 # 1 讀卡 #</code>
+            <span>一次可連續刷多張卡。</span>
+          </div>
+          <div class="gate-step">
+            <b>刪除用戶（讀卡）</b>
+            <code># 編程密碼 # 41 讀卡 #</code>
+            <span>一次可連續刷多張要刪的卡。</span>
+          </div>
+          <div class="gate-step">
+            <b>刪除用戶（輸入卡號）　※常用</b>
+            <code># 編程密碼 # 43 八位卡號 #</code>
+            <span>卡號是感應卡上的 8 位數字。</span>
+          </div>
+          <div class="gate-step">
+            <b>修改編程密碼</b>
+            <code># 編程密碼 # 0 新編程密碼 # 再輸入一次 #</code>
+            <span>進入卡機編輯用的 6 位數。改完請記下來。</span>
+          </div>
+          <div class="gate-step">
+            <b>刪除全部用戶</b>
+            <code># 編程密碼 # 40 0000 #</code>
+            <span>會刪除所有卡與個人密碼，但不會刪除公共開門密碼。</span>
+          </div>
+          <div class="gate-step">
+            <b>按編號增加用戶卡</b>
+            <code># 編程密碼 # 22 四位編號 讀卡 #</code>
+            <span>編號如 0001，不可重複；重複會滴三聲。</span>
+          </div>
+          <div class="gate-step">
+            <b>增加個人開門密碼</b>
+            <code># 編程密碼 # 23 四位編號 新密碼 #</code>
+            <span>與上面同一組用戶編號規則。</span>
+          </div>
+          <div class="gate-step">
+            <b>刪除單用戶（輸入編號）</b>
+            <code># 編程密碼 # 42 四位編號 #</code>
+            <span>該編號的密碼與對應卡片會一起刪除。</span>
+          </div>
+          <div class="gate-step">
+            <b>修改開鎖時間</b>
+            <code># 編程密碼 # 5 秒數 #</code>
+            <span>兩位數，最多 99 秒。輸入 00 為瞬間 0.2 秒。</span>
+          </div>
+          <div class="gate-step">
+            <b>設置開門模式</b>
+            <code># 編程密碼 # 6 模式 #</code>
+            <span>01 只刷卡　02 卡或密碼　03 卡加密碼。勿設成 04（讀卡器輸出）。</span>
+          </div>
+          <div class="gate-step">
+            <b>設置背光</b>
+            <code># 編程密碼 # 8 模式 #</code>
+            <span>01 常開　02 常閉　03 自動。部分機型才有。</span>
+          </div>
+          <div class="gate-step">
+            <b>恢復出廠參數</b>
+            <code># 編程密碼 # 8 99 #</code>
+            <span>機器參數恢復出廠值。</span>
+          </div>
+          <div class="gate-step">
+            <b>門常開</b>
+            <span>刷卡或密碼開門後立刻按 <b>79</b>，門會保持常開。再刷卡、再輸入密碼或按出門鈕一次，就會退出常開。</span>
+          </div>
+          <p class="small">電源 DC 12V。常閉鎖（磁力鎖／陽極鎖）接 NC；常開鎖（電鎖／陰極鎖）接 NO。</p>
+        </div>
+      </div>
       <div class="gate-sub">店面後門　可用 1976 或門牌號碼</div>
       ${STORE_NOS.map(no => {
         const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
@@ -10593,6 +10673,15 @@ function bindAdminSettings() {
       el.addEventListener("click", e => { e.stopPropagation(); try { el.focus(); } catch {} });
     });
   }
+  const gateHelp = document.getElementById("gate-help-fold");
+  if (gateHelp) gateHelp.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.gateHelpOpen = !ui.gateHelpOpen;
+    ui.keepScroll = true;
+    const box = gateHelp.closest(".gate-help");
+    if (box) box.classList.toggle("open", ui.gateHelpOpen);
+  };
 }
 function bindAiBlockReorder() {
   const box = document.getElementById("ai-blocks");
