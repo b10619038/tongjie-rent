@@ -528,6 +528,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
 .card-body { padding: 16px; }
+.card-body > .label { margin: 0 0 12px; }
 .tenant-search {
   padding: 8px 14px;
   border-radius: 16px;
