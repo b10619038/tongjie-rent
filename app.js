@@ -15,8 +15,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-26";
-const APP_EDIT_COUNT = 377;
+const APP_STAMP = "2026-08-31-22-28";
+const APP_EDIT_COUNT = 378;
+const RENT_DUE_DAY = 1;
+const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
 const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
 const AUG31_BOOKS = [
@@ -51,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["終止租賃契約改為紙本完整格式，系統填寫、印章留白"] },
+  { ver: APP_STAMP, items: ["簽約後每月租金繳費日固定為1日"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1064,7 +1066,7 @@ function enforceTenantSession() {
 function lineOaMessageUrl(text) {
   return "https://line.me/R/oaMessage/" + encodeURIComponent(LINE_OA_ID) + "/?" + encodeURIComponent(text || "");
 }
-const DEFAULT_RULES = `1. 每月租金請於繳費日前完成，逾期將依合約處理。
+const DEFAULT_RULES = `1. 每月租金請於每月 1 日前完成，逾期將依合約處理。
 2. 公共區域請保持安靜，晚上 9 點後避免大聲喧嘩。
 3. 垃圾請分類並依規定時間放置，勿堆放在走廊或樓梯間。
 4. 房間內禁止抽菸、開伙（簡易加熱除外）。
@@ -1650,7 +1652,7 @@ function buildSeed() {
       roomId: id,
       leaseStart: info.leaseStart || "",
       leaseEnd: info.leaseEnd || "",
-      dueDay: 5,
+      dueDay: 1,
       paid: true,
       note: "",
       bankLast5: info.bankLast5 || ""
@@ -1674,7 +1676,7 @@ function buildSeed() {
         contactName: info.contactName || "", idNo: "", address: "",
         emergencyName: "", emergencyPhone: "", roomId: r.id,
         leaseStart: info.leaseStart || "", leaseEnd: info.leaseEnd || "",
-        dueDay: 5, paid: true, note: info.note || "", rentUntaxed: info.rentUntaxed || 0
+        dueDay: 1, paid: true, note: info.note || "", rentUntaxed: info.rentUntaxed || 0
       });
     }
     rooms.push(r);
@@ -1948,6 +1950,7 @@ function normalize(data) {
   applyJuly115Books(data);
   applyAug31Docs(data);
   applyYushengElec(data);
+  applyDueDayPolicy(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
@@ -2007,6 +2010,18 @@ function applyAug31Docs(data) {
     });
   });
   data.docsImportVer = DOCS_IMPORT_VER;
+}
+function applyDueDayPolicy(data) {
+  if (!data) return;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former) return;
+    if (data.dueDayVer !== DUE_DAY_VER || t.dueDay == null || Number(t.dueDay) === 5) t.dueDay = RENT_DUE_DAY;
+  });
+  data.dueDayVer = DUE_DAY_VER;
+}
+function rentDueDay(t) {
+  const n = Number(t && t.dueDay);
+  return Number.isFinite(n) && n >= 1 && n <= 28 ? n : RENT_DUE_DAY;
 }
 function applyYushengElec(data) {
   if (!data) return;
@@ -2074,7 +2089,7 @@ function applyFactoryRoster(data) {
     if (!info || !info.name) return;
     let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
     if (!t) {
-      t = { id: "tf-" + room.no, roomId: room.id, dueDay: 5, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
+      t = { id: "tf-" + room.no, roomId: room.id, dueDay: 1, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
       data.tenants.push(t);
     }
     if (t.edited || room.edited) {
@@ -2119,7 +2134,7 @@ function applyTenantRoster(data) {
     if (info && info.name) {
       let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
       if (!t) {
-        t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
+        t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: true };
         data.tenants.push(t);
       }
       if (t.edited || room.edited) {
@@ -2194,7 +2209,7 @@ function applyFormerStudio(data) {
         phone: f.phone || "",
         idNo: f.idNo || "",
         note: f.note || "",
-        dueDay: 5,
+        dueDay: 1,
         paid: true
       });
     });
@@ -3973,7 +3988,7 @@ function payLabel(tenant) {
 }
 function payOverdueNudge(tenant) {
   if (!tenant || tenant.paid) return false;
-  const due = Number(tenant.dueDay || 5) || 5;
+  const due = rentDueDay(tenant);
   const day = new Date().getDate();
   return day >= due - 3;
 }
@@ -4017,7 +4032,7 @@ function ensureDemoTenant(data) {
   if (!t) {
     t = {
       id: "t-demo", name: "開發者（測試）", roomId: room.id, paid: false, demo: true,
-      leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 5,
+      leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
       phone: "0912-345-678", loginPass: "DEMO"
     };
     data.tenants.push(t);
@@ -4079,7 +4094,7 @@ function ensureDevPreview() {
     paid: false,
     leaseStart: y + "-01-01",
     leaseEnd: (y + 1) + "-12-31",
-    dueDay: 5,
+    dueDay: 1,
     phone: "0912-345-678",
     loginPass: ""
   }, ui.devTenant && ui.devTenant.id === "t-dev-preview" ? { avatar: ui.devTenant.avatar, paid: ui.devTenant.paid, paidVia: ui.devTenant.paidVia, paidAt: ui.devTenant.paidAt } : {});
@@ -6164,7 +6179,7 @@ function nudgePayOne(t, silent) {
   if (!t || t.paid) return { ok: false, reason: "已繳" };
   const room = (state.rooms || []).find(r => r.id === t.roomId);
   const no = room ? room.no : "";
-  const due = t.dueDay || 5;
+  const due = rentDueDay(t);
   const rent = room ? money(room.rent) : "";
   const bound = no && typeof lineBindForRoom === "function" && lineBindForRoom(no);
   const body = `${no} ${t.name || ""}　本月租金 ${rent} 尚未入帳，請於每月 ${due} 日前繳納。`.replace(/\s+/g, " ").trim();
@@ -6309,7 +6324,7 @@ function addIncomingTenant(roomId, fields) {
     leaseEnd: fields.leaseEnd || "",
     loginPass: String(fields.loginPass || "").trim(),
     paid: false,
-    dueDay: 5,
+    dueDay: 1,
     edited: true,
     rent: rent || undefined,
     deposit: deposit || undefined
@@ -6337,6 +6352,7 @@ function completeHandover(oldT, r, co) {
     neu.incoming = false;
     neu.former = false;
     neu.edited = true;
+    neu.dueDay = RENT_DUE_DAY;
     r.tenantId = neu.id;
     r.status = "rented";
     if (Number(neu.rent) > 0) r.rent = Number(neu.rent);
@@ -7254,7 +7270,7 @@ function homeView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${r.rent ? money(r.rent) : "—"}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
-        <div class="row"><span class="k">到期日</span><span class="v">每月 ${t.dueDay || 5} 日前</span></div>
+        <div class="row"><span class="k">到期日</span><span class="v">每月 ${rentDueDay(t)} 日前</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
@@ -7522,7 +7538,7 @@ function eContractDocHtml(t, r) {
     <p>房屋地址：${escapeHtml(r.location || roomAddress(r.no))}</p>
     <p>租期：${escapeHtml((t && t.leaseStart) || "—")} 起至 ${escapeHtml((t && t.leaseEnd) || "—")} 止</p>
     <p>每月租金：${money(r.rent)}　押金：${money(r.deposit)}</p>
-    <p>繳費日：每月 ${escapeHtml(String((t && t.dueDay) || 5))} 日前</p>
+    <p>繳費日：每月 ${escapeHtml(String(rentDueDay(t)))} 日前</p>
     <h4>使用規範</h4>
     ${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}
     <p>雙方同意以電子方式簽署本合約，簽署後與紙本合約具相同效力，並由 App 保存簽署紀錄。</p>
@@ -8565,7 +8581,7 @@ function monthlyErrandPlan() {
   } else stats.push({ go: "dash", text: "銀行業務：尚無紀錄。上傳照片後按「登錄這筆」，之後會自動抓出每月習慣。" });
   const pendingCash = (state.books || []).filter(b => b.pendingBank && !b.linkedId).reduce((s, b) => s + (Number(b.amount) || 0), 0);
   if (pendingCash) stats.push({ go: "dash", text: "現金待入銀行：" + money(pendingCash) + "。之後存摺入帳會自動對成轉存，不會重複計算。" });
-  stats.push({ go: "tenants", text: "收租：多為每月 5 日前。目前未繳 " + unpaid + " 戶。" });
+  stats.push({ go: "tenants", text: "收租：簽約後固定每月 1 日前。目前未繳 " + unpaid + " 戶。" });
   if (ending.length) stats.push({ go: "tenants", text: "本月合約到期 " + ending.length + " 戶：" + ending.map(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     return (r ? r.no : "") + " " + (t.name || "");
@@ -10480,7 +10496,7 @@ function adminRoomEdit() {
       ${field("緊急電話", "emergencyPhone", t?.emergencyPhone || "")}
       ${field("起租日", "leaseStart", t?.leaseStart, "date")}
       ${field("到期日", "leaseEnd", t?.leaseEnd, "date")}
-      ${field("每月繳費日", "dueDay", t?.dueDay || 5)}
+      ${field("每月繳費日", "dueDay", t?.dueDay || 1)}
       ${field("本月繳費", "paid", t ? t.paid : true, "select-paid")}
       ${field("繳費時間", "paidAt", toDatetimeLocal(t?.paidAt), "datetime-local")}
       ${field("繳費回報", "paidVia", t?.lineNotified ? "line" : (t?.paidVia || ""), "select-paidvia")}
@@ -10542,7 +10558,7 @@ function saveRoomEdit(form) {
   r.status = g("status") || r.status;
   let t = state.tenants.find(x => x.id === r.tenantId);
   if (!t && g("name").trim()) {
-    t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 5 };
+    t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 1 };
     state.tenants.push(t); r.tenantId = t.id;
   }
   if (t) {
@@ -10555,7 +10571,7 @@ function saveRoomEdit(form) {
     t.rentUntaxed = formNum(form, "rentUntaxed", t.rentUntaxed || 0);
     r.rentUntaxed = t.rentUntaxed;
     t.leaseStart = g("leaseStart"); t.leaseEnd = g("leaseEnd");
-    t.dueDay = formNum(form, "dueDay", t.dueDay || 5);
+    t.dueDay = formNum(form, "dueDay", t.dueDay || 1);
     t.paid = g("paid") === "1"; t.note = g("note");
     t.paidAt = fromDatetimeLocal(g("paidAt"));
     t.paidVia = g("paidVia") || "";
@@ -11814,7 +11830,7 @@ function bindAdmin() {
     if (!r) return;
     let t = state.tenants.find(x => x.id === r.tenantId);
     if (!t) {
-      t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 5, name: "" };
+      t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 1, name: "" };
       state.tenants.push(t); r.tenantId = t.id;
     }
     try {
