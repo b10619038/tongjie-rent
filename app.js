@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-17-10";
-const APP_EDIT_COUNT = 336;
+const APP_STAMP = "2026-08-31-17-25";
+const APP_EDIT_COUNT = 337;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套入統潔／信潔廠房租金表、6832退租與公司帳戶"] },
+  { ver: APP_STAMP, items: ["租客圖卡拿掉離線紅燈"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8757,7 +8757,7 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span>${kind !== "factory" ? `<span class="live-dot${isTenantOnline(t.id) ? " on" : ""}" data-online="${t.id}"></span>` : ""}</span><span class="row-end">${kind !== "factory" && studioHandover(t, r) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}</span></span><span class="row-end">${kind !== "factory" && studioHandover(t, r) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
