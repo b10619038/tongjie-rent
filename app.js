@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-22";
-const APP_EDIT_COUNT = 376;
+const APP_STAMP = "2026-08-31-22-26";
+const APP_EDIT_COUNT = 377;
 const DOCS_IMPORT_VER = "aug31docs-v1";
 const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
 const AUG31_BOOKS = [
@@ -51,7 +51,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手送出會等中文輸入完成再送進對話"] },
+  { ver: APP_STAMP, items: ["終止租賃契約改為紙本完整格式，系統填寫、印章留白"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6450,42 +6450,46 @@ function checkoutPickHtml(t, r) {
 function termLeasePaperHtml(t, r, co) {
   const today = ymdOf(nowStamp());
   const end = rocPartsOf(co.at || today);
-  const sign = rocPartsOf(co.signedAt || today);
+  const sign = rocPartsOf(co.signedAt || co.at || today);
   const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
   const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0));
-  const prop = co.property || [r.no, r.shop, r.location || roomAddress(r.no)].filter(Boolean).join("　");
+  const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
+  const prop = co.property || [r.no, r.shop || r.title, r.location || r.street || roomAddress(r.no)].filter(Boolean).join("　");
   const idNo = co.idNo || t.idNo || "";
   const phone = co.phone || t.phone || "";
+  const amt = n => (ntd(n) || "0");
   return `<div class="term-lease-paper" id="term-lease-paper">
-    <h3>終 止 租 賃 契 約</h3>
-    <p>立約人　<b>統潔開發有限公司</b>　（及原出租人，簡稱甲方）</p>
-    <p>代表人：　趙正賢</p>
-    <p>立約人　<b>${escapeHtml(t.name || "")}</b>　（及原承租人，簡稱乙方）</p>
-    <p class="term-indent">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
+    <h3>終　止　租　賃　契　約</h3>
+    <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
+    <p>代表人：　<span class="term-fill">趙正賢</span></p>
+    <p>立約人　<span class="term-fill wide">${escapeHtml(t.name || "")}</span>　（及原承租人，簡稱乙方）</p>
+    <p class="term-center">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
     <p>原租賃物標示及約定事項如下：</p>
-    <p>一、原租賃物標示：　${escapeHtml(prop)}</p>
-    <p>二、雙方同意終止日期：中華民國　${end.y}　年　${end.m}　月　${end.d}　日</p>
+    <p>一、原租賃物標示：　<span class="term-fill wide">${escapeHtml(prop)}</span></p>
+    <p>二、雙方同意終止日期：中華民國　<span class="term-fill amt">${end.y}</span>　年　<span class="term-fill amt">${end.m}</span>　月　<span class="term-fill amt">${end.d}</span>　日</p>
     <p>退還費用：</p>
     <p>一、甲方退還乙方</p>
-    <p class="term-indent">押金新台幣　${escapeHtml(ntd(deposit) || "　　　　")}　元整。</p>
-    <p class="term-indent">總退還費用　${escapeHtml(ntd(refund) || "　　　　")}　元整。</p>
-    <p class="term-sign">乙方簽收：____________________</p>
+    <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
+    <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
+    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
     <p>備註：</p>
     <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
     <p>二、乙方將房屋恢復原狀交給甲方。</p>
-    ${co.note ? `<p>三、${escapeHtml(co.note)}</p>` : ""}
-    <div class="term-party">
-      <p>立約人（甲方）：　統潔開發有限公司</p>
-      <p>統一編號：　82934388</p>
-      <p>代表人：　趙正賢</p>
-      <p>電話：　07-3414159</p>
+    <div class="term-parties">
+      <div class="term-party">
+        <p>立約人（甲方）：　${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span></p>
+        <p>統一編號：　${escapeHtml(firm.taxId || "82934388")}</p>
+        <p>代表人：　趙正賢</p>
+        <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
+      </div>
+      <div class="term-party">
+        <p>立約人（乙方）：　${escapeHtml(t.name || "")}<span class="term-chop" title="蓋章"></span></p>
+        <p>身分證字號：　${escapeHtml(idNo)}</p>
+        <p>電話：　${escapeHtml(phone)}</p>
+      </div>
     </div>
-    <div class="term-party">
-      <p>立約人（乙方）：　${escapeHtml(t.name || "")}</p>
-      <p>身分證字號：　${escapeHtml(idNo)}</p>
-      <p>電話：　${escapeHtml(phone)}</p>
-    </div>
-    <p class="term-date">中華民國　${sign.y}　年　${sign.m}　月　${sign.d}　日</p>
+    <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
+    <p class="term-hint">列印後於簽收欄與蓋章框蓋印，系統不套印印章。</p>
   </div>`;
 }
 function checkoutFormHtml() {

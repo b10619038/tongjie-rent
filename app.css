@@ -1646,11 +1646,18 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     border: 0;
     border-radius: 0;
     margin: 0;
-    padding: 12mm 14mm;
+    padding: 16mm 18mm;
     font-size: 14pt;
-    line-height: 1.95;
+    line-height: 2.05;
+    min-height: 260mm;
   }
-  body.print-term .term-lease-paper h3 { font-size: 22pt; margin-bottom: 18pt; }
+  body.print-term .term-lease-paper h3 { font-size: 22pt; margin-bottom: 22pt; letter-spacing: .7em; }
+  body.print-term .term-hint { display: none !important; }
+  body.print-term .term-chop {
+    border: 0;
+    width: 72px;
+    height: 72px;
+  }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
@@ -2466,26 +2473,69 @@ img.avatar { object-fit: cover; display: block; }
 #checkout-form-card .row-end { gap: 8px; }
 .term-lease-paper {
   margin-top: 18px;
-  padding: 28px 22px 32px;
+  padding: 32px 26px 36px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: #fff;
   color: #111;
-  font-size: 15px;
-  line-height: 1.9;
+  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", "PMingLiU", serif;
+  font-size: 16px;
+  line-height: 2;
 }
 .term-lease-paper h3 {
   text-align: center;
-  letter-spacing: .55em;
-  font-size: 22px;
+  letter-spacing: .62em;
+  font-size: 24px;
   font-weight: 800;
-  margin: 0 0 26px;
+  margin: 0 0 28px;
+  text-indent: .62em;
 }
-.term-lease-paper p { margin: 0 0 6px; }
-.term-lease-paper .term-indent { padding-left: 1.5em; }
-.term-lease-paper .term-sign { text-align: right; margin: 10px 0 18px; }
-.term-lease-paper .term-party { margin: 18px 0 0; }
-.term-lease-paper .term-date { margin-top: 28px; text-align: center; letter-spacing: .2em; }
+.term-lease-paper p { margin: 0 0 4px; }
+.term-lease-paper .term-indent { padding-left: 2em; }
+.term-lease-paper .term-center { text-align: center; margin: 10px 0 16px; }
+.term-lease-paper .term-fill {
+  display: inline-block;
+  min-width: 5.2em;
+  border-bottom: 1px solid #111;
+  padding: 0 8px 1px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.term-lease-paper .term-fill.wide { min-width: 12em; }
+.term-lease-paper .term-fill.amt { min-width: 3.2em; text-align: center; }
+.term-lease-paper .term-sign { text-align: right; margin: 12px 0 20px; }
+.term-lease-paper .term-sign-line {
+  display: inline-block;
+  width: 9.5em;
+  border-bottom: 1px solid #111;
+  height: 1.2em;
+  vertical-align: bottom;
+  margin-left: 6px;
+}
+.term-lease-paper .term-parties { margin-top: 22px; }
+.term-lease-paper .term-party { margin: 16px 0 0; padding-left: 1.5em; }
+.term-lease-paper .term-chop {
+  display: inline-block;
+  width: 56px;
+  height: 56px;
+  margin-left: 14px;
+  border: 1px dashed #c45;
+  vertical-align: middle;
+  background: transparent;
+}
+.term-lease-paper .term-date {
+  margin-top: 36px;
+  text-align: center;
+  letter-spacing: .18em;
+}
+.term-lease-paper .term-hint {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  font-family: inherit;
+  letter-spacing: 0;
+}
 
 .errand-ball {
   position: fixed;
