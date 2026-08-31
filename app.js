@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-01-32";
-const APP_EDIT_COUNT = 399;
+const APP_STAMP = "2026-09-01-01-42";
+const APP_EDIT_COUNT = 400;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["更新後維持登入，不必再打密碼"] },
+  { ver: APP_STAMP, items: ["資料右邊新增飲食，可打電話點公司附近中餐"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1956,6 +1956,8 @@ function normalize(data) {
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.ledgerGone)) data.ledgerGone = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
+  if (!Array.isArray(data.lunchSpots)) data.lunchSpots = [];
+  if (!Array.isArray(data.lunchHidden)) data.lunchHidden = [];
   if (!Array.isArray(data.repairs)) data.repairs = [];
   data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
   if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && n.id !== "n1" && n.repairId !== "rep1");
@@ -7197,7 +7199,7 @@ function paintApp() {
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         t.classList.toggle("on", on);
         t.classList.remove("land");
         t.style.transform = "";
@@ -8049,7 +8051,7 @@ function adminView() {
       <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
@@ -8057,10 +8059,10 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("logs");
-  allowed.push("settings", "firm");
+  allowed.push("settings", "firm", "food");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -8076,13 +8078,13 @@ function adminPages() {
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
       localStorage.setItem("tongjie_tab_ann_after_rep", "1");
     }
-    if (localStorage.getItem("tongjie_tab_firm_after_set") !== "1") {
-      ids = ids.filter(id => id !== "firm");
-      const s = ids.indexOf("settings");
-      if (s >= 0) ids.splice(s + 1, 0, "firm");
-      else ids.push("firm");
+    if (localStorage.getItem("tongjie_tab_food_after_firm") !== "1") {
+      ids = ids.filter(id => id !== "food");
+      const f = ids.indexOf("firm");
+      if (f >= 0) ids.splice(f + 1, 0, "food");
+      else ids.push("food");
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
-      localStorage.setItem("tongjie_tab_firm_after_set", "1");
+      localStorage.setItem("tongjie_tab_food_after_firm", "1");
     }
   } catch {}
   return ids.map(id => [id, labels[id]]);
@@ -8277,6 +8279,7 @@ function adminBody() {
     if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
     if (page === "settings") return adminSettings();
     if (page === "firm") return adminFirm();
+    if (page === "food") return adminFood();
     if (page === "howto") return adminHowto();
     return adminDash();
   } catch (err) {
@@ -8473,6 +8476,156 @@ function adminFirm() {
       }).join("")}
     </div>
   </div>`;
+}
+const OFFICE_LUNCH_ADDR = "高雄市鳳山區文龍東路76號";
+const DEFAULT_LUNCH_SPOTS = [
+  {
+    id: "bopoke", name: "波波奇健康餐", near: "同棟／樓下",
+    addr: "高雄市鳳山區文龍東路76號", phone: "0909-053-305",
+    hours: "週一至六 10:30–20:30，週日公休", line: "@bopoke",
+    order: "https://shop.ichefpos.com/store/6nUxkNRW/ordering",
+    menu: ["夏威夷拌飯 125 起", "自選波奇碗 120 起", "炙燒莎莎醬鮪魚腹"],
+    note: "1 公里內滿 300 可外送"
+  },
+  {
+    id: "minibean", name: "米尼豆均衡便當", near: "走路約 3 分鐘",
+    addr: "高雄市鳳山區文龍東路182號", phone: "07-733-3948",
+    hours: "每日 10:00–19:30",
+    order: "https://shop.ichefpos.com/store/86B65PHf/ordering",
+    menu: ["咖哩雞胸便當", "醬燒豬肉便當", "蔥薑大雞腿便當", "薄鹽烤鯖魚便當", "蔬食／銀髮餐盒"],
+    note: "可線上點餐"
+  },
+  {
+    id: "leo", name: "里歐歐式早午餐", near: "走路約 3 分鐘",
+    addr: "高雄市鳳山區文龍東路180號", phone: "07-735-4458",
+    hours: "每日 06:30–13:30",
+    menu: ["蛋沙拉丹麥 111 起", "腓力雞排吐司 111 起", "BBQ 豬排蛋堡 132 起", "鍋燒意麵 145", "里肌豬排蛋餅 80"],
+    note: "電話預訂比較快"
+  },
+  {
+    id: "yakiniku", name: "燒肉食客", near: "騎車約 5 分鐘",
+    addr: "高雄市鳳山區文龍東路670號", phone: "07-777-8588",
+    hours: "09:00–13:00、16:00–19:30",
+    order: "https://shop.ichefpos.com/store/cj86NPpg/ordering",
+    menu: ["藜麥原味燒肉飯 100", "藜麥蔥鹽燒肉飯 110", "藜麥芥末燒肉飯 110", "藜麥鯖魚飯", "藜麥醉雞飯 145"],
+    note: "團體便當可預訂"
+  }
+];
+function lunchTel(p) { return "tel:" + String(p || "").replace(/[^\d+]/g, ""); }
+function lunchSpots() {
+  const hidden = new Set((state.lunchHidden || []).map(String));
+  const extra = (state.lunchSpots || []).filter(x => x && x.id && !hidden.has(x.id));
+  const base = DEFAULT_LUNCH_SPOTS.filter(x => !hidden.has(x.id)).map(x => {
+    const over = extra.find(e => e.id === x.id);
+    return over ? Object.assign({}, x, over) : x;
+  });
+  const more = extra.filter(e => !DEFAULT_LUNCH_SPOTS.some(d => d.id === e.id));
+  return base.concat(more);
+}
+function adminFood() {
+  const q = normSearch(ui.foodQ);
+  const list = lunchSpots().filter(s => {
+    if (!q) return true;
+    return [s.name, s.addr, s.phone, s.near, (s.menu || []).join(" ")].some(x => normSearch(x).includes(q));
+  });
+  const form = ui.lunchForm || null;
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <div class="label">附近中餐</div>
+      <h2 class="dash-h" style="margin:4px 0 6px">從公司點午餐</h2>
+      <p class="small">公司：${escapeHtml(OFFICE_LUNCH_ADDR)}。點電話可直接打，地址可開地圖。</p>
+      <input id="food-search" type="search" enterkeyhint="search" placeholder="搜尋店名、菜色、電話" value="${escapeHtml(ui.foodQ || "")}" autocomplete="off" />
+    </div>
+    ${form ? `<form class="card card-body" id="lunch-edit-form" autocomplete="off">
+      <div class="label">${form.id ? "編輯店家" : "新增店家"}</div>
+      <label class="field"><span>店名</span><input id="ln-name" type="text" value="${escapeHtml(form.name || "")}" /></label>
+      <label class="field"><span>電話</span><input id="ln-phone" type="tel" value="${escapeHtml(form.phone || "")}" /></label>
+      <label class="field"><span>地址</span><input id="ln-addr" type="text" value="${escapeHtml(form.addr || "")}" /></label>
+      <label class="field"><span>距離／說明</span><input id="ln-near" type="text" value="${escapeHtml(form.near || "")}" placeholder="例如：走路 3 分鐘" /></label>
+      <label class="field"><span>營業時間</span><input id="ln-hours" type="text" value="${escapeHtml(form.hours || "")}" /></label>
+      <label class="field"><span>菜單（一行一道）</span><textarea id="ln-menu" rows="5">${escapeHtml((form.menu || []).join("\n"))}</textarea></label>
+      <label class="field"><span>備註</span><input id="ln-note" type="text" value="${escapeHtml(form.note || "")}" /></label>
+      <div class="btn-row" style="margin-top:10px">
+        <button type="button" class="ghost" id="ln-cancel">取消</button>
+        <button type="button" class="btn-navy" id="ln-save">儲存</button>
+      </div>
+    </form>` : `<button type="button" class="ghost" id="ln-add" style="margin:0 0 8px">＋ 新增店家</button>`}
+    ${list.length ? list.map(s => `
+      <div class="card card-body">
+        <div class="row"><span class="k">${escapeHtml(s.name)}</span>${s.near ? `<span class="pay-pill">${escapeHtml(s.near)}</span>` : ""}</div>
+        <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(s.addr || "—")}</span></div>
+        <div class="row"><span class="k">電話</span><span class="v">${escapeHtml(s.phone || "—")}</span></div>
+        ${s.hours ? `<div class="row wrap"><span class="k">時間</span><span class="v">${escapeHtml(s.hours)}</span></div>` : ""}
+        ${s.line ? `<div class="row"><span class="k">LINE</span><span class="v">${escapeHtml(s.line)}</span></div>` : ""}
+        ${(s.menu || []).length ? `<ul class="food-menu">${s.menu.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>` : ""}
+        ${s.note ? `<p class="small" style="margin-top:8px">${escapeHtml(s.note)}</p>` : ""}
+        <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
+          ${s.phone ? `<a class="btn-navy" href="${lunchTel(s.phone)}" style="width:auto;text-align:center">打電話</a>` : ""}
+          ${s.addr ? `<a class="ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.addr)}" target="_blank" rel="noopener" style="width:auto">地圖</a>` : ""}
+          ${s.order ? `<a class="ghost" href="${escapeHtml(s.order)}" target="_blank" rel="noopener" style="width:auto">線上點餐</a>` : ""}
+          ${s.line ? `<a class="ghost" href="https://line.me/R/ti/p/${encodeURIComponent(s.line)}" target="_blank" rel="noopener" style="width:auto">LINE</a>` : ""}
+          <button type="button" class="ghost" data-lunch-edit="${escapeHtml(s.id)}" style="width:auto">編輯</button>
+          <button type="button" class="ghost" data-lunch-del="${escapeHtml(s.id)}" style="width:auto">刪除</button>
+        </div>
+      </div>`).join("") : `<div class="empty">${q ? "找不到符合的店家" : "還沒有店家"}</div>`}
+  </div>`;
+}
+function bindLunch() {
+  const search = document.getElementById("food-search");
+  if (search) {
+    search.oninput = () => { ui.foodQ = search.value; };
+    search.onchange = () => { ui.foodQ = search.value; ui.keepScroll = true; render(); };
+  }
+  const add = document.getElementById("ln-add");
+  if (add) add.onclick = () => { ui.lunchForm = { id: "", name: "", phone: "", addr: "", near: "", hours: "", menu: [], note: "" }; ui.keepScroll = true; render(); };
+  const cancel = document.getElementById("ln-cancel");
+  if (cancel) cancel.onclick = () => { ui.lunchForm = null; ui.keepScroll = true; render(); };
+  const save = document.getElementById("ln-save");
+  if (save) save.onclick = () => {
+    const name = String((document.getElementById("ln-name") || {}).value || "").trim();
+    if (!name) { toast("請填店名"); return; }
+    const rec = {
+      id: (ui.lunchForm && ui.lunchForm.id) || ("ln-" + Date.now()),
+      name,
+      phone: String((document.getElementById("ln-phone") || {}).value || "").trim(),
+      addr: String((document.getElementById("ln-addr") || {}).value || "").trim(),
+      near: String((document.getElementById("ln-near") || {}).value || "").trim(),
+      hours: String((document.getElementById("ln-hours") || {}).value || "").trim(),
+      menu: String((document.getElementById("ln-menu") || {}).value || "").split(/\n+/).map(x => x.trim()).filter(Boolean),
+      note: String((document.getElementById("ln-note") || {}).value || "").trim()
+    };
+    if (!Array.isArray(state.lunchSpots)) state.lunchSpots = [];
+    const i = state.lunchSpots.findIndex(x => x && x.id === rec.id);
+    if (i >= 0) state.lunchSpots[i] = rec;
+    else state.lunchSpots.push(rec);
+    ui.lunchForm = null;
+    save();
+    toast("已儲存店家");
+    ui.keepScroll = true;
+    render();
+  };
+  document.querySelectorAll("[data-lunch-edit]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const s = lunchSpots().find(x => x.id === btn.dataset.lunchEdit);
+      ui.lunchForm = s ? Object.assign({}, s, { menu: (s.menu || []).slice() }) : { id: btn.dataset.lunchEdit };
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-lunch-del]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const id = btn.dataset.lunchDel;
+      if (!Array.isArray(state.lunchHidden)) state.lunchHidden = [];
+      if (!state.lunchHidden.includes(id)) state.lunchHidden.push(id);
+      state.lunchSpots = (state.lunchSpots || []).filter(x => x && x.id !== id);
+      save();
+      toast("已刪除");
+      ui.keepScroll = true;
+      render();
+    };
+  });
 }
 function adminSettings() {
   const who = ui.adminCode === "1240" ? "開發者" : "管理員";
@@ -11998,6 +12151,7 @@ function bindAdmin() {
   const previewBtn = document.getElementById("preview-tenant");
   if (previewBtn) previewBtn.onclick = () => enterDevPreview();
   bindAdminLogs();
+  bindLunch();
   document.querySelectorAll("[data-firm-period]").forEach(btn => {
     btn.onclick = e => {
       e.stopPropagation();

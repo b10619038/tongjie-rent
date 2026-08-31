@@ -2684,12 +2684,14 @@ img.avatar { object-fit: cover; display: block; }
   align-items: flex-end;
   justify-content: center;
 }
-.errand-ball-sheet {
-  width: min(560px, 100%);
-  max-height: 86vh;
-  overflow: auto;
-  background: var(--card);
-  border-radius: 22px 22px 0 0;
-  padding: 16px 16px calc(18px + var(--safe-b));
-  pointer-events: auto !important;
+.food-menu { margin: 8px 0 0; padding-left: 1.2em; }
+.food-menu li { margin: 3px 0; line-height: 1.45; }
+#food-search {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font: inherit;
 }
+a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-box; }
