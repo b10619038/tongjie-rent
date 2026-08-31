@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-01-12";
-const APP_EDIT_COUNT = 398;
+const APP_STAMP = "2026-09-01-01-32";
+const APP_EDIT_COUNT = 399;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["浮動球點了不會消失，可再開跑業務"] },
+  { ver: APP_STAMP, items: ["更新後維持登入，不必再打密碼"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -725,6 +725,7 @@ function updateBarHtml() {
   return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此查看更新內容</div>`;
 }
 function applyAppUpdate() {
+  persistLogin();
   persistUi();
   markVersionSeen();
   try {
@@ -734,7 +735,7 @@ function applyAppUpdate() {
       reg.waiting.postMessage("SKIP_WAITING");
     }
   } catch {}
-  location.reload();
+  setTimeout(() => location.reload(), 80);
 }
 function promptAppUpdate(reg) {
   if (lastSeenVersion() === APP_VERSION) return;
@@ -792,8 +793,8 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
     __reloading = true;
-    try { persistUi(); } catch {}
-    location.reload();
+    try { persistLogin(); persistUi(); } catch {}
+    setTimeout(() => location.reload(), 80);
   });
 }
 function urlBase64ToUint8Array(b64) {
@@ -1855,6 +1856,35 @@ try { state = loadLocal(); } catch (err) {
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: true, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
+(function bootLoginNow() {
+  const parse = raw => {
+    try { const s = JSON.parse(raw); return s && s.role ? s : null; } catch { return null; }
+  };
+  let s = null;
+  try { s = parse(localStorage.getItem("tongjie_login_v1")); } catch {}
+  if (!s) try { s = parse(sessionStorage.getItem("tongjie_login_v1")); } catch {}
+  if (!s) try { s = parse(localStorage.getItem("tongjie_ui_v2")); } catch {}
+  if (!s) try { s = parse(sessionStorage.getItem("tongjie_ui_v2")); } catch {}
+  if (!s) {
+    try {
+      const m = document.cookie.match(/(?:^|; )tj_login=([^;]*)/);
+      if (m) s = parse(decodeURIComponent(m[1]));
+    } catch {}
+  }
+  if (!s) return;
+  ui.role = s.role;
+  ui.adminCode = s.adminCode || "";
+  ui.page = s.page || (s.role === "admin" ? "dash" : "home");
+  ui.tenantId = s.tenantId || null;
+  ui.roomId = s.roomId || null;
+  ui.roomNo = s.roomNo || "";
+  if (s.assetKind) ui.assetKind = s.assetKind;
+  if (s.tenantKind) ui.tenantKind = s.tenantKind;
+  ui.devPreview = !!s.devPreview;
+  if (ui.page === "tenant-login" || ui.page === "admin-login" || ui.page === "home") {
+    ui.page = s.role === "admin" ? "dash" : "home";
+  }
+})();
 let saveTimer = 0;
 let presenceTimer = 0;
 
@@ -2911,30 +2941,27 @@ function save(force) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
 }
+function persistLogin() {
+  if (!ui || !ui.role) return;
+  const snap = JSON.stringify({
+    role: ui.role,
+    adminCode: ui.adminCode || "",
+    page: ui.page || "",
+    roomId: ui.roomId || "",
+    tenantId: ui.tenantId || "",
+    roomNo: ui.roomNo || "",
+    assetKind: ui.assetKind || "",
+    tenantKind: ui.tenantKind || "",
+    devPreview: !!ui.devPreview
+  });
+  try { localStorage.setItem(LOGIN_KEY, snap); } catch {}
+  try { sessionStorage.setItem(LOGIN_KEY, snap); } catch {}
+  try { localStorage.setItem(UI_KEY, snap); } catch {}
+  try { sessionStorage.setItem(UI_KEY, snap); } catch {}
+  try { document.cookie = "tj_login=" + encodeURIComponent(snap) + "; max-age=31536000; path=/; SameSite=Lax"; } catch {}
+}
 function persistUi() {
-  try {
-    if (!ui.role) return;
-    const room = ui.role === "tenant"
-      ? (state.rooms.find(r => r.id === ui.roomId) || (typeof myRoom === "function" ? myRoom() : null))
-      : null;
-    const snap = {
-      role: ui.role,
-      page: ui.page,
-      roomId: ui.roomId,
-      tenantId: ui.tenantId,
-      roomNo: room ? room.no : (ui.roomNo || ""),
-      assetKind: ui.assetKind,
-      tenantKind: ui.tenantKind,
-      adminCode: ui.adminCode || "",
-      devPreview: !!ui.devPreview
-    };
-    const raw = JSON.stringify(snap);
-    localStorage.setItem(UI_KEY, raw);
-    sessionStorage.setItem(UI_KEY, raw);
-    localStorage.setItem(LOGIN_KEY, raw);
-    localStorage.removeItem("tongjie_ui_v1");
-    sessionStorage.removeItem("tongjie_ui_v1");
-  } catch {}
+  persistLogin();
 }
 function navSnap() {
   return {
@@ -3056,11 +3083,18 @@ function readUiSnap() {
     } catch { return null; }
   };
   try {
-    return parse(localStorage.getItem(UI_KEY))
+    return parse(localStorage.getItem(LOGIN_KEY))
+      || parse(sessionStorage.getItem(LOGIN_KEY))
+      || parse(localStorage.getItem(UI_KEY))
       || parse(sessionStorage.getItem(UI_KEY))
-      || parse(localStorage.getItem(LOGIN_KEY))
       || parse(localStorage.getItem("tongjie_ui_v1"))
-      || parse(sessionStorage.getItem("tongjie_ui_v1"));
+      || parse(sessionStorage.getItem("tongjie_ui_v1"))
+      || (function () {
+        try {
+          const m = document.cookie.match(/(?:^|; )tj_login=([^;]*)/);
+          return m ? parse(decodeURIComponent(m[1])) : null;
+        } catch { return null; }
+      })();
   } catch { return null; }
 }
 function restoreUi() {
@@ -3127,9 +3161,11 @@ function clearSession() {
   try {
     sessionStorage.removeItem(UI_KEY);
     localStorage.removeItem(UI_KEY);
+    sessionStorage.removeItem(LOGIN_KEY);
     localStorage.removeItem(LOGIN_KEY);
     sessionStorage.removeItem("tongjie_ui_v1");
     localStorage.removeItem("tongjie_ui_v1");
+    document.cookie = "tj_login=; max-age=0; path=/";
   } catch {}
 }
 function logoutToGate() {
@@ -13713,6 +13749,12 @@ async function boot() {
     }
   });
 }
-window.addEventListener("pagehide", persistUi);
-window.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistUi(); });
+window.addEventListener("pagehide", persistLogin);
+window.addEventListener("beforeunload", persistLogin);
+window.addEventListener("pageshow", () => { try { restoreUi(); } catch {} });
+window.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") persistLogin();
+  if (document.visibilityState === "visible") { try { restoreUi(); } catch {} }
+});
+setInterval(() => { try { persistLogin(); } catch {} }, 4000);
 boot();
