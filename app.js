@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-20-30";
-const APP_EDIT_COUNT = 350;
+const APP_STAMP = "2026-08-31-20-40";
+const APP_EDIT_COUNT = 351;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -42,7 +42,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["和錢有關的紀錄管理員與開發者都會同步看到"] },
+  { ver: APP_STAMP, items: ["後台操作教學改放設定裡，在資料圖塊上面"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6059,7 +6059,7 @@ function paintApp() {
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs");
         t.classList.toggle("on", on);
         t.classList.remove("land");
         t.style.transform = "";
@@ -6882,7 +6882,7 @@ function adminView() {
       <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "logs" && ui.page === "logs");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
@@ -6890,11 +6890,10 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", howto: "操作教學" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("logs");
   allowed.push("settings");
-  allowed.push("howto");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -6909,14 +6908,6 @@ function adminPages() {
       else ids.push("announce");
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
       localStorage.setItem("tongjie_tab_ann_after_rep", "1");
-    }
-    if (localStorage.getItem("tongjie_tab_howto_after_set") !== "1") {
-      ids = ids.filter(id => id !== "howto");
-      const s = ids.indexOf("settings");
-      if (s >= 0) ids.splice(s + 1, 0, "howto");
-      else ids.push("howto");
-      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
-      localStorage.setItem("tongjie_tab_howto_after_set", "1");
     }
   } catch {}
   return ids.map(id => [id, labels[id]]);
@@ -7331,6 +7322,10 @@ function adminSettings() {
       }).join("")}
     </div>
     ${lookSettingsHtml()}
+    <div class="card card-body clickable" data-page="howto">
+      <div class="label">操作教學</div>
+      <p class="small" style="margin-top:8px">點開看各頁用法。這份教學會依你現在的身分顯示。</p>
+    </div>
     <div class="card card-body">
       <div class="label">資料</div>
       <div class="row"><span class="k">雲端</span><span class="v">${escapeHtml(cloud)}</span></div>
@@ -7402,7 +7397,10 @@ function howtoBody() {
   </div>`;
 }
 function adminHowto() {
-  return `<div class="admin-grid list">${howtoBody()}</div>`;
+  return `<div class="admin-grid list">
+    <button class="back" data-page="settings" type="button" style="width:auto">← 設定</button>
+    ${howtoBody()}
+  </div>`;
 }
 function tenantHowto() {
   return `
@@ -10590,6 +10588,16 @@ function bindAdmin() {
   bindRepairFold();
   bindRepairDelete();
   bindHowtoFold();
+  document.querySelectorAll(".admin-scroll [data-page]").forEach(el => {
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = el.dataset.page;
+      if (!next || next === ui.page) return;
+      ui.page = next;
+      render();
+    };
+  });
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
