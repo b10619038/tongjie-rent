@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-10";
-const APP_EDIT_COUNT = 363;
+const APP_STAMP = "2026-08-31-22-20";
+const APP_EDIT_COUNT = 364;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者後台補上 8/31 鈺晟收電費 76,900"] },
+  { ver: APP_STAMP, items: ["租客圖卡可直接改資料，改完自動套用"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1087,7 +1087,7 @@ function studioHandover(t, r) {
 function applyStudioSheetPaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   data.tenants.forEach(t => {
-    if (!t || t.demo || t.former || t.paidTouched) return;
+    if (!t || t.demo || t.former || t.paidTouched || t.edited) return;
     const room = data.rooms.find(r => r.id === t.roomId);
     if (!room || room.demo || room.status === "office" || room.kind === "factory") return;
     const pay = STUDIO_MONTH_PAY[String(room.no || "")];
@@ -1866,7 +1866,7 @@ function normalize(data) {
   }
   if (data.studioFeeVer !== STUDIO_FEE_VER) {
     (data.rooms || []).forEach(r => {
-      if (!r || r.demo || r.status === "office" || r.kind === "factory" || isStoreNo(r.no)) return;
+      if (!r || r.demo || r.edited || r.status === "office" || r.kind === "factory" || isStoreNo(r.no)) return;
       const info = TENANT_INFO[String(r.no || "")];
       if (info && info.deposit != null) r.deposit = info.deposit;
       else {
@@ -2017,6 +2017,11 @@ function applyFactoryRoster(data) {
       t = { id: "tf-" + room.no, roomId: room.id, dueDay: 5, paid: true, idNo: "", address: "", emergencyName: "", emergencyPhone: "" };
       data.tenants.push(t);
     }
+    if (t.edited || room.edited) {
+      room.tenantId = t.id;
+      if (room.status !== "repair") room.status = "rented";
+      return;
+    }
     t.name = info.name;
     t.former = false;
     if (info.phone) t.phone = info.phone;
@@ -2056,6 +2061,11 @@ function applyTenantRoster(data) {
       if (!t) {
         t = { id: "t" + no, roomId: room.id, dueDay: 5, paid: true };
         data.tenants.push(t);
+      }
+      if (t.edited || room.edited) {
+        room.tenantId = t.id;
+        if (room.status !== "repair" && room.status !== "vacant") room.status = "rented";
+        return;
       }
       if (!t.name || t.name !== info.name) t.name = info.name;
       t.former = false;
@@ -7734,7 +7744,7 @@ function howtoSections() {
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
-    { id: "a-tenants", h: "租客", p: "套房租客／廠房租客可搜尋房號、電話、人名或公司。辦理退租可選正常退租或中途退租；中途退租會開終止租賃契約可列印。" },
+    { id: "a-tenants", h: "租客", p: "圖卡可直接改姓名、租金、押金、收款日、密碼、電話、租期，改完自動套用到發票、日曆、登入與退租。辦理退租可選正常或中途。" },
     { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
@@ -9475,16 +9485,15 @@ function tenantEntryCardHtml(kind, entry) {
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
   const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
+      ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
-      ${kind !== "factory" ? `<div class="row"><span class="k">現任</span><span class="v">${escapeHtml(t.name)}</span></div>
-      <div class="row"><span class="k">租金</span><span class="v">${r && r.rent ? money(r.rent) : "—"}</span></div>
-      <div class="row"><span class="k">押金</span><span class="v">${r && r.deposit ? money(r.deposit) : "—"}</span></div>` : ""}
-      ${kind !== "factory" && studioHandover(t, r) ? `<div class="row wrap"><span class="k">本月收款</span><span class="v">${escapeHtml(studioMonthPay(r.no).name)}${studioMonthPay(r.no).paidOn ? "　" + studioMonthPay(r.no).paidOn.replace(/-/g, "/") : ""}${studioMonthPay(r.no).amount ? "　" + money(studioMonthPay(r.no).amount) : ""}</span></div>
-      <div class="small">系統現任與本月收款不同，可能正在交接，尚未覆蓋姓名。</div>` : (kind !== "factory" && studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn ? `<div class="row"><span class="k">本月收款日</span><span class="v">${studioMonthPay(r.no).paidOn.replace(/-/g, "/")}</span></div>` : (kind !== "factory" && studioMonthPay(r && r.no) && !studioMonthPay(r.no).amount && studioMonthPay(r.no).name ? `<div class="row"><span class="k">本月收款</span><span class="v">尚未入帳</span></div>` : ""))}
+      ${kind !== "factory" ? teField("現任", "name", t.id, r && r.id, t.name)
+      + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
+      + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0") : ""}
+      ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, ymdOf(t.paidAt) || (studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn) || "", "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
-      ${t.paidAt && tenants.length === 1 ? `<div class="row"><span class="k">繳費時間</span><span class="v">${formatDateTime12(t.paidAt)}</span></div>` : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
-      ${kind !== "factory" ? `<div class="row"><span class="k">登入密碼</span><span class="v">${t.loginPass ? escapeHtml(t.loginPass) : "尚未設定"}</span></div>` : ""}
+      ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "尚未設定") : ""}
       ${(() => {
         if (kind === "factory" && tenants.length > 1) {
           return tenants.map(tt => {
@@ -9496,22 +9505,23 @@ function tenantEntryCardHtml(kind, entry) {
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
-      <div class="row"><span class="k">電話</span><span class="v">${t.phone || "—"}</span></div>
-      ${t.contactName ? `<div class="row"><span class="k">聯絡人</span><span class="v">${escapeHtml(t.contactName)}</span></div>` : ""}
-      ${t.taxId ? `<div class="row"><span class="k">統編</span><span class="v">${escapeHtml(t.taxId)}</span></div>` : ""}
-      ${t.bankLast5 ? `<div class="row"><span class="k">帳戶後五碼</span><span class="v">${escapeHtml(t.bankLast5)}</span></div>` : ""}
+      ${teField("電話", "phone", t.id, r && r.id, t.phone || "", "tel", "手機號碼")}
+      ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
+      ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
+      ${t.bankLast5 ? teField("帳戶後五碼", "bankLast5", t.id, r && r.id, t.bankLast5 || "") : ""}
       ${kind === "factory" ? (rentsSame
-        ? `<div class="row wrap"><span class="k">月租</span><span class="v">${roomRentLine(t, r)}</span></div>`
+        ? teField("月租", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
         : tenants.map(tt => {
             const rr = state.rooms.find(x => x.id === tt.roomId);
-            return `<div class="row wrap"><span class="k">月租　${escapeHtml(rr ? rr.no : "")}</span><span class="v">${roomRentLine(tt, rr)}</span></div>`;
+            return teField("月租　" + (rr ? rr.no : ""), "rent", tt.id, rr && rr.id, rr && rr.rent ? rr.rent : "", "number", "0");
           }).join("")) : ""}
       ${leasesSame
-        ? `<div class="row"><span class="k">租期</span><span class="v">${t.leaseStart || "—"} → ${t.leaseEnd || "—"}</span></div>
-      <div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>`
+        ? teField("起租日", "leaseStart", t.id, r && r.id, t.leaseStart || "", "date") + teField("到期日", "leaseEnd", t.id, r && r.id, t.leaseEnd || "", "date")
+      + `<div class="row"><span class="k">剩餘</span><span class="v">${leaseLeftText(t.leaseEnd)}</span></div>`
         : tenants.map(tt => {
             const rr = state.rooms.find(x => x.id === tt.roomId);
-            return `<div class="row wrap"><span class="k">租期　${escapeHtml(rr ? rr.no : "")}</span><span class="v">${tt.leaseStart || "—"} → ${tt.leaseEnd || "—"}　${leaseLeftText(tt.leaseEnd)}</span></div>`;
+            return teField("起租　" + (rr ? rr.no : ""), "leaseStart", tt.id, rr && rr.id, tt.leaseStart || "", "date")
+              + teField("到期　" + (rr ? rr.no : ""), "leaseEnd", tt.id, rr && rr.id, tt.leaseEnd || "", "date");
           }).join("")}
       <div class="row"><span class="k">合約</span><span class="pay-pill ${tenantContractStatus(t, r) === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(t, r)}</span></div>
       ${t.note ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
@@ -9525,7 +9535,8 @@ function tenantEntryCardHtml(kind, entry) {
         return `<button class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">${label}產出發票</button>
       <button class="ghost" data-toggle-pay="${tt.id}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
-      <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>`;
+      <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>
+      <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>`;
       }).join("")}`;
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
@@ -9535,8 +9546,58 @@ function tenantEntryCardHtml(kind, entry) {
     </div>
     </div>`;
 }
+function teField(label, key, tid, rid, value, type, ph) {
+  return `<label class="row te-row"><span class="k">${label}</span><input class="v-edit" data-te="${escapeHtml(key)}" data-tid="${escapeHtml(tid || "")}" data-rid="${escapeHtml(rid || "")}" type="${type || "text"}" value="${escapeHtml(value == null ? "" : String(value))}" placeholder="${escapeHtml(ph || "")}" /></label>`;
+}
+function applyLiveTenantEdit(el) {
+  const key = el.dataset.te;
+  const t = (state.tenants || []).find(x => x.id === el.dataset.tid);
+  const r = (state.rooms || []).find(x => x.id === el.dataset.rid) || (t && (state.rooms || []).find(x => x.id === t.roomId));
+  if (!t && !r) return;
+  const val = String(el.value || "").trim();
+  if (t) t.edited = true;
+  if (r) r.edited = true;
+  if (key === "name" && t) t.name = val;
+  else if (key === "phone" && t) t.phone = val;
+  else if (key === "loginPass" && t) t.loginPass = val;
+  else if (key === "contactName" && t) t.contactName = val;
+  else if (key === "taxId" && t) t.taxId = val;
+  else if (key === "bankLast5" && t) t.bankLast5 = val;
+  else if (key === "leaseStart" && t) t.leaseStart = val;
+  else if (key === "leaseEnd" && t) t.leaseEnd = val;
+  else if (key === "paidOn" && t) {
+    t.paidAt = val ? (val + " 10:00") : "";
+    t.paid = !!val;
+    t.paidTouched = true;
+    if (t.paid && !t.paidVia) t.paidVia = "app";
+    if (!t.paid) t.paidVia = "";
+  } else if (key === "rent" && r) {
+    const old = Number(r.rent) || 0;
+    const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
+    if (!Number(r.deposit) || Number(r.deposit) === old * 2) r.deposit = neu * 2;
+    r.rent = neu;
+  } else if (key === "deposit" && r) {
+    r.deposit = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
+  }
+  save();
+  toast("已套用");
+  ui.keepScroll = true;
+  if (t) {
+    if (!ui.tenantOpen) ui.tenantOpen = {};
+    ui.tenantOpen[t.id] = true;
+  }
+  render();
+}
+function bindTenantEdits() {
+  document.querySelectorAll(".v-edit").forEach(el => {
+    el.addEventListener("pointerdown", e => e.stopPropagation());
+    el.addEventListener("click", e => e.stopPropagation());
+    el.onchange = () => applyLiveTenantEdit(el);
+    el.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } };
+  });
+}
 function tenantKindHint(kind) {
-  return kind === "factory" ? "已套入統潔／信潔租金表。向左滑可開官方 LINE。" : "圖卡顯示現任；與本月收款不同會標交接中。向左滑可開官方 LINE。";
+  return kind === "factory" ? "已套入統潔／信潔租金表。圖卡欄位可直接改，會自動套用。" : "圖卡欄位可直接改姓名、租金、押金、租期，會自動套用。向左滑可開官方 LINE。";
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
@@ -9616,6 +9677,7 @@ function applyTenantKind(kind) {
       bindLineSwipe();
       bindTenantListTools();
       bindTenantFold();
+      bindTenantEdits();
     }));
   }
 }
@@ -9736,6 +9798,7 @@ function bindTenantListTools() {
         bindLineSwipe();
         bindTenantListTools();
         bindTenantFold();
+        bindTenantEdits();
         bindOps();
       } else render();
     };
@@ -9774,6 +9837,7 @@ function bindTenantListTools() {
       }
     };
   });
+  bindTenantEdits();
   bindOps();
 }
 function adminTenants() {
@@ -9987,7 +10051,9 @@ function saveRoomEdit(form) {
     t.lineNotified = t.paidVia === "line";
     if (!t.paidAt && t.paid) t.paidAt = nowStamp();
     if (!t.paid && !t.paidVia) t.lineNotified = false;
+    t.edited = true;
   }
+  r.edited = true;
   save();
   const btn = document.getElementById("room-save-btn");
   if (btn) {
@@ -11111,6 +11177,7 @@ function bindAdmin() {
   bindLineSwipe();
   bindTenantFold();
   bindTenantSearch();
+  bindTenantEdits();
   bindAssetSearch();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
