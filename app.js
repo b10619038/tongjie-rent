@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-23-38";
-const APP_EDIT_COUNT = 393;
+const APP_STAMP = "2026-08-31-23-40";
+const APP_EDIT_COUNT = 394;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["更新軟體後維持登入，不會再被登出"] },
+  { ver: APP_STAMP, items: ["刪除工作助手裡門禁密碼那兩則對話"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2507,9 +2507,9 @@ function mergeDevBundle(target, other) {
   if (!Array.isArray(target.devLogs)) target.devLogs = [];
   if (!Array.isArray(target.aiLogs)) target.aiLogs = [];
   target.devMemos = unionMemos(target.devMemos, other && other.devMemos);
-  target.devLogs = unionLogs(target.devLogs, other && other.devLogs, 80);
+  target.devLogs = cleanAiLogs(unionLogs(target.devLogs, other && other.devLogs, 80));
   const adminLogs = ((other && other.aiLogs) || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240");
-  target.aiLogs = unionLogs(target.aiLogs.filter(m => m && !isDevMemo(m) && m.role !== "dev"), adminLogs, 80);
+  target.aiLogs = cleanAiLogs(unionLogs(target.aiLogs.filter(m => m && !isDevMemo(m) && m.role !== "dev"), adminLogs, 80));
 }
 function memoOwner() {
   return (ui && (ui.adminCode === "1240" || ui.devPreview)) ? "1240" : "7651";
@@ -2562,6 +2562,9 @@ function isNoiseAiLog(m) {
   const t = String((m && m.text) || "").replace(/\s+/g, "");
   if (!t) return true;
   if (/^已登錄\d+[張筆]/.test(t)) return true;
+  if (/統潔1樓門禁密碼/.test(t)) return true;
+  if (/幫我記.*門禁密碼/.test(t)) return true;
+  if (/好，我記下了/.test(t) && /門禁密碼/.test(t)) return true;
   return false;
 }
 function stripPersonaTail(text) {
