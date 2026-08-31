@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-18";
-const APP_EDIT_COUNT = 408;
+const APP_STAMP = "2026-09-01-02-20";
+const APP_EDIT_COUNT = 409;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["米尼豆加上你提供的菜單照片"] },
+  { ver: APP_STAMP, items: ["燒肉食客加上你提供的菜單照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8512,7 +8512,8 @@ const DEFAULT_LUNCH_SPOTS = [
     hours: "09:00–13:00、16:00–19:30",
     order: "https://shop.ichefpos.com/store/cj86NPpg/ordering",
     menu: ["藜麥原味燒肉飯 100", "藜麥蔥鹽燒肉飯 110", "藜麥芥末燒肉飯 110", "藜麥鯖魚飯", "藜麥醉雞飯 145"],
-    note: "團體便當可預訂"
+    note: "團體便當可預訂",
+    photos: ["images/food/yakiniku.jpg?v=0220"]
   },
   {
     id: "macc", name: "早安美芝城 文龍概念店", near: "走路約 5 分鐘", tags: ["早午餐", "飲料"],
