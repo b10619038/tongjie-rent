@@ -2733,16 +2733,53 @@ img.avatar { object-fit: cover; display: block; }
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0,0,0,.86);
+  background: rgba(0,0,0,.92);
+  overflow: hidden;
+  touch-action: none;
+}
+.food-photo-stage {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  overflow: hidden;
+  touch-action: none;
 }
-.food-photo-mask img {
-  max-width: 100%;
-  max-height: 100%;
+.food-photo-stage img {
+  max-width: 96vw;
+  max-height: 78vh;
   object-fit: contain;
-  border-radius: 10px;
+  transform-origin: center center;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+  border-radius: 8px;
+}
+.food-photo-x {
+  position: absolute;
+  top: calc(10px + var(--safe-t, 0px));
+  right: 12px;
+  z-index: 3;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,.92);
+  color: #1a1a1a;
+  font: inherit;
+}
+.food-photo-tools {
+  position: absolute;
+  bottom: calc(16px + var(--safe-b, 0px));
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 3;
+}
+.food-photo-tools .ghost {
+  width: auto;
+  background: rgba(255,255,255,.92);
 }
 a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-box; }

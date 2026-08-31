@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-14";
-const APP_EDIT_COUNT = 406;
+const APP_STAMP = "2026-09-01-02-16";
+const APP_EDIT_COUNT = 407;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["常用店家拿掉文字菜單，改看照片"] },
+  { ver: APP_STAMP, items: ["菜單照片點開後可放大縮小"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8674,7 +8674,14 @@ function adminFood() {
       <div class="row"><span class="k">Google 地圖</span><a class="linkish" href="${foodGoogleUrl(q)}" target="_blank" rel="noopener">開 Google 看全部</a></div>
       <iframe class="food-map" src="${foodGoogleEmbed(q)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Google 地圖搜尋"></iframe>
     </div>` : ""}
-    ${ui.foodPhoto ? `<div class="food-photo-mask" id="food-photo-mask"><img src="${escapeHtml(ui.foodPhoto)}" alt="菜單"></div>` : ""}
+    ${ui.foodPhoto ? `<div class="food-photo-mask" id="food-photo-mask">
+      <button type="button" class="food-photo-x" id="food-photo-close">關閉</button>
+      <div class="food-photo-stage" id="food-photo-stage"><img id="food-photo-img" src="${escapeHtml(ui.foodPhoto)}" alt="菜單" draggable="false"></div>
+      <div class="food-photo-tools">
+        <button type="button" class="ghost" id="food-zoom-out">縮小</button>
+        <button type="button" class="ghost" id="food-zoom-in">放大</button>
+      </div>
+    </div>` : ""}
     ${form ? `<form class="card card-body" id="lunch-edit-form" autocomplete="off">
       <div class="label">${form.id ? "編輯店家" : "新增店家"}</div>
       <label class="field"><span>店名</span><input id="ln-name" type="text" value="${escapeHtml(form.name || "")}" /></label>
@@ -8798,6 +8805,93 @@ function runFoodSearch(q) {
     render();
   });
 }
+function bindFoodPhotoZoom() {
+  const close = document.getElementById("food-photo-close");
+  if (close) close.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.foodPhoto = "";
+    ui.keepScroll = true;
+    render();
+  };
+  const stage = document.getElementById("food-photo-stage");
+  const img = document.getElementById("food-photo-img");
+  if (!stage || !img) return;
+  let scale = 1, x = 0, y = 0;
+  let startDist = 0, startScale = 1, dragging = false, lastX = 0, lastY = 0, lastTap = 0;
+  const apply = () => {
+    img.style.transform = "translate(" + x + "px," + y + "px) scale(" + scale + ")";
+  };
+  const clamp = () => {
+    scale = Math.min(5, Math.max(1, scale));
+    if (scale <= 1.02) { scale = 1; x = 0; y = 0; }
+  };
+  const zoomBy = factor => {
+    scale *= factor;
+    clamp();
+    apply();
+  };
+  const zin = document.getElementById("food-zoom-in");
+  const zout = document.getElementById("food-zoom-out");
+  if (zin) zin.onclick = e => { e.preventDefault(); e.stopPropagation(); zoomBy(1.35); };
+  if (zout) zout.onclick = e => { e.preventDefault(); e.stopPropagation(); zoomBy(1 / 1.35); };
+  stage.addEventListener("wheel", e => {
+    e.preventDefault();
+    zoomBy(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  }, { passive: false });
+  stage.addEventListener("touchstart", e => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      startDist = Math.hypot(dx, dy) || 1;
+      startScale = scale;
+      dragging = false;
+    } else if (e.touches.length === 1) {
+      dragging = scale > 1;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  stage.addEventListener("touchmove", e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy) || 1;
+      scale = startScale * (dist / startDist);
+      clamp();
+      apply();
+    } else if (dragging && e.touches.length === 1) {
+      e.preventDefault();
+      x += e.touches[0].clientX - lastX;
+      y += e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      apply();
+    }
+  }, { passive: false });
+  stage.addEventListener("touchend", e => {
+    if (e.touches.length === 0 && e.changedTouches.length === 1 && scale <= 1.05) {
+      const now = Date.now();
+      if (now - lastTap < 280) {
+        scale = 2.4;
+        apply();
+        lastTap = 0;
+        return;
+      }
+      lastTap = now;
+    }
+    dragging = false;
+    clamp();
+    apply();
+  });
+  stage.addEventListener("dblclick", e => {
+    e.preventDefault();
+    if (scale > 1.2) { scale = 1; x = 0; y = 0; }
+    else scale = 2.4;
+    apply();
+  });
+}
 function bindLunch() {
   const search = document.getElementById("food-search");
   if (search) {
@@ -8819,8 +8913,7 @@ function bindLunch() {
       render();
     };
   });
-  const photoMask = document.getElementById("food-photo-mask");
-  if (photoMask) photoMask.onclick = () => { ui.foodPhoto = ""; ui.keepScroll = true; render(); };
+  bindFoodPhotoZoom();
   document.querySelectorAll("[data-lunch-keep]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
