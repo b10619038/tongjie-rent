@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-31";
-const APP_EDIT_COUNT = 379;
+const APP_STAMP = "2026-08-31-22-34";
+const APP_EDIT_COUNT = 380;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,7 +53,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["手機也可送出工作助手訊息"] },
+  { ver: APP_STAMP, items: ["取消終止契約後，交接中圖塊會收掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6317,9 +6317,13 @@ function incomingOf(roomId) {
 function isHandoverRoom(r, t) {
   if (!r || r.demo) return false;
   if (incomingOf(r.id)) return true;
-  const co = t && lastCheckout(t.id);
-  if (co && co.status !== "done") return true;
-  return studioHandover(t, r);
+  return false;
+}
+function discardCheckoutDraft(tenantId) {
+  if (!tenantId || !Array.isArray(state.checkouts)) return false;
+  const n = state.checkouts.length;
+  state.checkouts = state.checkouts.filter(c => !(c && c.tenantId === tenantId && c.status !== "done"));
+  return state.checkouts.length !== n;
 }
 function addIncomingTenant(roomId, fields) {
   const r = (state.rooms || []).find(x => x.id === roomId);
@@ -6560,7 +6564,7 @@ function checkoutFormHtml() {
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
       <button type="button" class="btn-navy" id="co-print-term">列印終止契約</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
-      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
+      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消終止契約</button>`}
     </div>
     ${termLeasePaperHtml(t, r, Object.assign({}, co, { at: co.at || today, deposit, deduct, refund, property: prop, idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || "" }))}
   </div>`;
@@ -6585,7 +6589,7 @@ function checkoutFormHtml() {
     <div class="unpaid-tools">
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
-      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : ""}
+      ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消退租單</button>`}
     </div>
   </div>`;
 }
@@ -6723,6 +6727,29 @@ function bindOps() {
   });
   const closeCo = document.getElementById("checkout-close");
   if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  const discardCo = document.getElementById("co-discard");
+  if (discardCo) discardCo.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = ui.checkoutTenantId;
+    const t = (state.tenants || []).find(x => x.id === id);
+    const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+    const kind = (lastCheckout(id) || {}).kind || ui.checkoutKind;
+    discardCheckoutDraft(id);
+    const inc = r && incomingOf(r.id);
+    if (inc) {
+      state.tenants = (state.tenants || []).filter(x => x.id !== inc.id);
+      delete r.incomingTenantId;
+      r.edited = true;
+    }
+    save();
+    audit(kind === "early" ? "取消終止契約" : "取消退租單", ((r && r.no) || "") + " " + ((t && t.name) || ""));
+    toast(kind === "early" ? "已取消終止契約，交接中已收掉" : "已取消退租單，交接中已收掉");
+    ui.checkoutTenantId = "";
+    ui.checkoutKind = "pick";
+    ui.keepScroll = true;
+    render();
+  };
   const pickMask = document.getElementById("checkout-pick-mask");
   if (pickMask) pickMask.onclick = e => {
     if (e.target === pickMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
