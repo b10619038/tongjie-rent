@@ -15,8 +15,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-22-05";
-const APP_EDIT_COUNT = 362;
+const APP_STAMP = "2026-08-31-22-10";
+const APP_EDIT_COUNT = 363;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -43,7 +43,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票中文大寫紅字往上0.1公分"] },
+  { ver: APP_STAMP, items: ["開發者後台補上 8/31 鈺晟收電費 76,900"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1879,6 +1879,7 @@ function normalize(data) {
   applyStudioSheetPaid(data);
   applyJuly115Books(data);
   applyAug31Docs(data);
+  applyYushengElec(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
@@ -1945,6 +1946,29 @@ function applyAug31Docs(data) {
     });
   });
   data.docsImportVer = DOCS_IMPORT_VER;
+}
+const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
+function applyYushengElec(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if ((data.ledgerGone || []).indexOf(YUSHENG_ELEC_ID) >= 0) return;
+  const hit = data.books.some(b => b && (
+    b.id === YUSHENG_ELEC_ID ||
+    (ymdOf(b.date) === "2026-08-31" && Number(b.amount) === 76900 && /鈺晟/.test(String(b.note || "") + String(b.place || "")))
+  ));
+  if (hit) return;
+  data.books.push({
+    id: YUSHENG_ELEC_ID,
+    type: "in",
+    date: "2026-08-31",
+    amount: 76900,
+    company: "現金(保險箱)",
+    bank: "",
+    note: "電費收入　鈺晟　拉皮93-1B",
+    place: "鈺晟實業有限公司",
+    importTag: "yusheng76900",
+    createdAt: "2026-08-31 14:00"
+  });
 }
 function ensureCheckout6832(data) {
   if (!data) return;
@@ -2235,6 +2259,7 @@ async function pullCloud() {
       }
       applyJuly115Books(state);
       applyAug31Docs(state);
+      applyYushengElec(state);
       persistLedger(state);
       ui.cloudOk = true;
       return "local-newer";
@@ -2266,6 +2291,7 @@ async function pullCloud() {
     if ((!state.checkouts || !state.checkouts.length) && mineCheckouts) state.checkouts = mineCheckouts;
     applyJuly115Books(state);
     applyAug31Docs(state);
+    applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
