@@ -2678,11 +2678,23 @@ img.avatar { object-fit: cover; display: block; }
 .errand-ball-mask {
   position: fixed;
   inset: 0;
-  z-index: 89;
-  background: rgba(0,0,0,.38);
+  z-index: 140;
+  background: rgba(0,0,0,.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+.errand-ball-sheet {
+  width: min(520px, 100%);
+  max-height: min(78vh, 640px);
+  overflow: auto;
+  background: var(--card, #ffffff);
+  color: var(--ink, #1a1a1a);
+  border-radius: 20px 20px 0 0;
+  padding: 16px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 28px rgba(0,0,0,.2);
+  opacity: 1;
+  isolation: isolate;
 }
 .food-menu { margin: 8px 0 0; padding-left: 1.2em; }
 .food-menu li { margin: 3px 0; line-height: 1.45; }
