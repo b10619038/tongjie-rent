@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-19-25";
-const APP_EDIT_COUNT = 345;
+const APP_STAMP = "2026-08-31-19-50";
+const APP_EDIT_COUNT = 346;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["案場總營收改成橫列，數字不會被切到"] },
+  { ver: APP_STAMP, items: ["操作教學圖塊拉開間距，並拿掉示範用的6831熱水器報修"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1590,11 +1590,10 @@ function buildSeed() {
     }
     rooms.push(r);
   });
-  const t6831 = tenants.find(t => t.roomId === "r6831");
   return {
     rooms, tenants,
-    repairs: [{ id: "rep1", roomId: "r6831", tenantId: t6831 ? t6831.id : "t3", type: "熱水器", note: "忽冷忽熱，晚上完全沒熱水", photo: null, status: "open", createdAt: "2026-08-24 21:10" }],
-    notices: [{ id: "n1", type: "repair", repairId: "rep1", roomNo: "6831", text: "6831 熱水器報修", createdAt: "2026-08-24 21:10", read: false }],
+    repairs: [],
+    notices: [],
     announcements: [],
     houseRules: DEFAULT_RULES,
     renewals: []
@@ -1809,6 +1808,13 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
+  if (!Array.isArray(data.repairs)) data.repairs = [];
+  data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
+  if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && n.id !== "n1" && n.repairId !== "rep1");
+  const r6831 = (data.rooms || []).find(x => x && (x.id === "r6831" || x.no === "6831"));
+  if (r6831 && r6831.status === "repair" && !data.repairs.some(x => x.roomId === r6831.id && x.status !== "done")) {
+    r6831.status = "rented";
+  }
   applyCompany(data);
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
