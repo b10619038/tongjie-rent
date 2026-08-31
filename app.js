@@ -14,8 +14,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-08-31-18-00";
-const APP_EDIT_COUNT = 341;
+const APP_STAMP = "2026-08-31-18-25";
+const APP_EDIT_COUNT = 342;
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
 function isDemoTenant(t) {
@@ -30,7 +30,7 @@ const TENANT_ROSTER_VER = "20260831-1710";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-1650";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["設定圖塊標題與內文拉開間距"] },
+  { ver: APP_STAMP, items: ["總覽可切案場看各牛案場實收、支出與盈餘"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1308,6 +1308,50 @@ function ensureDevCycleJobs() {
   if (changed) saveDevMemos(list);
 }
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
+const SITE_ORDER = (() => {
+  const list = FACTORY_GROUPS.map(g => g.group);
+  if (!list.includes("牛10")) {
+    const i = list.indexOf("牛8");
+    if (i >= 0) list.splice(i + 1, 0, "牛10");
+    else list.push("牛10");
+  }
+  return list;
+})();
+function isSiteName(name) {
+  return SITE_ORDER.includes(String(name || "").trim());
+}
+function siteStreet(name) {
+  if (name === "牛10") return "文龍東路套房";
+  const g = FACTORY_GROUPS.find(x => x.group === name);
+  return g ? (g.street || "") : "";
+}
+function siteOfRoomNo(no) {
+  const s = String(no || "").trim();
+  if (!s) return "";
+  const room = (typeof state !== "undefined" && state.rooms || []).find(r => String(r.no) === s);
+  if (room) {
+    if (room.kind === "factory" && room.group) return room.group;
+    if (String(room.group || "").indexOf("牛10") === 0) return "牛10";
+    if (room.kind === "studio" || room.kind === "store" || room.status === "office") {
+      if (STUDIO_BUILDINGS.some(b => b.prefix === studioPrefix(s))) return "牛10";
+    }
+  }
+  const g = FACTORY_GROUPS.find(x => x.items.some(it => it.no === s));
+  if (g) return g.group;
+  if (STUDIO_BUILDINGS.some(b => b.prefix === studioPrefix(s))) return "牛10";
+  return "";
+}
+function siteOfLedgerRow(row) {
+  if (!row) return "";
+  const fromNo = siteOfRoomNo(row.roomNo);
+  if (fromNo) return fromNo;
+  const blob = [row.note, row.place, row.roomNo].join(" ");
+  const names = SITE_ORDER.slice().sort((a, b) => b.length - a.length);
+  for (let i = 0; i < names.length; i++) {
+    if (blob.indexOf(names[i]) >= 0) return names[i];
+  }
+  return "";
+}
 const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
 const PHOTO_SET = [
   ["images/studio-room.jpg?v=1713", "images/kitchen.jpg"],
@@ -4416,7 +4460,9 @@ function ledgerMatchesFilter(row, filter, bank) {
   if (row && row.type === "memo") return true;
   const f = String(filter || "").trim();
   if (f) {
-    if (f !== "個人戶" && isPersonalKey(f)) {
+    if (isSiteName(f)) {
+      if (siteOfLedgerRow(row) !== f) return false;
+    } else if (f !== "個人戶" && isPersonalKey(f)) {
       const p = personOfAccount(f);
       if (!(p && (personOfAccount(row.company) === p || String(row.company || "").indexOf(p) >= 0))) return false;
     } else if (rowAccount(row) !== f) return false;
@@ -4487,6 +4533,7 @@ function ensureReportPeriod() {
   if (!ui.reportYear) ui.reportYear = n.getFullYear();
   if (!ui.reportMonth) ui.reportMonth = n.getMonth() + 1;
   if (ui.reportMode !== "year") ui.reportMode = "month";
+  if (ui.reportView !== "site") ui.reportView = "account";
 }
 function reportBounds() {
   ensureReportPeriod();
@@ -4532,6 +4579,23 @@ function accountStats(name, start, end) {
     : (Number((state.accountOpenings || {})[name]) || 0);
   return { inn, out, net: inn - out, ledger, bal: ledger + opening, count: period.length };
 }
+function siteStatsMap(start, end) {
+  const map = Object.fromEntries(SITE_ORDER.map(n => [n, { inn: 0, out: 0, net: 0, count: 0 }]));
+  collectLedger().forEach(x => {
+    if (!x || x.type === "memo") return;
+    if (!x.date || x.date < start || x.date > end) return;
+    const s = siteOfLedgerRow(x);
+    if (!map[s]) return;
+    if (x.type === "in") map[s].inn += Number(x.amount) || 0;
+    else if (x.type === "out") map[s].out += Number(x.amount) || 0;
+    map[s].count += 1;
+  });
+  SITE_ORDER.forEach(n => { map[n].net = map[n].inn - map[n].out; });
+  return map;
+}
+function siteStats(name, start, end) {
+  return siteStatsMap(start, end)[name] || { inn: 0, out: 0, net: 0, count: 0 };
+}
 function shiftReport(delta) {
   ensureReportPeriod();
   if (ui.reportMode === "year") ui.reportYear += delta;
@@ -4542,6 +4606,7 @@ function shiftReport(delta) {
   }
 }
 function overallReportBodyHtml() {
+  if (ui.reportView === "site") return siteReportBodyHtml();
   const b = reportBounds();
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
@@ -4578,9 +4643,39 @@ function overallReportBodyHtml() {
     </div>
     ${revenueTableHtml()}`;
 }
+function siteReportBodyHtml() {
+  const b = reportBounds();
+  const map = siteStatsMap(b.start, b.end);
+  const stats = SITE_ORDER.map(n => Object.assign({ name: n }, map[n] || { inn: 0, out: 0, net: 0 }));
+  const totIn = stats.reduce((s, x) => s + x.inn, 0);
+  const totOut = stats.reduce((s, x) => s + x.out, 0);
+  const totNet = totIn - totOut;
+  return `<div class="cal-nav">
+      <button type="button" class="ghost" data-report-nav="-1">${b.prev}</button>
+      <strong>${b.label}</strong>
+      <button type="button" class="ghost" data-report-nav="1">${b.next}</button>
+    </div>
+    <div class="site-kpis">
+      <div><span class="k">總營收</span><strong class="led-in">${money(totIn)}</strong></div>
+      <div><span class="k">總支出</span><strong class="led-out">${money(totOut)}</strong></div>
+      <div><span class="k">總盈餘</span><strong class="${totNet >= 0 ? "led-in" : "led-out"}">${money(totNet)}</strong></div>
+    </div>
+    <div class="acct-grid site-grid">
+      ${stats.map(s => `
+        <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
+          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="small">${escapeHtml(siteStreet(s.name))}</div>
+          <div class="acct-row"><span class="led-in">收入</span><strong class="led-in">${money(s.inn)}</strong></div>
+          <div class="acct-row"><span class="led-out">支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          <div class="acct-row"><span>盈餘</span><strong class="${s.net >= 0 ? "led-in" : "led-out"}">${money(s.net)}</strong></div>
+        </div>`).join("")}
+    </div>
+    ${siteRevenueTableHtml()}`;
+}
 function overallReportHtml() {
   const b = reportBounds();
   const yearOn = ui.reportMode === "year";
+  const siteOn = ui.reportView === "site";
   if (ui.editAcct && (REPORT_ACCOUNTS.includes(ui.editAcct) || isPersonalKey(ui.editAcct))) {
     const s = Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
     return `<div class="card card-body" id="overall-report">
@@ -4599,8 +4694,15 @@ function overallReportHtml() {
   }
   return `<div class="card card-body" id="overall-report">
     <div class="report-head">
-      <h2 class="dash-h" style="margin:0">整體報表</h2>
-      <div class="small">四戶歷史營收：本期收支與截至本期的營收總額</div>
+      <div class="report-title-row">
+        <h2 class="dash-h" style="margin:0">整體報表</h2>
+        <div class="seg ${siteOn ? "is-site" : "is-account"}" id="report-view-seg">
+          <i class="seg-bg"></i>
+          <button type="button" class="${siteOn ? "" : "on"}" data-report-view="account">帳戶</button>
+          <button type="button" class="${siteOn ? "on" : ""}" data-report-view="site">案場</button>
+        </div>
+      </div>
+      <div class="small">${siteOn ? "各牛案場實收：本期收入、支出與盈餘（含牛10）" : "四戶歷史營收：本期收支與截至本期的營收總額"}</div>
       <div class="report-actions no-print">
         <div class="seg ${yearOn ? "is-year" : "is-month"}" id="report-period-seg">
           <i class="seg-bg"></i>
@@ -4638,6 +4740,15 @@ function applyReportMode(mode) {
     ui.keepScroll = true;
     render();
   }
+}
+function applyReportView(view) {
+  const next = view === "site" ? "site" : "account";
+  if ((ui.reportView || "account") === next) return;
+  ui.reportView = next;
+  if (next === "site" && ui.calFilter && !isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; }
+  if (next === "account" && isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; }
+  ui.keepScroll = true;
+  render();
 }
 function bindReportBody() {
   document.querySelectorAll("[data-report-nav]").forEach(btn => {
@@ -4772,6 +4883,15 @@ function bindReportPeriodSeg() {
     if (swiping) { e.preventDefault(); e.stopPropagation(); swiping = false; }
   }, true);
 }
+function bindReportViewSeg() {
+  document.querySelectorAll("[data-report-view]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      applyReportView(btn.dataset.reportView);
+    };
+  });
+}
 function calDayListHtml(selected, rangeLabel, extra) {
   return `<div class="small">${rangeLabel}${extra || ""}</div>
     ${selected.length ? selected.map(x => `
@@ -4899,7 +5019,7 @@ function monthCashHtml() {
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-        <div class="small">${filter ? "目前顯示：" + escapeHtml(accountLabel(filter)) + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點帳戶圖卡可切換" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳"}</div>
+        <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
       </div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
@@ -8034,6 +8154,57 @@ function revenueTableHtml() {
     <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
   </div>`;
 }
+function reportSiteBundle() {
+  ensureReportPeriod();
+  const y = ui.reportYear, m = ui.reportMonth;
+  const last = new Date(y, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  const month = { start: y + "-" + mm + "-01", end: y + "-" + mm + "-" + String(last).padStart(2, "0"), label: y + " 年 " + m + " 月" };
+  const year = { start: y + "-01-01", end: y + "-12-31", label: y + " 年" };
+  const monthMap = siteStatsMap(month.start, month.end);
+  const yearMap = siteStatsMap(year.start, year.end);
+  const cols = SITE_ORDER.map(n => ({
+    name: n,
+    m: monthMap[n] || { inn: 0, out: 0, net: 0 },
+    y: yearMap[n] || { inn: 0, out: 0, net: 0 }
+  }));
+  const add = pick => cols.reduce((s, c) => s + pick(c), 0);
+  return {
+    y, m, month, year, cols,
+    totals: {
+      mIn: add(c => c.m.inn), mOut: add(c => c.m.out), mNet: add(c => c.m.net),
+      yIn: add(c => c.y.inn), yOut: add(c => c.y.out), yNet: add(c => c.y.net)
+    }
+  };
+}
+function siteRevenueTableHtml() {
+  const d = reportSiteBundle();
+  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${money(v)}</td>`;
+  const row = (label, pick, cls) => {
+    const vals = d.cols.map(pick);
+    const tot = vals.reduce((s, x) => s + x, 0);
+    return `<tr class="${cls || ""}"><th>${label}</th>${vals.map(td).join("")}${td(tot)}</tr>`;
+  };
+  return `<div class="rev-sheet">
+    <div class="rev-caption">${escapeHtml(d.month.label)}　／　${escapeHtml(d.year.label)}<span class="rev-hint">點擊放大</span></div>
+    <div class="rev-card" data-rev-zoom="案場盈餘" role="button" tabindex="0">
+    <table class="rev-table">
+      <thead>
+        <tr><th>項目</th>${d.cols.map(c => `<th>${escapeHtml(c.name)}</th>`).join("")}<th>合計</th></tr>
+      </thead>
+      <tbody>
+        ${row("當月收入", c => c.m.inn)}
+        ${row("當月支出", c => c.m.out)}
+        ${row("當月盈餘", c => c.m.net)}
+        ${row("當年收入", c => c.y.inn)}
+        ${row("當年支出", c => c.y.out)}
+        ${row("當年盈餘", c => c.y.net, "tot")}
+      </tbody>
+    </table>
+    </div>
+    <div class="rev-balance">總盈餘　${money(ui.reportMode === "year" ? d.totals.yNet : d.totals.mNet)}</div>
+  </div>`;
+}
 function closeRevZoom() {
   const box = document.getElementById("rev-zoom");
   if (box) box.remove();
@@ -8190,6 +8361,30 @@ ${xlsRow(pHead, pHead.map(() => "Head"))}
 ${peopleRows}
 ${peopleTot}
 </Table></Worksheet>`;
+  const sd = reportSiteBundle();
+  const sHeads = ["項目"].concat(sd.cols.map(c => c.name), ["合計"]);
+  const sMoney = ["Label"].concat(sd.cols.map(() => "Money"), ["Money"]);
+  const sTot = ["LabelB"].concat(sd.cols.map(() => "MoneyB"), ["MoneyB"]);
+  const smk = (label, pick, bold) => {
+    const vals = sd.cols.map(pick);
+    const tot = vals.reduce((s, x) => s + x, 0);
+    return xlsRow([label].concat(vals, [tot]), bold ? sTot : sMoney);
+  };
+  const sMerge = String(sHeads.length - 1);
+  const sColsXml = `<Column ss:Width="92"/>` + sHeads.slice(1).map(() => `<Column ss:Width="88"/>`).join("");
+  const sheetSite = `<Worksheet ss:Name="案場盈餘"><Table>
+${sColsXml}
+<Row><Cell ss:StyleID="Title" ss:MergeAcross="${sMerge}"><Data ss:Type="String">統潔＆信潔開發有限公司　案場實收盈餘</Data></Cell></Row>
+<Row><Cell ss:MergeAcross="${sMerge}"><Data ss:Type="String">${xmlEsc(sd.month.label + "　／　" + sd.year.label)}</Data></Cell></Row>
+<Row></Row>
+${xlsRow(sHeads, sHeads.map(() => "Head"))}
+${smk("當月收入", c => c.m.inn)}
+${smk("當月支出", c => c.m.out)}
+${smk("當月盈餘", c => c.m.net)}
+${smk("當年收入", c => c.y.inn)}
+${smk("當年支出", c => c.y.out)}
+${smk("當年盈餘", c => c.y.net, true)}
+</Table></Worksheet>`;
   const items = overallRows();
   const assetHead = ["房號", "類型", "樓層/組別", "狀態", "租客/管理人", "電話", "月租", "繳費", "起租日", "到期日", "剩餘天數", "LINE", "地址"];
   const repairHead = ["時間", "房號", "租客", "類型", "狀態", "說明", "預約時間"];
@@ -8213,6 +8408,7 @@ ${peopleTot}
 </Styles>
 ${sheet1}
 ${sheet2}
+${sheetSite}
 ${xlsSheet("全部資產", assetHead, items.map(x => x.row))}
 ${xlsSheet("報修", repairHead, repairRows)}
 </Workbook>`;
@@ -10382,6 +10578,7 @@ function bindAdmin() {
   bindReportBody();
   bindReportModeBtns();
   bindReportPeriodSeg();
+  bindReportViewSeg();
   const acctBack = document.getElementById("acct-bal-back");
   if (acctBack) acctBack.onclick = () => { ui.editAcct = ""; ui.keepScroll = true; render(); };
   const acctForm = document.getElementById("acct-bal-form");

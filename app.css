@@ -1579,6 +1579,11 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .report-head { display: grid; gap: 8px; }
 .report-head .small { line-height: 1.5; }
+.report-title-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.report-title-row .seg { margin: 0; width: 148px; flex: 0 0 148px; }
+#report-view-seg { width: 148px; margin: 0; flex: 0 0 148px; }
 .rev-sheet { margin-top: 18px; }
 .rev-card {
   border: 1px solid var(--line);
@@ -1738,7 +1743,22 @@ body.rev-zooming { overflow: hidden; }
 .acct-total strong { font-size: 22px; font-weight: 800; white-space: nowrap; }
 @media (min-width: 860px) {
   .acct-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .acct-grid.site-grid { grid-template-columns: repeat(5, 1fr); }
 }
+.site-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.site-kpis > div {
+  background: var(--chip);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.site-kpis .k { display: block; margin-bottom: 6px; }
+.site-kpis strong { font-size: 18px; font-weight: 800; }
+.acct-card.on { box-shadow: inset 0 0 0 1.5px var(--teal); }
 .item {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center;
   padding: 10px; cursor: pointer;
@@ -1830,7 +1850,8 @@ img.avatar { object-fit: cover; display: block; }
 }
 .seg.is-month .seg-bg,
 .seg.is-factory .seg-bg,
-.seg.is-done .seg-bg { transform: translate3d(100%,0,0); }
+.seg.is-done .seg-bg,
+.seg.is-site .seg-bg { transform: translate3d(100%,0,0); }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
 .seg button {
   position: relative; z-index: 2; border: 0; background: transparent; border-radius: 999px;
