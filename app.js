@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-00-55";
-const APP_EDIT_COUNT = 395;
+const APP_STAMP = "2026-09-01-00-58";
+const APP_EDIT_COUNT = 396;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房合約可線上簽署，後台列印後只蓋章"] },
+  { ver: APP_STAMP, items: ["開發者後台套房租客新增測試租客"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -4056,7 +4056,8 @@ function ensureDemoTenant(data) {
     t = {
       id: "t-demo", name: "開發者（測試）", roomId: room.id, paid: false, demo: true,
       leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
-      phone: "0912-345-678", loginPass: "DEMO"
+      phone: "0912-345-678", loginPass: "DEMO",
+      idNo: "A123456789", emergencyName: "測試聯絡人", emergencyPhone: "0988-000-000"
     };
     data.tenants.push(t);
   } else {
@@ -4066,7 +4067,14 @@ function ensureDemoTenant(data) {
     if (!t.loginPass) t.loginPass = "DEMO";
     if (!t.leaseStart) t.leaseStart = y + "-01-01";
     if (!t.leaseEnd) t.leaseEnd = (y + 1) + "-12-31";
+    if (!t.dueDay) t.dueDay = 1;
+    if (!t.idNo) t.idNo = "A123456789";
+    if (!t.emergencyName) t.emergencyName = "測試聯絡人";
+    if (!t.emergencyPhone) t.emergencyPhone = "0988-000-000";
   }
+  room.rent = room.rent || 10000;
+  room.deposit = room.deposit || 20000;
+  if (!room.deposit || Number(room.deposit) < Number(room.rent) * 2) room.deposit = Number(room.rent) * 2;
   room.tenantId = t.id;
   t.roomId = room.id;
 }
@@ -10136,7 +10144,9 @@ function tenantListOfKind(kind) {
   const list = state.tenants.filter(t => {
     const r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder || t.former || t.incoming) return false;
-    if (isDemoTenant(t)) return false;
+    if (isDemoTenant(t)) {
+      if (!isDeveloper() || factory) return false;
+    }
     if (!String(t.name || "").trim()) return false;
     if (!r || r.status === "office") return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
@@ -10290,7 +10300,7 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
