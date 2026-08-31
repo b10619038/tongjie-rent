@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-12";
-const APP_EDIT_COUNT = 405;
+const APP_STAMP = "2026-09-01-02-14";
+const APP_EDIT_COUNT = 406;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["里歐早午餐加上你提供的菜單照片"] },
+  { ver: APP_STAMP, items: ["常用店家拿掉文字菜單，改看照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8635,7 +8635,6 @@ function lunchSpotCard(s, live) {
     <div class="row"><span class="k">電話</span><span class="v">${escapeHtml(s.phone || "—")}</span></div>
     ${s.hours ? `<div class="row wrap"><span class="k">時間</span><span class="v">${escapeHtml(s.hours)}</span></div>` : ""}
     ${s.line ? `<div class="row"><span class="k">LINE</span><span class="v">${escapeHtml(s.line)}</span></div>` : ""}
-    ${(s.menu || []).length ? `<ul class="food-menu">${s.menu.map(m => `<li>${escapeHtml(m)}</li>`).join("")}</ul>` : ""}
     ${(s.photos || []).length ? `<div class="food-photos">${s.photos.map(p => `<button type="button" class="food-photo" data-food-photo="${escapeHtml(p)}"><img src="${escapeHtml(p)}" alt="菜單"></button>`).join("")}</div>` : ""}
     ${s.note ? `<p class="small" style="margin-top:8px">${escapeHtml(s.note)}</p>` : ""}
     <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;gap:8px">
@@ -8683,7 +8682,6 @@ function adminFood() {
       <label class="field"><span>地址</span><input id="ln-addr" type="text" value="${escapeHtml(form.addr || "")}" /></label>
       <label class="field"><span>距離／說明</span><input id="ln-near" type="text" value="${escapeHtml(form.near || "")}" placeholder="例如：走路 3 分鐘" /></label>
       <label class="field"><span>營業時間</span><input id="ln-hours" type="text" value="${escapeHtml(form.hours || "")}" /></label>
-      <label class="field"><span>菜單（一行一道）</span><textarea id="ln-menu" rows="5">${escapeHtml((form.menu || []).join("\n"))}</textarea></label>
       <label class="field"><span>備註</span><input id="ln-note" type="text" value="${escapeHtml(form.note || "")}" /></label>
       <div class="btn-row" style="margin-top:10px">
         <button type="button" class="ghost" id="ln-cancel">取消</button>
