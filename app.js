@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-02-20";
-const APP_EDIT_COUNT = 409;
+const APP_STAMP = "2026-09-01-02-22";
+const APP_EDIT_COUNT = 410;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["燒肉食客加上你提供的菜單照片"] },
+  { ver: APP_STAMP, items: ["梁社漢改用你提供的菜單照片"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -8552,7 +8552,7 @@ const DEFAULT_LUNCH_SPOTS = [
     hours: "10:30–20:30",
     menu: ["炸排骨飯", "炸雞腿飯", "椒麻雞飯", "滷排骨飯"],
     note: "可電話預訂、線上點餐",
-    photos: ["images/food/liangshehan.jpg"]
+    photos: ["images/food/liangshehan.jpg?v=0222"]
   },
   {
     id: "haoxifu", name: "鍋燒好媳婦", near: "文龍東路附近", tags: ["便當", "簡餐"],
