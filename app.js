@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-52";
-const APP_EDIT_COUNT = 459;
+const APP_STAMP = "2026-09-01-22-58";
+const APP_EDIT_COUNT = 460;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["舊客匯款改為統潔鳳山區農會帳戶"] },
+  { ver: APP_STAMP, items: ["拿掉9/1誤入的廠房進帳；改租客不再動到其他人"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2252") return;
+    if (m[1] === "2258") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -909,6 +909,7 @@ function tenantPayAccounts(t, r) {
 }
 function applyOldTenantPayBank(data) {
   if (!data || !Array.isArray(data.tenants)) return;
+  if (data.oldPayBankVer === "20260901-nonghui") return;
   data.tenants.forEach(t => {
     if (!t || t.former || t.demo || t.incoming) return;
     const room = (data.rooms || []).find(r => r && r.id === t.roomId);
@@ -918,9 +919,10 @@ function applyOldTenantPayBank(data) {
     const next = isNew ? NEW_TENANT_PAY_BANK : "農會";
     if (t.payBank === next) return;
     if (isNew && t.payBank && t.payBank !== "聯邦" && t.payBank !== "農會") return;
-    if (!isNew && t.payBank === "兆豐" && t.edited) return;
+    if (!isNew && t.payBank === "兆豐") return;
     t.payBank = next;
   });
+  data.oldPayBankVer = "20260901-nonghui";
 }
 const RELATED_ACCOUNTS = [
   { label: "趙海成", bank: "聯邦銀行", account: "010508131129" },
@@ -2510,53 +2512,33 @@ function ensureStudioTenant(data, no) {
     data.rooms.push(room);
   }
   room.no = String(no);
-  (data.tenants || []).forEach(x => {
-    if (!x || x.roomId !== room.id || x.demo || x.incoming || x.former) return;
-    if (sameTenantName(x.name, info.name)) return;
-    x.former = true;
-    if (!x.leftOn) {
-      const prev = (FORMER_STUDIO[String(no)] || [])[0];
-      x.leftOn = (prev && prev.leftOn) || "";
-    }
-    x.edited = true;
-  });
-  let t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former && sameTenantName(x.name, info.name));
-  if (!t) t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former);
-  if (!t) t = data.tenants.find(x => x && !x.demo && !x.incoming && sameTenantName(x.name, info.name) && (x.roomId === room.id || x.id === "t" + no));
-  if (t && t.former && sameTenantName(t.name, info.name)) t.former = false;
+  let t = data.tenants.find(x => x && !x.demo && !x.incoming && !x.former && (x.roomId === room.id || x.id === "t" + no) && sameTenantName(x.name, info.name));
+  if (t) {
+    if (room.status === "vacant") room.status = "rented";
+    if (!room.tenantId) room.tenantId = t.id;
+    return;
+  }
+  t = data.tenants.find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming);
+  if (t && t.name && !sameTenantName(t.name, info.name)) return;
   if (!t) {
-    t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false };
+    t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
     data.tenants.push(t);
   }
-  t.id = t.id || ("t" + no);
-  t.roomId = room.id;
-  t.name = info.name;
-  t.phone = info.phone || t.phone || "";
-  t.leaseStart = info.leaseStart || t.leaseStart || "";
-  t.leaseEnd = info.leaseEnd || t.leaseEnd || "";
-  t.note = info.note || t.note || "";
-  if (info.bankLast5) t.bankLast5 = t.bankLast5 || info.bankLast5;
-  t.payBank = info.payBank || t.payBank || tenantPayBankKey(t, room) || "兆豐";
+  if (!t.name) t.name = info.name;
+  if (info.phone && !t.phone) t.phone = info.phone;
+  if (info.leaseStart && !t.leaseStart) t.leaseStart = info.leaseStart;
+  if (info.leaseEnd && !t.leaseEnd) t.leaseEnd = info.leaseEnd;
+  if (info.note && !t.note) t.note = info.note;
+  if (info.payBank && !t.payBank) t.payBank = info.payBank;
   t.former = false;
   t.incoming = false;
   t.placeholder = false;
   t.dueDay = t.dueDay || 1;
-  if (!(t.paidTouched && t.paidYm === payYmNow())) {
-    t.paid = false;
-    t.paidAt = "";
-    t.paidVia = "";
-    t.paidYm = payYmNow();
-    t.paidTouched = true;
-  }
-  t.edited = true;
-  t.editedAt = Date.now();
   room.tenantId = t.id;
-  room.kind = "studio";
-  room.rent = info.rent != null ? info.rent : (studioRentOf(no) || 7000);
-  room.deposit = info.deposit != null ? info.deposit : studioDepositOf(room.rent);
-  if (room.status !== "repair") room.status = "rented";
-  room.edited = true;
-  room.editedAt = Date.now();
+  room.kind = room.kind || "studio";
+  if (!Number(room.rent)) room.rent = info.rent != null ? info.rent : (studioRentOf(no) || 0);
+  if (!Number(room.deposit)) room.deposit = info.deposit != null ? info.deposit : studioDepositOf(room.rent);
+  if (room.status === "vacant") room.status = "rented";
 }
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
@@ -4531,6 +4513,9 @@ function payYmNow() {
 function monthDueYmd() {
   return payYmNow() + "-01";
 }
+function paidThisMonth(t) {
+  return !!(t && t.paid && t.paidTouched && t.paidYm === payYmNow() && !t.former && !t.incoming && !t.demo);
+}
 function tenantPaidOnValue(t) {
   const ymd = ymdOf(t && t.paidAt);
   if (t && t.paid && ymd && ymd.slice(0, 7) === payYmNow()) return ymd;
@@ -4550,7 +4535,7 @@ function dropRentAutoBookOn(data, t) {
 }
 function upsertRentAutoBookOn(data, t) {
   if (!data || !t) return;
-  if (!t.paid || t.former || t.incoming || t.demo || isDemoTenant(t)) {
+  if (!paidThisMonth(t) || isDemoTenant(t)) {
     dropRentAutoBookOn(data, t);
     return;
   }
@@ -4598,7 +4583,22 @@ function upsertRentAutoBookOn(data, t) {
 }
 function syncPaidRentBooks(data) {
   if (!data) return;
-  (data.tenants || []).forEach(t => upsertRentAutoBookOn(data, t));
+  const ym = payYmNow();
+  const keep = new Set();
+  (data.tenants || []).forEach(t => {
+    if (paidThisMonth(t)) {
+      upsertRentAutoBookOn(data, t);
+      keep.add(rentAutoBookId(t, ym));
+    }
+  });
+  const gone = [];
+  data.books = (data.books || []).filter(b => {
+    if (!isRentAutoBook(b)) return true;
+    if (keep.has(b.id)) return true;
+    gone.push(b.id);
+    return false;
+  });
+  if (gone.length) data.ledgerGone = unionGone(data.ledgerGone, gone);
 }
 function dropCoveredRentAuto(data, book) {
   if (!data || !book || isRentAutoBook(book)) return;
@@ -5734,7 +5734,7 @@ function collectLedger() {
     const m = note.match(/牛10\s+(\d{4})/) || note.match(/\b([678]\d{3})\b/);
     if (m && ym) takenYm[ym + "|" + m[1]] = true;
   });
-  state.tenants.filter(t => t.paid && !t.former && !t.incoming && !isDemoTenant(t)).forEach(t => {
+  state.tenants.filter(t => paidThisMonth(t) && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     if (!room || room.status === "office" || room.demo) return;
     const date = ymdOf(t.paidAt) || tenantPaidOnValue(t);
