@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-50";
-const APP_EDIT_COUNT = 423;
+const APP_STAMP = "2026-09-01-11-56";
+const APP_EDIT_COUNT = 424;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房合約租客藍字簽名與身分資料可列印蓋章"] },
+  { ver: APP_STAMP, items: ["簽名後拿掉藍字姓名，改放親筆簽名"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6886,10 +6886,11 @@ function studioLeasePaperHtml(t, r) {
   const ck = leaseCk;
   const u = leaseU;
   const tenantSignRow = names.map((n, i) =>
-    `<span class="lease-who">${leaseInk(n)}</span><span class="lease-sign-line">${tenantEsigHtml(t, i)}</span><span class="term-chop" title="蓋章"></span>`
+    `${tenantMark(t, i, n)}<span class="term-chop" title="蓋章"></span>`
   ).join("");
+  const headerTenants = names.map((n, i) => tenantMark(t, i, n)).join("　");
   const peopleCols = names.map((n, i) => `<div class="lease-person">
-      <p>${i === 0 ? "承租人：" : ""}${leaseInk(n)}${tenantEsigHtml(t, i)}<span class="term-chop" title="蓋章"></span></p>
+      <p>${i === 0 ? "承租人：" : ""}${tenantMark(t, i, n)}<span class="term-chop" title="蓋章"></span></p>
       <p>${i === 0 ? "身分證字號：" : ""}${leaseInk(ids[i] || "")}</p>
       <p>${i === 0 ? "聯絡電話：" : ""}${leaseInk(phones[i] || "")}</p>
       <p>${i === 0 ? "緊急聯絡人：" : ""}${leaseInk(emNames[i] || "")}</p>
@@ -6910,7 +6911,7 @@ function studioLeasePaperHtml(t, r) {
     <section class="lease-pg">
       <h4>房屋租賃契約書</h4>
       <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span></p>
-      <p>承租人　${leaseInk(paperPeople(name), "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
+      <p>承租人　${headerTenants}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
       <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
@@ -8143,6 +8144,11 @@ function tenantEsigHtml(t, i) {
   const src = Number(i) > 0 ? (es && es.sig2) : (es && es.sig);
   if (!(src && String(src).startsWith("data:"))) return "";
   return `<img class="lease-esig" src="${src}" alt="簽名">`;
+}
+function tenantMark(t, i, name) {
+  const img = tenantEsigHtml(t, i);
+  if (img) return `<span class="lease-sign-line signed">${img}</span>`;
+  return leaseInk(name);
 }
 function tenantContractStatus(t, r) {
   const es = getESign(t);
