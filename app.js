@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-08";
-const APP_EDIT_COUNT = 471;
+const APP_STAMP = "2026-09-02-00-18";
+const APP_EDIT_COUNT = 472;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月已繳即時同步到手機與電腦"] },
+  { ver: APP_STAMP, items: ["帳務改走即時通道，避開當掉的雲端寫入"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -798,7 +798,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "0008") return;
+    if (m[1] === "0018") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2760,6 +2760,7 @@ function loadPaidMarks() {
   return marks;
 }
 const PAID_TOPIC = "tongjie/tj-82934388/paid";
+const MONEY_TOPIC = "tongjie/tj-82934388/money";
 let paidWs = null;
 let paidWsOk = false;
 let paidWsTimer = 0;
@@ -2839,25 +2840,84 @@ function mqttParsePublish(buf) {
 function ingestPaidCloud(raw) {
   try {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (!o || !o.marks || typeof o.marks !== "object") return;
+    if (!o || typeof o !== "object") return;
     if (o.ym && o.ym !== payYmNow()) return;
     const before = JSON.stringify(state.paidMarks || {});
-    state.paidMarks = mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(state.paidMarks, o.marks));
+    if (o.marks) state.paidMarks = mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(state.paidMarks, o.marks));
+    if (o.paidMarks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, o.paidMarks);
     persistPaidMarks(state);
     applyPaidMarks(state);
-    if (JSON.stringify(state.paidMarks || {}) === before) return;
-    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash") {
+    if (Array.isArray(o.tenants)) {
+      const byId = new Map((state.tenants || []).map(t => [t.id, t]));
+      o.tenants.forEach(src => {
+        if (!src || !src.id) return;
+        const t = byId.get(src.id);
+        if (!t) return;
+        if (Number(src.editedAt || 0) >= Number(t.editedAt || 0) || src.paidTouched) {
+          if (src.paidYm === payYmNow() || src.paidTouched) {
+            t.paid = !!src.paid;
+            t.paidTouched = !!src.paidTouched;
+            t.paidYm = src.paidYm || t.paidYm;
+            if (src.paidAt) t.paidAt = src.paidAt;
+            if (src.paidVia) t.paidVia = src.paidVia;
+            if (src.editedAt) t.editedAt = src.editedAt;
+          }
+        }
+      });
+    }
+    if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
+    if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
+    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants)) return;
+    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash" || ui.page === "firm") {
       ui.keepScroll = true;
       render();
     }
   } catch {}
 }
+function moneyCloudBlob() {
+  return JSON.stringify({
+    ym: payYmNow(),
+    at: Date.now(),
+    marks: state.paidMarks || {},
+    paidMarks: state.paidMarks || {},
+    rentUnpaidYm: state.rentUnpaidYm || "",
+    tenants: (state.tenants || []).filter(t => t && t.id).map(t => ({
+      id: t.id,
+      paid: !!t.paid,
+      paidYm: t.paidYm || "",
+      paidTouched: !!t.paidTouched,
+      paidAt: t.paidAt || "",
+      paidVia: t.paidVia || "",
+      editedAt: Number(t.editedAt) || 0,
+      name: t.name || "",
+      roomId: t.roomId || ""
+    })),
+    books: (state.books || []).map(b => {
+      const o = Object.assign({}, b);
+      delete o.media; delete o.photo; delete o.photos;
+      return o;
+    }),
+    errands: (state.errands || []).map(e => {
+      const o = Object.assign({}, e);
+      delete o.media; delete o.photo;
+      return o;
+    }),
+    ledgerGone: state.ledgerGone || []
+  });
+}
+let __moneyPubTimer = 0;
 function publishPaidCloud() {
   persistPaidMarks(state);
-  const payload = JSON.stringify({ ym: payYmNow(), marks: state.paidMarks || {}, at: Date.now() });
-  if (paidWs && paidWs.readyState === 1) {
-    try { paidWs.send(mqttPubPkt(PAID_TOPIC, payload, true)); paidWsOk = true; } catch {}
-  }
+  if (!(paidWs && paidWs.readyState === 1)) return;
+  clearTimeout(__moneyPubTimer);
+  __moneyPubTimer = setTimeout(() => {
+    try {
+      const payload = moneyCloudBlob();
+      paidWs.send(mqttPubPkt(PAID_TOPIC, JSON.stringify({ ym: payYmNow(), marks: state.paidMarks || {}, at: Date.now() }), true));
+      paidWs.send(mqttPubPkt(MONEY_TOPIC, payload, true));
+      paidWsOk = true;
+    } catch {}
+  }, 200);
 }
 function connectPaidCloud() {
   if (paidWs && (paidWs.readyState === 0 || paidWs.readyState === 1)) return;
@@ -2871,7 +2931,7 @@ function connectPaidCloud() {
     ws.onmessage = ev => {
       const pkt = mqttParsePublish(ev.data);
       if (!pkt) return;
-      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); publishPaidCloud(); } catch {} return; }
+      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); ws.send(mqttSubPkt(MONEY_TOPIC)); publishPaidCloud(); } catch {} return; }
       if (pkt.type === 3 && pkt.payload) ingestPaidCloud(pkt.payload);
     };
     ws.onclose = () => {
@@ -3629,6 +3689,7 @@ async function pushCloud() {
     }
     ui.cloudOk = !!(res && res.ok);
   } catch { ui.cloudOk = false; }
+  try { publishPaidCloud(); } catch {}
 }
 function stripCloudMedia(data) {
   if (!data) return;
@@ -3650,6 +3711,7 @@ function stripCloudMedia(data) {
 }
 function save(force) {
   try { persistPaidMarks(state); } catch {}
+  try { publishPaidCloud(); } catch {}
   if (isDevPreview() && !force) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(pushCloud, 200);
