@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-52";
-const APP_EDIT_COUNT = 469;
+const APP_STAMP = "2026-09-01-23-58";
+const APP_EDIT_COUNT = 470;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月已繳按鈕按下會縮放回彈"] },
+  { ver: APP_STAMP, items: ["租客圖卡改為往右滑出詳情頁"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -798,7 +798,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2352") return;
+    if (m[1] === "2358") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -3591,7 +3591,8 @@ function navDepth() {
     "lease-sign": 15,
     "repair-done": 12,
     "room-edit": 20,
-    invoice: 20
+    invoice: 20,
+    "tenant-sheet": 20
   };
   return deep[ui.page] || 0;
 }
@@ -8465,7 +8466,7 @@ function paintApp() {
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         t.classList.toggle("on", on);
         t.classList.remove("land");
         t.style.transform = "";
@@ -9382,7 +9383,7 @@ function adminView() {
       <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
@@ -9604,6 +9605,7 @@ function adminBody() {
     if (page === "room-edit") return adminRoomEdit();
     if (page === "invoice") return adminInvoice();
     if (page === "tenants") return adminTenants();
+    if (page === "tenant-sheet") return tenantSheetView();
     if (page === "repairs") return adminRepairs();
     if (page === "ai") return adminAi();
     if (page === "announce") return adminAnnounce();
@@ -12076,18 +12078,19 @@ function vacantStudioRooms() {
 function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
-  const open = !!(ui.tenantOpen && ui.tenantOpen[foldId]);
+  return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.no)}</span></span><span class="row-end"><span class="pay-pill">空房</span><span class="fold-caret go-right"></span></span></div>
+    </div>`;
+}
+function vacantSheetDetailsHtml(r) {
+  if (!r) return "";
   const former = formerTenantsOf(r.id);
   const listed = studioRentOf(r.no);
   const rent = Number(r.rent) || listed || 0;
-  const details = `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(r.no)}</span></div>
+  return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(r.no)}</span></div>
       <div class="row"><span class="k">租金</span><span class="v">${rent ? money(rent) : "未定"}</span></div>
       ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
       ${handoverBoxHtml(null, r)}`;
-  return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.no)}</span></span><span class="row-end"><span class="pay-pill">空房</span><span class="fold-caret"></span></span></div>
-      <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
-    </div>`;
 }
 function tenantListOfKind(kind) {
   try { ensureDemoTenant(state); } catch {}
@@ -12194,7 +12197,7 @@ function tenantListInnerHtml(kind) {
       ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
       : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
 }
-function tenantEntryCardHtml(kind, entry) {
+function tenantEntryDetailsHtml(kind, entry) {
   const tenants = entry.tenants || [];
   const rooms = entry.rooms || [];
   const t = tenants[0];
@@ -12216,7 +12219,7 @@ function tenantEntryCardHtml(kind, entry) {
     return roomRentLine(tt, rr) === roomRentLine(t, r);
   });
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
-  const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
+  return `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。</div>${demoResetBarHtml()}` : ""}
@@ -12283,11 +12286,20 @@ function tenantEntryCardHtml(kind, entry) {
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">${label}編輯更多</button>
       ${handoverBoxHtml(tt, rr)}`;
       }).join("")}`;
-  return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
+}
+function tenantEntryCardHtml(kind, entry) {
+  const tenants = entry.tenants || [];
+  const rooms = entry.rooms || [];
+  const t = tenants[0];
+  const r = rooms[0];
+  if (!t) return "";
+  const foldId = kind === "factory" ? "fg-" + entry.key : t.id;
+  const unpaid = tenants.some(x => !x.paid);
+  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  return `<div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
-      <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret"></span></span></div>
-      <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
+      <div class="card card-body clickable swipe-front tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>`;
 }
@@ -12608,19 +12620,57 @@ function bindTenantFold() {
       if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
       e.preventDefault();
       e.stopPropagation();
-      if (!ui.tenantOpen) ui.tenantOpen = {};
-      const next = !ui.tenantOpen[id];
-      ui.tenantOpen[id] = next;
-      el.classList.toggle("open", next);
-      const wrap = el.closest(".swipe-wrap");
-      if (wrap) {
-        wrap.classList.toggle("slim", !next);
-        wrap.dataset.swiping = "0";
-        const front = wrap.querySelector(".swipe-front");
-        if (front) front.style.transform = "";
-      }
+      openTenantSheet(id);
     };
   });
+}
+function openTenantSheet(id) {
+  ui.tenantSheetId = String(id || "");
+  ui.tenantSheetKind = ui.tenantKind === "factory" ? "factory" : "studio";
+  ui.page = "tenant-sheet";
+  try { persistUi(); } catch {}
+  render();
+}
+function tenantSheetView() {
+  const kind = ui.tenantSheetKind === "factory" ? "factory" : "studio";
+  const id = String(ui.tenantSheetId || "");
+  if (id.indexOf("vac-") === 0) {
+    const rid = id.slice(4);
+    const r = (state.rooms || []).find(x => x && x.id === rid);
+    if (!r) { ui.page = "tenants"; return adminTenants(); }
+    return `<div class="admin-grid list tenant-sheet-page">
+      <div class="topbar slide-left"><div>
+        <button class="back" data-page="tenants" type="button">← 返回</button>
+        <div class="eyebrow">ROOM</div>
+        <h1>${escapeHtml(r.no)}　空房</h1>
+      </div></div>
+      <div class="card card-body slide-left" id="tenant-sheet">${vacantSheetDetailsHtml(r)}</div>
+    </div>`;
+  }
+  const entry = tenantEntriesOfKind(kind).find(e => {
+    const t = e.tenants && e.tenants[0];
+    const foldId = kind === "factory" ? "fg-" + e.key : (t && t.id);
+    return foldId === id;
+  });
+  if (!entry || !entry.tenants || !entry.tenants[0]) { ui.page = "tenants"; return adminTenants(); }
+  const t = entry.tenants[0];
+  const r = (entry.rooms && entry.rooms[0]) || (state.rooms || []).find(x => x.id === t.roomId);
+  const unpaid = entry.tenants.some(x => !x.paid);
+  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  return `<div class="admin-grid list tenant-sheet-page">
+    <div class="topbar slide-left"><div>
+      <button class="back" data-page="tenants" type="button">← 返回</button>
+      <div class="eyebrow">${kind === "factory" ? "FACTORY" : "STUDIO"}</div>
+      <h1>${escapeHtml(t.name || "")}</h1>
+    </div></div>
+    <div class="card card-body slide-left" id="tenant-sheet">
+      <div class="row tenant-slim-head" style="margin-bottom:12px">
+        <span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name || "")}${r && r.no ? "　" + escapeHtml(r.no) : ""}</span></span>
+        <span class="row-end"><button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button></span>
+      </div>
+      ${tenantEntryDetailsHtml(kind, entry)}
+    </div>
+  </div>`;
 }
 function bindTenantListTools() {
   document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {

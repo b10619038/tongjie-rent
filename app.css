@@ -2327,14 +2327,10 @@ img.avatar { object-fit: cover; display: block; }
   pointer-events: none !important;
   visibility: hidden;
 }
-.fold-caret {
-  width: 8px; height: 8px; flex-shrink: 0;
-  border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted);
-  transform: rotate(45deg);
-  transition: transform .28s ease;
-  margin-left: 2px;
-}
+.fold-caret.go-right { transform: rotate(-45deg); margin-top: -2px; }
+.tenant-sheet-page { animation: sheetIn .34s cubic-bezier(.22,.82,.22,1) both; }
+@keyframes sheetIn { from { transform: translateX(56px); opacity: .35; } to { transform: none; opacity: 1; } }
+#tenant-sheet .te-row { margin-top: 4px; }
 .fold-head {
   width: 100%; margin: 0; padding: 6px 0;
   border: 0; background: transparent; cursor: pointer;
