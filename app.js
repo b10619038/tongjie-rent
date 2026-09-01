@@ -17,8 +17,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-18";
-const APP_EDIT_COUNT = 463;
+const APP_STAMP = "2026-09-01-23-22";
+const APP_EDIT_COUNT = 464;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -55,7 +55,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["已繳標記重開不會消失"] },
+  { ver: APP_STAMP, items: ["本月未繳／已繳可直接點圖卡切換並同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -796,7 +796,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2318") return;
+    if (m[1] === "2322") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -4785,19 +4785,23 @@ function onTogglePayEvent(e) {
   __payToggleAt = now;
   const t = toggleTenantPaid(id);
   if (!t) { toast("找不到這位租客"); return; }
-  if (!ui.tenantOpen) ui.tenantOpen = {};
-  ui.tenantOpen[t.id] = true;
+  const fromHead = !!(btn.closest && btn.closest(".tenant-slim-head"));
+  if (!fromHead) {
+    if (!ui.tenantOpen) ui.tenantOpen = {};
+    ui.tenantOpen[t.id] = true;
+    const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
+    if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
+  }
   const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-  if (room && room.group) ui.tenantOpen["fg-" + room.group] = true;
   const card = btn.closest(".tenant-slim, .swipe-wrap");
   if (card) {
-    const pill = [...card.querySelectorAll(".tenant-slim-head .pay-pill")].find(p => /本月/.test(p.textContent || ""));
-    if (pill) {
-      pill.textContent = t.paid ? "本月已繳" : "本月未繳";
-      pill.classList.toggle("paid", !!t.paid);
-      pill.classList.toggle("unpaid", !t.paid);
-    }
-    card.querySelectorAll("[data-toggle-pay]").forEach(b => {
+    card.querySelectorAll(".pay-toggle[data-toggle-pay]").forEach(p => {
+      if (String(p.getAttribute("data-toggle-pay") || p.dataset.togglePay) !== String(t.id)) return;
+      p.textContent = t.paid ? "本月已繳" : "本月未繳";
+      p.classList.toggle("paid", !!t.paid);
+      p.classList.toggle("unpaid", !t.paid);
+    });
+    card.querySelectorAll("button.ghost[data-toggle-pay]").forEach(b => {
       if (String(b.getAttribute("data-toggle-pay") || b.dataset.togglePay) !== String(t.id)) return;
       const lab = (room && room.no && b.textContent.indexOf(room.no) >= 0) ? room.no + "　" : "";
       b.textContent = lab + (t.paid ? "標記為未繳" : "標記為已繳");
@@ -12242,7 +12246,7 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
@@ -12560,7 +12564,7 @@ function bindTenantFold() {
     const id = el.dataset.foldTenant;
     if (!id) return;
     el.onclick = e => {
-      if (e.target.closest("button,select,a,input")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay]")) return;
       if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
       e.preventDefault();
       e.stopPropagation();

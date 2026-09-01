@@ -536,6 +536,16 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 .handover-note .label { color: #8a5a22; font-weight: 700; margin-bottom: 4px; }
 .handover-note p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink); font-style: normal; }
 .pay-pill[data-page] { cursor: pointer; }
+button.pay-toggle {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: auto;
+}
+button.pay-toggle:active { transform: scale(.96); }
 
 .section-title {
   margin: 26px 0 12px;
