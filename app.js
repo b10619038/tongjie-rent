@@ -17,8 +17,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-34";
-const APP_EDIT_COUNT = 466;
+const APP_STAMP = "2026-09-01-23-38";
+const APP_EDIT_COUNT = 467;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -56,7 +56,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["點本月未繳只改那一戶，不會連動其他人"] },
+  { ver: APP_STAMP, items: ["移除展開圖卡裡的標記為已繳按鈕"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -797,7 +797,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2334") return;
+    if (m[1] === "2338") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -4797,7 +4797,7 @@ function onTogglePayEvent(e) {
     const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
     if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
   }
-  btn.textContent = /本月/.test(btn.textContent || "") ? (t.paid ? "本月已繳" : "本月未繳") : ((t.paid ? "標記為未繳" : "標記為已繳"));
+  btn.textContent = t.paid ? "本月已繳" : "本月未繳";
   btn.classList.toggle("paid", !!t.paid);
   btn.classList.toggle("unpaid", !t.paid);
   ui.keepScroll = true;
@@ -12251,7 +12251,6 @@ function tenantEntryCardHtml(kind, entry) {
         const rr = state.rooms.find(x => x.id === tt.roomId);
         const label = tenants.length > 1 && rr ? escapeHtml(rr.no) + "　" : "";
         return `<button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">${label}產出發票</button>
-      <button type="button" class="ghost" data-toggle-pay="${escapeHtml(tt.id)}" style="margin-top:8px">${label}${tt.paid ? "標記為未繳" : "標記為已繳"}</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">${label}催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${label}${checkoutBtnLabel(tt)}</button>
       ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${label}${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
