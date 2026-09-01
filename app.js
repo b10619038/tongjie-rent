@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-17-12";
-const APP_EDIT_COUNT = 433;
+const APP_STAMP = "2026-09-01-17-32";
+const APP_EDIT_COUNT = 434;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務圖塊日期跟日曆編輯同步，改 9/2 會顯示 9/2"] },
+  { ver: APP_STAMP, items: ["牛8 錦芳 84,000 租金歸回案場（先前只顯示增建 14,000）"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1449,9 +1449,10 @@ function siteOfRoomNo(no) {
 }
 function siteOfLedgerRow(row) {
   if (!row) return "";
+  const blob = [row.note, row.place, row.roomNo, row.company].join(" ");
+  if (/牛8|97-77|97-78|錦芳/.test(blob)) return "牛8";
   const fromNo = siteOfRoomNo(row.roomNo || roomNoFromBookNote(row.note || ""));
   if (fromNo) return fromNo;
-  const blob = [row.note, row.place, row.roomNo].join(" ");
   const names = SITE_ORDER.slice().sort((a, b) => b.length - a.length);
   for (let i = 0; i < names.length; i++) {
     if (blob.indexOf(names[i]) >= 0) return names[i];
@@ -1732,7 +1733,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v8";
+const BOOKS_IMPORT_VER = "july115-v9";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -1779,7 +1780,7 @@ const JULY115_BOOKS = [
 
   ["2026-07-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢　匯款", "聯邦"],
   ["2026-07-01", "in", 42000, "統潔", "租金收入　拉皮 93-1B 鈺晟　六月份遲繳　匯款", "聯邦"],
-  ["2026-07-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳　匯款", "聯邦"],
+  ["2026-07-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳　匯款", "聯邦", "牛8-77"],
   ["2026-07-07", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
   ["2026-07-10", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝　匯款", "聯邦"],
   ["2026-07-16", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦"],
@@ -2092,7 +2093,15 @@ function applyJuly115Books(data) {
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   const hasJuly = data.books.some(b => b && b.importTag === "july115");
   const hasOpen = Number(data.accountOpenings["統潔"]) > 0 || Number(data.accountOpenings["現金(保險箱)"]) > 0;
-  if (data.booksImportVer === BOOKS_IMPORT_VER && hasJuly && hasOpen) return;
+  if (data.booksImportVer === BOOKS_IMPORT_VER && hasJuly && hasOpen) {
+    data.books.forEach(b => {
+      if (b && b.importTag === "july115") {
+        const no = roomNoFromBookNote(b.note);
+        if (no) b.roomNo = no;
+      }
+    });
+    return;
+  }
   data.books = data.books.filter(b => b && b.importTag !== "july115");
   JULY115_BOOKS.forEach((row, i) => {
     data.books.push({
@@ -2103,7 +2112,7 @@ function applyJuly115Books(data) {
       company: row[3],
       note: row[4],
       bank: row[5] || "",
-      roomNo: roomNoFromBookNote(row[4]),
+      roomNo: row[6] || roomNoFromBookNote(row[4]),
       importTag: "july115",
       createdAt: "2026-07-31 12:00"
     });
