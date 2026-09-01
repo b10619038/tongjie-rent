@@ -1,5 +1,6 @@
 const KEY = "tongjie_rent_app_v8";
 const LEDGER_KEY = "tongjie_ledger_v1";
+const PAID_KEY = "tongjie_paid_v1";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
 const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
@@ -16,8 +17,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-12";
-const APP_EDIT_COUNT = 462;
+const APP_STAMP = "2026-09-01-23-18";
+const APP_EDIT_COUNT = 463;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +55,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者標已繳，管理員也會看到"] },
+  { ver: APP_STAMP, items: ["已繳標記重開不會消失"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +796,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2312") return;
+    if (m[1] === "2318") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1228,7 +1229,11 @@ function applyStudioMonthUnpaid(data) {
 function applyMonthlyUnpaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   const ym = payYmNow();
-  if (data.rentUnpaidYm === ym) return;
+  data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
+  if (data.rentUnpaidYm === ym) {
+    applyPaidMarks(data);
+    return;
+  }
   data.tenants.forEach(t => {
     if (!t || t.demo || t.former || t.incoming) return;
     const room = data.rooms.find(r => r && r.id === t.roomId);
@@ -1246,6 +1251,7 @@ function applyMonthlyUnpaid(data) {
   });
   data.rentUnpaidYm = ym;
   data.studioUnpaidYm = ym;
+  applyPaidMarks(data);
 }
 function rollRentMonthIfNeeded() {
   if (!state) return false;
@@ -2575,9 +2581,13 @@ function applyFormerStudio(data) {
 function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return normalize(JSON.parse(raw));
+    const data = raw ? JSON.parse(raw) : structuredClone(SEED);
+    data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
+    return normalize(data);
   } catch {}
-  return normalize(structuredClone(SEED));
+  const data = structuredClone(SEED);
+  data.paidMarks = loadPaidMarks();
+  return normalize(data);
 }
 function slimLedgerItem(x) {
   if (!x || typeof x !== "object") return x;
@@ -2704,6 +2714,40 @@ function mergePaidMarkMaps(a, b) {
   });
   return out;
 }
+function persistPaidMarks(data) {
+  const ym = payYmNow();
+  const src = (data && data.paidMarks) || {};
+  const slim = {};
+  Object.keys(src).forEach(id => {
+    const m = src[id];
+    if (m && m.paidYm === ym) slim[id] = {
+      paid: !!m.paid, paidAt: m.paidAt || "", paidVia: m.paidVia || "",
+      paidYm: ym, editedAt: Number(m.editedAt) || Date.now(), name: m.name || ""
+    };
+  });
+  const blob = JSON.stringify({ ym, marks: slim, at: Date.now() });
+  try { localStorage.setItem(PAID_KEY, blob); } catch {}
+  try {
+    const req = indexedDB.open("tongjie-ledger", 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains("kv")) req.result.objectStore("kv");
+    };
+    req.onsuccess = () => {
+      try {
+        const tx = req.result.transaction("kv", "readwrite");
+        tx.objectStore("kv").put({ ym, marks: slim, at: Date.now() }, "paidMarks");
+      } catch {}
+    };
+  } catch {}
+}
+function loadPaidMarks() {
+  let marks = {};
+  try {
+    const o = JSON.parse(localStorage.getItem(PAID_KEY) || "null");
+    if (o && o.ym === payYmNow() && o.marks && typeof o.marks === "object") marks = o.marks;
+  } catch {}
+  return marks;
+}
 function stampPaidMark(data, t) {
   if (!data || !t || !t.id) return;
   if (!data.paidMarks) data.paidMarks = {};
@@ -2715,11 +2759,12 @@ function stampPaidMark(data, t) {
     editedAt: Date.now(),
     name: t.name || ""
   };
+  persistPaidMarks(data);
 }
 function applyPaidMarks(data) {
   if (!data) return;
   const ym = payYmNow();
-  const map = mergePaidMarkMaps(data.paidMarks, {});
+  const map = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
   (data.tenants || []).forEach(t => {
     if (!t || !t.id) return;
     if (t.paidTouched && t.paidYm === ym) {
@@ -2740,6 +2785,7 @@ function applyPaidMarks(data) {
     t.paidTouched = true;
     t.paidYm = ym;
   });
+  if (Object.keys(map).length) persistPaidMarks(data);
 }
 function mergeEntities(a, b, keys) {
   const map = new Map();
@@ -3458,7 +3504,12 @@ function stripCloudMedia(data) {
   (data.announcements || []).forEach(a => { if (a) a.media = []; });
 }
 function save(force) {
-  if (isDevPreview() && !force) return;
+  try { persistPaidMarks(state); } catch {}
+  if (isDevPreview() && !force) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(pushCloud, 200);
+    return;
+  }
   try {
     state.updatedAt = Date.now();
     persistLedger(state);
