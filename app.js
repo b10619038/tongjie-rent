@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-18-48";
-const APP_EDIT_COUNT = 441;
+const APP_STAMP = "2026-09-01-19-02";
+const APP_EDIT_COUNT = 442;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -29,7 +29,7 @@ const AUG31_BOOKS = [
   ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
-function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || String(r.no) === "DEMO")); }
+function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.no === "DEMO" || r.no === "0000")); }
 function isDemoTenant(t) {
   if (!t) return false;
   if (t.demo || t.id === "t-demo" || t.id === "t-dev-preview") return true;
@@ -41,7 +41,7 @@ function isDemoTenant(t) {
 function isDemoRepair(r) {
   if (!r) return false;
   if (r.demo || r.id === "rep-demo" || r.id === "rep1") return true;
-  if (r.roomId === "r-demo" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO") return true;
+  if (r.roomId === "r-demo" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO" || r.roomNo === "0000") return true;
   try {
     const room = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === r.roomId);
     if (isDemoRoom(room)) return true;
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房租客搜尋右邊可點空房，列出空房圖塊"] },
+  { ver: APP_STAMP, items: ["測試房改 0000，可重製反覆簽約退租，金流不列入"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1105,7 +1105,7 @@ const STUDIO_RENTS = {
 function studioRentOf(no, fallback) {
   const key = String(no || "");
   if (Object.prototype.hasOwnProperty.call(STUDIO_RENTS, key)) return STUDIO_RENTS[key];
-  if (key === "DEMO") return 10000;
+  if (key === "DEMO" || key === "0000") return 10000;
   return null;
 }
 function studioDepositOf(rent) {
@@ -1953,7 +1953,7 @@ function normalize(data) {
       if (r.rent == null || r.rent === "") {
         const listed = studioRentOf(r.no);
         if (listed != null) r.rent = listed;
-        else if (r.demo || r.no === "DEMO") r.rent = 10000;
+        else if (r.demo || r.no === "DEMO" || r.no === "0000") r.rent = 10000;
       }
     }
     if (r.title === "套房" && Array.isArray(r.amenities)) {
@@ -3359,7 +3359,7 @@ function restoreUi() {
     if (s.role === "tenant") {
       let t = (state.tenants || []).find(x => x.id === s.tenantId);
       let room = (state.rooms || []).find(r => r.id === s.roomId) || (s.roomNo ? (state.rooms || []).find(r => r.no === s.roomNo) : null);
-      if (t && (t.former || t.incoming)) {
+      if (t && (t.former || t.incoming) && !isDemoTenant(t)) {
         ui.role = null;
         ui.tenantId = null;
         ui.roomId = null;
@@ -4299,13 +4299,13 @@ function ensureDemoTenant(data) {
   if (!Array.isArray(data.rooms)) data.rooms = [];
   if (!Array.isArray(data.tenants)) data.tenants = [];
   const y = new Date().getFullYear();
-  let room = data.rooms.find(r => r.id === "r-demo" || String(r.no) === "DEMO");
+  let room = data.rooms.find(r => r.id === "r-demo" || String(r.no) === "DEMO" || String(r.no) === "0000");
   if (!room) {
     room = {
-      id: "r-demo", no: "DEMO", title: "套房", kind: "studio", status: "rented",
-      rent: 10000, deposit: 10000, demo: true,
+      id: "r-demo", no: "0000", title: "套房", kind: "studio", status: "rented",
+      rent: 10000, deposit: 20000, demo: true,
       location: "高雄市鳳山區文龍東路68號2樓-1室",
-      note: "開發者測試房間（不計入金額）",
+      note: "開發者測試房間 0000（不計入金額）",
       tenantId: "t-demo",
       amenities: AMENITIES.slice(),
       photos: ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"],
@@ -4315,8 +4315,8 @@ function ensureDemoTenant(data) {
     data.rooms.push(room);
   } else {
     room.demo = true;
-    room.no = "DEMO";
-    if (!room.note) room.note = "開發者測試房間（不計入金額）";
+    room.no = "0000";
+    if (!room.note) room.note = "開發者測試房間 0000（不計入金額）";
     if (!room.location) room.location = "高雄市鳳山區文龍東路68號2樓-1室";
     if (!room.rent) room.rent = 10000;
     if (!room.deposit) room.deposit = 10000;
@@ -4327,7 +4327,7 @@ function ensureDemoTenant(data) {
     t = {
       id: "t-demo", name: "開發者（測試）", roomId: room.id, paid: false, demo: true,
       leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
-      phone: "0912-345-678", loginPass: "DEMO",
+      phone: "0912-345-678", loginPass: "0000",
       idNo: "A123456789", emergencyName: "測試聯絡人", emergencyPhone: "0988-000-000"
     };
     data.tenants.push(t);
@@ -4335,7 +4335,7 @@ function ensureDemoTenant(data) {
     t.demo = true;
     t.name = "開發者（測試）";
     if (!t.phone) t.phone = "0912-345-678";
-    if (!t.loginPass) t.loginPass = "DEMO";
+    if (!t.loginPass || t.loginPass === "DEMO") t.loginPass = "0000";
     if (!t.leaseStart) t.leaseStart = y + "-01-01";
     if (!t.leaseEnd) t.leaseEnd = (y + 1) + "-12-31";
     if (!t.dueDay) t.dueDay = 1;
@@ -4348,6 +4348,75 @@ function ensureDemoTenant(data) {
   if (!room.deposit || Number(room.deposit) < Number(room.rent) * 2) room.deposit = Number(room.rent) * 2;
   room.tenantId = t.id;
   t.roomId = room.id;
+}
+function clearDemoESign(t) {
+  if (t) t.eSign = null;
+  if (t && t.id && state.eSigns) delete state.eSigns[t.id];
+  ui.devESign = null;
+  ui.signAgree = false;
+  ui.signStrokes = [];
+  try {
+    const id = t && t.id;
+    if (!id) return;
+    const all = loadLocalESigns();
+    delete all[id];
+    persistESignsMap(all);
+    const loc = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
+    delete loc[id];
+    localStorage.setItem("tongjie_esign_v1", JSON.stringify(loc));
+  } catch {}
+}
+function resetDemoCycle() {
+  ensureDemoTenant(state);
+  const room = (state.rooms || []).find(isDemoRoom);
+  const t = (state.tenants || []).find(x => x && (x.id === "t-demo" || x.demo));
+  if (!room || !t) { toast("找不到測試房"); return; }
+  state.tenants = (state.tenants || []).filter(x => !(x && x.roomId === room.id && x.incoming));
+  t.demo = true;
+  t.former = false;
+  t.incoming = false;
+  t.sessionEnded = false;
+  t.paid = false;
+  t.paidAt = "";
+  t.paidVia = "";
+  t.lineNotified = false;
+  t.leftOn = "";
+  t.name = "開發者（測試）";
+  t.loginPass = "0000";
+  const y = new Date().getFullYear();
+  t.leaseStart = y + "-01-01";
+  t.leaseEnd = (y + 1) + "-12-31";
+  t.dueDay = 1;
+  room.demo = true;
+  room.no = "0000";
+  room.status = "rented";
+  room.tenantId = t.id;
+  room.rent = 10000;
+  room.deposit = 20000;
+  delete room.incomingTenantId;
+  clearDemoESign(t);
+  state.checkouts = (state.checkouts || []).filter(c => c && c.tenantId !== t.id);
+  state.renewals = (state.renewals || []).filter(x => x && x.tenantId !== t.id);
+  state.books = (state.books || []).filter(b => b && b.roomNo !== "0000" && b.roomNo !== "DEMO" && !b.demo);
+  if (ui.devPreview) {
+    ui.devRenewals = [];
+    ensureDevPreview();
+  }
+  ui.tenantId = t.id;
+  ui.roomId = room.id;
+  ui.roomNo = "0000";
+  ui.page = "home";
+  save();
+  try { pushCloud(); } catch {}
+  toast("測試房 0000 已重製，可再簽約、退租、入房");
+  render();
+}
+function demoResetBarHtml() {
+  return `<div class="card card-body" style="margin-top:12px">
+      <div class="k">開發者測試房 0000</div>
+      <p class="small" style="margin-top:6px">簽約、退租、再入房可重複測。金流不列入總覽。</p>
+      <button type="button" class="btn-navy" id="demo-reset-btn" style="margin-top:10px">重製測試</button>
+    </div>`;
 }
 function ensureDemoRepair(data) {
   if (!data || data.demoRepairCleared) return;
@@ -4365,7 +4434,7 @@ function ensureDemoRepair(data) {
     photo: null,
     status: "open",
     createdAt: "2026-08-24 21:10",
-    roomNo: "DEMO",
+    roomNo: "0000",
     demo: true
   });
 }
@@ -4375,14 +4444,14 @@ function ensureDevPreview() {
   const photos = ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"];
   ui.devRoom = {
     id: "r-dev-preview",
-    no: "DEMO",
+    no: "0000",
     title: "套房",
     kind: "studio",
     status: "rented",
     rent: 10000,
     deposit: 10000,
     location: "高雄市鳳山區文龍東路68號2樓-1室",
-    note: "開發者測試房間（不計入金額）",
+    note: "開發者測試房間 0000（不計入金額）",
     tenantId: "t-dev-preview",
     amenities: AMENITIES.slice(),
     photos: photos,
@@ -4415,7 +4484,7 @@ function enterDevPreview() {
   ui.role = "tenant";
   ui.tenantId = (t && t.id) || "t-demo";
   ui.roomId = (room && room.id) || "r-demo";
-  ui.roomNo = "DEMO";
+  ui.roomNo = (room && room.no) || "0000";
   ui.page = "home";
   persistUi();
   render();
@@ -5210,6 +5279,7 @@ function collectLedger() {
   (state.books || []).forEach(b => {
     const amount = Number(b.amount) || 0;
     if (!amount) return;
+    if (b.demo || b.roomNo === "0000" || b.roomNo === "DEMO") return;
     rows.push({
       id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount,
       roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔",
@@ -6898,6 +6968,7 @@ function completeHandover(oldT, r, co) {
 }
 function postCheckoutBooks(co, t, r) {
   if (!co || !t) return;
+  if (isDemoTenant(t) || (r && isDemoRoom(r))) return;
   const refund = Number(co.refund) || 0;
   if (refund <= 0) return;
   if (!state.books) state.books = [];
@@ -8169,6 +8240,7 @@ function homeView() {
         </div>
         ${tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : ""}
       </div>
+      ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
         <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${r.rent ? money(r.rent) : "—"}</span></div>
@@ -8547,6 +8619,7 @@ function leaseView() {
           : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`;
       })()}
       ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>` : ""}
+      ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       ${(() => {
         const pending = (isDevPreview() ? (ui.devRenewals || []) : (state.renewals || [])).filter(x => x.tenantId === t.id && x.status !== "done");
         const cur = pending[pending.length - 1];
@@ -11506,7 +11579,7 @@ function tenantEntryCardHtml(kind, entry) {
   const details = `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
-      ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
+      ${t.demo || (r && r.demo) ? `<div class="small">開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。</div>${demoResetBarHtml()}` : ""}
       ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
@@ -11633,6 +11706,11 @@ function bindTenantEdits() {
     el.onchange = () => applyLiveTenantEdit(el);
     el.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } };
   });
+  const demoReset = document.getElementById("demo-reset-btn");
+  if (demoReset) {
+    demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(); };
+    demoReset.addEventListener("pointerdown", e => e.stopPropagation());
+  }
 }
 function bindHandover() {
   document.querySelectorAll("[data-handover-open]").forEach(btn => {
@@ -12222,6 +12300,13 @@ function armRoomEditSave() {
 }
 
 function tenantByRoomNo(no) {
+  const key = String(no || "").trim();
+  if (key === "DEMO" || key === "0000") {
+    ensureDemoTenant(state);
+    const room = (state.rooms || []).find(isDemoRoom);
+    const tenant = (state.tenants || []).find(x => x && (x.id === "t-demo" || x.demo)) || null;
+    return { room: room || null, tenant };
+  }
   const room = state.rooms.find(r => String(r.no) === String(no));
   if (!room) return { room: null, tenant: null };
   const tenant = state.tenants.find(t => t.id === room.tenantId) || null;
@@ -12269,12 +12354,17 @@ function tryLogin() {
   if (!no) { ui.loginError = "請輸入房號"; render(); return; }
   const { room, tenant } = tenantByRoomNo(no);
   if (!room) { ui.loginError = "找不到這個房號"; audit("登入失敗", "嘗試房號 " + no); render(); return; }
-  if (room.status === "office" || !tenant || tenant.former) {
-    ui.loginError = room.status === "office" ? "7651 為辦公室，請改走管理員登入" : "此房號目前沒有租客";
+  if (room.status === "office") {
+    ui.loginError = "7651 為辦公室，請改走管理員登入";
     audit("登入失敗", "嘗試房號 " + no);
     render(); return;
   }
-  if (tenant.incoming) {
+  if (!isDemoRoom(room) && (!tenant || tenant.former)) {
+    ui.loginError = "此房號目前沒有租客";
+    audit("登入失敗", "嘗試房號 " + no);
+    render(); return;
+  }
+  if (!isDemoRoom(room) && tenant && tenant.incoming) {
     ui.loginError = "新客尚未完成點交，請點交後再登入";
     audit("登入失敗", "新客尚未點交 " + no);
     render(); return;
@@ -12288,7 +12378,7 @@ function tryLogin() {
     return;
   }
   if (!pass) { ui.loginError = "請輸入登入密碼"; render(); return; }
-  if (pass !== String(tenant.loginPass)) {
+  if (pass !== String(tenant.loginPass) && !(isDemoRoom(room) && (pass === "0000" || pass.toUpperCase() === "DEMO"))) {
     ui.loginError = "密碼不正確";
     audit("登入失敗", "房號 " + room.no + " 密碼錯誤");
     render(); return;
@@ -12406,6 +12496,8 @@ function bindTenant() {
   };
   const exitPrev = document.getElementById("exit-preview");
   if (exitPrev) exitPrev.onclick = () => exitDevPreview();
+  const demoReset = document.getElementById("demo-reset-btn");
+  if (demoReset) demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(); };
   const av = document.getElementById("tenant-avatar");
   const avSet = document.getElementById("tenant-avatar-set");
   const onAvatar = async (inp) => {
