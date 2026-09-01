@@ -17,8 +17,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-28";
-const APP_EDIT_COUNT = 465;
+const APP_STAMP = "2026-09-01-23-34";
+const APP_EDIT_COUNT = 466;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -56,7 +56,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者測試標已繳後仍留在名單最上面"] },
+  { ver: APP_STAMP, items: ["點本月未繳只改那一戶，不會連動其他人"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -797,7 +797,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2328") return;
+    if (m[1] === "2334") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -4775,17 +4775,18 @@ function toggleTenantPaid(id) {
   return t;
 }
 let __payToggleAt = 0;
-let __payToggleId = "";
+let __payDownId = "";
 function onTogglePayEvent(e) {
   const btn = e.target && e.target.closest && e.target.closest("[data-toggle-pay]");
   if (!btn) return;
   e.preventDefault();
   e.stopPropagation();
   if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-  const id = btn.getAttribute("data-toggle-pay") || btn.dataset.togglePay || "";
+  const id = String(btn.getAttribute("data-toggle-pay") || btn.dataset.togglePay || "");
+  if (!id) return;
+  if (__payDownId && __payDownId !== id) return;
   const now = Date.now();
-  if (__payToggleId === id && now - __payToggleAt < 500) return;
-  __payToggleId = id;
+  if (now - __payToggleAt < 700) return;
   __payToggleAt = now;
   const t = toggleTenantPaid(id);
   if (!t) { toast("找不到這位租客"); return; }
@@ -4796,29 +4797,20 @@ function onTogglePayEvent(e) {
     const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
     if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
   }
-  const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-  const card = btn.closest(".tenant-slim, .swipe-wrap");
-  if (card) {
-    card.querySelectorAll(".pay-toggle[data-toggle-pay]").forEach(p => {
-      if (String(p.getAttribute("data-toggle-pay") || p.dataset.togglePay) !== String(t.id)) return;
-      p.textContent = t.paid ? "本月已繳" : "本月未繳";
-      p.classList.toggle("paid", !!t.paid);
-      p.classList.toggle("unpaid", !t.paid);
-    });
-    card.querySelectorAll("button.ghost[data-toggle-pay]").forEach(b => {
-      if (String(b.getAttribute("data-toggle-pay") || b.dataset.togglePay) !== String(t.id)) return;
-      const lab = (room && room.no && b.textContent.indexOf(room.no) >= 0) ? room.no + "　" : "";
-      b.textContent = lab + (t.paid ? "標記為未繳" : "標記為已繳");
-    });
-  }
+  btn.textContent = /本月/.test(btn.textContent || "") ? (t.paid ? "本月已繳" : "本月未繳") : ((t.paid ? "標記為未繳" : "標記為已繳"));
+  btn.classList.toggle("paid", !!t.paid);
+  btn.classList.toggle("unpaid", !t.paid);
   ui.keepScroll = true;
   toast(t.paid ? "已標為本月已繳" : "已標為本月未繳");
-  render();
+  setTimeout(() => { render(); }, 0);
 }
 if (!window.__payToggleBound) {
   window.__payToggleBound = 1;
+  document.addEventListener("pointerdown", e => {
+    const btn = e.target && e.target.closest && e.target.closest("[data-toggle-pay]");
+    __payDownId = btn ? String(btn.getAttribute("data-toggle-pay") || btn.dataset.togglePay || "") : "";
+  }, true);
   document.addEventListener("click", onTogglePayEvent, true);
-  document.addEventListener("pointerup", onTogglePayEvent, true);
 }
 function payOverdueNudge(tenant) {
   if (!tenant || tenant.paid) return false;
@@ -12105,6 +12097,15 @@ function tenantListOfKind(kind) {
     }
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + (ui.tenantVacant ? "v" : "");
+  if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
+    ui.tenantOrderKey = orderKey;
+    ui.tenantOrder = list.map(t => t.id);
+    return list;
+  }
+  const rank = new Map(ui.tenantOrder.map((id, i) => [id, i]));
+  list.forEach(t => { if (t && t.id && !rank.has(t.id)) { rank.set(t.id, ui.tenantOrder.length); ui.tenantOrder.push(t.id); } });
+  list.sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
   return list;
 }
 function tenantEntriesOfKind(kind) {
