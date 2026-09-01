@@ -1723,7 +1723,10 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     box-shadow: none;
     margin: 0;
     min-height: 297mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
+  body.print-lease .lease-ink { color: #1a57c5 !important; }
   body.print-lease .lease-pg:last-child { page-break-after: auto; }
 }
 .studio-lease-paper { display: none; }
@@ -1747,6 +1750,19 @@ body.print-lease .studio-lease-paper { display: block; }
 .lease-preview .lease-cover-addr { font-size: 14px; }
 .lease-preview .lease-pg h4 { font-size: 16px; }
 .lease-preview .lease-pgno { position: static; margin-top: 10px; font-size: 11px; }
+.lease-ink {
+  color: #1a57c5;
+  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "BiauKai", serif;
+  font-weight: 700;
+  border-bottom: 1px solid #111;
+  padding: 0 6px 1px;
+  display: inline-block;
+  min-width: 4.2em;
+  line-height: 1.35;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.lease-ink.wide { min-width: 12em; }
 .lease-esig {
   display: inline-block;
   height: 42px;
@@ -1754,6 +1770,7 @@ body.print-lease .studio-lease-paper { display: block; }
   object-fit: contain;
   vertical-align: bottom;
   margin: 0 6px -4px;
+  filter: none;
 }
 body.print-lease .lease-esig { height: 48px; max-width: 170px; }
 .lease-pg {

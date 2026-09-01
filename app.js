@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-42";
-const APP_EDIT_COUNT = 422;
+const APP_STAMP = "2026-09-01-11-50";
+const APP_EDIT_COUNT = 423;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["總覽日曆的記（本月工作）會再出現"] },
+  { ver: APP_STAMP, items: ["套房合約租客藍字簽名與身分資料可列印蓋章"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6886,14 +6886,14 @@ function studioLeasePaperHtml(t, r) {
   const ck = leaseCk;
   const u = leaseU;
   const tenantSignRow = names.map((n, i) =>
-    `<span class="lease-who">${escapeHtml(n)}</span><span class="lease-sign-line">${i === 0 ? tenantEsigHtml(t) : ""}</span><span class="term-chop" title="蓋章"></span>`
+    `<span class="lease-who">${leaseInk(n)}</span><span class="lease-sign-line">${tenantEsigHtml(t, i)}</span><span class="term-chop" title="蓋章"></span>`
   ).join("");
   const peopleCols = names.map((n, i) => `<div class="lease-person">
-      <p>${i === 0 ? "承租人：" : ""}${escapeHtml(n)}${i === 0 ? tenantEsigHtml(t) : ""}<span class="term-chop" title="蓋章"></span></p>
-      <p>${i === 0 ? "身分證字號：" : ""}${escapeHtml(ids[i] || "")}</p>
-      <p>${i === 0 ? "聯絡電話：" : ""}${escapeHtml(phones[i] || "")}</p>
-      <p>${i === 0 ? "緊急聯絡人：" : ""}${escapeHtml(emNames[i] || "")}</p>
-      <p>${i === 0 ? "電話：" : ""}${escapeHtml(emPhones[i] || "")}</p>
+      <p>${i === 0 ? "承租人：" : ""}${leaseInk(n)}${tenantEsigHtml(t, i)}<span class="term-chop" title="蓋章"></span></p>
+      <p>${i === 0 ? "身分證字號：" : ""}${leaseInk(ids[i] || "")}</p>
+      <p>${i === 0 ? "聯絡電話：" : ""}${leaseInk(phones[i] || "")}</p>
+      <p>${i === 0 ? "緊急聯絡人：" : ""}${leaseInk(emNames[i] || "")}</p>
+      <p>${i === 0 ? "電話：" : ""}${leaseInk(emPhones[i] || "")}</p>
     </div>`).join("");
   return `<div class="studio-lease-paper" id="studio-lease-paper">
     <section class="lease-pg cover">
@@ -6910,7 +6910,7 @@ function studioLeasePaperHtml(t, r) {
     <section class="lease-pg">
       <h4>房屋租賃契約書</h4>
       <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span></p>
-      <p>承租人　${u(paperPeople(name), "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
+      <p>承租人　${leaseInk(paperPeople(name), "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
       <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
@@ -7031,7 +7031,7 @@ function studioLeasePaperHtml(t, r) {
       </div>
       <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
-      <p class="term-hint">列印後於簽章框蓋印。承租人已線上簽名者會印在簽名欄，印章請自行蓋。</p>
+      <p class="term-hint">承租人藍字與簽名已套入。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       <div class="lease-pgno">8</div>
     </section>
   </div>`;
@@ -8133,10 +8133,16 @@ function saveESignLocal(t, rec) {
     localStorage.setItem("tongjie_esign_v1", JSON.stringify(all));
   } catch {}
 }
-function tenantEsigHtml(t) {
+function leaseInk(s, extra) {
+  const t = String(s == null ? "" : s).trim();
+  if (!t) return `<span class="lease-u${extra ? " " + extra : ""}">　</span>`;
+  return `<span class="lease-ink${extra ? " " + extra : ""}">${escapeHtml(t)}</span>`;
+}
+function tenantEsigHtml(t, i) {
   const es = getESign(t);
-  if (!(es && es.sig && String(es.sig).startsWith("data:"))) return "";
-  return `<img class="lease-esig" src="${es.sig}" alt="簽名">`;
+  const src = Number(i) > 0 ? (es && es.sig2) : (es && es.sig);
+  if (!(src && String(src).startsWith("data:"))) return "";
+  return `<img class="lease-esig" src="${src}" alt="簽名">`;
 }
 function tenantContractStatus(t, r) {
   const es = getESign(t);
@@ -8197,14 +8203,14 @@ function leaseView() {
         if (st === "unsigned") {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill unpaid">尚未簽約</span></div>
-            <p class="small" style="margin-top:8px">套房合約已套入你的姓名、房號、租金。閱讀後在手機上簽名，我們後台即可列印，現場只蓋章。</p>
+            <p class="small" style="margin-top:8px">套房合約已套入你的姓名、房號、租金。請填身分證與電話，用藍筆簽名；我們後台列印後只蓋章。</p>
             <button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:12px">線上簽署電子合約</button>
           </div>`;
         }
         if (st === "signed") {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
-            <p class="small" style="margin-top:8px">你已完成線上簽名。管理員列印後只蓋公司章。</p>
+            <p class="small" style="margin-top:8px">你已完成藍字簽名。管理員列印後只蓋公司章。</p>
             ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
           </div>`;
         }
@@ -8237,20 +8243,31 @@ function leaseSignView() {
     </div></div>
     <div class="screen">
       <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
-      <p class="small" style="margin:8px 2px 12px">你的簽名已套進合約。管理員列印後只蓋章。</p>
+      <p class="small" style="margin:8px 2px 12px">你的藍字簽名與資料已套進合約。管理員列印後只蓋章。</p>
       ${paper}
     </div>`;
   }
+  const names = splitPair((t && t.name) || "");
+  const two = names.length > 1;
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約（資料已自動套入）。同意後在白框簽名。</p>
+      <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約。身分證、電話請用藍字填在下面，簽名也是藍筆。列印後我們只蓋章。</p>
       ${paper}
+      <div class="card card-body" style="margin-top:12px">
+        <div class="label">承租人資料（藍字印在合約上）</div>
+        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
+        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || "")}" placeholder="${two ? "兩人請用／分開" : ""}" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || "")}" placeholder="${two ? "兩人請用／分開" : ""}" autocomplete="off" /></label>
+      </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
-      <div class="small" style="margin:8px 2px">請在白框內簽名</div>
+      <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
+      ${two ? `<div class="small" style="margin:12px 2px 8px">${escapeHtml(names[1])}　請在白框內用藍筆簽名</div>
+      <div class="sign-pad-wrap"><canvas id="sign-pad-2" width="640" height="280"></canvas></div>` : ""}
       <div class="btn-row" style="margin-top:12px">
         <button type="button" class="ghost" id="sign-clear">清除簽名</button>
         <button type="button" class="btn-navy" id="sign-confirm">確認簽署</button>
@@ -12291,105 +12308,131 @@ function bindSignAgree() {
   }
 }
 function bindSignPad() {
-  const c = document.getElementById("sign-pad");
-  if (!c) return;
-  const wrap = c.parentElement;
-  const ctx = c.getContext("2d");
-  if (!Array.isArray(ui.signStrokes)) ui.signStrokes = [];
-  const style = () => {
-    ctx.lineWidth = 2.4;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#111111";
-  };
-  const redraw = () => {
-    const ratio = Math.max(1, window.devicePixelRatio || 1);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    style();
-    (ui.signStrokes || []).forEach(line => {
-      if (!line || line.length < 2) return;
+  const INK = "#1a57c5";
+  const bindOne = (c, strokesKey) => {
+    if (!c) return;
+    const wrap = c.parentElement;
+    const ctx = c.getContext("2d");
+    if (!Array.isArray(ui[strokesKey])) ui[strokesKey] = [];
+    const style = () => {
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = INK;
+    };
+    const redraw = () => {
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      style();
+      (ui[strokesKey] || []).forEach(line => {
+        if (!line || line.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(line[0].x, line[0].y);
+        for (let i = 1; i < line.length; i++) ctx.lineTo(line[i].x, line[i].y);
+        ctx.stroke();
+      });
+      if (ui[strokesKey].length) c.dataset.ink = "1";
+    };
+    const fit = () => {
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      const w = Math.max(280, Math.round((wrap && wrap.clientWidth) || c.clientWidth || 320));
+      const h = Math.max(160, Math.round((wrap && wrap.clientHeight) || 160));
+      const bw = Math.round(w * ratio), bh = Math.round(h * ratio);
+      if (c.width !== bw || c.height !== bh) {
+        c.style.width = w + "px";
+        c.style.height = h + "px";
+        c.width = bw;
+        c.height = bh;
+      }
+      redraw();
+    };
+    fit();
+    if (c.dataset.bound === "1") return { c, fit };
+    c.dataset.bound = "1";
+    c.setAttribute("draggable", "false");
+    let drawing = false, last = null;
+    const pt = e => {
+      const r = c.getBoundingClientRect();
+      const src = e.touches && e.touches[0] ? e.touches[0] : e;
+      return { x: src.clientX - r.left, y: src.clientY - r.top };
+    };
+    const start = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.signing = true;
+      drawing = true;
+      last = pt(e);
+      ui[strokesKey].push([last]);
+    };
+    const move = e => {
+      if (!drawing) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const p = pt(e);
       ctx.beginPath();
-      ctx.moveTo(line[0].x, line[0].y);
-      for (let i = 1; i < line.length; i++) ctx.lineTo(line[i].x, line[i].y);
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(p.x, p.y);
       ctx.stroke();
+      last = p;
+      const line = ui[strokesKey][ui[strokesKey].length - 1];
+      if (line) line.push(p);
+      c.dataset.ink = "1";
+    };
+    const end = e => {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      drawing = false;
+      ui.signing = false;
+    };
+    c.addEventListener("pointerdown", e => {
+      try { c.setPointerCapture(e.pointerId); } catch {}
+      start(e);
     });
-    if (ui.signStrokes.length) c.dataset.ink = "1";
+    c.addEventListener("pointermove", move);
+    c.addEventListener("pointerup", end);
+    c.addEventListener("pointercancel", end);
+    c.addEventListener("dragstart", e => e.preventDefault());
+    c.addEventListener("selectstart", e => e.preventDefault());
+    return { c, fit };
   };
-  const fit = () => {
-    const ratio = Math.max(1, window.devicePixelRatio || 1);
-    const w = Math.max(280, Math.round((wrap && wrap.clientWidth) || c.clientWidth || 320));
-    const h = Math.max(160, Math.round((wrap && wrap.clientHeight) || 160));
-    const bw = Math.round(w * ratio), bh = Math.round(h * ratio);
-    if (c.width !== bw || c.height !== bh) {
-      c.style.width = w + "px";
-      c.style.height = h + "px";
-      c.width = bw;
-      c.height = bh;
-    }
-    redraw();
-  };
-  fit();
-  if (c.dataset.bound === "1") return;
-  c.dataset.bound = "1";
-  c.setAttribute("draggable", "false");
-  let drawing = false, last = null;
-  const pt = e => {
-    const r = c.getBoundingClientRect();
-    const src = e.touches && e.touches[0] ? e.touches[0] : e;
-    return { x: src.clientX - r.left, y: src.clientY - r.top };
-  };
-  const start = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    ui.signing = true;
-    drawing = true;
-    last = pt(e);
-    ui.signStrokes.push([last]);
-  };
-  const move = e => {
-    if (!drawing) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const p = pt(e);
-    ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    last = p;
-    const line = ui.signStrokes[ui.signStrokes.length - 1];
-    if (line) line.push(p);
-    c.dataset.ink = "1";
-  };
-  const end = e => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    drawing = false;
-    ui.signing = false;
-  };
-  c.addEventListener("pointerdown", e => {
-    try { c.setPointerCapture(e.pointerId); } catch {}
-    start(e);
-  });
-  c.addEventListener("pointermove", move);
-  c.addEventListener("pointerup", end);
-  c.addEventListener("pointercancel", end);
-  c.addEventListener("dragstart", e => e.preventDefault());
-  c.addEventListener("selectstart", e => e.preventDefault());
+  const a = bindOne(document.getElementById("sign-pad"), "signStrokes");
+  const b = bindOne(document.getElementById("sign-pad-2"), "signStrokes2");
   const clr = document.getElementById("sign-clear");
   if (clr) clr.onclick = () => {
     ui.signStrokes = [];
-    c.dataset.ink = "";
-    fit();
+    ui.signStrokes2 = [];
+    if (a) { a.c.dataset.ink = ""; a.fit(); }
+    if (b) { b.c.dataset.ink = ""; b.fit(); }
   };
   const ok = document.getElementById("sign-confirm");
   if (ok) ok.onclick = () => {
     const agree = document.getElementById("sign-agree");
     if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
-    if (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length)) { toast("請先在白框內簽名"); return; }
+    const c = a && a.c;
+    if (!c || (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length))) { toast("請先在白框內簽名"); return; }
     const t = me(); const r = myRoom();
-    const rec = { status: "signed", at: nowStamp(), sig: c.toDataURL("image/png"), name: (t && t.name) || "" };
+    const val = id => String((document.getElementById(id) || {}).value || "").trim();
+    const idNo = val("sign-idno");
+    const phone = val("sign-phone");
+    const emName = val("sign-emname");
+    const emPhone = val("sign-emphone");
+    if (t) {
+      if (idNo) t.idNo = idNo;
+      if (phone) t.phone = phone;
+      if (emName) t.emergencyName = emName;
+      if (emPhone) t.emergencyPhone = emPhone;
+      t.edited = true;
+    }
+    const rec = {
+      status: "signed", at: nowStamp(),
+      sig: c.toDataURL("image/png"),
+      sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? b.c.toDataURL("image/png") : "",
+      name: (t && t.name) || "",
+      idNo, phone, emergencyName: emName, emergencyPhone: emPhone
+    };
     ui.signStrokes = [];
+    ui.signStrokes2 = [];
     ui.signing = false;
     if (isDevPreview()) {
       ui.devESign = rec;
@@ -12404,6 +12447,7 @@ function bindSignPad() {
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
     save();
+    try { pushCloud(); } catch {}
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
     ui.page = "lease";
     toast("已完成電子簽署");
