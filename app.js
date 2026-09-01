@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-16-42";
-const APP_EDIT_COUNT = 430;
+const APP_STAMP = "2026-09-01-17-06";
+const APP_EDIT_COUNT = 431;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["新增一筆不用填日期，上傳簿子會依上面的時間入帳"] },
+  { ver: APP_STAMP, items: ["7651 吳慧青列為租屋補助，7/3 農會 5,000 對上人"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1100,7 +1100,7 @@ const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 13500, "6841": 9000, "6842": 14000,
   "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 0,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
-  "7611": 50000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7652": 0
+  "7611": 50000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 0
 };
 function studioRentOf(no, fallback) {
   const key = String(no || "");
@@ -1145,6 +1145,7 @@ const STUDIO_MONTH_PAY = {
   "7632": { name: "謝佩君", paidOn: "2026-08-05", amount: 14000 },
   "7641": { name: "洪子軒", paidOn: "2026-08-05", amount: 9000 },
   "7642": { name: "陳智泓", paidOn: "2026-08-04", amount: 14000 },
+  "7651": { name: "吳慧青", paidOn: "2026-07-03", amount: 5000 },
   "7652": { name: "", paidOn: "", amount: 0 }
 };
 function personKey(s) {
@@ -1217,6 +1218,7 @@ const TENANT_INFO = {
   "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", note: "租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
   "7641": { name: "洪子軒", phone: "0902-350-637", leaseStart: "2026-05-01", leaseEnd: "2027-04-30", deposit: 18000, note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, note: "由 7242 換房；12月租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
+  "7651": { name: "吳慧青", rent: 5000, deposit: 0, note: "老闆認識的人。用 7651 辦公室房號承租，申辦租屋補助（農會簿子寫吳慧青）。月租 5,000。7651 登入仍走管理員。" },
   "7652": { note: "合約 115/3/1～115/10/31，租客姓名待補", leaseStart: "2026-03-01", leaseEnd: "2026-10-31" }
 };
 const FORMER_STUDIO = {
@@ -1682,9 +1684,26 @@ function buildSeed() {
     });
   });
   rooms.push({
-    id: "r7651", no: "7651", title: "辦公室", rent: 0, deposit: 0, status: "office", kind: "studio",
-    tenantId: null, photos: photosFor("7651"), amenities: ["冷氣", "網路", "書桌椅"],
+    id: "r7651", no: "7651", title: "辦公室", rent: 5000, deposit: 0, status: "office", kind: "studio",
+    tenantId: "t7651", photos: photosFor("7651"), amenities: ["冷氣", "網路", "書桌椅"],
     utilities: { electric: "公司自付", water: "公司自付" }, contractImages: [], location: roomAddress("7651")
+  });
+  tenants.push({
+    id: "t7651",
+    name: "吳慧青",
+    phone: "",
+    idNo: "",
+    address: "",
+    emergencyName: "",
+    emergencyPhone: "",
+    roomId: "r7651",
+    leaseStart: "",
+    leaseEnd: "",
+    dueDay: 1,
+    paid: true,
+    paidAt: "2026-07-03 10:00",
+    subsidy: true,
+    note: TENANT_INFO["7651"].note
   });
   factoryRooms().forEach(r => {
     const info = FACTORY_TENANT_INFO[r.no];
@@ -1713,7 +1732,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v7";
+const BOOKS_IMPORT_VER = "july115-v8";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -1791,7 +1810,7 @@ const JULY115_BOOKS = [
   ["2026-07-02", "in", 7000, "統潔", "牛10　7222 林呈澔廖晉億", "農會"],
   ["2026-07-02", "in", 10000, "統潔", "牛10　6823 顏家蓁", "農會"],
   ["2026-07-03", "in", 10000, "統潔", "牛10　7623 陳財源", "農會"],
-  ["2026-07-03", "in", 5000, "統潔", "牛10　7651 吳慧青", "農會"],
+  ["2026-07-03", "in", 5000, "統潔", "牛10　7651 吳慧青　租屋補助（辦公室房號）", "農會"],
   ["2026-07-03", "in", 50000, "統潔", "牛10　7611 曾郁翔（波波奇）", "農會"],
   ["2026-07-04", "in", 9000, "統潔", "牛10　6841 劉冠德", "農會"],
   ["2026-07-06", "in", 7000, "統潔", "牛10　7621 王俊典曾郁庭", "農會"],
@@ -2013,6 +2032,7 @@ function normalize(data) {
   applyAug31Docs(data);
   applyYushengElec(data);
   applyDueDayPolicy(data);
+  applyOfficeSubsidyTenant(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
@@ -2117,6 +2137,29 @@ function scrubJulyPersonalDupes(data) {
     return false;
   });
   if (gone.length) data.ledgerGone = unionGone(data.ledgerGone, gone);
+}
+function applyOfficeSubsidyTenant(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => String(r.no) === "7651");
+  if (!room) return;
+  room.status = "office";
+  if (!room.edited) {
+    room.rent = 5000;
+    room.deposit = 0;
+    room.kind = "studio";
+  }
+  let t = (data.tenants || []).find(x => x && (x.id === "t7651" || (x.roomId === room.id && !x.former && !x.demo && !x.incoming)));
+  if (!t) {
+    t = { id: "t7651", roomId: room.id, dueDay: 1 };
+    data.tenants.push(t);
+  }
+  room.tenantId = t.id;
+  if (t.edited) return;
+  t.name = "吳慧青";
+  t.subsidy = true;
+  t.paid = true;
+  if (!t.paidAt) t.paidAt = "2026-07-03 10:00";
+  t.note = TENANT_INFO["7651"].note;
 }
 function applyAug31Docs(data) {
   if (!data) return;
@@ -11270,7 +11313,7 @@ function tenantListOfKind(kind) {
       if (!isDeveloper() || factory) return false;
     }
     if (!String(t.name || "").trim()) return false;
-    if (!r || r.status === "office") return false;
+    if (!r || (r.status === "office" && r.no !== "7651")) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     return true;
