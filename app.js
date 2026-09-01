@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-20-54";
-const APP_EDIT_COUNT = 446;
+const APP_STAMP = "2026-09-01-21-02";
+const APP_EDIT_COUNT = 447;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["案場圖塊可看統潔／信潔／農會兆豐／個人戶／現金分類", "更新會強制套到手機與電腦"] },
+  { ver: APP_STAMP, items: ["修正牛7驊勝、牛8錦芳被算進拉皮，七月收入歸回案場"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2054") return;
+    if (m[1] === "2102") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1500,10 +1500,11 @@ function siteOfLedgerRow(row) {
   if (!row) return "";
   const note = String(row.note || "");
   const no = String(row.roomNo || "");
-  if (/拉皮|93-1A|93-1B|93-2A|93-2B|南溢|咘然|孫梅芳|禹旺/.test(note)) return "拉皮";
-  if (/驊勝食品|牛6\s*62|牛6.*62/.test(note)) return "牛6";
-  if (/牛7|93-63\s*\d*F/.test(note) || (/驊勝/.test(note) && /1F|93-63/.test(note))) return "牛7";
-  if (/牛8|97-77|97-78|錦芳/.test(note)) return "牛8";
+  const blob = note + " " + no;
+  if (/牛8|97-77|97-78|錦芳/.test(blob)) return "牛8";
+  if (/牛7|93-63|驊勝/.test(blob) && !/驊勝食品|牛6/.test(blob)) return "牛7";
+  if (/驊勝食品|牛6\s*62|牛6.*62/.test(blob)) return "牛6";
+  if (/拉皮|93-1A|93-1B|93-2A|93-2B|南溢|咘然|孫梅芳|禹旺/.test(blob)) return "拉皮";
   const fromNo = siteOfRoomNo(roomNoFromBookNote(note) || no);
   if (fromNo) return fromNo;
   const names = SITE_ORDER.slice().sort((a, b) => b.length - a.length);
@@ -1786,7 +1787,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v12";
+const BOOKS_IMPORT_VER = "july115-v13";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -1835,7 +1836,7 @@ const JULY115_BOOKS = [
   ["2026-07-01", "in", 42000, "統潔", "租金收入　拉皮 93-1B 鈺晟　六月份遲繳　匯款", "聯邦", "拉皮-1B"],
   ["2026-07-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳　匯款", "聯邦", "牛8-77"],
   ["2026-07-07", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
-  ["2026-07-10", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝　匯款", "聯邦"],
+  ["2026-07-10", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝　匯款", "聯邦", "牛7-1F"],
   ["2026-07-16", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦", "拉皮-2B"],
   ["2026-07-31", "in", 42000, "統潔", "租金收入　拉皮 93-1B 鈺晟　七月份　匯款", "聯邦", "拉皮-1B"],
   ["2026-07-31", "in", 3524, "統潔", "造得科技", "聯邦"],
@@ -2140,6 +2141,22 @@ function roomNoFromBookNote(note) {
   }
   return "";
 }
+function patchNiu78Books(data) {
+  if (!data || !Array.isArray(data.books)) return;
+  data.books.forEach(b => {
+    if (!b) return;
+    const note = String(b.note || "");
+    const no = String(b.roomNo || "");
+    const blob = note + " " + no;
+    if (/牛8|97-77|97-78|錦芳/.test(blob) && !/增建/.test(blob)) {
+      b.roomNo = "牛8-77";
+      if (/拉皮/.test(note)) b.note = note.replace(/拉皮\s*/g, "牛8 ");
+    } else if (/牛7|93-63/.test(blob) || (/驊勝/.test(blob) && !/驊勝食品|牛6/.test(blob))) {
+      b.roomNo = /2F/.test(blob) ? "牛7-2F" : "牛7-1F";
+      if (/拉皮/.test(note)) b.note = note.replace(/拉皮\s*/g, "牛7 ");
+    }
+  });
+}
 function applyJuly115Books(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
@@ -2153,6 +2170,7 @@ function applyJuly115Books(data) {
         if (no) b.roomNo = no;
       }
     });
+    patchNiu78Books(data);
     return;
   }
   data.books = data.books.filter(b => b && b.importTag !== "july115");
@@ -2172,6 +2190,7 @@ function applyJuly115Books(data) {
   });
   Object.keys(JULY115_OPENINGS).forEach(k => { data.accountOpenings[k] = JULY115_OPENINGS[k]; });
   data.booksImportVer = BOOKS_IMPORT_VER;
+  patchNiu78Books(data);
   scrubJulyPersonalDupes(data);
 }
 function personalMoneyKey(row) {
