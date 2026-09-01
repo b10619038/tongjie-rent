@@ -567,44 +567,90 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .card-body { padding: 16px; }
 .card-body > .label { margin: 0 0 12px; }
 .tenant-search {
-  padding: 8px 8px 8px 14px;
-  border-radius: 16px;
+  padding: 4px 8px 4px 12px;
+  border-radius: 18px;
   position: relative;
   z-index: 8;
   isolation: isolate;
   pointer-events: auto !important;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
 }
 .tenant-search-chips {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 5px;
   flex: 0 0 auto;
 }
 #tenant-vacant-btn,
-.tenant-chip {
-  width: auto;
+.tenant-search .tenant-chip,
+.tenant-search .ghost {
+  width: auto !important;
   flex: 0 0 auto;
-  padding: 8px 12px;
-  font-size: 13px;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 700;
   border-radius: 999px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
-#tenant-vacant-btn.on,
-.tenant-chip.on {
+#tenant-vacant-btn.on {
   background: var(--navy, #1f3d2b);
   color: #fff;
   border-color: transparent;
 }
+.tenant-chip[data-tenant-chip="paid"] {
+  color: #2f7d4a;
+  border-color: #8fbf9a;
+  background: #f3faf5;
+}
+.tenant-chip[data-tenant-chip="paid"].on {
+  background: #2f7d4a;
+  color: #fff;
+  border-color: #2f7d4a;
+}
+.tenant-chip[data-tenant-chip="unpaid"] {
+  color: #c4453c;
+  border-color: #e8a8a3;
+  background: #fdf6f5;
+}
+.tenant-chip[data-tenant-chip="unpaid"].on {
+  background: #c4453c;
+  color: #fff;
+  border-color: #c4453c;
+}
 .tenant-search input,
-#tenant-search,
+#tenant-search {
+  display: block;
+  width: auto;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 4px 0;
+  color: var(--ink);
+  caret-color: var(--ink);
+  pointer-events: auto !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  position: relative;
+  z-index: 9;
+  touch-action: manipulation;
+  flex: 1 1 0;
+  min-width: 44px;
+}
 #asset-search {
   display: block;
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   border: 0;
   background: transparent;
   outline: none;
@@ -617,13 +663,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   pointer-events: auto !important;
   -webkit-user-select: text !important;
   user-select: text !important;
-  position: relative;
-  z-index: 9;
-  touch-action: manipulation;
   flex: 1;
   min-width: 0;
-}
-.tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
 }
 .tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
