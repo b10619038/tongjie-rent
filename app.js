@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-36";
-const APP_EDIT_COUNT = 456;
+const APP_STAMP = "2026-09-01-22-40";
+const APP_EDIT_COUNT = 457;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["6832 新客周婕妤已入房"] },
+  { ver: APP_STAMP, items: ["本月收款日統一為每月1日"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2236") return;
+    if (m[1] === "2240") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -4512,6 +4512,14 @@ function payLabel(tenant) {
 function payYmNow() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function monthDueYmd() {
+  return payYmNow() + "-01";
+}
+function tenantPaidOnValue(t) {
+  const ymd = ymdOf(t && t.paidAt);
+  if (t && t.paid && ymd && ymd.slice(0, 7) === payYmNow()) return ymd;
+  return monthDueYmd();
 }
 function toggleTenantPaid(id) {
   const sid = String(id || "");
@@ -11946,7 +11954,7 @@ function tenantEntryCardHtml(kind, entry) {
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
           ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客）" : k === "兆豐" ? "兆豐（新客）" : "聯邦"}</option>`).join("")}
         </select></label>` : ""}
-      ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, ymdOf(t.paidAt) || (studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn) || "", "date") : ""}
+      ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "尚未設定") : ""}
