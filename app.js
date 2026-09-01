@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-40";
-const APP_EDIT_COUNT = 421;
+const APP_STAMP = "2026-09-01-11-42";
+const APP_EDIT_COUNT = 422;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月工作展開後會顯示固定行程與狀況"] },
+  { ver: APP_STAMP, items: ["總覽日曆的記（本月工作）會再出現"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2446,6 +2446,8 @@ async function pullCloud() {
     applyCompany(state);
     stripDevMemosFromState();
     stripDevLogsFromState();
+    try { ensureCycleJobs(state); } catch {}
+    try { ensureDevCycleJobs(state); } catch {}
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
@@ -5055,6 +5057,7 @@ function collectLedger() {
   return attachMemoRows(dedupeLedger(rows));
 }
 function attachMemoRows(rows) {
+  try { ensureCycleJobs(state); } catch {}
   ensureCalMonth();
   const y = ui.calYear, m = ui.calMonth;
   const ym = y + "-" + String(m).padStart(2, "0");
@@ -5781,11 +5784,12 @@ function monthCashHtml() {
         const list = byDay(d);
         const di = list.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
         const dout = list.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+        const hasMemo = list.some(x => x.type === "memo");
         return `<button type="button" class="cal-cell ${d >= rangeStart && d <= rangeEnd ? "on" : ""}${q && !hitDays.has(d) ? " dim" : ""}" data-cal-day="${d}">
           <em>${d}</em>
           ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
           ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
-          ${!di && !dout && list.length ? `<span class="mark">記</span>` : ""}
+          ${hasMemo ? `<span class="mark">記</span>` : ""}
         </button>`;
       }).join("")}
     </div>
