@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-40";
-const APP_EDIT_COUNT = 457;
+const APP_STAMP = "2026-09-01-22-48";
+const APP_EDIT_COUNT = 458;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月收款日統一為每月1日"] },
+  { ver: APP_STAMP, items: ["本月已繳會自動記入總覽日曆"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2240") return;
+    if (m[1] === "2248") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1230,6 +1230,7 @@ function applyMonthlyUnpaid(data) {
     t.paidYm = ym;
     t.edited = true;
     t.editedAt = Date.now();
+    dropRentAutoBookOn(data, t);
   });
   data.rentUnpaidYm = ym;
   data.studioUnpaidYm = ym;
@@ -2120,6 +2121,7 @@ function normalize(data) {
   applyStudioMonthUnpaid(data);
   ensureStudioTenant(data, "7221");
   ensureStudioTenant(data, "6832");
+  syncPaidRentBooks(data);
   applyJuly115Books(data);
   scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
@@ -2804,6 +2806,7 @@ async function pullCloud() {
       applyYushengElec(state);
       ensureStudioTenant(state, "7221");
       ensureStudioTenant(state, "6832");
+      syncPaidRentBooks(state);
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
@@ -2843,6 +2846,7 @@ async function pullCloud() {
     try { ensureDevCycleJobs(state); } catch {}
     ensureStudioTenant(state, "7221");
     ensureStudioTenant(state, "6832");
+    syncPaidRentBooks(state);
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
@@ -4521,6 +4525,81 @@ function tenantPaidOnValue(t) {
   if (t && t.paid && ymd && ymd.slice(0, 7) === payYmNow()) return ymd;
   return monthDueYmd();
 }
+function rentAutoBookId(t, ym) {
+  return "bk-rent-" + String(t && t.id || "") + "-" + (ym || payYmNow());
+}
+function isRentAutoBook(b) {
+  return !!(b && (String(b.importTag || "").indexOf("rent-auto-") === 0 || String(b.id || "").indexOf("bk-rent-") === 0));
+}
+function dropRentAutoBookOn(data, t) {
+  if (!data || !t) return;
+  const id = rentAutoBookId(t);
+  data.books = (data.books || []).filter(b => b && b.id !== id);
+  data.ledgerGone = unionGone(data.ledgerGone, [id]);
+}
+function upsertRentAutoBookOn(data, t) {
+  if (!data || !t) return;
+  if (!t.paid || t.former || t.incoming || t.demo || isDemoTenant(t)) {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+  if (!room || room.demo || room.status === "office") {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  const amount = Number(room.rent) || Number(t.rent) || 0;
+  if (!amount) {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  const ym = payYmNow();
+  let date = ymdOf(t.paidAt) || monthDueYmd();
+  if (date.slice(0, 7) !== ym) {
+    date = monthDueYmd();
+    t.paidAt = date + " 10:00";
+  }
+  const hasBank = (data.books || []).some(b => b && !isRentAutoBook(b) && ymdOf(b.date).slice(0, 7) === ym && (
+    String(b.roomNo || "") === String(room.no || "") || String(b.note || "").indexOf(String(room.no || "")) >= 0
+  ));
+  if (hasBank) {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  const id = rentAutoBookId(t, ym);
+  const bankKey = tenantPayBankKey(t, room);
+  const site = room.group || (room.kind === "factory" ? "" : "牛10");
+  const row = {
+    id, type: "in", date, amount,
+    company: roomCompany(room) || "統潔",
+    bank: bankKey || "農會",
+    roomNo: String(room.no || ""),
+    note: (site ? site + "　" : "") + String(room.no || "") + " " + (t.name || "") + " 租金",
+    importTag: "rent-auto-" + ym,
+    linkedTenantId: t.id
+  };
+  const prev = (data.books || []).find(b => b && b.id === id);
+  if (prev) Object.assign(prev, row);
+  else {
+    if (!data.books) data.books = [];
+    data.books.push(row);
+  }
+}
+function syncPaidRentBooks(data) {
+  if (!data) return;
+  (data.tenants || []).forEach(t => upsertRentAutoBookOn(data, t));
+}
+function dropCoveredRentAuto(data, book) {
+  if (!data || !book || isRentAutoBook(book)) return;
+  const ym = ymdOf(book.date).slice(0, 7);
+  if (ym !== payYmNow()) return;
+  const no = String(book.roomNo || "") || ((String(book.note || "").match(/\b([678]\d{3})\b/) || [])[1] || "");
+  if (!no) return;
+  (data.tenants || []).forEach(t => {
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    if (r && String(r.no) === String(no)) dropRentAutoBookOn(data, t);
+  });
+}
 function toggleTenantPaid(id) {
   const sid = String(id || "");
   let t = (state.tenants || []).find(x => x && String(x.id) === sid);
@@ -4535,12 +4614,14 @@ function toggleTenantPaid(id) {
   t.editedAt = Date.now();
   t.paidYm = payYmNow();
   if (t.paid) {
-    if (!t.paidAt) t.paidAt = nowStamp();
+    if (!t.paidAt || ymdOf(t.paidAt).slice(0, 7) !== payYmNow()) t.paidAt = nowStamp();
     if (!t.paidVia) t.paidVia = "app";
+    upsertRentAutoBookOn(state, t);
   } else {
     t.paidVia = "";
     t.lineNotified = false;
     t.paidAt = "";
+    dropRentAutoBookOn(state, t);
   }
   const room = (state.rooms || []).find(r => r && r.id === t.roomId);
   if (room) { room.edited = true; room.editedAt = Date.now(); }
@@ -5644,17 +5725,17 @@ function collectLedger() {
   });
   state.tenants.filter(t => t.paid && !t.former && !t.incoming && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
-    if (room && room.kind === "factory") return;
-    const date = ymdOf(t.paidAt);
+    if (!room || room.status === "office" || room.demo) return;
+    const date = ymdOf(t.paidAt) || tenantPaidOnValue(t);
     if (!date) return;
     const no = room ? String(room.no) : "";
     if (no && takenYm[date.slice(0, 7) + "|" + no]) return;
-    const amount = Number(room && room.rent) || 0;
+    const amount = Number(room && room.rent) || Number(t.rent) || 0;
     if (!amount) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount,
       roomNo: no, note: (t.name || "") + " 租金", company: roomCompany(room || {}),
-      bank: "聯邦",
+      bank: tenantPayBankKey(t, room) || "農會",
       source: "rent", canDel: false, canEdit: false
     });
   });
@@ -8621,7 +8702,10 @@ function markTenantPaid(via) {
   t.paid = true;
   t.paidVia = via;
   t.paidAt = nowStamp();
+  t.paidTouched = true;
+  t.paidYm = payYmNow();
   if (via === "line") t.lineNotified = true;
+  upsertRentAutoBookOn(state, t);
   save();
   pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
 }
@@ -12048,6 +12132,8 @@ function applyLiveTenantEdit(el) {
     t.paidYm = payYmNow();
     if (t.paid && !t.paidVia) t.paidVia = "app";
     if (!t.paid) t.paidVia = "";
+    if (t.paid) upsertRentAutoBookOn(state, t);
+    else dropRentAutoBookOn(state, t);
   } else if (key === "rent") {
     const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
     if (t && t.incoming) t.rent = neu;
@@ -15303,7 +15389,9 @@ function bindCashCal() {
         return;
       }
       if (!state.books) state.books = [];
-      state.books.push(Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload));
+      const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload);
+      state.books.push(row);
+      dropCoveredRentAuto(state, row);
       ui.calDay = Number(date.slice(8, 10));
       save();
       toast("已記入日曆");
