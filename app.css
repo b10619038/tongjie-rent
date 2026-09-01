@@ -1332,13 +1332,26 @@ input[type="file"] {
 #work-card .tenant-slim-inner {
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
   padding-left: 4px;
   padding-right: 2px;
 }
+#work-card.open .tenant-slim-body {
+  grid-template-rows: 1fr;
+  overflow: visible;
+}
+#work-card.open .tenant-slim-inner {
+  overflow: visible;
+  min-height: min-content;
+  max-height: none;
+  visibility: visible;
+}
+#work-card.open .tenant-slim-inner * {
+  visibility: visible;
+  pointer-events: auto;
+}
 #work-card .work-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
@@ -2157,8 +2170,9 @@ img.avatar { object-fit: cover; display: block; }
   transition: grid-template-rows .38s cubic-bezier(.22,.82,.22,1);
 }
 .tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; }
-.tenant-slim-inner { overflow: hidden; min-height: 0; }
-.tenant-slim.open .tenant-slim-inner { overflow: visible; }
+.tenant-slim-inner { overflow: hidden; }
+.tenant-slim.open .tenant-slim-inner { overflow: visible; min-height: min-content; }
+.tenant-slim:not(.open) .tenant-slim-inner { min-height: 0; }
 .tenant-slim:not(.open) .tenant-slim-body {
   grid-template-rows: 0fr;
   overflow: hidden;

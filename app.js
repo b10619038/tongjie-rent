@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-36";
-const APP_EDIT_COUNT = 420;
+const APP_STAMP = "2026-09-01-11-40";
+const APP_EDIT_COUNT = 421;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房合約第2、8頁簽章欄依紙本，雙人並列蓋章"] },
+  { ver: APP_STAMP, items: ["本月工作展開後會顯示固定行程與狀況"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -9598,6 +9598,8 @@ function adminAi() {
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
   const parts = {
     work: (() => {
+      try { ensureCycleJobs(state); } catch {}
+      try { if (typeof isDeveloper === "function" && isDeveloper()) ensureDevCycleJobs(state); } catch {}
       const plan = monthlyErrandPlan();
       const g = groupUpcomingMemos();
       const bits = [];
@@ -9627,7 +9629,8 @@ function adminAi() {
             </div>` : ""}`;
       }).join("");
       const sect = (title, arr) => arr.length ? `<div class="small" style="margin:12px 0 6px">${title}</div>` + memoRows(arr) : "";
-      return `<div class="card card-body tenant-slim${ui.workOpen ? " open" : ""}" id="work-card">
+      const workOpen = ui.workOpen !== false;
+      return `<div class="card card-body tenant-slim${workOpen ? " open" : ""}" id="work-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="work-fold">
           <span class="k">本月工作</span>

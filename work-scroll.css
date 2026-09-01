@@ -1,13 +1,17 @@
 #work-card .tenant-slim-inner {
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
   padding-left: 4px;
   padding-right: 2px;
 }
+#work-card.open .tenant-slim-inner {
+  overflow: visible;
+  min-height: min-content;
+  max-height: none;
+}
 #work-card .work-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
