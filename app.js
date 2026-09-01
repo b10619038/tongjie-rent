@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-18";
-const APP_EDIT_COUNT = 472;
+const APP_STAMP = "2026-09-02-00-22";
+const APP_EDIT_COUNT = 473;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["帳務改走即時通道，避開當掉的雲端寫入"] },
+  { ver: APP_STAMP, items: ["雲端改成有更動才寫入，避免額度爆掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -798,7 +798,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "0018") return;
+    if (m[1] === "0022") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -3528,7 +3528,6 @@ async function pushPresence() {
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
     persistLedger(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
-    await pushCloud();
   } catch {}
   finally { if (timer) clearTimeout(timer); }
 }
@@ -3589,7 +3588,11 @@ function factoryNamedCount(data) {
     return r && r.kind === "factory";
   }).length;
 }
+let cloudDirty = false;
+let lastCloudHash = "";
+function markCloudDirty() { cloudDirty = true; }
 async function pushCloud() {
+  if (!cloudDirty) return;
   try {
     applyCompany(state);
     stripDevMemosFromState();
@@ -3688,6 +3691,7 @@ async function pushCloud() {
       res = await put(JSON.stringify(slim));
     }
     ui.cloudOk = !!(res && res.ok);
+    if (res && res.ok) cloudDirty = false;
   } catch { ui.cloudOk = false; }
   try { publishPaidCloud(); } catch {}
 }
@@ -3712,6 +3716,7 @@ function stripCloudMedia(data) {
 function save(force) {
   try { persistPaidMarks(state); } catch {}
   try { publishPaidCloud(); } catch {}
+  cloudDirty = true;
   if (isDevPreview() && !force) {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(pushCloud, 200);
@@ -3725,7 +3730,7 @@ function save(force) {
     try { persistLedger(state); } catch {}
   }
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(pushCloud, 400);
+  saveTimer = setTimeout(pushCloud, 1500);
 }
 function persistLogin() {
   if (!ui || !ui.role) return;
@@ -16038,7 +16043,7 @@ async function boot() {
     applyPaidMarks(state);
     persistPaidMarks(state);
     try { connectPaidCloud(); } catch {}
-    if (got === false || got === "local-newer" || got === true) await pushCloud();
+    if (got === "local-newer") await pushCloud();
     restoreUi();
     beatPresence();
     render();
