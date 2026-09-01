@@ -2222,8 +2222,9 @@ img.avatar { object-fit: cover; display: block; }
 
 .swipe-wrap { position: relative; overflow: hidden; border-radius: 22px; touch-action: pan-y; }
 .swipe-wrap.slim { border-radius: 16px; }
+.swipe-wrap:not(.slim) { overflow: visible; }
 .tenant-slim { padding: 8px 14px; transition: padding .32s ease; }
-.tenant-slim.open { padding: 16px; }
+.tenant-slim.open { padding: 16px; overflow: visible; }
 .tenant-slim-head { padding: 2px 0; align-items: center; gap: 4px; }
 .fold-head { flex: 1; min-width: 0; }
 .tenant-slim-body {
@@ -2231,9 +2232,15 @@ img.avatar { object-fit: cover; display: block; }
   grid-template-rows: 0fr;
   transition: grid-template-rows .38s cubic-bezier(.22,.82,.22,1);
 }
-.tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; }
-.tenant-slim-inner { overflow: hidden; }
+.tenant-slim.open .tenant-slim-body { grid-template-rows: 1fr; overflow: visible; }
+.tenant-slim-inner { overflow: hidden; min-height: 0; }
 .tenant-slim.open .tenant-slim-inner { overflow: visible; min-height: min-content; }
+.tenant-slim.open .tenant-slim-inner .ghost,
+.tenant-slim.open .tenant-slim-inner button {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 6;
+}
 .tenant-slim:not(.open) .tenant-slim-inner { min-height: 0; }
 .tenant-slim:not(.open) .tenant-slim-body {
   grid-template-rows: 0fr;
