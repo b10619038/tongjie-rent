@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-18-08";
-const APP_EDIT_COUNT = 437;
+const APP_STAMP = "2026-09-01-18-24";
+const APP_EDIT_COUNT = 438;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["牛7／拉皮不再被算進牛8，案場數字跟員工藍字對得上"] },
+  { ver: APP_STAMP, items: ["案場收入改為本期租金，對上員工藍字；牛7拉皮不再算進牛8"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1447,13 +1447,19 @@ function siteOfRoomNo(no) {
   if (STUDIO_BUILDINGS.some(b => b.prefix === studioPrefix(s))) return "牛10";
   return "";
 }
+function isSiteRentIncome(row) {
+  if (!row || row.type !== "in") return false;
+  const s = String(row.note || "");
+  if (/水費|電費|增建|垃圾桶|清潔費|欠租|其他收入|退稅|薪資|造得/.test(s)) return false;
+  return true;
+}
 function siteOfLedgerRow(row) {
   if (!row) return "";
   const note = String(row.note || "");
   const no = String(row.roomNo || "");
   if (/拉皮|93-1A|93-1B|93-2A|93-2B|南溢|咘然|孫梅芳|禹旺/.test(note)) return "拉皮";
   if (/驊勝食品|牛6\s*62|牛6.*62/.test(note)) return "牛6";
-  if (/牛7|93-63/.test(note) || (/驊勝/.test(note) && /1F|93-63/.test(note))) return "牛7";
+  if (/牛7|93-63\s*\d*F/.test(note) || (/驊勝/.test(note) && /1F|93-63/.test(note))) return "牛7";
   if (/牛8|97-77|97-78|錦芳/.test(note)) return "牛8";
   const fromNo = siteOfRoomNo(roomNoFromBookNote(note) || no);
   if (fromNo) return fromNo;
@@ -1737,7 +1743,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v11";
+const BOOKS_IMPORT_VER = "july115-v12";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -5504,8 +5510,9 @@ function siteStatsMap(start, end) {
     if (!x.date || x.date < start || x.date > end) return;
     const s = siteOfLedgerRow(x);
     if (!map[s]) return;
-    if (x.type === "in") map[s].inn += Number(x.amount) || 0;
-    else if (x.type === "out") map[s].out += Number(x.amount) || 0;
+    if (x.type === "in") {
+      if (isSiteRentIncome(x)) map[s].inn += Number(x.amount) || 0;
+    } else if (x.type === "out") map[s].out += Number(x.amount) || 0;
     map[s].count += 1;
   });
   SITE_ORDER.forEach(n => { map[n].net = map[n].inn - map[n].out; });
