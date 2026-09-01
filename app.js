@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-21-02";
-const APP_EDIT_COUNT = 447;
+const APP_STAMP = "2026-09-01-21-22";
+const APP_EDIT_COUNT = 448;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修正牛7驊勝、牛8錦芳被算進拉皮，七月收入歸回案場"] },
+  { ver: APP_STAMP, items: ["租客圖卡一改就同步到其他裝置"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2102") return;
+    if (m[1] === "2122") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2552,6 +2552,40 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "note", "rent", "deposit", "lineNotified", "paidTouched"];
+const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
+function entityStamp(x) {
+  return Number((x && (x.editedAt || x.updatedAt)) || 0);
+}
+function pickNewerEntity(a, b, keys) {
+  if (!a) return b;
+  if (!b) return a;
+  const sa = entityStamp(a);
+  const sb = entityStamp(b);
+  let winner = b, loser = a;
+  if (sa > sb) { winner = a; loser = b; }
+  else if (sa === sb) {
+    if (a.edited && !b.edited) { winner = a; loser = b; }
+    else if (b.edited && !a.edited) { winner = b; loser = a; }
+  }
+  const out = Object.assign({}, loser, winner);
+  (keys || []).forEach(k => {
+    if ((out[k] == null || out[k] === "") && loser[k] != null && loser[k] !== "") out[k] = loser[k];
+  });
+  out.edited = !!(a.edited || b.edited);
+  out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
+  return out;
+}
+function mergeEntities(a, b, keys) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    map.set(x.id, pickNewerEntity(map.get(x.id), x, keys));
+  });
+  return [...map.values()];
+}
+function mergeTenants(a, b) { return mergeEntities(a, b, TENANT_SYNC_KEYS); }
+function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
 function unionGone(a, b) {
   return [...new Set([].concat(a || [], b || []).map(x => String(x || "")).filter(Boolean))];
 }
@@ -2634,6 +2668,8 @@ async function pullCloud() {
       applyCompany(state);
       mergeDevBundle(state, data);
       mergeLedgerInto(state, data);
+      if (data.tenants) state.tenants = mergeTenants(state.tenants, data.tenants);
+      if (data.rooms) state.rooms = mergeRooms(state.rooms, data.rooms);
       if ((!state.books || !state.books.length) && Array.isArray(data.books) && data.books.length) {
         state.books = data.books;
         if (data.accountOpenings) state.accountOpenings = Object.assign({}, data.accountOpenings, state.accountOpenings || {});
@@ -2644,6 +2680,7 @@ async function pullCloud() {
       applyAug31Docs(state);
       applyYushengElec(state);
       persistLedger(state);
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return "local-newer";
     }
@@ -2666,6 +2703,8 @@ async function pullCloud() {
     const mineSlips = (state.bankSlips && state.bankSlips.length) ? state.bankSlips : null;
     const mineGone = (state.ledgerGone && state.ledgerGone.length) ? state.ledgerGone : null;
     const mineESigns = collectESigns(state);
+    const mineTenants = (state.tenants && state.tenants.length) ? state.tenants : null;
+    const mineRooms = (state.rooms && state.rooms.length) ? state.rooms : null;
     state = normalize(data);
     mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen, ledgerGone: mineGone });
     if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
@@ -2680,6 +2719,8 @@ async function pullCloud() {
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
     mergeESignsInto(state, { eSigns: mineESigns });
+    if (mineTenants) state.tenants = mergeTenants(state.tenants, mineTenants);
+    if (mineRooms) state.rooms = mergeRooms(state.rooms, mineRooms);
     mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
     if (mineCompany) {
       const la = Number(mineCompany.updatedAt) || 0;
@@ -3157,6 +3198,8 @@ async function pushCloud() {
         80
       ),
       eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
+      tenants: mergeTenants(remote && remote.tenants, state.tenants),
+      rooms: mergeRooms(remote && remote.rooms, state.rooms),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
     });
@@ -3166,6 +3209,8 @@ async function pushCloud() {
     state.books = payload.books;
     state.errands = payload.errands;
     state.bankSlips = payload.bankSlips;
+    if (payload.tenants) state.tenants = payload.tenants;
+    if (payload.rooms) state.rooms = payload.rooms;
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
     stripCloudMedia(payload);
     applyESigns(payload);
@@ -3190,6 +3235,7 @@ async function pushCloud() {
         devLogs: payload.devLogs,
         aiLogs: payload.aiLogs,
         tenants: payload.tenants,
+        rooms: payload.rooms,
         eSigns: payload.eSigns,
         repairs: payload.repairs,
         company: payload.company
@@ -11775,8 +11821,8 @@ function applyLiveTenantEdit(el) {
   const r = (state.rooms || []).find(x => x.id === el.dataset.rid) || (t && (state.rooms || []).find(x => x.id === t.roomId));
   if (!t && !r) return;
   const val = String(el.value || "").trim();
-  if (t) t.edited = true;
-  if (r) r.edited = true;
+  if (t) { t.edited = true; t.editedAt = Date.now(); }
+  if (r) { r.edited = true; r.editedAt = Date.now(); }
   if (key === "name" && t) t.name = val;
   else if (key === "phone" && t) t.phone = val;
   else if (key === "idNo" && t) t.idNo = val;
@@ -11810,7 +11856,9 @@ function applyLiveTenantEdit(el) {
     t.payBank = val === "兆豐" || val === "聯邦" || val === "農會" ? val : "農會";
   }
   save();
-  toast("已套用");
+  clearTimeout(saveTimer);
+  pushCloud();
+  toast("已套用，已同步其他裝置");
   ui.keepScroll = true;
   if (t) {
     if (!ui.tenantOpen) ui.tenantOpen = {};
@@ -12383,9 +12431,13 @@ function saveRoomEdit(form) {
     if (!t.paidAt && t.paid) t.paidAt = nowStamp();
     if (!t.paid && !t.paidVia) t.lineNotified = false;
     t.edited = true;
+    t.editedAt = Date.now();
   }
   r.edited = true;
+  r.editedAt = Date.now();
   save();
+  clearTimeout(saveTimer);
+  pushCloud();
   const btn = document.getElementById("room-save-btn");
   if (btn) {
     btn.textContent = "已儲存";
