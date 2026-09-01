@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-56";
-const APP_EDIT_COUNT = 424;
+const APP_STAMP = "2026-09-01-12-00";
+const APP_EDIT_COUNT = 425;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽名後拿掉藍字姓名，改放親筆簽名"] },
+  { ver: APP_STAMP, items: ["租客合約簽名同步雲端，手機電腦後台都能看"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1947,6 +1947,8 @@ function normalize(data) {
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   if (!Array.isArray(data.devMemos)) data.devMemos = [];
   if (!Array.isArray(data.devLogs)) data.devLogs = [];
+  if (!data.eSigns || typeof data.eSigns !== "object") data.eSigns = {};
+  applyESigns(data);
   migrateDevLocalInto(data);
   ensureCycleJobs(data);
   try { ensureDevCycleJobs(data); } catch {}
@@ -2386,6 +2388,7 @@ async function pullCloud() {
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
+    mergeESignsInto(state, data);
     if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
@@ -2421,6 +2424,7 @@ async function pullCloud() {
     const mineErrands = (state.errands && state.errands.length) ? state.errands : null;
     const mineSlips = (state.bankSlips && state.bankSlips.length) ? state.bankSlips : null;
     const mineGone = (state.ledgerGone && state.ledgerGone.length) ? state.ledgerGone : null;
+    const mineESigns = collectESigns(state);
     state = normalize(data);
     mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen, ledgerGone: mineGone });
     if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
@@ -2434,6 +2438,7 @@ async function pullCloud() {
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
+    mergeESignsInto(state, { eSigns: mineESigns });
     mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
     if (mineCompany) {
       const la = Number(mineCompany.updatedAt) || 0;
@@ -2536,6 +2541,32 @@ function migrateDevLocalInto(data) {
   data.aiLogs = cleanAiLogs((data.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"));
   saveDevMemos(data.devMemos);
   saveDevLogs(data.devLogs);
+}
+function eSignNewer(a, b) {
+  if (!a || !a.sig) return b || null;
+  if (!b || !b.sig) return a;
+  return String(b.at || "") > String(a.at || "") ? b : a;
+}
+function collectESigns(data) {
+  const map = Object.assign({}, (data && data.eSigns) || {});
+  ((data && data.tenants) || []).forEach(t => {
+    if (t && t.id && t.eSign && t.eSign.sig) map[t.id] = eSignNewer(map[t.id], t.eSign);
+  });
+  return map;
+}
+function applyESigns(data) {
+  if (!data) return;
+  data.eSigns = collectESigns(data);
+  (data.tenants || []).forEach(t => {
+    if (!t || !t.id) return;
+    const rec = data.eSigns[t.id];
+    if (rec && rec.sig) t.eSign = rec;
+  });
+}
+function mergeESignsInto(target, other) {
+  if (!target) return;
+  target.eSigns = Object.assign({}, collectESigns(target), collectESigns(other));
+  applyESigns(target);
 }
 function mergeMemosInto(target, other) {
   if (!target) return;
@@ -2874,6 +2905,7 @@ async function pushCloud() {
         (state.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
         80
       ),
+      eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
     });
@@ -2885,6 +2917,7 @@ async function pushCloud() {
     state.bankSlips = payload.bankSlips;
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
     stripCloudMedia(payload);
+    applyESigns(payload);
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
@@ -2906,6 +2939,7 @@ async function pushCloud() {
         devLogs: payload.devLogs,
         aiLogs: payload.aiLogs,
         tenants: payload.tenants,
+        eSigns: payload.eSigns,
         repairs: payload.repairs,
         company: payload.company
       });
@@ -8116,15 +8150,40 @@ function roomDetailView(id) {
     </div>`;
 }
 function getESign(t) {
-  if (isDevPreview()) return ui.devESign || null;
-  const rec = (t && t.eSign) || null;
-  if (rec && rec.sig && String(rec.sig).startsWith("data:")) return rec;
+  if (!t) return isDevPreview() ? (ui.devESign || null) : null;
+  let rec = t.eSign || null;
+  if (state && state.eSigns && t.id) rec = eSignNewer(rec, state.eSigns[t.id]);
   try {
     const all = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
-    const local = t && t.id ? all[t.id] : null;
-    if (local) return Object.assign({}, rec || {}, local);
+    if (t.id) rec = eSignNewer(rec, all[t.id]);
   } catch {}
-  return rec;
+  if (isDevPreview()) rec = eSignNewer(rec, ui.devESign);
+  return rec && rec.sig ? rec : rec;
+}
+function saveESignRecord(t, rec) {
+  if (!rec || !rec.sig) return;
+  if (t && t.id) {
+    t.eSign = rec;
+    if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
+    state.eSigns[t.id] = rec;
+  }
+  saveESignLocal(t, rec);
+  if (isDevPreview()) ui.devESign = rec;
+}
+function canvasToSig(c) {
+  if (!c) return "";
+  try {
+    const w = 480, h = 168;
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const g = out.getContext("2d");
+    g.clearRect(0, 0, w, h);
+    g.drawImage(c, 0, 0, w, h);
+    return out.toDataURL("image/png");
+  } catch {
+    try { return c.toDataURL("image/png"); } catch { return ""; }
+  }
 }
 function saveESignLocal(t, rec) {
   if (!t || !t.id || !rec) return;
@@ -12432,31 +12491,22 @@ function bindSignPad() {
     }
     const rec = {
       status: "signed", at: nowStamp(),
-      sig: c.toDataURL("image/png"),
-      sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? b.c.toDataURL("image/png") : "",
+      sig: canvasToSig(c),
+      sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? canvasToSig(b.c) : "",
       name: (t && t.name) || "",
       idNo, phone, emergencyName: emName, emergencyPhone: emPhone
     };
     ui.signStrokes = [];
     ui.signStrokes2 = [];
     ui.signing = false;
-    if (isDevPreview()) {
-      ui.devESign = rec;
-      ui.page = "lease";
-      toast("預覽：已完成電子簽署（不會寫入）");
-      ui.keepScroll = true;
-      render();
-      return;
-    }
-    if (t) t.eSign = rec;
-    saveESignLocal(t, rec);
+    saveESignRecord(t, rec);
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
-    save();
+    save(true);
     try { pushCloud(); } catch {}
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
     ui.page = "lease";
-    toast("已完成電子簽署");
+    toast("已完成電子簽署，簽名已同步");
     render();
   };
 }
