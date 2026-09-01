@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-18-40";
-const APP_EDIT_COUNT = 440;
+const APP_STAMP = "2026-09-01-18-48";
+const APP_EDIT_COUNT = 441;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7051 改空房，楊旻憲已換至 7032"] },
+  { ver: APP_STAMP, items: ["套房租客搜尋右邊可點空房，列出空房圖塊"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1891,7 +1891,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
 (function bootLoginNow() {
   const parse = raw => {
     try { const s = JSON.parse(raw); return s && s.role ? s : null; } catch { return null; }
@@ -6928,7 +6928,7 @@ function payAcctFields(co) {
     <label class="field"><span>日租金退還</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="不滿月退給舊客，沒有就空白" /></label>`;
 }
 function handoverBoxHtml(t, r) {
-  if (!r || !t || r.demo || t.demo || t.incoming) return "";
+  if (!r || r.demo || (t && (t.demo || t.incoming))) return "";
   const inc = incomingOf(r.id);
   if (inc) {
     return `<div class="handover-box">
@@ -6951,7 +6951,7 @@ function handoverBoxHtml(t, r) {
   if (!open) return `<button type="button" class="ghost" data-handover-open="${r.id}" style="margin-top:8px">登記新客</button>`;
   return `<div class="handover-box">
     <div class="label">登記新客</div>
-    <div class="small">舊客還在也能先登記。完成退租後自動接手。</div>
+    <div class="small">${t ? "舊客還在也能先登記。完成退租後自動接手。" : "這間是空房，填完就成為現任租客。"}</div>
     <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
     <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
     <label class="field"><span>身分證</span><input data-hf="idno" type="text" /></label>
@@ -11371,6 +11371,31 @@ function tenantMatchesQ(t, r, q, kind) {
 function tenantSearchPlaceholder(kind) {
   return kind === "factory" ? "搜尋人名、公司名、牛案場" : "搜尋房號、姓名、電話";
 }
+function vacantStudioRooms() {
+  const q = normSearch(ui.tenantQ);
+  return (state.rooms || []).filter(r => {
+    if (!r || r.demo || r.status === "office" || roomIsFactory(r)) return false;
+    if (r.status !== "vacant") return false;
+    if (q && !normSearch([r.no, r.location, r.street].join(" ")).includes(q)) return false;
+    return true;
+  }).sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant"));
+}
+function vacantRoomCardHtml(r) {
+  if (!r) return "";
+  const foldId = "vac-" + r.id;
+  const open = !!(ui.tenantOpen && ui.tenantOpen[foldId]);
+  const former = formerTenantsOf(r.id);
+  const listed = studioRentOf(r.no);
+  const rent = Number(r.rent) || listed || 0;
+  const details = `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(r.no)}</span></div>
+      <div class="row"><span class="k">租金</span><span class="v">${rent ? money(rent) : "未定"}</span></div>
+      ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
+      ${handoverBoxHtml(null, r)}`;
+  return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.no)}</span></span><span class="row-end"><span class="pay-pill">空房</span><span class="fold-caret"></span></span></div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
+    </div>`;
+}
 function tenantListOfKind(kind) {
   const factory = kind === "factory";
   const q = normSearch(ui.tenantQ);
@@ -11427,6 +11452,12 @@ function tenantEntriesOfKind(kind) {
   return order;
 }
 function tenantListInnerHtml(kind) {
+  if (kind !== "factory" && ui.tenantVacant) {
+    const rooms = vacantStudioRooms();
+    return rooms.length
+      ? rooms.map(r => vacantRoomCardHtml(r)).join("")
+      : `<div class="empty">${normSearch(ui.tenantQ) ? "找不到符合的空房" : "目前沒有空房"}</div>`;
+  }
   const entries = tenantEntriesOfKind(kind);
   const q = normSearch(ui.tenantQ);
   const renews = q ? [] : (state.renewals || []).filter(x => {
@@ -11635,8 +11666,15 @@ function bindHandover() {
         idNo: g("idno"), emergencyName: g("emname"), emergencyPhone: g("emphone")
       });
       if (!t) { toast("登記失敗"); return; }
+      const room = (state.rooms || []).find(x => x.id === btn.dataset.handoverSave);
       if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverSave] = false;
-      toast("已登記新客，舊客仍在交接中");
+      if (room && room.status === "vacant") {
+        completeHandover(null, room);
+        toast("已登記新客，" + (room.no || "") + " 改為在租");
+        ui.tenantVacant = false;
+      } else {
+        toast("已登記新客，舊客仍在交接中");
+      }
       ui.keepScroll = true;
       const old = (state.tenants || []).find(x => x.roomId === btn.dataset.handoverSave && !x.former && !x.incoming);
       if (old) { if (!ui.tenantOpen) ui.tenantOpen = {}; ui.tenantOpen[old.id] = true; ui.tenantOpen["fg-" + (String(old.taxId || "").trim() || String(old.name || "").trim() || old.id)] = true; }
@@ -11745,6 +11783,9 @@ function applyTenantKind(kind) {
   if (hint) hint.textContent = tenantKindHint(next);
   const search = document.getElementById("tenant-search");
   if (search) search.placeholder = tenantSearchPlaceholder(next);
+  const vacBtn = document.getElementById("tenant-vacant-btn");
+  if (vacBtn) vacBtn.style.display = next === "studio" ? "" : "none";
+  if (next === "factory") ui.tenantVacant = false;
   const box = document.getElementById("tenant-list");
   if (box) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -11754,6 +11795,7 @@ function applyTenantKind(kind) {
       bindLineSwipe();
       bindTenantListTools();
       bindTenantFold();
+      bindHandover();
       bindTenantEdits();
     }));
   }
@@ -11774,6 +11816,8 @@ function bindTenantSearch() {
     bindLineSwipe();
     bindTenantListTools();
     bindTenantFold();
+    bindHandover();
+    bindTenantEdits();
   };
   inp.addEventListener("pointerdown", e => {
     e.stopPropagation();
@@ -11787,6 +11831,16 @@ function bindTenantSearch() {
   inp.addEventListener("keyup", apply);
   inp.addEventListener("input", apply);
   inp.oninput = apply;
+  const vac = document.getElementById("tenant-vacant-btn");
+  if (vac) {
+    vac.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.tenantVacant = !ui.tenantVacant;
+      vac.classList.toggle("on", ui.tenantVacant);
+      apply();
+    };
+  }
 }
 function bindAssetSearch() {
   const inp = document.getElementById("asset-search");
@@ -11931,6 +11985,7 @@ function adminTenants() {
     </div>
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
+      ${kind === "studio" ? `<button type="button" class="ghost${ui.tenantVacant ? " on" : ""}" id="tenant-vacant-btn">空房</button>` : ""}
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
