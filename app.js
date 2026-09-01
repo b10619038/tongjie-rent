@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-01-18";
-const APP_EDIT_COUNT = 483;
+const APP_STAMP = "2026-09-02-01-22";
+const APP_EDIT_COUNT = 484;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["拿掉廠房自動租金，只留套房已繳入帳"] },
+  { ver: APP_STAMP, items: ["強制移除廠房自動租金，日曆1號不再灌水"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -751,7 +751,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0034") return;
+    if (!m || !m[1] || m[1] === "0035") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2614,8 +2614,14 @@ function persistLedger(data) {
   dropFactoryRentAutos(data);
   const cur = loadLedgerBackup() || {};
   const gone = unionGone(cur.ledgerGone, data.ledgerGone);
+  let books = dropGone(unionById(cur.books, data.books), gone);
+  const extraGone = books.filter(b => isFactoryAutoRentBook(b, data)).map(b => b.id).filter(Boolean);
+  if (extraGone.length) {
+    gone.push(...extraGone);
+    books = books.filter(b => extraGone.indexOf(b.id) < 0);
+  }
   const merged = {
-    books: dropGone(unionById(cur.books, data.books), gone).map(slimLedgerItem),
+    books: books.map(slimLedgerItem),
     errands: dropGone(unionById(cur.errands, data.errands), gone).map(slimLedgerItem),
     bankSlips: dropGone(unionById(cur.bankSlips, data.bankSlips), gone).map(slimLedgerItem),
     accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {}),
@@ -3058,7 +3064,9 @@ function markLedgerGone(ids) {
 function isSeedBook(b) {
   if (!b) return false;
   const id = String(b.id || "");
-  return !!(b.importTag || id.indexOf("bk-j115-") === 0 || id.indexOf("bk-a31-") === 0 || id.indexOf("bk-yusheng") === 0);
+  const tag = String(b.importTag || "");
+  if (tag.indexOf("rent-auto-") === 0 || id.indexOf("bk-rent-") === 0) return false;
+  return !!(tag || id.indexOf("bk-j115-") === 0 || id.indexOf("bk-a31-") === 0 || id.indexOf("bk-yusheng") === 0);
 }
 function findLinkedErrand(book) {
   if (!book) return null;
@@ -4907,19 +4915,22 @@ function factoryTenantNames(data) {
   return names;
 }
 function isFactoryAutoRentBook(b, data) {
-  if (!b || isSeedBook(b)) return false;
-  const note = String(b.note || "").replace(/\s+/g, " ").trim();
+  if (!b) return false;
   const id = String(b.id || "");
-  const room = (data.rooms || []).find(r => r && String(r.no) === String(b.roomNo || ""));
+  if (/bk-j115-|bk-a31-|bk-yusheng/.test(id)) return false;
+  const note = String(b.note || "").replace(/\s+/g, " ").trim();
+  const room = (data && data.rooms || []).find(r => r && String(r.no) === String(b.roomNo || ""));
   if (isRentAutoBook(b) && (roomIsFactory(room) || id.indexOf("bk-rent-tf-") === 0 || String(b.linkedTenantId || "").indexOf("tf-") === 0)) return true;
   if (ymdOf(b.date).slice(0, 7) !== payYmNow()) return false;
-  return factoryTenantNames(data).some(n => n && (note === n + " 租金" || note.endsWith(" " + n + " 租金")));
+  if (/富強鑫|凱薩琳/.test(note) && /租金/.test(note)) return true;
+  if (roomIsFactory(room) && /租金/.test(note) && (isRentAutoBook(b) || ymdOf(b.date).slice(-2) === "01")) return true;
+  return factoryTenantNames(data).some(n => n && note.indexOf(n) >= 0 && /租金/.test(note) && (isRentAutoBook(b) || ymdOf(b.date).slice(-2) === "01"));
 }
 function dropFactoryRentAutos(data) {
   if (!data) return 0;
   const extra = loadLedgerBackup();
   const pool = [].concat(data.books || [], (extra && extra.books) || []);
-  const goneIds = pool.filter(b => isFactoryAutoRentBook(b, data)).map(b => b && b.id).filter(Boolean);
+  const goneIds = [...new Set(pool.filter(b => isFactoryAutoRentBook(b, data)).map(b => b && b.id).filter(Boolean))];
   if (!goneIds.length) return 0;
   data.ledgerGone = unionGone(data.ledgerGone, goneIds);
   data.books = (data.books || []).filter(b => b && goneIds.indexOf(b.id) < 0);
@@ -16119,14 +16130,17 @@ async function boot() {
       const idb = await loadLedgerIdb();
       mergeLedgerInto(state, idb);
       mergeLedgerInto(state, loadLedgerBackup());
+      dropFactoryRentAutos(state);
       persistLedger(state);
     } catch {}
     const got = await pullCloud();
     rollRentMonthIfNeeded();
     applyPaidMarks(state);
     persistPaidMarks(state);
+    dropFactoryRentAutos(state);
+    persistLedger(state);
     try { connectPaidCloud(); } catch {}
-    if (got === "local-newer") await pushCloud();
+    if (got === "local-newer" || cloudDirty) await pushCloud();
     restoreUi();
     beatPresence();
     render();
