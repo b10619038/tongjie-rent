@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-16-40";
-const APP_EDIT_COUNT = 429;
+const APP_STAMP = "2026-09-01-16-42";
+const APP_EDIT_COUNT = 430;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7月個人戶重複入帳已排除，總餘額應對回 12,557,607"] },
+  { ver: APP_STAMP, items: ["新增一筆不用填日期，上傳簿子會依上面的時間入帳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6003,7 +6003,7 @@ function monthCashHtml() {
         <span class="small" style="align-self:center">統潔分聯邦／農會／兆豐，信潔為聯邦</span>
       </div>
       <div class="cal-form-row">
-        <input name="date" type="date" value="${ed ? ymdOf(ed.date) : (rangeStart ? dayKey(rangeStart) : ymdOf(nowStamp()))}" />
+        ${ed ? `<input name="date" type="date" value="${ymdOf(ed.date)}" />` : ""}
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
       <div class="cal-form-row">
@@ -6018,7 +6018,7 @@ function monthCashHtml() {
           <input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
         </div>
       </div>
-      <div class="small">月底抽查請上傳簿子照片或 Excel。金流以銀行簿子為準；已在跑業務登錄過的同一天、同金額、同帳戶不會重複計算。</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。上傳簿子照片或 Excel，系統會依簿子上的時間入帳；手動記入則用上方日曆點的那天。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -14630,8 +14630,10 @@ function bindCashCal() {
     };
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
-      const date = form.date.value;
-      if (!amount || !date) { toast("請填日期與金額"); return; }
+      const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
+      const date = (form.date && form.date.value) || picked;
+      if (!amount) { toast("請填金額，或改上傳簿子"); return; }
+      if (!date) { toast("請先在日曆點一個日期"); return; }
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
