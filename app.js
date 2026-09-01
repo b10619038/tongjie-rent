@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-58";
-const APP_EDIT_COUNT = 460;
+const APP_STAMP = "2026-09-01-23-08";
+const APP_EDIT_COUNT = 461;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["拿掉9/1誤入的廠房進帳；改租客不再動到其他人"] },
+  { ver: APP_STAMP, items: ["本月已繳改獨立同步，電腦手機一致，不會再被洗掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2258") return;
+    if (m[1] === "2308") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1233,15 +1233,15 @@ function applyMonthlyUnpaid(data) {
     if (!t || t.demo || t.former || t.incoming) return;
     const room = data.rooms.find(r => r && r.id === t.roomId);
     if (!room || room.demo || room.kind === "factory" || room.status === "office") return;
-    if (t.paid && t.paidYm === ym) return;
+    if (paidThisMonth(t)) return;
+    const mark = data.paidMarks && data.paidMarks[t.id];
+    if (mark && mark.paidYm === ym && mark.paid) return;
     t.paid = false;
     t.paidAt = "";
     t.paidVia = "";
     t.lineNotified = false;
-    t.paidTouched = true;
     t.paidYm = ym;
-    t.edited = true;
-    t.editedAt = Date.now();
+    t.paidTouched = false;
     dropRentAutoBookOn(data, t);
   });
   data.rentUnpaidYm = ym;
@@ -2133,6 +2133,7 @@ function normalize(data) {
   applyStudioMonthUnpaid(data);
   ensureStudioTenant(data, "7221");
   ensureStudioTenant(data, "6832");
+  applyPaidMarks(data);
   syncPaidRentBooks(data);
   applyJuly115Books(data);
   scrubJulyPersonalDupes(data);
@@ -2674,7 +2675,71 @@ function pickNewerEntity(a, b, keys) {
   });
   out.edited = !!(a.edited || b.edited);
   out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
+  if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   return out;
+}
+function mergePaidFields(out, a, b) {
+  const ym = payYmNow();
+  const mark = x => x && x.paidTouched && x.paidYm === ym;
+  const aMark = mark(a), bMark = mark(b);
+  if (!aMark && !bMark) return out;
+  let src = b;
+  if (aMark && !bMark) src = a;
+  else if (bMark && !aMark) src = b;
+  else src = entityStamp(a) >= entityStamp(b) ? a : b;
+  out.paid = !!src.paid;
+  out.paidAt = src.paidAt || "";
+  out.paidVia = src.paidVia || "";
+  out.paidTouched = true;
+  out.paidYm = ym;
+  out.lineNotified = !!src.lineNotified;
+  return out;
+}
+function mergePaidMarkMaps(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    const x = b[id], y = out[id];
+    if (!x) return;
+    if (!y || Number(x.editedAt || 0) >= Number(y.editedAt || 0)) out[id] = x;
+  });
+  return out;
+}
+function stampPaidMark(data, t) {
+  if (!data || !t || !t.id) return;
+  if (!data.paidMarks) data.paidMarks = {};
+  data.paidMarks[t.id] = {
+    paid: !!t.paid,
+    paidAt: t.paidAt || "",
+    paidVia: t.paidVia || "",
+    paidYm: payYmNow(),
+    editedAt: Date.now(),
+    name: t.name || ""
+  };
+}
+function applyPaidMarks(data) {
+  if (!data) return;
+  const ym = payYmNow();
+  const map = mergePaidMarkMaps(data.paidMarks, {});
+  (data.tenants || []).forEach(t => {
+    if (!t || !t.id) return;
+    if (t.paidTouched && t.paidYm === ym) {
+      const cur = map[t.id];
+      const stamp = Number(t.editedAt || 0);
+      if (!cur || stamp >= Number(cur.editedAt || 0)) {
+        map[t.id] = { paid: !!t.paid, paidAt: t.paidAt || "", paidVia: t.paidVia || "", paidYm: ym, editedAt: stamp || Date.now(), name: t.name || "" };
+      }
+    }
+  });
+  data.paidMarks = map;
+  (data.tenants || []).forEach(t => {
+    const m = t && map[t.id];
+    if (!m || m.paidYm !== ym) return;
+    t.paid = !!m.paid;
+    if (m.paidAt) t.paidAt = m.paidAt;
+    if (m.paidVia) t.paidVia = m.paidVia;
+    t.paidTouched = true;
+    t.paidYm = ym;
+  });
 }
 function mergeEntities(a, b, keys) {
   const map = new Map();
@@ -2702,6 +2767,8 @@ function mergeSharedInto(target, other) {
   const tc = Number(target.company && target.company.updatedAt) || 0;
   if (other.company && oc >= tc) target.company = Object.assign({}, target.company || {}, other.company);
   if (other.accountOpenings) target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
+  target.paidMarks = mergePaidMarkMaps(target.paidMarks, other.paidMarks);
+  applyPaidMarks(target);
   return target;
 }
 function unionGone(a, b) {
@@ -2784,7 +2851,8 @@ async function pullCloud() {
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
       books: state.books, errands: state.errands, bankSlips: state.bankSlips,
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
-      company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden
+      company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
+      paidMarks: state.paidMarks
     };
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
@@ -2799,6 +2867,7 @@ async function pullCloud() {
       applyYushengElec(state);
       ensureStudioTenant(state, "7221");
       ensureStudioTenant(state, "6832");
+      applyPaidMarks(state);
       syncPaidRentBooks(state);
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -2839,6 +2908,7 @@ async function pullCloud() {
     try { ensureDevCycleJobs(state); } catch {}
     ensureStudioTenant(state, "7221");
     ensureStudioTenant(state, "6832");
+    applyPaidMarks(state);
     syncPaidRentBooks(state);
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -3305,6 +3375,8 @@ async function pushCloud() {
       eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
+      paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, state.paidMarks),
+      rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned"]),
       notices: mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]),
@@ -3320,6 +3392,9 @@ async function pushCloud() {
     state.bankSlips = payload.bankSlips;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
+    if (payload.paidMarks) state.paidMarks = payload.paidMarks;
+    applyPaidMarks(payload);
+    applyPaidMarks(state);
     if (payload.repairs) state.repairs = payload.repairs;
     if (payload.announcements) state.announcements = payload.announcements;
     if (payload.notices) state.notices = payload.notices;
@@ -3349,6 +3424,8 @@ async function pushCloud() {
         aiLogs: payload.aiLogs,
         tenants: payload.tenants,
         rooms: payload.rooms,
+        paidMarks: payload.paidMarks,
+        rentUnpaidYm: payload.rentUnpaidYm,
         repairs: payload.repairs,
         announcements: payload.announcements,
         notices: payload.notices,
@@ -4627,11 +4704,13 @@ function toggleTenantPaid(id) {
   if (t.paid) {
     if (!t.paidAt || ymdOf(t.paidAt).slice(0, 7) !== payYmNow()) t.paidAt = nowStamp();
     if (!t.paidVia) t.paidVia = "app";
+    stampPaidMark(state, t);
     upsertRentAutoBookOn(state, t);
   } else {
     t.paidVia = "";
     t.lineNotified = false;
     t.paidAt = "";
+    stampPaidMark(state, t);
     dropRentAutoBookOn(state, t);
   }
   const room = (state.rooms || []).find(r => r && r.id === t.roomId);
@@ -12144,6 +12223,7 @@ function applyLiveTenantEdit(el) {
     t.paidYm = payYmNow();
     if (t.paid && !t.paidVia) t.paidVia = "app";
     if (!t.paid) t.paidVia = "";
+    stampPaidMark(state, t);
     if (t.paid) upsertRentAutoBookOn(state, t);
     else dropRentAutoBookOn(state, t);
   } else if (key === "rent") {
