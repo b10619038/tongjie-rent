@@ -17,8 +17,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-22";
-const APP_EDIT_COUNT = 464;
+const APP_STAMP = "2026-09-01-23-28";
+const APP_EDIT_COUNT = 465;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -34,6 +34,7 @@ function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.no ===
 function isDemoTenant(t) {
   if (!t) return false;
   if (t.demo || t.id === "t-demo" || t.id === "t-dev-preview") return true;
+  if (t.loginPass === "0000" && /開發者/.test(String(t.name || ""))) return true;
   try {
     const r = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === t.roomId);
     return isDemoRoom(r);
@@ -55,7 +56,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月未繳／已繳可直接點圖卡切換並同步"] },
+  { ver: APP_STAMP, items: ["開發者測試標已繳後仍留在名單最上面"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -796,7 +797,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2322") return;
+    if (m[1] === "2328") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2685,6 +2686,7 @@ function pickNewerEntity(a, b, keys) {
   });
   out.edited = !!(a.edited || b.edited);
   out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
+  if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   return out;
 }
@@ -2913,6 +2915,7 @@ async function pullCloud() {
       applyYushengElec(state);
       ensureStudioTenant(state, "7221");
       ensureStudioTenant(state, "6832");
+      ensureDemoTenant(state);
       applyPaidMarks(state);
       syncPaidRentBooks(state);
       persistLedger(state);
@@ -2954,6 +2957,7 @@ async function pullCloud() {
     try { ensureDevCycleJobs(state); } catch {}
     ensureStudioTenant(state, "7221");
     ensureStudioTenant(state, "6832");
+    ensureDemoTenant(state);
     applyPaidMarks(state);
     syncPaidRentBooks(state);
     persistLedger(state);
@@ -4861,7 +4865,7 @@ function ensureDemoTenant(data) {
   let t = data.tenants.find(x => x.id === "t-demo" || x.roomId === room.id);
   if (!t) {
     t = {
-      id: "t-demo", name: "開發者（測試）", roomId: room.id, paid: false, demo: true,
+      id: "t-demo", name: "開發者測試", roomId: room.id, paid: false, demo: true,
       leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
       phone: "0912-345-678", loginPass: "0000",
       idNo: "A123456789", emergencyName: "測試聯絡人", emergencyPhone: "0988-000-000"
@@ -4869,7 +4873,10 @@ function ensureDemoTenant(data) {
     data.tenants.push(t);
   } else {
     t.demo = true;
-    t.name = "開發者（測試）";
+    t.former = false;
+    t.incoming = false;
+    t.placeholder = false;
+    if (!t.name || t.name === "開發者（測試）") t.name = "開發者測試";
     if (!t.phone) t.phone = "0912-345-678";
     if (!t.loginPass || t.loginPass === "DEMO") t.loginPass = "0000";
     if (!t.leaseStart) t.leaseStart = y + "-01-01";
@@ -4917,7 +4924,7 @@ function resetDemoCycle() {
   t.paidVia = "";
   t.lineNotified = false;
   t.leftOn = "";
-  t.name = "開發者（測試）";
+  t.name = "開發者測試";
   t.loginPass = "0000";
   const y = new Date().getFullYear();
   t.leaseStart = y + "-01-01";
@@ -4996,7 +5003,7 @@ function ensureDevPreview() {
   };
   ui.devTenant = Object.assign({
     id: "t-dev-preview",
-    name: "開發者",
+    name: "開發者測試",
     roomId: "r-dev-preview",
     paid: false,
     leaseStart: y + "-01-01",
@@ -8850,6 +8857,7 @@ function markTenantPaid(via) {
   t.paidYm = payYmNow();
   if (via === "line") t.lineNotified = true;
   stampPaidMark(state, t);
+  try { ensureDemoTenant(state); } catch {}
   upsertRentAutoBookOn(state, t);
   save();
   clearTimeout(saveTimer);
@@ -12064,16 +12072,21 @@ function vacantRoomCardHtml(r) {
     </div>`;
 }
 function tenantListOfKind(kind) {
+  try { ensureDemoTenant(state); } catch {}
   const factory = kind === "factory";
   const q = normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
-    const r = state.rooms.find(x => x.id === t.roomId);
+    let r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder || t.former || t.incoming) return false;
     if (isDemoTenant(t)) {
       if (factory) return false;
+      if (!r) {
+        try { ensureDemoTenant(state); } catch {}
+        r = state.rooms.find(x => x.id === t.roomId || x.id === "r-demo" || String(x.no) === "0000");
+      }
     }
     if (!String(t.name || "").trim()) return false;
-    if (!r || (r.status === "office" && r.no !== "7651")) return false;
+    if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     return true;
@@ -12081,6 +12094,7 @@ function tenantListOfKind(kind) {
     const da = isDemoTenant(a) ? 0 : 1;
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
+    if (da === 0) return 0;
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
