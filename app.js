@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-45";
-const APP_EDIT_COUNT = 480;
+const APP_STAMP = "2026-09-02-00-58";
+const APP_EDIT_COUNT = 481;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["未繳也會同步到其他裝置"] },
+  { ver: APP_STAMP, items: ["已繳未繳同步改更快"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -751,7 +751,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0031") return;
+    if (!m || !m[1] || m[1] === "0032") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2768,6 +2768,7 @@ const MONEY_TOPIC = "tongjie/tj-82934388/money";
 let paidWs = null;
 let paidWsOk = false;
 let paidWsTimer = 0;
+let paidPingTimer = 0;
 function mqttRemain(n) {
   const out = [];
   do {
@@ -2911,7 +2912,10 @@ function moneyCloudBlob() {
 let __moneyPubTimer = 0;
 function publishPaidCloud() {
   persistPaidMarks(state);
-  if (!(paidWs && paidWs.readyState === 1)) return;
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
   clearTimeout(__moneyPubTimer);
   __moneyPubTimer = setTimeout(() => {
     try {
@@ -2920,7 +2924,7 @@ function publishPaidCloud() {
       paidWs.send(mqttPubPkt(MONEY_TOPIC, payload, true));
       paidWsOk = true;
     } catch {}
-  }, 200);
+  }, 40);
 }
 function connectPaidCloud() {
   if (paidWs && (paidWs.readyState === 0 || paidWs.readyState === 1)) return;
@@ -2934,20 +2938,32 @@ function connectPaidCloud() {
     ws.onmessage = ev => {
       const pkt = mqttParsePublish(ev.data);
       if (!pkt) return;
-      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); ws.send(mqttSubPkt(MONEY_TOPIC)); } catch {} return; }
+      if (pkt.type === 2) {
+        paidWsOk = true;
+        try {
+          ws.send(mqttSubPkt(PAID_TOPIC));
+          ws.send(mqttSubPkt(MONEY_TOPIC));
+        } catch {}
+        clearInterval(paidPingTimer);
+        paidPingTimer = setInterval(() => {
+          try { if (paidWs && paidWs.readyState === 1) paidWs.send(new Uint8Array([0xC0, 0x00])); } catch {}
+        }, 20000);
+        return;
+      }
       if (pkt.type === 3 && pkt.payload) ingestPaidCloud(pkt.payload);
     };
     ws.onclose = () => {
       paidWsOk = false;
       paidWs = null;
+      clearInterval(paidPingTimer);
       connectPaidCloud.i = connectPaidCloud.i ? 0 : 1;
       clearTimeout(paidWsTimer);
-      paidWsTimer = setTimeout(connectPaidCloud, 4000);
+      paidWsTimer = setTimeout(connectPaidCloud, 2000);
     };
     ws.onerror = () => { try { ws.close(); } catch {} };
   } catch {
     clearTimeout(paidWsTimer);
-    paidWsTimer = setTimeout(connectPaidCloud, 6000);
+    paidWsTimer = setTimeout(connectPaidCloud, 4000);
   }
 }
 function stampPaidMark(data, t) {
