@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-16";
-const APP_EDIT_COUNT = 452;
+const APP_STAMP = "2026-09-01-22-20";
+const APP_EDIT_COUNT = 453;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["每月1號套房自動改為本月未繳，繳了再標記已繳"] },
+  { ver: APP_STAMP, items: ["補上套房 7221 張智傑"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2216") return;
+    if (m[1] === "2220") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2118,6 +2118,7 @@ function normalize(data) {
   }
   applyStudioSheetPaid(data);
   applyStudioMonthUnpaid(data);
+  ensureStudioTenant(data, "7221");
   applyJuly115Books(data);
   scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
@@ -2475,6 +2476,56 @@ function applyTenantRoster(data) {
     }
   });
   applyFormerStudio(data);
+}
+function ensureStudioTenant(data, no) {
+  if (!data) return;
+  const info = TENANT_INFO[String(no || "")];
+  if (!info || !info.name) return;
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  let room = data.rooms.find(r => String(r.no) === String(no));
+  if (!room) {
+    const seedRoom = (SEED && SEED.rooms || []).find(r => String(r.no) === String(no));
+    if (seedRoom) {
+      room = structuredClone(seedRoom);
+      data.rooms.push(room);
+    }
+  }
+  if (!room) return;
+  let t = data.tenants.find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming);
+  if (t && t.name && t.edited && !sameTenantName(t.name, info.name)) return;
+  if (!t) {
+    t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false };
+    data.tenants.push(t);
+  }
+  t.name = info.name;
+  if (info.phone && !t.phone) t.phone = info.phone;
+  if (info.leaseStart && !t.leaseStart) t.leaseStart = info.leaseStart;
+  if (info.leaseEnd && !t.leaseEnd) t.leaseEnd = info.leaseEnd;
+  if (info.note && !t.note) t.note = info.note;
+  if (info.bankLast5 && !t.bankLast5) t.bankLast5 = info.bankLast5;
+  if (!t.payBank) t.payBank = tenantPayBankKey(t, room) || "農會";
+  t.former = false;
+  t.incoming = false;
+  t.dueDay = t.dueDay || 1;
+  if (!t.paidYm || t.paidYm !== payYmNow()) {
+    t.paid = false;
+    t.paidAt = "";
+    t.paidVia = "";
+    t.paidYm = payYmNow();
+    t.paidTouched = true;
+  }
+  t.edited = true;
+  t.editedAt = Date.now();
+  room.tenantId = t.id;
+  room.kind = room.kind || "studio";
+  if (info.deposit != null) room.deposit = info.deposit;
+  else if (!Number(room.deposit)) room.deposit = studioDepositOf(studioRentOf(no) || 7000);
+  const rent = studioRentOf(no);
+  if (rent != null) room.rent = rent;
+  if (room.status !== "repair") room.status = "rented";
+  room.edited = true;
+  room.editedAt = Date.now();
 }
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
