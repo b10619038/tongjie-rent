@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-17-08";
-const APP_EDIT_COUNT = 432;
+const APP_STAMP = "2026-09-01-17-12";
+const APP_EDIT_COUNT = 433;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7651 標成員工辦公室，吳慧青僅掛名補助"] },
+  { ver: APP_STAMP, items: ["跑業務圖塊日期跟日曆編輯同步，改 9/2 會顯示 9/2"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6046,7 +6046,7 @@ function monthCashHtml() {
         <span class="small" style="align-self:center">統潔分聯邦／農會／兆豐，信潔為聯邦</span>
       </div>
       <div class="cal-form-row">
-        ${ed ? `<input name="date" type="date" value="${ymdOf(ed.date)}" />` : ""}
+        ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
       <div class="cal-form-row">
@@ -9772,7 +9772,7 @@ function errandRecordsHtml() {
   const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
   return `${errands.length ? errands.map(e => `
       <div class="card card-body">
-        <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
+        <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(ymdOf(e.date) || e.date || "")}</span></div>
         <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.pendingBank ? "待入銀行" : (e.linkedId ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
         <div class="btn-row" style="margin-top:8px">
           <button type="button" class="ghost" data-edit-errand="${e.id}">編輯</button>
@@ -14675,7 +14675,7 @@ function bindCashCal() {
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
       const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
-      const date = (form.date && form.date.value) || picked;
+      const date = ymdOf((form.date && form.date.value) || picked);
       if (!amount) { toast("請填金額，或改上傳簿子"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
       const payload = {
@@ -14690,6 +14690,19 @@ function bindCashCal() {
         if (b) {
           Object.assign(b, payload);
           syncErrandFromBook(b);
+        }
+        if (ui.editErrandId) {
+          const e = (state.errands || []).find(x => x.id === ui.editErrandId);
+          if (e) {
+            e.date = date;
+            e.amount = amount;
+            e.company = payload.company;
+            e.place = payload.bank || e.place;
+            e.note = payload.note;
+            if (payload.note) e.title = payload.note;
+            if (b && !e.linkedId) e.linkedId = b.id;
+            if (b && !b.linkedId) b.linkedId = e.id;
+          }
         }
         ui.editBookId = null;
         ui.editErrandId = "";
