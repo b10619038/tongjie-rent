@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-40";
-const APP_EDIT_COUNT = 479;
+const APP_STAMP = "2026-09-02-00-45";
+const APP_EDIT_COUNT = 480;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["搜尋篩選改兩行，已繳綠色未繳紅色"] },
+  { ver: APP_STAMP, items: ["未繳也會同步到其他裝置"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -751,7 +751,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0030") return;
+    if (!m || !m[1] || m[1] === "0031") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2739,7 +2739,7 @@ function persistPaidMarks(data) {
     };
   });
   if (!Object.keys(slim).length) return;
-  if (data) data.paidMarks = mergePaidMarkMaps(slim, data.paidMarks);
+  if (data) data.paidMarks = mergePaidMarkMaps(data.paidMarks, slim);
   const blob = JSON.stringify({ ym, marks: slim, at: Date.now() });
   try { localStorage.setItem(PAID_KEY, blob); } catch {}
   try {
@@ -2847,7 +2847,7 @@ function ingestPaidCloud(raw) {
     if (!o || typeof o !== "object") return;
     if (o.ym && o.ym !== payYmNow()) return;
     const before = JSON.stringify(state.paidMarks || {});
-    if (o.marks) state.paidMarks = mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(state.paidMarks, o.marks));
+    if (o.marks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, mergePaidMarkMaps(loadPaidMarks(), o.marks));
     if (o.paidMarks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, o.paidMarks);
     persistPaidMarks(state);
     applyPaidMarks(state);
@@ -2857,18 +2857,17 @@ function ingestPaidCloud(raw) {
         if (!src || !src.id) return;
         const t = byId.get(src.id);
         if (!t) return;
-        if (Number(src.editedAt || 0) >= Number(t.editedAt || 0) || src.paidTouched) {
-          if (src.paidYm === payYmNow() || src.paidTouched) {
-            t.paid = !!src.paid;
-            t.paidTouched = !!src.paidTouched;
-            t.paidYm = src.paidYm || t.paidYm;
-            if (src.paidAt) t.paidAt = src.paidAt;
-            if (src.paidVia) t.paidVia = src.paidVia;
-            if (src.editedAt) t.editedAt = src.editedAt;
-          }
-        }
+        if (Number(src.editedAt || 0) < Number(t.editedAt || 0)) return;
+        if (src.paidYm && src.paidYm !== payYmNow()) return;
+        t.paid = !!src.paid;
+        t.paidTouched = true;
+        t.paidYm = src.paidYm || payYmNow();
+        t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
+        t.paidVia = src.paid ? (src.paidVia || "") : "";
+        if (src.editedAt) t.editedAt = src.editedAt;
       });
     }
+    applyPaidMarks(state);
     if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants)) return;
@@ -2935,7 +2934,7 @@ function connectPaidCloud() {
     ws.onmessage = ev => {
       const pkt = mqttParsePublish(ev.data);
       if (!pkt) return;
-      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); ws.send(mqttSubPkt(MONEY_TOPIC)); publishPaidCloud(); } catch {} return; }
+      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); ws.send(mqttSubPkt(MONEY_TOPIC)); } catch {} return; }
       if (pkt.type === 3 && pkt.payload) ingestPaidCloud(pkt.payload);
     };
     ws.onclose = () => {
@@ -2972,12 +2971,14 @@ function applyPaidMarks(data) {
   const map = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
   (data.tenants || []).forEach(t => {
     if (!t || !t.id) return;
-    if (t.paidTouched && t.paidYm === ym) {
-      const cur = map[t.id];
-      const stamp = Number(t.editedAt || 0);
-      if (!cur || stamp >= Number(cur.editedAt || 0)) {
-        map[t.id] = { paid: !!t.paid, paidAt: t.paidAt || "", paidVia: t.paidVia || "", paidYm: ym, editedAt: stamp || Date.now(), name: t.name || "" };
-      }
+    if (!(t.paidTouched && t.paidYm === ym)) return;
+    const cur = map[t.id];
+    const stamp = Number(t.editedAt || 0);
+    if (!cur || stamp > Number(cur.editedAt || 0)) {
+      map[t.id] = {
+        paid: !!t.paid, paidAt: t.paid ? (t.paidAt || "") : "", paidVia: t.paid ? (t.paidVia || "") : "",
+        paidYm: ym, editedAt: stamp || Date.now(), name: t.name || ""
+      };
     }
   });
   data.paidMarks = map;
@@ -2985,10 +2986,11 @@ function applyPaidMarks(data) {
     const m = t && map[t.id];
     if (!m || m.paidYm !== ym) return;
     t.paid = !!m.paid;
-    if (m.paidAt) t.paidAt = m.paidAt;
-    if (m.paidVia) t.paidVia = m.paidVia;
+    t.paidAt = m.paid ? (m.paidAt || t.paidAt || "") : "";
+    t.paidVia = m.paid ? (m.paidVia || "") : "";
     t.paidTouched = true;
     t.paidYm = ym;
+    if (Number(m.editedAt || 0) > Number(t.editedAt || 0)) t.editedAt = m.editedAt;
   });
   if (Object.keys(map).length) persistPaidMarks(data);
 }
@@ -3632,7 +3634,7 @@ async function pushCloud() {
       eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
-      paidMarks: mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(remote && remote.paidMarks, state.paidMarks)),
+      paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned"]),
