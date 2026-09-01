@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-17-06";
-const APP_EDIT_COUNT = 431;
+const APP_STAMP = "2026-09-01-17-08";
+const APP_EDIT_COUNT = 432;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7651 吳慧青列為租屋補助，7/3 農會 5,000 對上人"] },
+  { ver: APP_STAMP, items: ["7651 標成員工辦公室，吳慧青僅掛名補助"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1218,7 +1218,7 @@ const TENANT_INFO = {
   "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", note: "租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
   "7641": { name: "洪子軒", phone: "0902-350-637", leaseStart: "2026-05-01", leaseEnd: "2027-04-30", deposit: 18000, note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, note: "由 7242 換房；12月租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
-  "7651": { name: "吳慧青", rent: 5000, deposit: 0, note: "老闆認識的人。用 7651 辦公室房號承租，申辦租屋補助（農會簿子寫吳慧青）。月租 5,000。7651 登入仍走管理員。" },
+  "7651": { name: "吳慧青", rent: 5000, deposit: 0, note: "實際由員工使用辦公室。吳慧青為老闆認識的人，僅用 7651 房號掛名承租、申辦租屋補助。月租 5,000（農會 7/3）。7651 登入仍走管理員。" },
   "7652": { note: "合約 115/3/1～115/10/31，租客姓名待補", leaseStart: "2026-03-01", leaseEnd: "2026-10-31" }
 };
 const FORMER_STUDIO = {
@@ -1810,7 +1810,7 @@ const JULY115_BOOKS = [
   ["2026-07-02", "in", 7000, "統潔", "牛10　7222 林呈澔廖晉億", "農會"],
   ["2026-07-02", "in", 10000, "統潔", "牛10　6823 顏家蓁", "農會"],
   ["2026-07-03", "in", 10000, "統潔", "牛10　7623 陳財源", "農會"],
-  ["2026-07-03", "in", 5000, "統潔", "牛10　7651 吳慧青　租屋補助（辦公室房號）", "農會"],
+  ["2026-07-03", "in", 5000, "統潔", "牛10　7651 吳慧青　租屋補助掛名（實際員工辦公室）", "農會"],
   ["2026-07-03", "in", 50000, "統潔", "牛10　7611 曾郁翔（波波奇）", "農會"],
   ["2026-07-04", "in", 9000, "統潔", "牛10　6841 劉冠德", "農會"],
   ["2026-07-06", "in", 7000, "統潔", "牛10　7621 王俊典曾郁庭", "農會"],
@@ -11251,7 +11251,7 @@ function adminRoomListHtml(kind) {
       return `${head}<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl("images/studio-room.jpg?v=1713", r.no)}
         <div><strong>${r.no}　${r.title}${r.shop ? "：" + escapeHtml(r.shop) : ""}</strong>
-          <div class="small">${r.status === "office" ? "自用 · 統潔開發" : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
+          <div class="small">${r.status === "office" ? ("員工使用" + (t && t.name ? " · 補助掛名 " + escapeHtml(t.name) : "")) : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
         </div>
         <select class="select-mini" data-status="${r.id}">
           <option value="rented" ${r.status === "rented" ? "selected" : ""}>滿租</option>
@@ -11408,6 +11408,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試用，不計入金額。房號 DEMO、密碼 DEMO 可登入租客畫面。</div>` : ""}
+      ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0") : ""}
@@ -11471,7 +11472,7 @@ function tenantEntryCardHtml(kind, entry) {
   return `<div class="swipe-wrap${open ? "" : " slim"}" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${open ? " open" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="k">${escapeHtml(t.name)}${(() => { const inc = r && incomingOf(r.id); return inc && inc.name ? " → " + escapeHtml(inc.name) : ""; })()}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) ? `<span class="pay-pill hand">交接中</span>` : ""}<span class="pay-pill ${pay.cls}">${pay.text}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">${details}</div></div>
     </div>
     </div>`;
