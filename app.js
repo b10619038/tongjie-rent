@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-30";
-const APP_EDIT_COUNT = 476;
+const APP_STAMP = "2026-09-02-00-33";
+const APP_EDIT_COUNT = 477;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["電腦安裝版改強制抓最新檔再同步"] },
+  { ver: APP_STAMP, items: ["修正畫面一直閃的更新迴圈"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -741,32 +741,20 @@ function applyAppUpdate() {
   persistLogin();
   persistUi();
   markVersionSeen();
+  try { __reloading = true; } catch {}
   wipeClientCache().finally(() => {
-    location.href = "/?v=0027&t=" + Date.now();
+    location.href = "/index.html?v=0028&t=" + Date.now();
   });
 }
 async function pollRemoteBuild() {
-  const local = "0027";
-  const urls = [
-    "index.html?nocache=1&t=" + Date.now(),
-    "https://raw.githubusercontent.com/b10619038/tongjie-rent/main/index.html?t=" + Date.now()
-  ];
-  for (const url of urls) {
-    try {
-      const txt = await fetch(url, { cache: "no-store" }).then(r => r.ok ? r.text() : "");
-      const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-      if (!m || !m[1] || m[1] === local) continue;
-      try {
-        if (sessionStorage.getItem("tj-bust") === m[1]) continue;
-        sessionStorage.setItem("tj-bust", m[1]);
-      } catch {}
-      persistLogin();
-      persistUi();
-      await wipeClientCache();
-      location.href = "/?v=" + m[1] + "&t=" + Date.now();
-      return;
-    } catch {}
-  }
+  try {
+    if (sessionStorage.getItem("tj-bust-done")) return;
+    const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+    const m = String(txt || "").match(/app\.js\?v=(\d+)/);
+    if (!m || !m[1] || m[1] === "0028") return;
+    ui.updateReady = true;
+    try { render(); } catch {}
+  } catch {}
 }
 function promptAppUpdate(reg) {
   if (lastSeenVersion() === APP_VERSION) return;
@@ -819,18 +807,7 @@ function watchAppUpdate(reg) {
   setInterval(check, 8 * 1000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { check(); pollRemoteBuild(); } });
   pollRemoteBuild();
-  setInterval(pollRemoteBuild, 10 * 1000);
-}
-async function pollRemoteBuild() {
-  try {
-    const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
-    const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1]) return;
-    if (m[1] === "0026") return;
-    persistLogin();
-    persistUi();
-    location.reload();
-  } catch {}
+  setInterval(pollRemoteBuild, 30 * 1000);
 }
 let __reloading = false;
 if ("serviceWorker" in navigator) {
@@ -838,7 +815,6 @@ if ("serviceWorker" in navigator) {
     if (__reloading) return;
     __reloading = true;
     try { persistLogin(); persistUi(); } catch {}
-    setTimeout(() => location.reload(), 80);
   });
 }
 function urlBase64ToUint8Array(b64) {
