@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-58";
-const APP_EDIT_COUNT = 470;
+const APP_STAMP = "2026-09-02-00-08";
+const APP_EDIT_COUNT = 471;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡改為往右滑出詳情頁"] },
+  { ver: APP_STAMP, items: ["本月已繳即時同步到手機與電腦"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -798,7 +798,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2358") return;
+    if (m[1] === "0008") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2759,6 +2759,134 @@ function loadPaidMarks() {
   } catch {}
   return marks;
 }
+const PAID_TOPIC = "tongjie/tj-82934388/paid";
+let paidWs = null;
+let paidWsOk = false;
+let paidWsTimer = 0;
+function mqttRemain(n) {
+  const out = [];
+  do {
+    let d = n % 128;
+    n = Math.floor(n / 128);
+    if (n) d |= 128;
+    out.push(d);
+  } while (n);
+  return out;
+}
+function mqttUtf(s) {
+  const b = new TextEncoder().encode(String(s || ""));
+  const a = new Uint8Array(2 + b.length);
+  a[0] = b.length >> 8; a[1] = b.length & 255; a.set(b, 2);
+  return a;
+}
+function mqttPacket(type, body) {
+  const len = mqttRemain(body.length);
+  const p = new Uint8Array(1 + len.length + body.length);
+  p[0] = type;
+  p.set(len, 1);
+  p.set(body, 1 + len.length);
+  return p;
+}
+function mqttConnectPkt() {
+  const proto = mqttUtf("MQTT");
+  const id = mqttUtf("tj" + Math.random().toString(16).slice(2, 10));
+  const body = new Uint8Array(proto.length + 4 + id.length);
+  body.set(proto, 0);
+  body[proto.length] = 4;
+  body[proto.length + 1] = 2;
+  body[proto.length + 2] = 0;
+  body[proto.length + 3] = 60;
+  body.set(id, proto.length + 4);
+  return mqttPacket(0x10, body);
+}
+function mqttSubPkt(topic) {
+  const t = mqttUtf(topic);
+  const body = new Uint8Array(2 + t.length + 1);
+  body[0] = 0; body[1] = 1;
+  body.set(t, 2);
+  body[2 + t.length] = 0;
+  return mqttPacket(0x82, body);
+}
+function mqttPubPkt(topic, payload, retain) {
+  const t = mqttUtf(topic);
+  const msg = new TextEncoder().encode(String(payload || ""));
+  const body = new Uint8Array(t.length + msg.length);
+  body.set(t, 0);
+  body.set(msg, t.length);
+  return mqttPacket(retain ? 0x31 : 0x30, body);
+}
+function mqttParsePublish(buf) {
+  const u = new Uint8Array(buf);
+  if (!u.length) return null;
+  const type = u[0] >> 4;
+  if (type !== 3) return { type };
+  let i = 1, mul = 1, len = 0;
+  while (i < u.length) {
+    const d = u[i++];
+    len += (d & 127) * mul;
+    if (!(d & 128)) break;
+    mul *= 128;
+  }
+  if (i + 2 > u.length) return { type };
+  const tlen = (u[i] << 8) | u[i + 1];
+  i += 2;
+  const topic = new TextDecoder().decode(u.slice(i, i + tlen));
+  i += tlen;
+  if ((u[0] & 6) >> 1) i += 2;
+  const payload = new TextDecoder().decode(u.slice(i));
+  return { type, topic, payload };
+}
+function ingestPaidCloud(raw) {
+  try {
+    const o = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!o || !o.marks || typeof o.marks !== "object") return;
+    if (o.ym && o.ym !== payYmNow()) return;
+    const before = JSON.stringify(state.paidMarks || {});
+    state.paidMarks = mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(state.paidMarks, o.marks));
+    persistPaidMarks(state);
+    applyPaidMarks(state);
+    if (JSON.stringify(state.paidMarks || {}) === before) return;
+    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash") {
+      ui.keepScroll = true;
+      render();
+    }
+  } catch {}
+}
+function publishPaidCloud() {
+  persistPaidMarks(state);
+  const payload = JSON.stringify({ ym: payYmNow(), marks: state.paidMarks || {}, at: Date.now() });
+  if (paidWs && paidWs.readyState === 1) {
+    try { paidWs.send(mqttPubPkt(PAID_TOPIC, payload, true)); paidWsOk = true; } catch {}
+  }
+}
+function connectPaidCloud() {
+  if (paidWs && (paidWs.readyState === 0 || paidWs.readyState === 1)) return;
+  const urls = ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt"];
+  const url = urls[connectPaidCloud.i ? 1 : 0];
+  try {
+    const ws = new WebSocket(url, "mqtt");
+    paidWs = ws;
+    ws.binaryType = "arraybuffer";
+    ws.onopen = () => { try { ws.send(mqttConnectPkt()); } catch {} };
+    ws.onmessage = ev => {
+      const pkt = mqttParsePublish(ev.data);
+      if (!pkt) return;
+      if (pkt.type === 2) { try { ws.send(mqttSubPkt(PAID_TOPIC)); publishPaidCloud(); } catch {} return; }
+      if (pkt.type === 3 && pkt.payload) ingestPaidCloud(pkt.payload);
+    };
+    ws.onclose = () => {
+      paidWsOk = false;
+      paidWs = null;
+      connectPaidCloud.i = connectPaidCloud.i ? 0 : 1;
+      clearTimeout(paidWsTimer);
+      paidWsTimer = setTimeout(connectPaidCloud, 4000);
+    };
+    ws.onerror = () => { try { ws.close(); } catch {} };
+  } catch {
+    clearTimeout(paidWsTimer);
+    paidWsTimer = setTimeout(connectPaidCloud, 6000);
+  }
+}
 function stampPaidMark(data, t) {
   if (!data || !t || !t.id) return;
   if (!data.paidMarks) data.paidMarks = {};
@@ -2772,6 +2900,7 @@ function stampPaidMark(data, t) {
     name: t.name || ""
   };
   persistPaidMarks(data);
+  publishPaidCloud();
 }
 function applyPaidMarks(data) {
   if (!data) return;
@@ -15831,6 +15960,7 @@ async function boot() {
     applyFont(currentFontScale());
     seedSeenVersion();
     if (hasUnseenUpdate()) ui.updateReady = true;
+    try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     render();
@@ -15845,6 +15975,7 @@ async function boot() {
     rollRentMonthIfNeeded();
     applyPaidMarks(state);
     persistPaidMarks(state);
+    try { connectPaidCloud(); } catch {}
     if (got === false || got === "local-newer" || got === true) await pushCloud();
     restoreUi();
     beatPresence();
