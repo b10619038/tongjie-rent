@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-20";
-const APP_EDIT_COUNT = 418;
+const APP_STAMP = "2026-09-01-11-32";
+const APP_EDIT_COUNT = 419;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["總覽上傳可選照片或檔案，月底以簿子對帳且不與跑業務重複"] },
+  { ver: APP_STAMP, items: ["終止契約與交接確認書依紙本套印，列印後蓋章"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6726,22 +6726,56 @@ function checkoutPickHtml(t, r) {
     </div>
   </div>`;
 }
+function cnAmt(n) {
+  const s = moneyCN(n).replace(/^新臺幣/, "").replace(/元整$/, "");
+  return s || "";
+}
+function paperPeople(s) {
+  return String(s || "").replace(/[／/、,，]+/g, "　").replace(/\s+/g, " ").trim();
+}
+function termPropLabel(r) {
+  const no = String((r && r.no) || "");
+  const s = no.replace(/\D/g, "");
+  if (s.length >= 4) return `高雄市鳳山區文龍東路${s.slice(0, 2)}號${s.charAt(2)}樓之${s.charAt(3)}室(${no})`;
+  return [no, r && (r.shop || r.title), roomAddress(no)].filter(Boolean).join("　");
+}
+function monthRemainRange(ymd) {
+  const p = rocPartsOf(ymd);
+  const y = Number(String(ymd || "").slice(0, 4)) || (p.y + 1911);
+  const last = new Date(y, p.m, 0).getDate();
+  return {
+    label: p.m + "月份租金",
+    range: p.y + "/" + p.m + "/" + p.d + "~" + p.y + "/" + p.m + "/" + last
+  };
+}
+function defaultProrateRent(t, r, at) {
+  const rent = Number((t && t.rent) || (r && r.rent) || 0);
+  const day = ymdOf(at);
+  if (!rent || !day) return 0;
+  const y = Number(day.slice(0, 4)), m = Number(day.slice(5, 7)), d = Number(day.slice(8, 10));
+  const last = new Date(y, m, 0).getDate();
+  if (!last || d < 1) return 0;
+  return Math.round(rent * (last - d + 1) / last);
+}
 function termLeasePaperHtml(t, r, co) {
   const today = ymdOf(nowStamp());
   const end = rocPartsOf(co.at || today);
   const sign = rocPartsOf(co.signedAt || co.at || today);
   const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
-  const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0));
+  const prorate = Number(co.prorate) || 0;
+  const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0) + prorate);
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
-  const prop = co.property || [r.no, r.shop || r.title, r.location || r.street || roomAddress(r.no)].filter(Boolean).join("　");
-  const idNo = co.idNo || t.idNo || "";
-  const phone = co.phone || t.phone || "";
-  const amt = n => (ntd(n) || "0");
+  const prop = co.property || termPropLabel(r);
+  const idNo = paperPeople(co.idNo || t.idNo || "");
+  const phone = paperPeople(co.phone || t.phone || "");
+  const names = paperPeople(t.name || "");
+  const remain = monthRemainRange(co.at || today);
+  const amt = n => cnAmt(n) || "　";
   return `<div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
     <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
     <p>代表人：　<span class="term-fill">趙正賢</span></p>
-    <p>立約人　<span class="term-fill wide">${escapeHtml(t.name || "")}</span>　（及原承租人，簡稱乙方）</p>
+    <p>立約人　<span class="term-fill wide">${escapeHtml(names)}</span>　（及原承租人，簡稱乙方）</p>
     <p class="term-center">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
     <p>原租賃物標示及約定事項如下：</p>
     <p>一、原租賃物標示：　<span class="term-fill wide">${escapeHtml(prop)}</span></p>
@@ -6749,8 +6783,9 @@ function termLeasePaperHtml(t, r, co) {
     <p>退還費用：</p>
     <p>一、甲方退還乙方</p>
     <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
+    <p class="term-indent">${escapeHtml(remain.label)}　<span class="term-fill amt">${prorate ? escapeHtml(amt(prorate)) : ""}</span>　元整。${prorate ? "（" + escapeHtml(remain.range) + "）" : ""}</p>
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
-    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
+    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
     <p>備註：</p>
     <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
     <p>二、乙方將房屋恢復原狀交給甲方。</p>
@@ -6762,7 +6797,7 @@ function termLeasePaperHtml(t, r, co) {
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
       </div>
       <div class="term-party">
-        <p>立約人（乙方）：　${escapeHtml(t.name || "")}<span class="term-chop" title="蓋章"></span></p>
+        <p>立約人（乙方）：　${escapeHtml(names)}<span class="term-chop" title="蓋章"></span></p>
         <p>身分證字號：　${escapeHtml(idNo)}</p>
         <p>電話：　${escapeHtml(phone)}</p>
       </div>
@@ -6770,6 +6805,47 @@ function termLeasePaperHtml(t, r, co) {
     <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
     <p class="term-hint">列印後於簽收欄與蓋章框蓋印，系統不套印印章。</p>
   </div>`;
+}
+function handoverConfirmPaperHtml(t, r, co) {
+  const day = ymdOf((co && co.at) || nowStamp());
+  const p = rocPartsOf(day);
+  const keys = co && (co.keysCount || co.keysCount === 0) ? String(co.keysCount) : "";
+  const ic = co && (co.icCount || co.icCount === 0) ? String(co.icCount) : "";
+  const water = co && co.waterFee ? (cnAmt(co.waterFee) || String(co.waterFee)) : (co && co.waterEnd ? String(co.waterEnd) : "");
+  const elec = co && co.elecFee ? (cnAmt(co.elecFee) || String(co.elecFee)) : (co && co.elecEnd ? String(co.elecEnd) : "");
+  const items = [
+    "冷氣遙控器 1 只",
+    "電視遙控器 1 只",
+    "第四台遙控器 1 只",
+    "電視 1 台",
+    "冰箱 1 台",
+    "衣櫃 1 個",
+    "電腦桌 1 張",
+    "電腦椅 1 張",
+    "床墊 1 張",
+    "床板 1 張"
+  ];
+  return `<div class="term-handover-paper" id="term-handover-paper">
+    <h3>租屋物件交接確認書</h3>
+    <p>甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
+    <p>一、點交物件</p>
+    <ol class="hand-list">
+      ${items.map(x => `<li><span>${x}</span><span class="hand-ck">□</span></li>`).join("")}
+      <li><span>鑰匙　<span class="term-fill amt">${escapeHtml(keys)}</span>　把　磁扣　<span class="term-fill amt">${escapeHtml(ic)}</span>　顆</span><span class="hand-ck">□</span></li>
+      <li><span>水費：<span class="term-fill amt">${escapeHtml(water)}</span>　電費：<span class="term-fill amt">${escapeHtml(elec)}</span>　元整</span></li>
+    </ol>
+    <div class="hand-signs">
+      <p>出租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+      <p>承租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+    </div>
+    <p>二、備註</p>
+    <p class="hand-note">${escapeHtml((co && co.note) || "")}</p>
+    <p class="term-date">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
+    <p class="term-hint">列印後於出租人／承租人欄蓋印，系統不套印印章。點交項目請現場勾選。</p>
+  </div>`;
+}
+function termPrintPackHtml(t, r, co, kind) {
+  return `<div id="term-print-pack">${kind === "early" ? termLeasePaperHtml(t, r, co) : ""}${handoverConfirmPaperHtml(t, r, co)}</div>`;
 }
 function leaseCk(on) {
   return `<span class="lease-ck${on ? " on" : ""}">${on ? "■" : "□"}</span>`;
@@ -6978,14 +7054,20 @@ function checkoutFormHtml() {
   if (!kind) return "";
   const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
   const deduct = Number(co.deduct) || 0;
-  const refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct);
   const today = ymdOf(nowStamp());
+  const prorate = co.prorate != null && co.prorate !== "" ? Number(co.prorate) : (kind === "early" ? defaultProrateRent(t, r, co.at || today) : 0);
+  const refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct) + prorate;
   const switcher = `<button type="button" class="ghost" id="co-kind-reset" style="width:auto">改選退租方式</button>`;
+  const paperCo = Object.assign({}, co, {
+    at: co.at || today, deposit, deduct, prorate, refund,
+    property: co.property || termPropLabel(r),
+    idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || ""
+  });
   if (kind === "early") {
-    const prop = co.property || [r.no, r.shop, r.location || roomAddress(r.no)].filter(Boolean).join("　");
+    const prop = paperCo.property;
     return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
-    <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。"}</div>
+    <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>租賃物標示</span><input id="co-property" type="text" value="${escapeHtml(prop)}" /></label>
     <label class="field"><span>身分證字號</span><input id="co-idno" type="text" value="${escapeHtml(co.idNo || t.idNo || "")}" /></label>
@@ -6993,7 +7075,15 @@ function checkoutFormHtml() {
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
     <label class="field"><span>總退還費用</span><input id="co-refund-in" type="number" inputmode="numeric" value="${refund || ""}" /></label>
-    ${payAcctFields(co)}
+    ${payAcctFields(Object.assign({}, co, { prorate }))}
+    <div class="cal-form-row">
+      <label class="field"><span>鑰匙（把）</span><input id="co-keys-n" type="number" inputmode="numeric" value="${escapeHtml(co.keysCount != null ? co.keysCount : "")}" /></label>
+      <label class="field"><span>磁扣（顆）</span><input id="co-ic-n" type="number" inputmode="numeric" value="${escapeHtml(co.icCount != null ? co.icCount : "")}" /></label>
+    </div>
+    <div class="cal-form-row">
+      <label class="field"><span>水費</span><input id="co-water-fee" type="number" inputmode="numeric" value="${escapeHtml(co.waterFee != null ? co.waterFee : "")}" /></label>
+      <label class="field"><span>電費</span><input id="co-elec-fee" type="number" inputmode="numeric" value="${escapeHtml(co.elecFee != null ? co.elecFee : "")}" /></label>
+    </div>
     <div class="checkout-checks">
       <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
       <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> 磁扣已交還</label>
@@ -7005,12 +7095,12 @@ function checkoutFormHtml() {
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
       ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消終止契約</button>`}
     </div>
-    ${termLeasePaperHtml(t, r, Object.assign({}, co, { at: co.at || today, deposit, deduct, refund, property: prop, idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || "" }))}
+    ${termPrintPackHtml(t, r, paperCo, "early")}
   </div>`;
   }
   return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
-    <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。"}</div>
+    <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。列印交接確認書後雙方蓋章即可。"}</div>
     <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
@@ -7020,6 +7110,14 @@ function checkoutFormHtml() {
     <label class="field"><span>電表迄</span><input id="co-elec-e" type="text" value="${escapeHtml(co.elecEnd || "")}" placeholder="例如 12880" /></label>
     <label class="field"><span>水表起</span><input id="co-water-s" type="text" value="${escapeHtml(co.waterStart || "")}" /></label>
     <label class="field"><span>水表迄</span><input id="co-water-e" type="text" value="${escapeHtml(co.waterEnd || "")}" /></label>
+    <div class="cal-form-row">
+      <label class="field"><span>鑰匙（把）</span><input id="co-keys-n" type="number" inputmode="numeric" value="${escapeHtml(co.keysCount != null ? co.keysCount : "")}" /></label>
+      <label class="field"><span>磁扣（顆）</span><input id="co-ic-n" type="number" inputmode="numeric" value="${escapeHtml(co.icCount != null ? co.icCount : "")}" /></label>
+    </div>
+    <div class="cal-form-row">
+      <label class="field"><span>水費</span><input id="co-water-fee" type="number" inputmode="numeric" value="${escapeHtml(co.waterFee != null ? co.waterFee : "")}" /></label>
+      <label class="field"><span>電費</span><input id="co-elec-fee" type="number" inputmode="numeric" value="${escapeHtml(co.elecFee != null ? co.elecFee : "")}" /></label>
+    </div>
     <div class="checkout-checks">
       <label class="log-check"><input id="co-keys" type="checkbox" ${co.keys ? "checked" : ""}> 鑰匙已交還</label>
       <label class="log-check"><input id="co-ic" type="checkbox" ${co.icCard ? "checked" : ""}> 磁扣已交還</label>
@@ -7027,9 +7125,11 @@ function checkoutFormHtml() {
     <label class="field"><span>備註</span><textarea id="co-note" rows="2">${escapeHtml(co.note || "")}</textarea></label>
     <div class="unpaid-tools">
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
+      <button type="button" class="btn-navy" id="co-print-term">列印交接確認書</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
       ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消退租單</button>`}
     </div>
+    ${termPrintPackHtml(t, r, paperCo, "normal")}
   </div>`;
 }
 function readCheckoutForm() {
@@ -7055,6 +7155,10 @@ function readCheckoutForm() {
     elecStart: val("co-elec-s"), elecEnd: val("co-elec-e"),
     waterStart: val("co-water-s"), waterEnd: val("co-water-e"),
     keys: chk("co-keys"), icCard: chk("co-ic"),
+    keysCount: val("co-keys-n"),
+    icCount: val("co-ic-n"),
+    waterFee: num("co-water-fee") || "",
+    elecFee: num("co-elec-fee") || "",
     note: val("co-note"),
     idNo: val("co-idno"),
     phone: val("co-phone"),

@@ -1670,7 +1670,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   body.print-term .admin-bar,
   body.print-term .tabs,
   body.print-term .unpaid-tools,
-  body.print-term #checkout-form-card > :not(#term-lease-paper) { display: none !important; }
+  body.print-term #checkout-form-card > :not(#term-print-pack) { display: none !important; }
   body.print-term .admin-grid.list > :not(#checkout-form-card) { display: none !important; }
   body.print-term #checkout-form-card {
     border: 0 !important;
@@ -1678,7 +1678,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     padding: 0 !important;
     overflow: visible !important;
   }
-  body.print-term .term-lease-paper {
+  body.print-term .term-lease-paper,
+  body.print-term .term-handover-paper {
     border: 0;
     border-radius: 0;
     margin: 0;
@@ -1686,8 +1687,12 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     font-size: 14pt;
     line-height: 2.05;
     min-height: 260mm;
+    page-break-after: always;
+    break-after: page;
   }
-  body.print-term .term-lease-paper h3 { font-size: 22pt; margin-bottom: 22pt; letter-spacing: .7em; }
+  body.print-term .term-handover-paper { page-break-before: always; break-before: page; }
+  body.print-term .term-lease-paper h3,
+  body.print-term .term-handover-paper h3 { font-size: 22pt; margin-bottom: 22pt; letter-spacing: .7em; }
   body.print-term .term-hint { display: none !important; }
   body.print-term .term-chop {
     border: 0;
@@ -2680,6 +2685,55 @@ img.avatar { object-fit: cover; display: block; }
   color: #888;
   font-family: inherit;
   letter-spacing: 0;
+}
+.term-handover-paper {
+  margin-top: 18px;
+  padding: 32px 26px 36px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: #111;
+  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", "PMingLiU", serif;
+  font-size: 16px;
+  line-height: 2;
+}
+.term-handover-paper h3 {
+  text-align: center;
+  letter-spacing: .28em;
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 22px;
+}
+.term-handover-paper p { margin: 0 0 6px; }
+.hand-list {
+  list-style: decimal;
+  padding-left: 1.6em;
+  margin: 8px 0 18px;
+}
+.hand-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 2px 0;
+}
+.hand-ck {
+  font-size: 18px;
+  min-width: 1.4em;
+  text-align: center;
+}
+.hand-signs {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 18px 0 22px;
+  padding: 0 8px;
+}
+.hand-signs p { margin: 0; }
+.hand-note {
+  min-height: 3.2em;
+  border-bottom: 1px solid #111;
+  margin-bottom: 28px !important;
 }
 
 .errand-ball {
