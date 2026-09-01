@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-16-18";
-const APP_EDIT_COUNT = 428;
+const APP_STAMP = "2026-09-01-16-40";
+const APP_EDIT_COUNT = 429;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務紀錄可刪除，並與總覽進出帳同步"] },
+  { ver: APP_STAMP, items: ["7月個人戶重複入帳已排除，總餘額應對回 12,557,607"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1713,7 +1713,7 @@ function buildSeed() {
     renewals: []
   };
 }
-const BOOKS_IMPORT_VER = "july115-v6";
+const BOOKS_IMPORT_VER = "july115-v7";
 const JULY115_OPENINGS = {
   "現金(保險箱)": 633129,
   "統潔": 1423942,
@@ -2009,6 +2009,7 @@ function normalize(data) {
   }
   applyStudioSheetPaid(data);
   applyJuly115Books(data);
+  scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
   applyYushengElec(data);
   applyDueDayPolicy(data);
@@ -2089,6 +2090,33 @@ function applyJuly115Books(data) {
   });
   Object.keys(JULY115_OPENINGS).forEach(k => { data.accountOpenings[k] = JULY115_OPENINGS[k]; });
   data.booksImportVer = BOOKS_IMPORT_VER;
+  scrubJulyPersonalDupes(data);
+}
+function personalMoneyKey(row) {
+  const p = personOfAccount((row && row.company) || "");
+  if (!p) return "";
+  return [ymdOf(row.date), row.type === "out" ? "out" : "in", Number(row.amount) || 0, p].join("|");
+}
+function scrubJulyPersonalDupes(data) {
+  if (!data || !Array.isArray(data.books)) return;
+  const tagged = new Set();
+  data.books.forEach(b => {
+    if (!b || b.importTag !== "july115") return;
+    const k = personalMoneyKey(b);
+    if (k) tagged.add(k);
+  });
+  if (!tagged.size) return;
+  const gone = [];
+  data.books = data.books.filter(b => {
+    if (!b) return false;
+    if (b.importTag === "july115" || b.importTag === "aug31docs") return true;
+    if (String(b.date || "").slice(0, 7) !== "2026-07") return true;
+    const k = personalMoneyKey(b);
+    if (!k || !tagged.has(k)) return true;
+    gone.push(b.id);
+    return false;
+  });
+  if (gone.length) data.ledgerGone = unionGone(data.ledgerGone, gone);
 }
 function applyAug31Docs(data) {
   if (!data) return;
@@ -5171,6 +5199,7 @@ function collectLedger() {
   });
   state.tenants.filter(t => t.paid && !t.former && !t.incoming && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
+    if (room && room.kind === "factory") return;
     const date = ymdOf(t.paidAt);
     if (!date) return;
     const no = room ? String(room.no) : "";
@@ -5220,10 +5249,16 @@ function dedupeLedger(rows) {
   const rank = { book: 1, slip: 2, errand: 3, rent: 4 };
   const list = rows.filter(x => x.date && x.amount).slice().sort((a, b) => (rank[a.source] || 9) - (rank[b.source] || 9));
   const seen = new Set();
+  const seenPerson = new Set();
   const out = [];
   list.forEach(r => {
     const k = ledgerDupKey(r);
     if (seen.has(k)) return;
+    const pk = personalMoneyKey(r);
+    if (pk) {
+      if (seenPerson.has(pk)) return;
+      seenPerson.add(pk);
+    }
     seen.add(k);
     out.push(r);
   });
