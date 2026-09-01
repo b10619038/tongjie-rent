@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-21-22";
-const APP_EDIT_COUNT = 448;
+const APP_STAMP = "2026-09-01-21-30";
+const APP_EDIT_COUNT = 449;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡一改就同步到其他裝置"] },
+  { ver: APP_STAMP, items: ["開發者與管理員在任何裝置的編輯都會互相同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2122") return;
+    if (m[1] === "2130") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2586,6 +2586,24 @@ function mergeEntities(a, b, keys) {
 }
 function mergeTenants(a, b) { return mergeEntities(a, b, TENANT_SYNC_KEYS); }
 function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
+function mergeSharedInto(target, other) {
+  if (!target || !other) return target;
+  target.tenants = mergeTenants(target.tenants, other.tenants);
+  target.rooms = mergeRooms(target.rooms, other.rooms);
+  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]);
+  target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned"]);
+  target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
+  target.checkouts = unionById(target.checkouts, other.checkouts);
+  mergeLedgerInto(target, other);
+  target.eSigns = Object.assign({}, collectESigns(other), collectESigns(target));
+  if (other.lunchSpots) target.lunchSpots = unionById(target.lunchSpots, other.lunchSpots);
+  if (other.lunchHidden) target.lunchHidden = [...new Set([].concat(target.lunchHidden || [], other.lunchHidden || []))];
+  const oc = Number(other.company && other.company.updatedAt) || 0;
+  const tc = Number(target.company && target.company.updatedAt) || 0;
+  if (other.company && oc >= tc) target.company = Object.assign({}, target.company || {}, other.company);
+  if (other.accountOpenings) target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
+  return target;
+}
 function unionGone(a, b) {
   return [...new Set([].concat(a || [], b || []).map(x => String(x || "")).filter(Boolean))];
 }
@@ -2661,32 +2679,28 @@ async function pullCloud() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    const mineSnap = {
+      tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
+      announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
+      books: state.books, errands: state.errands, bankSlips: state.bankSlips,
+      ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
+      company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden
+    };
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
     mergeESignsInto(state, data);
-    if (state.updatedAt && data.updatedAt && data.updatedAt < state.updatedAt) {
+    mergeSharedInto(state, data);
+    if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
       mergeLedgerInto(state, data);
-      if (data.tenants) state.tenants = mergeTenants(state.tenants, data.tenants);
-      if (data.rooms) state.rooms = mergeRooms(state.rooms, data.rooms);
-      if ((!state.books || !state.books.length) && Array.isArray(data.books) && data.books.length) {
-        state.books = data.books;
-        if (data.accountOpenings) state.accountOpenings = Object.assign({}, data.accountOpenings, state.accountOpenings || {});
-        if (data.booksImportVer) state.booksImportVer = data.booksImportVer;
-        if (data.docsImportVer) state.docsImportVer = data.docsImportVer;
-      }
       applyJuly115Books(state);
       applyAug31Docs(state);
       applyYushengElec(state);
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
-      return "local-newer";
-    }
-    if (state.updatedAt && data.updatedAt && data.updatedAt === state.updatedAt) {
-      ui.cloudOk = true;
-      return "same";
+      return data.updatedAt === state.updatedAt ? "same" : "local-newer";
     }
     const mine = state.presence;
     const mineAdmin = (state.aiMemos || []).filter(m => m && !isDevMemo(m));
@@ -2694,33 +2708,18 @@ async function pullCloud() {
     const mineDevLogs = Array.isArray(state.devLogs) ? state.devLogs : [];
     const mineAiLogs = Array.isArray(state.aiLogs) ? state.aiLogs : [];
     const mineCompany = (state.company && Number(state.company.updatedAt) > 0) ? state.company : loadPersistedCompany();
-    const mineBooks = (state.books && state.books.length) ? state.books : null;
-    const mineOpen = (state.accountOpenings && Object.keys(state.accountOpenings).length) ? state.accountOpenings : null;
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
-    const mineCheckouts = (state.checkouts && state.checkouts.length) ? state.checkouts : null;
-    const mineErrands = (state.errands && state.errands.length) ? state.errands : null;
-    const mineSlips = (state.bankSlips && state.bankSlips.length) ? state.bankSlips : null;
-    const mineGone = (state.ledgerGone && state.ledgerGone.length) ? state.ledgerGone : null;
-    const mineESigns = collectESigns(state);
-    const mineTenants = (state.tenants && state.tenants.length) ? state.tenants : null;
-    const mineRooms = (state.rooms && state.rooms.length) ? state.rooms : null;
     state = normalize(data);
-    mergeLedgerInto(state, { books: mineBooks, errands: mineErrands, bankSlips: mineSlips, accountOpenings: mineOpen, ledgerGone: mineGone });
-    if ((!state.books || !state.books.length) && mineBooks) state.books = mineBooks;
-    if (mineOpen) state.accountOpenings = Object.assign({}, mineOpen, state.accountOpenings || {});
+    mergeSharedInto(state, mineSnap);
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
     if (mineDocsVer && !state.docsImportVer) state.docsImportVer = mineDocsVer;
-    if ((!state.checkouts || !state.checkouts.length) && mineCheckouts) state.checkouts = mineCheckouts;
     applyJuly115Books(state);
     applyAug31Docs(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
-    mergeESignsInto(state, { eSigns: mineESigns });
-    if (mineTenants) state.tenants = mergeTenants(state.tenants, mineTenants);
-    if (mineRooms) state.rooms = mergeRooms(state.rooms, mineRooms);
     mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
     if (mineCompany) {
       const la = Number(mineCompany.updatedAt) || 0;
@@ -3200,6 +3199,10 @@ async function pushCloud() {
       eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
+      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
+      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned"]),
+      notices: mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]),
+      checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
     });
@@ -3211,6 +3214,10 @@ async function pushCloud() {
     state.bankSlips = payload.bankSlips;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
+    if (payload.repairs) state.repairs = payload.repairs;
+    if (payload.announcements) state.announcements = payload.announcements;
+    if (payload.notices) state.notices = payload.notices;
+    if (payload.checkouts) state.checkouts = payload.checkouts;
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
     stripCloudMedia(payload);
     applyESigns(payload);
@@ -3236,6 +3243,10 @@ async function pushCloud() {
         aiLogs: payload.aiLogs,
         tenants: payload.tenants,
         rooms: payload.rooms,
+        repairs: payload.repairs,
+        announcements: payload.announcements,
+        notices: payload.notices,
+        checkouts: payload.checkouts,
         eSigns: payload.eSigns,
         repairs: payload.repairs,
         company: payload.company
