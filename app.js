@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-11-32";
-const APP_EDIT_COUNT = 419;
+const APP_STAMP = "2026-09-01-11-36";
+const APP_EDIT_COUNT = 420;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["終止契約與交接確認書依紙本套印，列印後蓋章"] },
+  { ver: APP_STAMP, items: ["套房合約第2、8頁簽章欄依紙本，雙人並列蓋章"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1496,12 +1496,12 @@ function roomAddress(no) {
 function contractDoorplate(no) {
   const s = String(no || "").replace(/\D/g, "");
   if (s.length < 4) return roomAddress(no);
-  return `高雄市鳳山區文龍東路${s.slice(0, 2)}號（${s.charAt(2)}樓之${s.charAt(3)}室）`;
+  return `高雄市鳳山區文龍東路 ${s.slice(0, 2)} 號(${s.charAt(2)}樓之${s.charAt(3)}室)`;
 }
 function contractRoomPart(no) {
   const s = String(no || "").replace(/\D/g, "");
   if (s.length < 4) return String(no || "");
-  return `${s.charAt(2)}樓之${s.charAt(3)}室`;
+  return `${s.slice(0, 2)}號${s.charAt(2)}樓之${s.charAt(3)}室`;
 }
 const NEARBY_AREAS = {
   wenlong: {
@@ -6733,6 +6733,14 @@ function cnAmt(n) {
 function paperPeople(s) {
   return String(s || "").replace(/[／/、,，]+/g, "　").replace(/\s+/g, " ").trim();
 }
+function splitPair(s) {
+  const raw = String(s || "").trim();
+  if (!raw) return [""];
+  const parts = raw.split(/[／/、,，]+/).map(x => x.trim()).filter(Boolean);
+  if (parts.length >= 2) return parts;
+  const bySpace = raw.split(/\s+/).filter(Boolean);
+  return bySpace.length >= 2 ? bySpace : (parts.length ? parts : [raw]);
+}
 function termPropLabel(r) {
   const no = String((r && r.no) || "");
   const s = no.replace(/\D/g, "");
@@ -6858,19 +6866,31 @@ function studioLeasePaperHtml(t, r) {
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
   const start = rocPartsOf((t && t.leaseStart) || "");
   const end = rocPartsOf((t && t.leaseEnd) || "");
-  const sign = rocPartsOf(ymdOf(nowStamp()));
   const rent = Number((t && t.rent) || (r && r.rent) || 0) || 0;
   const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (rent * 2);
   const door = contractDoorplate(r && r.no);
   const part = contractRoomPart(r && r.no);
   const name = (t && t.name) || "";
-  const idNo = (t && t.idNo) || "";
-  const phone = (t && t.phone) || "";
-  const emName = (t && t.emergencyName) || "";
-  const emPhone = (t && t.emergencyPhone) || "";
+  const names = splitPair(name);
+  const ids = splitPair((t && t.idNo) || "");
+  const phones = splitPair((t && t.phone) || "");
+  const emNames = splitPair((t && t.emergencyName) || "");
+  const emPhones = splitPair((t && t.emergencyPhone) || "");
+  const es = getESign(t);
+  const sign = rocPartsOf((es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
   const due = rentDueDay(t);
   const ck = leaseCk;
   const u = leaseU;
+  const tenantSignRow = names.map((n, i) =>
+    `<span class="lease-who">${escapeHtml(n)}</span><span class="lease-sign-line">${i === 0 ? tenantEsigHtml(t) : ""}</span><span class="term-chop" title="蓋章"></span>`
+  ).join("");
+  const peopleCols = names.map((n, i) => `<div class="lease-person">
+      <p>${i === 0 ? "承租人：" : ""}${escapeHtml(n)}${i === 0 ? tenantEsigHtml(t) : ""}<span class="term-chop" title="蓋章"></span></p>
+      <p>${i === 0 ? "身分證字號：" : ""}${escapeHtml(ids[i] || "")}</p>
+      <p>${i === 0 ? "聯絡電話：" : ""}${escapeHtml(phones[i] || "")}</p>
+      <p>${i === 0 ? "緊急聯絡人：" : ""}${escapeHtml(emNames[i] || "")}</p>
+      <p>${i === 0 ? "電話：" : ""}${escapeHtml(emPhones[i] || "")}</p>
+    </div>`).join("");
   return `<div class="studio-lease-paper" id="studio-lease-paper">
     <section class="lease-pg cover">
       <div class="lease-cover-mid">
@@ -6885,12 +6905,12 @@ function studioLeasePaperHtml(t, r) {
     </section>
     <section class="lease-pg">
       <h4>房屋租賃契約書</h4>
-      <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}</p>
-      <p>承租人　${u(name, "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
+      <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span></p>
+      <p>承租人　${u(paperPeople(name), "wide")}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
-      <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
-      <p>承租人簽章：<span class="lease-sign-line">${tenantEsigHtml(t)}</span><span class="term-chop" title="蓋章"></span></p>
+      <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
+      <p>承租人簽章：${tenantSignRow}</p>
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
       <p>1、門牌：${u(door, "wide")}</p>
@@ -6903,7 +6923,7 @@ function studioLeasePaperHtml(t, r) {
       <p class="indent">（2）機車停車位：一樓空間對號停車。</p>
       <p class="indent">（3）使用時間：${ck(true)}全日${ck(false)}日間${ck(false)}夜間${ck(false)}其他。</p>
       <p>3、租賃附屬設備：${ck(true)}有，依附件${ck(false)}無附屬設備。</p>
-      <p>4、其他：${u("套房宿舍使用")}</p>
+      <p>4、其他：${u("")}</p>
       <p class="lease-art">第三條　租賃期間</p>
       <p>租賃期間自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止。</p>
       <div class="lease-pgno">2</div>
@@ -6993,27 +7013,21 @@ function studioLeasePaperHtml(t, r) {
       <div class="lease-pgno">7</div>
     </section>
     <section class="lease-pg">
-      <p>${ck(false)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
-      <p>${ck(false)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
+      <p>${ck(true)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
+      <p>${ck(true)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
       <p class="lease-art">第十九條　契約及其相關附件效力</p>
       <p>（一）本契約自簽約日起生效，租賃雙方各執一份契約正本。</p>
       <p>（二）本契約廣告及相關附件視為本契約之一部分。</p>
       <p>（三）本契約所定之權利義務對租賃雙方之契約繼受人均有效力。</p>
       <p>（四）特別約定：1.屋內禁止抽菸、拜拜。</p>
       <div class="lease-sign-block">
-        <p>出租人：${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span></p>
+        <p>出租人：${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
         <p>代表人：趙正賢</p>
-        <p>聯絡電話：${escapeHtml(firm.phone || "07-3414196")}</p>
+        <p>聯絡電話：${escapeHtml(firm.phone || "07-3414159")}</p>
       </div>
-      <div class="lease-sign-block">
-        <p>承租人：${u(name, "wide")}${tenantEsigHtml(t)}<span class="term-chop" title="蓋章"></span></p>
-        <p>身分證字號：${u(idNo)}</p>
-        <p>聯絡電話：${u(phone)}</p>
-        <p>緊急聯絡人：${u(emName)}</p>
-        <p>電話：${u(emPhone)}</p>
-      </div>
+      <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
-      <p class="term-hint">列印後蓋章處留白，承租人已線上簽名者會印在上面，請自行蓋印。</p>
+      <p class="term-hint">列印後於簽章框蓋印。承租人已線上簽名者會印在簽名欄，印章請自行蓋。</p>
       <div class="lease-pgno">8</div>
     </section>
   </div>`;

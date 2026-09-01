@@ -1798,7 +1798,17 @@ body.print-lease .lease-esig { height: 48px; max-width: 170px; }
   vertical-align: bottom;
   margin: 0 8px;
 }
+.lease-who { margin: 0 4px 0 10px; }
 .lease-sign-block { margin-top: 18px; padding-left: 1em; }
+.lease-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 36px;
+  margin-top: 22px;
+  padding-left: 1em;
+}
+.lease-person { min-width: 12em; }
+.lease-person p { margin: 0 0 2px; }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;
