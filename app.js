@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-12-00";
-const APP_EDIT_COUNT = 425;
+const APP_STAMP = "2026-09-01-12-06";
+const APP_EDIT_COUNT = 426;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客合約簽名同步雲端，手機電腦後台都能看"] },
+  { ver: APP_STAMP, items: ["後台下載合約會帶入已同步的親筆簽名"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -2010,6 +2010,7 @@ function normalize(data) {
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
+  applyESigns(data);
   mergeLedgerInto(data, loadLedgerBackup());
   persistLedger(data);
   return data;
@@ -2548,15 +2549,25 @@ function eSignNewer(a, b) {
   return String(b.at || "") > String(a.at || "") ? b : a;
 }
 function collectESigns(data) {
-  const map = Object.assign({}, (data && data.eSigns) || {});
+  const map = Object.assign({}, loadLocalESigns(), (data && data.eSigns) || {});
   ((data && data.tenants) || []).forEach(t => {
     if (t && t.id && t.eSign && t.eSign.sig) map[t.id] = eSignNewer(map[t.id], t.eSign);
   });
   return map;
 }
+function loadLocalESigns() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch { return {}; }
+}
+function persistESignsMap(map) {
+  try { localStorage.setItem("tongjie_esign_v1", JSON.stringify(map || {})); } catch {}
+}
 function applyESigns(data) {
   if (!data) return;
   data.eSigns = collectESigns(data);
+  persistESignsMap(data.eSigns);
   (data.tenants || []).forEach(t => {
     if (!t || !t.id) return;
     const rec = data.eSigns[t.id];
@@ -7081,20 +7092,45 @@ function isStudioLeaseRoom(r) {
 }
 function printStudioLease(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
+  const es = getESign(t);
+  if (es && es.sig) t.eSign = es;
   const old = document.getElementById("studio-lease-paper");
   if (old) old.remove();
   const hold = document.createElement("div");
   hold.innerHTML = studioLeasePaperHtml(t, r);
   const paper = hold.firstElementChild;
+  if (!paper) { toast("合約無法產生"); return; }
   document.body.appendChild(paper);
   document.body.classList.add("print-lease");
+  let done = false;
   const after = () => {
+    if (done) return;
+    done = true;
     document.body.classList.remove("print-lease");
     if (paper && paper.parentNode) paper.remove();
   };
   window.addEventListener("afterprint", after, { once: true });
-  window.print();
-  setTimeout(after, 1500);
+  const imgs = [...paper.querySelectorAll("img")];
+  let printed = false;
+  const startPrint = () => {
+    if (printed) return;
+    printed = true;
+    try { window.print(); } catch { after(); }
+  };
+  if (!imgs.length) startPrint();
+  else {
+    let left = imgs.length;
+    const tick = () => { left -= 1; if (left <= 0) startPrint(); };
+    imgs.forEach(img => {
+      if (img.complete) tick();
+      else {
+        img.addEventListener("load", tick, { once: true });
+        img.addEventListener("error", tick, { once: true });
+      }
+    });
+    setTimeout(startPrint, 800);
+  }
+  setTimeout(after, 120000);
 }
 function checkoutFormHtml() {
   const id = ui.checkoutTenantId;
@@ -8154,10 +8190,10 @@ function getESign(t) {
   let rec = t.eSign || null;
   if (state && state.eSigns && t.id) rec = eSignNewer(rec, state.eSigns[t.id]);
   try {
-    const all = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
+    const all = loadLocalESigns();
     if (t.id) rec = eSignNewer(rec, all[t.id]);
   } catch {}
-  if (isDevPreview()) rec = eSignNewer(rec, ui.devESign);
+  if (isDevPreview() || t.demo || t.id === "t-demo") rec = eSignNewer(rec, ui.devESign);
   return rec && rec.sig ? rec : rec;
 }
 function saveESignRecord(t, rec) {
@@ -8168,7 +8204,8 @@ function saveESignRecord(t, rec) {
     state.eSigns[t.id] = rec;
   }
   saveESignLocal(t, rec);
-  if (isDevPreview()) ui.devESign = rec;
+  persistESignsMap(Object.assign({}, loadLocalESigns(), state.eSigns || {}, t && t.id ? { [t.id]: rec } : {}));
+  if (isDevPreview() || (t && t.demo)) ui.devESign = rec;
 }
 function canvasToSig(c) {
   if (!c) return "";
@@ -11217,6 +11254,12 @@ function tenantEntryCardHtml(kind, entry) {
               + teField("到期　" + (rr ? rr.no : ""), "leaseEnd", tt.id, rr && rr.id, tt.leaseEnd || "", "date");
           }).join("")}
       <div class="row"><span class="k">合約</span><span class="pay-pill ${tenantContractStatus(t, r) === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(t, r)}</span></div>
+      ${(() => {
+        const es = getESign(t);
+        return es && es.sig && String(es.sig).startsWith("data:")
+          ? `<img src="${es.sig}" alt="簽名" style="height:52px;max-width:180px;object-fit:contain;display:block;margin:6px 0 2px">`
+          : "";
+      })()}
       ${t.note ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
       ${(() => {
         const co = lastCheckout(t.id);
