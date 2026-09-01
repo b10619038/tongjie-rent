@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-18-31";
-const APP_EDIT_COUNT = 439;
+const APP_STAMP = "2026-09-01-18-40";
+const APP_EDIT_COUNT = 440;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["案場總覽含牛10套房，總營收一併計算"] },
+  { ver: APP_STAMP, items: ["7051 改空房，楊旻憲已換至 7032"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1201,7 +1201,7 @@ const TENANT_INFO = {
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000 },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
   "7042": { name: "周佳瑩", phone: "0972-986-430／0970-116-205", leaseStart: "2026-06-23", leaseEnd: "2027-06-30", deposit: 14000, note: "115/6/23–6/30 日租金 3,748；7/1 起 1押1租 28,000；水費年 1,800；仲介 14,000；7/2 北銀 14,000" },
-  "7051": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
+  "7051": { note: "空房。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000；進住日租金 4,427" },
   "7223": { name: "許芸慈", phone: "0900-246-722／0988-881-915", leaseStart: "2026-06-26", leaseEnd: "2027-06-30", deposit: 20000, bankLast5: "57877", note: "115/6/26–6/30 日租金 1,665；7/1～116/6/30 租 10,000 押 20,000 入北銀；水費年 1,800；電儲值 1,000；仲介 10,000" },
@@ -1222,6 +1222,7 @@ const TENANT_INFO = {
   "7652": { note: "合約 115/3/1～115/10/31，租客姓名待補", leaseStart: "2026-03-01", leaseEnd: "2026-10-31" }
 };
 const FORMER_STUDIO = {
+  "7051": [{ name: "楊旻憲", leftOn: "2026-03-01", phone: "0903-045-123", note: "換房至 7032，7051 現為空房" }],
   "7242": [{ name: "陳智泓", leftOn: "2025-11-30", note: "換房至 7642" }],
   "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }]
 };
@@ -2364,13 +2365,14 @@ function applyTenantRoster(data) {
       room.rent = studioRentOf(no, room.rent);
       if (info && info.note) room.note = info.note;
       (data.tenants || []).forEach(x => {
-        if (x.roomId === room.id && !x.demo) {
+        if (x.roomId === room.id && !x.demo && !x.incoming) {
           x.former = true;
           if (!x.leftOn) x.leftOn = x.leaseEnd || "";
         }
       });
       if (room.status !== "repair") room.status = "vacant";
       room.tenantId = null;
+      room.edited = false;
     }
   });
   applyFormerStudio(data);
