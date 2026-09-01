@@ -1,6 +1,7 @@
 const KEY = "tongjie_rent_app_v8";
 const LEDGER_KEY = "tongjie_ledger_v1";
 const PAID_KEY = "tongjie_paid_v1";
+const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
 const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
@@ -17,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-23-38";
-const APP_EDIT_COUNT = 467;
+const APP_STAMP = "2026-09-01-23-48";
+const APP_EDIT_COUNT = 468;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -56,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["移除展開圖卡裡的標記為已繳按鈕"] },
+  { ver: APP_STAMP, items: ["重開不再把已繳洗成未繳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -797,7 +798,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2338") return;
+    if (m[1] === "2348") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1231,8 +1232,13 @@ function applyMonthlyUnpaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   const ym = payYmNow();
   data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
-  if (data.rentUnpaidYm === ym) {
+  let rolled = "";
+  try { rolled = localStorage.getItem(RENT_YM_KEY) || ""; } catch {}
+  if (data.rentUnpaidYm === ym || rolled === ym) {
+    data.rentUnpaidYm = ym;
+    data.studioUnpaidYm = ym;
     applyPaidMarks(data);
+    try { localStorage.setItem(RENT_YM_KEY, ym); } catch {}
     return;
   }
   data.tenants.forEach(t => {
@@ -1252,6 +1258,7 @@ function applyMonthlyUnpaid(data) {
   });
   data.rentUnpaidYm = ym;
   data.studioUnpaidYm = ym;
+  try { localStorage.setItem(RENT_YM_KEY, ym); } catch {}
   applyPaidMarks(data);
 }
 function rollRentMonthIfNeeded() {
@@ -2718,21 +2725,23 @@ function mergePaidMarkMaps(a, b) {
 }
 function persistPaidMarks(data) {
   const ym = payYmNow();
-  const src = (data && data.paidMarks) || {};
+  const merged = mergePaidMarkMaps(loadPaidMarks(), data && data.paidMarks);
   const slim = {};
-  Object.keys(src).forEach(id => {
-    const m = src[id];
+  Object.keys(merged).forEach(id => {
+    const m = merged[id];
     if (m && m.paidYm === ym) slim[id] = {
       paid: !!m.paid, paidAt: m.paidAt || "", paidVia: m.paidVia || "",
       paidYm: ym, editedAt: Number(m.editedAt) || Date.now(), name: m.name || ""
     };
   });
+  if (!Object.keys(slim).length) return;
+  if (data) data.paidMarks = mergePaidMarkMaps(slim, data.paidMarks);
   const blob = JSON.stringify({ ym, marks: slim, at: Date.now() });
   try { localStorage.setItem(PAID_KEY, blob); } catch {}
   try {
     const req = indexedDB.open("tongjie-ledger", 1);
     req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains("kv")) req.result.objectStore("kv");
+      if (!req.result.objectStoreNames.contains("kv")) req.result.createObjectStore("kv");
     };
     req.onsuccess = () => {
       try {
@@ -2753,6 +2762,7 @@ function loadPaidMarks() {
 function stampPaidMark(data, t) {
   if (!data || !t || !t.id) return;
   if (!data.paidMarks) data.paidMarks = {};
+  data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
   data.paidMarks[t.id] = {
     paid: !!t.paid,
     paidAt: t.paidAt || "",
@@ -2917,6 +2927,7 @@ async function pullCloud() {
       ensureStudioTenant(state, "6832");
       ensureDemoTenant(state);
       applyPaidMarks(state);
+      persistPaidMarks(state);
       syncPaidRentBooks(state);
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -2959,6 +2970,7 @@ async function pullCloud() {
     ensureStudioTenant(state, "6832");
     ensureDemoTenant(state);
     applyPaidMarks(state);
+    persistPaidMarks(state);
     syncPaidRentBooks(state);
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -3424,7 +3436,7 @@ async function pushCloud() {
       eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
-      paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, state.paidMarks),
+      paidMarks: mergePaidMarkMaps(loadPaidMarks(), mergePaidMarkMaps(remote && remote.paidMarks, state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned"]),
@@ -15767,6 +15779,8 @@ async function boot() {
     } catch {}
     const got = await pullCloud();
     rollRentMonthIfNeeded();
+    applyPaidMarks(state);
+    persistPaidMarks(state);
     if (got === false || got === "local-newer" || got === true) await pushCloud();
     restoreUi();
     beatPresence();
