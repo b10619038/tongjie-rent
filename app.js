@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-28";
-const APP_EDIT_COUNT = 475;
+const APP_STAMP = "2026-09-02-00-30";
+const APP_EDIT_COUNT = 476;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["電腦安裝版會抓到新版本，同步改快"] },
+  { ver: APP_STAMP, items: ["電腦安裝版改強制抓最新檔再同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -727,21 +727,46 @@ function updateBarHtml() {
   const lift = ui.role === "tenant" ? " lift" : "";
   return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此查看更新內容</div>`;
 }
+async function wipeClientCache() {
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  } catch {}
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+  } catch {}
+}
 function applyAppUpdate() {
   persistLogin();
   persistUi();
   markVersionSeen();
-  try {
-    const reg = window.__swReg;
-    if (reg && reg.waiting) {
-      __reloading = true;
-      reg.waiting.postMessage("SKIP_WAITING");
-    }
-  } catch {}
-  try {
-    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.update().catch(() => {})));
-  } catch {}
-  setTimeout(() => location.reload(), 80);
+  wipeClientCache().finally(() => {
+    location.href = "/?v=0027&t=" + Date.now();
+  });
+}
+async function pollRemoteBuild() {
+  const local = "0027";
+  const urls = [
+    "index.html?nocache=1&t=" + Date.now(),
+    "https://raw.githubusercontent.com/b10619038/tongjie-rent/main/index.html?t=" + Date.now()
+  ];
+  for (const url of urls) {
+    try {
+      const txt = await fetch(url, { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+      const m = String(txt || "").match(/app\.js\?v=(\d+)/);
+      if (!m || !m[1] || m[1] === local) continue;
+      try {
+        if (sessionStorage.getItem("tj-bust") === m[1]) continue;
+        sessionStorage.setItem("tj-bust", m[1]);
+      } catch {}
+      persistLogin();
+      persistUi();
+      await wipeClientCache();
+      location.href = "/?v=" + m[1] + "&t=" + Date.now();
+      return;
+    } catch {}
+  }
 }
 function promptAppUpdate(reg) {
   if (lastSeenVersion() === APP_VERSION) return;
