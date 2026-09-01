@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-32";
-const APP_EDIT_COUNT = 455;
+const APP_STAMP = "2026-09-01-22-36";
+const APP_EDIT_COUNT = 456;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["標記已繳會立刻改圖卡本月已繳"] },
+  { ver: APP_STAMP, items: ["6832 新客周婕妤已入房"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2232") return;
+    if (m[1] === "2236") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1268,7 +1268,7 @@ const TENANT_INFO = {
   "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
   "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
   "6831": { name: "吳昱瑋" },
-  "6832": { note: "115/8/19 退租。退還押金 13,500＋8/19～8/31 租金 5,670＝19,170；農會匯翁玟倫中信，匯費 30 實付 19,200。水費 900、電費 1,812 給洪漳。" },
+  "6832": { name: "周婕妤", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 27000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
   "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847" },
   "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
   "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
@@ -2119,6 +2119,7 @@ function normalize(data) {
   applyStudioSheetPaid(data);
   applyStudioMonthUnpaid(data);
   ensureStudioTenant(data, "7221");
+  ensureStudioTenant(data, "6832");
   applyJuly115Books(data);
   scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
@@ -2496,8 +2497,19 @@ function ensureStudioTenant(data, no) {
     data.rooms.push(room);
   }
   room.no = String(no);
-  let t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former);
-  if (!t) t = data.tenants.find(x => x && !x.demo && !x.incoming && sameTenantName(x.name, info.name) && (x.roomId === room.id || x.id === "t" + no || x.former));
+  (data.tenants || []).forEach(x => {
+    if (!x || x.roomId !== room.id || x.demo || x.incoming || x.former) return;
+    if (sameTenantName(x.name, info.name)) return;
+    x.former = true;
+    if (!x.leftOn) {
+      const prev = (FORMER_STUDIO[String(no)] || [])[0];
+      x.leftOn = (prev && prev.leftOn) || "";
+    }
+    x.edited = true;
+  });
+  let t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former && sameTenantName(x.name, info.name));
+  if (!t) t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former);
+  if (!t) t = data.tenants.find(x => x && !x.demo && !x.incoming && sameTenantName(x.name, info.name) && (x.roomId === room.id || x.id === "t" + no));
   if (t && t.former && sameTenantName(t.name, info.name)) t.former = false;
   if (!t) {
     t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false };
@@ -2511,7 +2523,7 @@ function ensureStudioTenant(data, no) {
   t.leaseEnd = info.leaseEnd || t.leaseEnd || "";
   t.note = info.note || t.note || "";
   if (info.bankLast5) t.bankLast5 = t.bankLast5 || info.bankLast5;
-  t.payBank = t.payBank || tenantPayBankKey(t, room) || "農會";
+  t.payBank = info.payBank || t.payBank || tenantPayBankKey(t, room) || "兆豐";
   t.former = false;
   t.incoming = false;
   t.placeholder = false;
@@ -2527,8 +2539,8 @@ function ensureStudioTenant(data, no) {
   t.editedAt = Date.now();
   room.tenantId = t.id;
   room.kind = "studio";
-  room.rent = studioRentOf(no) || 7000;
-  room.deposit = info.deposit != null ? info.deposit : 14000;
+  room.rent = info.rent != null ? info.rent : (studioRentOf(no) || 7000);
+  room.deposit = info.deposit != null ? info.deposit : studioDepositOf(room.rent);
   if (room.status !== "repair") room.status = "rented";
   room.edited = true;
   room.editedAt = Date.now();
@@ -2791,6 +2803,7 @@ async function pullCloud() {
       applyAug31Docs(state);
       applyYushengElec(state);
       ensureStudioTenant(state, "7221");
+      ensureStudioTenant(state, "6832");
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
@@ -2829,6 +2842,7 @@ async function pullCloud() {
     try { ensureCycleJobs(state); } catch {}
     try { ensureDevCycleJobs(state); } catch {}
     ensureStudioTenant(state, "7221");
+    ensureStudioTenant(state, "6832");
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
