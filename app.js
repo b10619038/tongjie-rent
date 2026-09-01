@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-16-12";
-const APP_EDIT_COUNT = 427;
+const APP_STAMP = "2026-09-01-16-18";
+const APP_EDIT_COUNT = 428;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7月歷史明細已套入總覽（含牛案場）"] },
+  { ver: APP_STAMP, items: ["跑業務紀錄可刪除，並與總覽進出帳同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1860,7 +1860,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
 (function bootLoginNow() {
   const parse = raw => {
     try { const s = JSON.parse(raw); return s && s.role ? s : null; } catch { return null; }
@@ -2409,6 +2409,47 @@ function markLedgerGone(ids) {
   state.books = dropGone(state.books, state.ledgerGone);
   state.errands = dropGone(state.errands, state.ledgerGone);
   state.bankSlips = dropGone(state.bankSlips, state.ledgerGone);
+}
+function isSeedBook(b) {
+  if (!b) return false;
+  const id = String(b.id || "");
+  return !!(b.importTag || id.indexOf("bk-j115-") === 0 || id.indexOf("bk-a31-") === 0 || id.indexOf("bk-yusheng") === 0);
+}
+function findLinkedErrand(book) {
+  if (!book) return null;
+  const list = state.errands || [];
+  return list.find(e => e && (e.id === book.linkedId || book.linkedId === e.id || e.linkedId === book.id))
+    || (isSeedBook(book) ? null : list.find(e => e && ymdOf(e.date) === ymdOf(book.date) && Number(e.amount) === Number(book.amount) && Number(e.amount) > 0));
+}
+function findLinkedBook(errand) {
+  if (!errand) return null;
+  const list = state.books || [];
+  return list.find(b => b && (b.linkedId === errand.id || errand.linkedId === b.id))
+    || list.find(b => b && !isSeedBook(b) && ymdOf(b.date) === ymdOf(errand.date) && Number(b.amount) === Number(errand.amount) && Number(b.amount) > 0);
+}
+function syncErrandFromBook(b) {
+  const e = findLinkedErrand(b);
+  if (!e || !b) return;
+  e.date = b.date;
+  e.amount = b.amount;
+  e.company = b.company;
+  if (b.bank) e.place = b.bank;
+  if (b.note) e.note = b.note;
+  if (!e.linkedId) e.linkedId = b.id;
+  if (!b.linkedId) b.linkedId = e.id;
+}
+function syncBookFromErrand(e) {
+  const b = findLinkedBook(e);
+  if (!e) return;
+  if (b) {
+    b.date = e.date;
+    b.amount = Number(e.amount) || 0;
+    if (e.company) b.company = e.company;
+    if (e.place) b.bank = e.place;
+    if (e.note || e.title) b.note = e.note || e.title;
+    if (!b.linkedId) b.linkedId = e.id;
+    if (!e.linkedId) e.linkedId = b.id;
+  }
 }
 function mergeLedgerInto(target, other) {
   if (!target || !other) return;
@@ -5757,16 +5798,20 @@ function deleteLedgerRow(id, src) {
   if (raw.startsWith("slip-")) ids.push(raw.slice(5));
   if (raw.startsWith("errand-")) ids.push(raw.slice(7));
   const book = (state.books || []).find(b => b && b.id === raw);
-  const errand = (state.errands || []).find(e => e && (e.id === raw || ("errand-" + e.id) === raw));
-  const slip = (state.bankSlips || []).find(s => s && (s.id === raw || ("slip-" + s.id) === raw));
+  const errand = (state.errands || []).find(e => e && (e.id === raw || ("errand-" + e.id) === raw || e.id === raw.replace(/^errand-/, "")));
+  const slip = (state.bankSlips || []).find(s => s && (s.id === raw || ("slip-" + s.id) === raw || s.id === raw.replace(/^slip-/, "")));
   if (errand) {
     ids.push(errand.id, "errand-" + errand.id);
+    const twin = findLinkedBook(errand);
+    if (twin) ids.push(twin.id);
     (state.books || []).forEach(b => { if (b && b.linkedId === errand.id) ids.push(b.id); });
   }
   if (book) {
     ids.push(book.id);
+    const twin = findLinkedErrand(book);
+    if (twin) ids.push(twin.id, "errand-" + twin.id);
     (state.errands || []).forEach(e => {
-      if (e && (e.id === book.linkedId || book.linkedId === e.id)) ids.push(e.id, "errand-" + e.id);
+      if (e && (e.id === book.linkedId || book.linkedId === e.id || e.linkedId === book.id)) ids.push(e.id, "errand-" + e.id);
     });
   }
   if (slip) ids.push(slip.id, "slip-" + slip.id);
@@ -5774,6 +5819,7 @@ function deleteLedgerRow(id, src) {
   if (ui.editSlipId && ids.indexOf(ui.editSlipId) >= 0) ui.editSlipId = null;
   markLedgerGone(ids);
   save();
+  try { pushCloud(); } catch {}
 }
 function bindCalLedgerRows() {
   const stay = () => { ui.keepScroll = true; render(); };
@@ -5793,8 +5839,23 @@ function bindCalLedgerRows() {
       const id = el.dataset.editLed;
       if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
       if (src === "memo") { toast("這筆是工作助手記下的行程，可按刪除拿掉"); return; }
-      ui.editBookId = src === "book" ? id : null;
-      ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
+      if (src === "errand") {
+        const eid = String(id || "").replace(/^errand-/, "");
+        const e = (state.errands || []).find(x => x.id === eid);
+        const b = findLinkedBook(e);
+        ui.editBookId = b ? b.id : null;
+        ui.editSlipId = null;
+        ui.editErrandId = eid;
+      } else {
+        ui.editBookId = src === "book" ? id : null;
+        ui.editSlipId = src === "slip" ? id.replace(/^slip-/, "") : null;
+        ui.editErrandId = "";
+        if (src === "book") {
+          const b = (state.books || []).find(x => x.id === id);
+          const e = findLinkedErrand(b);
+          if (e) ui.editErrandId = e.id;
+        }
+      }
       stay();
       requestAnimationFrame(() => {
         const box = document.getElementById("book-form");
@@ -5807,7 +5868,13 @@ function monthCashHtml() {
   ensureCalMonth();
   const editing = ui.editBookId ? (state.books || []).find(b => b.id === ui.editBookId) : null;
   const editingSlip = !editing && ui.editSlipId ? (state.bankSlips || []).find(s => s.id === ui.editSlipId) : null;
-  const ed = editing || editingSlip;
+  const editingErrand = !editing && !editingSlip && ui.editErrandId ? (state.errands || []).find(e => e.id === ui.editErrandId) : null;
+  const ed = editing || editingSlip || (editingErrand ? {
+    type: guessCashType([editingErrand.title, editingErrand.note, editingErrand.company].join(" "), "out"),
+    date: ymdOf(editingErrand.date), amount: Number(editingErrand.amount) || 0,
+    company: editingErrand.company, bank: editingErrand.place || editingErrand.bank || "",
+    note: editingErrand.note || editingErrand.title || ""
+  } : null);
   const y = ui.calYear, m = ui.calMonth;
   const key = `${y}-${String(m).padStart(2, "0")}`;
   const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
@@ -9629,7 +9696,10 @@ function errandRecordsHtml() {
       <div class="card card-body">
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(e.date || "")}</span></div>
         <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.pendingBank ? "待入銀行" : (e.linkedId ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
-        <button type="button" class="ghost" data-del-errand="${e.id}" style="margin-top:8px">刪除</button>
+        <div class="btn-row" style="margin-top:8px">
+          <button type="button" class="ghost" data-edit-errand="${e.id}">編輯</button>
+          <button type="button" class="ghost" data-del-errand="${e.id}">刪除</button>
+        </div>
       </div>`).join("") : ""}
     ${slips.length ? slips.map(s => `
       <div class="card card-body">
@@ -13891,7 +13961,8 @@ function submitErrandNow() {
       state.books.push({
         id: "bk" + Date.now() + "-" + idx, type: cashType,
         date, amount, company, bank: place, note: note || title,
-        pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)")
+        pendingBank: cashType === "in" && (pendingBank || company === "現金(保險箱)"),
+        linkedId: id
       });
       if (cashType === "out") nOut += 1;
       else if (pendingBank) nCash += 1;
@@ -13899,7 +13970,7 @@ function submitErrandNow() {
     }
     state.errands.push({
       id, kind: "bank", date, title, place, amount, note, company,
-      pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : "",
+      pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : id,
       skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
     });
     const p = date.split("-");
@@ -14261,11 +14332,40 @@ function bindAdminAi() {
     toast(ui.errandGuess && ui.errandGuess.title ? ("預判：" + ui.errandGuess.title) : (got.line || "已吸收檔案"));
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
-    btn.onclick = () => {
-      const id = btn.dataset.delErrand;
-      state.errands = (state.errands || []).filter(x => x.id !== id);
-      state.books = (state.books || []).filter(x => x.id !== id);
-      save(); toast("已刪除");
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteLedgerRow(btn.dataset.delErrand, "errand");
+      toast("已刪除");
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-edit-errand]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const eid = btn.dataset.editErrand;
+      const er = (state.errands || []).find(x => x.id === eid);
+      const b = findLinkedBook(er);
+      ui.editErrandId = eid;
+      ui.editBookId = b ? b.id : null;
+      ui.editSlipId = null;
+      ui.page = "dash";
+      if (er && er.date) {
+        const p = String(er.date).split("-");
+        if (p.length === 3) {
+          ui.calYear = Number(p[0]);
+          ui.calMonth = Number(p[1]);
+          ui.calDay = Number(p[2]);
+        }
+      }
+      ui.keepScroll = true;
+      render();
+      requestAnimationFrame(() => {
+        const box = document.getElementById("book-form");
+        if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
     };
   });
   document.querySelectorAll("[data-del-bank-media]").forEach(btn => {
@@ -14338,9 +14438,13 @@ function bindAdminAi() {
     });
   }
   document.querySelectorAll("[data-del-slip]").forEach(btn => {
-    btn.onclick = () => {
-      state.bankSlips = (state.bankSlips || []).filter(x => x.id !== btn.dataset.delSlip);
-      save(); render();
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteLedgerRow(btn.dataset.delSlip, "slip");
+      toast("已刪除");
+      ui.keepScroll = true;
+      render();
     };
   });
   bindAiBlockReorder();
@@ -14428,7 +14532,7 @@ function bindCashCal() {
   }
   bindCalLedgerRows();
   const cancelEdit = document.getElementById("cancel-book-edit");
-  if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
+  if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; ui.editErrandId = ""; stay(); };
   const form = document.getElementById("book-form");
   const bookDefaults = () => {
     const f = document.getElementById("book-form");
@@ -14502,10 +14606,34 @@ function bindCashCal() {
       };
       if (ui.editBookId) {
         const b = (state.books || []).find(x => x.id === ui.editBookId);
-        if (b) Object.assign(b, payload);
+        if (b) {
+          Object.assign(b, payload);
+          syncErrandFromBook(b);
+        }
         ui.editBookId = null;
+        ui.editErrandId = "";
         ui.calDay = Number(date.slice(8, 10));
         save();
+        try { pushCloud(); } catch {}
+        toast("已儲存變更");
+        stay();
+        return;
+      }
+      if (ui.editErrandId) {
+        const e = (state.errands || []).find(x => x.id === ui.editErrandId);
+        if (e) {
+          e.date = date;
+          e.amount = amount;
+          e.company = payload.company;
+          e.place = payload.bank || e.place;
+          e.note = payload.note;
+          if (payload.note) e.title = payload.note;
+          syncBookFromErrand(e);
+        }
+        ui.editErrandId = "";
+        ui.calDay = Number(date.slice(8, 10));
+        save();
+        try { pushCloud(); } catch {}
         toast("已儲存變更");
         stay();
         return;
@@ -14516,6 +14644,7 @@ function bindCashCal() {
         ui.editSlipId = null;
         ui.calDay = Number(date.slice(8, 10));
         save();
+        try { pushCloud(); } catch {}
         toast("已儲存變更");
         stay();
         return;
