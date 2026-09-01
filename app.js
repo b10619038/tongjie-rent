@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-19-02";
-const APP_EDIT_COUNT = 442;
+const APP_STAMP = "2026-09-01-20-28";
+const APP_EDIT_COUNT = 443;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["測試房改 0000，可重製反覆簽約退租，金流不列入"] },
+  { ver: APP_STAMP, items: ["舊客匯農會／聯邦，新客匯兆豐；繳費頁與合約會跟著換"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -865,11 +865,40 @@ const DEFAULT_COMPANY = {
   email: "jie59056503@gmail.com"
 };
 const COMPANY_BANKS = [
-  { company: "統潔", bank: "聯邦銀行", account: "010100035909", holder: "統潔開發有限公司" },
-  { company: "統潔", bank: "聯邦銀行支存", account: "010300019225", holder: "統潔開發有限公司" },
-  { company: "統潔", bank: "鳳山區農會", account: "61908P7-21-0912150", holder: "統潔開發有限公司" },
-  { company: "信潔", bank: "聯邦銀行", account: "010100034775", holder: "信潔開發有限公司" }
+  { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦" },
+  { company: "統潔", bank: "聯邦銀行支存", code: "803", account: "010300019225", holder: "統潔開發有限公司", key: "聯邦支存" },
+  { company: "統潔", bank: "鳳山區農會", code: "", account: "61908P7-21-0912150", holder: "統潔開發有限公司", key: "農會" },
+  { company: "統潔", bank: "兆豐銀行", code: "017", account: "040-09-03968-6", holder: "統潔開發有限公司", key: "兆豐" },
+  { company: "信潔", bank: "聯邦銀行", code: "803", account: "010100034775", holder: "信潔開發有限公司", key: "聯邦" }
 ];
+const NEW_TENANT_PAY_BANK = "兆豐";
+const NEW_TENANT_SINCE = "2026-06-01";
+function companyBankByKey(key, company) {
+  const k = String(key || "");
+  const co = String(company || "");
+  return COMPANY_BANKS.find(b => b.key === k && (!co || b.company === co))
+    || COMPANY_BANKS.find(b => b.key === k)
+    || COMPANY_BANKS[0];
+}
+function tenantPayBankKey(t, r) {
+  if (t && t.payBank) return t.payBank;
+  if (r && roomIsFactory(r)) return "聯邦";
+  const start = ymdOf((t && t.leaseStart) || "");
+  if (start && start >= NEW_TENANT_SINCE) return NEW_TENANT_PAY_BANK;
+  if (t && t.incoming) return NEW_TENANT_PAY_BANK;
+  return "農會";
+}
+function tenantPayAccounts(t, r) {
+  const firm = (r && r.company) || "統潔";
+  const key = tenantPayBankKey(t, r);
+  const primary = companyBankByKey(key, firm);
+  const extra = [];
+  if (key === "農會") {
+    const fed = companyBankByKey("聯邦", firm);
+    if (fed) extra.push(fed);
+  }
+  return { key, primary, extra };
+}
 const RELATED_ACCOUNTS = [
   { label: "趙海成", bank: "聯邦銀行", account: "010508131129" },
   { label: "趙正賢", bank: "聯邦銀行", account: "010508131187" },
@@ -1200,15 +1229,15 @@ const TENANT_INFO = {
   "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000 },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
-  "7042": { name: "周佳瑩", phone: "0972-986-430／0970-116-205", leaseStart: "2026-06-23", leaseEnd: "2027-06-30", deposit: 14000, note: "115/6/23–6/30 日租金 3,748；7/1 起 1押1租 28,000；水費年 1,800；仲介 14,000；7/2 北銀 14,000" },
+  "7042": { name: "周佳瑩", phone: "0972-986-430／0970-116-205", leaseStart: "2026-06-23", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "115/6/23–6/30 日租金 3,748；7/1 起 1押1租 28,000；水費年 1,800；仲介 14,000；7/2 北銀 14,000" },
   "7051": { note: "空房。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000；進住日租金 4,427" },
-  "7223": { name: "許芸慈", phone: "0900-246-722／0988-881-915", leaseStart: "2026-06-26", leaseEnd: "2027-06-30", deposit: 20000, bankLast5: "57877", note: "115/6/26–6/30 日租金 1,665；7/1～116/6/30 租 10,000 押 20,000 入北銀；水費年 1,800；電儲值 1,000；仲介 10,000" },
+  "7223": { name: "許芸慈", phone: "0900-246-722／0988-881-915", leaseStart: "2026-06-26", leaseEnd: "2027-06-30", deposit: 20000, bankLast5: "57877", payBank: "兆豐", note: "115/6/26–6/30 日租金 1,665；7/1～116/6/30 租 10,000 押 20,000 入北銀；水費年 1,800；電儲值 1,000；仲介 10,000" },
   "7231": { name: "林科承、朱宣羽", phone: "0968-887-012／0982-606-649", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, note: "仲介住商；2押1租 27,000；水費年 3,600（2人）；電儲值 1,000；仲介費 9,000；發票 RT35173310" },
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
-  "7242": { name: "張育慈、周聖傑", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, note: "現約 115/7/1～116/6/30。前任陳智泓於 114/11/30 換房至 7642" },
+  "7242": { name: "張育慈、周聖傑", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "現約 115/7/1～116/6/30。前任陳智泓於 114/11/30 換房至 7642" },
   "7251": { name: "呂佳芸", deposit: 10000 },
   "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", shop: "波波奇夏威夷拌飯" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, note: "押金 14,000；1/6–1/31 日租金 5,850；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
@@ -2342,6 +2371,8 @@ function applyTenantRoster(data) {
       if (info.bankLast5) t.bankLast5 = info.bankLast5;
       if (info.note) t.note = info.note;
       else if (info.shop && !t.note) t.note = "店面：" + info.shop;
+      if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
+      if (info.payBank) t.payBank = info.payBank;
       if (info.shop) {
         room.shop = info.shop;
         if (!t.note || t.note.indexOf("店面") < 0) t.note = (t.note ? t.note + "　" : "") + "店面：" + info.shop;
@@ -6918,6 +6949,7 @@ function addIncomingTenant(roomId, fields) {
     roomId,
     incoming: true,
     former: false,
+    payBank: NEW_TENANT_PAY_BANK,
     leaseStart: fields.leaseStart || "",
     leaseEnd: fields.leaseEnd || "",
     loginPass: String(fields.loginPass || "").trim(),
@@ -7022,7 +7054,7 @@ function handoverBoxHtml(t, r) {
   if (!open) return `<button type="button" class="ghost" data-handover-open="${r.id}" style="margin-top:8px">登記新客</button>`;
   return `<div class="handover-box">
     <div class="label">登記新客</div>
-    <div class="small">${t ? "舊客還在也能先登記。完成退租後自動接手。" : "這間是空房，填完就成為現任租客。"}</div>
+    <div class="small">舊客還在也能先登記。完成退租後自動接手。新客匯款改兆豐銀行。</div>
     <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
     <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
     <label class="field"><span>身分證</span><input data-hf="idno" type="text" /></label>
@@ -7225,6 +7257,7 @@ function studioLeasePaperHtml(t, r) {
   const es = getESign(t);
   const sign = rocPartsOf((es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
   const due = rentDueDay(t);
+  const pay = tenantPayAccounts(t, r).primary || {};
   const ck = leaseCk;
   const u = leaseU;
   const tenantSignRow = names.map((n, i) =>
@@ -7279,8 +7312,8 @@ function studioLeasePaperHtml(t, r) {
       <p class="lease-art">第四條　租金約定及支付</p>
       <p>承租人每月租金為新臺幣（下同）${u(ntd(rent) || "0")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
-      <p>金融機構：${u("兆豐銀行")}，戶名：${u(firm.name || "統潔開發有限公司", "wide")}</p>
-      <p>帳號：${u("040-09-03968-6")}，${ck(false)}其他：　　。</p>
+      <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
+      <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
       <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
       <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(ntd(deposit) || "0")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
       <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
@@ -8275,9 +8308,20 @@ function linePayMessage() {
   const co = companyInfo();
   return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：${co.name}\n銀行：${co.bankCode} ${co.bankName}\n帳號：${co.account}`;
 }
+function payAccountCardHtml(b, title) {
+  if (!b) return "";
+  return `<div class="card card-body slide-left">
+        ${title ? `<div class="small" style="margin-bottom:8px">${escapeHtml(title)}</div>` : ""}
+        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">${escapeHtml(b.holder || "")}</span></div>
+        ${b.code ? `<div class="copy-row"><span class="k">銀行代號</span><span class="v">${escapeHtml(b.code)}</span><button type="button" class="ghost" data-copy="${escapeHtml(b.code)}">複製</button></div>` : ""}
+        <div class="copy-row no-copy"><span class="k">銀行名稱</span><span class="v">${escapeHtml(b.bank || "")}</span></div>
+        <div class="copy-row"><span class="k">帳號</span><span class="v">${escapeHtml(b.account || "")}</span><button type="button" class="ghost" data-copy="${escapeHtml(b.account || "")}">複製</button></div>
+      </div>`;
+}
 function payView() {
   const t = me(); const r = myRoom();
   const paid = !!(t && t.paid);
+  const pack = tenantPayAccounts(t, r);
   const co = companyInfo();
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
@@ -8292,14 +8336,10 @@ function payView() {
         <div style="margin-top:10px"><span class="pay-pill ${paid ? "paid" : "unpaid"}">${paid ? "本月已繳" : "本月未繳"}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
       </div>
-      <div class="section-title"><h2 class="slide-right">${escapeHtml(co.name)}帳戶</h2></div>
-      <div class="card card-body slide-left">
-        <div class="copy-row no-copy"><span class="k">戶名</span><span class="v">${escapeHtml(co.name)}</span></div>
-        <div class="copy-row"><span class="k">銀行代號</span><span class="v">${escapeHtml(co.bankCode)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.bankCode)}">複製</button></div>
-        <div class="copy-row no-copy"><span class="k">銀行名稱</span><span class="v">${escapeHtml(co.bankName)}</span></div>
-        <div class="copy-row"><span class="k">帳號</span><span class="v">${escapeHtml(co.account)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.account)}">複製</button></div>
-        ${co.phone ? `<div class="copy-row"><span class="k">客服電話</span><span class="v">${escapeHtml(co.phone)}</span><button type="button" class="ghost" data-copy="${escapeHtml(co.phone)}">複製</button></div>` : ""}
-      </div>
+      <div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行" : pack.key === "農會" ? "請匯鳳山區農會（舊戶）" : "請匯" + (pack.primary && pack.primary.bank || ""))}
+      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}
+      ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
       <button type="button" class="btn-navy slide-left" id="mark-paid" style="margin-top:14px" ${paid ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
       <button type="button" class="ghost slide-left" id="line-paid" style="margin-top:8px">${t && t.lineNotified ? "再次到官方 LINE 通知" : "到官方 LINE 通知已繳費"}</button>
       <p class="small slide-left" style="margin-top:12px;padding:0 6px">請先轉帳，再點「本月已繳費」。點官方 LINE 會直接打開統潔開發聊天室並帶入繳費文字，傳送即可。</p>
@@ -11583,7 +11623,10 @@ function tenantEntryCardHtml(kind, entry) {
       ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
-      + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0") : ""}
+      + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
+      + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
+          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客）" : k === "兆豐" ? "兆豐（新客）" : "聯邦"}</option>`).join("")}
+        </select></label>` : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, ymdOf(t.paidAt) || (studioMonthPay(r && r.no) && studioMonthPay(r.no).paidOn) || "", "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
@@ -11689,6 +11732,8 @@ function applyLiveTenantEdit(el) {
     const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
     if (t && t.incoming) t.deposit = neu;
     else if (r) r.deposit = neu;
+  } else if (key === "payBank" && t) {
+    t.payBank = val === "兆豐" || val === "聯邦" || val === "農會" ? val : "農會";
   }
   save();
   toast("已套用");
