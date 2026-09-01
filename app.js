@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-17-40";
-const APP_EDIT_COUNT = 435;
+const APP_STAMP = "2026-09-01-17-48";
+const APP_EDIT_COUNT = 436;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["拉皮聯邦租金歸回案場，避免只算到現金與水電"] },
+  { ver: APP_STAMP, items: ["工作助手記退還押金會記入總覽出帳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -6157,9 +6157,18 @@ function cellAccount(v) {
   if (/統潔/.test(s)) return "統潔";
   return "";
 }
+function isDepositRefund(s) {
+  return /退押|退還押金|返還押金|退回押金|退租.{0,8}押金|押金.{0,8}(退還|退回|返還|退)/.test(String(s || ""));
+}
+function amountFromTalk(s) {
+  const t = String(s || "").replace(/,/g, "");
+  const m = t.match(/(\d{3,})(?:\s*元)?/);
+  return m ? Number(m[1]) : 0;
+}
 function cellType(v, amountRaw) {
   const s = String(v || "");
-  if (/收租|收現|收錢|收入|進帳|貸|deposit|\bincome\b/i.test(s) && /收/.test(s)) return "in";
+  if (isDepositRefund(s)) return "out";
+  if (/收租|收現|收錢|收入|進帳|貸|\bincome\b/i.test(s) && /收/.test(s)) return "in";
   if (/出帳|支出|付|借|withdraw|\bout\b|expense|繳費|繳款|帳單|瓦斯|稅/i.test(s)) return "out";
   if (/水費|電費|台電|台水/.test(s) && !/收/.test(s)) return "out";
   if (/進帳|收入|收|貸|deposit|in|income/i.test(s)) return "in";
@@ -6356,7 +6365,7 @@ function parsePassbookOcr(text, defaults) {
       if (rest.length) amount = rest[0];
     }
     let type = defType;
-    if (/支出|提款|轉出|扣款|匯出|手續費|退押|繳費|繳款/.test(line)) type = "out";
+    if (/支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款/.test(line)) type = "out";
     else if (/存入|匯入|轉入|利息|放款|入帳/.test(line)) type = "in";
     rows.push({ date, type, amount, company: defCo, bank: defBank, note: line.slice(0, 48) });
   });
@@ -6509,8 +6518,13 @@ function inferOneFile(file) {
   let pendingBank = false;
   let place = bank;
   let cashType = cellType(blob, amount) || "in";
-  const collecting = /收租|租金|收現|現金|收錢/.test(blob);
-  if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款/.test(blob))) {
+  const collecting = /收租|租金|收現|現金|收錢/.test(blob) && !isDepositRefund(blob);
+  if (isDepositRefund(blob)) {
+    title = "退還押金" + (party ? "　" + party.name : "");
+    cashType = "out";
+    pendingBank = false;
+    if (!company) company = cellAccount(blob) || "統潔";
+  } else if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款/.test(blob))) {
     title = party
       ? ("收" + (bill ? bill.name : "租") + "　" + party.name)
       : (bill ? ("收" + bill.name + "／收現") : "收租／收現");
@@ -10278,7 +10292,33 @@ function rememberAiMemo(text) {
   };
   if (rec.monthDay) rec.date = nextCycleDate(rec);
   saveMemoChange(rec);
+  bookOutFromDepositRefund(text, rec);
   return rec;
+}
+function bookOutFromDepositRefund(text, rec) {
+  if (!isDepositRefund(text || (rec && rec.text))) return null;
+  const amount = amountFromTalk(text) || amountFromTalk(rec && rec.text);
+  if (!amount) return null;
+  if (!state.books) state.books = [];
+  const date = ymdOf((rec && rec.date) || nowStamp());
+  const note = String((rec && rec.text) || text || "退還押金").slice(0, 80);
+  const dup = state.books.some(b => b && b.type === "out" && ymdOf(b.date) === date && Number(b.amount) === amount && /退押|押金/.test(String(b.note || "")));
+  if (dup) return null;
+  const row = {
+    id: "bk-ref-" + (rec && rec.id ? rec.id : Date.now()),
+    type: "out",
+    date,
+    amount,
+    company: cellAccount(text) || "統潔",
+    bank: guessBank(text) || "",
+    note,
+    roomNo: roomNoFromBookNote(text) || roomNoFromBookNote(note),
+    createdAt: nowStamp()
+  };
+  state.books.push(row);
+  try { save(); } catch {}
+  try { pushCloud(); } catch {}
+  return row;
 }
 function openGoogleMemo(m) {
   if (!m) return;
@@ -10382,6 +10422,11 @@ function aiAnswer(q) {
       : rec.monthDay
         ? "每月 " + rec.monthDay + " 日"
         : "之後（還沒指定日期）";
+    if (isDepositRefund(text)) {
+      const amt = amountFromTalk(text);
+      if (amt) return "好，退還押金我記成出帳 " + money(amt) + "。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進本月工作和總覽日曆。";
+      return "好，退還押金算出帳。金額跟我說（例如 19,200）我就記入總覽。\n" + formatAiMemo(rec) + "\n時間：" + when;
+    }
     return "好，我記下了。\n" + formatAiMemo(rec) + "\n時間：" + when + "\n已放進「本月工作」。可點「加到 Google 日曆」寫進你自己的日曆，到期 App 也會通知。";
   }
 
