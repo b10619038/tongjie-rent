@@ -567,7 +567,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .card-body { padding: 16px; }
 .card-body > .label { margin: 0 0 12px; }
 .tenant-search {
-  padding: 8px 10px 8px 14px;
+  padding: 8px 8px 8px 14px;
   border-radius: 16px;
   position: relative;
   z-index: 8;
@@ -576,7 +576,28 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   overflow: visible;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+.tenant-search-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+#tenant-vacant-btn,
+.tenant-chip {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+}
+#tenant-vacant-btn.on,
+.tenant-chip.on {
+  background: var(--navy, #1f3d2b);
+  color: #fff;
+  border-color: transparent;
 }
 .tenant-search input,
 #tenant-search,
@@ -602,18 +623,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   flex: 1;
   min-width: 0;
 }
-#tenant-vacant-btn {
-  width: auto;
-  flex: 0 0 auto;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 700;
-  border-radius: 999px;
-}
-#tenant-vacant-btn.on {
-  background: var(--navy, #1f3d2b);
-  color: #fff;
-  border-color: transparent;
+.tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
 }
 .tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }

@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-00-33";
-const APP_EDIT_COUNT = 477;
+const APP_STAMP = "2026-09-02-00-36";
+const APP_EDIT_COUNT = 478;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,7 +57,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修正畫面一直閃的更新迴圈"] },
+  { ver: APP_STAMP, items: ["套房租客搜尋改成搜尋，可篩空房／已繳／未繳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -743,7 +743,7 @@ function applyAppUpdate() {
   markVersionSeen();
   try { __reloading = true; } catch {}
   wipeClientCache().finally(() => {
-    location.href = "/index.html?v=0028&t=" + Date.now();
+    location.href = "/index.html?v=0029&t=" + Date.now();
   });
 }
 async function pollRemoteBuild() {
@@ -751,7 +751,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0028") return;
+    if (!m || !m[1] || m[1] === "0029") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2000,7 +2000,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {}, calFirm: "" };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, tenantChip: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {}, calFirm: "" };
 (function bootLoginNow() {
   const parse = raw => {
     try { const s = JSON.parse(raw); return s && s.role ? s : null; } catch { return null; }
@@ -12265,7 +12265,16 @@ function tenantMatchesQ(t, r, q, kind) {
   return parts.some(x => normSearch(x).includes(q));
 }
 function tenantSearchPlaceholder(kind) {
-  return kind === "factory" ? "搜尋人名、公司名、牛案場" : "搜尋房號、姓名、電話";
+  return kind === "factory" ? "搜尋人名、公司名、牛案場" : "搜尋";
+}
+function tenantChipOn() {
+  if (ui.tenantChip === "paid" || ui.tenantChip === "unpaid" || ui.tenantChip === "vacant") return ui.tenantChip;
+  return ui.tenantVacant ? "vacant" : "";
+}
+function setTenantChip(v) {
+  const next = tenantChipOn() === v ? "" : v;
+  ui.tenantChip = next;
+  ui.tenantVacant = next === "vacant";
 }
 function vacantStudioRooms() {
   const q = normSearch(ui.tenantQ);
@@ -12311,6 +12320,11 @@ function tenantListOfKind(kind) {
     if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
+    if (!factory) {
+      const chip = tenantChipOn();
+      if (chip === "paid" && !paidThisMonth(t)) return false;
+      if (chip === "unpaid" && paidThisMonth(t)) return false;
+    }
     return true;
   }).sort((a, b) => {
     const da = isDemoTenant(a) ? 0 : 1;
@@ -12327,7 +12341,7 @@ function tenantListOfKind(kind) {
     }
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + (ui.tenantVacant ? "v" : "");
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn();
   if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = list.map(t => t.id);
@@ -12364,7 +12378,7 @@ function tenantEntriesOfKind(kind) {
   return order;
 }
 function tenantListInnerHtml(kind) {
-  if (kind !== "factory" && ui.tenantVacant) {
+  if (kind !== "factory" && tenantChipOn() === "vacant") {
     const rooms = vacantStudioRooms();
     return rooms.length
       ? rooms.map(r => vacantRoomCardHtml(r)).join("")
@@ -12372,7 +12386,7 @@ function tenantListInnerHtml(kind) {
   }
   const entries = tenantEntriesOfKind(kind);
   const q = normSearch(ui.tenantQ);
-  const vacantHits = (kind !== "factory" && q && !ui.tenantVacant)
+  const vacantHits = (kind !== "factory" && q && tenantChipOn() !== "vacant")
     ? vacantStudioRooms().filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
     : [];
   const renews = q ? [] : (state.renewals || []).filter(x => {
@@ -12396,7 +12410,7 @@ function tenantListInnerHtml(kind) {
     }).join("")}</div>` : ""}
     ${entries.length || vacantHits.length
       ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
-      : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
+      : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有本月已繳" : tenantChipOn() === "unpaid" ? "目前沒有本月未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
 }
 function tenantEntryDetailsHtml(kind, entry) {
   const tenants = entry.tenants || [];
@@ -12613,6 +12627,7 @@ function bindHandover() {
         completeHandover(null, room);
         toast("已登記新客，" + (room.no || "") + " 改為在租");
         ui.tenantVacant = false;
+        ui.tenantChip = "";
       } else {
         toast("已登記新客，舊客仍在交接中");
       }
@@ -12724,9 +12739,9 @@ function applyTenantKind(kind) {
   if (hint) hint.textContent = tenantKindHint(next);
   const search = document.getElementById("tenant-search");
   if (search) search.placeholder = tenantSearchPlaceholder(next);
-  const vacBtn = document.getElementById("tenant-vacant-btn");
-  if (vacBtn) vacBtn.style.display = next === "studio" ? "" : "none";
-  if (next === "factory") ui.tenantVacant = false;
+  const chipRow = document.getElementById("tenant-chip-row");
+  if (chipRow) chipRow.style.display = next === "studio" ? "" : "none";
+  if (next === "factory") { ui.tenantVacant = false; ui.tenantChip = ""; }
   const box = document.getElementById("tenant-list");
   if (box) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -12772,16 +12787,17 @@ function bindTenantSearch() {
   inp.addEventListener("keyup", apply);
   inp.addEventListener("input", apply);
   inp.oninput = apply;
-  const vac = document.getElementById("tenant-vacant-btn");
-  if (vac) {
-    vac.onclick = e => {
+  document.querySelectorAll("[data-tenant-chip]").forEach(btn => {
+    btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.tenantVacant = !ui.tenantVacant;
-      vac.classList.toggle("on", ui.tenantVacant);
+      setTenantChip(btn.getAttribute("data-tenant-chip") || "");
+      document.querySelectorAll("[data-tenant-chip]").forEach(b => {
+        b.classList.toggle("on", tenantChipOn() === b.getAttribute("data-tenant-chip"));
+      });
       apply();
     };
-  }
+  });
 }
 function bindAssetSearch() {
   const inp = document.getElementById("asset-search");
@@ -12941,7 +12957,11 @@ function adminTenants() {
     </div>
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
-      ${kind === "studio" ? `<button type="button" class="ghost${ui.tenantVacant ? " on" : ""}" id="tenant-vacant-btn">空房</button>` : ""}
+      ${kind === "studio" ? `<div class="tenant-search-chips" id="tenant-chip-row">
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">空房</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
+      </div>` : ""}
     </div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
