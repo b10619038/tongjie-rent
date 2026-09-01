@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-10-48";
-const APP_EDIT_COUNT = 417;
+const APP_STAMP = "2026-09-01-11-20";
+const APP_EDIT_COUNT = 418;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["工作助手提問改為進去時先收合"] },
+  { ver: APP_STAMP, items: ["總覽上傳可選照片或檔案，月底以簿子對帳且不與跑業務重複"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -5813,9 +5813,17 @@ function monthCashHtml() {
       </div>
       <div class="cal-form-row">
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
-        <label class="upload xls-up">上傳檔案<input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden /></label>
+        <div class="book-up" id="book-up">
+          <button type="button" class="upload" id="book-up-open">上傳</button>
+          <div class="book-up-menu" id="book-up-menu" hidden>
+            <button type="button" id="book-up-photo">上傳照片</button>
+            <button type="button" id="book-up-file">上傳檔案</button>
+          </div>
+          <input id="book-photos" type="file" accept="image/*" multiple hidden />
+          <input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
+        </div>
       </div>
-      <div class="small">可把做好的 Excel 上傳，工作助手會自動辨識並記入本月進出帳與整體報表。</div>
+      <div class="small">月底抽查請上傳簿子照片或 Excel。金流以銀行簿子為準；已在跑業務登錄過的同一天、同金額、同帳戶不會重複計算。</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -5969,41 +5977,204 @@ function mapSheetRows(rows) {
   return out;
 }
 function importBooksFromRows(list, fileName) {
-  if (!list.length) return 0;
+  const r = importPassbookRows(list, "Excel 匯入" + (fileName ? " · " + fileName : ""));
+  return r.added + r.paired;
+}
+function eachMoneyRow(fn) {
+  (state.books || []).forEach(b => {
+    const amount = Number(b.amount) || 0;
+    if (!amount) return;
+    fn({
+      date: ymdOf(b.date), type: b.type === "out" ? "out" : "in", amount,
+      company: normalizeBookCompany(b.company), bank: b.bank || "",
+      pendingBank: !!b.pendingBank, linkedId: b.linkedId || ""
+    });
+  });
+  (state.bankSlips || []).forEach(s => {
+    const amount = Number(s.amount) || 0;
+    if (!amount) return;
+    fn({
+      date: ymdOf(s.date), type: guessCashType(s.note, "in") === "out" ? "out" : "in", amount,
+      company: normalizeBookCompany(s.company || s.note), bank: s.bank || s.place || "",
+      pendingBank: false, linkedId: s.linkedId || ""
+    });
+  });
+}
+function ledgerHasMoney(date, type, amount, company) {
+  const n = Number(amount) || 0;
+  const day = ymdOf(date);
+  if (!n || !day) return false;
+  const want = type === "out" ? "out" : "in";
+  const acct = normalizeBookCompany(company || "統潔");
+  const t0 = new Date(day + "T00:00:00").getTime();
+  let found = false;
+  eachMoneyRow(r => {
+    if (found) return;
+    if (Number(r.amount) !== n || r.type !== want) return;
+    const dt = new Date((r.date || "") + "T00:00:00").getTime();
+    if (!Number.isFinite(dt) || Math.abs(dt - t0) > 2 * 86400000) return;
+    if (!acct || !r.company || r.company === acct || r.company === "現金(保險箱)") found = true;
+  });
+  return found;
+}
+function importPassbookRows(list, sourceLabel) {
+  if (!Array.isArray(list) || !list.length) return { added: 0, skipped: 0, paired: 0 };
   if (!state.books) state.books = [];
-  const seen = new Set(state.books.map(b => [b.date, b.type, b.amount, b.company, b.note || ""].join("|")));
-  let n = 0;
-  let first = "";
+  let added = 0, skipped = 0, paired = 0, first = "";
   list.forEach(row => {
-    const key = [row.date, row.type, row.amount, row.company, row.note || ""].join("|");
-    if (seen.has(key)) return;
-    seen.add(key);
+    const date = ymdOf(row && row.date);
+    const amount = Number(row && row.amount) || 0;
+    const type = row && row.type === "out" ? "out" : "in";
+    const company = normalizeBookCompany((row && row.company) || "統潔");
+    const bank = (row && row.bank) || "";
+    const note = String((row && row.note) || sourceLabel || "簿子對帳").slice(0, 80);
+    if (!date || !amount) return;
+    if (type === "in") {
+      const cash = findPendingCashBook(amount, date);
+      if (cash) {
+        const id = "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6);
+        cash.linkedId = id;
+        cash.pendingBank = false;
+        cash.pairOutId = id + "x";
+        state.books.push({
+          id: id + "x", type: "out", date, amount, company: "現金(保險箱)",
+          bank: "", note: "轉存銀行（對應 " + (cash.note || "現金") + "）", linkedId: cash.id
+        });
+        state.books.push({
+          id, type: "in", date, amount,
+          company: company === "現金(保險箱)" ? "統潔" : company,
+          bank, note: note + "（對應先前現金）", linkedId: cash.id, fromPassbook: true
+        });
+        paired += 1;
+        if (!first) first = date;
+        return;
+      }
+    }
+    if (ledgerHasMoney(date, type, amount, company)) { skipped += 1; return; }
     state.books.push({
       id: "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
-      type: row.type === "out" ? "out" : "in",
-      date: row.date,
-      amount: row.amount,
-      company: normalizeBookCompany(row.company),
-      note: row.note || ("Excel 匯入" + (fileName ? " · " + fileName : "")),
-      roomNo: "",
-      createdAt: nowStamp()
+      type, date, amount, company, bank, note, roomNo: "", createdAt: nowStamp(), fromPassbook: true
     });
-    n++;
-    if (!first) first = row.date;
+    added += 1;
+    if (!first) first = date;
   });
-  if (n && first) {
+  if (first) {
     ui.calYear = Number(first.slice(0, 4));
     ui.calMonth = Number(first.slice(5, 7));
     ui.calDay = Number(first.slice(8, 10));
   }
-  if (n) {
-    pushAiLog({
-      role: "ai",
-      text: "已查看「" + (fileName || "Excel") + "」，辨識 " + n + " 筆記帳並記入本月進出帳與整體報表。"
-    });
+  if (added || paired) {
+    try {
+      pushAiLog({
+        role: "ai",
+        text: "已用銀行簿子對帳（" + sourceLabel + "）：新增 " + added + " 筆"
+          + (paired ? "、對上現金 " + paired + " 筆" : "")
+          + (skipped ? "、已有紀錄跳過 " + skipped + " 筆" : "")
+          + "。金流以簿子為準，不與跑業務重複計算。"
+      });
+    } catch {}
     save();
+    try { pushCloud(); } catch {}
   }
-  return n;
+  return { added, skipped, paired };
+}
+function parsePassbookOcr(text, defaults) {
+  const defCo = (defaults && defaults.company) || "統潔";
+  const defBank = (defaults && defaults.bank) || "";
+  const defType = defaults && defaults.type === "out" ? "out" : "in";
+  const rows = [];
+  String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
+    const line = String(raw || "").trim();
+    if (!line) return;
+    const dm = line.match(/(1[0-2]\d{2}|20\d{2}|\d{2,3})[\/.\-年]?\s*(\d{1,2})[\/.\-月]?\s*(\d{1,2})/);
+    const compact = line.replace(/\s+/g, "").match(/(1[0-2]\d{2})(\d{2})(\d{2})/);
+    let y = 0, m = 0, d = 0;
+    if (dm) { y = Number(String(dm[1]).replace(/\D/g, "")); m = Number(dm[2]); d = Number(dm[3]); }
+    else if (compact) { y = Number(compact[1]); m = Number(compact[2]); d = Number(compact[3]); }
+    if (!y) return;
+    if (y < 200) y += 1911;
+    if (m < 1 || m > 12 || d < 1 || d > 31) return;
+    const date = y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    const nums = [];
+    line.replace(/,/g, "").replace(/(\d{3,})/g, (_, n) => {
+      const v = Number(n);
+      if (v >= 100 && v < 100000000) nums.push(v);
+    });
+    if (!nums.length) return;
+    let amount = nums[0];
+    if (nums.length >= 2) {
+      const max = Math.max.apply(null, nums);
+      const rest = nums.filter(n => n !== max);
+      if (rest.length) amount = rest[0];
+    }
+    let type = defType;
+    if (/支出|提款|轉出|扣款|匯出|手續費|退押|繳費|繳款/.test(line)) type = "out";
+    else if (/存入|匯入|轉入|利息|放款|入帳/.test(line)) type = "in";
+    rows.push({ date, type, amount, company: defCo, bank: defBank, note: line.slice(0, 48) });
+  });
+  return rows;
+}
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("tesseract"));
+    s.onerror = () => reject(new Error("tesseract"));
+    document.head.appendChild(s);
+  });
+}
+async function importPassbookPhotos(files, defaults, after) {
+  const list = [...(files || [])].filter(f => f && !isSheetFile(f));
+  if (!list.length) { toast("請選簿子照片"); return; }
+  toast("正在查看簿子照片，金流以簿子為準…");
+  let rows = [];
+  let worker = null;
+  try {
+    const T = await loadTesseract();
+    if (T && T.createWorker) worker = await T.createWorker("chi_tra+eng");
+  } catch {}
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i];
+    toast("正在看第 " + (i + 1) + "／" + list.length + " 張簿子…");
+    let got = [];
+    if (worker) {
+      try {
+        const ret = await worker.recognize(f);
+        got = parsePassbookOcr((ret && ret.data && ret.data.text) || "", defaults);
+      } catch {}
+    }
+    if (!got.length) {
+      const g = inferOneFile(f);
+      if (g.date && g.amount) {
+        got = [{
+          date: g.date,
+          type: g.cashType === "out" ? "out" : ((defaults && defaults.type) || "in"),
+          amount: g.amount,
+          company: (defaults && defaults.company) || g.company || "統潔",
+          bank: (defaults && defaults.bank) || g.place || "",
+          note: "簿子照片 · " + (f.name || "")
+        }];
+      }
+    } else if (defaults) {
+      got.forEach(r => {
+        if (defaults.company) r.company = defaults.company;
+        if (defaults.bank) r.bank = defaults.bank;
+      });
+    }
+    rows = rows.concat(got);
+  }
+  if (worker) try { await worker.terminate(); } catch {}
+  if (!rows.length) {
+    toast("照片看不出完整日期與金額。請改傳 Excel 或手動新增，以免帳錯。");
+    if (after) after();
+    return;
+  }
+  const r = importPassbookRows(rows, "簿子照片");
+  toast("簿子對帳完成：新增 " + r.added + " 筆"
+    + (r.paired ? "、對上現金 " + r.paired + " 筆" : "")
+    + (r.skipped ? "、已有紀錄不重複 " + r.skipped + " 筆" : ""));
+  if (after) after();
 }
 async function importExcelBooks(file, after) {
   toast("工作助手正在查看 Excel…");
@@ -6026,7 +6197,7 @@ async function importExcelBooks(file, after) {
     }
     const list = mapSheetRows(rows);
     const n = importBooksFromRows(list, name);
-    toast(n ? "工作助手已記入 " + n + " 筆進出帳" : "看不懂這份表，請用日期、進帳／出帳、金額、帳戶、備註欄位");
+    toast(n ? "工作助手已記入 " + n + " 筆進出帳（與跑業務重複的已跳過）" : "看不懂這份表，請用日期、進帳／出帳、金額、帳戶、備註欄位");
     if (after) after();
   } catch (err) {
     toast("Excel 讀取失敗，請另存 CSV 或 .xlsx 再試");
@@ -13947,6 +14118,45 @@ function bindCashCal() {
   const cancelEdit = document.getElementById("cancel-book-edit");
   if (cancelEdit) cancelEdit.onclick = () => { ui.editBookId = null; ui.editSlipId = null; stay(); };
   const form = document.getElementById("book-form");
+  const bookDefaults = () => {
+    const f = document.getElementById("book-form");
+    return {
+      type: f && f.type && f.type.value === "out" ? "out" : "in",
+      company: normalizeBookCompany(f && f.company && f.company.value),
+      bank: (f && f.bank && f.bank.value) || ""
+    };
+  };
+  const upOpen = document.getElementById("book-up-open");
+  const upMenu = document.getElementById("book-up-menu");
+  const upPhoto = document.getElementById("book-up-photo");
+  const upFile = document.getElementById("book-up-file");
+  const photos = document.getElementById("book-photos");
+  if (upOpen && upMenu) {
+    upOpen.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      upMenu.hidden = !upMenu.hidden;
+    };
+  }
+  if (upPhoto && photos) upPhoto.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (upMenu) upMenu.hidden = true;
+    photos.click();
+  };
+  if (upFile) upFile.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (upMenu) upMenu.hidden = true;
+    const x = document.getElementById("book-xls");
+    if (x) x.click();
+  };
+  if (photos) photos.onchange = () => {
+    const files = photos.files;
+    photos.value = "";
+    if (!files || !files.length) return;
+    importPassbookPhotos(files, bookDefaults(), stay);
+  };
   if (form) {
     form.querySelectorAll("input, select").forEach(el => {
       el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };

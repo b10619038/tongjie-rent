@@ -925,6 +925,40 @@ textarea { min-height: 92px; resize: vertical; }
   background: var(--card); color: var(--ink-soft); cursor: pointer; display: block;
   position: relative;
 }
+.book-up {
+  position: relative;
+  min-width: 96px;
+}
+.book-up .upload {
+  padding: 12px 10px;
+  margin: 0;
+}
+.book-up-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 148px;
+  background: var(--card, #fff);
+  color: var(--ink, #1a1a1a);
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
+  padding: 6px;
+  z-index: 12;
+}
+.book-up-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.book-up-menu button:active { background: rgba(0,0,0,.06); }
 input[type="file"] {
   display: none !important;
   width: 0 !important;
