@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-12";
-const APP_EDIT_COUNT = 451;
+const APP_STAMP = "2026-09-01-22-16";
+const APP_EDIT_COUNT = 452;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["九月套房全部先改為本月未繳"] },
+  { ver: APP_STAMP, items: ["每月1號套房自動改為本月未繳，繳了再標記已繳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2212") return;
+    if (m[1] === "2216") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -1211,13 +1211,17 @@ function studioHandover(t, r) {
   return !sameTenantName(t.name, pay.name);
 }
 function applyStudioMonthUnpaid(data) {
+  applyMonthlyUnpaid(data);
+}
+function applyMonthlyUnpaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
-  const ym = "2026-09";
-  if (data.studioUnpaidYm === ym) return;
+  const ym = payYmNow();
+  if (data.rentUnpaidYm === ym) return;
   data.tenants.forEach(t => {
     if (!t || t.demo || t.former || t.incoming) return;
     const room = data.rooms.find(r => r && r.id === t.roomId);
     if (!room || room.demo || room.kind === "factory" || room.status === "office") return;
+    if (t.paid && t.paidYm === ym) return;
     t.paid = false;
     t.paidAt = "";
     t.paidVia = "";
@@ -1227,7 +1231,16 @@ function applyStudioMonthUnpaid(data) {
     t.edited = true;
     t.editedAt = Date.now();
   });
+  data.rentUnpaidYm = ym;
   data.studioUnpaidYm = ym;
+}
+function rollRentMonthIfNeeded() {
+  if (!state) return false;
+  const ym = payYmNow();
+  if (state.rentUnpaidYm === ym) return false;
+  applyMonthlyUnpaid(state);
+  try { save(); } catch {}
+  return true;
 }
 function applyStudioSheetPaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
@@ -15387,6 +15400,7 @@ async function boot() {
       persistLedger(state);
     } catch {}
     const got = await pullCloud();
+    rollRentMonthIfNeeded();
     if (got === false || got === "local-newer" || got === true) await pushCloud();
     restoreUi();
     beatPresence();
@@ -15403,6 +15417,10 @@ async function boot() {
   hideSplash();
   const syncTick = async () => {
     try {
+      if (rollRentMonthIfNeeded()) {
+        ui.keepScroll = true;
+        render();
+      }
       const before = {
         anns: (state.announcements || []).map(a => a.id),
         repairIds: (state.repairs || []).map(r => r.id),
