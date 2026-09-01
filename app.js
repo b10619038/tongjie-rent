@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-48";
-const APP_EDIT_COUNT = 458;
+const APP_STAMP = "2026-09-01-22-52";
+const APP_EDIT_COUNT = 459;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["本月已繳會自動記入總覽日曆"] },
+  { ver: APP_STAMP, items: ["舊客匯款改為統潔鳳山區農會帳戶"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2248") return;
+    if (m[1] === "2252") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -880,7 +880,7 @@ const DEFAULT_COMPANY = {
 const COMPANY_BANKS = [
   { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦" },
   { company: "統潔", bank: "聯邦銀行支存", code: "803", account: "010300019225", holder: "統潔開發有限公司", key: "聯邦支存" },
-  { company: "統潔", bank: "鳳山區農會", code: "", account: "61908P7-21-0912150", holder: "統潔開發有限公司", key: "農會" },
+  { company: "統潔", bank: "鳳山區農會", code: "605", account: "61908P7-21-0912150", holder: "統潔開發有限公司", key: "農會" },
   { company: "統潔", bank: "兆豐銀行", code: "017", account: "040-09-03968-6", holder: "統潔開發有限公司", key: "兆豐" },
   { company: "信潔", bank: "聯邦銀行", code: "803", account: "010100034775", holder: "信潔開發有限公司", key: "聯邦" }
 ];
@@ -894,23 +894,33 @@ function companyBankByKey(key, company) {
     || COMPANY_BANKS[0];
 }
 function tenantPayBankKey(t, r) {
-  if (t && t.payBank) return t.payBank;
-  if (r && roomIsFactory(r)) return "聯邦";
-  const start = ymdOf((t && t.leaseStart) || "");
-  if (start && start >= NEW_TENANT_SINCE) return NEW_TENANT_PAY_BANK;
+  if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
+  const start = ymdOf((t && t.leaseStart) || "");
+  if (start && start >= NEW_TENANT_SINCE) return (t && t.payBank) || NEW_TENANT_PAY_BANK;
+  if (t && t.payBank && t.payBank !== "聯邦") return t.payBank;
   return "農會";
 }
 function tenantPayAccounts(t, r) {
   const firm = (r && r.company) || "統潔";
   const key = tenantPayBankKey(t, r);
-  const primary = companyBankByKey(key, firm);
-  const extra = [];
-  if (key === "農會") {
-    const fed = companyBankByKey("聯邦", firm);
-    if (fed) extra.push(fed);
-  }
-  return { key, primary, extra };
+  const primary = companyBankByKey(key, firm) || companyBankByKey("農會", "統潔");
+  return { key, primary, extra: [] };
+}
+function applyOldTenantPayBank(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  data.tenants.forEach(t => {
+    if (!t || t.former || t.demo || t.incoming) return;
+    const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+    if (!room || room.kind === "factory" || room.status === "office") return;
+    const start = ymdOf(t.leaseStart || "");
+    const isNew = !!(start && start >= NEW_TENANT_SINCE);
+    const next = isNew ? NEW_TENANT_PAY_BANK : "農會";
+    if (t.payBank === next) return;
+    if (isNew && t.payBank && t.payBank !== "聯邦" && t.payBank !== "農會") return;
+    if (!isNew && t.payBank === "兆豐" && t.edited) return;
+    t.payBank = next;
+  });
 }
 const RELATED_ACCOUNTS = [
   { label: "趙海成", bank: "聯邦銀行", account: "010508131129" },
@@ -2127,6 +2137,7 @@ function normalize(data) {
   applyAug31Docs(data);
   applyYushengElec(data);
   applyDueDayPolicy(data);
+  applyOldTenantPayBank(data);
   applyOfficeSubsidyTenant(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -8711,8 +8722,9 @@ function markTenantPaid(via) {
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
-  const co = companyInfo();
-  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：${co.name}\n銀行：${co.bankCode} ${co.bankName}\n帳號：${co.account}`;
+  const pack = tenantPayAccounts(t, r);
+  const b = pack.primary || {};
+  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(r.rent) : ""}\n戶名：${b.holder || "統潔開發有限公司"}\n銀行：${[b.code, b.bank].filter(Boolean).join(" ")}\n帳號：${b.account || ""}`;
 }
 function payAccountCardHtml(b, title) {
   if (!b) return "";
@@ -8743,7 +8755,7 @@ function payView() {
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
       </div>
       <div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
-      ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行" : pack.key === "農會" ? "請匯鳳山區農會（舊戶）" : "請匯" + (pack.primary && pack.primary.bank || ""))}
+      ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
       <button type="button" class="btn-navy slide-left" id="mark-paid" style="margin-top:14px" ${paid ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
@@ -12036,7 +12048,7 @@ function tenantEntryCardHtml(kind, entry) {
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
-          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客）" : k === "兆豐" ? "兆豐（新客）" : "聯邦"}</option>`).join("")}
+          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
         </select></label>` : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
