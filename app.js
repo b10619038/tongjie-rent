@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-20-28";
-const APP_EDIT_COUNT = 443;
+const APP_STAMP = "2026-09-01-20-45";
+const APP_EDIT_COUNT = 444;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["舊客匯農會／聯邦，新客匯兆豐；繳費頁與合約會跟著換"] },
+  { ver: APP_STAMP, items: ["案場圖塊可看統潔／信潔／農會兆豐／個人戶／現金分類"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -1920,7 +1920,7 @@ try { state = loadLocal(); } catch (err) {
   state = structuredClone(SEED);
 }
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
-let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {} };
+let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {}, calFirm: "" };
 (function bootLoginNow() {
   const parse = raw => {
     try { const s = JSON.parse(raw); return s && s.role ? s : null; } catch { return null; }
@@ -5483,12 +5483,14 @@ function rowAccount(row) {
   if (/信潔/.test(c)) return "信潔";
   return "統潔";
 }
-function ledgerMatchesFilter(row, filter, bank) {
+function ledgerMatchesFilter(row, filter, bank, firm) {
   if (row && row.type === "memo") return true;
   const f = String(filter || "").trim();
   if (f) {
     if (isSiteName(f)) {
       if (siteOfLedgerRow(row) !== f) return false;
+      const firmKey = String(firm || "").trim();
+      if (firmKey && rowAccount(row) !== firmKey) return false;
     } else if (f !== "個人戶" && isPersonalKey(f)) {
       const p = personOfAccount(f);
       if (!(p && (personOfAccount(row.company) === p || String(row.company || "").indexOf(p) >= 0))) return false;
@@ -5624,6 +5626,37 @@ function siteStatsMap(start, end) {
 function siteStats(name, start, end) {
   return siteStatsMap(start, end)[name] || { inn: 0, out: 0, net: 0, count: 0 };
 }
+function siteAccountBits(site, start, end) {
+  const rows = collectLedger().filter(x => x && x.type !== "memo" && x.date >= start && x.date <= end && siteOfLedgerRow(x) === site);
+  return REPORT_ACCOUNTS.map(acct => {
+    const hit = rows.filter(x => rowAccount(x) === acct);
+    const inn = hit.filter(x => x.type === "in" && isSiteRentIncome(x)).reduce((s, x) => s + x.amount, 0);
+    const out = hit.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+    const banks = banksOf(acct).map(b => {
+      const bh = hit.filter(x => rowBank(x) === b);
+      const bIn = bh.filter(x => x.type === "in" && isSiteRentIncome(x)).reduce((s, x) => s + x.amount, 0);
+      const bOut = bh.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
+      return { name: b, inn: bIn, out: bOut, net: bIn - bOut };
+    }).filter(b => b.inn || b.out);
+    return { name: acct, inn, out, net: inn - out, banks };
+  }).filter(a => a.inn || a.out);
+}
+function siteAccountChipsHtml(site, start, end) {
+  const bits = siteAccountBits(site, start, end);
+  if (!bits.length) return "";
+  return `<div class="acct-banks site-acct-banks">${bits.map(a => {
+    if (a.banks.length) {
+      return a.banks.map(bk => `<button type="button" class="acct-bank${ui.calFilter === site && ui.calFirm === a.name && ui.calBank === bk.name ? " on" : ""}" data-filter-acct="${escapeHtml(site)}" data-filter-firm="${escapeHtml(a.name)}" data-filter-bank="${escapeHtml(bk.name)}">
+              <span>${escapeHtml(a.name)}　${escapeHtml(bk.name)}</span>
+              <span>收 ${money(bk.inn)}　支 ${money(bk.out)}</span>
+            </button>`).join("");
+    }
+    return `<button type="button" class="acct-bank${ui.calFilter === site && ui.calFirm === a.name && !ui.calBank ? " on" : ""}" data-filter-acct="${escapeHtml(site)}" data-filter-firm="${escapeHtml(a.name)}">
+              <span>${escapeHtml(a.name)}</span>
+              <span>收 ${money(a.inn)}　支 ${money(a.out)}</span>
+            </button>`;
+  }).join("")}</div>`;
+}
 function shiftReport(delta) {
   ensureReportPeriod();
   if (ui.reportMode === "year") ui.reportYear += delta;
@@ -5697,6 +5730,7 @@ function siteReportBodyHtml() {
           <div class="acct-row"><span class="led-in">收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">支出</span><strong class="led-out">${money(s.out)}</strong></div>
           <div class="acct-row"><span>盈餘</span><strong class="${s.net >= 0 ? "led-in" : "led-out"}">${money(s.net)}</strong></div>
+          ${siteAccountChipsHtml(s.name, b.start, b.end)}
         </div>`).join("")}
     </div>
     ${siteRevenueTableHtml()}`;
@@ -5774,8 +5808,8 @@ function applyReportView(view) {
   const next = view === "site" ? "site" : "account";
   if ((ui.reportView || "account") === next) return;
   ui.reportView = next;
-  if (next === "site" && ui.calFilter && !isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; }
-  if (next === "account" && isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; }
+  if (next === "site" && ui.calFilter && !isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; ui.calFirm = ""; }
+  if (next === "account" && isSiteName(ui.calFilter)) { ui.calFilter = ""; ui.calBank = ""; ui.calFirm = ""; }
   ui.keepScroll = true;
   const seg = document.getElementById("report-view-seg");
   if (seg) {
@@ -5816,8 +5850,9 @@ function bindReportBody() {
     card.onclick = e => {
       if (e.target.closest("button")) return;
       const name = card.dataset.filterAcct;
-      ui.calFilter = ui.calFilter === name && !ui.calBank ? "" : name;
+      ui.calFilter = ui.calFilter === name && !ui.calBank && !ui.calFirm ? "" : name;
       ui.calBank = "";
+      ui.calFirm = "";
       ensureCalMonth();
       if (ui.calFilter && !ui.calDay) {
         ui.calDay = 1;
@@ -5831,14 +5866,21 @@ function bindReportBody() {
       });
     };
   });
-  document.querySelectorAll("[data-filter-bank]").forEach(btn => {
+  document.querySelectorAll("[data-filter-bank], .acct-bank[data-filter-firm]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       const name = btn.dataset.filterAcct;
-      const bank = btn.dataset.filterBank;
-      if (ui.calFilter === name && ui.calBank === bank) ui.calBank = "";
-      else { ui.calFilter = name; ui.calBank = bank; }
+      const bank = btn.dataset.filterBank || "";
+      const firm = btn.dataset.filterFirm || "";
+      if (ui.calFilter === name && ui.calBank === bank && (ui.calFirm || "") === firm) {
+        ui.calBank = "";
+        ui.calFirm = "";
+      } else {
+        ui.calFilter = name;
+        ui.calBank = bank;
+        ui.calFirm = firm;
+      }
       ensureCalMonth();
       if (ui.calFilter && !ui.calDay) {
         ui.calDay = 1;
@@ -5954,7 +5996,7 @@ function refreshCalSearchLive() {
   const key = `${y}-${String(m).padStart(2, "0")}`;
   const q = normSearch(ui.calQ);
   const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
-  const rows = allRows.filter(x => ledgerMatchesFilter(x, ui.calFilter || "", ui.calBank) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const rows = allRows.filter(x => ledgerMatchesFilter(x, ui.calFilter || "", ui.calBank, ui.calFirm) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
   const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
   document.querySelectorAll("[data-cal-day]").forEach(btn => {
     const d = Number(btn.dataset.calDay);
@@ -6082,7 +6124,7 @@ function monthCashHtml() {
   const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
   const filter = ui.calFilter || "";
   const q = normSearch(ui.calQ);
-  const rows = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const rows = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank, ui.calFirm) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
   const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
   const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
@@ -6113,7 +6155,7 @@ function monthCashHtml() {
     <div class="row">
       <div>
         <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-        <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
+        <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calFirm ? " · " + escapeHtml(ui.calFirm) : "") + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
       </div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
@@ -14800,6 +14842,7 @@ function bindCashCal() {
     e.preventDefault();
     ui.calFilter = "";
     ui.calBank = "";
+    ui.calFirm = "";
     stay();
   };
   const allMonth = document.getElementById("cal-month-all");

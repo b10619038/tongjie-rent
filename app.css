@@ -1983,6 +1983,8 @@ body.rev-zooming { overflow: hidden; }
   cursor: pointer;
 }
 .acct-banks { display: grid; gap: 4px; margin: 8px 0 4px; }
+.site-acct-banks { margin-top: 10px; }
+.site-acct-banks .acct-bank span:first-child { white-space: nowrap; }
 .acct-bank {
   width: 100%; margin: 0; border: 0; border-radius: 10px;
   background: rgba(255,255,255,.55); color: inherit;
