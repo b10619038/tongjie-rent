@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-22-20";
-const APP_EDIT_COUNT = 453;
+const APP_STAMP = "2026-09-01-22-26";
+const APP_EDIT_COUNT = 454;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["補上套房 7221 張智傑"] },
+  { ver: APP_STAMP, items: ["7221 張智傑可搜尋到，不再被空房蓋掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -795,7 +795,7 @@ async function pollRemoteBuild() {
     const txt = await fetch("index.html?t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1]) return;
-    if (m[1] === "2220") return;
+    if (m[1] === "2226") return;
     persistLogin();
     persistUi();
     location.reload();
@@ -2491,38 +2491,42 @@ function ensureStudioTenant(data, no) {
       data.rooms.push(room);
     }
   }
-  if (!room) return;
-  let t = data.tenants.find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming);
-  if (t && t.name && t.edited && !sameTenantName(t.name, info.name)) return;
+  if (!room) {
+    room = { id: "r" + no, no: String(no), title: "套房", kind: "studio", status: "rented", rent: studioRentOf(no) || 7000, deposit: 14000 };
+    data.rooms.push(room);
+  }
+  room.no = String(no);
+  let t = data.tenants.find(x => x && (x.id === "t" + no || x.roomId === room.id) && !x.demo && !x.incoming && !x.former);
+  if (!t) t = data.tenants.find(x => x && !x.demo && !x.incoming && sameTenantName(x.name, info.name) && (x.roomId === room.id || x.id === "t" + no || x.former));
+  if (t && t.former && sameTenantName(t.name, info.name)) t.former = false;
   if (!t) {
     t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false };
     data.tenants.push(t);
   }
+  t.id = t.id || ("t" + no);
+  t.roomId = room.id;
   t.name = info.name;
-  if (info.phone && !t.phone) t.phone = info.phone;
-  if (info.leaseStart && !t.leaseStart) t.leaseStart = info.leaseStart;
-  if (info.leaseEnd && !t.leaseEnd) t.leaseEnd = info.leaseEnd;
-  if (info.note && !t.note) t.note = info.note;
-  if (info.bankLast5 && !t.bankLast5) t.bankLast5 = info.bankLast5;
-  if (!t.payBank) t.payBank = tenantPayBankKey(t, room) || "農會";
+  t.phone = info.phone || t.phone || "";
+  t.leaseStart = info.leaseStart || t.leaseStart || "";
+  t.leaseEnd = info.leaseEnd || t.leaseEnd || "";
+  t.note = info.note || t.note || "";
+  if (info.bankLast5) t.bankLast5 = t.bankLast5 || info.bankLast5;
+  t.payBank = t.payBank || tenantPayBankKey(t, room) || "農會";
   t.former = false;
   t.incoming = false;
+  t.placeholder = false;
   t.dueDay = t.dueDay || 1;
-  if (!t.paidYm || t.paidYm !== payYmNow()) {
-    t.paid = false;
-    t.paidAt = "";
-    t.paidVia = "";
-    t.paidYm = payYmNow();
-    t.paidTouched = true;
-  }
+  t.paid = false;
+  t.paidAt = "";
+  t.paidVia = "";
+  t.paidYm = payYmNow();
+  t.paidTouched = true;
   t.edited = true;
   t.editedAt = Date.now();
   room.tenantId = t.id;
-  room.kind = room.kind || "studio";
-  if (info.deposit != null) room.deposit = info.deposit;
-  else if (!Number(room.deposit)) room.deposit = studioDepositOf(studioRentOf(no) || 7000);
-  const rent = studioRentOf(no);
-  if (rent != null) room.rent = rent;
+  room.kind = "studio";
+  room.rent = studioRentOf(no) || 7000;
+  room.deposit = info.deposit != null ? info.deposit : 14000;
   if (room.status !== "repair") room.status = "rented";
   room.edited = true;
   room.editedAt = Date.now();
@@ -2784,6 +2788,7 @@ async function pullCloud() {
       applyJuly115Books(state);
       applyAug31Docs(state);
       applyYushengElec(state);
+      ensureStudioTenant(state, "7221");
       persistLedger(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
@@ -2821,6 +2826,7 @@ async function pullCloud() {
     stripDevLogsFromState();
     try { ensureCycleJobs(state); } catch {}
     try { ensureDevCycleJobs(state); } catch {}
+    ensureStudioTenant(state, "7221");
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
@@ -11736,7 +11742,7 @@ function tenantMatchesQ(t, r, q, kind) {
     const parts = [t.name, t.contactName, r && r.group, r && r.no];
     return parts.some(x => normSearch(x).includes(q));
   }
-  const parts = [t.name, t.phone, t.contactName, r && r.no];
+  const parts = [t.name, t.phone, t.contactName, t.id, r && r.no, r && r.id];
   const pay = r && studioMonthPay(r.no);
   if (pay && pay.name) parts.push(pay.name);
   formerTenantsOf(r && r.id).forEach(f => parts.push(f.name));
@@ -11836,6 +11842,9 @@ function tenantListInnerHtml(kind) {
   }
   const entries = tenantEntriesOfKind(kind);
   const q = normSearch(ui.tenantQ);
+  const vacantHits = (kind !== "factory" && q && !ui.tenantVacant)
+    ? vacantStudioRooms().filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
+    : [];
   const renews = q ? [] : (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
     const room = state.rooms.find(r => r.id === x.roomId);
@@ -11855,7 +11864,9 @@ function tenantListInnerHtml(kind) {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${entries.length ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
+    ${entries.length || vacantHits.length
+      ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
+      : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`}`;
 }
 function tenantEntryCardHtml(kind, entry) {
   const tenants = entry.tenants || [];
