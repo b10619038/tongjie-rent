@@ -16,8 +16,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-01-18-24";
-const APP_EDIT_COUNT = 438;
+const APP_STAMP = "2026-09-01-18-31";
+const APP_EDIT_COUNT = 439;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -54,7 +54,7 @@ const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260831-1710";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["案場收入改為本期租金，對上員工藍字；牛7拉皮不再算進牛8"] },
+  { ver: APP_STAMP, items: ["案場總覽含牛10套房，總營收一併計算"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -5585,10 +5585,11 @@ function siteReportBodyHtml() {
       <div><span class="k">總支出</span><strong class="led-out">${money(totOut)}</strong></div>
       <div><span class="k">總盈餘</span><strong class="${totNet >= 0 ? "led-in" : "led-out"}">${money(totNet)}</strong></div>
     </div>
+    <div class="small" style="margin:6px 2px 10px">含各牛案場、拉皮、大樹，以及牛10 文龍東路套房。</div>
     <div class="acct-grid site-grid">
       ${stats.map(s => `
         <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
-          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="k">${s.name === "牛10" ? "牛10　套房" : escapeHtml(s.name)}</div>
           <div class="small">${escapeHtml(siteStreet(s.name))}</div>
           <div class="acct-row"><span class="led-in">收入</span><strong class="led-in">${money(s.inn)}</strong></div>
           <div class="acct-row"><span class="led-out">支出</span><strong class="led-out">${money(s.out)}</strong></div>
