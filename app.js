@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-08";
-const APP_EDIT_COUNT = 511;
+const APP_STAMP = "2026-09-02-18-10";
+const APP_EDIT_COUNT = 512;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,11 +57,11 @@ function isDemoRepair(r) {
   return false;
 }
 const TENANT_ROSTER_VER = "20260902-1455";
-const FACTORY_ROSTER_VER = "20260902-1245";
+const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["莊記綠豆鑽每年10/1依合約自動調租金，發票跟著變"] },
+  { ver: APP_STAMP, items: ["牛5房號改成牛5-97-XX，對齊合約門牌"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0062") return;
+    if (!m || !m[1] || m[1] === "0063") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1389,16 +1389,16 @@ const FACTORY_GROUPS = [
     { no: "牛3-97-65B", unit: "97-65B號", manager: "賢" }
   ]},
   { group: "牛5", street: "鳳仁路", company: "信潔", city: "高雄市鳳山區鳳仁路", items: [
-    { no: "牛5-66", unit: "97-66號", manager: "" },
-    { no: "牛5-67", unit: "97-67號", manager: "" },
-    { no: "牛5-68", unit: "97-68號", manager: "" },
-    { no: "牛5-69", unit: "97-69號", manager: "" },
-    { no: "牛5-70", unit: "97-70號", manager: "" },
-    { no: "牛5-71", unit: "97-71號", manager: "" },
-    { no: "牛5-72", unit: "97-72號", manager: "" },
-    { no: "牛5-73", unit: "97-73號", manager: "" },
-    { no: "牛5-75", unit: "97-75號", manager: "" },
-    { no: "牛5-76", unit: "97-76號", manager: "" }
+    { no: "牛5-97-66", unit: "97-66號", manager: "" },
+    { no: "牛5-97-67", unit: "97-67號", manager: "" },
+    { no: "牛5-97-68", unit: "97-68號", manager: "" },
+    { no: "牛5-97-69", unit: "97-69號", manager: "" },
+    { no: "牛5-97-70", unit: "97-70號", manager: "" },
+    { no: "牛5-97-71", unit: "97-71號", manager: "" },
+    { no: "牛5-97-72", unit: "97-72號", manager: "" },
+    { no: "牛5-97-73", unit: "97-73號", manager: "" },
+    { no: "牛5-97-75", unit: "97-75號", manager: "" },
+    { no: "牛5-97-76", unit: "97-76號", manager: "" }
   ]},
   { group: "牛6", street: "鳳仁路", company: "信潔", city: "高雄市鳳山區鳳仁路", items: [
     { no: "牛6-55", unit: "93-55號", manager: "" },
@@ -1446,12 +1446,12 @@ const FACTORY_TENANT_INFO = {
   "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之63。個人戶。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
   "牛3-97-65A": { name: "羅美芳", taxId: "", contactName: "陳先生", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之65號（A）。個人戶。每月 $12,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
   "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月5日現金交給趙正賢。" },
-  "牛5-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
-  "牛5-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-67。含稅 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
-  "牛5-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-68。含 5% 稅金 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
-  "牛5-69": { name: "財團法人喜憨兒社會福利基金會", taxId: "92070381", contactName: "蕭淑珍", idNo: "S201070693", phone: "07-726-6096／07-726-6096#51／0953-579-753", leaseStart: "2024-10-01", leaseEnd: "2027-09-30", rentUntaxed: 40000, rent: 42000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-69。含稅 $42,000。一年支票 12 張，每月1日兌現。蔡佳容 0953-579-753。發票蓋趙海成私章。隔兩個月記水錶。" },
-  "牛5-70": { name: "第一肉品有限公司", taxId: "54776985", contactName: "曾志賢", phone: "0981-239-833", leaseStart: "2022-07-01", leaseEnd: "2027-06-30", rentUntaxed: 40000, rent: 42000, deposit: 80000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-70。含稅 $42,000。一年支票 12 張，每月1日兌現。111/6/6 入押金。" },
-  "牛5-71": { name: "莊記綠豆鑽食品有限公司", taxId: "59241856", contactName: "莊俊一", phone: "07-550-9181／0953-252-333", leaseStart: "2025-10-01", leaseEnd: "2032-09-30", rentUntaxed: 40000, rent: 42000, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", rentSchedule: [
+  "牛5-97-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
+  "牛5-97-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-67。含稅 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
+  "牛5-97-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-68。含 5% 稅金 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
+  "牛5-97-69": { name: "財團法人喜憨兒社會福利基金會", taxId: "92070381", contactName: "蕭淑珍", idNo: "S201070693", phone: "07-726-6096／07-726-6096#51／0953-579-753", leaseStart: "2024-10-01", leaseEnd: "2027-09-30", rentUntaxed: 40000, rent: 42000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-69。含稅 $42,000。一年支票 12 張，每月1日兌現。蔡佳容 0953-579-753。發票蓋趙海成私章。隔兩個月記水錶。" },
+  "牛5-97-70": { name: "第一肉品有限公司", taxId: "54776985", contactName: "曾志賢", phone: "0981-239-833", leaseStart: "2022-07-01", leaseEnd: "2027-06-30", rentUntaxed: 40000, rent: 42000, deposit: 80000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-70。含稅 $42,000。一年支票 12 張，每月1日兌現。111/6/6 入押金。" },
+  "牛5-97-71": { name: "莊記綠豆鑽食品有限公司", taxId: "59241856", contactName: "莊俊一", phone: "07-550-9181／0953-252-333", leaseStart: "2025-10-01", leaseEnd: "2032-09-30", rentUntaxed: 40000, rent: 42000, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", rentSchedule: [
     { from: "2025-10-01", untaxed: 40000 },
     { from: "2026-10-01", untaxed: 41500 },
     { from: "2027-10-01", untaxed: 43000 },
@@ -1460,10 +1460,10 @@ const FACTORY_TENANT_INFO = {
     { from: "2030-10-01", untaxed: 48000 },
     { from: "2031-10-01", untaxed: 50000 }
   ], note: "97-71。未稅依合約每年10/1調整：114/10/1 $40,000；115/10/1 $41,500；116/10/1 $43,000；117/10/1 $44,500；118/10/1 $46,000；119/10/1 $48,000；120/10/1 $50,000。發票自動帶入當期未稅＋5%。隔兩個月記水錶；收垃圾桶費。" },
-  "牛5-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 40000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-72。含稅 $42,000。每月1日匯入。限汽車保養廠使用。" },
-  "牛5-73": { name: "映升企業社", taxId: "87647478", contactName: "陳彥宇、陳德輝", phone: "0933-338-190", leaseStart: "2025-01-01", leaseEnd: "2026-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", invoiceAddr: "830 高雄市鳳山區中山路19巷14號", note: "97-73。未稅 $40,000，含稅 $42,000。每月1日匯聯邦高雄 信潔 010100034775。每月寄發票。合約至 115/12/31。" },
-  "牛5-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 44100, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", note: "97-75。含稅 $44,100。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
-  "牛5-76": { name: "陳雅琪", taxId: "", contactName: "陳雅琪", idNo: "S223579953", phone: "0925-693-553", leaseStart: "2025-01-01", leaseEnd: "2027-03-31", rentUntaxed: 36190, rent: 38000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-76。個人戶。含稅 $38,000。每月1日匯聯邦高雄 信潔 010100034775。114/8/11 入押金。" },
+  "牛5-97-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 40000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-72。含稅 $42,000。每月1日匯入。限汽車保養廠使用。" },
+  "牛5-97-73": { name: "映升企業社", taxId: "87647478", contactName: "陳彥宇、陳德輝", phone: "0933-338-190", leaseStart: "2025-01-01", leaseEnd: "2026-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", invoiceAddr: "830 高雄市鳳山區中山路19巷14號", note: "97-73。未稅 $40,000，含稅 $42,000。每月1日匯聯邦高雄 信潔 010100034775。每月寄發票。合約至 115/12/31。" },
+  "牛5-97-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 44100, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", note: "97-75。含稅 $44,100。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
+  "牛5-97-76": { name: "陳雅琪", taxId: "", contactName: "陳雅琪", idNo: "S223579953", phone: "0925-693-553", leaseStart: "2025-01-01", leaseEnd: "2027-03-31", rentUntaxed: 36190, rent: 38000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-76。個人戶。含稅 $38,000。每月1日匯聯邦高雄 信潔 010100034775。114/8/11 入押金。" },
   "牛6-55": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 155000, rent: 162750, deposit: 310000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-55／56／57 同約共三戶。未稅 $155,000＋稅 $7,750＝含稅 $162,750。每月1日匯聯邦高雄 信潔 010100034775。113/4/29 入 $220,000；114/5/16 入 $110,000。" },
   "牛6-56": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
   "牛6-57": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
@@ -2160,6 +2160,7 @@ function normalize(data) {
   });
   applyTenantRoster(data);
   data.tenantRosterVer = TENANT_ROSTER_VER;
+  migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
     applyFactoryRoster(data);
     data.factoryRosterVer = FACTORY_ROSTER_VER;
@@ -2219,16 +2220,16 @@ function roomNoFromBookNote(note) {
     [/97-63|鳳仁63|卓建忠/, "牛3-97-63"],
     [/97-65A|65A|羅美芳/, "牛3-97-65A"],
     [/97-65B|65B|蔡聖鴻/, "牛3-97-65B"],
-    [/97-66|旭瑞/, "牛5-66"],
-    [/97-67|弘翔/, "牛5-67"],
-    [/97-68|樂芯/, "牛5-68"],
-    [/97-69|喜憨兒/, "牛5-69"],
-    [/97-70|第一肉品/, "牛5-70"],
-    [/97-71|莊記/, "牛5-71"],
-    [/97-72|萬事盈/, "牛5-72"],
-    [/97-73|映升/, "牛5-73"],
-    [/97-75|力胤/, "牛5-75"],
-    [/97-76|陳雅琪/, "牛5-76"],
+    [/97-66|旭瑞/, "牛5-97-66"],
+    [/97-67|弘翔/, "牛5-97-67"],
+    [/97-68|樂芯/, "牛5-97-68"],
+    [/97-69|喜憨兒/, "牛5-97-69"],
+    [/97-70|第一肉品/, "牛5-97-70"],
+    [/97-71|莊記/, "牛5-97-71"],
+    [/97-72|萬事盈/, "牛5-97-72"],
+    [/97-73|映升/, "牛5-97-73"],
+    [/97-75|力胤/, "牛5-97-75"],
+    [/97-76|陳雅琪/, "牛5-97-76"],
     [/誠家/, "牛6-55"],
     [/牛6.*鈺晟|93-56|93-57|93-60.*鈺晟/, "牛6-60"],
     [/黃儒清/, "牛6-59"],
@@ -2430,6 +2431,62 @@ function ensureCheckout6832(data) {
     updatedAt: "2026-08-19 12:00",
     importTag: "aug31docs"
   });
+}
+function migrateNiu5Nos(data) {
+  if (!data || data.niu5NoVer === "20260902-niu5-97") return;
+  const mapNo = no => {
+    const m = String(no || "").match(/^牛5-(\d{2})$/);
+    return m ? "牛5-97-" + m[1] : "";
+  };
+  const idOf = no => "f" + String(no).replace(/[^\w\u4e00-\u9fff-]/g, "");
+  const idMap = {};
+  const tidMap = {};
+  (data.rooms || []).forEach(r => {
+    if (!r) return;
+    const next = mapNo(r.no);
+    if (!next) return;
+    const oldId = r.id;
+    r.no = next;
+    r.id = idOf(next);
+    if (oldId && oldId !== r.id) idMap[oldId] = r.id;
+    const tm = String(r.tenantId || "").match(/^tf-牛5-(\d{2})$/);
+    if (tm) {
+      const nid = "tf-牛5-97-" + tm[1];
+      tidMap[r.tenantId] = nid;
+      r.tenantId = nid;
+    }
+  });
+  (data.tenants || []).forEach(t => {
+    if (!t) return;
+    const tm = String(t.id || "").match(/^tf-牛5-(\d{2})$/);
+    if (tm) {
+      const nid = "tf-牛5-97-" + tm[1];
+      tidMap[t.id] = nid;
+      t.id = nid;
+    }
+    if (idMap[t.roomId]) t.roomId = idMap[t.roomId];
+  });
+  ["repairs", "notices", "announcements", "renewals"].forEach(k => {
+    (data[k] || []).forEach(x => {
+      if (!x) return;
+      if (x.roomId && idMap[x.roomId]) x.roomId = idMap[x.roomId];
+      if (x.tenantId && tidMap[x.tenantId]) x.tenantId = tidMap[x.tenantId];
+    });
+  });
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    const n = mapNo(b.roomNo);
+    if (n) b.roomNo = n;
+    if (b.linkedTenantId && tidMap[b.linkedTenantId]) b.linkedTenantId = tidMap[b.linkedTenantId];
+  });
+  if (data.paidMarks) {
+    const next = {};
+    Object.keys(data.paidMarks).forEach(id => {
+      next[tidMap[id] || id] = data.paidMarks[id];
+    });
+    data.paidMarks = next;
+  }
+  data.niu5NoVer = "20260902-niu5-97";
 }
 function applyFactoryRoster(data) {
   factoryRooms().forEach(seedRoom => {
