@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-08";
-const APP_EDIT_COUNT = 560;
+const APP_STAMP = "2026-09-03-00-12";
+const APP_EDIT_COUNT = 561;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約時段取消上午9點，改為下午5點"] },
+  { ver: APP_STAMP, items: ["同一人重複測試不會出現兩筆前任"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0111") return;
+    if (!m || !m[1] || m[1] === "0112") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1304,8 +1304,18 @@ function sameTenantName(a, b) {
   if (!ka || !kb) return false;
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
-function formerTenantsOf(roomId) {
-  return (state.tenants || []).filter(x => x && x.roomId === roomId && x.former && String(x.name || "").trim());
+function formerTenantsOf(roomId, currentName) {
+  const list = (state.tenants || []).filter(x => x && x.roomId === roomId && x.former && String(x.name || "").trim());
+  const byName = new Map();
+  list.forEach(x => {
+    const k = personKey(x.name);
+    if (!k) return;
+    const cur = byName.get(k);
+    if (!cur || String(x.leftOn || "") > String(cur.leftOn || "")) byName.set(k, x);
+  });
+  let out = [...byName.values()].sort((a, b) => String(b.leftOn || "").localeCompare(String(a.leftOn || "")));
+  if (currentName) out = out.filter(x => !sameTenantName(x.name, currentName));
+  return out;
 }
 function studioMonthPay(no) {
   return STUDIO_MONTH_PAY[String(no || "")] || null;
@@ -14549,7 +14559,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         </select></label>` : ""}
       ${kind !== "factory" ? teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date") : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
-      ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
+      ${kind !== "factory" ? formerTenantsOf(r && r.id, t && t.name).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "尚未設定") : ""}
       ${(() => {
