@@ -875,7 +875,7 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   user-select: none; -webkit-user-select: none; -webkit-user-drag: none;
 }
 
-.gate { min-height: 100vh; padding: 28px 22px 40px; }
+.gate { min-height: 100vh; padding: 28px 22px calc(132px + var(--safe-b, 0px)); }
 .logo { font-size: 13px; letter-spacing: 0.28em; color: var(--muted); display: block; margin: 20px 0 10px; }
 .gate h1 { font-size: 28px; margin: 10px 0 12px; line-height: 1.35; }
 .gate .lead { color: var(--ink-soft); margin: 0 0 22px; line-height: 1.6; }

@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-22-18";
-const APP_EDIT_COUNT = 542;
+const APP_STAMP = "2026-09-02-22-20";
+const APP_EDIT_COUNT = 543;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["合約起始日不可早於今天，有現任則從該約截止後起算"] },
+  { ver: APP_STAMP, items: ["我要入住表單底部留白，截止日與送出鈕不被擋住"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0093") return;
+    if (!m || !m[1] || m[1] === "0094") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -10414,7 +10414,7 @@ function moveInView() {
       <label class="field"><span>截止日</span><input id="move-end" type="date" min="${escapeHtml(d.leaseStart || minStart)}" value="${escapeHtml(d.leaseEnd || cont.end)}" /></label>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-    <button class="btn-navy slide-left" id="move-submit" type="button" style="margin-top:16px">送出並進入預覽</button>
+    <button class="btn-navy slide-left" id="move-submit" type="button" style="margin-top:16px;margin-bottom:28px">送出並進入預覽</button>
   </div>`;
 }
 function gateView() {
