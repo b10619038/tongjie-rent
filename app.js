@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-14";
-const APP_EDIT_COUNT = 495;
+const APP_STAMP = "2026-09-02-16-34";
+const APP_EDIT_COUNT = 496;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票總覽左側新增匯款日期，原欄改發票日期"] },
+  { ver: APP_STAMP, items: ["租客圖卡新增實際匯款日，7041 為 8/31"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0046") return;
+    if (!m || !m[1] || m[1] === "0047") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1210,6 +1210,19 @@ const STUDIO_MONTH_PAY = {
   "7651": { name: "吳慧青", paidOn: "2026-07-03", amount: 5000 },
   "7652": { name: "", paidOn: "", amount: 0 }
 };
+const STUDIO_REMIT_ON = { "7041": "2026-08-31" };
+const STUDIO_REMIT_VER = "remit-7041-0831";
+function applyStudioRemitOn(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  Object.keys(STUDIO_REMIT_ON).forEach(no => {
+    const room = (data.rooms || []).find(r => String(r.no) === String(no));
+    if (!room) return;
+    const t = data.tenants.find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming);
+    if (!t) return;
+    if (!t.remitOn || data.studioRemitVer !== STUDIO_REMIT_VER) t.remitOn = STUDIO_REMIT_ON[no];
+  });
+  data.studioRemitVer = STUDIO_REMIT_VER;
+}
 function personKey(s) {
   return String(s || "").replace(/[、，,／/\s]/g, "").replace(/紘/g, "紜");
 }
@@ -2164,6 +2177,7 @@ function normalize(data) {
   applyDueDayPolicy(data);
   applyOldTenantPayBank(data);
   applyTenantRoster(data);
+  applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -2800,7 +2814,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -2841,6 +2855,7 @@ function mergePaidFields(out, a, b) {
   out.paidTouched = true;
   out.paidYm = ym;
   out.lineNotified = !!src.lineNotified;
+  if (src.remitOn || out.remitOn) out.remitOn = src.remitOn || out.remitOn;
   return out;
 }
 function mergePaidMarkMaps(a, b) {
@@ -2990,6 +3005,7 @@ function ingestPaidCloud(raw) {
         t.paidYm = src.paidYm || payYmNow();
         t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
         t.paidVia = src.paid ? (src.paidVia || "") : "";
+        if (src.remitOn) t.remitOn = src.remitOn;
         if (src.editedAt) t.editedAt = src.editedAt;
       });
     }
@@ -3017,6 +3033,7 @@ function moneyCloudBlob() {
       paidTouched: !!t.paidTouched,
       paidAt: t.paidAt || "",
       paidVia: t.paidVia || "",
+      remitOn: t.remitOn || "",
       editedAt: Number(t.editedAt) || 0,
       name: t.name || "",
       roomId: t.roomId || ""
@@ -5171,6 +5188,7 @@ function toggleTenantPaid(id) {
     x.paidYm = ym;
     if (nextPaid) {
       if (!x.paidAt || ymdOf(x.paidAt).slice(0, 7) !== ym) x.paidAt = nowStamp();
+      if (!x.remitOn) x.remitOn = ymdOf(nowStamp());
       if (!x.paidVia) x.paidVia = "app";
       stampPaidMark(state, x);
       upsertRentAutoBookOn(state, x);
@@ -6121,7 +6139,7 @@ function invoiceOverviewRows() {
     if (!t && room.status === "vacant") return;
     const tenant = t || info;
     const paid = !!(t && paidThisMonth(t));
-    const remitYmd = paid ? (ymdOf(t.paidAt) || "") : "";
+    const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
     const invoiceYmd = paid ? ((t.paidYm || payYmNow()) + "-01") : "";
     const bankKey = tenantPayBankKey(tenant, room);
     const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
@@ -12902,6 +12920,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
           ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
         </select></label>` : ""}
+      ${kind !== "factory" ? teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date") : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
@@ -12997,7 +13016,9 @@ function applyLiveTenantEdit(el) {
   else if (key === "bankLast5" && t) t.bankLast5 = val;
   else if (key === "leaseStart" && t) t.leaseStart = val;
   else if (key === "leaseEnd" && t) t.leaseEnd = val;
-  else if (key === "paidOn" && t) {
+  else if (key === "remitOn" && t) {
+    t.remitOn = val || "";
+  } else if (key === "paidOn" && t) {
     t.paidAt = val ? (val + " 10:00") : "";
     t.paid = !!val;
     t.paidTouched = true;
