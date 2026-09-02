@@ -2,6 +2,7 @@ const KEY = "tongjie_rent_app_v8";
 const LEDGER_KEY = "tongjie_ledger_v1";
 const ANN_MEDIA_KEY = "tongjie_ann_media_v1";
 const REPAIR_MEDIA_KEY = "tongjie_repair_media_v1";
+const REPAIR_STAT_KEY = "tongjie_repair_stat_v1";
 const PAID_KEY = "tongjie_paid_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
@@ -20,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-32";
-const APP_EDIT_COUNT = 506;
+const APP_STAMP = "2026-09-02-17-36";
+const APP_EDIT_COUNT = 507;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -60,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客搜尋也有空廠房、已繳、未繳與開立發票總覽"] },
+  { ver: APP_STAMP, items: ["報修改已完成後不會再跳回待處理"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -754,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0057") return;
+    if (!m || !m[1] || m[1] === "0058") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2127,6 +2128,7 @@ function normalize(data) {
   if (!Array.isArray(data.lunchHidden)) data.lunchHidden = [];
   if (!Array.isArray(data.repairs)) data.repairs = [];
   applyRepairMedia(data);
+  applyRepairStat(data);
   data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
   if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && n.id !== "n1" && n.repairId !== "rep1");
   const r6831 = (data.rooms || []).find(x => x && (x.id === "r6831" || x.no === "6831"));
@@ -2860,6 +2862,54 @@ function applyRepairMedia(data) {
     }
   });
 }
+function repairStatusRank(s) {
+  return s === "done" ? 2 : s === "doing" ? 1 : 0;
+}
+function loadRepairStatMap() {
+  try { return JSON.parse(localStorage.getItem(REPAIR_STAT_KEY) || "{}") || {}; } catch { return {}; }
+}
+function persistRepairStat(data) {
+  if (!data) return;
+  const map = loadRepairStatMap();
+  (data.repairs || []).forEach(r => {
+    if (!r || !r.id) return;
+    const next = {
+      status: r.status || "open",
+      editedAt: Number(r.editedAt) || 0,
+      vendor: r.vendor || "",
+      cost: r.cost == null ? "" : r.cost,
+      doneNote: r.doneNote || "",
+      appointAt: r.appointAt || ""
+    };
+    const cur = map[r.id];
+    if (!cur || Number(next.editedAt) >= Number(cur.editedAt || 0) || repairStatusRank(next.status) >= repairStatusRank(cur.status)) {
+      map[r.id] = next;
+    }
+  });
+  try { localStorage.setItem(REPAIR_STAT_KEY, JSON.stringify(map)); } catch {}
+}
+function applyRepairStat(data) {
+  if (!data || !Array.isArray(data.repairs)) return;
+  const map = loadRepairStatMap();
+  data.repairs.forEach(r => {
+    if (!r || !r.id) return;
+    const cur = map[r.id];
+    if (!cur) return;
+    if (Number(cur.editedAt || 0) >= Number(r.editedAt || 0) || repairStatusRank(cur.status) > repairStatusRank(r.status)) {
+      if (cur.status) r.status = cur.status;
+      if (cur.editedAt) r.editedAt = cur.editedAt;
+      if (cur.vendor) r.vendor = cur.vendor;
+      if (cur.cost !== "" && cur.cost != null) r.cost = cur.cost;
+      if (cur.doneNote) r.doneNote = cur.doneNote;
+      if (cur.appointAt) r.appointAt = cur.appointAt;
+    }
+  });
+}
+function stampRepair(rep) {
+  if (!rep) return;
+  rep.edited = true;
+  rep.editedAt = Date.now();
+}
 function unionById(a, b) {
   const map = new Map();
   [].concat(a || [], b || []).forEach(x => {
@@ -2884,6 +2934,11 @@ function pickNewerEntity(a, b, keys) {
   else if (sa === sb) {
     if (a.edited && !b.edited) { winner = a; loser = b; }
     else if (b.edited && !a.edited) { winner = b; loser = a; }
+    else if (keys && keys.indexOf("status") >= 0) {
+      const ra = repairStatusRank(a.status), rb = repairStatusRank(b.status);
+      if (ra > rb) { winner = a; loser = b; }
+      else if (rb > ra) { winner = b; loser = a; }
+    }
   }
   const out = Object.assign({}, loser, winner);
   (keys || []).forEach(k => {
@@ -3355,6 +3410,7 @@ async function pullCloud() {
     mergeSharedInto(state, data);
     applyAnnMedia(state);
     applyRepairMedia(state);
+    applyRepairStat(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
@@ -3374,7 +3430,7 @@ async function pullCloud() {
       dropFactoryRentAutos(state);
       persistLedger(state);
       persistAnnMedia(state);
-      persistRepairMedia(state);
+      persistRepairMedia(state); persistRepairStat(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -3422,7 +3478,7 @@ async function pullCloud() {
     syncPaidRentBooks(state);
     persistLedger(state);
     persistAnnMedia(state);
-    persistRepairMedia(state);
+    persistRepairMedia(state); persistRepairStat(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -3789,7 +3845,7 @@ async function pushPresence() {
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
     persistLedger(state);
     persistAnnMedia(state);
-    persistRepairMedia(state);
+    persistRepairMedia(state); persistRepairStat(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   } catch {}
   finally { if (timer) clearTimeout(timer); }
@@ -3956,7 +4012,7 @@ async function pushCloud() {
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) cloudDirty = false;
   } catch { ui.cloudOk = false; }
-  try { persistAnnMedia(state); persistRepairMedia(state); } catch {}
+  try { persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
   try { publishPaidCloud(); } catch {}
 }
 function cloudAnnMedia(list) {
@@ -4008,12 +4064,12 @@ function save(force) {
   }
   try {
     persistAnnMedia(state);
-    persistRepairMedia(state);
+    persistRepairMedia(state); persistRepairStat(state);
     state.updatedAt = Date.now();
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); } catch {}
+    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
@@ -14472,7 +14528,7 @@ function bindTenant() {
       state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
       state.repairPing = Date.now();
-      persistRepairMedia(state);
+      persistRepairMedia(state); persistRepairStat(state);
       try { save(true); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
@@ -15333,11 +15389,19 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-rep-status]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
       const [id, status] = btn.dataset.repStatus.split("|");
       const rep = state.repairs.find(x => x.id === id);
       if (!rep) return;
-      rep.status = status; syncRoomRepairStatus(rep.roomId); save();
+      if (rep.status === status) return;
+      rep.status = status;
+      stampRepair(rep);
+      syncRoomRepairStatus(rep.roomId);
+      persistRepairStat(state);
+      save();
+      try { pushCloud(); } catch {}
       const room = state.rooms.find(x => x.id === rep.roomId);
       pushPhoneNotify("報修進度", `${room ? room.no : ""} ${rep.type}已改為${status === "done" ? "已完成" : "處理中"}`, room ? room.no : "tenants");
       const card = btn.closest(".card"); const seg = btn.closest(".seg");
@@ -15346,7 +15410,7 @@ function bindAdmin() {
         seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
       }
       const badge = card && card.querySelector(".badge");
-      if (badge) { badge.className = "badge " + status; badge.textContent = status === "done" ? "已完成" : "處理中"; }
+      if (badge) { badge.className = "badge " + status; badge.textContent = status === "done" ? "已完成" : status === "doing" ? "處理中" : "待處理"; }
       updateTabBadges();
     };
   });
@@ -15355,7 +15419,7 @@ function bindAdmin() {
     inp.onchange = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.appoint);
       if (!rep) return;
-      rep.appointAt = inp.value; rep.appointRead = !inp.value; save();
+      rep.appointAt = inp.value; rep.appointRead = !inp.value; stampRepair(rep); save();
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
       if (inp.value) {
@@ -15371,6 +15435,7 @@ function bindAdmin() {
       const rep = state.repairs.find(x => x.id === inp.dataset.repVendor);
       if (!rep) return;
       rep.vendor = String(inp.value || "").trim();
+      stampRepair(rep);
       save();
     };
   });
@@ -15387,6 +15452,7 @@ function bindAdmin() {
         const n = Number(raw.replace(/[^\d.-]/g, ""));
         rep.cost = Number.isFinite(n) ? n : raw;
       }
+      stampRepair(rep);
       save();
     };
   });
@@ -15397,6 +15463,7 @@ function bindAdmin() {
       const rep = state.repairs.find(x => x.id === inp.dataset.repDoneNote);
       if (!rep) return;
       rep.doneNote = String(inp.value || "").trim();
+      stampRepair(rep);
       save();
     };
   });
