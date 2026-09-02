@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-20";
-const APP_EDIT_COUNT = 530;
+const APP_STAMP = "2026-09-02-19-22";
+const APP_EDIT_COUNT = 531;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房備註有分年租金時，發票到期自動改未稅金額"] },
+  { ver: APP_STAMP, items: ["廠房標題房號改成牛2-57巷1弄27號這種門牌"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0081") return;
+    if (!m || !m[1] || m[1] === "0082") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5338,7 +5338,17 @@ function invoiceBuyer(r, t) {
   return (t && t.name) || "";
 }
 function displayRoomNo(r) {
-  const no = String((typeof r === "string" ? r : (r && r.no)) || "");
+  if (typeof r === "string") {
+    const hit = ((typeof state !== "undefined" && state.rooms) || []).find(x => x && x.no === r);
+    if (hit) r = hit;
+    else return String(r).replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+  }
+  if (!r) return "";
+  const group = r.group || ((String(r.no || "").match(/^(牛\d+|拉皮|大樹)/) || [])[0] || "");
+  let door = "";
+  try { door = factoryDoorNote(r); } catch {}
+  if (group && door) return group + "-" + door;
+  const no = String(r.no || "");
   const m = no.match(/^牛5-(\d{2})$/);
   return m ? "牛5-97-" + m[1] : no;
 }
