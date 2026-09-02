@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-36";
-const APP_EDIT_COUNT = 534;
+const APP_STAMP = "2026-09-02-20-14";
+const APP_EDIT_COUNT = 535;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["修正點廠房圖卡出現找不到資料"] },
+  { ver: APP_STAMP, items: ["開發者測試點重製後需重新簽名"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0085") return;
+    if (!m || !m[1] || m[1] === "0086") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3550,7 +3550,7 @@ function mergeSharedInto(target, other) {
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.checkouts = unionById(target.checkouts, other.checkouts);
   mergeLedgerInto(target, other);
-  target.eSigns = Object.assign({}, collectESigns(other), collectESigns(target));
+  target.eSigns = mergeESignMaps(collectESigns(other), collectESigns(target));
   if (other.lunchSpots) target.lunchSpots = unionById(target.lunchSpots, other.lunchSpots);
   if (other.lunchHidden) target.lunchHidden = [...new Set([].concat(target.lunchHidden || [], other.lunchHidden || []))];
   const oc = Number(other.company && other.company.updatedAt) || 0;
@@ -3810,9 +3810,23 @@ function migrateDevLocalInto(data) {
   saveDevLogs(data.devLogs);
 }
 function eSignNewer(a, b) {
-  if (!a || !a.sig) return b || null;
-  if (!b || !b.sig) return a;
-  return String(b.at || "") > String(a.at || "") ? b : a;
+  if (!a) return b || null;
+  if (!b) return a;
+  const ts = x => Number(x && x.ts) || Date.parse(x && x.at) || 0;
+  const ta = ts(a), tb = ts(b);
+  if (tb !== ta) return tb > ta ? b : a;
+  if (a.cleared && !b.cleared) return a;
+  if (b.cleared && !a.cleared) return b;
+  if ((b.status === "signed" && b.sig) && !(a.status === "signed" && a.sig)) return b;
+  if ((a.status === "signed" && a.sig) && !(b.status === "signed" && b.sig)) return a;
+  return b.cleared ? b : a;
+}
+function mergeESignMaps(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(k => {
+    out[k] = eSignNewer(out[k], b[k]);
+  });
+  return out;
 }
 function collectESigns(data) {
   const map = Object.assign({}, loadLocalESigns(), (data && data.eSigns) || {});
@@ -3837,12 +3851,13 @@ function applyESigns(data) {
   (data.tenants || []).forEach(t => {
     if (!t || !t.id) return;
     const rec = data.eSigns[t.id];
-    if (rec && rec.sig) t.eSign = rec;
+    if (rec) t.eSign = rec;
+    else t.eSign = t.eSign || null;
   });
 }
 function mergeESignsInto(target, other) {
   if (!target) return;
-  target.eSigns = Object.assign({}, collectESigns(target), collectESigns(other));
+  target.eSigns = mergeESignMaps(collectESigns(target), collectESigns(other));
   applyESigns(target);
 }
 function mergeMemosInto(target, other) {
@@ -4186,7 +4201,7 @@ async function pushCloud() {
         (state.aiLogs || []).filter(m => m && !isDevMemo(m) && m.role !== "dev" && m.owner !== "1240"),
         80
       ),
-      eSigns: Object.assign({}, collectESigns(remote), collectESigns(state)),
+      eSigns: mergeESignMaps(collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
@@ -5889,19 +5904,24 @@ function ensureDemoTenant(data) {
   t.roomId = room.id;
 }
 function clearDemoESign(t) {
-  if (t) t.eSign = null;
-  if (t && t.id && state.eSigns) delete state.eSigns[t.id];
-  ui.devESign = null;
+  const rec = { status: "unsigned", at: nowStamp(), ts: Date.now(), sig: "", sig2: "", cleared: true };
+  if (t) {
+    t.eSign = rec;
+    t.eSignRev = rec.ts;
+  }
+  if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
+  if (t && t.id) state.eSigns[t.id] = rec;
+  ui.devESign = rec;
   ui.signAgree = false;
   ui.signStrokes = [];
+  ui.signStrokes2 = [];
+  ui.signing = false;
   try {
-    const id = t && t.id;
-    if (!id) return;
     const all = loadLocalESigns();
-    delete all[id];
+    if (t && t.id) all[t.id] = rec;
     persistESignsMap(all);
     const loc = JSON.parse(localStorage.getItem("tongjie_esign_v1") || "{}");
-    delete loc[id];
+    if (t && t.id) loc[t.id] = rec;
     localStorage.setItem("tongjie_esign_v1", JSON.stringify(loc));
   } catch {}
 }
@@ -5933,6 +5953,7 @@ function resetDemoCycle() {
   room.rent = 10000;
   room.deposit = 20000;
   delete room.incomingTenantId;
+  if (Array.isArray(room.contractImages)) room.contractImages = [];
   clearDemoESign(t);
   state.checkouts = (state.checkouts || []).filter(c => c && c.tenantId !== t.id);
   state.renewals = (state.renewals || []).filter(x => x && x.tenantId !== t.id);
@@ -5944,10 +5965,10 @@ function resetDemoCycle() {
   ui.tenantId = t.id;
   ui.roomId = room.id;
   ui.roomNo = "0000";
-  ui.page = "home";
+  ui.page = ui.devPreview || ui.role === "tenant" ? "lease" : "home";
   save();
   try { pushCloud(); } catch {}
-  toast("測試房 0000 已重製，可再簽約、退租、入房");
+  toast("測試房 0000 已重製，請重新簽名");
   render();
 }
 function demoResetBarHtml() {
@@ -10475,6 +10496,9 @@ function getESign(t) {
     if (t.id) rec = eSignNewer(rec, all[t.id]);
   } catch {}
   if (isDevPreview() || t.demo || t.id === "t-demo") rec = eSignNewer(rec, ui.devESign);
+  const rev = Number(t.eSignRev) || 0;
+  if (rev && rec && (Number(rec.ts) || Date.parse(rec.at) || 0) < rev) rec = { status: "unsigned", at: rec.at, ts: rev, sig: "", cleared: true };
+  if (rec && rec.cleared && rec.status !== "signed") return rec;
   return rec && rec.sig ? rec : rec;
 }
 function saveESignRecord(t, rec) {
@@ -10529,7 +10553,8 @@ function tenantMark(t, i, name) {
 }
 function tenantContractStatus(t, r) {
   const es = getESign(t);
-  if (es && es.status === "signed") return "signed";
+  if (es && es.cleared && es.status !== "signed") return "unsigned";
+  if (es && es.status === "signed" && es.sig) return "signed";
   if (r && r.contractImages && r.contractImages.length) return "paper";
   return "unsigned";
 }
@@ -15097,7 +15122,7 @@ function bindSignPad() {
       t.edited = true;
     }
     const rec = {
-      status: "signed", at: nowStamp(),
+      status: "signed", at: nowStamp(), ts: Date.now(),
       sig: canvasToSig(c),
       sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? canvasToSig(b.c) : "",
       name: (t && t.name) || "",
