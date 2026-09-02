@@ -20,8 +20,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-28";
-const APP_EDIT_COUNT = 505;
+const APP_STAMP = "2026-09-02-17-32";
+const APP_EDIT_COUNT = 506;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -60,7 +60,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客報修內容與照片即時同步到所有後台裝置"] },
+  { ver: APP_STAMP, items: ["廠房租客搜尋也有空廠房、已繳、未繳與開立發票總覽"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -754,7 +754,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0056") return;
+    if (!m || !m[1] || m[1] === "0057") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6280,7 +6280,8 @@ function leaseDaysLeft(end) {
   n.setHours(0, 0, 0, 0);
   return Math.round((t - n) / 86400000);
 }
-function invoiceOverviewRows() {
+function invoiceOverviewRows(kind) {
+  if (kind === "factory") return factoryInvoiceOverviewRows();
   const nos = STUDIO_NOS.concat(["7651"]);
   const rows = [];
   nos.forEach(no => {
@@ -6323,7 +6324,58 @@ function invoiceOverviewRows() {
   });
   return rows;
 }
-function drawInvoiceOverviewCanvas(rows) {
+function factoryInvoiceOverviewRows() {
+  const keepChip = ui.tenantChip;
+  const keepVacant = ui.tenantVacant;
+  ui.tenantChip = "";
+  ui.tenantVacant = false;
+  const entries = tenantEntriesOfKind("factory");
+  ui.tenantChip = keepChip;
+  ui.tenantVacant = keepVacant;
+  const rows = [];
+  entries.forEach(entry => {
+    const tenants = (entry.tenants || []).filter(t => t && !t.former && !t.demo && !t.incoming);
+    const rooms = (entry.rooms || []).filter(Boolean);
+    if (!tenants.length || !rooms.length) return;
+    const t = tenants[0];
+    const paidT = tenants.find(x => paidThisMonth(x));
+    const paid = !!paidT;
+    const src = paidT || t;
+    const remitYmd = paid ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "";
+    const invoiceYmd = paid ? ((src.paidYm || payYmNow()) + "-01") : "";
+    const room = rooms[0];
+    const bankKey = tenantPayBankKey(src, room);
+    const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
+    const amount = rooms.reduce((n, r) => n + (Number(r.rent) || Number((tenants.find(x => x.roomId === r.id) || {}).rent) || 0), 0);
+    const nos = rooms.map(r => r.no).filter(Boolean).join("、");
+    const site = rooms.map(r => r.group).filter(Boolean)[0] || "";
+    const note = String(src.note || "");
+    rows.push({
+      remitYmd: remitYmd || "",
+      remitDate: remitYmd ? rocSlash(remitYmd) : "",
+      invoiceYmd: invoiceYmd || "",
+      invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
+      buyer: src.name || "",
+      room: site ? site + " " + nos : nos,
+      amount,
+      bank,
+      start: rocSlash(src.leaseStart),
+      end: rocSlash(src.leaseEnd),
+      left: leaseDaysLeft(src.leaseEnd),
+      renew: /已續約/.test(note)
+    });
+  });
+  rows.sort((a, b) => {
+    const da = a.remitYmd || a.invoiceYmd || "";
+    const db = b.remitYmd || b.invoiceYmd || "";
+    if (da && db && da !== db) return da.localeCompare(db);
+    if ((a.remitYmd || a.invoiceYmd) && !(b.remitYmd || b.invoiceYmd)) return -1;
+    if (!(a.remitYmd || a.invoiceYmd) && (b.remitYmd || b.invoiceYmd)) return 1;
+    return String(a.room).localeCompare(String(b.room), "zh-Hant");
+  });
+  return rows;
+}
+function drawInvoiceOverviewCanvas(rows, kind) {
   const W = 2480, H = 1754;
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -6336,7 +6388,7 @@ function drawInvoiceOverviewCanvas(rows) {
   ctx.fillStyle = "#1f3d2b";
   ctx.font = font("700 42px");
   ctx.textBaseline = "top";
-  ctx.fillText("統潔開發有限公司　開立發票總覽", pad, 28);
+  ctx.fillText(kind === "factory" ? "統潔開發有限公司　廠房開立發票總覽" : "統潔開發有限公司　開立發票總覽", pad, 28);
   ctx.font = font("600 22px");
   ctx.fillStyle = "#5b6b62";
   const now = new Date();
@@ -6464,16 +6516,17 @@ async function downloadJpegPagesPdf(pages, filename, landscape) {
   let o = 0; out.forEach(a => { buf.set(a, o); o += a.length; });
   triggerDownload(new Blob([buf], { type: "application/pdf" }), filename || "下載.pdf");
 }
-async function downloadInvoiceOverviewPdf(page) {
+async function downloadInvoiceOverviewPdf(page, kind) {
   if (!page) {
-    const rows = invoiceOverviewRows();
-    if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
-    page = drawInvoiceOverviewCanvas(rows);
+    const rows = invoiceOverviewRows(kind || (ui.tenantKind === "factory" ? "factory" : "studio"));
+    if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
+    page = drawInvoiceOverviewCanvas(rows, kind);
   }
   const n = new Date();
   const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
+  const tag = kind === "factory" ? "廠房" : "套房";
   try {
-    await downloadJpegPagesPdf([page], `統潔-開立發票總覽-${ymd}.pdf`, true);
+    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, true);
     toast("已下載開立發票總覽");
   } catch (err) {
     try { console.error(err); } catch {}
@@ -6485,9 +6538,10 @@ function closeInvoicePreview() {
   if (el) el.remove();
 }
 function showInvoiceOverviewPreview() {
-  const rows = invoiceOverviewRows();
-  if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
-  const page = drawInvoiceOverviewCanvas(rows);
+  const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+  const rows = invoiceOverviewRows(kind);
+  if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
+  const page = drawInvoiceOverviewCanvas(rows, kind);
   closeInvoicePreview();
   const wrap = document.createElement("div");
   wrap.className = "lightbox invoice-preview";
@@ -6495,7 +6549,7 @@ function showInvoiceOverviewPreview() {
   wrap.innerHTML = `
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
-      <span>開立發票總覽預覽</span>
+      <span>${kind === "factory" ? "廠房開立發票總覽預覽" : "開立發票總覽預覽"}</span>
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
     <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="開立發票總覽預覽"></div>`;
@@ -6505,7 +6559,7 @@ function showInvoiceOverviewPreview() {
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    downloadInvoiceOverviewPdf(page);
+    downloadInvoiceOverviewPdf(page, kind);
   };
 }
 function bindInvoiceOverviewBtn() {
@@ -12975,11 +13029,28 @@ function vacantStudioRooms() {
     return true;
   }).sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant"));
 }
+function vacantFactoryRooms() {
+  const q = normSearch(ui.tenantQ);
+  return (state.rooms || []).filter(r => {
+    if (!r || r.demo || !roomIsFactory(r)) return false;
+    if (r.status !== "vacant") return false;
+    if (q && !normSearch([r.no, r.group, r.location, r.street].join(" ")).includes(q)) return false;
+    return true;
+  }).sort((a, b) => {
+    const ga = FACTORY_GROUP_ORDER.indexOf(a.group);
+    const gb = FACTORY_GROUP_ORDER.indexOf(b.group);
+    if (ga !== gb) return (ga < 0 ? 99 : ga) - (gb < 0 ? 99 : gb);
+    return String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant");
+  });
+}
+function vacantRoomsOfKind(kind) {
+  return kind === "factory" ? vacantFactoryRooms() : vacantStudioRooms();
+}
 function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.no)}</span></span><span class="row-end"><span class="pay-pill">空房</span><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.group ? r.group + "　" + r.no : r.no)}</span></span><span class="row-end"><span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span><span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -13010,11 +13081,9 @@ function tenantListOfKind(kind) {
     if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
-    if (!factory) {
-      const chip = tenantChipOn();
-      if (chip === "paid" && !paidThisMonth(t)) return false;
-      if (chip === "unpaid" && paidThisMonth(t)) return false;
-    }
+    const chip = tenantChipOn();
+    if (chip === "paid" && !paidThisMonth(t)) return false;
+    if (chip === "unpaid" && paidThisMonth(t)) return false;
     return true;
   }).sort((a, b) => {
     const da = isDemoTenant(a) ? 0 : 1;
@@ -13080,16 +13149,18 @@ function tenantEntriesOfKind(kind) {
   return order;
 }
 function tenantListInnerHtml(kind) {
-  if (kind !== "factory" && tenantChipOn() === "vacant") {
-    const rooms = vacantStudioRooms();
+  if (tenantChipOn() === "vacant") {
+    const rooms = vacantRoomsOfKind(kind);
+    const empty = kind === "factory" ? "目前沒有空廠房" : "目前沒有空房";
+    const miss = kind === "factory" ? "找不到符合的空廠房" : "找不到符合的空房";
     return rooms.length
       ? rooms.map(r => vacantRoomCardHtml(r)).join("")
-      : `<div class="empty">${normSearch(ui.tenantQ) ? "找不到符合的空房" : "目前沒有空房"}</div>`;
+      : `<div class="empty">${normSearch(ui.tenantQ) ? miss : empty}</div>`;
   }
   const entries = tenantEntriesOfKind(kind);
   const q = normSearch(ui.tenantQ);
-  const vacantHits = (kind !== "factory" && q && tenantChipOn() !== "vacant")
-    ? vacantStudioRooms().filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
+  const vacantHits = (q && tenantChipOn() !== "vacant")
+    ? vacantRoomsOfKind(kind).filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
     : [];
   const renews = q ? [] : (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
@@ -13444,11 +13515,8 @@ function applyTenantKind(kind) {
   if (hint) hint.textContent = tenantKindHint(next);
   const search = document.getElementById("tenant-search");
   if (search) search.placeholder = tenantSearchPlaceholder(next);
-  const chipRow = document.getElementById("tenant-chip-row");
-  if (chipRow) chipRow.style.display = next === "studio" ? "" : "none";
-  const invBtn = document.getElementById("invoice-overview-btn");
-  if (invBtn) invBtn.style.display = next === "studio" ? "" : "none";
-  if (next === "factory") { ui.tenantVacant = false; ui.tenantChip = ""; }
+  const vacBtn = document.getElementById("tenant-vacant-btn");
+  if (vacBtn) vacBtn.textContent = next === "factory" ? "空廠房" : "空房";
   const box = document.getElementById("tenant-list");
   if (box) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -13666,16 +13734,16 @@ function adminTenants() {
     </div>
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
-      ${kind === "studio" ? `<div class="tenant-search-chips" id="tenant-chip-row">
-        <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">空房</button>
+      <div class="tenant-search-chips" id="tenant-chip-row">
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空房"}</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
-      </div>` : ""}
+      </div>
     </div>
-    ${`<button type="button" class="card card-body clickable invoice-overview-btn" id="invoice-overview-btn"${kind === "studio" ? "" : " style=\"display:none\""}>
+    <button type="button" class="card card-body clickable invoice-overview-btn" id="invoice-overview-btn">
       <span class="k">開立發票總覽</span>
       <span class="row-end"><span class="small">下載 PDF</span><span class="fold-caret go-right"></span></span>
-    </button>`}
+    </button>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
