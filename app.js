@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-14-55";
-const APP_EDIT_COUNT = 489;
+const APP_STAMP = "2026-09-02-15-10";
+const APP_EDIT_COUNT = 490;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套入牛10最新租客名單，已繳未繳不動"] },
+  { ver: APP_STAMP, items: ["6832 合併為周婕妤、許軒偉一張圖卡"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0040") return;
+    if (!m || !m[1] || m[1] === "0041") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2040,6 +2040,7 @@ function normalize(data) {
   if (!data) data = structuredClone(SEED);
   if (!Array.isArray(data.rooms)) data.rooms = [];
   if (!Array.isArray(data.tenants)) data.tenants = [];
+  if (!Array.isArray(data.goneTenants)) data.goneTenants = [];
   STUDIO_NOS.forEach(no => {
     if (!data.rooms.some(r => r.no === no)) {
       const seedRoom = SEED.rooms.find(r => r.no === no);
@@ -2569,7 +2570,65 @@ function applyTenantRoster(data) {
   };
   STUDIO_NOS.forEach(no => fillStudio(no, false));
   fillStudio("7651", true);
+  foldStudioRoommateCards(data);
   applyFormerStudio(data);
+}
+function foldStudioRoommateCards(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
+  if (!Array.isArray(data.goneTenants)) data.goneTenants = [];
+  const keepRoom = {};
+  (data.rooms || []).forEach(r => {
+    if (!r || r.kind === "factory" || r.status === "office") return;
+    const no = String(r.no || "");
+    if (!/^\d{4}$/.test(no)) return;
+    if (!keepRoom[no]) keepRoom[no] = r;
+  });
+  const extraRooms = [];
+  (data.rooms || []).forEach(r => {
+    const no = String(r && r.no || "");
+    if (keepRoom[no] && r.id !== keepRoom[no].id && r.kind !== "factory") extraRooms.push(r.id);
+  });
+  (data.tenants || []).forEach(t => {
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    const no = r ? String(r.no || "") : "";
+    if (keepRoom[no] && t.roomId !== keepRoom[no].id) t.roomId = keepRoom[no].id;
+  });
+  if (extraRooms.length) data.rooms = data.rooms.filter(r => extraRooms.indexOf(r.id) < 0);
+  const drop = [];
+  Object.keys(keepRoom).forEach(no => {
+    const info = TENANT_INFO[no];
+    const room = keepRoom[no];
+    const live = data.tenants.filter(x => x && x.roomId === room.id && !x.former && !x.demo);
+    if (!info || !info.name) return;
+    const keep = live.find(x => x.id === "t" + no && !x.incoming)
+      || live.find(x => !x.incoming && sameTenantName(x.name, info.name))
+      || live.find(x => !x.incoming)
+      || live[0];
+    if (!keep) return;
+    keep.name = info.name;
+    keep.incoming = false;
+    keep.former = false;
+    keep.placeholder = false;
+    if (info.phone) keep.phone = info.phone;
+    if (info.contactName) keep.contactName = info.contactName;
+    if (info.leaseStart) keep.leaseStart = info.leaseStart;
+    if (info.leaseEnd) keep.leaseEnd = info.leaseEnd;
+    if (info.payBank) keep.payBank = info.payBank;
+    if (info.note) keep.note = info.note;
+    if (info.deposit != null) keep.deposit = info.deposit;
+    room.tenantId = keep.id;
+    delete room.incomingTenantId;
+    if (room.status === "vacant") room.status = "rented";
+    live.forEach(x => {
+      if (x.id === keep.id) return;
+      drop.push(x.id);
+    });
+  });
+  if (drop.length) {
+    data.goneTenants = [...new Set(data.goneTenants.concat(drop))];
+    data.tenants = data.tenants.filter(x => x && drop.indexOf(x.id) < 0);
+    try { markCloudDirty(); } catch {}
+  }
 }
 function ensureStudioTenant(data, no) {
   if (!data) return;
@@ -3084,11 +3143,21 @@ function mergeEntities(a, b, keys) {
   });
   return [...map.values()];
 }
-function mergeTenants(a, b) { return mergeEntities(a, b, TENANT_SYNC_KEYS); }
+function mergeTenants(a, b) {
+  const merged = mergeEntities(a, b, TENANT_SYNC_KEYS);
+  const gone = new Set([].concat((typeof state !== "undefined" && state.goneTenants) || [], arguments[2] || []));
+  return gone.size ? merged.filter(x => x && !gone.has(x.id)) : merged;
+}
 function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
 function mergeSharedInto(target, other) {
   if (!target || !other) return target;
-  target.tenants = mergeTenants(target.tenants, other.tenants);
+  target.tenants = mergeEntities(target.tenants, other.tenants, TENANT_SYNC_KEYS);
+  const goneT = [...new Set([].concat(target.goneTenants || [], other.goneTenants || []))];
+  if (goneT.length) {
+    target.goneTenants = goneT;
+    const g = new Set(goneT);
+    target.tenants = (target.tenants || []).filter(x => x && !g.has(x.id));
+  }
   target.rooms = mergeRooms(target.rooms, other.rooms);
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned"]);
@@ -12478,16 +12547,28 @@ function tenantListOfKind(kind) {
     }
     return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant");
   });
+  const uniq = [];
+  const seenRoom = new Set();
+  list.forEach(t => {
+    if (factory) { uniq.push(t); return; }
+    const r = state.rooms.find(x => x.id === t.roomId);
+    const key = r ? "n:" + String(r.no || r.id) : "t:" + t.id;
+    if (seenRoom.has(key)) return;
+    seenRoom.add(key);
+    const info = r && TENANT_INFO[String(r.no || "")];
+    if (info && info.name) t.name = info.name;
+    uniq.push(t);
+  });
   const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn();
   if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
-    ui.tenantOrder = list.map(t => t.id);
-    return list;
+    ui.tenantOrder = uniq.map(t => t.id);
+    return uniq;
   }
   const rank = new Map(ui.tenantOrder.map((id, i) => [id, i]));
-  list.forEach(t => { if (t && t.id && !rank.has(t.id)) { rank.set(t.id, ui.tenantOrder.length); ui.tenantOrder.push(t.id); } });
-  list.sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
-  return list;
+  uniq.forEach(t => { if (t && t.id && !rank.has(t.id)) { rank.set(t.id, ui.tenantOrder.length); ui.tenantOrder.push(t.id); } });
+  uniq.sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
+  return uniq;
 }
 function tenantEntriesOfKind(kind) {
   const list = tenantListOfKind(kind);
