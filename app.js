@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-24";
-const APP_EDIT_COUNT = 564;
+const APP_STAMP = "2026-09-03-00-42";
+const APP_EDIT_COUNT = 565;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["強制退租後不能再登入；入住申請圖卡上方有確認正式入住"] },
+  { ver: APP_STAMP, items: ["我要入住會回到看房預覽，並顯示我要簽約"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0115") return;
+    if (!m || !m[1] || m[1] === "0116") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1178,24 +1178,9 @@ function enforceTenantSession() {
     ui.page = "home";
     return;
   }
-  const signed = !!(t && getESign(t) && getESign(t).status === "signed" && getESign(t).sig);
-  if (t && signed && !t.former && !t.clearedApply && !t.loginRevoked) {
-    if (r && !(roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id)) {
-      t.incoming = false;
-      t.prospect = false;
-      r.tenantId = t.id;
-      if (r.status !== "repair" && r.status !== "office") r.status = "rented";
-    }
-    ui.prospectPreview = !!(t.incoming);
+  if (t && (t.incoming || t.prospect || t.applyPending || ui.prospectPreview)) {
+    ui.prospectPreview = true;
     persistUi();
-    return;
-  }
-  if (ui.prospectPreview || (t && t.incoming && !t.former)) {
-    if (!t) return;
-    if (!t.incoming && !t.applyPending && r && r.tenantId === t.id) {
-      ui.prospectPreview = false;
-      persistUi();
-    }
     return;
   }
   if (t && !t.former && !t.sessionEnded && r) {
@@ -1203,14 +1188,11 @@ function enforceTenantSession() {
     if (!other && (r.status === "vacant" || !r.tenantId || r.tenantId === t.id)) {
       r.tenantId = t.id;
       if (r.status !== "repair" && r.status !== "office") r.status = "rented";
-      t.incoming = false;
-      t.former = false;
       return;
     }
   }
-  const ended = !t || t.former || (t.incoming && !ui.prospectPreview) || !!(r && r.tenantId && r.tenantId !== t.id && roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id);
+  const ended = !t || t.former || !!(r && r.tenantId && r.tenantId !== t.id && roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id);
   if (!ended) return;
-  if (t && t.incoming) return;
   const no = ui.roomNo || (r && r.no) || "";
   try { audit("登出", "租約結束自動登出"); } catch {}
   clearSession();
@@ -9514,7 +9496,9 @@ function forceVacateTenant(t) {
   });
   try {
     if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
-    state.eSigns[t.id] = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+    const gone = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+    state.eSigns[t.id] = gone;
+    eSignAliasKeys(t, r).forEach(k => { state.eSigns[k] = gone; });
     persistESignsMap(Object.assign({}, loadLocalESigns(), state.eSigns));
   } catch {}
   restoreLiveRoom(r);
@@ -10990,7 +10974,7 @@ function homeView() {
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
           <div class="stat"><div class="label">本月租金</div><b>${studioContractRent(t, r) ? money(studioContractRent(t, r)) : "—"}</b></div>
         </div>
-        ${tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : ""}
+        ${isProspectPreview() || tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">${isProspectPreview() ? "我要簽約" : "尚未簽約　點此線上簽署"}</button>` : ""}
       </div>
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
@@ -11266,7 +11250,8 @@ function getESign(t) {
   if (!t) return isDevPreview() ? (ui.devESign || null) : null;
   let rec = t.eSign || null;
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
-  const keys = eSignAliasKeys(t, r);
+  const incoming = !!(t.incoming || t.prospect || t.applyPending);
+  const keys = incoming ? (t.id ? [String(t.id)] : []) : eSignAliasKeys(t, r);
   if (state && state.eSigns) keys.forEach(k => { rec = eSignNewer(rec, state.eSigns[k]); });
   try {
     const all = loadLocalESigns();
