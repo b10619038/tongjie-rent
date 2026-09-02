@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-32";
-const APP_EDIT_COUNT = 533;
+const APP_STAMP = "2026-09-02-19-36";
+const APP_EDIT_COUNT = 534;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房姓名下方另起一行顯示門牌"] },
+  { ver: APP_STAMP, items: ["修正點廠房圖卡出現找不到資料"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0084") return;
+    if (!m || !m[1] || m[1] === "0085") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -13481,10 +13481,11 @@ function vacantSheetDetailsHtml(r) {
       ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
       ${handoverBoxHtml(null, r)}`;
 }
-function tenantListOfKind(kind) {
+function tenantListOfKind(kind, opts) {
   try { ensureDemoTenant(state); } catch {}
   const factory = kind === "factory";
-  const q = normSearch(ui.tenantQ);
+  const all = !!(opts && opts.all);
+  const q = all ? "" : normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     let r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder || t.former || t.incoming) return false;
@@ -13498,6 +13499,7 @@ function tenantListOfKind(kind) {
     if (!String(t.name || "").trim()) return false;
     if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
+    if (all) return true;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     const chip = tenantChipOn();
     if (chip === "paid" && !paidThisMonth(t)) return false;
@@ -13544,8 +13546,8 @@ function tenantListOfKind(kind) {
   uniq.sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
   return uniq;
 }
-function tenantEntriesOfKind(kind) {
-  const list = tenantListOfKind(kind);
+function tenantEntriesOfKind(kind, opts) {
+  const list = tenantListOfKind(kind, opts);
   if (kind !== "factory") {
     return list.map(t => ({
       key: t.id,
@@ -13702,7 +13704,7 @@ function tenantEntryCardHtml(kind, entry) {
   const t = tenants[0];
   const r = rooms[0];
   if (!t) return "";
-  const foldId = kind === "factory" ? "fg-" + entry.key : t.id;
+  const foldId = t.id;
   const unpaid = tenants.some(x => !x.paid);
   const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
   return `<div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
@@ -14037,6 +14039,22 @@ function bindTenantFold() {
     };
   });
 }
+function findTenantSheetEntry(id) {
+  const sid = String(id || "");
+  if (!sid || sid.indexOf("vac-") === 0) return null;
+  const match = kind => (tenantEntriesOfKind(kind, { all: true }) || []).find(e => {
+    if (!e) return false;
+    if ("fg-" + e.key === sid) return true;
+    if ((e.tenants || []).some(t => t && (t.id === sid || "fg-" + t.id === sid || "fg-" + String(t.taxId || "").trim() === sid || "fg-" + String(t.name || "").trim() === sid))) return true;
+    return (e.rooms || []).some(r => r && (r.id === sid || r.no === sid || "fg-" + r.no === sid));
+  });
+  const first = ui.tenantSheetKind === "factory" || ui.tenantKind === "factory" || sid.indexOf("fg-") === 0 ? "factory" : "studio";
+  const hit = match(first);
+  if (hit) return { entry: hit, kind: first };
+  const other = first === "factory" ? "studio" : "factory";
+  const alt = match(other);
+  return alt ? { entry: alt, kind: other } : null;
+}
 function openTenantSheet(id) {
   const next = String(id || "");
   if (ui.page === "tenant-sheet" && ui.tenantSheetId === next) return;
@@ -14044,7 +14062,7 @@ function openTenantSheet(id) {
   ui.sheetOpening = Date.now() + 500;
   ui.sheetGuard = Date.now() + 800;
   ui.tenantSheetId = next;
-  ui.tenantSheetKind = ui.tenantKind === "factory" ? "factory" : "studio";
+  ui.tenantSheetKind = (ui.tenantKind === "factory" || String(next).indexOf("fg-") === 0) ? "factory" : "studio";
   ui.page = "tenant-sheet";
   ui.sheetEnter = true;
   try { persistUi(); } catch {}
@@ -14068,12 +14086,8 @@ function tenantSheetView() {
       <div class="card card-body slide-left" id="tenant-sheet">${vacantSheetDetailsHtml(r)}</div>
     </div>`;
   }
-  const entry = tenantEntriesOfKind(kind).find(e => {
-    const t = e.tenants && e.tenants[0];
-    const foldId = kind === "factory" ? "fg-" + e.key : (t && t.id);
-    return foldId === id;
-  });
-  if (!entry || !entry.tenants || !entry.tenants[0]) {
+  const found = findTenantSheetEntry(id);
+  if (!found || !found.entry || !found.entry.tenants || !found.entry.tenants[0]) {
     return `<div class="admin-grid list tenant-sheet-page">
       <div class="topbar"><div>
         <button class="back" data-page="tenants" type="button">← 返回</button>
@@ -14082,6 +14096,9 @@ function tenantSheetView() {
       <div class="card card-body"><div class="empty">找不到這筆資料，請返回列表再點一次</div></div>
     </div>`;
   }
+  const entry = found.entry;
+  const kindNow = found.kind;
+  ui.tenantSheetKind = kindNow;
   const t = entry.tenants[0];
   const r = (entry.rooms && entry.rooms[0]) || (state.rooms || []).find(x => x.id === t.roomId);
   const unpaid = entry.tenants.some(x => !x.paid);
@@ -14091,7 +14108,7 @@ function tenantSheetView() {
   return `<div class="admin-grid list tenant-sheet-page${enter}">
     <div class="topbar slide-left"><div>
       <button class="back" data-page="tenants" type="button">← 返回</button>
-      <div class="eyebrow">${kind === "factory" ? "FACTORY" : "STUDIO"}</div>
+      <div class="eyebrow">${kindNow === "factory" ? "FACTORY" : "STUDIO"}</div>
       <h1>${escapeHtml(t.name || "")}</h1>
     </div></div>
     <div class="card card-body slide-left" id="tenant-sheet">
@@ -14099,7 +14116,7 @@ function tenantSheetView() {
         <span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span>
         <span class="row-end"><button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button></span>
       </div>
-      ${tenantEntryDetailsHtml(kind, entry)}
+      ${tenantEntryDetailsHtml(kindNow, entry)}
     </div>
   </div>`;
 }
