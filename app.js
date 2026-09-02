@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-10";
-const APP_EDIT_COUNT = 552;
+const APP_STAMP = "2026-09-02-23-12";
+const APP_EDIT_COUNT = 553;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["到期空房會留下，7251 呂佳芸可搜尋"] },
+  { ver: APP_STAMP, items: ["空店面顯示 6811(店面)"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0103") return;
+    if (!m || !m[1] || m[1] === "0104") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -14118,6 +14118,11 @@ function vacantFactoryRooms() {
 function vacantRoomsOfKind(kind) {
   return kind === "factory" ? vacantFactoryRooms() : vacantStudioRooms();
 }
+function studioListNo(r) {
+  const no = String((r && r.no) || r || "");
+  if (isStoreNo(no)) return no + "(店面)";
+  return no;
+}
 function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
@@ -14125,9 +14130,10 @@ function vacantRoomCardHtml(r) {
   const unread = !!(inc && inc.applyUnread);
   const last = formerTenantsOf(r.id)[0];
   const who = inc && inc.name ? " → " + inc.name : (last && last.name ? "　前任 " + last.name : "");
+  const label = roomIsFactory(r) ? displayRoomNo(r) : studioListNo(r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.group ? r.group + "　" + r.no : r.no)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${inc.applyPending ? "入住申請" : "交接中"}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${inc.applyPending ? "入住申請" : "交接中"}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -14135,7 +14141,7 @@ function vacantSheetDetailsHtml(r) {
   const former = formerTenantsOf(r.id);
   const listed = studioRentOf(r.no);
   const rent = Number(r.rent) || listed || 0;
-  return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(r.no)}</span></div>
+  return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(studioListNo(r))}</span></div>
       <div class="row"><span class="k">租金</span><span class="v">${rent ? money(rent) : "未定"}</span></div>
       ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
       ${handoverBoxHtml(null, r)}
