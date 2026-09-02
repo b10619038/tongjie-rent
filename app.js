@@ -19,8 +19,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-58";
-const APP_EDIT_COUNT = 501;
+const APP_STAMP = "2026-09-02-17-01";
+const APP_EDIT_COUNT = 502;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -59,7 +59,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["公告照片不再被同步清掉，可點開查看"] },
+  { ver: APP_STAMP, items: ["租客可從自己畫面叉掉公告，不影響後台與其他租客"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -753,7 +753,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0052") return;
+    if (!m || !m[1] || m[1] === "0053") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2838,7 +2838,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -2863,6 +2863,9 @@ function pickNewerEntity(a, b, keys) {
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
+  if (keys && keys.indexOf("hiddenAnns") >= 0) {
+    out.hiddenAnns = [...new Set([].concat((a && a.hiddenAnns) || [], (b && b.hiddenAnns) || [], out.hiddenAnns || []))];
+  }
   return out;
 }
 function mergePaidFields(out, a, b) {
@@ -5589,7 +5592,13 @@ function myRoom() {
   return t ? state.rooms.find(r => r.id === t.roomId) : null;
 }
 function unreadAnnouncements(tenantId) {
-  return (state.announcements || []).filter(a => !(a.readBy || []).includes(tenantId));
+  const hidden = new Set();
+  if (isDevPreview()) Object.keys(ui.devHiddenAnns || {}).forEach(id => hidden.add(id));
+  else {
+    const t = (state.tenants || []).find(x => x && x.id === tenantId);
+    (t && t.hiddenAnns || []).forEach(id => hidden.add(String(id)));
+  }
+  return (state.announcements || []).filter(a => a && !hidden.has(String(a.id)) && !(a.readBy || []).includes(tenantId));
 }
 function unreadRenewTimes(tenantId) {
   return (state.renewals || []).filter(x => x.tenantId === tenantId && x.appointAt && !x.appointRead && x.status !== "done").length;
@@ -9579,16 +9588,49 @@ function announceBodyHtml(a, actions) {
     ${actions || ""}
     ${reactBarHtml(a)}`;
 }
+function tenantHiddenAnnSet() {
+  if (isDevPreview()) return new Set(Object.keys(ui.devHiddenAnns || {}));
+  const t = (state.tenants || []).find(x => x && x.id === ui.tenantId);
+  return new Set((t && t.hiddenAnns) || []);
+}
+function hideAnnounceForMe(id) {
+  const key = String(id || "");
+  if (!key) return;
+  if (isDevPreview()) {
+    if (!ui.devHiddenAnns) ui.devHiddenAnns = {};
+    ui.devHiddenAnns[key] = true;
+    toast("已從你的畫面移除");
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const t = (state.tenants || []).find(x => x && x.id === ui.tenantId);
+  if (!t) return;
+  t.hiddenAnns = [...new Set([].concat(t.hiddenAnns || [], [key]))];
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  toast("已從你的畫面移除");
+  ui.keepScroll = true;
+  render();
+}
+function visibleAnnouncements() {
+  const hidden = tenantHiddenAnnSet();
+  return (state.announcements || []).filter(a => a && !hidden.has(String(a.id)));
+}
 function announceCardsHtml() {
-  const list = (state.announcements || []).slice().reverse();
+  const list = visibleAnnouncements().slice().reverse();
   if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
-  return list.map(a => `<div class="card card-body ann-card" data-read-announce="${a.id}">${announceBodyHtml(a)}</div>`).join("");
+  return list.map(a => `<div class="card card-body ann-card" data-read-announce="${a.id}">
+      <button type="button" class="ann-hide" data-hide-announce="${a.id}" aria-label="從我的畫面移除">×</button>
+      ${announceBodyHtml(a)}
+    </div>`).join("");
 }
 
 function homeView() {
   const t = me(); const r = myRoom();
   const left = daysLeft(t.leaseEnd); const pay = payLabel(t);
-  const hasAnn = (state.announcements || []).length > 0;
+  const hasAnn = visibleAnnouncements().length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
     <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
@@ -14143,8 +14185,16 @@ function bindTenant() {
       item.appointRead = true; save(); openGoogleCalendar(item, "renew");
     };
   });
+  document.querySelectorAll("[data-hide-announce]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideAnnounceForMe(btn.dataset.hideAnnounce);
+    };
+  });
   document.querySelectorAll("[data-read-announce]").forEach(el => {
     el.onclick = e => {
+      if (e.target && e.target.closest && e.target.closest("[data-hide-announce]")) return;
       e.preventDefault();
       const a = (state.announcements || []).find(x => x.id === el.dataset.readAnnounce);
       if (!a || !ui.tenantId) return;
