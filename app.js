@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-28";
-const APP_EDIT_COUNT = 518;
+const APP_STAMP = "2026-09-02-18-29";
+const APP_EDIT_COUNT = 519;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客圖卡只留一列 LINE"] },
+  { ver: APP_STAMP, items: ["廠房租客同一戶只顯示一列 LINE"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0069") return;
+    if (!m || !m[1] || m[1] === "0070") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -13396,13 +13396,16 @@ function tenantListOfKind(kind) {
   const uniq = [];
   const seenRoom = new Set();
   list.forEach(t => {
-    if (factory) { uniq.push(t); return; }
     const r = state.rooms.find(x => x.id === t.roomId);
-    const key = r ? "n:" + String(r.no || r.id) : "t:" + t.id;
+    const key = factory
+      ? "f:" + String(t.taxId || t.name || t.id) + "|" + factoryAddress(r)
+      : (r ? "n:" + String(r.no || r.id) : "t:" + t.id);
     if (seenRoom.has(key)) return;
     seenRoom.add(key);
-    const info = r && TENANT_INFO[String(r.no || "")];
-    if (info && info.name) t.name = info.name;
+    if (!factory) {
+      const info = r && TENANT_INFO[String(r.no || "")];
+      if (info && info.name) t.name = info.name;
+    }
     uniq.push(t);
   });
   const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn();
@@ -13436,7 +13439,7 @@ function tenantEntriesOfKind(kind) {
       order.push(e);
     }
     const e = map.get(key);
-    e.tenants.push(t);
+    if (!e.tenants.some(x => x.id === t.id)) e.tenants.push(t);
     if (r && !e.rooms.some(x => x && (x.id === r.id || x.no === r.no || factoryAddress(x) === factoryAddress(r)))) e.rooms.push(r);
   });
   return order;
