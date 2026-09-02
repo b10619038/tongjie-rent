@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-00";
-const APP_EDIT_COUNT = 567;
+const APP_STAMP = "2026-09-03-01-02";
+const APP_EDIT_COUNT = 568;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開立發票總覽改讀雲端正式租客，新客確認後會出現"] },
+  { ver: APP_STAMP, items: ["後台確認正式入住後，看房預覽與等待確認會同步關掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0118") return;
+    if (!m || !m[1] || m[1] === "0119") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1178,10 +1178,18 @@ function enforceTenantSession() {
     ui.page = "home";
     return;
   }
-  if (t && (t.incoming || t.prospect || t.applyPending || ui.prospectPreview)) {
-    ui.prospectPreview = true;
-    persistUi();
+  const waiting = !!(t && (t.incoming || t.prospect || t.applyPending) && !t.officialAt);
+  if (waiting) {
+    if (!ui.prospectPreview) {
+      ui.prospectPreview = true;
+      persistUi();
+    }
     return;
+  }
+  if (ui.prospectPreview) {
+    ui.prospectPreview = false;
+    persistUi();
+    toast("後台已確認正式入住");
   }
   if (t && !t.former && !t.sessionEnded && r) {
     const other = (state.tenants || []).find(x => x && x.id === r.tenantId && x.id !== t.id && !x.former && !x.incoming);
@@ -3260,7 +3268,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "eSignRev", "eSign"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "eSignRev", "eSign"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -3306,6 +3314,15 @@ function pickNewerEntity(a, b, keys) {
   }
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
+  }
+  if (keys && keys.indexOf("incoming") >= 0) {
+    const off = Math.max(Number(a && a.officialAt) || 0, Number(b && b.officialAt) || 0);
+    if (off && !out.former && !out.loginRevoked && !out.sessionEnded && !out.clearedApply) {
+      out.officialAt = off;
+      out.incoming = false;
+      out.prospect = false;
+      out.applyPending = false;
+    }
   }
   return out;
 }
@@ -9335,6 +9352,7 @@ function promoteProspect(t, r) {
   t.applyUnread = false;
   t.former = false;
   t.placeholder = false;
+  t.officialAt = Date.now();
   if (!t.loginPass) t.loginPass = phonePassOf(t.phone);
   t.dueDay = RENT_DUE_DAY;
   t.edited = true;
