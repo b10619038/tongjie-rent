@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-24";
-const APP_EDIT_COUNT = 515;
+const APP_STAMP = "2026-09-02-18-26";
+const APP_EDIT_COUNT = 516;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客圖卡房間改成合約地址，例如鳳仁路97之72號"] },
+  { ver: APP_STAMP, items: ["廠房租客圖卡只留一組產出發票按鈕"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0066") return;
+    if (!m || !m[1] || m[1] === "0067") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2166,6 +2166,7 @@ function normalize(data) {
     data.factoryRosterVer = FACTORY_ROSTER_VER;
   }
   applyRentSchedules(data);
+  collapseFactoryDupes(data);
   resetFactoryPaidMarks(data);
   if (data.studioFeeVer !== STUDIO_FEE_VER) {
     (data.rooms || []).forEach(r => {
@@ -2513,6 +2514,34 @@ function migrateNiu5Nos(data) {
     data.paidMarks = next;
   }
   data.niu5NoVer = "20260902-niu5-97d";
+}
+function collapseFactoryDupes(data) {
+  if (!data) return;
+  const seenNo = new Map();
+  (data.rooms || []).forEach(r => {
+    if (!r || r.kind !== "factory" || !r.no) return;
+    const no = String(r.no).replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+    r.no = no;
+    const cur = seenNo.get(no);
+    if (!cur) seenNo.set(no, r);
+  });
+  data.rooms = (data.rooms || []).filter(r => {
+    if (!r) return false;
+    if (r.kind === "factory" && /^牛5-\d{2}$/.test(String(r.no))) return false;
+    if (r.kind === "factory" && seenNo.get(r.no) && seenNo.get(r.no) !== r) return false;
+    return true;
+  });
+  const seenT = new Map();
+  data.tenants = (data.tenants || []).filter(t => {
+    if (!t || t.former || t.demo) return true;
+    if (/^tf-牛5-\d{2}$/.test(String(t.id))) return false;
+    const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+    if (String(t.id || "").indexOf("tf-") === 0 && !room) return false;
+    const key = String(t.taxId || t.name || t.id) + "|" + factoryAddress(room);
+    if (seenT.has(key)) return false;
+    seenT.set(key, t);
+    return true;
+  });
 }
 function applyFactoryRoster(data) {
   factoryRooms().forEach(seedRoom => {
@@ -13530,16 +13559,9 @@ function tenantEntryDetailsHtml(kind, entry) {
         return co ? `<div class="row"><span class="k">退租單</span><span class="v">${co.status === "done" ? "已完成　應退 " + money(co.refund) : "草稿"}</span></div>` : "";
       })()}
       ${(() => {
-        const seen = new Set();
-        const list = tenants.filter(tt => {
-          const rr = state.rooms.find(x => x.id === tt.roomId);
-          const key = (rr && ((typeof factoryDoorNote === "function" && factoryDoorNote(rr)) || rr.no)) || tt.id;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const list = kind === "factory" ? tenants.slice(0, 1) : tenants;
         return list.map(tt => {
-        const rr = state.rooms.find(x => x.id === tt.roomId);
+        const rr = state.rooms.find(x => x.id === tt.roomId) || r;
         return `<button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
