@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-12";
-const APP_EDIT_COUNT = 561;
+const APP_STAMP = "2026-09-03-00-16";
+const APP_EDIT_COUNT = 562;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["同一人重複測試不會出現兩筆前任"] },
+  { ver: APP_STAMP, items: ["簽約後不會被踢出，也不再跳出強制退租提示"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0112") return;
+    if (!m || !m[1] || m[1] === "0113") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1168,48 +1168,57 @@ function tenantHandoverNoteHtml(t, r) {
 }
 function enforceTenantSession() {
   if (ui.role !== "tenant" || isDevPreview()) return;
-  const t = (state.tenants || []).find(x => x.id === ui.tenantId);
+  let t = (state.tenants || []).find(x => x.id === ui.tenantId);
+  if (!t && ui.tenantId) t = (state.tenants || []).find(x => x && String(x.id) === String(ui.tenantId));
   const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+  const signed = !!(t && getESign(t) && getESign(t).status === "signed" && getESign(t).sig);
+  if (t && signed && !t.clearedApply) {
+    t.former = false;
+    t.sessionEnded = false;
+    if (r && !(roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id)) {
+      t.incoming = false;
+      t.prospect = false;
+      r.tenantId = t.id;
+      if (r.status !== "repair" && r.status !== "office") r.status = "rented";
+    }
+    ui.prospectPreview = !!(t.incoming);
+    persistUi();
+    return;
+  }
   if (ui.prospectPreview || (t && t.incoming && !t.former)) {
-    if (!t || t.former || t.clearedApply || t.sessionEnded) {
+    if (t && (t.clearedApply || t.sessionEnded) && t.former) {
       try { audit("登出", "入住申請已取消"); } catch {}
       clearSession();
       ui.loginError = "";
       ui.page = "home";
-      ui.toast = "後台已強制退租，看房預覽結束，可再按我要入住測試";
       return;
     }
-    ui.prospectPreview = true;
+    if (!t) return;
     if (!t.incoming && !t.applyPending && r && r.tenantId === t.id) {
       ui.prospectPreview = false;
       persistUi();
-      ui.toast = ui.toast || ("已成為 " + (r.no || "") + " 租客");
     }
     return;
   }
   if (t && !t.former && !t.sessionEnded && r) {
     const other = (state.tenants || []).find(x => x && x.id === r.tenantId && x.id !== t.id && !x.former && !x.incoming);
-    if (other) {
-      /* someone else is the live occupant */
-    } else {
-      if (r.status === "vacant" || !r.tenantId || r.tenantId === t.id) {
-        r.tenantId = t.id;
-        if (r.status !== "repair" && r.status !== "office") r.status = "rented";
-        t.incoming = false;
-        t.former = false;
-        return;
-      }
+    if (!other && (r.status === "vacant" || !r.tenantId || r.tenantId === t.id)) {
+      r.tenantId = t.id;
+      if (r.status !== "repair" && r.status !== "office") r.status = "rented";
+      t.incoming = false;
+      t.former = false;
+      return;
     }
   }
-  const ended = !t || t.former || t.incoming || !!(r && r.tenantId && r.tenantId !== t.id);
+  const ended = !t || t.former || (t.incoming && !ui.prospectPreview) || !!(r && r.tenantId && r.tenantId !== t.id && roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id);
   if (!ended) return;
+  if (t && t.incoming) return;
   const no = ui.roomNo || (r && r.no) || "";
   try { audit("登出", "租約結束自動登出"); } catch {}
   clearSession();
-  ui.loginError = "租約已結束，此房號已交接";
+  ui.loginError = "";
   ui.loginRoom = no;
   ui.page = "home";
-  ui.toast = "租約已結束，已回到登入";
 }
 function lineOaMessageUrl(text) {
   return "https://line.me/R/oaMessage/" + encodeURIComponent(LINE_OA_ID) + "/?" + encodeURIComponent(text || "");
@@ -16328,6 +16337,11 @@ function bindSignPad() {
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
     const promoted = (t && (t.prospect || t.incoming)) ? maybePromoteProspect(t) : false;
     ui.page = "lease";
+    ui.signing = false;
+    if (t && ui.tenantId === t.id) {
+      if (promoted) ui.prospectPreview = false;
+      persistUi();
+    }
     if (!promoted) toast("已完成電子簽署，簽名已同步");
     render();
   };
