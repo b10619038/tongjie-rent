@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-48";
-const APP_EDIT_COUNT = 525;
+const APP_STAMP = "2026-09-02-18-50";
+const APP_EDIT_COUNT = 526;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1834";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房複數地址改成一行一筆"] },
+  { ver: APP_STAMP, items: ["多戶廠房發票備註改列全部門牌，例如93-55、93-56、93-57"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0076") return;
+    if (!m || !m[1] || m[1] === "0077") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5307,6 +5307,26 @@ function factoryDoorNote(r) {
   if (door) return door.replace(/(\d+)之(\d+[A-Za-z]?)/g, "$1-$2");
   return no.replace(/^牛\d+-/, "");
 }
+function factoryInvoiceNote(r, t) {
+  const seen = new Set();
+  const notes = [];
+  const add = rr => {
+    const n = factoryDoorNote(rr);
+    if (!n || seen.has(n)) return;
+    seen.add(n);
+    notes.push(n);
+  };
+  const group = t ? factoryGroupTenants(t) : [];
+  if (group.length > 1) {
+    group.forEach(tt => {
+      const rr = ((typeof state !== "undefined" && state.rooms) || []).find(x => x && x.id === tt.roomId);
+      if (rr) add(rr);
+    });
+  } else {
+    add(r);
+  }
+  return notes.join("、");
+}
 function formatFactoryAddr(s) {
   return String(s || "").replace(/(\d+)-(\d+[A-Za-z]?)號/g, "$1之$2號").replace(/(\d+)-(\d+[A-Za-z]?)$/g, "$1之$2");
 }
@@ -5428,7 +5448,7 @@ function invoiceCopyHtml(r, t, copyName) {
     }).join("");
     const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
     const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 951, 38, 44, ch, "inv-han")).join("");
-    const door = factoryDoorNote(r);
+    const door = factoryInvoiceNote(r, t);
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 301, 164, 1360, 42, "invoiceBuyer", buyer, "inv-left inv-buyer")}
@@ -5440,7 +5460,7 @@ function invoiceCopyHtml(r, t, copyName) {
       ${at(W, H, 523, 408, 210, 50, "invoiceQty", qty)}
       ${at(W, H, 732, 408, 170, 50, "invoicePrice", price)}
       ${at(W, H, 942, 408, 270, 50, "invoiceAmt", sales ? String(sales) : "")}
-      ${mk(W, H, 1248, 419, 420, 88, door, "inv-note")}
+      ${mk(W, H, 1248, 419, 420, 88, door, /、/.test(door) ? "inv-note inv-note-multi" : "inv-note")}
       ${mk(W, H, 914, 742, 270, 44, sales ? String(sales) : "")}
       ${mk(W, H, 511, 846, 40, 28, "V")}
       ${mk(W, H, 914, 806, 270, 62, taxAmt ? String(taxAmt) : "")}
@@ -5452,7 +5472,7 @@ function invoiceCopyHtml(r, t, copyName) {
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
   const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 891, 38, 44, ch, "inv-han")).join("");
-  const roomNote = factory ? factoryDoorNote(r) : (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
+  const roomNote = factory ? factoryInvoiceNote(r, t) : (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
     ${at(W, H, 980, 168, 80, 32, "invoiceY", y)}
@@ -5463,7 +5483,7 @@ function invoiceCopyHtml(r, t, copyName) {
     ${at(W, H, 524, 400, 164, 46, "invoiceQty", qty)}
     ${at(W, H, 716, 400, 158, 46, "invoicePrice", price)}
     ${at(W, H, 908, 400, 304, 46, "invoiceAmt", total ? String(total) : "")}
-    ${mk(W, H, 1288, factory ? 429 : 418, 440, 80, roomNote, "inv-note")}
+    ${mk(W, H, 1288, factory ? 429 : 418, 440, 80, roomNote, /、/.test(String(roomNote)) ? "inv-note inv-note-multi" : "inv-note")}
     ${mk(W, H, 908, 826, 304, 44, total ? String(total) : "")}
     ${cn}
     ${mk(W, H, 593, 946, 40, 38, "V")}
@@ -6673,7 +6693,7 @@ function factoryInvoiceOverviewRows() {
     const remarks = [];
     const seenNote = new Set();
     rooms.forEach(rr => {
-      const n = liveInvoiceNote(rr, tenants.find(x => x.roomId === rr.id) || src);
+      const n = factoryInvoiceNote(rr, tenants.find(x => x.roomId === rr.id) || src);
       if (!n || seenNote.has(n)) return;
       seenNote.add(n);
       remarks.push(n);
