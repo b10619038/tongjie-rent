@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-08";
-const APP_EDIT_COUNT = 527;
+const APP_STAMP = "2026-09-02-19-13";
+const APP_EDIT_COUNT = 528;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1908";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["卓建忠等個人戶改開二聯式發票"] },
+  { ver: APP_STAMP, items: ["巷弄地址發票備註改成57巷1弄35號"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0078") return;
+    if (!m || !m[1] || m[1] === "0079") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5303,8 +5303,14 @@ function factoryDoorNote(r) {
     if (fromNote) unit = fromNote[0];
   }
   if (!unit) unit = String(r && (r.unit || r.location) || "");
-  const door = String(unit).replace(/號/g, " ").replace(/\s+/g, " ").trim();
-  if (door) return door.replace(/(\d+)之(\d+[A-Za-z]?)/g, "$1-$2");
+  let door = String(unit).replace(/\s+/g, " ").trim();
+  door = door.replace(/(\d+)之(\d+[A-Za-z]?)/g, "$1-$2");
+  if (/[巷弄]/.test(door)) {
+    door = door.replace(/號/g, "") + "號";
+  } else {
+    door = door.replace(/號/g, "").trim();
+  }
+  if (door) return door;
   return no.replace(/^牛\d+-/, "");
 }
 function factoryInvoiceNote(r, t) {
