@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-22-56";
-const APP_EDIT_COUNT = 549;
+const APP_STAMP = "2026-09-02-23-00";
+const APP_EDIT_COUNT = 550;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["合約出租人與代表人改藍字，7652 月租 5000"] },
+  { ver: APP_STAMP, items: ["後台可強制退租，申請中的新客也能清掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0100") return;
+    if (!m || !m[1] || m[1] === "0101") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3174,7 +3174,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -9267,6 +9267,46 @@ function confirmIncomingApply(inc) {
   try { pushCloud(); } catch {}
   toast("已確認，改為交接中");
 }
+function forceVacateTenant(t) {
+  if (!t) { toast("找不到租客"); return; }
+  if (t.demo || isDemoTenant(t)) { toast("測試房請用重製"); return; }
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const roomId = (r && r.id) || t.roomId;
+  const now = Date.now();
+  (state.tenants || []).forEach(x => {
+    if (!x || x.demo) return;
+    if (x.id !== t.id && !(roomId && x.roomId === roomId && x.incoming)) return;
+    x.former = true;
+    x.incoming = false;
+    x.prospect = false;
+    x.applyPending = false;
+    x.applyUnread = false;
+    x.leftOn = ymdOf(nowStamp());
+    x.sessionEnded = true;
+    x.clearedApply = true;
+    x.edited = true;
+    x.editedAt = now;
+    x.eSignRev = now;
+    x.eSign = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+  });
+  try {
+    if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
+    state.eSigns[t.id] = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+    persistESignsMap(Object.assign({}, loadLocalESigns(), state.eSigns));
+  } catch {}
+  if (r) {
+    if (r.tenantId === t.id || t.incoming) r.tenantId = null;
+    delete r.incomingTenantId;
+    if (r.status !== "repair" && r.status !== "office") r.status = "vacant";
+    r.edited = true;
+  }
+  if (Array.isArray(state.notices) && r) {
+    state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
+  }
+  save();
+  try { pushCloud(); } catch {}
+  toast("已強制退租，" + ((r && r.no) || "") + " 改為空房");
+}
 function completeHandover(oldT, r, co) {
   if (!r) return;
   if (oldT && !oldT.former) {
@@ -14064,7 +14104,8 @@ function vacantSheetDetailsHtml(r) {
   return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(r.no)}</span></div>
       <div class="row"><span class="k">租金</span><span class="v">${rent ? money(rent) : "未定"}</span></div>
       ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
-      ${handoverBoxHtml(null, r)}`;
+      ${handoverBoxHtml(null, r)}
+      ${incomingOf(r.id) ? `<button type="button" class="ghost" data-force-vacate="${escapeHtml(incomingOf(r.id).id)}" style="margin-top:8px">強制退租</button>` : ""}`;
 }
 function tenantListOfKind(kind, opts) {
   try { ensureDemoTenant(state); } catch {}
@@ -14073,7 +14114,7 @@ function tenantListOfKind(kind, opts) {
   const q = all ? "" : normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     let r = state.rooms.find(x => x.id === t.roomId);
-    if (!t || t.placeholder || t.former || t.incoming) return false;
+    if (!t || t.placeholder || t.former) return false;
     if (isDemoTenant(t)) {
       const demoF = !!(t.id === "t-demo-f" || (r && isDemoFactoryRoom(r)));
       if (factory !== demoF) return false;
@@ -14286,6 +14327,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         return `<button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
+      ${kind !== "factory" ? `<button class="ghost" data-force-vacate="${tt.id}" style="margin-top:8px">強制退租</button>` : ""}
       ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
       ${handoverBoxHtml(tt, rr)}`;
@@ -14452,15 +14494,22 @@ function bindHandover() {
       render();
     };
   });
+  document.querySelectorAll("[data-force-vacate]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const t = (state.tenants || []).find(x => x.id === btn.dataset.forceVacate);
+      forceVacateTenant(t);
+      ui.page = "tenants";
+      ui.tenantSheetId = "";
+      ui.keepScroll = false;
+      render();
+    };
+  });
   document.querySelectorAll("[data-handover-cancel]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault(); e.stopPropagation();
       const inc = (state.tenants || []).find(x => x.id === btn.dataset.handoverCancel);
-      if (!inc) return;
-      const r = (state.rooms || []).find(x => x.id === inc.roomId);
-      state.tenants = (state.tenants || []).filter(x => x.id !== inc.id);
-      if (r) { delete r.incomingTenantId; r.edited = true; }
-      toast("已取消新客");
+      forceVacateTenant(inc);
       ui.keepScroll = true;
       save();
       render();
