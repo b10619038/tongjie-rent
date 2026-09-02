@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-12";
-const APP_EDIT_COUNT = 513;
+const APP_STAMP = "2026-09-02-18-18";
+const APP_EDIT_COUNT = 514;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客圖卡按鈕不再重複寫房號"] },
+  { ver: APP_STAMP, items: ["廠房租客圖卡不再出現兩組相同按鈕"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0064") return;
+    if (!m || !m[1] || m[1] === "0065") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2433,7 +2433,7 @@ function ensureCheckout6832(data) {
   });
 }
 function migrateNiu5Nos(data) {
-  if (!data || data.niu5NoVer === "20260902-niu5-97") return;
+  if (!data || data.niu5NoVer === "20260902-niu5-97c") return;
   const mapNo = no => {
     const m = String(no || "").match(/^牛5-(\d{2})$/);
     return m ? "牛5-97-" + m[1] : "";
@@ -2456,6 +2456,14 @@ function migrateNiu5Nos(data) {
       r.tenantId = nid;
     }
   });
+  const keepRoom = new Map();
+  (data.rooms || []).forEach(r => {
+    if (!r || r.kind !== "factory" || !r.no) return;
+    const cur = keepRoom.get(r.no);
+    if (!cur) { keepRoom.set(r.no, r); return; }
+    if (r.id !== cur.id) idMap[r.id] = cur.id;
+    if (!cur.tenantId) cur.tenantId = r.tenantId;
+  });
   (data.tenants || []).forEach(t => {
     if (!t) return;
     const tm = String(t.id || "").match(/^tf-牛5-(\d{2})$/);
@@ -2466,11 +2474,24 @@ function migrateNiu5Nos(data) {
     }
     if (idMap[t.roomId]) t.roomId = idMap[t.roomId];
   });
+  const keepTenant = new Map();
+  const dropTid = {};
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo) return;
+    const key = String(t.roomId || "") + "|" + String(t.taxId || t.name || t.id);
+    const cur = keepTenant.get(key);
+    if (!cur) { keepTenant.set(key, t); return; }
+    dropTid[t.id] = cur.id;
+    if (cur.paid || t.paid) { cur.paid = !!(cur.paid || t.paid); cur.paidTouched = true; }
+  });
+  data.rooms = (data.rooms || []).filter(r => !r || !idMap[r.id]);
+  data.tenants = (data.tenants || []).filter(t => !t || !dropTid[t.id]);
   ["repairs", "notices", "announcements", "renewals"].forEach(k => {
     (data[k] || []).forEach(x => {
       if (!x) return;
       if (x.roomId && idMap[x.roomId]) x.roomId = idMap[x.roomId];
       if (x.tenantId && tidMap[x.tenantId]) x.tenantId = tidMap[x.tenantId];
+      if (x.tenantId && dropTid[x.tenantId]) x.tenantId = dropTid[x.tenantId];
     });
   });
   (data.books || []).forEach(b => {
@@ -2482,15 +2503,19 @@ function migrateNiu5Nos(data) {
   if (data.paidMarks) {
     const next = {};
     Object.keys(data.paidMarks).forEach(id => {
-      next[tidMap[id] || id] = data.paidMarks[id];
+      next[dropTid[id] || tidMap[id] || id] = data.paidMarks[id];
     });
     data.paidMarks = next;
   }
-  data.niu5NoVer = "20260902-niu5-97";
+  data.niu5NoVer = "20260902-niu5-97c";
 }
 function applyFactoryRoster(data) {
   factoryRooms().forEach(seedRoom => {
     let room = data.rooms.find(r => r.id === seedRoom.id || r.no === seedRoom.no);
+    if (!room) {
+      const oldNo = String(seedRoom.no || "").replace(/^牛5-97-(\d{2})$/, "牛5-$1");
+      if (oldNo && oldNo !== seedRoom.no) room = data.rooms.find(r => r.no === oldNo || r.id === "f" + oldNo.replace(/[^\w\u4e00-\u9fff-]/g, ""));
+    }
     if (!room) {
       room = structuredClone(seedRoom);
       data.rooms.push(room);
@@ -13483,7 +13508,16 @@ function tenantEntryDetailsHtml(kind, entry) {
         const co = lastCheckout(t.id);
         return co ? `<div class="row"><span class="k">退租單</span><span class="v">${co.status === "done" ? "已完成　應退 " + money(co.refund) : "草稿"}</span></div>` : "";
       })()}
-      ${tenants.map(tt => {
+      ${(() => {
+        const seen = new Set();
+        const list = tenants.filter(tt => {
+          const rr = state.rooms.find(x => x.id === tt.roomId);
+          const key = (rr && ((typeof factoryDoorNote === "function" && factoryDoorNote(rr)) || rr.no)) || tt.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        return list.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId);
         return `<button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
@@ -13491,7 +13525,8 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
       ${handoverBoxHtml(tt, rr)}`;
-      }).join("")}`;
+        }).join("");
+      })()}`;
 }
 function tenantEntryCardHtml(kind, entry) {
   const tenants = entry.tenants || [];
