@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-47";
-const APP_EDIT_COUNT = 524;
+const APP_STAMP = "2026-09-02-18-48";
+const APP_EDIT_COUNT = 525;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1834";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房發票備註往下0.1公分"] },
+  { ver: APP_STAMP, items: ["廠房複數地址改成一行一筆"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0075") return;
+    if (!m || !m[1] || m[1] === "0076") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -13539,7 +13539,11 @@ function tenantEntryDetailsHtml(kind, entry) {
   });
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
   return `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
-      <div class="row wrap"><span class="k">${kind === "factory" ? "地址" : "房間"}</span><span class="v">${escapeHtml(kind === "factory" ? [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))].join("、") : nos)}</span></div>
+      ${(() => {
+        if (kind !== "factory") return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>`;
+        const addrs = [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))];
+        return `<div class="row wrap"><span class="k">地址</span><span class="v">${addrs.map(a => escapeHtml(a)).join("<br>")}</span></div>`;
+      })()}
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。</div>${demoResetBarHtml()}` : ""}
       ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
