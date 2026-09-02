@@ -1,6 +1,7 @@
 const KEY = "tongjie_rent_app_v8";
 const LEDGER_KEY = "tongjie_ledger_v1";
 const ANN_MEDIA_KEY = "tongjie_ann_media_v1";
+const REPAIR_MEDIA_KEY = "tongjie_repair_media_v1";
 const PAID_KEY = "tongjie_paid_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
@@ -19,8 +20,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-20";
-const APP_EDIT_COUNT = 504;
+const APP_STAMP = "2026-09-02-17-28";
+const APP_EDIT_COUNT = 505;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -59,7 +60,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["公告照片同步到所有裝置"] },
+  { ver: APP_STAMP, items: ["租客報修內容與照片即時同步到所有後台裝置"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -753,7 +754,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0055") return;
+    if (!m || !m[1] || m[1] === "0056") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2125,6 +2126,7 @@ function normalize(data) {
   if (!Array.isArray(data.lunchSpots)) data.lunchSpots = [];
   if (!Array.isArray(data.lunchHidden)) data.lunchHidden = [];
   if (!Array.isArray(data.repairs)) data.repairs = [];
+  applyRepairMedia(data);
   data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
   if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && n.id !== "n1" && n.repairId !== "rep1");
   const r6831 = (data.rooms || []).find(x => x && (x.id === "r6831" || x.no === "6831"));
@@ -2829,6 +2831,35 @@ function applyAnnMedia(data) {
     if (!(a.media && a.media.length) && map[a.id] && map[a.id].length) a.media = map[a.id];
   });
 }
+function loadRepairMediaMap() {
+  try { return JSON.parse(localStorage.getItem(REPAIR_MEDIA_KEY) || "{}") || {}; } catch { return {}; }
+}
+function persistRepairMedia(data) {
+  if (!data) return;
+  const map = loadRepairMediaMap();
+  const live = {};
+  (data.repairs || []).forEach(r => {
+    if (!r || !r.id) return;
+    const media = (r.media && r.media.length) ? r.media : (r.photo ? [{ kind: "image", src: r.photo }] : []);
+    if (media.length) live[r.id] = media;
+    else if (map[r.id]) live[r.id] = map[r.id];
+  });
+  try { localStorage.setItem(REPAIR_MEDIA_KEY, JSON.stringify(live)); } catch {}
+}
+function applyRepairMedia(data) {
+  if (!data || !Array.isArray(data.repairs)) return;
+  const map = loadRepairMediaMap();
+  data.repairs.forEach(r => {
+    if (!r || !r.id) return;
+    if (!(r.media && r.media.length) && map[r.id] && map[r.id].length) {
+      r.media = map[r.id];
+      if (!r.photo) {
+        const img = r.media.find(m => m && m.kind === "image");
+        if (img) r.photo = img.src;
+      }
+    }
+  });
+}
 function unionById(a, b) {
   const map = new Map();
   [].concat(a || [], b || []).forEach(x => {
@@ -3040,9 +3071,20 @@ function ingestPaidCloud(raw) {
     applyPaidMarks(state);
     if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
-    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants)) return;
+    const ping = Number(o.repairPing || 0);
+    if (ping && ping > (ingestPaidCloud.repairPing || 0)) {
+      ingestPaidCloud.repairPing = ping;
+      pullCloud().then(() => {
+        applyRepairMedia(state);
+        if (ui.role === "admin") {
+          ui.keepScroll = true;
+          try { render(); } catch {}
+        }
+      }).catch(() => {});
+    }
+    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping) return;
     if (composingNow()) return;
-    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash" || ui.page === "firm") {
+    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash" || ui.page === "firm" || ui.page === "home") {
       ui.keepScroll = true;
       render();
     }
@@ -3077,7 +3119,8 @@ function moneyCloudBlob() {
       delete o.media; delete o.photo;
       return o;
     }),
-    ledgerGone: state.ledgerGone || []
+    ledgerGone: state.ledgerGone || [],
+    repairPing: Number(state.repairPing) || 0
   });
 }
 let __moneyPubTimer = 0;
@@ -3205,7 +3248,7 @@ function mergeSharedInto(target, other) {
     target.tenants = (target.tenants || []).filter(x => x && !g.has(x.id));
   }
   target.rooms = mergeRooms(target.rooms, other.rooms);
-  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]);
+  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.checkouts = unionById(target.checkouts, other.checkouts);
@@ -3311,6 +3354,7 @@ async function pullCloud() {
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
     applyAnnMedia(state);
+    applyRepairMedia(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
@@ -3330,6 +3374,7 @@ async function pullCloud() {
       dropFactoryRentAutos(state);
       persistLedger(state);
       persistAnnMedia(state);
+      persistRepairMedia(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -3377,6 +3422,7 @@ async function pullCloud() {
     syncPaidRentBooks(state);
     persistLedger(state);
     persistAnnMedia(state);
+    persistRepairMedia(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -3743,6 +3789,7 @@ async function pushPresence() {
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
     persistLedger(state);
     persistAnnMedia(state);
+    persistRepairMedia(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   } catch {}
   finally { if (timer) clearTimeout(timer); }
@@ -3846,7 +3893,7 @@ async function pushCloud() {
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
-      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
+      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media"]),
       notices: mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
@@ -3909,7 +3956,7 @@ async function pushCloud() {
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) cloudDirty = false;
   } catch { ui.cloudOk = false; }
-  try { persistAnnMedia(state); } catch {}
+  try { persistAnnMedia(state); persistRepairMedia(state); } catch {}
   try { publishPaidCloud(); } catch {}
 }
 function cloudAnnMedia(list) {
@@ -3942,9 +3989,8 @@ function stripCloudMedia(data) {
   if (Array.isArray(data.repairs)) {
     data.repairs = data.repairs.map(r => {
       if (!r) return r;
-      const o = Object.assign({}, r, { media: [] });
-      if (String(o.photo || "").startsWith("data:")) o.photo = "";
-      return o;
+      const media = cloudAnnMedia(r.media && r.media.length ? r.media : (r.photo ? [{ kind: "image", src: r.photo }] : []));
+      return Object.assign({}, r, { media, photo: "" });
     });
   }
   if (Array.isArray(data.announcements)) {
@@ -3962,11 +4008,12 @@ function save(force) {
   }
   try {
     persistAnnMedia(state);
+    persistRepairMedia(state);
     state.updatedAt = Date.now();
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    try { persistLedger(state); persistAnnMedia(state); } catch {}
+    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); } catch {}
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
@@ -14327,7 +14374,7 @@ function bindTenant() {
         if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
         ui.repairMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
       } else {
-        try { ui.repairMedia.push({ kind: "image", src: await compressImage(file), name: file.name }); } catch {}
+        try { ui.repairMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); } catch {}
       }
     }
     const box = document.getElementById("media-preview");
@@ -14350,15 +14397,19 @@ function bindTenant() {
       const rec = {
         id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, note,
         photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp,
-        roomNo: room.no || "", demo: !!(isDevPreview() || (room && room.demo))
+        roomNo: room.no || "", demo: !!(isDevPreview() || (room && room.demo)), editedAt: Date.now()
       };
       state.repairs.push(rec);
       if (!state.notices) state.notices = [];
       state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
+      state.repairPing = Date.now();
+      persistRepairMedia(state);
       try { save(true); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
+      try { publishPaidCloud(); } catch {}
+      try { pushCloud(); } catch {}
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
       ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
       toast(isDevPreview() ? "已提交報修，後台可查看" : "已提交報修");
