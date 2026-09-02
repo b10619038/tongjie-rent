@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-18";
-const APP_EDIT_COUNT = 563;
+const APP_STAMP = "2026-09-03-00-24";
+const APP_EDIT_COUNT = 564;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客登入密碼可打中文姓名"] },
+  { ver: APP_STAMP, items: ["強制退租後不能再登入；入住申請圖卡上方有確認正式入住"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0114") return;
+    if (!m || !m[1] || m[1] === "0115") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1171,10 +1171,15 @@ function enforceTenantSession() {
   let t = (state.tenants || []).find(x => x.id === ui.tenantId);
   if (!t && ui.tenantId) t = (state.tenants || []).find(x => x && String(x.id) === String(ui.tenantId));
   const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+  if (t && (t.former || t.sessionEnded || t.clearedApply || t.loginRevoked)) {
+    try { audit("登出", "已退租"); } catch {}
+    clearSession();
+    ui.loginError = "";
+    ui.page = "home";
+    return;
+  }
   const signed = !!(t && getESign(t) && getESign(t).status === "signed" && getESign(t).sig);
-  if (t && signed && !t.clearedApply) {
-    t.former = false;
-    t.sessionEnded = false;
+  if (t && signed && !t.former && !t.clearedApply && !t.loginRevoked) {
     if (r && !(roomCurrentTenant(r) && roomCurrentTenant(r).id !== t.id)) {
       t.incoming = false;
       t.prospect = false;
@@ -1186,13 +1191,6 @@ function enforceTenantSession() {
     return;
   }
   if (ui.prospectPreview || (t && t.incoming && !t.former)) {
-    if (t && (t.clearedApply || t.sessionEnded) && t.former) {
-      try { audit("登出", "入住申請已取消"); } catch {}
-      clearSession();
-      ui.loginError = "";
-      ui.page = "home";
-      return;
-    }
     if (!t) return;
     if (!t.incoming && !t.applyPending && r && r.tenantId === t.id) {
       ui.prospectPreview = false;
@@ -2922,7 +2920,7 @@ function applyTenantRoster(data) {
       if (info.note) room.note = info.note;
       (data.tenants || []).forEach(x => {
         if (!x || x.roomId !== room.id || x.demo) return;
-        if (isMoveInTenant(x) && x.former && !x.sessionEnded && !x.clearedApply) {
+        if (isMoveInTenant(x) && x.former && !x.sessionEnded && !x.clearedApply && !x.loginRevoked) {
           x.former = false;
           x.incoming = false;
           x.leftOn = "";
@@ -3274,7 +3272,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev", "eSign"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "eSignRev", "eSign"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -9254,7 +9252,7 @@ function lastCheckout(tenantId) {
   return list.length ? list[list.length - 1] : null;
 }
 function incomingOf(roomId) {
-  return (state.tenants || []).find(x => x && x.roomId === roomId && x.incoming && !x.former) || null;
+  return (state.tenants || []).find(x => x && x.roomId === roomId && x.incoming && !x.former && !x.loginRevoked && !x.sessionEnded) || null;
 }
 function isHandoverRoom(r, t) {
   if (!r || r.demo) return false;
@@ -9476,6 +9474,7 @@ function cancelIncomingTenant(inc) {
   inc.leftOn = ymdOf(nowStamp());
   inc.sessionEnded = true;
   inc.clearedApply = true;
+  inc.loginRevoked = true;
   inc.edited = true;
   inc.editedAt = now;
   const live = restoreLiveRoom(r);
@@ -9507,6 +9506,7 @@ function forceVacateTenant(t) {
     x.leftOn = ymdOf(nowStamp());
     x.sessionEnded = true;
     x.clearedApply = true;
+    x.loginRevoked = true;
     x.edited = true;
     x.editedAt = now;
     x.eSignRev = now;
@@ -9595,13 +9595,22 @@ function payAcctFields(co) {
     <label class="field"><span>銀行／通路</span><select id="co-pay-bank"><option value="">（無）</option>${BANK_PLACES.map(a => `<option${a === bank ? " selected" : ""}>${a}</option>`).join("")}</select></label>
     <label class="field"><span>日租金退還</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="不滿月退給舊客，沒有就空白" /></label>`;
 }
+function incomingActionHtml(inc, r) {
+  if (!inc || !r || inc.former || inc.demo) return "";
+  const live = canPromoteProspect(inc, r);
+  return `<div class="handover-box">
+      <div class="label">${inc.applyPending ? "入住申請" : "交接中"}</div>
+      <p class="small">${live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。"}</p>
+      <button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認正式入住" : "確認交接中"}</button>
+      <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
+    </div>`;
+}
 function handoverBoxHtml(t, r) {
-  if (!r || r.demo || (t && (t.demo || t.incoming))) return "";
+  if (!r || r.demo || (t && t.demo)) return "";
   const inc = incomingOf(r.id);
+  if (t && t.incoming) return incomingActionHtml(t, r);
   if (inc) {
-    return `<div class="handover-box">
-      <div class="label">${inc.applyPending ? "新客（入住申請）" : "新客（交接中）"}</div>
-      ${inc.applyPending ? `<p class="small">客戶從「我要入住」送來。確認後改為交接中。</p>` : ""}
+    return incomingActionHtml(inc, r) + `<div class="handover-box">
       ${teField("姓名", "name", inc.id, r.id, inc.name || "")}
       ${teField("電話", "phone", inc.id, r.id, inc.phone || "", "tel", "手機號碼")}
       ${teField("身分證", "idNo", inc.id, r.id, inc.idNo || "")}
@@ -9612,8 +9621,6 @@ function handoverBoxHtml(t, r) {
       ${teField("租金", "rent", inc.id, r.id, inc.rent != null ? inc.rent : (r.rent || ""), "number", "0")}
       ${teField("押金", "deposit", inc.id, r.id, inc.deposit != null ? inc.deposit : "", "number", "空白＝兩個月")}
       ${inc.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(inc.signAppointAt).replace("T", " ")))}</span></div>` : ""}
-      ${inc.applyPending ? `<button type="button" class="btn-navy" data-apply-confirm="${inc.id}">確認交接中</button>` : ""}
-      <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
       <button type="button" class="btn-navy" data-print-lease="${inc.id}">下載合約</button>
       <div class="small">舊客辦完退租後，新客會自動接手這間，租金押金一併套用。</div>
     </div>`;
@@ -14415,6 +14422,7 @@ function tenantListOfKind(kind, opts) {
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
     if (da === 0) return 0;
+    if (!!a.incoming !== !!b.incoming) return a.incoming ? 1 : -1;
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
@@ -14551,7 +14559,9 @@ function tenantEntryDetailsHtml(kind, entry) {
     return roomRentLine(tt, rr) === roomRentLine(t, r);
   });
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
-  return `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
+  const incSelf = t && t.incoming ? t : null;
+  return `${incSelf ? incomingActionHtml(incSelf, r) : ""}
+      ${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
       ${(() => {
         if (kind !== "factory") return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>`;
         const addrs = [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))];
@@ -14617,7 +14627,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${kind !== "factory" ? `<button class="ghost" data-force-vacate="${tt.id}" style="margin-top:8px">強制退租</button>` : ""}
       ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
-      ${handoverBoxHtml(tt, rr)}`;
+      ${tt.incoming ? "" : handoverBoxHtml(tt, rr)}`;
         }).join("");
       })()}`;
 }
@@ -15430,6 +15440,7 @@ function enterTenant(room, tenant) {
 }
 function tenantPassOk(t, pass) {
   if (!t || !pass) return false;
+  if (t.former || t.sessionEnded || t.clearedApply || t.loginRevoked || t.placeholder) return false;
   if (t.loginPass && pass === String(t.loginPass)) return true;
   const p4 = phonePassOf(t.phone);
   if (p4 && pass === p4) return true;
@@ -15465,13 +15476,19 @@ function tryLogin() {
   }
   const pass = String((document.getElementById("pass-login") || {}).value || "").trim();
   const incoming = incomingOf(room.id);
-  const current = (state.tenants || []).find(t => t && t.id === room.tenantId && !t.former) || tenantByRoomNo(no).tenant;
-  const cands = (state.tenants || []).filter(t => t && t.roomId === room.id && !t.former && !t.demo);
+  const current = (state.tenants || []).find(t => t && t.id === room.tenantId && !t.former && !t.sessionEnded && !t.clearedApply && !t.loginRevoked) || null;
+  const cands = (state.tenants || []).filter(t => t && t.roomId === room.id && !t.former && !t.demo && !t.sessionEnded && !t.clearedApply && !t.loginRevoked);
   let tenant = pass ? cands.find(t => tenantPassOk(t, pass)) : null;
   if (!tenant && incoming && tenantPassOk(incoming, pass)) tenant = incoming;
   if (!tenant && current && !current.incoming && tenantPassOk(current, pass)) tenant = current;
   if (!tenant && isDemoRoom(room) && (pass === "0000" || pass.toUpperCase() === "DEMO")) tenant = current;
   if (!tenant) {
+    const vacated = (state.tenants || []).some(t => t && t.roomId === room.id && tenantPassOk({ ...t, former: false, sessionEnded: false, clearedApply: false, loginRevoked: false }, pass) && (t.former || t.sessionEnded || t.clearedApply || t.loginRevoked));
+    if (vacated) {
+      ui.loginError = "此租客已退租，無法登入";
+      audit("登入失敗", "已退租 " + no);
+      render(); return;
+    }
     if (!current && !incoming) {
       ui.loginError = "此房號目前沒有租客";
       audit("登入失敗", "嘗試房號 " + no);
