@@ -19,8 +19,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-01";
-const APP_EDIT_COUNT = 502;
+const APP_STAMP = "2026-09-02-17-14";
+const APP_EDIT_COUNT = 503;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -59,7 +59,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客可從自己畫面叉掉公告，不影響後台與其他租客"] },
+  { ver: APP_STAMP, items: ["開立發票總覽改 A4 橫式單面，字放大方便列印"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -753,7 +753,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0053") return;
+    if (!m || !m[1] || m[1] === "0054") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6265,46 +6265,53 @@ function invoiceOverviewRows() {
   return rows;
 }
 function drawInvoiceOverviewCanvas(rows) {
-  const W = 1754, H = 1240;
+  const W = 2480, H = 1754;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  const pad = 36;
+  const pad = 44;
+  const font = w => w + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
   ctx.fillStyle = "#1f3d2b";
-  ctx.font = "700 28px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  ctx.font = font("700 42px");
   ctx.textBaseline = "top";
-  ctx.fillText("統潔開發有限公司　開立發票總覽", pad, 22);
-  ctx.font = "500 16px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  ctx.fillText("統潔開發有限公司　開立發票總覽", pad, 28);
+  ctx.font = font("600 22px");
   ctx.fillStyle = "#5b6b62";
   const now = new Date();
   ctx.textAlign = "right";
-  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 28);
+  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 38);
   ctx.textAlign = "left";
   const cols = [
-    { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.09 },
-    { k: "invoiceDate", h: "發票日期", w: 0.08 },
-    { k: "buyer", h: "買受人", w: 0.13 },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.08 },
-    { k: "amount", h: "金額", w: 0.09 },
-    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.08 },
-    { k: "start", h: "合約開始", w: 0.12 },
-    { k: "end", h: "合約結束", w: 0.12 },
-    { k: "left", h: "剩餘天數", w: 0.10 },
-    { k: "renew", h: "續約", w: 0.11 }
+    { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
+    { k: "invoiceDate", h: "發票日期", w: 0.10, big: true },
+    { k: "buyer", h: "買受人", w: 0.17, big: true },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.08, big: true },
+    { k: "amount", h: "金額", w: 0.10, big: true },
+    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
+    { k: "start", h: "合約開始", w: 0.11 },
+    { k: "end", h: "合約結束", w: 0.11 },
+    { k: "left", h: "剩餘天數", w: 0.08 },
+    { k: "renew", h: "續約", w: 0.08 }
   ];
-  const tableTop = 70;
-  const headH = 52;
-  const rowH = 32;
+  const tableTop = 92;
+  const headH = 68;
   const tableW = W - pad * 2;
+  const n = Math.max((rows || []).length, 1);
+  const avail = H - tableTop - headH - 52;
+  const rowH = Math.min(48, Math.max(34, Math.floor(avail / n)));
   let x = pad;
-  cols.forEach(c => { c.x = x; c.pw = Math.round(tableW * c.w); x += c.pw; });
+  cols.forEach((c, i) => {
+    c.x = x;
+    c.pw = i === cols.length - 1 ? (pad + tableW - x) : Math.round(tableW * c.w);
+    x += c.pw;
+  });
   ctx.fillStyle = "#e7eee8";
   ctx.fillRect(pad, tableTop, tableW, headH);
   ctx.strokeStyle = "#1f3d2b";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.strokeRect(pad, tableTop, tableW, headH);
   cols.forEach(c => {
     ctx.beginPath();
@@ -6312,22 +6319,25 @@ function drawInvoiceOverviewCanvas(rows) {
     ctx.lineTo(c.x, tableTop + headH);
     ctx.stroke();
     ctx.fillStyle = "#1f3d2b";
-    ctx.font = "700 15px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+    ctx.font = font("700 22px");
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     if (c.h2) {
-      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 18);
-      ctx.font = "500 12px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
-      ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 36);
+      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 24);
+      ctx.font = font("500 16px");
+      ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 48);
     } else {
       ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
     }
   });
+  const bodyBig = Math.max(20, Math.round(rowH * 0.52));
+  const bodySm = Math.max(18, Math.round(rowH * 0.46));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
     ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
     ctx.fillRect(pad, y, tableW, rowH);
     ctx.strokeStyle = "#c5d0c6";
+    ctx.lineWidth = 1;
     ctx.strokeRect(pad, y, tableW, rowH);
     cols.forEach(c => {
       ctx.beginPath();
@@ -6339,28 +6349,31 @@ function drawInvoiceOverviewCanvas(rows) {
       if (c.k === "renew") val = row.renew ? "✓" : "";
       if (c.k === "left") val = val === "" || val == null ? "" : String(val);
       ctx.fillStyle = "#24332a";
-      ctx.font = (c.k === "buyer" ? "600 13px" : "500 14px") + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      const size = c.big ? bodyBig : bodySm;
+      ctx.font = (c.k === "buyer" ? "700 " : "600 ") + size + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
       ctx.textAlign = c.k === "buyer" ? "left" : "center";
       ctx.textBaseline = "middle";
-      const tx = ctx.textAlign === "left" ? c.x + 6 : c.x + c.pw / 2;
-      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 12);
+      const tx = ctx.textAlign === "left" ? c.x + 10 : c.x + c.pw / 2;
+      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 16);
     });
   });
   const bottom = tableTop + headH + rows.length * rowH;
   ctx.strokeStyle = "#1f3d2b";
+  ctx.lineWidth = 1.5;
   ctx.strokeRect(pad, tableTop, tableW, bottom - tableTop);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
-  ctx.font = "500 13px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
-  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。發票日期為租金所屬月份1日。", pad, Math.min(bottom + 12, H - 28));
+  ctx.font = font("500 18px");
+  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。發票日期為租金所屬月份1日。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
   ctx.textAlign = "left";
-  return { dataUrl: canvas.toDataURL("image/jpeg", 0.92), w: W, h: H };
+  return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
 }
 async function downloadJpegPagesPdf(pages, filename, landscape) {
   if (!pages || !pages.length) return;
   const PW = landscape ? 842 : 595;
   const PH = landscape ? 595 : 842;
+  const margin = 12;
   const enc = new TextEncoder();
   const out = []; const off = [0]; let ppos = 0;
   const emit = (str, raw) => { const a = enc.encode(str); out.push(a); ppos += a.length; if (raw) { out.push(raw); ppos += raw.length; } };
@@ -6370,7 +6383,7 @@ async function downloadJpegPagesPdf(pages, filename, landscape) {
   off[2] = ppos; emit(`2 0 obj\n<< /Type /Pages /Count ${pages.length} /Kids [${kidsStr}] >>\nendobj\n`);
   pages.forEach((pg, i) => {
     const pageId = 3 + i * 3, contentId = pageId + 1, imgId = pageId + 2;
-    const scale = Math.min((PW - 0) / pg.w, (PH - 0) / pg.h);
+    const scale = Math.min((PW - margin * 2) / pg.w, (PH - margin * 2) / pg.h);
     const dw = pg.w * scale, dh = pg.h * scale, x = (PW - dw) / 2, y = (PH - dh) / 2;
     const stream = `q ${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im${i} Do Q`;
     off[pageId] = ppos;
