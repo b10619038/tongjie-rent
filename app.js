@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-09";
-const APP_EDIT_COUNT = 571;
+const APP_STAMP = "2026-09-03-01-40";
+const APP_EDIT_COUNT = 572;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["強制退租、我要入住與後台申請通知都會即時同步"] },
+  { ver: APP_STAMP, items: ["發票買受人改跟現任／新租客名字雲端同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0122") return;
+    if (!m || !m[1] || m[1] === "0123") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3268,7 +3268,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "eSignRev", "eSign"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -5621,9 +5621,22 @@ function moneyCN(n) {
   }
   return "新臺幣" + s + "元整";
 }
+function invoiceTenantOf(r) {
+  if (!r) return null;
+  const all = (state.tenants || []).filter(x => x && !x.demo && (x.roomId === r.id || x.id === r.tenantId));
+  const live = all.find(x => x && x.id === r.tenantId && !x.former && !x.loginRevoked && String(x.name || "").trim());
+  if (live) return live;
+  const official = all.find(x => x && !x.former && !x.incoming && !x.loginRevoked && !x.sessionEnded && String(x.name || "").trim());
+  if (official) return official;
+  const inc = all.find(x => x && x.incoming && !x.former && !x.loginRevoked && String(x.name || "").trim());
+  if (inc) return inc;
+  return roomCurrentTenant(r) || null;
+}
 function invoiceBuyer(r, t) {
-  if (r.kind === "factory") return (t && t.name) || r.company || r.manager || "";
-  return (t && t.name) || "";
+  const src = t || invoiceTenantOf(r);
+  const name = String((src && (src.invoiceBuyer || src.name)) || "").trim();
+  if (r && r.kind === "factory") return name || r.company || r.manager || "";
+  return name;
 }
 function displayRoomNo(r) {
   if (typeof r === "string") {
@@ -5780,7 +5793,9 @@ function invoiceCopyHtml(r, t, copyName) {
   const triple = invoiceIsTriple(r, t);
   const p = invoicePeriod();
   const addr = invoiceAddr(r, t);
-  const buyer = ui.invoiceBuyer != null && ui.invoiceBuyer !== "" ? ui.invoiceBuyer : invoiceBuyer(r, t);
+  const buyer = (ui.invoiceBuyerFor === (r && r.id) && ui.invoiceBuyer != null && ui.invoiceBuyer !== "")
+    ? ui.invoiceBuyer
+    : invoiceBuyer(r, t);
   const num = ui.invoiceNum || "";
   const itemDefault = factory ? (p.m + "月份廠房租金收入") : (p.m + "月份租金收入");
   const item = (ui.invoiceItem && !/^\d+月(份)?(廠房)?租金(收入)?$/.test(ui.invoiceItem)) ? ui.invoiceItem : itemDefault;
@@ -5852,7 +5867,7 @@ function invoiceCopyHtml(r, t, copyName) {
 function adminInvoice() {
   const r = state.rooms.find(x => x.id === ui.invoiceRoomId);
   if (!r) return `<div class="empty">找不到房間</div>`;
-  const t = state.tenants.find(x => x.roomId === r.id || x.id === r.tenantId);
+  const t = invoiceTenantOf(r);
   const triple = invoiceIsTriple(r, t);
   const copies = ["第一聯 存根聯"];
   const back = ui.invoiceFrom === "room-edit" ? "room-edit" : "tenants";
@@ -7077,7 +7092,7 @@ function studioInvoiceRow(no, room, t, info) {
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
     invoiceYmd: invoiceYmd || "",
     invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
-    buyer: (t && t.name) || info.name || "",
+    buyer: (t && (t.invoiceBuyer || t.name)) || info.name || "",
     room: String(no),
     amount: rent,
     bank,
@@ -7162,7 +7177,7 @@ function factoryInvoiceOverviewRows() {
       remitDate: remitYmd ? rocSlash(remitYmd) : "",
       invoiceYmd: invoiceYmd || "",
       invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
-      buyer: src.name || "",
+      buyer: src.invoiceBuyer || src.name || "",
       room: remarks.join("、") || (site ? site + " " + nos : nos),
       amount,
       bank,
@@ -9432,6 +9447,7 @@ function addIncomingTenant(roomId, fields) {
     paid: false,
     dueDay: 1,
     edited: true,
+    invoiceBuyer: name,
     rent: rent || undefined,
     deposit: deposit || undefined
   };
@@ -9470,6 +9486,16 @@ function promoteProspect(t, r) {
   t.former = false;
   t.placeholder = false;
   t.officialAt = Date.now();
+  t.invoiceBuyer = String(t.name || "").trim();
+  (state.tenants || []).forEach(x => {
+    if (!x || x.id === t.id || x.demo || x.roomId !== r.id) return;
+    if (x.former) return;
+    x.former = true;
+    x.incoming = false;
+    x.leftOn = ymdOf(nowStamp());
+    x.edited = true;
+    x.editedAt = Date.now();
+  });
   if (!t.loginPass) t.loginPass = phonePassOf(t.phone);
   t.dueDay = RENT_DUE_DAY;
   t.edited = true;
@@ -14813,7 +14839,12 @@ function applyLiveTenantEdit(el) {
   const val = String(el.value || "").trim();
   if (t) { t.edited = true; t.editedAt = Date.now(); }
   if (r) { r.edited = true; r.editedAt = Date.now(); }
-  if (key === "name" && t) t.name = val;
+  if (key === "name" && t) {
+    t.name = val;
+    t.invoiceBuyer = val;
+    ui.invoiceBuyer = "";
+    ui.invoiceBuyerFor = "";
+  }
   else if (key === "phone" && t) t.phone = val;
   else if (key === "idNo" && t) t.idNo = val;
   else if (key === "emergencyName" && t) t.emergencyName = val;
@@ -15245,6 +15276,14 @@ function bindTenantListTools() {
       e.stopPropagation();
       ui.invoiceRoomId = btn.dataset.invoice;
       ui.invoiceFrom = "tenants";
+      if (ui.invoiceBuyerFor !== ui.invoiceRoomId) {
+        ui.invoiceBuyer = "";
+        ui.invoiceBuyerFor = ui.invoiceRoomId;
+        ui.invoiceAmt = "";
+        ui.invoiceItem = "";
+        ui.invoicePrice = "";
+        ui.invoiceTaxId = "";
+      }
       ui.page = "invoice";
       render();
     };
@@ -17022,6 +17061,14 @@ function bindAdmin() {
       e.stopPropagation();
       ui.invoiceRoomId = btn.dataset.invoice;
       ui.invoiceFrom = ui.page === "room-edit" ? "room-edit" : "tenants";
+      if (ui.invoiceBuyerFor !== ui.invoiceRoomId) {
+        ui.invoiceBuyer = "";
+        ui.invoiceBuyerFor = ui.invoiceRoomId;
+        ui.invoiceAmt = "";
+        ui.invoiceItem = "";
+        ui.invoicePrice = "";
+        ui.invoiceTaxId = "";
+      }
       ui.page = "invoice";
       render();
     };
