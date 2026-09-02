@@ -14,15 +14,15 @@ const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const LOGIN_KEY = "tongjie_login_v1";
 const TAB_KEY = "tongjie_tab_order";
-const ADMIN_CODES = ["1976", "7651", "1240"];
+const ADMIN_CODES = ["1976", "7651", "1240", "7736"];
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-40";
-const APP_EDIT_COUNT = 555;
+const APP_STAMP = "2026-09-02-23-48";
+const APP_EDIT_COUNT = 556;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台催繳會出現在租客首頁屋主催繳"] },
+  { ver: APP_STAMP, items: ["新客不會被空房名單踢出，7736 可進後台"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0106") return;
+    if (!m || !m[1] || m[1] === "0107") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1170,9 +1170,8 @@ function enforceTenantSession() {
   if (ui.role !== "tenant" || isDevPreview()) return;
   const t = (state.tenants || []).find(x => x.id === ui.tenantId);
   const r = t && (state.rooms || []).find(x => x.id === t.roomId);
-  if (ui.prospectPreview) {
+  if (ui.prospectPreview || (t && t.incoming && !t.former)) {
     if (!t || t.former || t.clearedApply || t.sessionEnded) {
-      const no = ui.roomNo || (r && r.no) || "";
       try { audit("登出", "入住申請已取消"); } catch {}
       clearSession();
       ui.loginError = "";
@@ -1180,6 +1179,7 @@ function enforceTenantSession() {
       ui.toast = "後台已強制退租，看房預覽結束，可再按我要入住測試";
       return;
     }
+    ui.prospectPreview = true;
     if (!t.incoming && !t.applyPending && r && r.tenantId === t.id) {
       ui.prospectPreview = false;
       persistUi();
@@ -1187,15 +1187,29 @@ function enforceTenantSession() {
     }
     return;
   }
-  const ended = !t || t.former || t.incoming || !!(r && r.tenantId && r.tenantId !== t.id) || !!(r && r.status === "vacant" && r.tenantId !== t.id);
+  if (t && !t.former && !t.sessionEnded && r) {
+    const other = (state.tenants || []).find(x => x && x.id === r.tenantId && x.id !== t.id && !x.former && !x.incoming);
+    if (other) {
+      /* someone else is the live occupant */
+    } else {
+      if (r.status === "vacant" || !r.tenantId || r.tenantId === t.id) {
+        r.tenantId = t.id;
+        if (r.status !== "repair" && r.status !== "office") r.status = "rented";
+        t.incoming = false;
+        t.former = false;
+        return;
+      }
+    }
+  }
+  const ended = !t || t.former || t.incoming || !!(r && r.tenantId && r.tenantId !== t.id);
   if (!ended) return;
   const no = ui.roomNo || (r && r.no) || "";
   try { audit("登出", "租約結束自動登出"); } catch {}
   clearSession();
   ui.loginError = "租約已結束，此房號已交接";
   ui.loginRoom = no;
-  ui.page = "tenant-login";
-  ui.toast = "租約已結束，已自動登出";
+  ui.page = "home";
+  ui.toast = "租約已結束，已回到登入";
 }
 function lineOaMessageUrl(text) {
   return "https://line.me/R/oaMessage/" + encodeURIComponent(LINE_OA_ID) + "/?" + encodeURIComponent(text || "");
@@ -2820,6 +2834,13 @@ function resetFactoryPaidMarks(data) {
   try { dropFactoryRentAutos(data); } catch {}
   try { markCloudDirty(); } catch {}
 }
+function isMoveInTenant(x) {
+  if (!x) return false;
+  const id = String(x.id || "");
+  if (id.indexOf("tin") === 0) return true;
+  if (x.applyAt || x.signAppointAt) return true;
+  return false;
+}
 function applyTenantRoster(data) {
   const fillStudio = (no, allowOffice) => {
     const info = TENANT_INFO[no] || {};
@@ -2881,13 +2902,26 @@ function applyTenantRoster(data) {
       room.rent = studioRentOf(no, room.rent);
       if (info.note) room.note = info.note;
       (data.tenants || []).forEach(x => {
-        if (x.roomId === room.id && !x.demo && !x.incoming && !x.former) {
-          x.former = true;
-          if (!x.leftOn) x.leftOn = x.leaseEnd || "2026-09-02";
+        if (!x || x.roomId !== room.id || x.demo) return;
+        if (isMoveInTenant(x) && x.former && !x.sessionEnded && !x.clearedApply) {
+          x.former = false;
+          x.incoming = false;
+          x.leftOn = "";
+          return;
         }
+        if (x.incoming || x.former) return;
+        if (isMoveInTenant(x)) return;
+        x.former = true;
+        if (!x.leftOn) x.leftOn = x.leaseEnd || "2026-09-02";
       });
-      if (room.status !== "repair" && room.status !== "office") room.status = "vacant";
-      room.tenantId = null;
+      const keep = (data.tenants || []).find(x => x.roomId === room.id && !x.demo && !x.incoming && !x.former && String(x.name || "").trim());
+      if (keep) {
+        room.tenantId = keep.id;
+        if (room.status !== "repair" && room.status !== "office") room.status = "rented";
+      } else {
+        if (room.status !== "repair" && room.status !== "office") room.status = "vacant";
+        room.tenantId = null;
+      }
     }
   };
   STUDIO_NOS.forEach(no => fillStudio(no, false));
@@ -15326,15 +15360,15 @@ function tryLogin() {
   const no = String((input && input.value) || ui.loginAdmin || ui.loginRoom || "")
     .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
     .replace(/\s+/g, "");
+  if (ADMIN_CODES.includes(no)) {
+    ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; ui.loginAdmin = "";
+    persistUi();
+    audit("登入", "管理員密碼 " + no);
+    beatPresence();
+    render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
+  }
   if (ui.page === "admin-login") {
     ui.loginAdmin = no;
-    if (ADMIN_CODES.includes(no)) {
-      ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; ui.loginAdmin = "";
-      persistUi();
-      audit("登入", "管理員密碼 " + no);
-      beatPresence();
-      render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
-    }
     ui.loginError = no ? "密碼不正確" : "請輸入管理員密碼";
     audit("登入失敗", "嘗試管理員密碼 " + no);
     render(); return;
