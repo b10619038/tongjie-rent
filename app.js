@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-42";
-const APP_EDIT_COUNT = 565;
+const APP_STAMP = "2026-09-03-00-48";
+const APP_EDIT_COUNT = 566;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["我要入住會回到看房預覽，並顯示我要簽約"] },
+  { ver: APP_STAMP, items: ["新客簽約後仍是預覽，後台確認正式入住才轉正"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0116") return;
+    if (!m || !m[1] || m[1] === "0117") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9582,9 +9582,12 @@ function payAcctFields(co) {
 function incomingActionHtml(inc, r) {
   if (!inc || !r || inc.former || inc.demo) return "";
   const live = canPromoteProspect(inc, r);
+  const signed = tenantContractStatus(inc, r) === "signed";
   return `<div class="handover-box">
-      <div class="label">${inc.applyPending ? "入住申請" : "交接中"}</div>
-      <p class="small">${live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。"}</p>
+      <div class="label">${signed ? "已簽約待確認" : (inc.applyPending ? "入住申請" : "交接中")}</div>
+      <p class="small">${signed
+        ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
+        : (live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。")}</p>
       <button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認正式入住" : "確認交接中"}</button>
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
     </div>`;
@@ -10974,7 +10977,11 @@ function homeView() {
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
           <div class="stat"><div class="label">本月租金</div><b>${studioContractRent(t, r) ? money(studioContractRent(t, r)) : "—"}</b></div>
         </div>
-        ${isProspectPreview() || tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">${isProspectPreview() ? "我要簽約" : "尚未簽約　點此線上簽署"}</button>` : ""}
+        ${isProspectPreview()
+          ? (tenantContractStatus(t, r) === "signed"
+            ? `<div class="esign-cta" style="pointer-events:none">已簽約　等待後台確認</div>`
+            : `<button type="button" class="esign-cta" data-page="lease-sign">我要簽約</button>`)
+          : (tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : "")}
       </div>
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
@@ -16346,14 +16353,20 @@ function bindSignPad() {
     save(true);
     try { pushCloud(); } catch {}
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
-    const promoted = (t && (t.prospect || t.incoming)) ? maybePromoteProspect(t) : false;
+    if (t && (t.prospect || t.incoming)) {
+      t.applyUnread = true;
+      t.applyPending = true;
+      t.editedAt = Date.now();
+      save();
+      try { pushCloud(); } catch {}
+    }
     ui.page = "lease";
     ui.signing = false;
     if (t && ui.tenantId === t.id) {
-      if (promoted) ui.prospectPreview = false;
+      ui.prospectPreview = true;
       persistUi();
     }
-    if (!promoted) toast("已完成電子簽署，簽名已同步");
+    toast("已完成電子簽署，等後台確認才會正式入住");
     render();
   };
 }
