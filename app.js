@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-20-18";
-const APP_EDIT_COUNT = 536;
+const APP_STAMP = "2026-09-02-20-28";
+const APP_EDIT_COUNT = 537;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -62,7 +62,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客新增開發者測試戶 F0000"] },
+  { ver: APP_STAMP, items: ["簽約可勾一年期限，並選後台最快可簽約時段"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -756,7 +756,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0087") return;
+    if (!m || !m[1] || m[1] === "0088") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3162,7 +3162,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -5880,7 +5880,7 @@ function ensureDemoTenant(data) {
   if (!t) {
     t = {
       id: "t-demo", name: "開發者測試", roomId: room.id, paid: false, demo: true,
-      leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
+      leaseStart: oneYearLeaseRange(todayYmd()).start, leaseEnd: oneYearLeaseRange(todayYmd()).end, dueDay: 1,
       phone: "0912-345-678", loginPass: "0000",
       idNo: "A123456789", emergencyName: "測試聯絡人", emergencyPhone: "0988-000-000"
     };
@@ -5893,8 +5893,8 @@ function ensureDemoTenant(data) {
     if (!t.name || t.name === "開發者（測試）") t.name = "開發者測試";
     if (!t.phone) t.phone = "0912-345-678";
     if (!t.loginPass || t.loginPass === "DEMO") t.loginPass = "0000";
-    if (!t.leaseStart) t.leaseStart = y + "-01-01";
-    if (!t.leaseEnd) t.leaseEnd = (y + 1) + "-12-31";
+    if (!t.leaseStart) t.leaseStart = oneYearLeaseRange(todayYmd()).start;
+    if (!t.leaseEnd) t.leaseEnd = oneYearLeaseRange(todayYmd()).end;
     if (!t.dueDay) t.dueDay = 1;
     if (!t.idNo) t.idNo = "A123456789";
     if (!t.emergencyName) t.emergencyName = "測試聯絡人";
@@ -6001,10 +6001,11 @@ function resetDemoCycle(kind) {
   t.leftOn = "";
   t.name = "開發者測試";
   if (!factory) t.loginPass = "0000";
-  const y = new Date().getFullYear();
-  t.leaseStart = y + "-01-01";
-  t.leaseEnd = (y + 1) + "-12-31";
+  const yr = oneYearLeaseRange(todayYmd());
+  t.leaseStart = yr.start;
+  t.leaseEnd = yr.end;
   t.dueDay = 1;
+  t.signAppointAt = "";
   room.demo = true;
   room.no = factory ? "F0000" : "0000";
   if (factory) { room.kind = "factory"; room.group = "測試"; }
@@ -7209,7 +7210,74 @@ function calendarItems() {
       sub: (m.cycle ? "每月固定 · " : "工作助手記下 · ") + at + (m.time ? " " + m.time : "")
     });
   });
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || !t.signAppointAt) return;
+    const room = state.rooms.find(x => x.id === t.roomId);
+    items.push({
+      at: t.signAppointAt, kind: "lease", id: "lease-" + t.id, item: t,
+      title: `${room ? room.no : ""} 合約簽約`,
+      sub: `${t.name || ""} · ${formatDateTime12(String(t.signAppointAt).replace("T", " "))}`
+    });
+  });
   return items.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+function oneYearLeaseRange(fromYmd) {
+  const day = ymdOf(fromYmd) || todayYmd();
+  const start = day.slice(0, 8) + "01";
+  const y = Number(start.slice(0, 4));
+  const m = Number(start.slice(5, 7));
+  const end = new Date(y, m - 1 + 12, 0);
+  const p = n => String(n).padStart(2, "0");
+  return { start, end: end.getFullYear() + "-" + p(end.getMonth() + 1) + "-" + p(end.getDate()) };
+}
+function applyOneYearLease(t, fromYmd) {
+  if (!t) return;
+  const r = oneYearLeaseRange(fromYmd);
+  t.leaseStart = r.start;
+  t.leaseEnd = r.end;
+  t.dueDay = 1;
+}
+function signSlotKey(at) {
+  return String(at || "").replace(" ", "T").slice(0, 13);
+}
+function busySignHours() {
+  const set = new Set();
+  calendarItems().forEach(it => {
+    const k = signSlotKey(it.at);
+    if (k) set.add(k);
+  });
+  (state.tenants || []).forEach(t => {
+    if (t && t.signAppointAt) set.add(signSlotKey(t.signAppointAt));
+  });
+  return set;
+}
+function nextSignSlots(n, keep) {
+  const need = n || 6;
+  const busy = busySignHours();
+  const keepKey = signSlotKey(keep);
+  if (keepKey) busy.delete(keepKey);
+  const hours = [9, 10, 11, 14, 15, 16];
+  const out = [];
+  const now = new Date();
+  const p = x => String(x).padStart(2, "0");
+  for (let i = 0; i < 28 && out.length < need; i++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (day.getDay() === 0) continue;
+    hours.forEach(h => {
+      if (out.length >= need) return;
+      const slot = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, 0, 0);
+      if (slot.getTime() < now.getTime() + 20 * 60000) return;
+      const key = slot.getFullYear() + "-" + p(slot.getMonth() + 1) + "-" + p(slot.getDate()) + "T" + p(h) + ":00";
+      if (busy.has(signSlotKey(key))) return;
+      out.push(key);
+    });
+  }
+  if (keep && !out.includes(keep)) out.unshift(keep);
+  return out.slice(0, need);
+}
+function signSlotLabel(at, fastest) {
+  const s = String(at || "").replace("T", " ");
+  return (fastest ? "最快　" : "") + formatDateTime12(s);
 }
 function ymdOf(value) {
   const m = String(value || "").match(/(\d{4}-\d{2}-\d{2})/);
@@ -10687,6 +10755,7 @@ function leaseView() {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
             <p class="small" style="margin-top:8px">你已完成藍字簽名。管理員列印後只蓋公司章。</p>
+            ${t.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div>` : ""}
             ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
           </div>`;
         }
@@ -10726,13 +10795,25 @@ function leaseSignView() {
   }
   const names = splitPair((t && t.name) || "");
   const two = names.length > 1;
+  if (ui.signTerm1y == null) ui.signTerm1y = true;
+  const slots = nextSignSlots(6, t && t.signAppointAt);
+  if (t && !t.signAppointAt && slots[0]) t.signAppointAt = slots[0];
+  if (t && ui.signTerm1y) applyOneYearLease(t, t.signAppointAt || todayYmd());
+  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
       <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約。身分證、電話請用藍字填在下面，簽名也是藍筆。列印後我們只蓋章。</p>
-      ${paper}
+      ${paperNow}
+      <div class="card card-body" style="margin-top:12px">
+        <div class="label">合約期限與簽約時間</div>
+        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月，自動填合約起迄日）</label>
+        <p class="small" style="margin:8px 0 6px">後台目前最快可簽約時段，點一下即預約並同步日曆</p>
+        <div class="sign-slot-grid">${slots.map((s, i) => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, i === 0))}</button>`).join("")}</div>
+        <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選一個時段"}</p>
+      </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（藍字印在合約上）</div>
         <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
@@ -13768,6 +13849,7 @@ function tenantEntryDetailsHtml(kind, entry) {
               + teField("到期　" + (rr ? rr.no : ""), "leaseEnd", tt.id, rr && rr.id, tt.leaseEnd || "", "date");
           }).join("")}
       <div class="row"><span class="k">合約</span><span class="pay-pill ${tenantContractStatus(t, r) === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(t, r)}</span></div>
+      ${t.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div>` : ""}
       ${(() => {
         const es = getESign(t);
         return es && es.sig && String(es.sig).startsWith("data:")
@@ -14429,6 +14511,7 @@ function adminRoomEdit() {
         const es = getESign(ten);
         return `<div class="card card-body" style="margin-bottom:10px">
           <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
+          ${ten && ten.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(ten.signAppointAt).replace("T", " ")))}</span></div>` : ""}
           ${st === "signed" && es && es.sig && String(es.sig).startsWith("data:") ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}　列印後只蓋章</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署套房合約。" : "已有紙本合約圖檔。"}</p>`}
           ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
         </div>`;
@@ -15038,6 +15121,7 @@ function bindTenant() {
   bindRepairDelete();
   bindSignPad();
   bindSignAgree();
+  bindSignTermSlots();
   bindLookSettings();
   const notify = document.getElementById("set-notify");
   if (notify) notify.onclick = e => {
@@ -15055,9 +15139,48 @@ function bindTenant() {
   };
 }
 
+function captureSignDraft() {
+  const t = me();
+  if (!t) return;
+  const val = id => {
+    const el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  };
+  const idNo = val("sign-idno"); if (document.getElementById("sign-idno")) t.idNo = idNo;
+  const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = phone;
+  const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = emName;
+  const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = emPhone;
+}
+function bindSignTermSlots() {
+  const term = document.getElementById("sign-term-1y");
+  if (term) {
+    term.onchange = () => {
+      captureSignDraft();
+      ui.signTerm1y = !!term.checked;
+      const t = me();
+      if (t && ui.signTerm1y) applyOneYearLease(t, (t && t.signAppointAt) || todayYmd());
+      render();
+    };
+  }
+  document.querySelectorAll("[data-sign-slot]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      captureSignDraft();
+      const t = me();
+      if (!t) return;
+      t.signAppointAt = btn.dataset.signSlot;
+      t.editedAt = Date.now();
+      if (ui.signTerm1y !== false) applyOneYearLease(t, t.signAppointAt);
+      save();
+      try { pushCloud(); } catch {}
+      render();
+    };
+  });
+}
 function bindSignAgree() {
   const box = document.getElementById("sign-agree");
-  const lab = document.querySelector("label.sign-agree");
+  const lab = document.querySelector("label.sign-agree[for='sign-agree']");
   if (!box) return;
   box.checked = !!ui.signAgree;
   const sync = () => { ui.signAgree = !!box.checked; };
@@ -15189,6 +15312,10 @@ function bindSignPad() {
       if (emName) t.emergencyName = emName;
       if (emPhone) t.emergencyPhone = emPhone;
       t.edited = true;
+      t.editedAt = Date.now();
+      const term = document.getElementById("sign-term-1y");
+      ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
+      if (ui.signTerm1y) applyOneYearLease(t, t.signAppointAt || todayYmd());
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),

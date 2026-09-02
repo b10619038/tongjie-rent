@@ -1112,7 +1112,15 @@ input[type="file"] {
   padding: 10px 8px; font: inherit; font-weight: 700; cursor: pointer;
   color: var(--ink);
 }
-.issue-opt.selected { border-color: var(--teal); background: var(--press-on); color: var(--ink); }
+.sign-term { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 4px; font-weight: 700; line-height: 1.4; }
+.sign-term input { margin-top: 3px; }
+.sign-slot-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.sign-slot {
+  border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
+  padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  color: var(--ink);
+}
+.sign-slot.on { border-color: var(--teal); background: var(--press-on); color: var(--ink); }
 .media-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .media-thumb {
   background: var(--chip); border-radius: 14px; overflow: hidden; padding: 8px;
