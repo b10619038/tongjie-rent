@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-21-55";
-const APP_EDIT_COUNT = 540;
+const APP_STAMP = "2026-09-02-22-12";
+const APP_EDIT_COUNT = 541;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登入新增我要入住，送出後進預覽、後台新客紅點"] },
+  { ver: APP_STAMP, items: ["改合約起始日會自動帶滿一年截止日"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0091") return;
+    if (!m || !m[1] || m[1] === "0092") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -7273,6 +7273,15 @@ function ymdFromDate(d) {
   if (!d || isNaN(d.getTime())) return "";
   const p = n => String(n).padStart(2, "0");
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function fullYearLeaseRange(fromYmd) {
+  const start = ymdOf(fromYmd) || todayYmd();
+  const y = Number(start.slice(0, 4));
+  const m = Number(start.slice(5, 7));
+  const d = Number(start.slice(8, 10));
+  const end = new Date(y + 1, m - 1, d);
+  end.setDate(end.getDate() - 1);
+  return { start, end: ymdFromDate(end) };
 }
 function addDaysYmd(ymd, days) {
   const s = ymdOf(ymd);
@@ -15579,12 +15588,21 @@ function bindMoveInForm() {
       render();
     };
   }
-  ["move-name", "move-phone", "move-idno", "move-start", "move-end"].forEach(id => {
+  ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.onchange = captureMoveInDraft;
     el.onblur = captureMoveInDraft;
   });
+  const startEl = document.getElementById("move-start");
+  if (startEl) {
+    startEl.onchange = () => {
+      captureMoveInDraft();
+      const d = ensureMoveIn();
+      if (d.leaseStart) d.leaseEnd = fullYearLeaseRange(d.leaseStart).end;
+      render();
+    };
+  }
   document.querySelectorAll("[data-sign-cal-nav]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -15657,7 +15675,7 @@ function bindSignTermSlots() {
       const t = me();
       const r = signTargetRoom(t);
       if (t && ui.signTerm1y) {
-        if (ui.signLeaseCustom && t.leaseStart) t.leaseEnd = oneYearLeaseRange(t.leaseStart).end;
+        if (ui.signLeaseCustom && t.leaseStart) t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
         else applyOneYearLease(t, r);
       }
       render();
@@ -15706,7 +15724,7 @@ function bindSignTermSlots() {
       ui.signLeaseCustom = true;
       if (id === "sign-lease-start") t.leaseStart = el.value;
       else t.leaseEnd = el.value;
-      if (id === "sign-lease-start" && ui.signTerm1y && t.leaseStart) t.leaseEnd = oneYearLeaseRange(t.leaseStart).end;
+      if (id === "sign-lease-start" && t.leaseStart) t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
       t.dueDay = 1;
       t.editedAt = Date.now();
       save();
