@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-15-10";
-const APP_EDIT_COUNT = 490;
+const APP_STAMP = "2026-09-02-15-28";
+const APP_EDIT_COUNT = 491;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["6832 合併為周婕妤、許軒偉一張圖卡"] },
+  { ver: APP_STAMP, items: ["套房租客搜尋下方可下載開立發票總覽"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0041") return;
+    if (!m || !m[1] || m[1] === "0042") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6093,6 +6093,204 @@ function triggerDownload(blob, filename) {
   a.href = url; a.download = filename; a.style.display = "none";
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+}
+function rocSlash(ymd) {
+  const s = ymdOf(ymd);
+  if (!s) return "";
+  const p = rocPartsOf(s);
+  return p.y + "/" + p.m + "/" + p.d;
+}
+function leaseDaysLeft(end) {
+  const s = ymdOf(end);
+  if (!s) return "";
+  const t = new Date(s + "T00:00:00");
+  if (isNaN(t.getTime())) return "";
+  const n = new Date();
+  n.setHours(0, 0, 0, 0);
+  return Math.round((t - n) / 86400000);
+}
+function invoiceOverviewRows() {
+  const nos = STUDIO_NOS.concat(["7651"]);
+  const rows = [];
+  nos.forEach(no => {
+    const info = TENANT_INFO[no];
+    if (!info || !info.name) return;
+    const room = (state.rooms || []).find(r => String(r.no) === String(no));
+    if (!room || room.demo) return;
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming);
+    if (!t && room.status === "vacant") return;
+    const tenant = t || info;
+    const paid = !!(t && paidThisMonth(t));
+    const payYmd = paid ? (ymdOf(t.paidAt) || tenantPaidOnValue(t)) : "";
+    const bankKey = tenantPayBankKey(tenant, room);
+    const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
+    const rent = Number(room.rent) || Number(tenant.rent) || studioRentOf(no) || 0;
+    const note = String((t && t.note) || info.note || "");
+    rows.push({
+      payDate: payYmd ? rocSlash(payYmd) : "",
+      buyer: tenant.name || info.name || "",
+      room: String(no),
+      amount: rent,
+      bank,
+      start: rocSlash(tenant.leaseStart || info.leaseStart),
+      end: rocSlash(tenant.leaseEnd || info.leaseEnd),
+      left: leaseDaysLeft(tenant.leaseEnd || info.leaseEnd),
+      renew: /已續約/.test(note)
+    });
+  });
+  rows.sort((a, b) => String(a.room).localeCompare(String(b.room), "zh-Hant"));
+  return rows;
+}
+function drawInvoiceOverviewCanvas(rows) {
+  const W = 1754, H = 1240;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  const pad = 36;
+  ctx.fillStyle = "#1f3d2b";
+  ctx.font = "700 28px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  ctx.textBaseline = "top";
+  ctx.fillText("統潔開發有限公司　開立發票總覽", pad, 22);
+  ctx.font = "500 16px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  ctx.fillStyle = "#5b6b62";
+  const now = new Date();
+  ctx.textAlign = "right";
+  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 28);
+  ctx.textAlign = "left";
+  const cols = [
+    { k: "payDate", h: "匯款日期", h2: "（年月日）", w: 0.13 },
+    { k: "buyer", h: "買受人", w: 0.20 },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.08 },
+    { k: "amount", h: "金額", w: 0.10 },
+    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.08 },
+    { k: "start", h: "合約開始", w: 0.11 },
+    { k: "end", h: "合約結束", w: 0.11 },
+    { k: "left", h: "剩餘天數", w: 0.09 },
+    { k: "renew", h: "續約", w: 0.10 }
+  ];
+  const tableTop = 70;
+  const headH = 52;
+  const rowH = 32;
+  const tableW = W - pad * 2;
+  let x = pad;
+  cols.forEach(c => { c.x = x; c.pw = Math.round(tableW * c.w); x += c.pw; });
+  ctx.fillStyle = "#e7eee8";
+  ctx.fillRect(pad, tableTop, tableW, headH);
+  ctx.strokeStyle = "#1f3d2b";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(pad, tableTop, tableW, headH);
+  cols.forEach(c => {
+    ctx.beginPath();
+    ctx.moveTo(c.x, tableTop);
+    ctx.lineTo(c.x, tableTop + headH);
+    ctx.stroke();
+    ctx.fillStyle = "#1f3d2b";
+    ctx.font = "700 15px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (c.h2) {
+      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 18);
+      ctx.font = "500 12px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 36);
+    } else {
+      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
+    }
+  });
+  rows.forEach((row, i) => {
+    const y = tableTop + headH + i * rowH;
+    ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
+    ctx.fillRect(pad, y, tableW, rowH);
+    ctx.strokeStyle = "#c5d0c6";
+    ctx.strokeRect(pad, y, tableW, rowH);
+    cols.forEach(c => {
+      ctx.beginPath();
+      ctx.moveTo(c.x, y);
+      ctx.lineTo(c.x, y + rowH);
+      ctx.stroke();
+      let val = row[c.k];
+      if (c.k === "amount") val = Number(val) ? Number(val).toLocaleString("zh-TW") : "";
+      if (c.k === "renew") val = row.renew ? "✓" : "";
+      if (c.k === "left") val = val === "" || val == null ? "" : String(val);
+      ctx.fillStyle = "#24332a";
+      ctx.font = (c.k === "buyer" ? "600 14px" : "500 14px") + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      ctx.textAlign = (c.k === "buyer" || c.k === "payDate" || c.k === "start" || c.k === "end") ? "left" : "center";
+      ctx.textBaseline = "middle";
+      const tx = ctx.textAlign === "left" ? c.x + 8 : c.x + c.pw / 2;
+      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 12);
+    });
+  });
+  const bottom = tableTop + headH + rows.length * rowH;
+  ctx.strokeStyle = "#1f3d2b";
+  ctx.strokeRect(pad, tableTop, tableW, bottom - tableTop);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#5b6b62";
+  ctx.font = "500 13px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。", pad, Math.min(bottom + 12, H - 28));
+  ctx.textAlign = "left";
+  return { dataUrl: canvas.toDataURL("image/jpeg", 0.92), w: W, h: H };
+}
+async function downloadJpegPagesPdf(pages, filename, landscape) {
+  if (!pages || !pages.length) return;
+  const PW = landscape ? 842 : 595;
+  const PH = landscape ? 595 : 842;
+  const enc = new TextEncoder();
+  const out = []; const off = [0]; let ppos = 0;
+  const emit = (str, raw) => { const a = enc.encode(str); out.push(a); ppos += a.length; if (raw) { out.push(raw); ppos += raw.length; } };
+  emit("%PDF-1.4\n");
+  off[1] = ppos; emit("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  const kidsStr = pages.map((_, i) => `${3 + i * 3} 0 R`).join(" ");
+  off[2] = ppos; emit(`2 0 obj\n<< /Type /Pages /Count ${pages.length} /Kids [${kidsStr}] >>\nendobj\n`);
+  pages.forEach((pg, i) => {
+    const pageId = 3 + i * 3, contentId = pageId + 1, imgId = pageId + 2;
+    const scale = Math.min((PW - 0) / pg.w, (PH - 0) / pg.h);
+    const dw = pg.w * scale, dh = pg.h * scale, x = (PW - dw) / 2, y = (PH - dh) / 2;
+    const stream = `q ${dw.toFixed(2)} 0 0 ${dh.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im${i} Do Q`;
+    off[pageId] = ppos;
+    emit(`${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im${i} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`);
+    off[contentId] = ppos;
+    emit(`${contentId} 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`);
+    const b64 = (pg.dataUrl.split(",")[1] || "");
+    const bin = atob(b64); const jpeg = new Uint8Array(bin.length);
+    for (let j = 0; j < bin.length; j++) jpeg[j] = bin.charCodeAt(j);
+    off[imgId] = ppos;
+    emit(`${imgId} 0 obj\n<< /Type /XObject /Subtype /Image /Width ${pg.w} /Height ${pg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`, jpeg);
+    emit("\nendstream\nendobj\n");
+  });
+  const xrefPos = ppos; const maxObj = 2 + pages.length * 3;
+  let xref = `xref\n0 ${maxObj + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= maxObj; i++) xref += String(off[i] || 0).padStart(10, "0") + " 00000 n \n";
+  emit(xref); emit(`trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`);
+  const buf = new Uint8Array(out.reduce((n, a) => n + a.length, 0));
+  let o = 0; out.forEach(a => { buf.set(a, o); o += a.length; });
+  triggerDownload(new Blob([buf], { type: "application/pdf" }), filename || "下載.pdf");
+}
+async function downloadInvoiceOverviewPdf() {
+  const rows = invoiceOverviewRows();
+  if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
+  toast("正在產生 PDF…");
+  try {
+    const page = drawInvoiceOverviewCanvas(rows);
+    const n = new Date();
+    const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
+    await downloadJpegPagesPdf([page], `統潔-開立發票總覽-${ymd}.pdf`, true);
+    toast("已下載開立發票總覽");
+  } catch (err) {
+    try { console.error(err); } catch {}
+    toast("下載失敗，請再試一次");
+  }
+}
+function bindInvoiceOverviewBtn() {
+  const btn = document.getElementById("invoice-overview-btn");
+  if (!btn) return;
+  btn.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    downloadInvoiceOverviewPdf();
+  };
 }
 async function downloadContractsPdf(images, filename) {
   if (!images || !images.length) { toast("尚無合約書圖檔可下載"); return; }
@@ -12959,6 +13157,8 @@ function applyTenantKind(kind) {
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const chipRow = document.getElementById("tenant-chip-row");
   if (chipRow) chipRow.style.display = next === "studio" ? "" : "none";
+  const invBtn = document.getElementById("invoice-overview-btn");
+  if (invBtn) invBtn.style.display = next === "studio" ? "" : "none";
   if (next === "factory") { ui.tenantVacant = false; ui.tenantChip = ""; }
   const box = document.getElementById("tenant-list");
   if (box) {
@@ -12975,6 +13175,7 @@ function applyTenantKind(kind) {
   }
 }
 function bindTenantSearch() {
+  bindInvoiceOverviewBtn();
   const inp = document.getElementById("tenant-search");
   if (!inp) return;
   inp.readOnly = false;
@@ -13108,6 +13309,7 @@ function tenantSheetView() {
   </div>`;
 }
 function bindTenantListTools() {
+  bindInvoiceOverviewBtn();
   document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -13181,6 +13383,10 @@ function adminTenants() {
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>` : ""}
     </div>
+    ${`<button type="button" class="card card-body clickable invoice-overview-btn" id="invoice-overview-btn"${kind === "studio" ? "" : " style=\"display:none\""}>
+      <span class="k">開立發票總覽</span>
+      <span class="row-end"><span class="small">下載 PDF</span><span class="fold-caret go-right"></span></span>
+    </button>`}
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
