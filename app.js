@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-06";
-const APP_EDIT_COUNT = 551;
+const APP_STAMP = "2026-09-02-23-10";
+const APP_EDIT_COUNT = 552;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["強制退租後空房會出現，我要入住房號即時更新"] },
+  { ver: APP_STAMP, items: ["到期空房會留下，7251 呂佳芸可搜尋"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0102") return;
+    if (!m || !m[1] || m[1] === "0103") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9182,6 +9182,7 @@ function addIncomingTenant(roomId, fields) {
   return t;
 }
 function moveInRooms() {
+  ensureStudioRoomsPresent();
   return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no))
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
@@ -14071,12 +14072,32 @@ function isVacantRoom(r) {
   if (r.status === "vacant") return true;
   return !roomHasLiveTenant(r);
 }
+function ensureStudioRoomsPresent() {
+  if (!state.rooms) state.rooms = [];
+  STUDIO_NOS.forEach(no => {
+    if (state.rooms.some(r => r && String(r.no) === String(no))) return;
+    const seed = (SEED && SEED.rooms || []).find(r => String(r.no) === String(no));
+    if (seed) state.rooms.push(structuredClone(seed));
+    else {
+      state.rooms.push({
+        id: "r" + no, no: String(no), title: isStoreNo(no) ? "店面" : "套房",
+        kind: isStoreNo(no) ? "store" : "studio", status: "vacant",
+        rent: studioRentOf(no) || 0, deposit: studioDepositOf(studioRentOf(no) || 0)
+      });
+    }
+  });
+}
+function vacantRoomHay(r) {
+  const former = formerTenantsOf(r && r.id).map(f => f.name).join(" ");
+  return [r && r.no, r && r.location, r && r.street, r && r.group, former].join(" ");
+}
 function vacantStudioRooms() {
+  ensureStudioRoomsPresent();
   const q = normSearch(ui.tenantQ);
   return (state.rooms || []).filter(r => {
     if (!r || r.demo || r.status === "office" || roomIsFactory(r)) return false;
     if (!isVacantRoom(r)) return false;
-    if (q && !normSearch([r.no, r.location, r.street].join(" ")).includes(q)) return false;
+    if (q && !normSearch(vacantRoomHay(r)).includes(q)) return false;
     return true;
   }).sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant"));
 }
@@ -14085,7 +14106,7 @@ function vacantFactoryRooms() {
   return (state.rooms || []).filter(r => {
     if (!r || r.demo || !roomIsFactory(r)) return false;
     if (!isVacantRoom(r)) return false;
-    if (q && !normSearch([r.no, r.group, r.location, r.street].join(" ")).includes(q)) return false;
+    if (q && !normSearch(vacantRoomHay(r)).includes(q)) return false;
     return true;
   }).sort((a, b) => {
     const ga = FACTORY_GROUP_ORDER.indexOf(a.group);
@@ -14102,9 +14123,11 @@ function vacantRoomCardHtml(r) {
   const foldId = "vac-" + r.id;
   const inc = incomingOf(r.id);
   const unread = !!(inc && inc.applyUnread);
+  const last = formerTenantsOf(r.id)[0];
+  const who = inc && inc.name ? " → " + inc.name : (last && last.name ? "　前任 " + last.name : "");
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.group ? r.group + "　" + r.no : r.no)}${inc && inc.name ? " → " + escapeHtml(inc.name) : ""}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${inc.applyPending ? "入住申請" : "交接中"}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(r.group ? r.group + "　" + r.no : r.no)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${inc.applyPending ? "入住申請" : "交接中"}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -14230,6 +14253,15 @@ function tenantListInnerHtml(kind) {
     if (q && vacantHits.some(x => x.id === r.id)) return false;
     return true;
   });
+  const formerVacant = tenantChipOn() === "vacant" ? [] : vacantRoomsOfKind(kind).filter(r => {
+    if (incomingOf(r.id)) return false;
+    if (entries.some(e => e.rooms.some(x => x && x.id === r.id))) return false;
+    if (vacantHits.some(x => x.id === r.id)) return false;
+    if (applyVacant.some(x => x.id === r.id)) return false;
+    if (!formerTenantsOf(r.id).length) return false;
+    if (q && !normSearch(vacantRoomHay(r)).includes(q)) return false;
+    return true;
+  });
   const renews = q ? [] : (state.renewals || []).filter(x => {
     if (x.status === "done") return false;
     const room = state.rooms.find(r => r.id === x.roomId);
@@ -14249,8 +14281,8 @@ function tenantListInnerHtml(kind) {
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>`;
     }).join("")}</div>` : ""}
-    ${entries.length || vacantHits.length || applyVacant.length
-      ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + applyVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
+    ${entries.length || vacantHits.length || applyVacant.length || formerVacant.length
+      ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + applyVacant.map(r => vacantRoomCardHtml(r)).join("") + formerVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
       : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有本月已繳" : tenantChipOn() === "unpaid" ? "目前沒有本月未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
 }
 function tenantEntryDetailsHtml(kind, entry) {
