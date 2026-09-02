@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-07";
-const APP_EDIT_COUNT = 570;
+const APP_STAMP = "2026-09-03-01-09";
+const APP_EDIT_COUNT = 571;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["所有雲端資料異動都會即時同步到其他裝置"] },
+  { ver: APP_STAMP, items: ["強制退租、我要入住與後台申請通知都會即時同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0121") return;
+    if (!m || !m[1] || m[1] === "0122") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3531,10 +3531,35 @@ function ingestPaidCloud(raw) {
       const byId = new Map((state.tenants || []).map(t => [t.id, t]));
       o.tenants.forEach(src => {
         if (!src || !src.id) return;
-        const t = byId.get(src.id);
-        if (!t) return;
-        if (Number(src.editedAt || 0) < Number(t.editedAt || 0)) return;
-        if (src.paidYm && src.paidYm !== payYmNow()) return;
+        let t = byId.get(src.id);
+        if (!t) {
+          if (!src.roomId || !String(src.name || "").trim()) return;
+          t = {
+            id: src.id,
+            roomId: src.roomId,
+            name: src.name,
+            phone: src.phone || "",
+            incoming: !!src.incoming,
+            prospect: !!src.prospect,
+            applyPending: !!src.applyPending,
+            applyUnread: !!src.applyUnread,
+            former: !!src.former,
+            officialAt: Number(src.officialAt) || 0,
+            leaseStart: src.leaseStart || "",
+            leaseEnd: src.leaseEnd || "",
+            loginRevoked: !!src.loginRevoked,
+            sessionEnded: !!src.sessionEnded,
+            clearedApply: !!src.clearedApply,
+            editedAt: Number(src.editedAt) || Date.now(),
+            dueDay: 1
+          };
+          if (!state.tenants) state.tenants = [];
+          state.tenants.push(t);
+          byId.set(t.id, t);
+        } else {
+          if (Number(src.editedAt || 0) < Number(t.editedAt || 0)) return;
+        }
+        if (src.paidYm && src.paidYm !== payYmNow() && !("incoming" in src)) return;
         if ("paid" in src) t.paid = !!src.paid;
         t.paidTouched = true;
         if (src.paidYm) t.paidYm = src.paidYm || payYmNow();
@@ -3544,11 +3569,17 @@ function ingestPaidCloud(raw) {
         if ("incoming" in src) t.incoming = !!src.incoming;
         if ("prospect" in src) t.prospect = !!src.prospect;
         if ("applyPending" in src) t.applyPending = !!src.applyPending;
+        if ("applyUnread" in src) t.applyUnread = !!src.applyUnread;
         if ("former" in src) t.former = !!src.former;
+        if ("loginRevoked" in src) t.loginRevoked = !!src.loginRevoked;
+        if ("sessionEnded" in src) t.sessionEnded = !!src.sessionEnded;
+        if ("clearedApply" in src) t.clearedApply = !!src.clearedApply;
         if (Number(src.officialAt) > (Number(t.officialAt) || 0)) t.officialAt = src.officialAt;
         if (src.leaseStart) t.leaseStart = src.leaseStart;
         if (src.leaseEnd) t.leaseEnd = src.leaseEnd;
         if (src.name) t.name = src.name;
+        if (src.phone) t.phone = src.phone;
+        if (src.roomId) t.roomId = src.roomId;
         if (src.editedAt) t.editedAt = src.editedAt;
       });
     }
@@ -3566,7 +3597,17 @@ function ingestPaidCloud(raw) {
         }
       }).catch(() => {});
     }
-    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping) return;
+    const applyAt = Number(o.applyPing && o.applyPing.at) || 0;
+    if (applyAt && applyAt > (ingestPaidCloud.applyPing || 0)) {
+      ingestPaidCloud.applyPing = applyAt;
+      if (ui.role === "admin" && o.applyPing && o.applyPing.name) {
+        const line = `${o.applyPing.roomNo || ""} ${o.applyPing.name} 想要入住`.trim();
+        try { showOsBanner("入住申請", line); } catch {}
+        toast("入住申請　" + line);
+      }
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+    }
+    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at)) return;
     if (composingNow()) return;
     ui.keepScroll = true;
     try { render(); } catch {}
@@ -3593,10 +3634,15 @@ function moneyCloudBlob() {
       incoming: !!t.incoming,
       prospect: !!t.prospect,
       applyPending: !!t.applyPending,
+      applyUnread: !!t.applyUnread,
       former: !!t.former,
+      loginRevoked: !!t.loginRevoked,
+      sessionEnded: !!t.sessionEnded,
+      clearedApply: !!t.clearedApply,
       officialAt: Number(t.officialAt) || 0,
       leaseStart: t.leaseStart || "",
-      leaseEnd: t.leaseEnd || ""
+      leaseEnd: t.leaseEnd || "",
+      phone: t.phone || ""
     })),
     books: (state.books || []).map(b => {
       const o = Object.assign({}, b);
@@ -3609,7 +3655,8 @@ function moneyCloudBlob() {
       return o;
     }),
     ledgerGone: state.ledgerGone || [],
-    repairPing: Number(state.repairPing) || 0
+    repairPing: Number(state.repairPing) || 0,
+    applyPing: state.applyPing || null
   });
 }
 let __moneyPubTimer = 0;
@@ -4513,6 +4560,7 @@ function stripCloudMedia(data) {
 function save(force) {
   try { persistPaidMarks(state); } catch {}
   try { publishPaidCloud(); } catch {}
+  try { publishLiveCloud(); } catch {}
   cloudDirty = true;
   if (isDevPreview() && !force) {
     clearTimeout(saveTimer);
@@ -9511,6 +9559,7 @@ function submitMoveIn() {
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
+  state.applyPing = { at: Date.now(), roomNo: room.no, name };
   if (!state.notices) state.notices = [];
   state.notices.push({ id: "n" + Date.now(), type: "apply", roomNo: room.no, text: `${room.no} ${name} 申請入住`, createdAt: t.applyAt, read: false });
   save();
