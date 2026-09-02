@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-12";
-const APP_EDIT_COUNT = 553;
+const APP_STAMP = "2026-09-02-23-24";
+const APP_EDIT_COUNT = 554;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["空店面顯示 6811(店面)"] },
+  { ver: APP_STAMP, items: ["看房預覽可直接變正式租客，強制退租仍可重複測試"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0104") return;
+    if (!m || !m[1] || m[1] === "0105") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1117,9 +1117,10 @@ function unbindRoomLine(no, oldT) {
 }
 function tenantHandoverNoteHtml(t, r) {
   if (isProspectPreview()) {
+    const pass = phonePassOf(t && t.phone);
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
-      <p>此為入住前操作畫面，尚未點交。繳費與報修不會寫入真的帳。簽約資料已送到後台。蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
+      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。${pass ? "以後換手機：房號＋姓名，密碼 " + escapeHtml(pass) + "（電話後四碼）。" : "以後換手機用房號＋姓名，密碼是電話後四碼。"}蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
     </div>`;
   }
   if (!t || !r || t.demo || r.demo || t.former || t.incoming) return "";
@@ -1137,9 +1138,26 @@ function tenantHandoverNoteHtml(t, r) {
     </div>`;
 }
 function enforceTenantSession() {
-  if (ui.role !== "tenant" || isDevPreview() || isProspectPreview()) return;
+  if (ui.role !== "tenant" || isDevPreview()) return;
   const t = (state.tenants || []).find(x => x.id === ui.tenantId);
   const r = t && (state.rooms || []).find(x => x.id === t.roomId);
+  if (ui.prospectPreview) {
+    if (!t || t.former || t.clearedApply || t.sessionEnded) {
+      const no = ui.roomNo || (r && r.no) || "";
+      try { audit("登出", "入住申請已取消"); } catch {}
+      clearSession();
+      ui.loginError = "";
+      ui.page = "home";
+      ui.toast = "後台已強制退租，看房預覽結束，可再按我要入住測試";
+      return;
+    }
+    if (!t.incoming && !t.applyPending && r && r.tenantId === t.id) {
+      ui.prospectPreview = false;
+      persistUi();
+      ui.toast = ui.toast || ("已成為 " + (r.no || "") + " 租客");
+    }
+    return;
+  }
   const ended = !t || t.former || t.incoming || !!(r && r.tenantId && r.tenantId !== t.id) || !!(r && r.status === "vacant" && r.tenantId !== t.id);
   if (!ended) return;
   const no = ui.roomNo || (r && r.no) || "";
@@ -4588,10 +4606,10 @@ function restoreUi() {
         ui.role = null;
         ui.tenantId = null;
         ui.roomId = null;
-        ui.loginError = "租約已結束，此房號已交接";
-        ui.page = "tenant-login";
-        ui.loginRoom = (room && room.no) || s.roomNo || "";
         ui.prospectPreview = false;
+        ui.loginError = s.prospectPreview ? "" : "租約已結束，此房號已交接";
+        ui.page = s.prospectPreview ? "home" : "tenant-login";
+        ui.loginRoom = (room && room.no) || s.roomNo || "";
         persistUi();
         return;
       }
@@ -9190,6 +9208,53 @@ function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "" };
   return ui.moveIn;
 }
+function phonePassOf(phone) {
+  const d = String(phone || "").replace(/\D/g, "");
+  return d.length >= 4 ? d.slice(-4) : "";
+}
+function canPromoteProspect(t, r) {
+  if (!t || t.former || t.demo || isDemoTenant(t)) return false;
+  if (!r || r.demo || r.status === "office" || r.status === "repair") return false;
+  const occ = roomCurrentTenant(r);
+  if (occ && occ.id !== t.id) return false;
+  return true;
+}
+function promoteProspect(t, r) {
+  if (!t || !r || !canPromoteProspect(t, r)) return false;
+  t.incoming = false;
+  t.prospect = false;
+  t.applyPending = false;
+  t.applyUnread = false;
+  t.former = false;
+  t.placeholder = false;
+  if (!t.loginPass) t.loginPass = phonePassOf(t.phone);
+  t.dueDay = RENT_DUE_DAY;
+  t.edited = true;
+  t.editedAt = Date.now();
+  r.tenantId = t.id;
+  r.status = "rented";
+  if (Number(t.rent) > 0) r.rent = Number(t.rent);
+  if (Number(t.deposit) > 0) r.deposit = Number(t.deposit);
+  else if (Number(t.rent) > 0) r.deposit = Number(t.rent) * 2;
+  delete r.incomingTenantId;
+  r.edited = true;
+  r.editedAt = Date.now();
+  if (ui.role === "tenant" && ui.tenantId === t.id) {
+    ui.prospectPreview = false;
+    persistUi();
+  }
+  return true;
+}
+function maybePromoteProspect(t) {
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  if (!promoteProspect(t, r)) return false;
+  save();
+  try { pushCloud(); } catch {}
+  if (ui.role === "tenant" && ui.tenantId === t.id) {
+    toast("已成為 " + (r.no || "") + " 租客。換手機用房號＋姓名，密碼電話後四碼");
+  }
+  return true;
+}
 function enterProspect(t, room) {
   ui.role = "tenant";
   ui.prospectPreview = true;
@@ -9226,6 +9291,7 @@ function submitMoveIn() {
       exist.leaseStart = d.leaseStart || exist.leaseStart;
       exist.leaseEnd = d.leaseEnd || exist.leaseEnd;
       exist.applyUnread = true;
+      exist.loginPass = phonePassOf(phone) || exist.loginPass;
       exist.editedAt = Date.now();
       save();
       try { pushCloud(); } catch {}
@@ -9248,6 +9314,7 @@ function submitMoveIn() {
   t.signAppointAt = d.signAppointAt || "";
   t.signRoomId = room.id;
   t.dueDay = 1;
+  t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
   if (!state.notices) state.notices = [];
   state.notices.push({ id: "n" + Date.now(), type: "apply", roomNo: room.no, text: `${room.no} ${name} 申請入住`, createdAt: t.applyAt, read: false });
@@ -9262,11 +9329,18 @@ function confirmIncomingApply(inc) {
   inc.applyPending = false;
   inc.applyUnread = false;
   inc.editedAt = Date.now();
+  if (!inc.loginPass) inc.loginPass = phonePassOf(inc.phone);
   const r = (state.rooms || []).find(x => x && x.id === inc.roomId);
-  if (r && r.status === "vacant") completeHandover(null, r);
+  if (r && canPromoteProspect(inc, r)) {
+    promoteProspect(inc, r);
+    save();
+    try { pushCloud(); } catch {}
+    toast("已確認，" + (r.no || "") + " 成為正式租客（看房畫面會自動轉，不用重登）");
+    return;
+  }
   save();
   try { pushCloud(); } catch {}
-  toast("已確認，改為交接中");
+  toast("已確認，改為交接中。舊客退租完成後才轉正式");
 }
 function forceVacateTenant(t) {
   if (!t) { toast("找不到租客"); return; }
@@ -9326,14 +9400,22 @@ function completeHandover(oldT, r, co) {
   if (neu) {
     neu.incoming = false;
     neu.former = false;
+    neu.prospect = false;
+    neu.applyPending = false;
     neu.edited = true;
+    neu.editedAt = Date.now();
     neu.dueDay = RENT_DUE_DAY;
+    if (!neu.loginPass) neu.loginPass = phonePassOf(neu.phone);
     r.tenantId = neu.id;
     r.status = "rented";
     if (Number(neu.rent) > 0) r.rent = Number(neu.rent);
     if (Number(neu.deposit) > 0) r.deposit = Number(neu.deposit);
     else if (Number(neu.rent) > 0) r.deposit = Number(neu.rent) * 2;
     delete r.incomingTenantId;
+    if (ui.role === "tenant" && ui.tenantId === neu.id) {
+      ui.prospectPreview = false;
+      persistUi();
+    }
   } else {
     r.tenantId = null;
     if (r.status !== "repair") r.status = "vacant";
@@ -16079,8 +16161,9 @@ function bindSignPad() {
     save(true);
     try { pushCloud(); } catch {}
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
+    const promoted = (t && (t.prospect || t.incoming)) ? maybePromoteProspect(t) : false;
     ui.page = "lease";
-    toast("已完成電子簽署，簽名已同步");
+    if (!promoted) toast("已完成電子簽署，簽名已同步");
     render();
   };
 }
