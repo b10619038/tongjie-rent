@@ -2282,6 +2282,20 @@ img.avatar { object-fit: cover; display: block; }
   font: inherit; font-weight: 700; cursor: pointer; background: var(--card); color: var(--ink);
 }
 .lightbox-nav button:disabled { opacity: .4; }
+.invoice-preview .invoice-preview-scroll {
+  width: 100%;
+  max-height: calc(100% - 64px);
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+}
+.invoice-preview img {
+  background: #fff;
+  max-width: 100%;
+  max-height: none;
+  height: auto;
+  border-radius: 8px;
+}
 
 .role-btn, .room-row, .clickable, .card.item, .issue-opt, .mini.clickable, [data-room] {
   border-radius: 22px; overflow: hidden;

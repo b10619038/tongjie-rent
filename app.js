@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-15-28";
-const APP_EDIT_COUNT = 491;
+const APP_STAMP = "2026-09-02-15-38";
+const APP_EDIT_COUNT = 492;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房租客搜尋下方可下載開立發票總覽"] },
+  { ver: APP_STAMP, items: ["開立發票總覽先預覽再下載，欄寬與7632續約"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0042") return;
+    if (!m || !m[1] || m[1] === "0043") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6125,7 +6125,7 @@ function invoiceOverviewRows() {
     const bankKey = tenantPayBankKey(tenant, room);
     const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
     const rent = Number(room.rent) || Number(tenant.rent) || studioRentOf(no) || 0;
-    const note = String((t && t.note) || info.note || "");
+    const note = String((t && t.note) || "") + " " + String(info.note || "");
     rows.push({
       payDate: payYmd ? rocSlash(payYmd) : "",
       buyer: tenant.name || info.name || "",
@@ -6135,7 +6135,7 @@ function invoiceOverviewRows() {
       start: rocSlash(tenant.leaseStart || info.leaseStart),
       end: rocSlash(tenant.leaseEnd || info.leaseEnd),
       left: leaseDaysLeft(tenant.leaseEnd || info.leaseEnd),
-      renew: /已續約/.test(note)
+      renew: /已續約/.test(note) || String(no) === "7632"
     });
   });
   rows.sort((a, b) => String(a.room).localeCompare(String(b.room), "zh-Hant"));
@@ -6161,15 +6161,15 @@ function drawInvoiceOverviewCanvas(rows) {
   ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 28);
   ctx.textAlign = "left";
   const cols = [
-    { k: "payDate", h: "匯款日期", h2: "（年月日）", w: 0.13 },
-    { k: "buyer", h: "買受人", w: 0.20 },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.08 },
+    { k: "payDate", h: "匯款日期", h2: "（年月日）", w: 0.09 },
+    { k: "buyer", h: "買受人", w: 0.14 },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.09 },
     { k: "amount", h: "金額", w: 0.10 },
-    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.08 },
-    { k: "start", h: "合約開始", w: 0.11 },
-    { k: "end", h: "合約結束", w: 0.11 },
-    { k: "left", h: "剩餘天數", w: 0.09 },
-    { k: "renew", h: "續約", w: 0.10 }
+    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.09 },
+    { k: "start", h: "合約開始", w: 0.13 },
+    { k: "end", h: "合約結束", w: 0.13 },
+    { k: "left", h: "剩餘天數", w: 0.11 },
+    { k: "renew", h: "續約", w: 0.12 }
   ];
   const tableTop = 70;
   const headH = 52;
@@ -6215,10 +6215,10 @@ function drawInvoiceOverviewCanvas(rows) {
       if (c.k === "renew") val = row.renew ? "✓" : "";
       if (c.k === "left") val = val === "" || val == null ? "" : String(val);
       ctx.fillStyle = "#24332a";
-      ctx.font = (c.k === "buyer" ? "600 14px" : "500 14px") + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
-      ctx.textAlign = (c.k === "buyer" || c.k === "payDate" || c.k === "start" || c.k === "end") ? "left" : "center";
+      ctx.font = (c.k === "buyer" ? "600 13px" : "500 14px") + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      ctx.textAlign = c.k === "buyer" ? "left" : "center";
       ctx.textBaseline = "middle";
-      const tx = ctx.textAlign === "left" ? c.x + 8 : c.x + c.pw / 2;
+      const tx = ctx.textAlign === "left" ? c.x + 6 : c.x + c.pw / 2;
       ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 12);
     });
   });
@@ -6268,14 +6268,15 @@ async function downloadJpegPagesPdf(pages, filename, landscape) {
   let o = 0; out.forEach(a => { buf.set(a, o); o += a.length; });
   triggerDownload(new Blob([buf], { type: "application/pdf" }), filename || "下載.pdf");
 }
-async function downloadInvoiceOverviewPdf() {
-  const rows = invoiceOverviewRows();
-  if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
-  toast("正在產生 PDF…");
+async function downloadInvoiceOverviewPdf(page) {
+  if (!page) {
+    const rows = invoiceOverviewRows();
+    if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
+    page = drawInvoiceOverviewCanvas(rows);
+  }
+  const n = new Date();
+  const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
   try {
-    const page = drawInvoiceOverviewCanvas(rows);
-    const n = new Date();
-    const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
     await downloadJpegPagesPdf([page], `統潔-開立發票總覽-${ymd}.pdf`, true);
     toast("已下載開立發票總覽");
   } catch (err) {
@@ -6283,13 +6284,41 @@ async function downloadInvoiceOverviewPdf() {
     toast("下載失敗，請再試一次");
   }
 }
+function closeInvoicePreview() {
+  const el = document.getElementById("invoice-preview-box");
+  if (el) el.remove();
+}
+function showInvoiceOverviewPreview() {
+  const rows = invoiceOverviewRows();
+  if (!rows.length) { toast("目前沒有可開立發票的套房"); return; }
+  const page = drawInvoiceOverviewCanvas(rows);
+  closeInvoicePreview();
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox invoice-preview";
+  wrap.id = "invoice-preview-box";
+  wrap.innerHTML = `
+    <div class="lightbox-bar">
+      <button type="button" id="inv-prev-close">關閉</button>
+      <span>開立發票總覽預覽</span>
+      <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
+    </div>
+    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="開立發票總覽預覽"></div>`;
+  document.body.appendChild(wrap);
+  document.getElementById("inv-prev-close").onclick = closeInvoicePreview;
+  wrap.addEventListener("click", e => { if (e.target === wrap) closeInvoicePreview(); });
+  document.getElementById("inv-prev-pdf").onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    downloadInvoiceOverviewPdf(page);
+  };
+}
 function bindInvoiceOverviewBtn() {
   const btn = document.getElementById("invoice-overview-btn");
   if (!btn) return;
   btn.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    downloadInvoiceOverviewPdf();
+    showInvoiceOverviewPreview();
   };
 }
 async function downloadContractsPdf(images, filename) {
