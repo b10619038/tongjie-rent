@@ -19,8 +19,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-14";
-const APP_EDIT_COUNT = 503;
+const APP_STAMP = "2026-09-02-17-20";
+const APP_EDIT_COUNT = 504;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -59,7 +59,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開立發票總覽改 A4 橫式單面，字放大方便列印"] },
+  { ver: APP_STAMP, items: ["公告照片同步到所有裝置"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -753,7 +753,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0054") return;
+    if (!m || !m[1] || m[1] === "0055") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3912,6 +3912,18 @@ async function pushCloud() {
   try { persistAnnMedia(state); } catch {}
   try { publishPaidCloud(); } catch {}
 }
+function cloudAnnMedia(list) {
+  return (list || []).map(m => {
+    if (!m) return null;
+    const src = String(m.src || "");
+    if (m.kind === "video") {
+      if (!src || src.length > 700000) return null;
+      return { kind: "video", name: m.name || "", src };
+    }
+    if (!src) return null;
+    return { kind: m.kind || "image", name: m.name || "", src };
+  }).filter(Boolean);
+}
 function stripCloudMedia(data) {
   if (!data) return;
   stripHeavyMedia(data);
@@ -3936,7 +3948,7 @@ function stripCloudMedia(data) {
     });
   }
   if (Array.isArray(data.announcements)) {
-    data.announcements = data.announcements.map(a => a ? Object.assign({}, a, { media: [] }) : a);
+    data.announcements = data.announcements.map(a => a ? Object.assign({}, a, { media: cloudAnnMedia(a.media) }) : a);
   }
 }
 function save(force) {
@@ -9565,9 +9577,12 @@ function saveAnnounceEdit() {
   a.body = body;
   a.media = (ui.editAnnounceMedia || []).slice();
   a.updatedAt = nowStamp();
+  a.editedAt = Date.now();
   ui.announceEditId = null;
   ui.editAnnounceMedia = [];
+  persistAnnMedia(state);
   save();
+  try { pushCloud(); } catch {}
   toast("已更新公告");
   render();
 }
@@ -15306,7 +15321,7 @@ function bindAdmin() {
           if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
           ui.announceMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
         } else {
-          try { ui.announceMedia.push({ kind: "image", src: await compressImage(file), name: file.name }); } catch {}
+          try { ui.announceMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); } catch {}
         }
       }
       const box = document.getElementById("ann-media-preview");
@@ -15332,12 +15347,14 @@ function bindAdmin() {
       if (!title || !body) { toast("請填寫標題與內容"); return; }
       if (!state.announcements) state.announcements = [];
       const media = (ui.announceMedia || []).slice();
-      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "" });
+      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "", editedAt: Date.now() });
       ui.announceMedia = [];
       ui.announceOpen = false;
       ui.annTitle = "";
       ui.annBody = "";
+      persistAnnMedia(state);
       save();
+      try { pushCloud(); } catch {}
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
       render();
@@ -15353,7 +15370,7 @@ function bindAdmin() {
           if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
           ui.editAnnounceMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
         } else {
-          try { ui.editAnnounceMedia.push({ kind: "image", src: await compressImage(file), name: file.name }); } catch {}
+          try { ui.editAnnounceMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); } catch {}
         }
       }
       const box = document.getElementById("ann-edit-preview");
