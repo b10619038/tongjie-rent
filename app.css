@@ -1121,6 +1121,12 @@ input[type="file"] {
 .media-thumb img, .media-thumb video { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; background: #111; }
 .media-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
 .media-actions .ghost { flex: 1; min-width: 120px; }
+.ann-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 12px 0 6px; }
+.ann-thumb {
+  border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: #111;
+  cursor: pointer; display: block; width: 100%;
+}
+.ann-thumb img, .ann-thumb video { width: 100%; height: 110px; object-fit: cover; display: block; }
 
 .toast {
   position: fixed; left: 20px; right: 20px; bottom: calc(24px + var(--safe-b, 0px)); top: auto;

@@ -1,5 +1,6 @@
 const KEY = "tongjie_rent_app_v8";
 const LEDGER_KEY = "tongjie_ledger_v1";
+const ANN_MEDIA_KEY = "tongjie_ann_media_v1";
 const PAID_KEY = "tongjie_paid_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
@@ -18,8 +19,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-52";
-const APP_EDIT_COUNT = 500;
+const APP_STAMP = "2026-09-02-16-58";
+const APP_EDIT_COUNT = 501;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +59,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["官方 LINE 帳號改為統潔開發有限公司"] },
+  { ver: APP_STAMP, items: ["公告照片不再被同步清掉，可點開查看"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +753,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0051") return;
+    if (!m || !m[1] || m[1] === "0052") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2088,6 +2089,7 @@ function normalize(data) {
   });
   if (!Array.isArray(data.notices)) data.notices = [];
   if (!Array.isArray(data.announcements)) data.announcements = [];
+  applyAnnMedia(data);
   data.announcements.forEach(a => {
     if (a.postedBy) return;
     const logs = (data.auditLogs || []).filter(x =>
@@ -2805,6 +2807,28 @@ function loadLedgerIdb() {
     } catch { finish(null); }
   });
 }
+function loadAnnMediaMap() {
+  try { return JSON.parse(localStorage.getItem(ANN_MEDIA_KEY) || "{}") || {}; } catch { return {}; }
+}
+function persistAnnMedia(data) {
+  if (!data) return;
+  const map = loadAnnMediaMap();
+  const live = {};
+  (data.announcements || []).forEach(a => {
+    if (!a || !a.id) return;
+    if (a.media && a.media.length) live[a.id] = a.media;
+    else if (map[a.id]) live[a.id] = map[a.id];
+  });
+  try { localStorage.setItem(ANN_MEDIA_KEY, JSON.stringify(live)); } catch {}
+}
+function applyAnnMedia(data) {
+  if (!data || !Array.isArray(data.announcements)) return;
+  const map = loadAnnMediaMap();
+  data.announcements.forEach(a => {
+    if (!a || !a.id) return;
+    if (!(a.media && a.media.length) && map[a.id] && map[a.id].length) a.media = map[a.id];
+  });
+}
 function unionById(a, b) {
   const map = new Map();
   [].concat(a || [], b || []).forEach(x => {
@@ -2838,6 +2862,7 @@ function pickNewerEntity(a, b, keys) {
   out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
+  if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
   return out;
 }
 function mergePaidFields(out, a, b) {
@@ -3178,7 +3203,7 @@ function mergeSharedInto(target, other) {
   }
   target.rooms = mergeRooms(target.rooms, other.rooms);
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]);
-  target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned"]);
+  target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.checkouts = unionById(target.checkouts, other.checkouts);
   mergeLedgerInto(target, other);
@@ -3282,6 +3307,7 @@ async function pullCloud() {
     mergeMemosInto(state, data);
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
+    applyAnnMedia(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
@@ -3300,6 +3326,7 @@ async function pullCloud() {
       syncPaidRentBooks(state);
       dropFactoryRentAutos(state);
       persistLedger(state);
+      persistAnnMedia(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -3346,6 +3373,7 @@ async function pullCloud() {
     persistPaidMarks(state);
     syncPaidRentBooks(state);
     persistLedger(state);
+    persistAnnMedia(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -3711,6 +3739,7 @@ async function pushPresence() {
     if (!state.presence) state.presence = {};
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
     persistLedger(state);
+    persistAnnMedia(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   } catch {}
   finally { if (timer) clearTimeout(timer); }
@@ -3815,7 +3844,7 @@ async function pushCloud() {
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo"]),
-      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned"]),
+      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media"]),
       notices: mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
@@ -3877,25 +3906,35 @@ async function pushCloud() {
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) cloudDirty = false;
   } catch { ui.cloudOk = false; }
+  try { persistAnnMedia(state); } catch {}
   try { publishPaidCloud(); } catch {}
 }
 function stripCloudMedia(data) {
   if (!data) return;
   stripHeavyMedia(data);
-  (data.rooms || []).forEach(r => {
-    if (!r) return;
-    if (Array.isArray(r.photos)) r.photos = r.photos.filter(p => p && !String(p).startsWith("data:"));
-    if (Array.isArray(r.contractImages)) r.contractImages = r.contractImages.filter(p => {
-      const s = p && (p.src || p);
-      return s && !String(s).startsWith("data:");
+  if (Array.isArray(data.rooms)) {
+    data.rooms = data.rooms.map(r => {
+      if (!r) return r;
+      const o = Object.assign({}, r);
+      if (Array.isArray(o.photos)) o.photos = o.photos.filter(p => p && !String(p).startsWith("data:"));
+      if (Array.isArray(o.contractImages)) o.contractImages = o.contractImages.filter(p => {
+        const s = p && (p.src || p);
+        return s && !String(s).startsWith("data:");
+      });
+      return o;
     });
-  });
-  (data.repairs || []).forEach(r => {
-    if (!r) return;
-    if (String(r.photo || "").startsWith("data:")) r.photo = "";
-    r.media = [];
-  });
-  (data.announcements || []).forEach(a => { if (a) a.media = []; });
+  }
+  if (Array.isArray(data.repairs)) {
+    data.repairs = data.repairs.map(r => {
+      if (!r) return r;
+      const o = Object.assign({}, r, { media: [] });
+      if (String(o.photo || "").startsWith("data:")) o.photo = "";
+      return o;
+    });
+  }
+  if (Array.isArray(data.announcements)) {
+    data.announcements = data.announcements.map(a => a ? Object.assign({}, a, { media: [] }) : a);
+  }
 }
 function save(force) {
   try { persistPaidMarks(state); } catch {}
@@ -3907,11 +3946,12 @@ function save(force) {
     return;
   }
   try {
+    persistAnnMedia(state);
     state.updatedAt = Date.now();
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    try { persistLedger(state); } catch {}
+    try { persistLedger(state); persistAnnMedia(state); } catch {}
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 400);
@@ -9064,20 +9104,26 @@ function guessMetaFromName(name) {
   return { date, amount: amount >= 100 ? amount : 0, company: cellAccount(s) || "", bank: guessBank(s), name: s };
 }
 function stripHeavyMedia(data) {
-  (data.bankSlips || []).forEach(s => {
-    if (s.media && s.media.length) {
+  if (Array.isArray(data.bankSlips)) {
+    data.bankSlips = data.bankSlips.map(s => {
+      if (!s || !s.media || !s.media.length) return s;
+      const o = Object.assign({}, s);
       const names = s.media.map(m => m.name).filter(Boolean);
-      if (names.length) s.summary = names.join("、");
-      s.media = [];
-    }
-  });
-  (data.errands || []).forEach(e => {
-    if (e.media && e.media.length) {
+      if (names.length) o.summary = names.join("、");
+      o.media = [];
+      return o;
+    });
+  }
+  if (Array.isArray(data.errands)) {
+    data.errands = data.errands.map(e => {
+      if (!e || !e.media || !e.media.length) return e;
+      const o = Object.assign({}, e);
       const names = e.media.map(m => m.name).filter(Boolean);
-      if (names.length) e.summary = names.join("、");
-      e.media = [];
-    }
-  });
+      if (names.length) o.summary = names.join("、");
+      o.media = [];
+      return o;
+    });
+  }
 }
 async function absorbUploadFiles(files, where) {
   const list = [...(files || [])];
@@ -9506,6 +9552,18 @@ function saveAnnounceEdit() {
 function announcePosterLabel(a) {
   return String((a && a.postedBy) || "") === "1240" ? "開發者" : "管理員";
 }
+function announceMediaHtml(a) {
+  const media = (a && a.media) || [];
+  if (!media.length) return "";
+  const thumbs = media.map(m => {
+    const kind = m.kind === "video" ? "video" : "image";
+    const inner = kind === "video"
+      ? `<video src="${m.src || ""}" muted playsinline></video>`
+      : `<img src="${m.src || ""}" alt="">`;
+    return `<button type="button" class="ann-thumb" data-view-media="${escapeHtml(a.id)}|${kind}">${inner}</button>`;
+  }).join("");
+  return `<div class="ann-thumbs">${thumbs}</div>${repairMediaButtons({ id: a.id, media, photo: null })}`;
+}
 function announceBodyHtml(a, actions) {
   const unread = ui.tenantId && (isDevPreview() ? !(ui.devReadAnns || {})[a.id] : !(a.readBy || []).includes(ui.tenantId));
   const poster = announcePosterLabel(a);
@@ -9517,7 +9575,7 @@ function announceBodyHtml(a, actions) {
       </div>
     </div>
     <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
-    ${repairMediaButtons({ id: a.id, media: a.media || [], photo: null })}
+    ${announceMediaHtml(a)}
     ${actions || ""}
     ${reactBarHtml(a)}`;
 }
