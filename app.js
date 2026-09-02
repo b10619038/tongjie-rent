@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-52";
-const APP_EDIT_COUNT = 557;
+const APP_STAMP = "2026-09-03-00-00";
+const APP_EDIT_COUNT = 558;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["有舊客時取消新客不會把房間清成空房"] },
+  { ver: APP_STAMP, items: ["我是租客會進到剛填的新客，已簽名不會再顯示尚未簽約"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0108") return;
+    if (!m || !m[1] || m[1] === "0109") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3255,7 +3255,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev", "eSign"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -3298,6 +3298,9 @@ function pickNewerEntity(a, b, keys) {
     out.inbox = [...map.values()].slice(-30);
     out.lastNudgeAt = Math.max(Number(a && a.lastNudgeAt) || 0, Number(b && b.lastNudgeAt) || 0, Number(out.lastNudgeAt) || 0) || out.lastNudgeAt;
     out.hiddenInbox = [...new Set([].concat((a && a.hiddenInbox) || [], (b && b.hiddenInbox) || [], out.hiddenInbox || []))];
+  }
+  if (keys && keys.indexOf("eSign") >= 0) {
+    out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
   }
   return out;
 }
@@ -3955,9 +3958,10 @@ function applyESigns(data) {
   persistESignsMap(data.eSigns);
   (data.tenants || []).forEach(t => {
     if (!t || !t.id) return;
-    const rec = data.eSigns[t.id];
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    let rec = data.eSigns[t.id] || t.eSign || null;
+    eSignAliasKeys(t, r).forEach(k => { rec = eSignNewer(rec, data.eSigns[k]); });
     if (rec) t.eSign = rec;
-    else t.eSign = t.eSign || null;
   });
 }
 function mergeESignsInto(target, other) {
@@ -4137,7 +4141,7 @@ function coreSig(d) {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
       n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
-      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, x.roomId, x.lastNudgeAt, (x.inbox || []).length]),
+      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent, x.tenantId])
     });
   } catch { return String(d && d.updatedAt); }
@@ -11224,13 +11228,23 @@ function roomDetailView(id) {
       </div>`}
     </div>`;
 }
+function eSignAliasKeys(t, r) {
+  const keys = [];
+  if (t && t.id) keys.push(String(t.id));
+  const no = String((r && r.no) || (t && t.roomNo) || "");
+  const name = t ? personKey(t.name) : "";
+  if (no && name) keys.push("room:" + no + ":" + name);
+  return keys;
+}
 function getESign(t) {
   if (!t) return isDevPreview() ? (ui.devESign || null) : null;
   let rec = t.eSign || null;
-  if (state && state.eSigns && t.id) rec = eSignNewer(rec, state.eSigns[t.id]);
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const keys = eSignAliasKeys(t, r);
+  if (state && state.eSigns) keys.forEach(k => { rec = eSignNewer(rec, state.eSigns[k]); });
   try {
     const all = loadLocalESigns();
-    if (t.id) rec = eSignNewer(rec, all[t.id]);
+    keys.forEach(k => { rec = eSignNewer(rec, all[k]); });
   } catch {}
   if (isDevPreview() || t.demo || t.id === "t-demo") rec = eSignNewer(rec, ui.devESign);
   const rev = Number(t.eSignRev) || 0;
@@ -11240,13 +11254,16 @@ function getESign(t) {
 }
 function saveESignRecord(t, rec) {
   if (!rec || !rec.sig) return;
-  if (t && t.id) {
-    t.eSign = rec;
-    if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
-    state.eSigns[t.id] = rec;
-  }
-  saveESignLocal(t, rec);
-  persistESignsMap(Object.assign({}, loadLocalESigns(), state.eSigns || {}, t && t.id ? { [t.id]: rec } : {}));
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  const keys = eSignAliasKeys(t, r);
+  if (t) t.eSign = rec;
+  if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
+  keys.forEach(k => { state.eSigns[k] = rec; });
+  try {
+    const all = Object.assign({}, loadLocalESigns());
+    keys.forEach(k => { all[k] = rec; });
+    persistESignsMap(all);
+  } catch {}
   if (isDevPreview() || (t && t.demo)) ui.devESign = rec;
 }
 function canvasToSig(c) {
@@ -15384,12 +15401,19 @@ function enterTenant(room, tenant) {
   ui.loginError = "";
   ui.loginRoom = "";
   ui.foundPass = null;
+  ui.prospectPreview = !!(tenant.incoming || tenant.prospect);
   persistUi();
   audit("登入", "房號 " + room.no);
   beatPresence();
   render();
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
+}
+function tenantPassOk(t, pass) {
+  if (!t || !pass) return false;
+  if (t.loginPass && pass === String(t.loginPass)) return true;
+  const p4 = phonePassOf(t.phone);
+  return !!(p4 && pass === p4);
 }
 function tryLogin() {
   const input = document.getElementById("room-login");
@@ -15410,36 +15434,43 @@ function tryLogin() {
     render(); return;
   }
   if (!no) { ui.loginError = "請輸入房號"; render(); return; }
-  const { room, tenant } = tenantByRoomNo(no);
+  const { room } = tenantByRoomNo(no);
   if (!room) { ui.loginError = "找不到這個房號"; audit("登入失敗", "嘗試房號 " + no); render(); return; }
   if (room.status === "office") {
     ui.loginError = "7651 為辦公室，請改走管理員登入";
     audit("登入失敗", "嘗試房號 " + no);
     render(); return;
   }
-  if (!isDemoRoom(room) && (!tenant || tenant.former)) {
-    ui.loginError = "此房號目前沒有租客";
-    audit("登入失敗", "嘗試房號 " + no);
-    render(); return;
-  }
-  if (!isDemoRoom(room) && tenant && tenant.incoming) {
-    ui.loginError = "新客尚未完成點交，請點交後再登入";
-    audit("登入失敗", "新客尚未點交 " + no);
-    render(); return;
-  }
-  ui.loginRoom = room.no;
   const pass = String((document.getElementById("pass-login") || {}).value || "").trim();
-  if (!tenant.loginPass) {
-    ui.page = "tenant-setpass";
-    ui.loginError = "";
-    render();
-    return;
-  }
-  if (!pass) { ui.loginError = "請輸入登入密碼"; render(); return; }
-  if (pass !== String(tenant.loginPass) && !(isDemoRoom(room) && (pass === "0000" || pass.toUpperCase() === "DEMO"))) {
+  const incoming = incomingOf(room.id);
+  const current = (state.tenants || []).find(t => t && t.id === room.tenantId && !t.former) || tenantByRoomNo(no).tenant;
+  const cands = (state.tenants || []).filter(t => t && t.roomId === room.id && !t.former && !t.demo);
+  let tenant = pass ? cands.find(t => tenantPassOk(t, pass)) : null;
+  if (!tenant && incoming && tenantPassOk(incoming, pass)) tenant = incoming;
+  if (!tenant && current && !current.incoming && tenantPassOk(current, pass)) tenant = current;
+  if (!tenant && isDemoRoom(room) && (pass === "0000" || pass.toUpperCase() === "DEMO")) tenant = current;
+  if (!tenant) {
+    if (!current && !incoming) {
+      ui.loginError = "此房號目前沒有租客";
+      audit("登入失敗", "嘗試房號 " + no);
+      render(); return;
+    }
+    if (!pass) { ui.loginError = "請輸入登入密碼"; render(); return; }
+    if (current && !current.incoming && !current.loginPass) {
+      ui.loginRoom = room.no;
+      ui.page = "tenant-setpass";
+      ui.loginError = "";
+      render();
+      return;
+    }
     ui.loginError = "密碼不正確";
     audit("登入失敗", "房號 " + room.no + " 密碼錯誤");
     render(); return;
+  }
+  ui.loginRoom = room.no;
+  if (tenant.incoming || tenant.prospect) {
+    enterProspect(tenant, room);
+    return;
   }
   enterTenant(room, tenant);
 }
