@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-16";
-const APP_EDIT_COUNT = 529;
+const APP_STAMP = "2026-09-02-19-20";
+const APP_EDIT_COUNT = 530;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -57,11 +57,11 @@ function isDemoRepair(r) {
   return false;
 }
 const TENANT_ROSTER_VER = "20260902-1455";
-const FACTORY_ROSTER_VER = "20260902-1908";
+const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["吉加環保企業社等公司戶改開三聯式發票"] },
+  { ver: APP_STAMP, items: ["廠房備註有分年租金時，發票到期自動改未稅金額"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0080") return;
+    if (!m || !m[1] || m[1] === "0081") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1439,7 +1439,10 @@ const FACTORY_TENANT_INFO = {
   "牛2-25": { name: "劉德惠", taxId: "", contactName: "黃聖泓", idNo: "H221401794", phone: "0966-716-232／0921-998-369", leaseStart: "2026-09-01", leaseEnd: "2027-06-30", rentUntaxed: 58000, rent: 58000, deposit: 116000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", note: "57巷1弄25號。個人戶。未稅 $58,000，所得稅10%及二代健保2.11%乙方支付。每月1日匯聯邦北高雄 趙洪漳 074-50-8531492。115/5/1 入押金。" },
   "牛2-27": { name: "汕廚美食有限公司", taxId: "28290607", contactName: "張可言", phone: "07-862-5888#666／0960-222-888", leaseStart: "2026-05-15", leaseEnd: "2029-05-14", rentUntaxed: 45000, rent: 45000, deposit: 80000, dueDay: 15, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄27號。未稅 $45,000（扣繳 $4,500＋健保 $950 乙方自付）。每月15日匯農會本會 趙貴美 00015210574481。" },
   "牛2-29": { name: "吉加環保企業社", taxId: "41301634", contactName: "楊森帆", phone: "0985-107-793", leaseStart: "2023-04-01", leaseEnd: "2026-03-31", rentUntaxed: 20000, rent: 20000, deposit: 35000, dueDay: 10, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄29號。未稅 $20,000。每月10日匯農會 趙貴美 00015210574481。合約寫至 115/3/31，若已續約請改日期。" },
-  "牛2-31": { name: "來得生物科技有限公司", taxId: "42792378", contactName: "黃秀會", idNo: "F201234945", phone: "07-251-2423／0980-850-787", leaseStart: "2025-12-01", leaseEnd: "2028-11-30", rentUntaxed: 38000, rent: 38000, deposit: 0, dueDay: 10, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄31號。114/12/1～116/11/30 未稅 $38,000；116/12/1～117/11/30 未稅 $42,000。每月10日匯入。所得稅10%及二代健保2.11%乙方負擔。" },
+  "牛2-31": { name: "來得生物科技有限公司", taxId: "42792378", contactName: "黃秀會", idNo: "F201234945", phone: "07-251-2423／0980-850-787", leaseStart: "2025-12-01", leaseEnd: "2028-11-30", rentUntaxed: 38000, rent: 38000, deposit: 0, dueDay: 10, payBank: "農會", payCompany: "個人戶·趙貴美", rentSchedule: [
+    { from: "2025-12-01", untaxed: 38000 },
+    { from: "2027-12-01", untaxed: 42000 }
+  ], note: "57巷1弄31號。114/12/1～116/11/30 未稅 $38,000；116/12/1～117/11/30 未稅 $42,000。每月10日匯入。所得稅10%及二代健保2.11%乙方負擔。發票依合約期間自動帶入未稅。" },
   "牛2-33": { name: "謝淑伃", taxId: "", contactName: "", idNo: "E222202083", phone: "0973-788-733", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rentUntaxed: 35500, rent: 35500, deposit: 70000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄33號。個人戶。未稅 $35,500（扣繳 $3,550＋健保 $749 乙方自付）。每月1日現金交給趙浩鈞。" },
   "牛2-35": { name: "詠利實業有限公司", taxId: "24982018", contactName: "", phone: "07-740-8300", leaseStart: "2025-04-15", leaseEnd: "2027-04-14", rentUntaxed: 35156, rent: 40000, deposit: 70000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄35號。實付 $35,156＋所得稅 $4,000＋健保 $844＝$40,000。每月1日現金交給趙苡真。" },
   "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金潾", phone: "07-350-3337／0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 50000, rent: 54600, deposit: 104000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "鳳仁路97之61。未稅 $50,000，含稅 $54,600。每月1日匯聯邦高雄 統潔 01010-0035909。113/10/24 入押金 $104,000。裝修 113/10/1～10/31。" },
@@ -1467,19 +1470,37 @@ const FACTORY_TENANT_INFO = {
   "牛6-55": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 155000, rent: 162750, deposit: 310000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-55／56／57 同約共三戶。未稅 $155,000＋稅 $7,750＝含稅 $162,750。每月1日匯聯邦高雄 信潔 010100034775。113/4/29 入 $220,000；114/5/16 入 $110,000。" },
   "牛6-56": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
   "牛6-57": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
-  "牛6-58": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 105000, rent: 110250, deposit: 220000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。" },
+  "牛6-58": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 105000, rent: 110250, deposit: 220000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", rentSchedule: [
+    { from: "2026-03-01", untaxed: 105000 },
+    { from: "2028-03-01", untaxed: 110000 }
+  ], note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。" },
   "牛6-59": { name: "黃儒清", taxId: "", contactName: "黃儒清", idNo: "S122572725", phone: "0956-107-555", leaseStart: "2025-03-01", leaseEnd: "2030-02-28", rentUntaxed: 46000, rent: 46000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-59。個人戶。未稅 $46,000（年度調整如合約備註）。每月1日匯聯邦高雄 信潔 010100034775。" },
   "牛6-60": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-58 同約，租金列在 93-58" },
   "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 110000, rent: 110000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-61／62 同約共二戶。未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。押金 61戶 $76,000、62戶 $84,000。合約至 115/10/31。" },
   "牛6-62": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-61 同約，租金列在 93-61" },
-  "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, dueDay: 1, payBank: "聯邦", payCompany: "統潔", invoiceAddr: "802 高雄市苓雅區永泰路115號", note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000。每月寄發票。" },
+  "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, dueDay: 1, payBank: "聯邦", payCompany: "統潔", invoiceAddr: "802 高雄市苓雅區永泰路115號", rentSchedule: [
+    { from: "2025-12-01", untaxed: 37000 },
+    { from: "2027-12-01", untaxed: 39000 }
+  ], note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000。每月寄發票。" },
   "拉皮-2A": { name: "咘然居", taxId: "", contactName: "孫小姐", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 0, rent: 45000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "紙本統潔租金表沒有這戶，依收租與電錶保留。每月5日下午2:00收租。電錶 115/7/2：47453→53551（6,098 度）；7/30：57858（再 4,307 度）。9/2 待記。" },
   "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "93-2B。每月15日收租並給電單（自繳電費）。" },
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "93-63 2F。此次合約未附，先沿用租金表。115/7 未繳 $63,000" },
-  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "九曲路5巷32弄18號。116/9/1 未稅 $47,000；117/9/1 $48,000；118/9/1 $49,000；119/9/1 $50,000。此次合約未附，先沿用租金表。" },
-  "牛8-77": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
-  "牛8-78": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
+  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
+    { from: "2026-09-01", untaxed: 46000 },
+    { from: "2027-09-01", untaxed: 47000 },
+    { from: "2028-09-01", untaxed: 48000 },
+    { from: "2029-09-01", untaxed: 49000 },
+    { from: "2030-09-01", untaxed: 50000 }
+  ], note: "九曲路5巷32弄18號。116/9/1 未稅 $47,000；117/9/1 $48,000；118/9/1 $49,000；119/9/1 $50,000。此次合約未附，先沿用租金表。" },
+  "牛8-77": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
+    { from: "2022-07-01", untaxed: 40000 },
+    { from: "2027-07-01", untaxed: 42000 }
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
+  "牛8-78": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
+    { from: "2022-07-01", untaxed: 40000 },
+    { from: "2027-07-01", untaxed: 42000 }
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
   "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2026-03-31", rentUntaxed: 0, rent: 0, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "租金約至 115/3/31，系統月租改 0（避免算進應收）。廠房主要改到 93-58／60。電費仍從鳳仁路93之1號電號 18-33-7421-01-4 分攤。" }
 };
 const CYCLE_JOBS = [
@@ -2631,10 +2652,41 @@ function invoiceRentYmd() {
   } catch {}
   return todayYmd().slice(0, 8) + "01";
 }
+function rocYmd(y, m, d) {
+  y = Number(y); m = Number(m); d = Number(d);
+  if (!y || !m || !d) return "";
+  if (y < 1911) y += 1911;
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function parseRentScheduleFromNote(note, leaseStart, baseUntaxed) {
+  const text = String(note || "");
+  if (!/未稅/.test(text)) return null;
+  const map = new Map();
+  const add = (y, mo, da, amt) => {
+    const from = rocYmd(y, mo, da);
+    const untaxed = Number(String(amt || "").replace(/,/g, ""));
+    if (!from || !untaxed) return;
+    map.set(from, { from, untaxed });
+  };
+  const re = /(\d{2,3})\/(\d{1,2})\/(\d{1,2})(?:\s*[～~至\-]+\s*\d{2,3}\/\d{1,2}\/\d{1,2})?\s*(起)?\s*(未稅)?\s*\$?\s*([\d,]{4,})/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const tag = text.slice(m.index, m.index + 28);
+    if (/押金|入押|入\s*\$/.test(tag)) continue;
+    if (m[4] || m[5] || map.size) add(m[1], m[2], m[3], m[6]);
+  }
+  const hits = [...map.values()].sort((a, b) => a.from.localeCompare(b.from));
+  if (!hits.length) return null;
+  const start = String(leaseStart || "").slice(0, 10);
+  const base = Math.round(Number(baseUntaxed) || 0);
+  if (start && base && hits[0].from > start) hits.unshift({ from: start, untaxed: base });
+  return hits;
+}
 function pickRentSchedule(t, r, ymd) {
   const no = String((r && r.no) || "");
   const info = FACTORY_TENANT_INFO[no] || {};
-  const sched = (t && t.rentSchedule) || info.rentSchedule;
+  const parsed = parseRentScheduleFromNote((t && t.note) || info.note, (t && t.leaseStart) || info.leaseStart, (t && t.rentUntaxed) || info.rentUntaxed);
+  const sched = parsed || (t && t.rentSchedule) || info.rentSchedule;
   if (!sched || !sched.length) return null;
   const day = String(ymd || todayYmd()).slice(0, 10);
   let hit = null;
@@ -2657,8 +2709,9 @@ function applyRentSchedules(data) {
     const room = (data.rooms || []).find(x => x && x.id === t.roomId);
     const hit = pickRentSchedule(t, room, ymd);
     if (!hit) return;
+    const parsed = parseRentScheduleFromNote(t.note || (FACTORY_TENANT_INFO[room && room.no] || {}).note, t.leaseStart, t.rentUntaxed);
+    if (parsed && parsed.length) t.rentSchedule = parsed;
     const amt = scheduledRent(hit);
-    t.rentSchedule = (FACTORY_TENANT_INFO[room && room.no] || {}).rentSchedule || t.rentSchedule;
     t.rentUntaxed = amt.untaxed;
     t.rent = amt.taxed;
     if (room) {
