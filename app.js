@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-12-50";
-const APP_EDIT_COUNT = 486;
+const APP_STAMP = "2026-09-02-12-58";
+const APP_EDIT_COUNT = 487;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -55,9 +55,10 @@ function isDemoRepair(r) {
 }
 const TENANT_ROSTER_VER = "20260831-2120";
 const FACTORY_ROSTER_VER = "20260902-1245";
+const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["依完整合約更正廠房租客，點已繳才進日曆"] },
+  { ver: APP_STAMP, items: ["廠房標未繳會整組同步，日曆一併收回"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -751,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0037") return;
+    if (!m || !m[1] || m[1] === "0038") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2135,6 +2136,7 @@ function normalize(data) {
     applyFactoryRoster(data);
     data.factoryRosterVer = FACTORY_ROSTER_VER;
   }
+  resetFactoryPaidMarks(data);
   if (data.studioFeeVer !== STUDIO_FEE_VER) {
     (data.rooms || []).forEach(r => {
       if (!r || r.demo || r.edited || r.status === "office" || r.kind === "factory" || isStoreNo(r.no)) return;
@@ -2451,6 +2453,46 @@ function applyFactoryRoster(data) {
     if (info.deposit != null) room.deposit = info.deposit;
     if (room.status !== "repair") room.status = "rented";
   });
+}
+function isFactoryTenant(t, data) {
+  if (!t) return false;
+  if (String(t.id || "").indexOf("tf-") === 0) return true;
+  const r = ((data && data.rooms) || (typeof state !== "undefined" && state.rooms) || []).find(x => x && x.id === t.roomId);
+  return roomIsFactory(r);
+}
+function factoryGroupTenants(t, data) {
+  const rooms = (data && data.rooms) || (typeof state !== "undefined" && state.rooms) || [];
+  const tenants = (data && data.tenants) || (typeof state !== "undefined" && state.tenants) || [];
+  if (!t || !isFactoryTenant(t, data)) return t ? [t] : [];
+  const key = String(t.taxId || "").trim() || String(t.name || "").trim();
+  if (!key) return [t];
+  return tenants.filter(x => {
+    if (!x || x.former || x.demo || x.incoming || !isFactoryTenant(x, data)) return false;
+    const k = String(x.taxId || "").trim() || String(x.name || "").trim();
+    return k === key;
+  });
+}
+function resetFactoryPaidMarks(data) {
+  if (!data || data.factoryPaidResetVer === FACTORY_PAID_RESET_VER) return;
+  const ym = payYmNow();
+  const now = Date.now();
+  if (!data.paidMarks) data.paidMarks = {};
+  (data.tenants || []).forEach(t => {
+    if (!t || t.demo || t.former || t.incoming || !isFactoryTenant(t, data)) return;
+    t.paid = false;
+    t.paidTouched = true;
+    t.paidYm = ym;
+    t.paidAt = "";
+    t.paidVia = "";
+    t.editedAt = now;
+    data.paidMarks[t.id] = {
+      paid: false, paidAt: "", paidVia: "", paidYm: ym, editedAt: now, name: t.name || ""
+    };
+  });
+  data.factoryPaidResetVer = FACTORY_PAID_RESET_VER;
+  try { persistPaidMarks(data); } catch {}
+  try { dropFactoryRentAutos(data); } catch {}
+  try { markCloudDirty(); } catch {}
 }
 function applyTenantRoster(data) {
   STUDIO_NOS.forEach(no => {
@@ -3162,6 +3204,7 @@ async function pullCloud() {
       ensureDemoTenant(state);
       applyFactoryRoster(state);
       state.factoryRosterVer = FACTORY_ROSTER_VER;
+      resetFactoryPaidMarks(state);
       applyPaidMarks(state);
       persistPaidMarks(state);
       syncPaidRentBooks(state);
@@ -3208,6 +3251,7 @@ async function pullCloud() {
     ensureDemoTenant(state);
     applyFactoryRoster(state);
     state.factoryRosterVer = FACTORY_ROSTER_VER;
+    resetFactoryPaidMarks(state);
     applyPaidMarks(state);
     persistPaidMarks(state);
     syncPaidRentBooks(state);
@@ -5043,25 +5087,31 @@ function toggleTenantPaid(id) {
     if (room) t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
   }
   if (!t) return false;
-  t.paid = !t.paid;
-  t.paidTouched = true;
-  t.edited = true;
-  t.editedAt = Date.now();
-  t.paidYm = payYmNow();
-  if (t.paid) {
-    if (!t.paidAt || ymdOf(t.paidAt).slice(0, 7) !== payYmNow()) t.paidAt = nowStamp();
-    if (!t.paidVia) t.paidVia = "app";
-    stampPaidMark(state, t);
-    upsertRentAutoBookOn(state, t);
-  } else {
-    t.paidVia = "";
-    t.lineNotified = false;
-    t.paidAt = "";
-    stampPaidMark(state, t);
-    dropRentAutoBookOn(state, t);
-  }
-  const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-  if (room) { room.edited = true; room.editedAt = Date.now(); }
+  const group = factoryGroupTenants(t, state);
+  const targets = group.length ? group : [t];
+  const nextPaid = !targets.every(x => x.paid);
+  const ym = payYmNow();
+  targets.forEach(x => {
+    x.paid = nextPaid;
+    x.paidTouched = true;
+    x.edited = true;
+    x.editedAt = Date.now();
+    x.paidYm = ym;
+    if (nextPaid) {
+      if (!x.paidAt || ymdOf(x.paidAt).slice(0, 7) !== ym) x.paidAt = nowStamp();
+      if (!x.paidVia) x.paidVia = "app";
+      stampPaidMark(state, x);
+      upsertRentAutoBookOn(state, x);
+    } else {
+      x.paidVia = "";
+      x.lineNotified = false;
+      x.paidAt = "";
+      stampPaidMark(state, x);
+      dropRentAutoBookOn(state, x);
+    }
+    const room = (state.rooms || []).find(r => r && r.id === x.roomId);
+    if (room) { room.edited = true; room.editedAt = Date.now(); }
+  });
   save();
   clearTimeout(saveTimer);
   try { pushCloud(); } catch {}
