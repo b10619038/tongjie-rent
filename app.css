@@ -1125,8 +1125,21 @@ input[type="file"] {
 .sign-cal .cal-cell.off { opacity: .32; pointer-events: none; }
 .sign-cal .cal-cell.fast { border-color: var(--teal); }
 .sign-cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 6px; }
-.sign-cal-nav strong { font-size: 15px; }
-#sign-room { width: 100%; min-height: 44px; font-size: 16px; }
+.tenant-slim { position: relative; }
+.apply-dot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c62828;
+  box-shadow: 0 0 0 2px #fff;
+  z-index: 3;
+  pointer-events: none;
+}
+.prospect-note { border-color: var(--teal); }
+#sign-room, #move-room { width: 100%; min-height: 44px; font-size: 16px; }
 .media-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .media-thumb {
   background: var(--chip); border-radius: 14px; overflow: hidden; padding: 8px;
