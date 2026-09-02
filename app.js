@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-48";
-const APP_EDIT_COUNT = 556;
+const APP_STAMP = "2026-09-02-23-52";
+const APP_EDIT_COUNT = 557;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["新客不會被空房名單踢出，7736 可進後台"] },
+  { ver: APP_STAMP, items: ["有舊客時取消新客不會把房間清成空房"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0107") return;
+    if (!m || !m[1] || m[1] === "0108") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9423,16 +9423,59 @@ function confirmIncomingApply(inc) {
   try { pushCloud(); } catch {}
   toast("已確認，改為交接中。舊客退租完成後才轉正式");
 }
+function restoreLiveRoom(r) {
+  if (!r) return null;
+  const live = (state.tenants || []).find(x => x && x.roomId === r.id && !x.former && !x.incoming && !x.placeholder && String(x.name || "").trim());
+  delete r.incomingTenantId;
+  if (live) {
+    r.tenantId = live.id;
+    if (r.status !== "repair" && r.status !== "office") r.status = "rented";
+    r.edited = true;
+    r.editedAt = Date.now();
+    return live;
+  }
+  r.tenantId = null;
+  if (r.status !== "repair" && r.status !== "office") r.status = "vacant";
+  r.edited = true;
+  r.editedAt = Date.now();
+  return null;
+}
+function cancelIncomingTenant(inc) {
+  if (!inc) { toast("找不到新客"); return; }
+  const r = (state.rooms || []).find(x => x && x.id === inc.roomId)
+    || (state.rooms || []).find(x => x && String(x.no) === String(inc.roomNo || ""));
+  const now = Date.now();
+  inc.former = true;
+  inc.incoming = false;
+  inc.prospect = false;
+  inc.applyPending = false;
+  inc.applyUnread = false;
+  inc.leftOn = ymdOf(nowStamp());
+  inc.sessionEnded = true;
+  inc.clearedApply = true;
+  inc.edited = true;
+  inc.editedAt = now;
+  const live = restoreLiveRoom(r);
+  if (Array.isArray(state.notices) && r) {
+    state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
+  }
+  save();
+  try { pushCloud(); } catch {}
+  toast(live ? ("已取消新客，" + (r.no || "") + " 仍是 " + (live.name || "原租客")) : ("已取消新客，" + ((r && r.no) || "") + " 改為空房"));
+}
 function forceVacateTenant(t) {
   if (!t) { toast("找不到租客"); return; }
   if (t.demo || isDemoTenant(t)) { toast("測試房請用重製"); return; }
+  if (t.incoming || t.prospect) {
+    cancelIncomingTenant(t);
+    return;
+  }
   const r = (state.rooms || []).find(x => x && x.id === t.roomId)
     || (state.rooms || []).find(x => x && String(x.no) === String(t.roomNo || ""));
   const roomId = (r && r.id) || t.roomId;
   const now = Date.now();
   (state.tenants || []).forEach(x => {
-    if (!x || x.demo) return;
-    if (x.id !== t.id && !(roomId && x.roomId === roomId && x.incoming)) return;
+    if (!x || x.demo || x.id !== t.id) return;
     x.former = true;
     x.incoming = false;
     x.prospect = false;
@@ -9451,19 +9494,13 @@ function forceVacateTenant(t) {
     state.eSigns[t.id] = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
     persistESignsMap(Object.assign({}, loadLocalESigns(), state.eSigns));
   } catch {}
-  if (r) {
-    r.tenantId = null;
-    delete r.incomingTenantId;
-    if (r.status !== "repair" && r.status !== "office") r.status = "vacant";
-    r.edited = true;
-    r.editedAt = now;
-  }
+  restoreLiveRoom(r);
   if (Array.isArray(state.notices) && r) {
     state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
   }
   save();
   try { pushCloud(); } catch {}
-  toast("已強制退租，" + ((r && r.no) || "") + " 改為空房");
+  toast("已強制退租，" + ((r && r.no) || "") + (r && r.tenantId ? " 已交下一位" : " 改為空房"));
 }
 function completeHandover(oldT, r, co) {
   if (!r) return;
@@ -14723,9 +14760,8 @@ function bindHandover() {
     btn.onclick = e => {
       e.preventDefault(); e.stopPropagation();
       const inc = (state.tenants || []).find(x => x.id === btn.dataset.handoverCancel);
-      forceVacateTenant(inc);
+      cancelIncomingTenant(inc);
       ui.keepScroll = true;
-      save();
       render();
     };
   });
