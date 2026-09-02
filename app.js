@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-23-24";
-const APP_EDIT_COUNT = 554;
+const APP_STAMP = "2026-09-02-23-40";
+const APP_EDIT_COUNT = 555;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["看房預覽可直接變正式租客，強制退租仍可重複測試"] },
+  { ver: APP_STAMP, items: ["後台催繳會出現在租客首頁屋主催繳"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0105") return;
+    if (!m || !m[1] || m[1] === "0106") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1114,6 +1114,35 @@ function unbindRoomLine(no, oldT) {
       });
     }
   } catch {}
+}
+function latestPayNudge(t) {
+  if (!t || t.paid || isProspectPreview()) return null;
+  const hidden = new Set((t.hiddenInbox || []).map(String));
+  const list = (t.inbox || []).filter(n => n && n.kind === "pay" && !hidden.has(String(n.id)));
+  return list.length ? list[list.length - 1] : null;
+}
+function tenantNudgeNoteHtml(t) {
+  const n = latestPayNudge(t);
+  if (!n) return "";
+  return `<div class="handover-note nudge-note">
+      <button type="button" class="ann-hide" data-hide-nudge="${escapeHtml(n.id)}" aria-label="從我的畫面移除">×</button>
+      <div class="label">屋主催繳</div>
+      <p>${escapeHtml(n.body || "本月租金尚未入帳，請盡快繳納。")}</p>
+      <button type="button" class="btn-navy" data-page="pay" style="margin-top:10px">前往繳費</button>
+    </div>`;
+}
+function hideNudgeForMe(id) {
+  const key = String(id || "");
+  const t = typeof me === "function" ? me() : null;
+  if (!t || !key) return;
+  t.hiddenInbox = [...new Set([].concat(t.hiddenInbox || [], [key]))];
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  toast("已從你的畫面移除");
+  ui.keepScroll = true;
+  render();
 }
 function tenantHandoverNoteHtml(t, r) {
   if (isProspectPreview()) {
@@ -3192,7 +3221,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "eSignRev"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -3224,6 +3253,17 @@ function pickNewerEntity(a, b, keys) {
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
   if (keys && keys.indexOf("hiddenAnns") >= 0) {
     out.hiddenAnns = [...new Set([].concat((a && a.hiddenAnns) || [], (b && b.hiddenAnns) || [], out.hiddenAnns || []))];
+  }
+  if (keys && keys.indexOf("inbox") >= 0) {
+    const map = new Map();
+    [].concat((a && a.inbox) || [], (b && b.inbox) || []).forEach(n => {
+      if (!n || !n.id) return;
+      const cur = map.get(n.id);
+      map.set(n.id, cur ? Object.assign({}, cur, n) : n);
+    });
+    out.inbox = [...map.values()].slice(-30);
+    out.lastNudgeAt = Math.max(Number(a && a.lastNudgeAt) || 0, Number(b && b.lastNudgeAt) || 0, Number(out.lastNudgeAt) || 0) || out.lastNudgeAt;
+    out.hiddenInbox = [...new Set([].concat((a && a.hiddenInbox) || [], (b && b.hiddenInbox) || [], out.hiddenInbox || []))];
   }
   return out;
 }
@@ -4063,7 +4103,7 @@ function coreSig(d) {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
       n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
-      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, x.roomId]),
+      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, x.roomId, x.lastNudgeAt, (x.inbox || []).length]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent, x.tenantId])
     });
   } catch { return String(d && d.updatedAt); }
@@ -6486,15 +6526,19 @@ function todayStamp() {
 function flushTenantInbox() {
   const t = typeof me === "function" ? me() : null;
   if (!t || !Array.isArray(t.inbox) || !t.inbox.length) return;
-  const unread = t.inbox.filter(n => n && !n.read);
+  const unread = t.inbox.filter(n => n && !n.osShown);
   if (!unread.length) return;
   unread.forEach(n => {
-    n.read = true;
+    n.osShown = true;
     showOsBanner(n.title || "通知", n.body || "", n.id);
   });
   if (unread.length) {
     toast(unread[unread.length - 1].title + "　" + (unread[unread.length - 1].body || ""));
-    if (!isDevPreview()) save();
+    if (!isDevPreview()) {
+      t.edited = true;
+      t.editedAt = Date.now();
+      save();
+    }
   }
 }
 function maybeNudgeNotifies() {
@@ -9038,10 +9082,12 @@ function nudgePayOne(t, silent) {
   const bound = no && typeof lineBindForRoom === "function" && lineBindForRoom(no);
   const body = `${no} ${t.name || ""}　本月租金 ${rent} 尚未入帳，請於每月 ${due} 日前繳納。`.replace(/\s+/g, " ").trim();
   if (!Array.isArray(t.inbox)) t.inbox = [];
-  t.inbox.push({ id: "n" + Date.now(), title: "租金催繳", body, at: nowStamp(), read: false, kind: "pay" });
-  pushPhoneNotify("租金催繳", body, no || "tenants");
+  t.inbox.push({ id: "nudge-" + Date.now() + "-" + (t.id || ""), title: "屋主催繳", body, at: nowStamp(), read: false, kind: "pay" });
   t.lastNudgeAt = Date.now();
   t.lastNudgeHow = bound ? "line" : "app";
+  t.edited = true;
+  t.editedAt = Date.now();
+  pushPhoneNotify("屋主催繳", body, no || "tenants");
   if (!silent) audit("催繳", (no || "") + " " + (t.name || ""));
   return { ok: true, bound: !!bound, no };
 }
@@ -9054,6 +9100,7 @@ function nudgePayAll() {
     if (r.ok) { n += 1; if (r.bound) line += 1; }
   });
   save();
+  try { pushCloud(); } catch {}
   toast("已催繳 " + n + " 戶" + (line ? "（其中 " + line + " 戶已綁 LINE）" : ""));
 }
 function pendingCashBooks() {
@@ -10086,7 +10133,7 @@ function bindOps() {
       if (!t) return;
       if (!canNudgePay(t) && t.lastNudgeAt) { toast("這戶六小時內已催過"); return; }
       const r = nudgePayOne(t);
-      if (r.ok) { save(); toast(r.bound ? "已催繳（App＋LINE）" : "已催繳（App 通知）"); }
+      if (r.ok) { save(); try { pushCloud(); } catch {} toast(r.bound ? "已催繳（App＋LINE）" : "已催繳，租客首頁會出現屋主提示"); }
     };
   });
   document.querySelectorAll("[data-pair-go]").forEach(btn => {
@@ -10832,6 +10879,7 @@ function homeView() {
     </div>
     <div class="screen">
       ${hasAnn ? announceBlock : ""}
+      ${tenantNudgeNoteHtml(t)}
       ${tenantHandoverNoteHtml(t, r)}
       <div class="hero-card">
         <div class="label">我的房間</div>
@@ -10908,6 +10956,7 @@ function payView() {
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
     </div></div>
     <div class="screen">
+      ${tenantNudgeNoteHtml(t)}
       ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
         <div class="small">本月應繳</div>
@@ -15585,6 +15634,13 @@ function bindTenant() {
       const item = (state.renewals || []).find(x => x.id === btn.dataset.gcalRenew);
       if (!item) return;
       item.appointRead = true; save(); openGoogleCalendar(item, "renew");
+    };
+  });
+  document.querySelectorAll("[data-hide-nudge]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideNudgeForMe(btn.dataset.hideNudge);
     };
   });
   document.querySelectorAll("[data-hide-announce]").forEach(btn => {
