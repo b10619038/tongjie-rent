@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-45";
-const APP_EDIT_COUNT = 498;
+const APP_STAMP = "2026-09-02-16-51";
+const APP_EDIT_COUNT = 499;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["實際匯款日同步到租客 APP"] },
+  { ver: APP_STAMP, items: ["發布公告輸入中不再被同步清掉"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0049") return;
+    if (!m || !m[1] || m[1] === "0050") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3013,6 +3013,7 @@ function ingestPaidCloud(raw) {
     if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants)) return;
+    if (composingNow()) return;
     if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash" || ui.page === "firm") {
       ui.keepScroll = true;
       render();
@@ -3936,6 +3937,50 @@ function persistLogin() {
 }
 function persistUi() {
   persistLogin();
+}
+function captureComposeDraft() {
+  const map = [
+    ["ann-title", "annTitle"],
+    ["ann-body", "annBody"],
+    ["ann-edit-title", "annEditTitle"],
+    ["ann-edit-body", "annEditBody"],
+    ["ai-q", "aiDraft"],
+    ["repair-note", "repairNote"]
+  ];
+  map.forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) ui[key] = el.value;
+  });
+  const ae = document.activeElement;
+  if (ae && ae.id && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) {
+    ui.composeFocus = { id: ae.id, start: ae.selectionStart, end: ae.selectionEnd };
+  } else ui.composeFocus = null;
+}
+function restoreComposeDraft() {
+  const map = {
+    "ann-title": ui.annTitle,
+    "ann-body": ui.annBody,
+    "ann-edit-title": ui.annEditTitle,
+    "ann-edit-body": ui.annEditBody,
+    "ai-q": ui.aiDraft,
+    "repair-note": ui.repairNote
+  };
+  Object.keys(map).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && map[id] != null) el.value = map[id];
+  });
+  const f = ui.composeFocus;
+  if (!f || !f.id) return;
+  const el = document.getElementById(f.id);
+  if (!el) return;
+  try {
+    el.focus();
+    if (typeof f.start === "number") el.setSelectionRange(f.start, f.end);
+  } catch {}
+}
+function composingNow() {
+  const ae = document.activeElement;
+  return !!(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable));
 }
 function navSnap() {
   return {
@@ -9099,6 +9144,7 @@ function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
 }
 function paintApp() {
+  captureComposeDraft();
   persistUi();
   enforceTenantSession();
   maybeAuditBrowse();
@@ -9143,6 +9189,7 @@ function paintApp() {
         bindUpdateBar();
         bindThemePicker();
       });
+      restoreComposeDraft();
       if (ui.adminJump) {
         const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
@@ -9168,6 +9215,7 @@ function paintApp() {
       bindThemePicker();
       bindPullRefresh();
     });
+    restoreComposeDraft();
     const sc2 = document.querySelector(".admin-scroll");
     if (sc2) {
       if (ui.adminJump) {
@@ -9203,6 +9251,7 @@ function paintApp() {
     }
     bindPullRefresh();
   });
+  restoreComposeDraft();
   if (!pageChanged) {
     const ts = document.querySelector(".tenant-scroll");
     if (ts) {
@@ -11883,7 +11932,7 @@ function aiAnswer(q) {
 function adminAnnounce() {
   const list = (state.announcements || []).slice().reverse();
   const who = ui.adminCode === "1240" ? "開發者" : "管理員";
-  const open = !!ui.announceOpen;
+  const open = !!ui.announceOpen || !!(ui.annTitle || ui.annBody);
   return `<div class="admin-grid list">
     <form class="card card-body tenant-slim${open ? " open" : ""}" id="announce-form" autocomplete="off">
       <button type="button" class="row tenant-slim-head" id="announce-fold">
@@ -11892,8 +11941,8 @@ function adminAnnounce() {
       </button>
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
-          <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" /></label>
-          <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容"></textarea></label>
+          <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${escapeHtml(ui.annTitle || "")}" /></label>
+          <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容">${escapeHtml(ui.annBody || "")}</textarea></label>
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
           <button class="btn-navy" type="submit">發布公告</button>
@@ -15149,6 +15198,11 @@ function bindAdmin() {
     document.querySelectorAll("#announce-form input, #announce-form textarea").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
       el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+      el.addEventListener("input", () => {
+        if (el.id === "ann-title") ui.annTitle = el.value;
+        if (el.id === "ann-body") ui.annBody = el.value;
+        ui.announceOpen = true;
+      });
     });
     af.onsubmit = e => {
       e.preventDefault();
@@ -15160,6 +15214,8 @@ function bindAdmin() {
       state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "" });
       ui.announceMedia = [];
       ui.announceOpen = false;
+      ui.annTitle = "";
+      ui.annBody = "";
       save();
       pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
       toast("已發布公告");
@@ -16600,14 +16656,8 @@ async function boot() {
       refreshOnlineBadges();
       if (changed === true && state.updatedAt !== prevUpdated && coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
-        if (ui.page === "repair" || ui.page === "lease-sign") {
-          const ae = document.getElementById("repair-note");
-          if (ae) ui.repairNote = ae.value;
-          return;
-        }
-        const ae = document.activeElement;
-        if (ae && (ae.id === "repair-note" || ae.tagName === "TEXTAREA" || ae.tagName === "INPUT")) {
-          if (ae.id === "repair-note") ui.repairNote = ae.value;
+        if (composingNow()) {
+          captureComposeDraft();
           return;
         }
         ui.keepScroll = true;
