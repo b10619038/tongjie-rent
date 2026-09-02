@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-36";
-const APP_EDIT_COUNT = 507;
+const APP_STAMP = "2026-09-02-17-48";
+const APP_EDIT_COUNT = 508;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["報修改已完成後不會再跳回待處理"] },
+  { ver: APP_STAMP, items: ["廠房公司戶開三聯式（未稅＋5%稅），個人戶開二聯式"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0058") return;
+    if (!m || !m[1] || m[1] === "0059") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5095,6 +5095,29 @@ function invoiceBuyer(r, t) {
   if (r.kind === "factory") return (t && t.name) || r.company || r.manager || "";
   return (t && t.name) || "";
 }
+function invoiceIsTriple(r, t) {
+  if (!r || r.kind !== "factory") return false;
+  const taxId = String((t && t.taxId) || r.taxId || "").replace(/\D/g, "");
+  if (taxId.length >= 8) return true;
+  const name = String((t && t.name) || r.company || "");
+  if (/公司|行號|企業社|商行|工廠|有限|股份|企業/.test(name)) return true;
+  return false;
+}
+function invoiceTaxBreakdown(r, t, overrideTotal) {
+  const listed = Number(r && r.rent) || Number(t && t.rent) || 0;
+  const untaxed = Number(r && r.rentUntaxed) || Number(t && t.rentUntaxed) || 0;
+  if (overrideTotal != null && String(overrideTotal) !== "") {
+    const tot = Math.round(Number(overrideTotal) || 0);
+    const sales = Math.round(tot / 1.05);
+    return { sales, tax: Math.max(0, tot - sales), total: tot };
+  }
+  if (untaxed && listed && listed > untaxed + 1) {
+    return { sales: Math.round(untaxed), tax: Math.round(listed - untaxed), total: Math.round(listed) };
+  }
+  const sales = Math.round(untaxed || listed || 0);
+  const tax = Math.round(sales * 0.05);
+  return { sales, tax, total: sales + tax };
+}
 function invoiceAddr(r, t) {
   const raw = (t && t.address) || r.location || (r.kind === "factory" ? "" : roomAddress(r.no)) || "";
   const m = String(raw).match(/^(.*?[市縣])\s*(.*?[區鄉鎮市])\s*(.*?)(\d+)\s*號(?:(\d+)\s*樓)?(?:-(\d+)\s*室)?/);
@@ -5138,19 +5161,22 @@ function invMark(txt, l, t, w, h, cls) {
   return `<span class="inv-abs inv-mark${cls ? " " + cls : ""}" style="left:${l}%;top:${t}%;width:${w}%;height:${h}%">${escapeHtml(txt)}</span>`;
 }
 function invoiceCopyHtml(r, t, copyName) {
-  const triple = r.kind === "factory";
+  const factory = r.kind === "factory";
+  const triple = invoiceIsTriple(r, t);
   const p = invoicePeriod();
   const addr = invoiceAddr(r, t);
   const buyer = ui.invoiceBuyer != null && ui.invoiceBuyer !== "" ? ui.invoiceBuyer : invoiceBuyer(r, t);
   const num = ui.invoiceNum || "";
-  const itemDefault = triple ? (p.m + "月份廠房租金收入") : (p.m + "月份租金收入");
+  const itemDefault = factory ? (p.m + "月份廠房租金收入") : (p.m + "月份租金收入");
   const item = (ui.invoiceItem && !/^\d+月(份)?(廠房)?租金(收入)?$/.test(ui.invoiceItem)) ? ui.invoiceItem : itemDefault;
   const qty = (ui.invoiceQty && ui.invoiceQty !== "1") ? ui.invoiceQty : "一式";
-  const total = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "" ? Number(ui.invoiceAmt) : Number(r.rent) || 0;
-  const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(total || "");
+  const editedAmt = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "";
+  const br = invoiceTaxBreakdown(r, t, editedAmt ? ui.invoiceAmt : null);
+  const total = editedAmt ? Number(ui.invoiceAmt) : (triple ? br.total : (Number(r.rent) || Number(t && t.rent) || 0));
+  const sales = triple ? br.sales : total;
+  const taxAmt = triple ? br.tax : 0;
+  const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(sales || "");
   const taxId = (ui.invoiceTaxId != null && ui.invoiceTaxId !== "" ? ui.invoiceTaxId : ((t && t.taxId) || "")).replace(/\D/g, "").slice(0, 8);
-  const untax = Number(r.rentUntaxed) || (total ? Math.round(total / 1.05) : 0);
-  const taxAmt = total ? Math.max(0, total - untax) : 0;
   const y = ui.invoiceY || p.y;
   const mo = ui.invoiceMo || p.m;
   const day = ui.invoiceDay || p.day;
@@ -5176,8 +5202,8 @@ function invoiceCopyHtml(r, t, copyName) {
       ${at(W, H, 174, 408, 310, 50, "invoiceItem", item)}
       ${at(W, H, 523, 408, 210, 50, "invoiceQty", qty)}
       ${at(W, H, 732, 408, 170, 50, "invoicePrice", price)}
-      ${at(W, H, 942, 408, 270, 50, "invoiceAmt", total ? String(total) : "")}
-      ${mk(W, H, 914, 742, 270, 44, untax ? String(untax) : "")}
+      ${at(W, H, 942, 408, 270, 50, "invoiceAmt", sales ? String(sales) : "")}
+      ${mk(W, H, 914, 742, 270, 44, sales ? String(sales) : "")}
       ${mk(W, H, 511, 846, 40, 28, "V")}
       ${mk(W, H, 914, 806, 270, 62, taxAmt ? String(taxAmt) : "")}
       ${mk(W, H, 914, 888, 270, 42, total ? String(total) : "")}
@@ -5188,7 +5214,9 @@ function invoiceCopyHtml(r, t, copyName) {
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
   const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 891, 38, 44, ch, "inv-han")).join("");
-  const roomNote = (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
+  const roomNote = factory
+    ? [r.group, r.no].filter(Boolean).join(" ")
+    : (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
     ${at(W, H, 980, 168, 80, 32, "invoiceY", y)}
@@ -5210,14 +5238,14 @@ function adminInvoice() {
   const r = state.rooms.find(x => x.id === ui.invoiceRoomId);
   if (!r) return `<div class="empty">找不到房間</div>`;
   const t = state.tenants.find(x => x.roomId === r.id || x.id === r.tenantId);
-  const triple = r.kind === "factory";
+  const triple = invoiceIsTriple(r, t);
   const copies = ["第一聯 存根聯"];
   const back = ui.invoiceFrom === "room-edit" ? "room-edit" : "tenants";
   return `<div class="admin-grid list invoice-page">
     <div class="card card-body no-print">
       <button class="back" type="button" data-admin="${back}">← 返回</button>
       <h2 class="dash-h">${r.no}　${triple ? "三聯式統一發票" : "二聯式統一發票"}</h2>
-      <p class="small">底圖是手開發票。橘色字可改，列印後在右邊蓋章。</p>
+      <p class="small">${triple ? "公司戶用三聯。未稅寫銷售額，免稅格右側填營業稅（未稅×5%），總計＝未稅＋稅。橘色字可改，列印後蓋章。" : "個人戶用二聯。金額為租金，備註寫案場／房號。橘色字可改，列印後蓋章。"}</p>
       <div class="inv-inputs">
         <label class="field"><span>字軌（2 碼）</span><input id="inv-track" type="text" maxlength="2" value="${escapeHtml(ui.invoiceTrack || "")}" placeholder="例如 TP" /></label>
         <label class="field"><span>號碼（8 碼）</span><input id="inv-num" type="text" maxlength="8" value="${escapeHtml(ui.invoiceNum || "")}" placeholder="例如 21751800" /></label>
