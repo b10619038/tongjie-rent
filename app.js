@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-18";
-const APP_EDIT_COUNT = 514;
+const APP_STAMP = "2026-09-02-18-24";
+const APP_EDIT_COUNT = 515;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客圖卡不再出現兩組相同按鈕"] },
+  { ver: APP_STAMP, items: ["廠房租客圖卡房間改成合約地址，例如鳳仁路97之72號"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0065") return;
+    if (!m || !m[1] || m[1] === "0066") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2433,7 +2433,7 @@ function ensureCheckout6832(data) {
   });
 }
 function migrateNiu5Nos(data) {
-  if (!data || data.niu5NoVer === "20260902-niu5-97c") return;
+  if (!data || data.niu5NoVer === "20260902-niu5-97d") return;
   const mapNo = no => {
     const m = String(no || "").match(/^牛5-(\d{2})$/);
     return m ? "牛5-97-" + m[1] : "";
@@ -2484,7 +2484,12 @@ function migrateNiu5Nos(data) {
     dropTid[t.id] = cur.id;
     if (cur.paid || t.paid) { cur.paid = !!(cur.paid || t.paid); cur.paidTouched = true; }
   });
-  data.rooms = (data.rooms || []).filter(r => !r || !idMap[r.id]);
+  data.rooms = (data.rooms || []).filter(r => {
+    if (!r) return false;
+    if (idMap[r.id] && idMap[r.id] !== r.id) return false;
+    if (r.kind === "factory" && keepRoom.get(r.no) && keepRoom.get(r.no) !== r) return false;
+    return true;
+  });
   data.tenants = (data.tenants || []).filter(t => !t || !dropTid[t.id]);
   ["repairs", "notices", "announcements", "renewals"].forEach(k => {
     (data[k] || []).forEach(x => {
@@ -2507,7 +2512,7 @@ function migrateNiu5Nos(data) {
     });
     data.paidMarks = next;
   }
-  data.niu5NoVer = "20260902-niu5-97c";
+  data.niu5NoVer = "20260902-niu5-97d";
 }
 function applyFactoryRoster(data) {
   factoryRooms().forEach(seedRoom => {
@@ -5237,20 +5242,36 @@ function invoiceBuyer(r, t) {
 }
 function factoryDoorNote(r) {
   const no = String(r && r.no || "").trim();
+  const alt = no.replace(/^牛5-(\d{2})$/, "牛5-97-$1");
   let unit = "";
   FACTORY_GROUPS.forEach(g => {
-    const it = (g.items || []).find(x => x.no === no);
+    const it = (g.items || []).find(x => x.no === no || x.no === alt);
     if (it && it.unit) unit = it.unit;
   });
   if (!unit) {
-    const info = FACTORY_TENANT_INFO[no];
+    const info = FACTORY_TENANT_INFO[no] || FACTORY_TENANT_INFO[alt];
     const fromNote = String(info && info.note || "").match(/(\d+(?:-\d+[A-Z]?)?(?:巷\d+弄\d+)?)號/);
     if (fromNote) unit = fromNote[0];
   }
   if (!unit) unit = String(r && (r.unit || r.location) || "");
   const door = String(unit).replace(/號/g, " ").replace(/\s+/g, " ").trim();
-  if (door) return door;
+  if (door) return door.replace(/(\d+)-(\d+[A-Za-z]?)/g, "$1之$2");
   return no.replace(/^牛\d+-/, "");
+}
+function formatFactoryAddr(s) {
+  return String(s || "").replace(/(\d+)-(\d+[A-Za-z]?)號/g, "$1之$2號").replace(/(\d+)-(\d+[A-Za-z]?)$/g, "$1之$2");
+}
+function factoryAddress(r) {
+  if (!r) return "";
+  const no = String(r.no || "").trim();
+  const alt = no.replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+  for (let i = 0; i < FACTORY_GROUPS.length; i++) {
+    const g = FACTORY_GROUPS[i];
+    const it = (g.items || []).find(x => x.no === no || x.no === alt);
+    if (it) return formatFactoryAddr((g.city || "") + (it.unit || ""));
+  }
+  if (r.location && /[市縣]/.test(r.location)) return formatFactoryAddr(r.location);
+  return formatFactoryAddr(r.location || r.no || "");
 }
 function invoiceIsTriple(r, t) {
   if (!r || r.kind !== "factory") return false;
@@ -13387,7 +13408,7 @@ function tenantEntriesOfKind(kind) {
     }
     const e = map.get(key);
     e.tenants.push(t);
-    if (r) e.rooms.push(r);
+    if (r && !e.rooms.some(x => x && (x.id === r.id || x.no === r.no || factoryAddress(x) === factoryAddress(r)))) e.rooms.push(r);
   });
   return order;
 }
@@ -13451,7 +13472,7 @@ function tenantEntryDetailsHtml(kind, entry) {
   });
   const leasesSame = tenants.every(tt => (tt.leaseStart || "") === (t.leaseStart || "") && (tt.leaseEnd || "") === (t.leaseEnd || ""));
   return `${kind === "factory" && sites ? `<div class="row"><span class="k">案場</span><span class="v">${escapeHtml(sites)}</span></div>` : ""}
-      <div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(nos)}</span></div>
+      <div class="row wrap"><span class="k">${kind === "factory" ? "地址" : "房間"}</span><span class="v">${escapeHtml(kind === "factory" ? [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))].join("、") : nos)}</span></div>
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。</div>${demoResetBarHtml()}` : ""}
       ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
