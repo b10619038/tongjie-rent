@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-00";
-const APP_EDIT_COUNT = 558;
+const APP_STAMP = "2026-09-03-00-06";
+const APP_EDIT_COUNT = 559;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["我是租客會進到剛填的新客，已簽名不會再顯示尚未簽約"] },
+  { ver: APP_STAMP, items: ["租客不用建立密碼，電話後四碼或姓名即可登入"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0109") return;
+    if (!m || !m[1] || m[1] === "0110") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -10694,7 +10694,7 @@ function gateView() {
         <input id="forgot-name" type="text" placeholder="租客姓名" value="${escapeHtml(ui.forgotName || "")}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         ${ui.foundPass != null ? `<div class="pass-found">${ui.foundPass ? escapeHtml(ui.foundPass) : "尚未設定密碼"}</div>
-          <div class="small">${ui.foundPass ? "請用此密碼登入，也可請管理員在後台協助修改。" : "請回登入頁用房號建立密碼。"}</div>` : ""}
+          <div class="small">${ui.foundPass ? "請用此密碼登入。預設是電話後四碼，也可用姓名。" : "預設密碼是電話後四碼，也可用姓名。"}</div>` : ""}
         <button class="btn-navy" id="do-forgot" type="button">找回密碼</button>
       </div>
     </div>`;
@@ -10722,11 +10722,11 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號與登入密碼。第一次進來請先建立密碼。"}</p>
+        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號與登入密碼。密碼為電話後四碼，也可用姓名。"}</p>
       </div>
       <div class="login-block slide-left">
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
-        ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="建立密碼" />`}
+        ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="電話後四碼或姓名" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
         ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
@@ -10748,7 +10748,7 @@ function gateView() {
     </button>
     <button class="role-btn slide-left delay" data-go="tenant-login">
       <strong>我是租客</strong>
-      <span>請輸入自己的房號，進入該房間的租約、繳費與報修。</span>
+      <span>請輸入房號，密碼為電話後四碼，也可用姓名。</span>
     </button>
     <button class="role-btn slide-left delay" data-go="admin-login">
       <strong>我是管理員</strong>
@@ -15413,7 +15413,10 @@ function tenantPassOk(t, pass) {
   if (!t || !pass) return false;
   if (t.loginPass && pass === String(t.loginPass)) return true;
   const p4 = phonePassOf(t.phone);
-  return !!(p4 && pass === p4);
+  if (p4 && pass === p4) return true;
+  const name = String(t.name || "").replace(/\s+/g, "").replace(/、/g, "");
+  const typed = String(pass || "").replace(/\s+/g, "").replace(/、/g, "");
+  return !!(name && typed.length >= 2 && (name === typed || name.includes(typed) || typed.includes(name)));
 }
 function tryLogin() {
   const input = document.getElementById("room-login");
@@ -15456,13 +15459,6 @@ function tryLogin() {
       render(); return;
     }
     if (!pass) { ui.loginError = "請輸入登入密碼"; render(); return; }
-    if (current && !current.incoming && !current.loginPass) {
-      ui.loginRoom = room.no;
-      ui.page = "tenant-setpass";
-      ui.loginError = "";
-      render();
-      return;
-    }
     ui.loginError = "密碼不正確";
     audit("登入失敗", "房號 " + room.no + " 密碼錯誤");
     render(); return;
@@ -15491,13 +15487,15 @@ function tryForgot() {
   const name = String((document.getElementById("forgot-name") || {}).value || "").trim();
   ui.foundPass = null;
   if (!no || !name) { ui.loginError = "請輸入房號與姓名"; render(); return; }
-  const { room, tenant } = tenantByRoomNo(no);
-  if (!room || !tenant) { ui.loginError = "找不到這個房號的租客"; render(); return; }
+  const { room, tenant: current } = tenantByRoomNo(no);
+  if (!room) { ui.loginError = "找不到這個房號的租客"; render(); return; }
+  const inc = incomingOf(room.id);
+  const tenant = [inc, current].filter(Boolean).find(t => nameMatch(t.name, name)) || null;
+  if (!tenant) { ui.loginError = "姓名不符，請再確認或洽管理員"; render(); return; }
   ui.loginRoom = no;
   ui.forgotName = name;
-  if (!nameMatch(tenant.name, name)) { ui.loginError = "姓名不符，請再確認或洽管理員"; render(); return; }
   ui.loginError = "";
-  ui.foundPass = tenant.loginPass || "";
+  ui.foundPass = tenant.loginPass || phonePassOf(tenant.phone) || String(tenant.name || "").replace(/\s+/g, "");
   audit("找回密碼", "房號 " + room.no);
   render();
 }
