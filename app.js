@@ -14370,7 +14370,7 @@ function vacantRoomCardHtml(r) {
   const label = roomIsFactory(r) ? displayRoomNo(r) : studioListNo(r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${inc.applyPending ? "入住申請" : "交接中"}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc.applyPending ? "入住申請" : "交接中")}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -14638,7 +14638,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${escapeHtml(t.name)}${inc && inc.name ? " → " + escapeHtml(inc.name) : ""}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) || inc ? `<span class="pay-pill hand">${inc && inc.applyPending ? "入住申請" : "交接中"}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${escapeHtml(t.name)}${inc && inc.name ? " → " + escapeHtml(inc.name) : ""}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) || inc ? `<span class="pay-pill hand">${inc && tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc && inc.applyPending ? "入住申請" : "交接中")}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>`;
 }
