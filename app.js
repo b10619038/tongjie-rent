@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-39";
-const APP_EDIT_COUNT = 497;
+const APP_STAMP = "2026-09-02-16-45";
+const APP_EDIT_COUNT = 498;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["97-65B 蔡聖鴻收租改固定每月5日"] },
+  { ver: APP_STAMP, items: ["實際匯款日同步到租客 APP"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0048") return;
+    if (!m || !m[1] || m[1] === "0049") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9514,6 +9514,7 @@ function homeView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">2026 年 8 月租金</span><span class="v">${r.rent ? money(r.rent) : "—"}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
+        <div class="row"><span class="k">實際匯款日</span><span class="v">${ymdOf(t.remitOn) ? rocSlash(t.remitOn) : (paidThisMonth(t) && ymdOf(t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">每月 ${rentDueDay(t)} 日前</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
@@ -9537,6 +9538,7 @@ function markTenantPaid(via) {
   t.paidAt = nowStamp();
   t.paidTouched = true;
   t.paidYm = payYmNow();
+  if (!t.remitOn) t.remitOn = ymdOf(t.paidAt);
   if (via === "line") t.lineNotified = true;
   stampPaidMark(state, t);
   try { ensureDemoTenant(state); } catch {}
@@ -9579,6 +9581,7 @@ function payView() {
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${paid ? "paid" : "unpaid"}">${paid ? "本月已繳" : "本月未繳"}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
+        <div class="row" style="margin-top:10px"><span class="k">實際匯款日</span><span class="v">${ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
