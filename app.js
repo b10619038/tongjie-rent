@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-27";
-const APP_EDIT_COUNT = 517;
+const APP_STAMP = "2026-09-02-18-28";
+const APP_EDIT_COUNT = 518;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客搜尋列改成搜尋"] },
+  { ver: APP_STAMP, items: ["廠房租客圖卡只留一列 LINE"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0068") return;
+    if (!m || !m[1] || m[1] === "0069") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -13517,13 +13517,6 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
       ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "尚未設定") : ""}
       ${(() => {
-        if (kind === "factory" && tenants.length > 1) {
-          return tenants.map(tt => {
-            const rr = state.rooms.find(x => x.id === tt.roomId);
-            const bound = rr && lineBindForRoom(rr.no);
-            return `<div class="row" data-line-status="${rr ? rr.no : ""}"><span class="k">LINE　${escapeHtml(rr ? rr.no : "")}</span>${bound ? `<span class="badge rented">已綁定${lineBindName(rr.no) ? " · " + escapeHtml(lineBindName(rr.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
-          }).join("");
-        }
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
