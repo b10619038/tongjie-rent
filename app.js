@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-16-34";
-const APP_EDIT_COUNT = 496;
+const APP_STAMP = "2026-09-02-16-39";
+const APP_EDIT_COUNT = 497;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -58,7 +58,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客圖卡新增實際匯款日，7041 為 8/31"] },
+  { ver: APP_STAMP, items: ["97-65B 蔡聖鴻收租改固定每月5日"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0047") return;
+    if (!m || !m[1] || m[1] === "0048") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1442,7 +1442,7 @@ const FACTORY_TENANT_INFO = {
   "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金潾", phone: "07-350-3337／0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 50000, rent: 54600, deposit: 104000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "鳳仁路97之61。未稅 $50,000，含稅 $54,600。每月1日匯聯邦高雄 統潔 01010-0035909。113/10/24 入押金 $104,000。裝修 113/10/1～10/31。" },
   "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之63。個人戶。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
   "牛3-97-65A": { name: "羅美芳", taxId: "", contactName: "陳先生", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之65號（A）。個人戶。每月 $12,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
-  "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月1日現金交給趙正賢。" },
+  "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月5日現金交給趙正賢。" },
   "牛5-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
   "牛5-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-67。含稅 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
   "牛5-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-68。含 5% 稅金 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
@@ -1473,7 +1473,7 @@ const FACTORY_TENANT_INFO = {
 };
 const CYCLE_JOBS = [
   { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 咘然居 孫小姐（拉皮）", cycle: true, owner: "7651" },
-  { id: "cycle-rent-97-65b", monthDay: 1, time: "", text: "收租金　97-65B 蔡聖鴻（現金）", cycle: true, owner: "7651" },
+  { id: "cycle-rent-97-65b", monthDay: 5, time: "", text: "收租金　97-65B 蔡聖鴻（現金）", cycle: true, owner: "7651" },
   { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" },
   { id: "cycle-mail-invoices", monthDay: 10, flexDays: 4, text: "寄發票：映升（鳳山中山路19巷14號）、南溢（苓雅永泰路115號）、造得科技（大寮內坑路158之9）", cycle: true, owner: "7651" },
   { id: "cycle-pay-fengxin", monthDay: 10, flexDays: 4, text: "繳費鳳信網路（信件到再繳）", cycle: true, owner: "7651" },
