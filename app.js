@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-20-14";
-const APP_EDIT_COUNT = 535;
+const APP_STAMP = "2026-09-02-20-18";
+const APP_EDIT_COUNT = 536;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -34,10 +34,11 @@ const AUG31_BOOKS = [
   ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
-function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.no === "DEMO" || r.no === "0000")); }
+function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
+function isDemoFactoryRoom(r) { return !!(r && (r.id === "r-demo-f" || r.no === "F0000" || (r.demo && r.kind === "factory"))); }
 function isDemoTenant(t) {
   if (!t) return false;
-  if (t.demo || t.id === "t-demo" || t.id === "t-dev-preview") return true;
+  if (t.demo || t.id === "t-demo" || t.id === "t-demo-f" || t.id === "t-dev-preview") return true;
   if (t.loginPass === "0000" && /開發者/.test(String(t.name || ""))) return true;
   try {
     const r = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === t.roomId);
@@ -61,7 +62,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開發者測試點重製後需重新簽名"] },
+  { ver: APP_STAMP, items: ["廠房租客新增開發者測試戶 F0000"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +756,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0086") return;
+    if (!m || !m[1] || m[1] === "0087") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5360,6 +5361,7 @@ function displayRoomNo(r) {
     else return String(r).replace(/^牛5-(\d{2})$/, "牛5-97-$1");
   }
   if (!r) return "";
+  if (isDemoFactoryRoom(r)) return "F0000";
   const group = r.group || ((String(r.no || "").match(/^(牛\d+|拉皮|大樹)/) || [])[0] || "");
   let door = "";
   try { door = factoryDoorNote(r); } catch {}
@@ -5424,6 +5426,7 @@ function liveInvoiceNote(r, t) {
 }
 function factoryAddress(r) {
   if (!r) return "";
+  if (isDemoFactoryRoom(r)) return r.location || "高雄市鳳山區文龍東路測試廠房";
   const no = String(r.no || "").trim();
   const alt = no.replace(/^牛5-(\d{2})$/, "牛5-97-$1");
   for (let i = 0; i < FACTORY_GROUPS.length; i++) {
@@ -5902,6 +5905,61 @@ function ensureDemoTenant(data) {
   if (!room.deposit || Number(room.deposit) < Number(room.rent) * 2) room.deposit = Number(room.rent) * 2;
   room.tenantId = t.id;
   t.roomId = room.id;
+  ensureDemoFactoryTenant(data);
+}
+function ensureDemoFactoryTenant(data) {
+  if (!data) return;
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  const y = new Date().getFullYear();
+  let room = data.rooms.find(r => r.id === "r-demo-f" || String(r.no) === "F0000");
+  if (!room) {
+    room = {
+      id: "r-demo-f", no: "F0000", title: "廠房", kind: "factory", group: "測試", status: "rented",
+      rent: 10000, rentUntaxed: 10000, deposit: 20000, demo: true,
+      location: "高雄市鳳山區文龍東路測試廠房",
+      unit: "測試廠房",
+      note: "開發者測試廠房 F0000（不計入金額）",
+      tenantId: "t-demo-f",
+      contractImages: []
+    };
+    data.rooms.push(room);
+  } else {
+    room.demo = true;
+    room.kind = "factory";
+    room.no = "F0000";
+    room.group = room.group || "測試";
+    if (!room.note) room.note = "開發者測試廠房 F0000（不計入金額）";
+    if (!room.location) room.location = "高雄市鳳山區文龍東路測試廠房";
+    if (!room.unit) room.unit = "測試廠房";
+    if (!room.rent) room.rent = 10000;
+    if (!room.deposit) room.deposit = 20000;
+  }
+  let t = data.tenants.find(x => x.id === "t-demo-f" || (x.demo && x.roomId === room.id));
+  if (!t) {
+    t = {
+      id: "t-demo-f", name: "開發者測試", roomId: room.id, paid: false, demo: true,
+      leaseStart: y + "-01-01", leaseEnd: (y + 1) + "-12-31", dueDay: 1,
+      phone: "0912-345-678", taxId: "",
+      note: "測試廠房。金流不計入。可按重製反覆開票／已繳。"
+    };
+    data.tenants.push(t);
+  } else {
+    t.demo = true;
+    t.former = false;
+    t.incoming = false;
+    t.placeholder = false;
+    if (!t.name) t.name = "開發者測試";
+    if (!t.phone) t.phone = "0912-345-678";
+    if (!t.leaseStart) t.leaseStart = y + "-01-01";
+    if (!t.leaseEnd) t.leaseEnd = (y + 1) + "-12-31";
+    if (!t.dueDay) t.dueDay = 1;
+    if (!t.note) t.note = "測試廠房。金流不計入。可按重製反覆開票／已繳。";
+  }
+  room.rent = room.rent || 10000;
+  room.deposit = room.deposit || 20000;
+  room.tenantId = t.id;
+  t.roomId = room.id;
 }
 function clearDemoESign(t) {
   const rec = { status: "unsigned", at: nowStamp(), ts: Date.now(), sig: "", sig2: "", cleared: true };
@@ -5925,10 +5983,11 @@ function clearDemoESign(t) {
     localStorage.setItem("tongjie_esign_v1", JSON.stringify(loc));
   } catch {}
 }
-function resetDemoCycle() {
+function resetDemoCycle(kind) {
   ensureDemoTenant(state);
-  const room = (state.rooms || []).find(isDemoRoom);
-  const t = (state.tenants || []).find(x => x && (x.id === "t-demo" || x.demo));
+  const factory = kind === "factory";
+  const room = (state.rooms || []).find(r => factory ? isDemoFactoryRoom(r) : (isDemoRoom(r) && !isDemoFactoryRoom(r)));
+  const t = (state.tenants || []).find(x => x && x.id === (factory ? "t-demo-f" : "t-demo"));
   if (!room || !t) { toast("找不到測試房"); return; }
   state.tenants = (state.tenants || []).filter(x => !(x && x.roomId === room.id && x.incoming));
   t.demo = true;
@@ -5941,13 +6000,14 @@ function resetDemoCycle() {
   t.lineNotified = false;
   t.leftOn = "";
   t.name = "開發者測試";
-  t.loginPass = "0000";
+  if (!factory) t.loginPass = "0000";
   const y = new Date().getFullYear();
   t.leaseStart = y + "-01-01";
   t.leaseEnd = (y + 1) + "-12-31";
   t.dueDay = 1;
   room.demo = true;
-  room.no = "0000";
+  room.no = factory ? "F0000" : "0000";
+  if (factory) { room.kind = "factory"; room.group = "測試"; }
   room.status = "rented";
   room.tenantId = t.id;
   room.rent = 10000;
@@ -5957,25 +6017,33 @@ function resetDemoCycle() {
   clearDemoESign(t);
   state.checkouts = (state.checkouts || []).filter(c => c && c.tenantId !== t.id);
   state.renewals = (state.renewals || []).filter(x => x && x.tenantId !== t.id);
-  state.books = (state.books || []).filter(b => b && b.roomNo !== "0000" && b.roomNo !== "DEMO" && !b.demo);
-  if (ui.devPreview) {
+  state.books = (state.books || []).filter(b => b && b.roomNo !== "0000" && b.roomNo !== "DEMO" && b.roomNo !== "F0000" && !b.demo);
+  if (ui.devPreview && !factory) {
     ui.devRenewals = [];
     ensureDevPreview();
   }
   ui.tenantId = t.id;
   ui.roomId = room.id;
-  ui.roomNo = "0000";
-  ui.page = ui.devPreview || ui.role === "tenant" ? "lease" : "home";
+  ui.roomNo = room.no;
+  if (factory) {
+    ui.tenantKind = "factory";
+    ui.tenantSheetKind = "factory";
+    ui.tenantSheetId = t.id;
+    ui.page = "tenant-sheet";
+  } else {
+    ui.page = ui.devPreview || ui.role === "tenant" ? "lease" : "home";
+  }
   save();
   try { pushCloud(); } catch {}
-  toast("測試房 0000 已重製，請重新簽名");
+  toast(factory ? "測試廠房 F0000 已重製" : "測試房 0000 已重製，請重新簽名");
   render();
 }
-function demoResetBarHtml() {
+function demoResetBarHtml(kind) {
+  const factory = kind === "factory";
   return `<div class="card card-body" style="margin-top:12px">
-      <div class="k">開發者測試房 0000</div>
-      <p class="small" style="margin-top:6px">簽約、退租、再入房可重複測。金流不列入總覽。</p>
-      <button type="button" class="btn-navy" id="demo-reset-btn" style="margin-top:10px">重製測試</button>
+      <div class="k">開發者測試${factory ? "廠房 F0000" : "房 0000"}</div>
+      <p class="small" style="margin-top:6px">${factory ? "開票、已繳／未繳可重複測。金流不列入總覽。" : "簽約、退租、再入房可重複測。金流不列入總覽。"}</p>
+      <button type="button" class="btn-navy" id="demo-reset-btn" data-demo-kind="${factory ? "factory" : "studio"}" style="margin-top:10px">重製測試</button>
     </div>`;
 }
 function ensureDemoRepair(data) {
@@ -13216,7 +13284,7 @@ function occBits(rooms) {
 }
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
-  const factories = state.rooms.filter(r => r.kind === "factory");
+  const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
   const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
   const studioOcc = occBits(studios);
   const factoryOcc = occBits(factories);
@@ -13515,8 +13583,9 @@ function tenantListOfKind(kind, opts) {
     let r = state.rooms.find(x => x.id === t.roomId);
     if (!t || t.placeholder || t.former || t.incoming) return false;
     if (isDemoTenant(t)) {
-      if (factory) return false;
-      if (!r) {
+      const demoF = !!(t.id === "t-demo-f" || (r && isDemoFactoryRoom(r)));
+      if (factory !== demoF) return false;
+      if (!factory && !r) {
         try { ensureDemoTenant(state); } catch {}
         r = state.rooms.find(x => x.id === t.roomId || x.id === "r-demo" || String(x.no) === "0000");
       }
@@ -13662,7 +13731,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         return `<div class="row wrap"><span class="k">地址</span><span class="v">${addrs.map(a => escapeHtml(a)).join("<br>")}</span></div>`;
       })()}
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
-      ${t.demo || (r && r.demo) ? `<div class="small">開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。</div>${demoResetBarHtml()}` : ""}
+      ${t.demo || (r && r.demo) ? `<div class="small">${kind === "factory" ? "開發者測試廠房 F0000。金流不計入。可按重製反覆開票／已繳。" : "開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。"}</div>${demoResetBarHtml(kind)}` : ""}
       ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
@@ -13808,7 +13877,7 @@ function bindTenantEdits() {
   });
   const demoReset = document.getElementById("demo-reset-btn");
   if (demoReset) {
-    demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(); };
+    demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(demoReset.dataset.demoKind); };
     demoReset.addEventListener("pointerdown", e => e.stopPropagation());
   }
 }
@@ -14666,7 +14735,7 @@ function bindTenant() {
   const exitPrev = document.getElementById("exit-preview");
   if (exitPrev) exitPrev.onclick = () => exitDevPreview();
   const demoReset = document.getElementById("demo-reset-btn");
-  if (demoReset) demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(); };
+  if (demoReset) demoReset.onclick = e => { e.preventDefault(); e.stopPropagation(); resetDemoCycle(demoReset.dataset.demoKind); };
   const av = document.getElementById("tenant-avatar");
   const avSet = document.getElementById("tenant-avatar-set");
   const onAvatar = async (inp) => {
