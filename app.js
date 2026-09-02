@@ -18,8 +18,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-13-05";
-const APP_EDIT_COUNT = 488;
+const APP_STAMP = "2026-09-02-14-55";
+const APP_EDIT_COUNT = 489;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -53,12 +53,12 @@ function isDemoRepair(r) {
   } catch {}
   return false;
 }
-const TENANT_ROSTER_VER = "20260831-2120";
+const TENANT_ROSTER_VER = "20260902-1455";
 const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["統潔農會、兆豐匯款帳號更正"] },
+  { ver: APP_STAMP, items: ["套入牛10最新租客名單，已繳未繳不動"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -752,7 +752,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0039") return;
+    if (!m || !m[1] || m[1] === "0040") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1159,10 +1159,10 @@ const STUDIO_NOS = [
 const STORE_NOS = ["6811", "7011", "7211", "7611"];
 function isStoreNo(no) { return STORE_NOS.includes(String(no)); }
 const STUDIO_RENTS = {
-  "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 13500, "6841": 9000, "6842": 14000,
+  "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
   "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 0,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
-  "7611": 50000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 0
+  "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 0
 };
 function studioRentOf(no, fallback) {
   const key = String(no || "");
@@ -1296,44 +1296,46 @@ function applyStudioSheetPaid(data) {
   });
 }
 const TENANT_INFO = {
-  "6821": { name: "黃宥宇", phone: "0980-330-332" },
-  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "6831": { name: "吳昱瑋" },
-  "6832": { name: "周婕妤", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 27000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
-  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847" },
-  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176" },
-  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31" },
-  "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000 },
-  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
-  "7042": { name: "周佳瑩", phone: "0972-986-430／0970-116-205", leaseStart: "2026-06-23", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "115/6/23–6/30 日租金 3,748；7/1 起 1押1租 28,000；水費年 1,800；仲介 14,000；7/2 北銀 14,000" },
+  "6821": { name: "黃宥宇", phone: "0980-330-332", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "6822": { name: "吳孟書、黃莉晏", phone: "0938-513-126／0905-371-157", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "6831": { name: "吳昱瑋", phone: "0903-905-609", leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會" },
+  "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0963-701-012", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
+  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會" },
+  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
+  "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
+  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
+  "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。" },
   "7051": { note: "空房。楊旻憲已換至 7032。" },
-  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
-  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000；進住日租金 4,427" },
-  "7223": { name: "許芸慈", phone: "0900-246-722／0988-881-915", leaseStart: "2026-06-26", leaseEnd: "2027-06-30", deposit: 20000, bankLast5: "57877", payBank: "兆豐", note: "115/6/26–6/30 日租金 1,665；7/1～116/6/30 租 10,000 押 20,000 入北銀；水費年 1,800；電儲值 1,000；仲介 10,000" },
-  "7231": { name: "林科承、朱宣羽", phone: "0968-887-012／0982-606-649", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, note: "仲介住商；2押1租 27,000；水費年 3,600（2人）；電儲值 1,000；仲介費 9,000；發票 RT35173310" },
-  "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
-  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
-  "7242": { name: "張育慈、周聖傑", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "現約 115/7/1～116/6/30。前任陳智泓於 114/11/30 換房至 7642" },
-  "7251": { name: "呂佳芸", deposit: 10000 },
-  "7611": { name: "曾郁翔", phone: "0938-550-265", leaseStart: "2026-01-01", leaseEnd: "2031-12-31", shop: "波波奇夏威夷拌飯" },
-  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, note: "押金 14,000；1/6–1/31 日租金 5,850；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
-  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000；11/30 收現金 12,300、12/8 補 9,000 已匯入" },
-  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-10-10", leaseEnd: "2026-10-09", deposit: 20000, note: "2押1租 30,000；10/10–10/31 日租金 6,500；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
-  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-10-11", leaseEnd: "2026-10-31", deposit: 18000, note: "2押1租 27,000；10/11–10/31 日租金 5,510；水費年 1,800；電儲值 1,000；仲介 9,000；發票 RT00055074" },
-  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", note: "租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
-  "7641": { name: "洪子軒", phone: "0902-350-637", leaseStart: "2026-05-01", leaseEnd: "2027-04-30", deposit: 18000, note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
-  "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, note: "由 7242 換房；12月租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
-  "7651": { name: "吳慧青", rent: 5000, deposit: 0, note: "實際由員工使用辦公室。吳慧青為老闆認識的人，僅用 7651 房號掛名承租、申辦租屋補助。月租 5,000（農會 7/3）。7651 登入仍走管理員。" },
-  "7652": { note: "合約 115/3/1～115/10/31，租客姓名待補", leaseStart: "2026-03-01", leaseEnd: "2026-10-31" }
+  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
+  "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
+  "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
+  "7231": { note: "空房" },
+  "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, payBank: "農會", note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
+  "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
+  "7251": { note: "空房" },
+  "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "兆豐", shop: "波波奇夏威夷拌飯", note: "店面。新客匯兆豐。聯絡曾郁翔。" },
+  "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, payBank: "農會", note: "押金 14,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
+  "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", payBank: "農會", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000" },
+  "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 20000, payBank: "農會", note: "2押1租 30,000；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
+  "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 1,800；電儲值 1,000；仲介 9,000；發票 RT00055074" },
+  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "農會", note: "已續約。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
+  "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 18000, payBank: "農會", note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
+  "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, payBank: "農會", note: "由 7242 換房；租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
+  "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際由員工使用辦公室。吳慧青為老闆認識的人，僅用 7651 房號掛名承租、申辦租屋補助。月租 5,000。7651 登入仍走管理員。" },
+  "7652": { note: "空房" }
 };
 const FORMER_STUDIO = {
   "7051": [{ name: "楊旻憲", leftOn: "2026-03-01", phone: "0903-045-123", note: "換房至 7032，7051 現為空房" }],
   "7242": [{ name: "陳智泓", leftOn: "2025-11-30", note: "換房至 7642" }],
-  "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }]
+  "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }],
+  "7231": [{ name: "林科承、朱宣羽", leftOn: "2026-09-02", phone: "0968-887-012／0982-606-649", note: "115/9/2 最新名單已無此房，改空房" }],
+  "7251": [{ name: "呂佳芸", leftOn: "2026-09-02", note: "115/9/2 最新名單已無此房，改空房" }]
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).filter(([, v]) => v && v.name).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -2128,10 +2130,8 @@ function normalize(data) {
     if (!room || room.status === "office" || room.kind === "factory") return;
     if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
-  if (data.tenantRosterVer !== TENANT_ROSTER_VER) {
-    applyTenantRoster(data);
-    data.tenantRosterVer = TENANT_ROSTER_VER;
-  }
+  applyTenantRoster(data);
+  data.tenantRosterVer = TENANT_ROSTER_VER;
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
     applyFactoryRoster(data);
     data.factoryRosterVer = FACTORY_ROSTER_VER;
@@ -2162,6 +2162,7 @@ function normalize(data) {
   applyYushengElec(data);
   applyDueDayPolicy(data);
   applyOldTenantPayBank(data);
+  applyTenantRoster(data);
   applyOfficeSubsidyTenant(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -2304,18 +2305,20 @@ function applyOfficeSubsidyTenant(data) {
     room.deposit = 0;
     room.kind = "studio";
   }
+  const info = TENANT_INFO["7651"] || {};
   let t = (data.tenants || []).find(x => x && (x.id === "t7651" || (x.roomId === room.id && !x.former && !x.demo && !x.incoming)));
   if (!t) {
-    t = { id: "t7651", roomId: room.id, dueDay: 1 };
+    t = { id: "t7651", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
     data.tenants.push(t);
   }
   room.tenantId = t.id;
-  if (t.edited) return;
-  t.name = "吳慧青";
+  t.name = info.name || "吳慧青";
   t.subsidy = true;
-  t.paid = true;
-  if (!t.paidAt) t.paidAt = "2026-07-03 10:00";
-  t.note = TENANT_INFO["7651"].note;
+  if (info.phone) t.phone = info.phone;
+  if (info.leaseStart) t.leaseStart = info.leaseStart;
+  if (info.leaseEnd) t.leaseEnd = info.leaseEnd;
+  if (info.payBank) t.payBank = info.payBank;
+  if (info.note) t.note = info.note;
 }
 function applyAug31Docs(data) {
   if (!data) return;
@@ -2495,8 +2498,8 @@ function resetFactoryPaidMarks(data) {
   try { markCloudDirty(); } catch {}
 }
 function applyTenantRoster(data) {
-  STUDIO_NOS.forEach(no => {
-    const info = TENANT_INFO[no];
+  const fillStudio = (no, allowOffice) => {
+    const info = TENANT_INFO[no] || {};
     let room = data.rooms.find(r => r.no === no);
     if (!room) {
       const seedRoom = SEED.rooms.find(r => r.no === no);
@@ -2505,34 +2508,33 @@ function applyTenantRoster(data) {
         data.rooms.push(room);
       }
     }
-    if (!room || room.status === "office") return;
+    if (!room) return;
+    if (room.status === "office" && !allowOffice) return;
     const bld = STUDIO_BUILDINGS.find(b => b.prefix === studioPrefix(no));
     if (bld) {
       if (!room.group) room.group = bld.no;
       if (!room.street) room.street = bld.street;
       if (!room.company) room.company = bld.company;
     }
-    if (info && info.name) {
+    if (info.name) {
       let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
       if (!t) {
-        t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: true };
+        t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
         data.tenants.push(t);
       }
-      if (t.edited || room.edited) {
-        room.tenantId = t.id;
-        if (room.status !== "repair" && room.status !== "vacant") room.status = "rented";
-        return;
-      }
-      if (!t.name || t.name !== info.name) t.name = info.name;
+      if (t.name !== info.name) t.name = info.name;
       t.former = false;
+      t.incoming = false;
+      t.placeholder = false;
       if (info.phone) t.phone = info.phone;
+      if (info.contactName) t.contactName = info.contactName;
       if (info.leaseStart) t.leaseStart = info.leaseStart;
       if (info.leaseEnd) t.leaseEnd = info.leaseEnd;
       if (info.bankLast5) t.bankLast5 = info.bankLast5;
       if (info.note) t.note = info.note;
       else if (info.shop && !t.note) t.note = "店面：" + info.shop;
-      if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
       if (info.payBank) t.payBank = info.payBank;
+      else if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
       if (info.shop) {
         room.shop = info.shop;
         if (!t.note || t.note.indexOf("店面") < 0) t.note = (t.note ? t.note + "　" : "") + "店面：" + info.shop;
@@ -2542,30 +2544,31 @@ function applyTenantRoster(data) {
         if (!room.title) room.title = "店面";
         if (!room.shop) room.shop = info.shop || "";
       }
-      const listed = studioRentOf(no);
+      const listed = info.rent != null ? info.rent : studioRentOf(no);
       if (listed != null) room.rent = listed;
       if (info.deposit != null) room.deposit = info.deposit;
-      else if (listed > 0) room.deposit = listed * 2;
+      else if (listed > 0 && (room.deposit == null || room.deposit === "")) room.deposit = listed * 2;
       room.tenantId = t.id;
-      if (room.status !== "repair" && room.status !== "vacant") room.status = "rented";
+      if (room.status !== "repair" && room.status !== "office") room.status = "rented";
     } else {
       if (isStoreNo(no)) {
         room.kind = "store";
         room.title = "店面";
       }
       room.rent = studioRentOf(no, room.rent);
-      if (info && info.note) room.note = info.note;
+      if (info.note) room.note = info.note;
       (data.tenants || []).forEach(x => {
-        if (x.roomId === room.id && !x.demo && !x.incoming) {
+        if (x.roomId === room.id && !x.demo && !x.incoming && !x.former) {
           x.former = true;
-          if (!x.leftOn) x.leftOn = x.leaseEnd || "";
+          if (!x.leftOn) x.leftOn = x.leaseEnd || "2026-09-02";
         }
       });
-      if (room.status !== "repair") room.status = "vacant";
+      if (room.status !== "repair" && room.status !== "office") room.status = "vacant";
       room.tenantId = null;
-      room.edited = false;
     }
-  });
+  };
+  STUDIO_NOS.forEach(no => fillStudio(no, false));
+  fillStudio("7651", true);
   applyFormerStudio(data);
 }
 function ensureStudioTenant(data, no) {
