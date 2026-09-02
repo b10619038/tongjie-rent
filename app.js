@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-20-48";
-const APP_EDIT_COUNT = 538;
+const APP_STAMP = "2026-09-02-21-00";
+const APP_EDIT_COUNT = 539;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -62,7 +62,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約改日曆選最快可簽日，一年約帶出可延續期間"] },
+  { ver: APP_STAMP, items: ["簽約先選房號，蓋章在文龍東路76號5樓1，合約起迄另選"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -756,7 +756,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0089") return;
+    if (!m || !m[1] || m[1] === "0090") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -889,6 +889,7 @@ const DEFAULT_COMPANY = {
   address: "高雄市鳳山區北興街100號",
   email: "jie59056503@gmail.com"
 };
+const STAMP_OFFICE = "高雄市鳳山區文龍東路76號5樓1號";
 const COMPANY_BANKS = [
   { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦" },
   { company: "統潔", bank: "聯邦銀行支存", code: "803", account: "010300019225", holder: "統潔開發有限公司", key: "聯邦支存" },
@@ -3162,7 +3163,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "signAppointAt", "signRoomId"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -6006,6 +6007,7 @@ function resetDemoCycle(kind) {
   t.leaseEnd = yr.end;
   t.dueDay = 1;
   t.signAppointAt = "";
+  t.signRoomId = "";
   room.demo = true;
   room.no = factory ? "F0000" : "0000";
   if (factory) { room.kind = "factory"; room.group = "測試"; }
@@ -7246,31 +7248,53 @@ function roomCurrentTenant(room) {
   if (!room) return null;
   return (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.placeholder) || null;
 }
-function continueLeaseRange(room, t) {
-  let start = "";
-  if (t && t.incoming) {
-    const occ = roomCurrentTenant(room);
-    if (occ && occ.leaseEnd) start = addDaysYmd(occ.leaseEnd, 1);
-  } else if (t && t.leaseEnd) {
-    const st = tenantContractStatus(t, room);
-    const left = daysLeft(t.leaseEnd);
-    if (st === "signed" || st === "paper" || (left != null && left <= 90)) start = addDaysYmd(t.leaseEnd, 1);
+function canPickSignRoom(t) {
+  return isDemoTenant(t) || !!(t && t.incoming);
+}
+function signTargetRoom(t) {
+  const id = (t && t.signRoomId) || ui.signRoomId;
+  if (id) {
+    const hit = (state.rooms || []).find(r => r && r.id === id);
+    if (hit) return hit;
   }
-  if (!start) start = (ymdOf(t && t.signAppointAt) || todayYmd()).slice(0, 8) + "01";
-  return oneYearLeaseRange(start);
+  return typeof myRoom === "function" ? myRoom() : null;
+}
+function studioSignRooms(currentRoom) {
+  const factory = !!(currentRoom && currentRoom.kind === "factory");
+  return (state.rooms || []).filter(r => {
+    if (!r) return false;
+    if (factory) return r.kind === "factory";
+    return isStudioLeaseRoom(r);
+  }).sort((a, b) => {
+    if (a.demo && !b.demo) return -1;
+    if (!a.demo && b.demo) return 1;
+    return String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true });
+  });
+}
+function roomSoonestStart(room, t) {
+  const occ = roomCurrentTenant(room);
+  if (t && occ && occ.id === t.id && occ.leaseEnd) {
+    const st = tenantContractStatus(t, room);
+    if (st === "signed" || st === "paper") return addDaysYmd(occ.leaseEnd, 1);
+  }
+  if (occ && (!t || occ.id !== t.id) && occ.leaseEnd) return addDaysYmd(occ.leaseEnd, 1);
+  return (todayYmd() || "").slice(0, 8) + "01";
+}
+function continueLeaseRange(room, t) {
+  return oneYearLeaseRange(roomSoonestStart(room, t));
+}
+function signWindow(room, t) {
+  const today = todayYmd();
+  const occ = roomCurrentTenant(room);
+  let min = today;
+  if (occ && (!t || occ.id !== t.id) && occ.leaseEnd) {
+    const from = addDaysYmd(occ.leaseEnd, -15);
+    if (from && from > min) min = from;
+  }
+  return { min, maxFast: addDaysYmd(min, 15) };
 }
 function earliestSignYmd(room, t) {
-  const today = todayYmd();
-  if (t && t.incoming) {
-    const occ = roomCurrentTenant(room);
-    const end = occ && ymdOf(occ.leaseEnd);
-    if (end) {
-      const from = addDaysYmd(end, -15);
-      return from > today ? from : today;
-    }
-    return today;
-  }
-  return today;
+  return signWindow(room, t).min;
 }
 function renewConfirmYmd(t) {
   const end = ymdOf(t && t.leaseEnd);
@@ -7278,7 +7302,7 @@ function renewConfirmYmd(t) {
 }
 function applyOneYearLease(t, room) {
   if (!t) return;
-  const r = continueLeaseRange(room || (typeof myRoom === "function" ? myRoom() : null), t);
+  const r = continueLeaseRange(room || signTargetRoom(t), t);
   t.leaseStart = r.start;
   t.leaseEnd = r.end;
   t.dueDay = 1;
@@ -7303,7 +7327,7 @@ function busySignHours() {
   });
   return set;
 }
-function nextSignSlots(n, keep, minYmd, onlyDay) {
+function nextSignSlots(n, keep, minYmd, onlyDay, maxYmd) {
   const need = n || 8;
   const busy = busySignHours();
   const keepKey = signSlotKey(keep);
@@ -7313,13 +7337,15 @@ function nextSignSlots(n, keep, minYmd, onlyDay) {
   const now = new Date();
   const p = x => String(x).padStart(2, "0");
   const min = ymdOf(minYmd) || todayYmd();
-  const span = onlyDay ? 1 : 42;
-  const start = onlyDay ? new Date(onlyDay + "T00:00:00") : now;
+  const max = ymdOf(maxYmd);
+  const span = onlyDay ? 1 : 90;
+  const start = onlyDay ? new Date(onlyDay + "T00:00:00") : new Date(min + "T00:00:00");
   for (let i = 0; i < span && out.length < need; i++) {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     if (day.getDay() === 0) continue;
     const ymd = ymdFromDate(day);
     if (ymd < min) continue;
+    if (max && ymd > max) break;
     if (onlyDay && ymd !== onlyDay) continue;
     hours.forEach(h => {
       if (out.length >= need) return;
@@ -7339,9 +7365,10 @@ function signSlotLabel(at, fastest) {
   const m = String(time).match(/(上午|下午)\s*\d{1,2}:\d{2}/);
   return (fastest ? "最快　" : "") + (m ? m[0] : time);
 }
-function signCalHtml(minYmd, selectedYmd, keepAt) {
+function signCalHtml(minYmd, selectedYmd, keepAt, maxFastYmd) {
   const min = ymdOf(minYmd) || todayYmd();
   const sel = ymdOf(selectedYmd) || min;
+  const maxFast = ymdOf(maxFastYmd) || addDaysYmd(min, 15);
   let y = ui.signCalYear, m = ui.signCalMonth;
   if (!y || !m) {
     y = Number(sel.slice(0, 4));
@@ -7356,7 +7383,7 @@ function signCalHtml(minYmd, selectedYmd, keepAt) {
   for (let i = 0; i < pad; i++) cells.push(0);
   for (let d = 1; d <= last; d++) cells.push(d);
   const p = n => String(n).padStart(2, "0");
-  const fastDay = (nextSignSlots(1, keepAt, min)[0] || "").slice(0, 10);
+  const fastDay = (nextSignSlots(1, keepAt, min, "", maxFast)[0] || "").slice(0, 10);
   return `<div class="sign-cal-nav">
       <button type="button" class="ghost" data-sign-cal-nav="-1">上一月</button>
       <strong>${y} 年 ${m} 月</strong>
@@ -9541,6 +9568,7 @@ function studioLeasePaperHtml(t, r) {
       </div>
       <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
+      <p>簽約／蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
       <p class="term-hint">承租人藍字與簽名已套入。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       <div class="lease-pgno">8</div>
     </section>
@@ -10818,6 +10846,7 @@ function eContractDocHtml(t, r) {
     <p>租期：${escapeHtml((t && t.leaseStart) || "—")} 起至 ${escapeHtml((t && t.leaseEnd) || "—")} 止</p>
     <p>每月租金：${money(studioContractRent(t, r))}　押金：${money(Number((r && r.deposit) || studioContractRent(t, r) * 2))}</p>
     <p>繳費日：每月 ${escapeHtml(String(rentDueDay(t)))} 日前</p>
+    <p>簽約／蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
     <h4>使用規範</h4>
     ${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}
     <p>雙方同意以電子方式簽署本合約，簽署後與紙本合約具相同效力，並由 App 保存簽署紀錄。</p>
@@ -10888,7 +10917,9 @@ function leaseView() {
     </div>`;
 }
 function leaseSignView() {
-  const t = me(); const r = myRoom();
+  const t = me();
+  const home = myRoom();
+  const r = signTargetRoom(t) || home;
   const es = getESign(t);
   const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
   if (es && es.status === "signed") {
@@ -10905,42 +10936,62 @@ function leaseSignView() {
   const names = splitPair((t && t.name) || "");
   const two = names.length > 1;
   if (ui.signTerm1y == null) ui.signTerm1y = true;
-  const minSign = earliestSignYmd(r, t);
+  const pickRoom = canPickSignRoom(t);
+  const rooms = studioSignRooms(r);
+  const win = signWindow(r, t);
   const cont = continueLeaseRange(r, t);
-  if (t && ui.signTerm1y) applyOneYearLease(t, r);
+  if (t && ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
   let day = ymdOf(t && t.signAppointAt);
-  if (!day || day < minSign) day = minSign;
-  const daySlots = nextSignSlots(8, t && t.signAppointAt, minSign, day);
+  if (!day || day < win.min) day = win.min;
+  let daySlots = nextSignSlots(8, t && t.signAppointAt, win.min, day);
   if (!daySlots.length) {
-    const nxt = nextSignSlots(1, t && t.signAppointAt, minSign)[0];
+    const nxt = nextSignSlots(1, t && t.signAppointAt, win.min, "", win.maxFast)[0]
+      || nextSignSlots(1, t && t.signAppointAt, win.min)[0];
     if (nxt) day = ymdOf(nxt);
+    daySlots = nextSignSlots(8, t && t.signAppointAt, win.min, day);
   }
-  if (t && (!t.signAppointAt || ymdOf(t.signAppointAt) !== day) && (daySlots[0] || nextSignSlots(1, t && t.signAppointAt, minSign, day)[0])) {
-    t.signAppointAt = daySlots[0] || nextSignSlots(1, t.signAppointAt, minSign, day)[0];
-  }
-  const slots = nextSignSlots(8, t && t.signAppointAt, minSign, ymdOf(t && t.signAppointAt) || day);
+  if (t && (!t.signAppointAt || ymdOf(t.signAppointAt) !== day) && daySlots[0]) t.signAppointAt = daySlots[0];
+  const slots = nextSignSlots(8, t && t.signAppointAt, win.min, ymdOf(t && t.signAppointAt) || day);
+  const fastSlot = nextSignSlots(1, t && t.signAppointAt, win.min, "", win.maxFast)[0];
   const occ = roomCurrentTenant(r);
   const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
-  const agencyFrom = occ && occ.leaseEnd ? addDaysYmd(occ.leaseEnd, -15) : minSign;
   const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
+  const roomOpts = rooms.map(x => {
+    const o = roomCurrentTenant(x);
+    const start = roomSoonestStart(x, t);
+    const vacant = !o || (t && o.id === t.id && tenantContractStatus(t, x) === "unsigned");
+    const hint = vacant ? "空房" : ("現約至 " + (o.leaseEnd || "—"));
+    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}　入住 ${start}</option>`;
+  }).join("");
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約。身分證、電話請用藍字填在下面，簽名也是藍筆。列印後我們只蓋章。</p>
+      <p class="small" style="margin:0 2px 10px">請先選房號。簽約時間與合約起迄分開選。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。</p>
       ${paperNow}
       <div class="card card-body" style="margin-top:12px">
-        <div class="label">合約期限與簽約日期</div>
-        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月）</label>
-        ${ui.signTerm1y ? `<p class="small" style="margin:8px 0 4px">最快可延續　${cont.start} ～ ${cont.end}</p>` : ""}
-        <p class="small" style="margin:8px 0 6px">${t && t.incoming
-          ? "仲介帶新客，最快可在現約到期前 15 天簽約（" + agencyFrom + " 起）"
-          : (confirmBy ? "現有租客請於到期前 30 天內確定續約（" + confirmBy + " 前）。簽約日期用日曆選。" : "簽約日期用日曆選，灰掉的日子不可約。")}</p>
-        ${signCalHtml(minSign, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt)}
+        <div class="label">簽約房號</div>
+        <label class="field"><span>房號</span>
+          <select id="sign-room" ${pickRoom ? "" : "disabled"}>${roomOpts}</select>
+        </label>
+        <p class="small" style="margin:6px 0 0">${r ? escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(t, r))) : "請先選房號"}</p>
+      </div>
+      <div class="card card-body" style="margin-top:12px">
+        <div class="label">簽約日期時間</div>
+        <p class="small" style="margin:0 0 8px">實體蓋章地址：${STAMP_OFFICE}。最快取 15 天內、其他房號還沒約的空檔。灰色是已滿或未開放。</p>
+        ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
-        <div class="sign-slot-grid">${slots.map((s, i) => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, i === 0 && ymdOf(s) === minSign))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
+        <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
         <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
+      </div>
+      <div class="card card-body" style="margin-top:12px">
+        <div class="label">合約起迄（可另選）</div>
+        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月）</label>
+        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${cont.start} ～ ${cont.end}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + occ.leaseEnd + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + confirmBy + " 前確定續約。" : ""}</p>
+        <label class="field"><span>起始日</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
+        <label class="field"><span>截止日</span><input id="sign-lease-end" type="date" value="${escapeHtml((t && t.leaseEnd) || cont.end)}" /></label>
+        <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（藍字印在合約上）</div>
@@ -15278,6 +15329,13 @@ function captureSignDraft() {
   const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = phone;
   const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = emName;
   const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = emPhone;
+  const start = val("sign-lease-start");
+  const end = val("sign-lease-end");
+  if (document.getElementById("sign-lease-start") && start) {
+    if (start !== t.leaseStart) ui.signLeaseCustom = true;
+    t.leaseStart = start;
+  }
+  if (document.getElementById("sign-lease-end") && end) t.leaseEnd = end;
 }
 function bindSignTermSlots() {
   const term = document.getElementById("sign-term-1y");
@@ -15286,10 +15344,65 @@ function bindSignTermSlots() {
       captureSignDraft();
       ui.signTerm1y = !!term.checked;
       const t = me();
-      if (t && ui.signTerm1y) applyOneYearLease(t, myRoom());
+      const r = signTargetRoom(t);
+      if (t && ui.signTerm1y) {
+        if (ui.signLeaseCustom && t.leaseStart) t.leaseEnd = oneYearLeaseRange(t.leaseStart).end;
+        else applyOneYearLease(t, r);
+      }
       render();
     };
   }
+  const roomSel = document.getElementById("sign-room");
+  if (roomSel) {
+    roomSel.onchange = () => {
+      captureSignDraft();
+      const t = me();
+      if (!t || !canPickSignRoom(t)) return;
+      t.signRoomId = roomSel.value;
+      ui.signRoomId = roomSel.value;
+      ui.signLeaseCustom = false;
+      t.signAppointAt = "";
+      applyOneYearLease(t, signTargetRoom(t));
+      ui.signCalYear = 0;
+      ui.signCalMonth = 0;
+      t.editedAt = Date.now();
+      save();
+      try { pushCloud(); } catch {}
+      render();
+    };
+  }
+  const fastBtn = document.getElementById("sign-lease-fast");
+  if (fastBtn) {
+    fastBtn.onclick = e => {
+      e.preventDefault();
+      captureSignDraft();
+      const t = me();
+      ui.signLeaseCustom = false;
+      ui.signTerm1y = true;
+      applyOneYearLease(t, signTargetRoom(t));
+      t.editedAt = Date.now();
+      save();
+      try { pushCloud(); } catch {}
+      render();
+    };
+  }
+  ["sign-lease-start", "sign-lease-end"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onchange = () => {
+      const t = me();
+      if (!t) return;
+      ui.signLeaseCustom = true;
+      if (id === "sign-lease-start") t.leaseStart = el.value;
+      else t.leaseEnd = el.value;
+      if (id === "sign-lease-start" && ui.signTerm1y && t.leaseStart) t.leaseEnd = oneYearLeaseRange(t.leaseStart).end;
+      t.dueDay = 1;
+      t.editedAt = Date.now();
+      save();
+      try { pushCloud(); } catch {}
+      render();
+    };
+  });
   document.querySelectorAll("[data-sign-cal-nav]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -15313,15 +15426,14 @@ function bindSignTermSlots() {
       if (btn.disabled) return;
       captureSignDraft();
       const t = me();
-      const r = myRoom();
+      const r = signTargetRoom(t);
       if (!t) return;
       const day = btn.dataset.signCalDay;
-      const min = earliestSignYmd(r, t);
+      const min = signWindow(r, t).min;
       const hit = nextSignSlots(1, t.signAppointAt, min, day)[0];
       if (!hit) { toast("這天已滿或尚未開放"); return; }
       t.signAppointAt = hit;
       t.editedAt = Date.now();
-      if (ui.signTerm1y !== false) applyOneYearLease(t, r);
       save();
       try { pushCloud(); } catch {}
       render();
@@ -15336,7 +15448,6 @@ function bindSignTermSlots() {
       if (!t) return;
       t.signAppointAt = btn.dataset.signSlot;
       t.editedAt = Date.now();
-      if (ui.signTerm1y !== false) applyOneYearLease(t, myRoom());
       save();
       try { pushCloud(); } catch {}
       render();
@@ -15465,7 +15576,7 @@ function bindSignPad() {
     if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
     const c = a && a.c;
     if (!c || (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length))) { toast("請先在白框內簽名"); return; }
-    const t = me(); const r = myRoom();
+    const t = me(); const r = signTargetRoom(t) || myRoom();
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
     const idNo = val("sign-idno");
     const phone = val("sign-phone");
@@ -15476,11 +15587,12 @@ function bindSignPad() {
       if (phone) t.phone = phone;
       if (emName) t.emergencyName = emName;
       if (emPhone) t.emergencyPhone = emPhone;
+      captureSignDraft();
       t.edited = true;
       t.editedAt = Date.now();
       const term = document.getElementById("sign-term-1y");
       ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
-      if (ui.signTerm1y) applyOneYearLease(t, r);
+      if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),

@@ -1126,6 +1126,7 @@ input[type="file"] {
 .sign-cal .cal-cell.fast { border-color: var(--teal); }
 .sign-cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 6px; }
 .sign-cal-nav strong { font-size: 15px; }
+#sign-room { width: 100%; min-height: 44px; font-size: 16px; }
 .media-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .media-thumb {
   background: var(--chip); border-radius: 14px; overflow: hidden; padding: 8px;
