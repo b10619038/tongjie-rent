@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-17-48";
-const APP_EDIT_COUNT = 508;
+const APP_STAMP = "2026-09-02-17-54";
+const APP_EDIT_COUNT = 509;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房公司戶開三聯式（未稅＋5%稅），個人戶開二聯式"] },
+  { ver: APP_STAMP, items: ["廠房發票備註改填合約門牌，例如 97-76"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0059") return;
+    if (!m || !m[1] || m[1] === "0060") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5095,6 +5095,23 @@ function invoiceBuyer(r, t) {
   if (r.kind === "factory") return (t && t.name) || r.company || r.manager || "";
   return (t && t.name) || "";
 }
+function factoryDoorNote(r) {
+  const no = String(r && r.no || "").trim();
+  let unit = "";
+  FACTORY_GROUPS.forEach(g => {
+    const it = (g.items || []).find(x => x.no === no);
+    if (it && it.unit) unit = it.unit;
+  });
+  if (!unit) {
+    const info = FACTORY_TENANT_INFO[no];
+    const fromNote = String(info && info.note || "").match(/(\d+(?:-\d+[A-Z]?)?(?:巷\d+弄\d+)?)號/);
+    if (fromNote) unit = fromNote[0];
+  }
+  if (!unit) unit = String(r && (r.unit || r.location) || "");
+  const door = String(unit).replace(/號/g, " ").replace(/\s+/g, " ").trim();
+  if (door) return door;
+  return no.replace(/^牛\d+-/, "");
+}
 function invoiceIsTriple(r, t) {
   if (!r || r.kind !== "factory") return false;
   const taxId = String((t && t.taxId) || r.taxId || "").replace(/\D/g, "");
@@ -5214,9 +5231,7 @@ function invoiceCopyHtml(r, t, copyName) {
   const W = 1840, H = 1072;
   const cnX = [347, 455, 562, 669, 776, 880, 985, 1092, 1200];
   const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 891, 38, 44, ch, "inv-han")).join("");
-  const roomNote = factory
-    ? [r.group, r.no].filter(Boolean).join(" ")
-    : (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
+  const roomNote = factory ? factoryDoorNote(r) : (String(r.no || "").match(/\d{4}/) || [String(r.no || "")])[0];
   return `<section class="inv-photo double">
     ${at(W, H, 210, 58, 260, 46, "invoiceNum", num, "inv-big")}
     ${at(W, H, 980, 168, 80, 32, "invoiceY", y)}
@@ -5245,7 +5260,7 @@ function adminInvoice() {
     <div class="card card-body no-print">
       <button class="back" type="button" data-admin="${back}">← 返回</button>
       <h2 class="dash-h">${r.no}　${triple ? "三聯式統一發票" : "二聯式統一發票"}</h2>
-      <p class="small">${triple ? "公司戶用三聯。未稅寫銷售額，免稅格右側填營業稅（未稅×5%），總計＝未稅＋稅。橘色字可改，列印後蓋章。" : "個人戶用二聯。金額為租金，備註寫案場／房號。橘色字可改，列印後蓋章。"}</p>
+      <p class="small">${triple ? "公司戶用三聯。未稅寫銷售額，免稅格右側填營業稅（未稅×5%），總計＝未稅＋稅。橘色字可改，列印後蓋章。" : "個人戶用二聯。金額為租金，備註填合約門牌（如 97-76）。橘色字可改，列印後蓋章。"}</p>
       <div class="inv-inputs">
         <label class="field"><span>字軌（2 碼）</span><input id="inv-track" type="text" maxlength="2" value="${escapeHtml(ui.invoiceTrack || "")}" placeholder="例如 TP" /></label>
         <label class="field"><span>號碼（8 碼）</span><input id="inv-num" type="text" maxlength="8" value="${escapeHtml(ui.invoiceNum || "")}" placeholder="例如 21751800" /></label>
