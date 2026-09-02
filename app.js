@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-04";
-const APP_EDIT_COUNT = 569;
+const APP_STAMP = "2026-09-03-01-07";
+const APP_EDIT_COUNT = 570;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["不同裝置雲端同步加快，確認入住會即時送到另一台"] },
+  { ver: APP_STAMP, items: ["所有雲端資料異動都會即時同步到其他裝置"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0120") return;
+    if (!m || !m[1] || m[1] === "0121") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3391,10 +3391,59 @@ function loadPaidMarks() {
 }
 const PAID_TOPIC = "tongjie/tj-82934388/paid";
 const MONEY_TOPIC = "tongjie/tj-82934388/money";
+const LIVE_TOPIC = "tongjie/tj-82934388/live";
 let paidWs = null;
 let paidWsOk = false;
 let paidWsTimer = 0;
 let paidPingTimer = 0;
+let liveSelfId = "";
+let lastLiveAt = 0;
+let livePullTimer = 0;
+function liveDeviceId() {
+  if (liveSelfId) return liveSelfId;
+  try { liveSelfId = localStorage.getItem("tj_live_id") || ""; } catch {}
+  if (!liveSelfId) {
+    liveSelfId = "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem("tj_live_id", liveSelfId); } catch {}
+  }
+  return liveSelfId;
+}
+function ingestLiveCloud(raw) {
+  try {
+    const o = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!o || o.device === liveDeviceId()) return;
+    const at = Number(o.at) || 0;
+    if (at && at <= lastLiveAt) return;
+    lastLiveAt = at;
+    clearTimeout(livePullTimer);
+    livePullTimer = setTimeout(async () => {
+      const prev = coreSig(state);
+      await pullCloud();
+      if (coreSig(state) !== prev) {
+        ui.keepScroll = true;
+        if (!composingNow()) try { render(); } catch {}
+      } else {
+        try { enforceTenantSession(); } catch {}
+        ui.keepScroll = true;
+        if (!composingNow()) try { render(); } catch {}
+      }
+    }, 60);
+  } catch {}
+}
+function publishLiveCloud() {
+  lastLiveAt = Date.now();
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify({
+      at: lastLiveAt,
+      device: liveDeviceId(),
+      updatedAt: Number(state.updatedAt) || lastLiveAt
+    }), false));
+  } catch {}
+}
 function mqttRemain(n) {
   const out = [];
   do {
@@ -3597,6 +3646,7 @@ function connectPaidCloud() {
         try {
           ws.send(mqttSubPkt(PAID_TOPIC));
           ws.send(mqttSubPkt(MONEY_TOPIC));
+          ws.send(mqttSubPkt(LIVE_TOPIC));
         } catch {}
         clearInterval(paidPingTimer);
         paidPingTimer = setInterval(() => {
@@ -3604,7 +3654,10 @@ function connectPaidCloud() {
         }, 20000);
         return;
       }
-      if (pkt.type === 3 && pkt.payload) ingestPaidCloud(pkt.payload);
+      if (pkt.type === 3 && pkt.payload) {
+        if (pkt.topic === LIVE_TOPIC) ingestLiveCloud(pkt.payload);
+        else ingestPaidCloud(pkt.payload);
+      }
     };
     ws.onclose = () => {
       paidWsOk = false;
@@ -4411,7 +4464,10 @@ async function pushCloud() {
       res = await put(JSON.stringify(slim));
     }
     ui.cloudOk = !!(res && res.ok);
-    if (res && res.ok) cloudDirty = false;
+    if (res && res.ok) {
+      cloudDirty = false;
+      try { publishLiveCloud(); } catch {}
+    }
   } catch { ui.cloudOk = false; }
   try { persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
   try { publishPaidCloud(); } catch {}
