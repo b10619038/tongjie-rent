@@ -2178,6 +2178,9 @@ body.rev-zooming { overflow: hidden; }
 .who-line { display: flex; align-items: center; gap: 12px; }
 .who-mini { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .who-mini .k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who-text { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.who-text .k { line-height: 1.25; }
+.who-room { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .01em; line-height: 1.3; }
 .who-mini .live-pill { flex-shrink: 0; padding: 3px 7px; font-size: 10px; }
 .avatar {
   width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
