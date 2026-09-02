@@ -2419,7 +2419,7 @@ img.avatar { object-fit: cover; display: block; }
 }
 .fold-caret.go-right { transform: rotate(-45deg); margin-top: -2px; }
 .tenant-sheet-page { animation: none; }
-.tenant-sheet-page.tenant-sheet-enter { animation: sheetIn .34s cubic-bezier(.22,.82,.22,1) both; }
+.tenant-sheet-page.tenant-sheet-enter { animation: sheetIn .34s cubic-bezier(.22,.82,.22,1) both; pointer-events: none; }
 .tenant-sheet-page .slide-left,
 .tenant-sheet-page .slide-right,
 .tenant-sheet-page .slide-up { animation: none !important; transform: none !important; }

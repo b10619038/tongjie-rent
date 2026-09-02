@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-19-22";
-const APP_EDIT_COUNT = 531;
+const APP_STAMP = "2026-09-02-19-28";
+const APP_EDIT_COUNT = 532;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房標題房號改成牛2-57巷1弄27號這種門牌"] },
+  { ver: APP_STAMP, items: ["修正點廠房圖卡會立刻跳回列表"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0082") return;
+    if (!m || !m[1] || m[1] === "0083") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -4455,6 +4455,7 @@ function syncHistory() {
 }
 function tryHistoryBack() {
   if (!ui || ui.navPop) return false;
+  if (ui.sheetGuard && Date.now() < ui.sheetGuard) return false;
   try {
     const s = history.state && history.state.tj;
     if (s && (s.d || 0) > 0) {
@@ -14040,13 +14041,14 @@ function openTenantSheet(id) {
   const next = String(id || "");
   if (ui.page === "tenant-sheet" && ui.tenantSheetId === next) return;
   if (ui.sheetOpening && Date.now() < ui.sheetOpening) return;
-  ui.sheetOpening = Date.now() + 450;
+  ui.sheetOpening = Date.now() + 500;
+  ui.sheetGuard = Date.now() + 800;
   ui.tenantSheetId = next;
   ui.tenantSheetKind = ui.tenantKind === "factory" ? "factory" : "studio";
   ui.page = "tenant-sheet";
   ui.sheetEnter = true;
   try { persistUi(); } catch {}
-  render();
+  requestAnimationFrame(() => render());
 }
 function tenantSheetView() {
   const kind = ui.tenantSheetKind === "factory" ? "factory" : "studio";
@@ -14071,7 +14073,15 @@ function tenantSheetView() {
     const foldId = kind === "factory" ? "fg-" + e.key : (t && t.id);
     return foldId === id;
   });
-  if (!entry || !entry.tenants || !entry.tenants[0]) { ui.page = "tenants"; return adminTenants(); }
+  if (!entry || !entry.tenants || !entry.tenants[0]) {
+    return `<div class="admin-grid list tenant-sheet-page">
+      <div class="topbar"><div>
+        <button class="back" data-page="tenants" type="button">← 返回</button>
+        <h1>租客資料</h1>
+      </div></div>
+      <div class="card card-body"><div class="empty">找不到這筆資料，請返回列表再點一次</div></div>
+    </div>`;
+  }
   const t = entry.tenants[0];
   const r = (entry.rooms && entry.rooms[0]) || (state.rooms || []).find(x => x.id === t.roomId);
   const unpaid = entry.tenants.some(x => !x.paid);
@@ -15480,6 +15490,7 @@ function bindAdmin() {
       e.stopPropagation();
       const next = el.dataset.page;
       if (!next || next === ui.page) return;
+      if (ui.sheetGuard && Date.now() < ui.sheetGuard && ui.page === "tenant-sheet") return;
       ui.page = next;
       render();
     };
