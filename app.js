@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-29";
-const APP_EDIT_COUNT = 519;
+const APP_STAMP = "2026-09-02-18-31";
+const APP_EDIT_COUNT = 520;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1808";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["廠房租客同一戶只顯示一列 LINE"] },
+  { ver: APP_STAMP, items: ["廠房開立發票總覽備註改合約門牌，並跟租客備註即時連動"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0070") return;
+    if (!m || !m[1] || m[1] === "0071") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5290,6 +5290,13 @@ function factoryDoorNote(r) {
 function formatFactoryAddr(s) {
   return String(s || "").replace(/(\d+)-(\d+[A-Za-z]?)號/g, "$1之$2號").replace(/(\d+)-(\d+[A-Za-z]?)$/g, "$1之$2");
 }
+function liveInvoiceNote(r, t) {
+  const head = String((t && t.note) || "").trim().split(/[。．\s]/)[0] || "";
+  if (/^\d/.test(head) && head.length <= 24) {
+    return head.replace(/號$/g, "").replace(/(\d+)-(\d+[A-Za-z]?)/g, "$1之$2");
+  }
+  return factoryDoorNote(r);
+}
 function factoryAddress(r) {
   if (!r) return "";
   const no = String(r.no || "").trim();
@@ -6643,13 +6650,21 @@ function factoryInvoiceOverviewRows() {
     const nos = rooms.map(r => r.no).filter(Boolean).join("、");
     const site = rooms.map(r => r.group).filter(Boolean)[0] || "";
     const note = String(src.note || "");
+    const remarks = [];
+    const seenNote = new Set();
+    rooms.forEach(rr => {
+      const n = liveInvoiceNote(rr, tenants.find(x => x.roomId === rr.id) || src);
+      if (!n || seenNote.has(n)) return;
+      seenNote.add(n);
+      remarks.push(n);
+    });
     rows.push({
       remitYmd: remitYmd || "",
       remitDate: remitYmd ? rocSlash(remitYmd) : "",
       invoiceYmd: invoiceYmd || "",
       invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
       buyer: src.name || "",
-      room: site ? site + " " + nos : nos,
+      room: remarks.join("、") || (site ? site + " " + nos : nos),
       amount,
       bank,
       start: rocSlash(src.leaseStart),
@@ -6691,8 +6706,8 @@ function drawInvoiceOverviewCanvas(rows, kind) {
   const cols = [
     { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
     { k: "invoiceDate", h: "發票日期", w: 0.10, big: true },
-    { k: "buyer", h: "買受人", w: 0.17, big: true },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.08, big: true },
+    { k: "buyer", h: "買受人", w: 0.15, big: true },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.10, big: true },
     { k: "amount", h: "金額", w: 0.10, big: true },
     { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
     { k: "start", h: "合約開始", w: 0.11 },
