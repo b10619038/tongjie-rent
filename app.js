@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-18-02";
-const APP_EDIT_COUNT = 510;
+const APP_STAMP = "2026-09-02-18-08";
+const APP_EDIT_COUNT = 511;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -61,7 +61,7 @@ const FACTORY_ROSTER_VER = "20260902-1245";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["三聯發票備註也填合約門牌，例如 97-75"] },
+  { ver: APP_STAMP, items: ["莊記綠豆鑽每年10/1依合約自動調租金，發票跟著變"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -755,7 +755,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0061") return;
+    if (!m || !m[1] || m[1] === "0062") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1451,7 +1451,15 @@ const FACTORY_TENANT_INFO = {
   "牛5-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-68。含 5% 稅金 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
   "牛5-69": { name: "財團法人喜憨兒社會福利基金會", taxId: "92070381", contactName: "蕭淑珍", idNo: "S201070693", phone: "07-726-6096／07-726-6096#51／0953-579-753", leaseStart: "2024-10-01", leaseEnd: "2027-09-30", rentUntaxed: 40000, rent: 42000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-69。含稅 $42,000。一年支票 12 張，每月1日兌現。蔡佳容 0953-579-753。發票蓋趙海成私章。隔兩個月記水錶。" },
   "牛5-70": { name: "第一肉品有限公司", taxId: "54776985", contactName: "曾志賢", phone: "0981-239-833", leaseStart: "2022-07-01", leaseEnd: "2027-06-30", rentUntaxed: 40000, rent: 42000, deposit: 80000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-70。含稅 $42,000。一年支票 12 張，每月1日兌現。111/6/6 入押金。" },
-  "牛5-71": { name: "莊記綠豆鑽食品有限公司", taxId: "59241856", contactName: "莊俊一", phone: "07-550-9181／0953-252-333", leaseStart: "2025-10-01", leaseEnd: "2032-09-30", rentUntaxed: 40000, rent: 42000, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-71。未稅：114/10/1 $40,000；115/10/1 $41,500；116/10/1 $43,000；117/10/1 $44,500；118/10/1 $46,000；119/10/1 $48,000；120/10/1 $50,000。現行為未稅 $40,000。隔兩個月記水錶；收垃圾桶費。" },
+  "牛5-71": { name: "莊記綠豆鑽食品有限公司", taxId: "59241856", contactName: "莊俊一", phone: "07-550-9181／0953-252-333", leaseStart: "2025-10-01", leaseEnd: "2032-09-30", rentUntaxed: 40000, rent: 42000, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", rentSchedule: [
+    { from: "2025-10-01", untaxed: 40000 },
+    { from: "2026-10-01", untaxed: 41500 },
+    { from: "2027-10-01", untaxed: 43000 },
+    { from: "2028-10-01", untaxed: 44500 },
+    { from: "2029-10-01", untaxed: 46000 },
+    { from: "2030-10-01", untaxed: 48000 },
+    { from: "2031-10-01", untaxed: 50000 }
+  ], note: "97-71。未稅依合約每年10/1調整：114/10/1 $40,000；115/10/1 $41,500；116/10/1 $43,000；117/10/1 $44,500；118/10/1 $46,000；119/10/1 $48,000；120/10/1 $50,000。發票自動帶入當期未稅＋5%。隔兩個月記水錶；收垃圾桶費。" },
   "牛5-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 40000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-72。含稅 $42,000。每月1日匯入。限汽車保養廠使用。" },
   "牛5-73": { name: "映升企業社", taxId: "87647478", contactName: "陳彥宇、陳德輝", phone: "0933-338-190", leaseStart: "2025-01-01", leaseEnd: "2026-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", invoiceAddr: "830 高雄市鳳山區中山路19巷14號", note: "97-73。未稅 $40,000，含稅 $42,000。每月1日匯聯邦高雄 信潔 010100034775。每月寄發票。合約至 115/12/31。" },
   "牛5-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 44100, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", note: "97-75。含稅 $44,100。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
@@ -2156,6 +2164,7 @@ function normalize(data) {
     applyFactoryRoster(data);
     data.factoryRosterVer = FACTORY_ROSTER_VER;
   }
+  applyRentSchedules(data);
   resetFactoryPaidMarks(data);
   if (data.studioFeeVer !== STUDIO_FEE_VER) {
     (data.rooms || []).forEach(r => {
@@ -2469,6 +2478,7 @@ function applyFactoryRoster(data) {
     if (info.payBank) t.payBank = info.payBank;
     if (info.payCompany) t.payCompany = info.payCompany;
     if (info.deposit != null) t.deposit = info.deposit;
+    if (info.rentSchedule) t.rentSchedule = info.rentSchedule;
     if (!t.paidTouched) t.paid = false;
     if (t.name !== info.name || Number(room.rent) !== Number(info.rent || 0)) t.editedAt = Date.now();
     room.tenantId = t.id;
@@ -2476,6 +2486,54 @@ function applyFactoryRoster(data) {
     if (info.rentUntaxed != null) room.rentUntaxed = info.rentUntaxed;
     if (info.deposit != null) room.deposit = info.deposit;
     if (room.status !== "repair") room.status = "rented";
+  });
+}
+function todayYmd() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function invoiceRentYmd() {
+  try {
+    const y = Number(ui && ui.invoiceY);
+    const m = Number(ui && ui.invoiceMo);
+    if (y > 100 && m >= 1 && m <= 12) return (y + 1911) + "-" + String(m).padStart(2, "0") + "-01";
+  } catch {}
+  return todayYmd().slice(0, 8) + "01";
+}
+function pickRentSchedule(t, r, ymd) {
+  const no = String((r && r.no) || "");
+  const info = FACTORY_TENANT_INFO[no] || {};
+  const sched = (t && t.rentSchedule) || info.rentSchedule;
+  if (!sched || !sched.length) return null;
+  const day = String(ymd || todayYmd()).slice(0, 10);
+  let hit = null;
+  sched.slice().sort((a, b) => String(a.from).localeCompare(String(b.from))).forEach(s => {
+    if (s && s.from && String(s.from) <= day) hit = s;
+  });
+  return hit;
+}
+function scheduledRent(hit) {
+  if (!hit) return null;
+  const untaxed = Math.round(Number(hit.untaxed) || 0);
+  const taxed = hit.taxed != null ? Math.round(Number(hit.taxed)) : Math.round(untaxed * 1.05);
+  return { untaxed, taxed };
+}
+function applyRentSchedules(data) {
+  if (!data) return;
+  const ymd = todayYmd();
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo) return;
+    const room = (data.rooms || []).find(x => x && x.id === t.roomId);
+    const hit = pickRentSchedule(t, room, ymd);
+    if (!hit) return;
+    const amt = scheduledRent(hit);
+    t.rentSchedule = (FACTORY_TENANT_INFO[room && room.no] || {}).rentSchedule || t.rentSchedule;
+    t.rentUntaxed = amt.untaxed;
+    t.rent = amt.taxed;
+    if (room) {
+      room.rentUntaxed = amt.untaxed;
+      room.rent = amt.taxed;
+    }
   });
 }
 function isFactoryTenant(t, data) {
@@ -5121,8 +5179,10 @@ function invoiceIsTriple(r, t) {
   return false;
 }
 function invoiceTaxBreakdown(r, t, overrideTotal) {
-  const listed = Number(r && r.rent) || Number(t && t.rent) || 0;
-  const untaxed = Number(r && r.rentUntaxed) || Number(t && t.rentUntaxed) || 0;
+  const hit = pickRentSchedule(t, r, invoiceRentYmd());
+  const scheduled = scheduledRent(hit);
+  const listed = scheduled ? scheduled.taxed : (Number(r && r.rent) || Number(t && t.rent) || 0);
+  const untaxed = scheduled ? scheduled.untaxed : (Number(r && r.rentUntaxed) || Number(t && t.rentUntaxed) || 0);
   if (overrideTotal != null && String(overrideTotal) !== "") {
     const tot = Math.round(Number(overrideTotal) || 0);
     const sales = Math.round(tot / 1.05);
