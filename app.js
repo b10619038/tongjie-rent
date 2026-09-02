@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-22-32";
-const APP_EDIT_COUNT = 548;
+const APP_STAMP = "2026-09-02-22-56";
+const APP_EDIT_COUNT = 549;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["選房號後會出現簽約日期時間"] },
+  { ver: APP_STAMP, items: ["合約出租人與代表人改藍字，7652 月租 5000"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0099") return;
+    if (!m || !m[1] || m[1] === "0100") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1174,7 +1174,7 @@ const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
   "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 0,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
-  "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 0
+  "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 5000
 };
 function studioRentOf(no, fallback) {
   const key = String(no || "");
@@ -2118,7 +2118,10 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
       if (!r.utilities.water || /每月定額|一年固定/.test(r.utilities.water)) r.utilities.water = WATER_FEE_TEXT;
-      if (r.rent == null || r.rent === "") {
+      if (String(r.no) === "7652") {
+        r.rent = 5000;
+        if (!Number(r.deposit) || Number(r.deposit) < 10000) r.deposit = 10000;
+      } else if (r.rent == null || r.rent === "") {
         const listed = studioRentOf(r.no);
         if (listed != null) r.rent = listed;
         else if (r.demo || r.no === "DEMO" || r.no === "0000") r.rent = 10000;
@@ -9585,11 +9588,11 @@ function studioLeasePaperHtml(t, r) {
     </section>
     <section class="lease-pg">
       <h4>房屋租賃契約書</h4>
-      <p>立契約書人出租人　${u(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span></p>
+      <p>立契約書人出租人　${leaseInk(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span></p>
       <p>承租人　${headerTenants}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
-      <p>出租人簽章：<span class="lease-sign-line"></span><span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
+      <p>出租人簽章：${leaseInk(firm.name || "統潔開發有限公司", "wide")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
       <p>承租人簽章：${tenantSignRow}</p>
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
@@ -9701,8 +9704,8 @@ function studioLeasePaperHtml(t, r) {
       <p>（三）本契約所定之權利義務對租賃雙方之契約繼受人均有效力。</p>
       <p>（四）特別約定：1.屋內禁止抽菸、拜拜。</p>
       <div class="lease-sign-block">
-        <p>出租人：${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
-        <p>代表人：趙正賢</p>
+        <p>出租人：${leaseInk(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
+        <p>代表人：${leaseInk("趙正賢")}</p>
         <p>聯絡電話：${escapeHtml(firm.phone || "07-3414159")}</p>
       </div>
       <div class="lease-sign-block lease-people">${peopleCols}</div>
