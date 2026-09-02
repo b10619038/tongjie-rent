@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-02";
-const APP_EDIT_COUNT = 568;
+const APP_STAMP = "2026-09-03-01-04";
+const APP_EDIT_COUNT = 569;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["後台確認正式入住後，看房預覽與等待確認會同步關掉"] },
+  { ver: APP_STAMP, items: ["不同裝置雲端同步加快，確認入住會即時送到另一台"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0119") return;
+    if (!m || !m[1] || m[1] === "0120") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3486,12 +3486,20 @@ function ingestPaidCloud(raw) {
         if (!t) return;
         if (Number(src.editedAt || 0) < Number(t.editedAt || 0)) return;
         if (src.paidYm && src.paidYm !== payYmNow()) return;
-        t.paid = !!src.paid;
+        if ("paid" in src) t.paid = !!src.paid;
         t.paidTouched = true;
-        t.paidYm = src.paidYm || payYmNow();
+        if (src.paidYm) t.paidYm = src.paidYm || payYmNow();
         t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
         t.paidVia = src.paid ? (src.paidVia || "") : "";
         if (src.remitOn) t.remitOn = src.remitOn;
+        if ("incoming" in src) t.incoming = !!src.incoming;
+        if ("prospect" in src) t.prospect = !!src.prospect;
+        if ("applyPending" in src) t.applyPending = !!src.applyPending;
+        if ("former" in src) t.former = !!src.former;
+        if (Number(src.officialAt) > (Number(t.officialAt) || 0)) t.officialAt = src.officialAt;
+        if (src.leaseStart) t.leaseStart = src.leaseStart;
+        if (src.leaseEnd) t.leaseEnd = src.leaseEnd;
+        if (src.name) t.name = src.name;
         if (src.editedAt) t.editedAt = src.editedAt;
       });
     }
@@ -3511,10 +3519,8 @@ function ingestPaidCloud(raw) {
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping) return;
     if (composingNow()) return;
-    if (ui.page === "tenants" || ui.page === "tenant-sheet" || ui.page === "dash" || ui.page === "firm" || ui.page === "home") {
-      ui.keepScroll = true;
-      render();
-    }
+    ui.keepScroll = true;
+    try { render(); } catch {}
   } catch {}
 }
 function moneyCloudBlob() {
@@ -3534,7 +3540,14 @@ function moneyCloudBlob() {
       remitOn: t.remitOn || "",
       editedAt: Number(t.editedAt) || 0,
       name: t.name || "",
-      roomId: t.roomId || ""
+      roomId: t.roomId || "",
+      incoming: !!t.incoming,
+      prospect: !!t.prospect,
+      applyPending: !!t.applyPending,
+      former: !!t.former,
+      officialAt: Number(t.officialAt) || 0,
+      leaseStart: t.leaseStart || "",
+      leaseEnd: t.leaseEnd || ""
     })),
     books: (state.books || []).map(b => {
       const o = Object.assign({}, b);
@@ -4163,7 +4176,7 @@ function coreSig(d) {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
       n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
-      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status]),
+      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, !!x.prospect, !!x.applyPending, x.officialAt || 0, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent, x.tenantId])
     });
   } catch { return String(d && d.updatedAt); }
@@ -4460,7 +4473,7 @@ function save(force) {
     try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
   }
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(pushCloud, 400);
+  saveTimer = setTimeout(pushCloud, 120);
 }
 function persistLogin() {
   if (!ui || !ui.role) return;
@@ -18669,11 +18682,10 @@ async function boot() {
         repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
         renewIds: (state.renewals || []).map(x => x.id)
       };
-      const prevUpdated = state.updatedAt;
       const prevSig = coreSig(state);
       const changed = await pullCloud();
       refreshOnlineBadges();
-      if (changed === true && state.updatedAt !== prevUpdated && coreSig(state) !== prevSig) {
+      if (coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
         if (composingNow()) {
           captureComposeDraft();
@@ -18685,8 +18697,8 @@ async function boot() {
     } catch {}
     finally { syncTick.busy = false; }
   };
-  setInterval(syncTick, 2000);
-  setTimeout(syncTick, 400);
+  setInterval(syncTick, 1500);
+  setTimeout(syncTick, 200);
   setInterval(beatPresence, 25000);
   setInterval(() => { refreshSky().catch(() => {}); }, 15 * 60 * 1000);
   document.addEventListener("visibilitychange", () => {
