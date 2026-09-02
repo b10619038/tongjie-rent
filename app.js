@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-00-16";
-const APP_EDIT_COUNT = 562;
+const APP_STAMP = "2026-09-03-00-18";
+const APP_EDIT_COUNT = 563;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約後不會被踢出，也不再跳出強制退租提示"] },
+  { ver: APP_STAMP, items: ["租客登入密碼可打中文姓名"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0113") return;
+    if (!m || !m[1] || m[1] === "0114") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -10745,7 +10745,7 @@ function gateView() {
       </div>
       <div class="login-block slide-left">
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
-        ${isAdmin ? "" : `<input id="pass-login" type="password" maxlength="20" placeholder="電話後四碼或姓名" />`}
+        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="40" placeholder="電話後四碼或姓名" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
         ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
@@ -15563,7 +15563,16 @@ function bindGate() {
     el.onclick = e => { e.stopPropagation(); el.focus(); };
   });
   const pass = document.getElementById("pass-login");
-  if (pass) pass.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+  if (pass) {
+    pass.setAttribute("inputmode", "text");
+    pass.setAttribute("lang", "zh-Hant");
+    pass.setAttribute("type", "text");
+    pass.addEventListener("focus", () => {
+      pass.setAttribute("inputmode", "text");
+      pass.setAttribute("type", "text");
+    });
+    pass.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+  }
   const doLogin = document.getElementById("do-login");
   if (doLogin) doLogin.onclick = tryLogin;
   const goForgot = document.getElementById("go-forgot");
@@ -17311,9 +17320,9 @@ function tenantSettings() {
       ${bioSettingsHtml()}
       <form class="card card-body" id="set-pass-form" autocomplete="off">
         <div class="label">更改密碼</div>
-        <label class="field"><span>目前密碼</span><input name="old" type="password" inputmode="numeric" /></label>
-        <label class="field"><span>新密碼</span><input name="n1" type="password" inputmode="numeric" /></label>
-        <label class="field"><span>再輸入一次</span><input name="n2" type="password" inputmode="numeric" /></label>
+        <label class="field"><span>目前密碼</span><input name="old" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
+        <label class="field"><span>新密碼</span><input name="n1" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
+        <label class="field"><span>再輸入一次</span><input name="n2" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
         <button class="btn-navy" type="submit">儲存密碼</button>
       </form>
       <div class="card card-body">
