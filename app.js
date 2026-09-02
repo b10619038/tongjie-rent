@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-20-28";
-const APP_EDIT_COUNT = 537;
+const APP_STAMP = "2026-09-02-20-48";
+const APP_EDIT_COUNT = 538;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -62,7 +62,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約可勾一年期限，並選後台最快可簽約時段"] },
+  { ver: APP_STAMP, items: ["簽約改日曆選最快可簽日，一年約帶出可延續期間"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -756,7 +756,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0088") return;
+    if (!m || !m[1] || m[1] === "0089") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -7230,12 +7230,64 @@ function oneYearLeaseRange(fromYmd) {
   const p = n => String(n).padStart(2, "0");
   return { start, end: end.getFullYear() + "-" + p(end.getMonth() + 1) + "-" + p(end.getDate()) };
 }
-function applyOneYearLease(t, fromYmd) {
+function ymdFromDate(d) {
+  if (!d || isNaN(d.getTime())) return "";
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function addDaysYmd(ymd, days) {
+  const s = ymdOf(ymd);
+  if (!s) return "";
+  const d = new Date(s + "T00:00:00");
+  d.setDate(d.getDate() + Number(days || 0));
+  return ymdFromDate(d);
+}
+function roomCurrentTenant(room) {
+  if (!room) return null;
+  return (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.placeholder) || null;
+}
+function continueLeaseRange(room, t) {
+  let start = "";
+  if (t && t.incoming) {
+    const occ = roomCurrentTenant(room);
+    if (occ && occ.leaseEnd) start = addDaysYmd(occ.leaseEnd, 1);
+  } else if (t && t.leaseEnd) {
+    const st = tenantContractStatus(t, room);
+    const left = daysLeft(t.leaseEnd);
+    if (st === "signed" || st === "paper" || (left != null && left <= 90)) start = addDaysYmd(t.leaseEnd, 1);
+  }
+  if (!start) start = (ymdOf(t && t.signAppointAt) || todayYmd()).slice(0, 8) + "01";
+  return oneYearLeaseRange(start);
+}
+function earliestSignYmd(room, t) {
+  const today = todayYmd();
+  if (t && t.incoming) {
+    const occ = roomCurrentTenant(room);
+    const end = occ && ymdOf(occ.leaseEnd);
+    if (end) {
+      const from = addDaysYmd(end, -15);
+      return from > today ? from : today;
+    }
+    return today;
+  }
+  return today;
+}
+function renewConfirmYmd(t) {
+  const end = ymdOf(t && t.leaseEnd);
+  return end ? addDaysYmd(end, -30) : "";
+}
+function applyOneYearLease(t, room) {
   if (!t) return;
-  const r = oneYearLeaseRange(fromYmd);
+  const r = continueLeaseRange(room || (typeof myRoom === "function" ? myRoom() : null), t);
   t.leaseStart = r.start;
   t.leaseEnd = r.end;
   t.dueDay = 1;
+}
+function studioContractRent(t, r) {
+  const listed = studioRentOf(r && r.no);
+  if (listed != null && listed > 0) return listed;
+  const n = Number((r && r.rent) || (t && t.rent) || 0) || 0;
+  return n;
 }
 function signSlotKey(at) {
   return String(at || "").replace(" ", "T").slice(0, 13);
@@ -7251,8 +7303,8 @@ function busySignHours() {
   });
   return set;
 }
-function nextSignSlots(n, keep) {
-  const need = n || 6;
+function nextSignSlots(n, keep, minYmd, onlyDay) {
+  const need = n || 8;
   const busy = busySignHours();
   const keepKey = signSlotKey(keep);
   if (keepKey) busy.delete(keepKey);
@@ -7260,24 +7312,72 @@ function nextSignSlots(n, keep) {
   const out = [];
   const now = new Date();
   const p = x => String(x).padStart(2, "0");
-  for (let i = 0; i < 28 && out.length < need; i++) {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+  const min = ymdOf(minYmd) || todayYmd();
+  const span = onlyDay ? 1 : 42;
+  const start = onlyDay ? new Date(onlyDay + "T00:00:00") : now;
+  for (let i = 0; i < span && out.length < need; i++) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     if (day.getDay() === 0) continue;
+    const ymd = ymdFromDate(day);
+    if (ymd < min) continue;
+    if (onlyDay && ymd !== onlyDay) continue;
     hours.forEach(h => {
       if (out.length >= need) return;
       const slot = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, 0, 0);
       if (slot.getTime() < now.getTime() + 20 * 60000) return;
-      const key = slot.getFullYear() + "-" + p(slot.getMonth() + 1) + "-" + p(slot.getDate()) + "T" + p(h) + ":00";
+      const key = ymd + "T" + p(h) + ":00";
       if (busy.has(signSlotKey(key))) return;
       out.push(key);
     });
   }
-  if (keep && !out.includes(keep)) out.unshift(keep);
+  if (keep && ymdOf(keep) && (!onlyDay || ymdOf(keep) === onlyDay) && !out.includes(keep)) out.unshift(keep);
   return out.slice(0, need);
 }
 function signSlotLabel(at, fastest) {
   const s = String(at || "").replace("T", " ");
-  return (fastest ? "最快　" : "") + formatDateTime12(s);
+  const time = formatDateTime12(s);
+  const m = String(time).match(/(上午|下午)\s*\d{1,2}:\d{2}/);
+  return (fastest ? "最快　" : "") + (m ? m[0] : time);
+}
+function signCalHtml(minYmd, selectedYmd, keepAt) {
+  const min = ymdOf(minYmd) || todayYmd();
+  const sel = ymdOf(selectedYmd) || min;
+  let y = ui.signCalYear, m = ui.signCalMonth;
+  if (!y || !m) {
+    y = Number(sel.slice(0, 4));
+    m = Number(sel.slice(5, 7));
+    ui.signCalYear = y;
+    ui.signCalMonth = m;
+  }
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0).getDate();
+  const pad = first.getDay();
+  const cells = [];
+  for (let i = 0; i < pad; i++) cells.push(0);
+  for (let d = 1; d <= last; d++) cells.push(d);
+  const p = n => String(n).padStart(2, "0");
+  const fastDay = (nextSignSlots(1, keepAt, min)[0] || "").slice(0, 10);
+  return `<div class="sign-cal-nav">
+      <button type="button" class="ghost" data-sign-cal-nav="-1">上一月</button>
+      <strong>${y} 年 ${m} 月</strong>
+      <button type="button" class="ghost" data-sign-cal-nav="1">下一月</button>
+    </div>
+    <div class="cal-grid sign-cal">
+      ${["日", "一", "二", "三", "四", "五", "六"].map(w => `<div class="cal-w">${w}</div>`).join("")}
+      ${cells.map(d => {
+        if (!d) return `<div class="cal-cell empty"></div>`;
+        const ymd = y + "-" + p(m) + "-" + p(d);
+        const wd = new Date(y, m - 1, d).getDay();
+        const slots = nextSignSlots(1, keepAt, min, ymd);
+        const off = ymd < min || wd === 0 || !slots.length;
+        const on = ymd === sel;
+        const fast = ymd === fastDay;
+        return `<button type="button" class="cal-cell${on ? " on" : ""}${off ? " off" : ""}${fast ? " fast" : ""}" data-sign-cal-day="${ymd}" ${off ? "disabled" : ""}>
+          <em>${d}</em>
+          ${fast && !off ? `<span class="mark">最快</span>` : ""}
+        </button>`;
+      }).join("")}
+    </div>`;
 }
 function ymdOf(value) {
   const m = String(value || "").match(/(\d{4}-\d{2}-\d{2})/);
@@ -8971,8 +9071,10 @@ function addIncomingTenant(roomId, fields) {
   if (incomingOf(roomId)) return incomingOf(roomId);
   const name = String(fields.name || "").trim();
   if (!name) return null;
-  const rent = Number(String(fields.rent || "").replace(/[^\d.-]/g, "")) || 0;
+  const listed = studioRentOf(r.no);
+  const rent = Number(String(fields.rent || "").replace(/[^\d.-]/g, "")) || listed || Number(r.rent) || 0;
   const deposit = Number(String(fields.deposit || "").replace(/[^\d.-]/g, "")) || (rent ? rent * 2 : 0);
+  const range = continueLeaseRange(r, { incoming: true, roomId: r.id });
   const t = {
     id: "tin" + Date.now(),
     name,
@@ -8981,8 +9083,8 @@ function addIncomingTenant(roomId, fields) {
     incoming: true,
     former: false,
     payBank: NEW_TENANT_PAY_BANK,
-    leaseStart: fields.leaseStart || "",
-    leaseEnd: fields.leaseEnd || "",
+    leaseStart: fields.leaseStart || range.start,
+    leaseEnd: fields.leaseEnd || range.end,
     loginPass: String(fields.loginPass || "").trim(),
     idNo: String(fields.idNo || "").trim(),
     emergencyName: String(fields.emergencyName || "").trim(),
@@ -9275,7 +9377,8 @@ function studioLeasePaperHtml(t, r) {
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
   const start = rocPartsOf((t && t.leaseStart) || "");
   const end = rocPartsOf((t && t.leaseEnd) || "");
-  const rent = Number((t && t.rent) || (r && r.rent) || 0) || 0;
+  const listed = studioContractRent(t, r);
+  const rent = listed;
   const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (rent * 2);
   const door = contractDoorplate(r && r.no);
   const part = contractRoomPart(r && r.no);
@@ -10713,7 +10816,7 @@ function eContractDocHtml(t, r) {
     <p>承租房間：${escapeHtml(r.no || "")}　${escapeHtml(r.title || "套房")}</p>
     <p>房屋地址：${escapeHtml(r.location || roomAddress(r.no))}</p>
     <p>租期：${escapeHtml((t && t.leaseStart) || "—")} 起至 ${escapeHtml((t && t.leaseEnd) || "—")} 止</p>
-    <p>每月租金：${money(r.rent)}　押金：${money(r.deposit)}</p>
+    <p>每月租金：${money(studioContractRent(t, r))}　押金：${money(Number((r && r.deposit) || studioContractRent(t, r) * 2))}</p>
     <p>繳費日：每月 ${escapeHtml(String(rentDueDay(t)))} 日前</p>
     <h4>使用規範</h4>
     ${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}
@@ -10763,7 +10866,13 @@ function leaseView() {
           ? `<div class="contract-list">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
           : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`;
       })()}
-      ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">合約將於 ${t.leaseEnd} 到期，建議提前 30 天確認是否續約。</p>` : ""}
+      ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">${(() => {
+        const left = daysLeft(t.leaseEnd);
+        const by = renewConfirmYmd(t);
+        const nxt = continueLeaseRange(r, t);
+        if (left != null && left <= 30) return `合約 ${t.leaseEnd} 到期，剩餘 ${left} 天。請在這 30 天內確定是否續約。一年約最快可延續 ${nxt.start} ～ ${nxt.end}。`;
+        return `現有租客請於到期前 30 天內確定是否續約${by ? "（" + by + " 前）" : ""}。仲介帶新客最快可在到期前 15 天簽約。`;
+      })()}</p>` : ""}
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       ${(() => {
         const pending = (isDevPreview() ? (ui.devRenewals || []) : (state.renewals || [])).filter(x => x.tenantId === t.id && x.status !== "done");
@@ -10796,9 +10905,23 @@ function leaseSignView() {
   const names = splitPair((t && t.name) || "");
   const two = names.length > 1;
   if (ui.signTerm1y == null) ui.signTerm1y = true;
-  const slots = nextSignSlots(6, t && t.signAppointAt);
-  if (t && !t.signAppointAt && slots[0]) t.signAppointAt = slots[0];
-  if (t && ui.signTerm1y) applyOneYearLease(t, t.signAppointAt || todayYmd());
+  const minSign = earliestSignYmd(r, t);
+  const cont = continueLeaseRange(r, t);
+  if (t && ui.signTerm1y) applyOneYearLease(t, r);
+  let day = ymdOf(t && t.signAppointAt);
+  if (!day || day < minSign) day = minSign;
+  const daySlots = nextSignSlots(8, t && t.signAppointAt, minSign, day);
+  if (!daySlots.length) {
+    const nxt = nextSignSlots(1, t && t.signAppointAt, minSign)[0];
+    if (nxt) day = ymdOf(nxt);
+  }
+  if (t && (!t.signAppointAt || ymdOf(t.signAppointAt) !== day) && (daySlots[0] || nextSignSlots(1, t && t.signAppointAt, minSign, day)[0])) {
+    t.signAppointAt = daySlots[0] || nextSignSlots(1, t.signAppointAt, minSign, day)[0];
+  }
+  const slots = nextSignSlots(8, t && t.signAppointAt, minSign, ymdOf(t && t.signAppointAt) || day);
+  const occ = roomCurrentTenant(r);
+  const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
+  const agencyFrom = occ && occ.leaseEnd ? addDaysYmd(occ.leaseEnd, -15) : minSign;
   const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
@@ -10808,11 +10931,16 @@ function leaseSignView() {
       <p class="small" style="margin:0 2px 10px">請先閱讀下面這份套房合約。身分證、電話請用藍字填在下面，簽名也是藍筆。列印後我們只蓋章。</p>
       ${paperNow}
       <div class="card card-body" style="margin-top:12px">
-        <div class="label">合約期限與簽約時間</div>
-        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月，自動填合約起迄日）</label>
-        <p class="small" style="margin:8px 0 6px">後台目前最快可簽約時段，點一下即預約並同步日曆</p>
-        <div class="sign-slot-grid">${slots.map((s, i) => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, i === 0))}</button>`).join("")}</div>
-        <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選一個時段"}</p>
+        <div class="label">合約期限與簽約日期</div>
+        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月）</label>
+        ${ui.signTerm1y ? `<p class="small" style="margin:8px 0 4px">最快可延續　${cont.start} ～ ${cont.end}</p>` : ""}
+        <p class="small" style="margin:8px 0 6px">${t && t.incoming
+          ? "仲介帶新客，最快可在現約到期前 15 天簽約（" + agencyFrom + " 起）"
+          : (confirmBy ? "現有租客請於到期前 30 天內確定續約（" + confirmBy + " 前）。簽約日期用日曆選。" : "簽約日期用日曆選，灰掉的日子不可約。")}</p>
+        ${signCalHtml(minSign, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt)}
+        <p class="small" style="margin:10px 0 6px">當天可約時段</p>
+        <div class="sign-slot-grid">${slots.map((s, i) => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, i === 0 && ymdOf(s) === minSign))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
+        <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（藍字印在合約上）</div>
@@ -15158,10 +15286,47 @@ function bindSignTermSlots() {
       captureSignDraft();
       ui.signTerm1y = !!term.checked;
       const t = me();
-      if (t && ui.signTerm1y) applyOneYearLease(t, (t && t.signAppointAt) || todayYmd());
+      if (t && ui.signTerm1y) applyOneYearLease(t, myRoom());
       render();
     };
   }
+  document.querySelectorAll("[data-sign-cal-nav]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      captureSignDraft();
+      const delta = Number(btn.dataset.signCalNav) || 0;
+      let y = ui.signCalYear || new Date().getFullYear();
+      let m = ui.signCalMonth || (new Date().getMonth() + 1);
+      m += delta;
+      if (m < 1) { m = 12; y -= 1; }
+      if (m > 12) { m = 1; y += 1; }
+      ui.signCalYear = y;
+      ui.signCalMonth = m;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-sign-cal-day]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.disabled) return;
+      captureSignDraft();
+      const t = me();
+      const r = myRoom();
+      if (!t) return;
+      const day = btn.dataset.signCalDay;
+      const min = earliestSignYmd(r, t);
+      const hit = nextSignSlots(1, t.signAppointAt, min, day)[0];
+      if (!hit) { toast("這天已滿或尚未開放"); return; }
+      t.signAppointAt = hit;
+      t.editedAt = Date.now();
+      if (ui.signTerm1y !== false) applyOneYearLease(t, r);
+      save();
+      try { pushCloud(); } catch {}
+      render();
+    };
+  });
   document.querySelectorAll("[data-sign-slot]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -15171,7 +15336,7 @@ function bindSignTermSlots() {
       if (!t) return;
       t.signAppointAt = btn.dataset.signSlot;
       t.editedAt = Date.now();
-      if (ui.signTerm1y !== false) applyOneYearLease(t, t.signAppointAt);
+      if (ui.signTerm1y !== false) applyOneYearLease(t, myRoom());
       save();
       try { pushCloud(); } catch {}
       render();
@@ -15315,7 +15480,7 @@ function bindSignPad() {
       t.editedAt = Date.now();
       const term = document.getElementById("sign-term-1y");
       ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
-      if (ui.signTerm1y) applyOneYearLease(t, t.signAppointAt || todayYmd());
+      if (ui.signTerm1y) applyOneYearLease(t, r);
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),
