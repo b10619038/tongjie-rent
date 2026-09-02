@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-02-22-12";
-const APP_EDIT_COUNT = 541;
+const APP_STAMP = "2026-09-02-22-18";
+const APP_EDIT_COUNT = 542;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["改合約起始日會自動帶滿一年截止日"] },
+  { ver: APP_STAMP, items: ["合約起始日不可早於今天，有現任則從該約截止後起算"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0092") return;
+    if (!m || !m[1] || m[1] === "0093") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -7318,16 +7318,20 @@ function studioSignRooms(currentRoom) {
   });
 }
 function roomSoonestStart(room, t) {
+  const today = todayYmd();
   const occ = roomCurrentTenant(room);
-  if (t && occ && occ.id === t.id && occ.leaseEnd) {
-    const st = tenantContractStatus(t, room);
-    if (st === "signed" || st === "paper") return addDaysYmd(occ.leaseEnd, 1);
+  let after = "";
+  if (occ && occ.leaseEnd) {
+    const same = !!(t && occ.id === t.id);
+    if (!same || tenantContractStatus(t, room) === "signed" || tenantContractStatus(t, room) === "paper") {
+      after = addDaysYmd(occ.leaseEnd, 1);
+    }
   }
-  if (occ && (!t || occ.id !== t.id) && occ.leaseEnd) return addDaysYmd(occ.leaseEnd, 1);
-  return (todayYmd() || "").slice(0, 8) + "01";
+  if (after && after > today) return after;
+  return today;
 }
 function continueLeaseRange(room, t) {
-  return oneYearLeaseRange(roomSoonestStart(room, t));
+  return fullYearLeaseRange(roomSoonestStart(room, t));
 }
 function signWindow(room, t) {
   const today = todayYmd();
@@ -9203,6 +9207,11 @@ function submitMoveIn() {
   if (!room) { toast("請先選房號"); return; }
   if (!name) { toast("請填姓名"); return; }
   if (!phone) { toast("請填電話"); return; }
+  const minStart = roomSoonestStart(room, { incoming: true });
+  if (!d.leaseStart || d.leaseStart < minStart) {
+    d.leaseStart = minStart;
+    d.leaseEnd = fullYearLeaseRange(minStart).end;
+  }
   const exist = incomingOf(room.id);
   if (exist) {
     const same = nameMatch(exist.name, name) || String(exist.phone || "") === phone;
@@ -10348,8 +10357,12 @@ function moveInView() {
   const r = rooms.find(x => x.id === d.roomId) || null;
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
-  const cont = r ? continueLeaseRange(r, dummy) : oneYearLeaseRange(todayYmd());
-  if (r && !d.leaseStart) { d.leaseStart = cont.start; d.leaseEnd = cont.end; }
+  const minStart = r ? roomSoonestStart(r, dummy) : todayYmd();
+  const cont = r ? fullYearLeaseRange(minStart) : fullYearLeaseRange(todayYmd());
+  if (r && (!d.leaseStart || d.leaseStart < minStart)) {
+    d.leaseStart = minStart;
+    d.leaseEnd = cont.end;
+  }
   let day = ymdOf(d.signAppointAt);
   if (!day || day < win.min) day = win.min;
   let daySlots = r ? nextSignSlots(8, d.signAppointAt, win.min, day) : [];
@@ -10396,9 +10409,9 @@ function moveInView() {
     </div>
     <div class="card card-body slide-left" style="margin-top:12px;text-align:left">
       <div class="label">合約起迄</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("最快可入住　" + cont.start + " ～ " + cont.end + (occ && occ.leaseEnd ? "（現約 " + occ.leaseEnd + " 截止）" : "")) : "請先選房號，系統會帶該房最快入住日。"}</p>
-      <label class="field"><span>起始日</span><input id="move-start" type="date" value="${escapeHtml(d.leaseStart || cont.start)}" /></label>
-      <label class="field"><span>截止日</span><input id="move-end" type="date" value="${escapeHtml(d.leaseEnd || cont.end)}" /></label>
+      <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）")) : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
+      <label class="field"><span>起始日</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
+      <label class="field"><span>截止日</span><input id="move-end" type="date" min="${escapeHtml(d.leaseStart || minStart)}" value="${escapeHtml(d.leaseEnd || cont.end)}" /></label>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy slide-left" id="move-submit" type="button" style="margin-top:16px">送出並進入預覽</button>
@@ -11137,6 +11150,10 @@ function leaseSignView() {
   const rooms = studioSignRooms(r);
   const win = signWindow(r, t);
   const cont = continueLeaseRange(r, t);
+  if (t && t.leaseStart && t.leaseStart < cont.start) {
+    t.leaseStart = cont.start;
+    t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
+  }
   if (t && ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
   let day = ymdOf(t && t.signAppointAt);
   if (!day || day < win.min) day = win.min;
@@ -15599,7 +15616,13 @@ function bindMoveInForm() {
     startEl.onchange = () => {
       captureMoveInDraft();
       const d = ensureMoveIn();
-      if (d.leaseStart) d.leaseEnd = fullYearLeaseRange(d.leaseStart).end;
+      const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+      const min = r ? roomSoonestStart(r, { incoming: true }) : todayYmd();
+      if (!d.leaseStart || d.leaseStart < min) {
+        d.leaseStart = min;
+        toast("起始日不可早於 " + min);
+      }
+      d.leaseEnd = fullYearLeaseRange(d.leaseStart).end;
       render();
     };
   }
@@ -15722,9 +15745,12 @@ function bindSignTermSlots() {
       const t = me();
       if (!t) return;
       ui.signLeaseCustom = true;
-      if (id === "sign-lease-start") t.leaseStart = el.value;
-      else t.leaseEnd = el.value;
-      if (id === "sign-lease-start" && t.leaseStart) t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
+      if (id === "sign-lease-start") {
+        const min = continueLeaseRange(signTargetRoom(t), t).start;
+        t.leaseStart = (el.value && el.value < min) ? min : el.value;
+        if (el.value && el.value < min) toast("起始日不可早於 " + min);
+        t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
+      } else t.leaseEnd = el.value;
       t.dueDay = 1;
       t.editedAt = Date.now();
       save();
