@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-14-40";
-const APP_EDIT_COUNT = 575;
+const APP_STAMP = "2026-09-03-14-50";
+const APP_EDIT_COUNT = 576;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
+  { ver: APP_STAMP, items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
+  { ver: "2026-09-03-14-40", items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +758,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0126") return;
+    if (!m || !m[1] || m[1] === "0127") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1411,7 +1412,7 @@ const TENANT_INFO = {
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, payBank: "農會", note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
-  "7251": { note: "空房" },
+  "7251": { name: "呂佳芸", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際住在 7251。本人無法申請租屋補助，租約與繳費跟 7651 吳慧青同步；補助掛吳慧青 7651。金流以 7651 入帳，不重複計。" },
   "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "兆豐", shop: "波波奇夏威夷拌飯", note: "店面。新客匯兆豐。聯絡曾郁翔。" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, payBank: "農會", note: "押金 14,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", payBank: "農會", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000" },
@@ -1420,15 +1421,14 @@ const TENANT_INFO = {
   "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "農會", note: "已續約。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
   "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 18000, payBank: "農會", note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, payBank: "農會", note: "由 7242 換房；租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
-  "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際由員工使用辦公室。吳慧青為老闆認識的人，僅用 7651 房號掛名承租、申辦租屋補助。月租 5,000。7651 登入仍走管理員。" },
+  "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "掛名申辦租屋補助。實際對應 7251 呂佳芸居住（呂佳芸無法申請補助）。租約與 7251 同步。7651 為辦公室、登入走管理員。月租 5,000。" },
   "7652": { note: "空房" }
 };
 const FORMER_STUDIO = {
   "7051": [{ name: "楊旻憲", leftOn: "2026-03-01", phone: "0903-045-123", note: "換房至 7032，7051 現為空房" }],
   "7242": [{ name: "陳智泓", leftOn: "2025-11-30", note: "換房至 7642" }],
   "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }],
-  "7231": [{ name: "林科承、朱宣羽", leftOn: "2026-09-02", phone: "0968-887-012／0982-606-649", note: "115/9/2 最新名單已無此房，改空房" }],
-  "7251": [{ name: "呂佳芸", leftOn: "2026-09-02", note: "115/9/2 最新名單已無此房，改空房" }]
+  "7231": [{ name: "林科承、朱宣羽", leftOn: "2026-09-02", phone: "0968-887-012／0982-606-649", note: "115/9/2 最新名單已無此房，改空房" }]
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).filter(([, v]) => v && v.name).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -2298,6 +2298,8 @@ function normalize(data) {
   applyTenantRoster(data);
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
+  reviveStudioMirrorGuests(data);
+  syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
@@ -2428,6 +2430,85 @@ function scrubJulyPersonalDupes(data) {
     return false;
   });
   if (gone.length) data.ledgerGone = unionGone(data.ledgerGone, gone);
+}
+const STUDIO_LEASE_MIRROR = { "7251": "7651" };
+function studioMirrorHostNo(no) {
+  return STUDIO_LEASE_MIRROR[String(no || "")] || "";
+}
+function studioMirrorGuestNos(hostNo) {
+  return Object.keys(STUDIO_LEASE_MIRROR).filter(k => STUDIO_LEASE_MIRROR[k] === String(hostNo || ""));
+}
+function liveByRoomNo(data, no) {
+  const room = ((data && data.rooms) || []).find(r => r && String(r.no) === String(no || ""));
+  if (!room) return { room: null, tenant: null };
+  const tenant = ((data && data.tenants) || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming && String(x.name || "").trim());
+  return { room, tenant };
+}
+function syncStudioLeaseMirrors(data) {
+  if (!data) return;
+  Object.keys(STUDIO_LEASE_MIRROR).forEach(guestNo => {
+    const hostNo = STUDIO_LEASE_MIRROR[guestNo];
+    const host = liveByRoomNo(data, hostNo);
+    const guest = liveByRoomNo(data, guestNo);
+    if (guest.room && guest.room.status !== "repair") guest.room.status = "rented";
+    if (!host.tenant || !guest.tenant) return;
+    guest.tenant.leaseStart = host.tenant.leaseStart;
+    guest.tenant.leaseEnd = host.tenant.leaseEnd;
+    guest.tenant.dueDay = host.tenant.dueDay || 1;
+    if (host.tenant.payBank) guest.tenant.payBank = host.tenant.payBank;
+    guest.tenant.leases = host.tenant.leases;
+    guest.tenant.mirrorOf = hostNo;
+    guest.tenant.paid = !!host.tenant.paid;
+    guest.tenant.paidTouched = !!host.tenant.paidTouched;
+    guest.tenant.paidYm = host.tenant.paidYm;
+    guest.tenant.paidAt = host.tenant.paidAt;
+    guest.tenant.remitOn = host.tenant.remitOn;
+    guest.tenant.paidVia = host.tenant.paidVia;
+    guest.tenant.editedAt = Math.max(Number(guest.tenant.editedAt) || 0, Number(host.tenant.editedAt) || 0, Date.now());
+  });
+}
+function mirrorPaidFromTenant(data, t) {
+  if (!data || !t) return;
+  const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+  const no = room && String(room.no || "");
+  if (!no) return;
+  const hostNo = studioMirrorHostNo(no) || (studioMirrorGuestNos(no).length ? no : "");
+  if (!hostNo) return;
+  const host = liveByRoomNo(data, hostNo).tenant;
+  if (!host) return;
+  if (no !== hostNo) {
+    host.paid = t.paid;
+    host.paidTouched = t.paidTouched;
+    host.paidYm = t.paidYm;
+    host.paidAt = t.paidAt;
+    host.remitOn = t.remitOn;
+    host.paidVia = t.paidVia;
+    host.editedAt = Date.now();
+  }
+  syncStudioLeaseMirrors(data);
+}
+function reviveStudioMirrorGuests(data) {
+  if (!data) return;
+  Object.keys(STUDIO_LEASE_MIRROR).forEach(no => {
+    if (Array.isArray(data.goneTenants)) {
+      data.goneTenants = data.goneTenants.filter(id => String(id) !== "t" + no);
+    }
+    (data.tenants || []).forEach(x => {
+      if (!x) return;
+      const r = (data.rooms || []).find(rm => rm && rm.id === x.roomId);
+      const info = TENANT_INFO[no] || {};
+      if (!((r && String(r.no) === no) || x.id === "t" + no)) return;
+      if (info.name && x.name && !sameTenantName(x.name, info.name)) return;
+      x.former = false;
+      x.incoming = false;
+      x.loginRevoked = false;
+      x.sessionEnded = false;
+      x.clearedApply = false;
+      x.placeholder = false;
+      x.leftOn = "";
+    });
+    ensureStudioTenant(data, no);
+  });
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -2874,6 +2955,10 @@ function applyTenantRoster(data) {
         room.tenantId = t.id;
         if (room.status !== "repair" && room.status !== "office") room.status = "rented";
       } else {
+      if (!t) {
+        t = data.tenants.find(x => x.roomId === room.id && !x.demo && sameTenantName(x.name, info.name));
+        if (t) { t.former = false; t.incoming = false; t.leftOn = ""; t.loginRevoked = false; t.sessionEnded = false; }
+      }
       if (!t) {
         t = { id: "t" + no, roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
         data.tenants.push(t);
@@ -5956,7 +6041,7 @@ function dropFactoryRentAutos(data) {
 function upsertRentAutoBookOn(data, t) {
   if (!data || !t) return;
   const room = (data.rooms || []).find(r => r && r.id === t.roomId);
-  if (!paidThisMonth(t) || isDemoTenant(t) || !room || room.demo || room.status === "office" || roomIsFactory(room)) {
+  if (!paidThisMonth(t) || isDemoTenant(t) || !room || room.demo || room.status === "office" || roomIsFactory(room) || studioMirrorHostNo(room.no)) {
     dropRentAutoBookOn(data, t);
     return;
   }
@@ -6068,6 +6153,7 @@ function toggleTenantPaid(id) {
     const room = (state.rooms || []).find(r => r && r.id === x.roomId);
     if (room) { room.edited = true; room.editedAt = Date.now(); }
   });
+  mirrorPaidFromTenant(state, t);
   save();
   clearTimeout(saveTimer);
   try { pushCloud(); } catch {}
@@ -7119,11 +7205,13 @@ function invoiceOverviewRows(kind) {
     const no = String(room.no || "");
     if (!/^\d{4}$/.test(no) || no === "0000") return;
     if (seen.has(no)) return;
+    if (studioMirrorHostNo(no)) return;
     seen.add(no);
     rows.push(studioInvoiceRow(no, room, t, TENANT_INFO[no] || {}));
   });
   STUDIO_NOS.concat(["7651"]).forEach(no => {
     if (seen.has(String(no))) return;
+    if (studioMirrorHostNo(no)) return;
     const info = TENANT_INFO[no];
     if (!info || !info.name) return;
     const room = (state.rooms || []).find(r => String(r.no) === String(no));
@@ -9555,7 +9643,7 @@ function addIncomingTenant(roomId, fields) {
 }
 function moveInRooms() {
   ensureStudioRoomsPresent();
-  return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no))
+  return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no) && !studioMirrorHostNo(r.no))
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function ensureMoveIn() {
@@ -9754,6 +9842,13 @@ function cancelIncomingTenant(inc) {
 function forceVacateTenant(t) {
   if (!t) { toast("找不到租客"); return; }
   if (t.demo || isDemoTenant(t)) { toast("測試房請用重製"); return; }
+  const roomNow = (state.rooms || []).find(x => x && x.id === t.roomId)
+    || (state.rooms || []).find(x => x && String(x.no) === String(t.roomNo || ""));
+  const no = roomNow && String(roomNow.no || "");
+  if (studioMirrorHostNo(no) || studioMirrorGuestNos(no).length) {
+    toast("7251 呂佳芸與 7651 吳慧青補助掛名綁在一起，不能單獨退租");
+    return;
+  }
   if (t.incoming || t.prospect) {
     cancelIncomingTenant(t);
     return;
@@ -11362,6 +11457,7 @@ function markTenantPaid(via) {
   stampPaidMark(state, t);
   try { ensureDemoTenant(state); } catch {}
   upsertRentAutoBookOn(state, t);
+  mirrorPaidFromTenant(state, t);
   save();
   clearTimeout(saveTimer);
   try { pushCloud(); } catch {}
@@ -14655,6 +14751,7 @@ function roomHasLiveTenant(r) {
 }
 function isVacantRoom(r) {
   if (!r || r.demo || r.status === "office" || r.status === "repair") return false;
+  if (studioMirrorHostNo(r.no)) return false;
   if (r.status === "vacant") return true;
   return !roomHasLiveTenant(r);
 }
@@ -14910,7 +15007,8 @@ function tenantEntryDetailsHtml(kind, entry) {
       })()}
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">${kind === "factory" ? "開發者測試廠房 F0000。金流不計入。可按重製反覆開票／已繳。" : "開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。"}</div>${demoResetBarHtml(kind)}` : ""}
-      ${r && r.status === "office" ? `<div class="small">實際由員工使用。吳慧青僅掛名辦租屋補助，不是住在這裡。</div>` : ""}
+      ${r && r.status === "office" ? `<div class="small">補助掛名。實際對應 7251 呂佳芸居住，租約與繳費同步。7651 登入走管理員。</div>` : ""}
+      ${r && studioMirrorHostNo(r.no) ? `<div class="small">實際居住。租約與繳費跟 ${escapeHtml(studioMirrorHostNo(r.no))} 吳慧青同步（補助掛那間）。金流不重複計。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
@@ -15016,8 +15114,26 @@ function applyLiveTenantEdit(el) {
   else if (key === "contactName" && t) t.contactName = val;
   else if (key === "taxId" && t) t.taxId = val;
   else if (key === "bankLast5" && t) t.bankLast5 = val;
-  else if (key === "leaseStart" && t) t.leaseStart = val;
-  else if (key === "leaseEnd" && t) t.leaseEnd = val;
+  else if (key === "leaseStart" && t) {
+    t.leaseStart = val;
+    const no = r && r.no;
+    const hostNo = studioMirrorHostNo(no) || (studioMirrorGuestNos(no).length ? no : "");
+    if (hostNo) {
+      const host = liveByRoomNo(state, hostNo).tenant;
+      if (host) host.leaseStart = val;
+      syncStudioLeaseMirrors(state);
+    }
+  }
+  else if (key === "leaseEnd" && t) {
+    t.leaseEnd = val;
+    const no = r && r.no;
+    const hostNo = studioMirrorHostNo(no) || (studioMirrorGuestNos(no).length ? no : "");
+    if (hostNo) {
+      const host = liveByRoomNo(state, hostNo).tenant;
+      if (host) host.leaseEnd = val;
+      syncStudioLeaseMirrors(state);
+    }
+  }
   else if (key === "remitOn" && t) {
     t.remitOn = val || "";
   } else if (key === "paidOn" && t) {
@@ -15030,6 +15146,7 @@ function applyLiveTenantEdit(el) {
     stampPaidMark(state, t);
     if (t.paid) upsertRentAutoBookOn(state, t);
     else dropRentAutoBookOn(state, t);
+    mirrorPaidFromTenant(state, t);
   } else if (key === "rent") {
     const neu = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
     if (t && t.incoming) t.rent = neu;
