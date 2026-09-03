@@ -1862,7 +1862,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   body.print-lease .admin-bar,
   body.print-lease .tabs,
   body.print-lease #app { display: none !important; }
-  body.print-lease #studio-lease-paper { display: block !important; }
+  body.print-lease #studio-lease-paper,
+  body.print-lease [id^="studio-lease-paper"] { display: block !important; }
   body.print-lease .studio-lease-paper .term-hint { display: none !important; }
   body.print-lease .lease-pg {
     page-break-after: always;
@@ -1887,6 +1888,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     vertical-align: bottom;
   }
   body.print-lease .lease-pg:last-child { page-break-after: auto; }
+  body.print-lease .studio-lease-paper + .studio-lease-paper { page-break-before: always; break-before: page; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
@@ -1981,6 +1983,13 @@ body.print-lease .lease-esig { height: 40px; max-width: 160px; }
   letter-spacing: .28em;
   font-size: 26px;
   margin: 0 0 18px;
+}
+.lease-cover-mid h3 .lease-sub {
+  display: block;
+  letter-spacing: .08em;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 8px;
 }
 .lease-cover-addr { font-size: 18px; letter-spacing: .04em; }
 .lease-cover-dates { margin-top: auto; text-align: right; padding: 0 12px 8px; }

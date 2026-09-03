@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-13-15";
-const APP_EDIT_COUNT = 574;
+const APP_STAMP = "2026-09-03-14-40";
+const APP_EDIT_COUNT = 575;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["我要入住標題從左邊滑入，圖卡仍從右邊"] },
+  { ver: APP_STAMP, items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0125") return;
+    if (!m || !m[1] || m[1] === "0126") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3268,7 +3268,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -3314,6 +3314,11 @@ function pickNewerEntity(a, b, keys) {
   }
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
+  }
+  if (keys && keys.indexOf("leases") >= 0) {
+    const la = Array.isArray(a && a.leases) ? a.leases : [];
+    const lb = Array.isArray(b && b.leases) ? b.leases : [];
+    if (!Array.isArray(out.leases) || !out.leases.length) out.leases = (winner && Array.isArray(winner.leases) && winner.leases.length) ? winner.leases : (la.length ? la : lb);
   }
   if (keys && keys.indexOf("incoming") >= 0) {
     const off = Math.max(Number(a && a.officialAt) || 0, Number(b && b.officialAt) || 0);
@@ -7083,7 +7088,7 @@ function studioInvoiceRow(no, room, t, info) {
   const invoiceYmd = paid ? ((t.paidYm || payYmNow()) + "-01") : "";
   const bankKey = tenantPayBankKey(t || info, room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
-  const rent = Number(room && room.rent) || Number(t && t.rent) || Number(info.rent) || studioRentOf(no) || 0;
+  const rent = tenantRentForYm(t, room, t && (t.paidYm || payYmNow()), info);
   const note = String((t && t.note) || "") + " " + String(info.note || "");
   const start = (t && t.leaseStart) || info.leaseStart || "";
   const end = (t && t.leaseEnd) || info.leaseEnd || "";
@@ -7549,14 +7554,105 @@ function ymdFromDate(d) {
   const p = n => String(n).padStart(2, "0");
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
 }
+function monthLastYmd(ymd) {
+  const s = ymdOf(ymd);
+  if (!s) return "";
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7));
+  return ymdFromDate(new Date(y, m, 0));
+}
+function nextMonthFirstYmd(ymd) {
+  const s = ymdOf(ymd);
+  if (!s) return "";
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7));
+  return ymdFromDate(new Date(y, m, 1));
+}
+function addMonthsFirstYmd(ymd, n) {
+  const s = ymdOf(ymd);
+  if (!s) return "";
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7));
+  return ymdFromDate(new Date(y, m - 1 + Number(n || 0), 1));
+}
+function ymdInclusiveDays(a, b) {
+  const sa = ymdOf(a), sb = ymdOf(b);
+  if (!sa || !sb) return 0;
+  const da = new Date(sa + "T00:00:00"), db = new Date(sb + "T00:00:00");
+  return Math.round((db - da) / 86400000) + 1;
+}
+function daysInMonthYmd(ymd) {
+  const s = ymdOf(ymd);
+  if (!s) return 30;
+  const y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7));
+  return new Date(y, m, 0).getDate();
+}
+function prorateMonthRent(monthly, start, end) {
+  const dim = daysInMonthYmd(start);
+  const days = ymdInclusiveDays(start, end);
+  if (!dim || days <= 0) return 0;
+  return Math.round(Number(monthly || 0) * days / dim);
+}
+function yearContractEndFromFirst(firstYmd) {
+  return monthLastYmd(addMonthsFirstYmd(firstYmd, 11));
+}
+function studioLeasePack(startYmd, monthly) {
+  const start = ymdOf(startYmd);
+  if (!start) return { parts: [], occupancyStart: "", occupancyEnd: "" };
+  const day = Number(start.slice(8, 10));
+  const rent = Number(monthly || 0);
+  if (day === 1) {
+    const end = yearContractEndFromFirst(start);
+    return { parts: [{ kind: "year", start, end, rent }], occupancyStart: start, occupancyEnd: end };
+  }
+  const stubEnd = monthLastYmd(start);
+  const dim = daysInMonthYmd(start);
+  const days = ymdInclusiveDays(start, stubEnd);
+  const stubRent = prorateMonthRent(rent, start, stubEnd);
+  const yearStart = nextMonthFirstYmd(start);
+  const yearEnd = yearContractEndFromFirst(yearStart);
+  return {
+    parts: [
+      { kind: "stub", start, end: stubEnd, rent: stubRent, days, daysInMonth: dim, monthly: rent },
+      { kind: "year", start: yearStart, end: yearEnd, rent }
+    ],
+    occupancyStart: start,
+    occupancyEnd: yearEnd
+  };
+}
+function tenantLeaseParts(t, r) {
+  if (t && Array.isArray(t.leases) && t.leases.length) return t.leases;
+  const start = ymdOf(t && t.leaseStart);
+  if (!start) return [];
+  return studioLeasePack(start, studioContractRent(t, r)).parts;
+}
+function applyStudioLeasePack(t, room, startYmd) {
+  if (!t) return null;
+  const start = ymdOf(startYmd) || ymdOf(t.leaseStart);
+  const pack = studioLeasePack(start, studioContractRent(t, room));
+  t.leaseStart = pack.occupancyStart;
+  t.leaseEnd = pack.occupancyEnd;
+  t.leases = pack.parts;
+  t.dueDay = 1;
+  t.stubRent = ((pack.parts.find(x => x.kind === "stub") || {}).rent) || 0;
+  return pack;
+}
+function tenantRentForYm(t, r, ym, info) {
+  const y = String(ym || payYmNow());
+  const parts = tenantLeaseParts(t, r);
+  const stub = parts.find(x => x.kind === "stub");
+  if (stub && String(stub.start || "").slice(0, 7) === y) return Number(stub.rent) || 0;
+  return Number(r && r.rent) || Number(t && t.rent) || Number(info && info.rent) || studioContractRent(t, r) || 0;
+}
+function leasePackSummaryHtml(pack, monthly) {
+  if (!pack || !pack.parts || !pack.parts.length) return "";
+  return pack.parts.map(p => {
+    if (p.kind === "stub") {
+      return `<div class="row wrap"><span class="k">不足月合約</span><span class="v">${escapeHtml(p.start)} ～ ${escapeHtml(p.end)}　日拆 ${money(p.rent)}（${p.days}/${p.daysInMonth} 天）</span></div>`;
+    }
+    return `<div class="row wrap"><span class="k">一年合約</span><span class="v">${escapeHtml(p.start)} ～ ${escapeHtml(p.end)}　每月 ${money(p.rent || monthly)}，每月 1 號</span></div>`;
+  }).join("");
+}
 function fullYearLeaseRange(fromYmd) {
-  const start = ymdOf(fromYmd) || todayYmd();
-  const y = Number(start.slice(0, 4));
-  const m = Number(start.slice(5, 7));
-  const d = Number(start.slice(8, 10));
-  const end = new Date(y + 1, m - 1, d);
-  end.setDate(end.getDate() - 1);
-  return { start, end: ymdFromDate(end) };
+  const pack = studioLeasePack(ymdOf(fromYmd) || todayYmd(), 0);
+  return { start: pack.occupancyStart, end: pack.occupancyEnd };
 }
 function addDaysYmd(ymd, days) {
   const s = ymdOf(ymd);
@@ -7606,7 +7702,8 @@ function roomSoonestStart(room, t) {
   return today;
 }
 function continueLeaseRange(room, t) {
-  return fullYearLeaseRange(roomSoonestStart(room, t));
+  const pack = studioLeasePack(roomSoonestStart(room, t), 0);
+  return { start: pack.occupancyStart, end: pack.occupancyEnd };
 }
 function signWindow(room, t) {
   const today = todayYmd();
@@ -7627,10 +7724,8 @@ function renewConfirmYmd(t) {
 }
 function applyOneYearLease(t, room) {
   if (!t) return;
-  const r = continueLeaseRange(room || signTargetRoom(t), t);
-  t.leaseStart = r.start;
-  t.leaseEnd = r.end;
-  t.dueDay = 1;
+  const r = room || signTargetRoom(t);
+  applyStudioLeasePack(t, r, roomSoonestStart(r, t));
 }
 function studioContractRent(t, r) {
   const listed = studioRentOf(r && r.no);
@@ -9451,6 +9546,7 @@ function addIncomingTenant(roomId, fields) {
     rent: rent || undefined,
     deposit: deposit || undefined
   };
+  applyStudioLeasePack(t, r, t.leaseStart);
   if (!state.tenants) state.tenants = [];
   state.tenants.push(t);
   r.incomingTenantId = t.id;
@@ -9548,8 +9644,9 @@ function submitMoveIn() {
   const minStart = roomSoonestStart(room, { incoming: true });
   if (!d.leaseStart || d.leaseStart < minStart) {
     d.leaseStart = minStart;
-    d.leaseEnd = fullYearLeaseRange(minStart).end;
   }
+  const pack = studioLeasePack(d.leaseStart, studioContractRent(null, room));
+  d.leaseEnd = pack.occupancyEnd;
   const exist = incomingOf(room.id);
   if (exist) {
     const same = nameMatch(exist.name, name) || String(exist.phone || "") === phone;
@@ -9585,6 +9682,7 @@ function submitMoveIn() {
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
+  applyStudioLeasePack(t, room, d.leaseStart);
   state.applyPing = { at: Date.now(), roomNo: room.no, name };
   if (!state.notices) state.notices = [];
   state.notices.push({ id: "n" + Date.now(), type: "apply", roomNo: room.no, text: `${room.no} ${name} 申請入住`, createdAt: t.applyAt, read: false });
@@ -9988,13 +10086,16 @@ function leaseU(v, cls) {
   const s = v == null || v === "" ? "　" : String(v);
   return `<span class="lease-u${cls ? " " + cls : ""}">${escapeHtml(s)}</span>`;
 }
-function studioLeasePaperHtml(t, r) {
+function studioLeasePaperHtml(t, r, leasePart) {
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
-  const start = rocPartsOf((t && t.leaseStart) || "");
-  const end = rocPartsOf((t && t.leaseEnd) || "");
   const listed = studioContractRent(t, r);
-  const rent = listed;
-  const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (rent * 2);
+  const startYmd = (leasePart && leasePart.start) || (t && t.leaseStart) || "";
+  const endYmd = (leasePart && leasePart.end) || (t && t.leaseEnd) || "";
+  const start = rocPartsOf(startYmd);
+  const end = rocPartsOf(endYmd);
+  const isStub = !!(leasePart && leasePart.kind === "stub");
+  const rent = isStub ? Number(leasePart.rent) || 0 : listed;
+  const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (listed * 2);
   const door = contractDoorplate(r && r.no);
   const part = contractRoomPart(r && r.no);
   const name = (t && t.name) || "";
@@ -10023,7 +10124,7 @@ function studioLeasePaperHtml(t, r) {
   return `<div class="studio-lease-paper" id="studio-lease-paper">
     <section class="lease-pg cover">
       <div class="lease-cover-mid">
-        <h3>房屋租賃契約書</h3>
+        <h3>房屋租賃契約書${isStub ? "<span class=\"lease-sub\">不足月（日拆）</span>" : ""}</h3>
         <p class="lease-cover-addr">${escapeHtml(door)}</p>
       </div>
       <div class="lease-cover-dates">
@@ -10059,7 +10160,9 @@ function studioLeasePaperHtml(t, r) {
     </section>
     <section class="lease-pg">
       <p class="lease-art">第四條　租金約定及支付</p>
-      <p>承租人每月租金為新臺幣（下同）${u(ntd(rent) || "0")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>
+      ${isStub
+        ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(ntd(listed) || "0")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(ntd(rent) || "0")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
+        : `<p>承租人每月租金為新臺幣（下同）${u(ntd(rent) || "0")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>`}
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
       <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
       <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
@@ -10162,10 +10265,23 @@ function studioLeasePaperHtml(t, r) {
     </section>
   </div>`;
 }
+function studioLeasePapersHtml(t, r, preview) {
+  const parts = tenantLeaseParts(t, r);
+  const list = parts.length ? parts : [null];
+  return list.map((part, i) => {
+    let html = studioLeasePaperHtml(t, r, part);
+    if (preview) {
+      html = html
+        .replace('id="studio-lease-paper"', `id="lease-preview-paper-${i}"`)
+        .replace('class="studio-lease-paper"', "class=\"studio-lease-paper lease-preview\"");
+    } else if (i) {
+      html = html.replace('id="studio-lease-paper"', `id="studio-lease-paper-${i}"`);
+    }
+    return html;
+  }).join("");
+}
 function studioLeasePreviewHtml(t, r) {
-  return studioLeasePaperHtml(t, r)
-    .replace('id="studio-lease-paper"', 'id="lease-preview-paper"')
-    .replace('class="studio-lease-paper"', 'class="studio-lease-paper lease-preview"');
+  return studioLeasePapersHtml(t, r, true);
 }
 function isStudioLeaseRoom(r) {
   return !!(r && r.kind !== "factory" && !isStoreNo(r.no));
@@ -10174,23 +10290,23 @@ function printStudioLease(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
   if (es && es.sig) t.eSign = es;
-  const old = document.getElementById("studio-lease-paper");
-  if (old) old.remove();
+  const olds = document.querySelectorAll(".studio-lease-paper");
+  olds.forEach(el => { if (!el.closest(".lease-preview") && !el.closest(".screen")) el.remove(); });
   const hold = document.createElement("div");
-  hold.innerHTML = studioLeasePaperHtml(t, r);
-  const paper = hold.firstElementChild;
-  if (!paper) { toast("合約無法產生"); return; }
-  document.body.appendChild(paper);
+  hold.innerHTML = studioLeasePapersHtml(t, r, false);
+  const papers = [...hold.children];
+  if (!papers.length) { toast("合約無法產生"); return; }
+  papers.forEach(p => document.body.appendChild(p));
   document.body.classList.add("print-lease");
   let done = false;
   const after = () => {
     if (done) return;
     done = true;
     document.body.classList.remove("print-lease");
-    if (paper && paper.parentNode) paper.remove();
+    papers.forEach(p => { if (p && p.parentNode) p.remove(); });
   };
   window.addEventListener("afterprint", after, { once: true });
-  const imgs = [...paper.querySelectorAll("img")];
+  const imgs = papers.flatMap(p => [...p.querySelectorAll("img")]);
   let printed = false;
   const startPrint = () => {
     if (printed) return;
@@ -10911,10 +11027,10 @@ function moveInView() {
         <p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>` : ""}
     </div>
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
-      <div class="label">合約起迄（一年）</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）")) : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
-      <label class="field"><span>起始日</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
-      <label class="field"><span>截止日</span><input id="move-end" type="date" min="${escapeHtml(d.leaseStart || minStart)}" value="${escapeHtml(d.leaseEnd || cont.end)}" /></label>
+      <div class="label">合約起迄</div>
+      <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）") + "。到期固定該月最後一天。入住不是 1 號時會開不足月＋一年兩份合約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
+      <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
+      ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:28px">送出並進入預覽</button>
@@ -11597,6 +11713,7 @@ function leaseView() {
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
         <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart || "—"}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd || "—"}</span></div>
+        ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <div class="row"><span class="k">剩餘天數</span><span class="v">${left == null ? "—" : left + " 天"}</span></div>
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
         <div class="row"><span class="k">每月租金</span><span class="v">${money(r.rent)}</span></div>
@@ -11613,14 +11730,14 @@ function leaseView() {
         if (st === "unsigned") {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill unpaid">尚未簽約</span></div>
-            <p class="small" style="margin-top:8px">套房合約已套入你的姓名、房號、租金。請填身分證與電話，用藍筆簽名；我們後台列印後只蓋章。</p>
+            <p class="small" style="margin-top:8px">套房合約已套入你的姓名、房號、租金。入住不是 1 號時會有不足月＋一年兩份合約，簽名一次兩份都套入。請填身分證與電話，用藍筆簽名；我們後台列印後只蓋章。</p>
             <button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:12px">線上簽署電子合約</button>
           </div>`;
         }
         if (st === "signed") {
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
-            <p class="small" style="margin-top:8px">你已完成藍字簽名。管理員列印後只蓋公司章。</p>
+            <p class="small" style="margin-top:8px">你已完成藍字簽名，兩份合約都已套入。管理員列印後只蓋公司章。</p>
             ${t.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div>` : ""}
             ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
           </div>`;
@@ -11675,10 +11792,13 @@ function leaseSignView() {
   const win = signWindow(r, t);
   const cont = continueLeaseRange(r, t);
   if (t && t.leaseStart && t.leaseStart < cont.start) {
-    t.leaseStart = cont.start;
-    t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
+    applyStudioLeasePack(t, r, cont.start);
   }
-  if (t && ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
+  if (t && ui.signTerm1y && !ui.signLeaseCustom) {
+    applyStudioLeasePack(t, r, t.leaseStart || roomSoonestStart(r, t));
+  } else if (t && t.leaseStart) {
+    applyStudioLeasePack(t, r, t.leaseStart);
+  }
   let day = ymdOf(t && t.signAppointAt);
   if (!day || day < win.min) day = win.min;
   let daySlots = nextSignSlots(8, t && t.signAppointAt, win.min, day);
@@ -11724,11 +11844,11 @@ function leaseSignView() {
         <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
       </div>
       <div class="card card-body" style="margin-top:12px">
-        <div class="label">合約起迄（一年）</div>
-        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（月對月）</label>
-        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${cont.start} ～ ${cont.end}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + occ.leaseEnd + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + confirmBy + " 前確定續約。" : ""}</p>
-        <label class="field"><span>起始日</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
-        <label class="field"><span>截止日</span><input id="sign-lease-end" type="date" value="${escapeHtml((t && t.leaseEnd) || cont.end)}" /></label>
+        <div class="label">合約起迄</div>
+        <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（到期固定月底）</label>
+        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${cont.start} ～ ${cont.end}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + occ.leaseEnd + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + confirmBy + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
+        <label class="field"><span>起始日（入住）</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
+        ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
       </div>
       <div class="card card-body" style="margin-top:12px">
@@ -14846,7 +14966,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
       ${kind !== "factory" ? `<button class="ghost" data-force-vacate="${tt.id}" style="margin-top:8px">強制退租</button>` : ""}
-      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
+      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(tt, rr).length > 1 ? "（兩份）" : ""}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
       ${tt.incoming ? "" : handoverBoxHtml(tt, rr)}`;
         }).join("");
@@ -15513,6 +15633,7 @@ function adminRoomEdit() {
       ${field("緊急電話", "emergencyPhone", t?.emergencyPhone || "")}
       ${field("起租日", "leaseStart", t?.leaseStart, "date")}
       ${field("到期日", "leaseEnd", t?.leaseEnd, "date")}
+      ${t ? leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r)) : ""}
       ${field("每月繳費日", "dueDay", t?.dueDay || 1)}
       ${field("本月繳費", "paid", t ? t.paid : true, "select-paid")}
       ${field("繳費時間", "paidAt", toDatetimeLocal(t?.paidAt), "datetime-local")}
@@ -15536,7 +15657,7 @@ function adminRoomEdit() {
           <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
           ${ten && ten.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(ten.signAppointAt).replace("T", " ")))}</span></div>` : ""}
           ${st === "signed" && es && es.sig && String(es.sig).startsWith("data:") ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}　列印後只蓋章</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署套房合約。" : "已有紙本合約圖檔。"}</p>`}
-          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}</button>` : ""}
+          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(ten, r).length > 1 ? "（兩份）" : ""}</button>` : ""}
         </div>`;
       })()}
       <label class="upload">上傳合約書圖檔<input id="contract-upload" type="file" accept="image/*" multiple hidden /></label>
@@ -16259,7 +16380,7 @@ function bindMoveInForm() {
         d.leaseStart = min;
         toast("起始日不可早於 " + min);
       }
-      d.leaseEnd = fullYearLeaseRange(d.leaseStart).end;
+      d.leaseEnd = studioLeasePack(d.leaseStart, r ? studioContractRent(null, r) : 0).occupancyEnd;
       render();
     };
   }
@@ -16319,12 +16440,10 @@ function captureSignDraft() {
   const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = emName;
   const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = emPhone;
   const start = val("sign-lease-start");
-  const end = val("sign-lease-end");
   if (document.getElementById("sign-lease-start") && start) {
     if (start !== t.leaseStart) ui.signLeaseCustom = true;
     t.leaseStart = start;
   }
-  if (document.getElementById("sign-lease-end") && end) t.leaseEnd = end;
 }
 function bindSignTermSlots() {
   const term = document.getElementById("sign-term-1y");
@@ -16335,7 +16454,7 @@ function bindSignTermSlots() {
       const t = me();
       const r = signTargetRoom(t);
       if (t && ui.signTerm1y) {
-        if (ui.signLeaseCustom && t.leaseStart) t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
+        if (ui.signLeaseCustom && t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
         else applyOneYearLease(t, r);
       }
       render();
@@ -16375,19 +16494,18 @@ function bindSignTermSlots() {
       render();
     };
   }
-  ["sign-lease-start", "sign-lease-end"].forEach(id => {
+  ["sign-lease-start"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.onchange = () => {
       const t = me();
       if (!t) return;
       ui.signLeaseCustom = true;
-      if (id === "sign-lease-start") {
-        const min = continueLeaseRange(signTargetRoom(t), t).start;
-        t.leaseStart = (el.value && el.value < min) ? min : el.value;
-        if (el.value && el.value < min) toast("起始日不可早於 " + min);
-        t.leaseEnd = fullYearLeaseRange(t.leaseStart).end;
-      } else t.leaseEnd = el.value;
+      const r = signTargetRoom(t);
+      const min = continueLeaseRange(r, t).start;
+      t.leaseStart = (el.value && el.value < min) ? min : el.value;
+      if (el.value && el.value < min) toast("起始日不可早於 " + min);
+      applyStudioLeasePack(t, r, t.leaseStart);
       t.dueDay = 1;
       t.editedAt = Date.now();
       save();
@@ -16585,6 +16703,7 @@ function bindSignPad() {
       const term = document.getElementById("sign-term-1y");
       ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
       if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
+      else if (t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),
