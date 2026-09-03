@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-15-40";
-const APP_EDIT_COUNT = 580;
+const APP_STAMP = "2026-09-03-15-48";
+const APP_EDIT_COUNT = 581;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["報修、公告、催繳、入住與退租關著 App 也會推播到後台與租客"] },
+  { ver: APP_STAMP, items: ["強制退租會先跳出確認，確定後才執行"] },
+  { ver: "2026-09-03-15-40", items: ["報修、公告、催繳、入住與退租關著 App 也會推播到後台與租客"] },
   { ver: "2026-09-03-15-28", items: ["開立發票總覽跟當月合約同步：不足月開日拆，次月改一年約，各裝置同一張表"] },
   { ver: "2026-09-03-15-20", items: ["不足月合約當月發票開日拆金額，次月自動改開一年約月租"] },
   { ver: "2026-09-03-15-05", items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
@@ -766,7 +767,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0131") return;
+    if (!m || !m[1] || m[1] === "0132") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9929,6 +9930,51 @@ function cancelIncomingTenant(inc) {
   try { pushCloud(); } catch {}
   toast(live ? ("已取消新客，" + (r.no || "") + " 仍是 " + (live.name || "原租客")) : ("已取消新客，" + ((r && r.no) || "") + " 改為空房"));
 }
+function vacateConfirmHtml() {
+  const id = ui.vacateConfirmId;
+  if (!id) return "";
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return "";
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const no = (r && (r.no || displayRoomNo(r))) || "";
+  const name = t.name || "";
+  const hint = (t.incoming || t.prospect)
+    ? "這筆入住申請／交接會取消，該房會變空房或回到原租客。"
+    : "這位租客會立刻退租，無法再用姓名或電話登入，房間改為空房。";
+  return `<div class="install-mask" id="vacate-mask">
+    <div class="install-sheet">
+      <div class="label">強制退租</div>
+      <h2>確定要強制退租？</h2>
+      <p class="small">${escapeHtml(no)}　${escapeHtml(name)}</p>
+      <p class="small">${hint}這個動作無法復原，請再確認一次。</p>
+      <button type="button" class="danger" id="vacate-yes">確定強制退租</button>
+      <button type="button" class="ghost" id="vacate-no">取消</button>
+    </div>
+  </div>`;
+}
+function bindVacateConfirm() {
+  const close = () => { ui.vacateConfirmId = ""; ui.keepScroll = true; render(); };
+  const mask = document.getElementById("vacate-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "vacate-mask") close(); };
+  const no = document.getElementById("vacate-no");
+  if (no) no.onclick = close;
+  const yes = document.getElementById("vacate-yes");
+  if (yes) yes.onclick = () => {
+    const t = (state.tenants || []).find(x => x && x.id === ui.vacateConfirmId);
+    ui.vacateConfirmId = "";
+    forceVacateTenant(t);
+    ui.page = "tenants";
+    ui.tenantSheetId = "";
+    ui.keepScroll = false;
+    render();
+  };
+}
+function askForceVacate(id) {
+  if (!id) return;
+  ui.vacateConfirmId = id;
+  ui.keepScroll = true;
+  render();
+}
 function forceVacateTenant(t) {
   if (!t) { toast("找不到租客"); return; }
   if (t.demo || isDemoTenant(t)) { toast("測試房請用重製"); return; }
@@ -10942,7 +10988,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const overlays = !!(ui.themeOpen || ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml || ui.updateReady || bar);
@@ -10961,7 +11007,8 @@ function paintApp() {
     const sc = document.querySelector(".admin-scroll");
     const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
       || (ui.checkoutTenantId && ui.checkoutKind === "pick")
-      || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
+      || ui.vacateConfirmId
+      || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
@@ -11098,6 +11145,7 @@ function bindInstallSheet() {
   if (btn) btn.onclick = close;
   const tryBtn = document.getElementById("install-try");
   if (tryBtn) tryBtn.onclick = () => installApp(ui.installSheet || "desktop", true);
+  try { bindVacateConfirm(); } catch {}
 }
 function installCardHtml(label) {
   if (isStandalone()) return "";
@@ -15349,12 +15397,7 @@ function bindHandover() {
   document.querySelectorAll("[data-force-vacate]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault(); e.stopPropagation();
-      const t = (state.tenants || []).find(x => x.id === btn.dataset.forceVacate);
-      forceVacateTenant(t);
-      ui.page = "tenants";
-      ui.tenantSheetId = "";
-      ui.keepScroll = false;
-      render();
+      askForceVacate(btn.dataset.forceVacate);
     };
   });
   document.querySelectorAll("[data-handover-cancel]").forEach(btn => {

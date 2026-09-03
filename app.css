@@ -2774,6 +2774,7 @@ img.avatar { object-fit: cover; display: block; }
 .poi-name { font-weight: 700; color: var(--ink); }
 .poi-go { font-size: 12px; font-weight: 800; color: var(--teal); }
 .install-sheet .btn-navy { width: 100%; margin: 12px 0 8px; }
+.install-sheet .danger { width: 100%; margin: 12px 0 8px; }
 .install-sheet .ghost { width: 100%; }
 .log-list { max-height: 46vh; overflow: auto; margin: 4px 0 8px; }
 .log-ver { margin: 0 0 14px; }
