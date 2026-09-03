@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-16-10";
-const APP_EDIT_COUNT = 584;
+const APP_STAMP = "2026-09-03-16-18";
+const APP_EDIT_COUNT = 585;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["第一份房屋租賃契約書封面拿掉不足月（日拆）字樣"] },
+  { ver: APP_STAMP, items: ["不足月繳費改記日拆金額，租客圖卡現任下方顯示未足月租金"] },
+  { ver: "2026-09-03-16-10", items: ["第一份房屋租賃契約書封面拿掉不足月（日拆）字樣"] },
   { ver: "2026-09-03-16-05", items: ["不足月新客顯示不足月未繳、到期請馬上繳費，日拆註解換行，下月恢復正常"] },
   { ver: "2026-09-03-15-55", items: ["租客主畫面本月租金會顯示不足月日拆，下個月自動改成正常月租"] },
   { ver: "2026-09-03-15-48", items: ["強制退租會先跳出確認，確定後才執行"] },
@@ -770,7 +771,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0135") return;
+    if (!m || !m[1] || m[1] === "0136") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6080,7 +6081,7 @@ function upsertRentAutoBookOn(data, t) {
     dropRentAutoBookOn(data, t);
     return;
   }
-  const amount = Number(room.rent) || Number(t.rent) || 0;
+  const amount = thisMonthRentOf(t, room) || Number(room.rent) || Number(t.rent) || 0;
   if (!amount) {
     dropRentAutoBookOn(data, t);
     return;
@@ -6101,12 +6102,13 @@ function upsertRentAutoBookOn(data, t) {
   const id = rentAutoBookId(t, ym);
   const bankKey = tenantPayBankKey(t, room);
   const site = room.group || (room.kind === "factory" ? "" : "牛10");
+  const stub = isStubMonthNow(t, room);
   const row = {
     id, type: "in", date, amount,
     company: roomCompany(room) || "統潔",
     bank: bankKey || "農會",
     roomNo: String(room.no || ""),
-    note: (site ? site + "　" : "") + String(room.no || "") + " " + (t.name || "") + " 租金",
+    note: (site ? site + "　" : "") + String(room.no || "") + " " + (t.name || "") + (stub ? " 不足月租金" : " 租金"),
     importTag: "rent-auto-" + ym,
     linkedTenantId: t.id
   };
@@ -15186,6 +15188,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${r && r.status === "office" ? `<div class="small">補助掛名。實際對應 7251 呂佳芸居住，租約與繳費同步。7651 登入走管理員。</div>` : ""}
       ${r && studioMirrorHostNo(r.no) ? `<div class="small">實際居住。租約與繳費跟 ${escapeHtml(studioMirrorHostNo(r.no))} 吳慧青同步（補助掛那間）。金流不重複計。</div>` : ""}
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
+      + (!isHandoverRoom(r, t) && isStubMonthNow(t, r) ? `<div class="row wrap"><span class="k">未足月租金</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>` : "")
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
