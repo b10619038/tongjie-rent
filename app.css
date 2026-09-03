@@ -1687,6 +1687,10 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   justify-content: stretch;
 }
 #errand-guess-box .mini b {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   white-space: nowrap;
   flex-shrink: 0;
 }

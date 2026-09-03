@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-16-38";
-const APP_EDIT_COUNT = 588;
+const APP_STAMP = "2026-09-03-17-05";
+const APP_EDIT_COUNT = 589;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["日曆行程改成藍色，和進帳綠色、出帳紅色分開"] },
+  { ver: APP_STAMP, items: ["跑業務可一次上傳很多本簿子，之後再傳會接在後面"] },
+  { ver: "2026-09-03-16-38", items: ["日曆行程改成藍色，和進帳綠色、出帳紅色分開"] },
   { ver: "2026-09-03-16-32", items: ["總覽日曆進出帳改成條例，拿掉橢圓圖卡避免壓到進帳文字"] },
   { ver: "2026-09-03-16-25", items: ["強制退租保留日曆繳費紀錄；測試房 7652 退租會一併清掉該房帳"] },
   { ver: "2026-09-03-16-18", items: ["不足月繳費改記日拆金額，租客圖卡現任下方顯示未足月租金"] },
@@ -774,7 +775,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0139") return;
+    if (!m || !m[1] || m[1] === "0140") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9510,7 +9511,7 @@ function errandGuessHtml(g) {
     const askCo = item.needCompany ? `<div class="small">這張是哪間公司？</div><div class="bank-picks guess-picks">${["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"].map(c => `<button type="button" class="bank-pick${item.company === c ? " on" : ""}" data-guess-i="${i}" data-guess-co="${c}">${c}</button>`).join("")}</div>` : "";
     const askBk = item.needBank ? `<div class="small">這本是哪家銀行？</div><div class="bank-picks guess-picks">${BANK_PLACES.map(b => `<button type="button" class="bank-pick${item.place === b ? " on" : ""}" data-guess-i="${i}" data-guess-bk="${b}">${b}</button>`).join("")}</div>` : "";
     const hint = item.needAmount ? `<div class="small">這張還沒讀到金額。檔名帶數字，或改傳 Excel 會比較準。</div>` : "";
-    return `<div class="mini errand-shot"><b>照片 ${i + 1}</b><span>${escapeHtml(bits.join(" · "))}</span>${askCo}${askBk}${hint}</div>`;
+    return `<div class="mini errand-shot"><b>照片 ${i + 1}<button type="button" class="led-del" data-del-guess="${i}">移除</button></b><span>${escapeHtml(bits.join(" · "))}</span>${askCo}${askBk}${hint}</div>`;
   }).join("")}</div>`;
 }
 function refreshErrandGuessBox() {
@@ -9546,6 +9547,19 @@ function bindErrandGuessPicks() {
       if (!list[i]) return;
       list[i].place = btn.dataset.guessBk;
       list[i].needBank = false;
+      ui.errandGuesses = list;
+      ui.errandGuess = list[0] || null;
+      refreshErrandGuessBox();
+    };
+  });
+  document.querySelectorAll("[data-del-guess]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const list = errandGuessList();
+      const i = Number(btn.dataset.delGuess);
+      if (i < 0 || i >= list.length) return;
+      list.splice(i, 1);
       ui.errandGuesses = list;
       ui.errandGuess = list[0] || null;
       refreshErrandGuessBox();
@@ -13370,7 +13384,7 @@ function saveErrandBallPos(p) {
   try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
 }
 function errandFormInnerHtml() {
-  return `<p class="small" style="margin-top:10px">一次可拍很多本，分不出公司或銀行時會問你。同一筆錢之後存進銀行會自動對帳。</p>
+  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙另拍一張。按「上傳照片」可一次選很多張，每張會分開預判；之後再傳會接在後面。分不出哪家銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
           <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
@@ -18728,14 +18742,15 @@ function bindAdminAi() {
     const files = [...(errandPhoto.files || [])];
     const shots = files.filter(f => !isSheetFile(f)).map(f => Object.assign(inferOneFile(f), { fromPhoto: true }));
     if (ui.errandNote) shots.forEach(x => { x.note = [x.note, ui.errandNote].filter(Boolean).join(" · "); });
-    ui.errandGuesses = shots.length ? shots : (ui.errandNote ? [inferOneFile({ name: ui.errandNote })] : []);
+    const prev = errandGuessList();
+    ui.errandGuesses = prev.concat(shots);
     ui.errandGuess = ui.errandGuesses[0] || null;
     const got = await absorbUploadFiles(files, "errand");
     errandPhoto.value = "";
     const box = document.getElementById("errand-absorb");
     if (box) box.textContent = got.line || "";
     refreshErrandGuessBox();
-    toast(ui.errandGuess && ui.errandGuess.title ? ("預判：" + ui.errandGuess.title) : (got.line || "已吸收檔案"));
+    toast(shots.length ? ("已加入 " + shots.length + " 張，共 " + ui.errandGuesses.length + " 張") : (got.line || "已吸收檔案"));
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
     btn.onclick = e => {
