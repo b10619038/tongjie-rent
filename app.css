@@ -1795,6 +1795,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .book-type.out, .book-type option[value="out"] { color: #c45c4a; font-weight: 800; }
 .led-in { color: var(--teal); }
 .led-out { color: #c45c4a; }
+.led-trip { color: #1d4e89; }
 .notify-mask {
   position: fixed; inset: 0; z-index: 8000;
   background: var(--mask, rgba(255,255,255,.72));
