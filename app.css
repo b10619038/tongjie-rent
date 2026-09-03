@@ -1708,7 +1708,53 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .cal-cell .in { font-size: 10px; color: #2f6b3c; }
 .cal-cell .out { font-size: 10px; color: #b42318; }
 .cal-cell .mark { font-size: 10px; color: var(--teal); font-weight: 800; }
-.cal-day { margin-top: 12px; display: grid; gap: 8px; }
+.cal-day { margin-top: 12px; display: grid; gap: 0; }
+.led-line {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0 !important;
+  overflow: visible !important;
+  background: transparent;
+  cursor: pointer;
+}
+.led-line:last-child { border-bottom: 0; }
+.led-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.led-head b {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: normal;
+}
+.led-note {
+  color: var(--muted);
+  white-space: normal !important;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.led-del {
+  flex: 0 0 auto;
+  width: auto !important;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  background: none;
+  border: 0;
+  border-radius: 0 !important;
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
 .cal-form { margin-top: 12px; display: grid; gap: 8px; position: relative; z-index: 6; isolation: isolate; pointer-events: auto !important; }
 #book-form input,
 #book-form select {
@@ -2362,6 +2408,10 @@ img.avatar { object-fit: cover; display: block; }
 
 .role-btn, .room-row, .clickable, .card.item, .issue-opt, .mini.clickable, [data-room] {
   border-radius: 22px; overflow: hidden;
+}
+.led-line.clickable {
+  border-radius: 0;
+  overflow: visible;
 }
 .card.card-body.clickable { overflow: visible; }
 .ghost, .tab, .nav button, .linkish, .section-title [data-page], .btn-navy {

@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-16-25";
-const APP_EDIT_COUNT = 586;
+const APP_STAMP = "2026-09-03-16-32";
+const APP_EDIT_COUNT = 587;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["強制退租保留日曆繳費紀錄；測試房 7652 退租會一併清掉該房帳"] },
+  { ver: APP_STAMP, items: ["總覽日曆進出帳改成條例，拿掉橢圓圖卡避免壓到進帳文字"] },
+  { ver: "2026-09-03-16-25", items: ["強制退租保留日曆繳費紀錄；測試房 7652 退租會一併清掉該房帳"] },
   { ver: "2026-09-03-16-18", items: ["不足月繳費改記日拆金額，租客圖卡現任下方顯示未足月租金"] },
   { ver: "2026-09-03-16-10", items: ["第一份房屋租賃契約書封面拿掉不足月（日拆）字樣"] },
   { ver: "2026-09-03-16-05", items: ["不足月新客顯示不足月未繳、到期請馬上繳費，日拆註解換行，下月恢復正常"] },
@@ -772,7 +773,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0137") return;
+    if (!m || !m[1] || m[1] === "0138") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -8749,12 +8750,14 @@ function bindReportViewSeg() {
 function calDayListHtml(selected, rangeLabel, extra) {
   return `<div class="small">${rangeLabel}${extra || ""}</div>
     ${selected.length ? selected.map(x => `
-      <div class="mini clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
-        <b>${x.type === "memo"
+      <div class="led-line clickable" data-edit-led="${x.id}" data-edit-src="${x.source}">
+        <div class="led-head">
+          <b>${x.type === "memo"
           ? `<span class="led-in">行程</span> · ${escapeHtml(x.note || "記下的事")}`
           : `<span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}`}</b>
-        <span>${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.cycle ? "本月工作" : "工作助手記下") : (x.note || "")))}</span>
-        ${x.canDel ? `<button type="button" class="ghost" data-del-book="${x.id}" style="width:auto;margin-top:6px">刪除</button>` : ""}
+          ${x.canDel ? `<button type="button" class="led-del" data-del-book="${x.id}">刪除</button>` : ""}
+        </div>
+        <span class="led-note">${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.cycle ? "本月工作" : "工作助手記下") : (x.note || "")))}</span>
       </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
 }
 function refreshCalSearchLive() {
