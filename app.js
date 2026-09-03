@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-15-20";
-const APP_EDIT_COUNT = 578;
+const APP_STAMP = "2026-09-03-15-28";
+const APP_EDIT_COUNT = 579;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["不足月合約當月發票開日拆金額，次月自動改開一年約月租"] },
+  { ver: APP_STAMP, items: ["開立發票總覽跟當月合約同步：不足月開日拆，次月改一年約，各裝置同一張表"] },
+  { ver: "2026-09-03-15-20", items: ["不足月合約當月發票開日拆金額，次月自動改開一年約月租"] },
   { ver: "2026-09-03-15-05", items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
   { ver: "2026-09-03-14-50", items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
   { ver: "2026-09-03-14-40", items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
@@ -764,7 +765,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0129") return;
+    if (!m || !m[1] || m[1] === "0130") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2305,6 +2306,7 @@ function normalize(data) {
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
+  try { ensureStudioLeasePacks(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -3643,6 +3645,10 @@ function ingestPaidCloud(raw) {
             officialAt: Number(src.officialAt) || 0,
             leaseStart: src.leaseStart || "",
             leaseEnd: src.leaseEnd || "",
+            leases: Array.isArray(src.leases) ? src.leases : [],
+            stubRent: Number(src.stubRent) || 0,
+            rent: Number(src.rent) || 0,
+            invoiceBuyer: src.invoiceBuyer || "",
             loginRevoked: !!src.loginRevoked,
             sessionEnded: !!src.sessionEnded,
             clearedApply: !!src.clearedApply,
@@ -3673,6 +3679,10 @@ function ingestPaidCloud(raw) {
         if (Number(src.officialAt) > (Number(t.officialAt) || 0)) t.officialAt = src.officialAt;
         if (src.leaseStart) t.leaseStart = src.leaseStart;
         if (src.leaseEnd) t.leaseEnd = src.leaseEnd;
+        if (Array.isArray(src.leases) && src.leases.length) t.leases = src.leases;
+        if (src.stubRent != null && src.stubRent !== "") t.stubRent = Number(src.stubRent) || 0;
+        if (src.rent != null && src.rent !== "") t.rent = Number(src.rent) || t.rent;
+        if (src.invoiceBuyer) t.invoiceBuyer = src.invoiceBuyer;
         if (src.name) t.name = src.name;
         if (src.phone) t.phone = src.phone;
         if (src.roomId) t.roomId = src.roomId;
@@ -3738,6 +3748,10 @@ function moneyCloudBlob() {
       officialAt: Number(t.officialAt) || 0,
       leaseStart: t.leaseStart || "",
       leaseEnd: t.leaseEnd || "",
+      leases: Array.isArray(t.leases) ? t.leases : [],
+      stubRent: Number(t.stubRent) || 0,
+      rent: Number(t.rent) || 0,
+      invoiceBuyer: t.invoiceBuyer || "",
       phone: t.phone || ""
     })),
     books: (state.books || []).map(b => {
@@ -7192,18 +7206,25 @@ function leaseDaysLeft(end) {
   n.setHours(0, 0, 0, 0);
   return Math.round((t - n) / 86400000);
 }
+function studioInvoiceEligible(t) {
+  if (!t || t.former || t.demo || t.placeholder || t.loginRevoked || t.sessionEnded) return false;
+  if (!String(t.name || "").trim()) return false;
+  if (t.applyPending) return false;
+  return true;
+}
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const paid = !!(t && paidThisMonth(t));
   const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
-  const invoiceYmd = paid ? ((t.paidYm || payYmNow()) + "-01") : "";
-  const billYm = (t && t.paidYm) || payYmNow();
+  const billYm = (paid && t.paidYm) || payYmNow();
+  const invoiceYmd = paid ? (billYm + "-01") : "";
   const bankKey = tenantPayBankKey(t || info, room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
-  const rent = tenantRentForYm(t, room, billYm, info);
+  const part = leasePartForYm(t, room, billYm);
+  const rent = part && Number(part.rent) > 0 ? Number(part.rent) : tenantRentForYm(t, room, billYm, info);
   const note = String((t && t.note) || "") + " " + String(info.note || "");
-  const start = (t && t.leaseStart) || info.leaseStart || "";
-  const end = (t && t.leaseEnd) || info.leaseEnd || "";
+  const start = (part && part.start) || (t && t.leaseStart) || info.leaseStart || "";
+  const end = (part && part.end) || (t && t.leaseEnd) || info.leaseEnd || "";
   return {
     remitYmd: remitYmd || "",
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
@@ -7216,7 +7237,8 @@ function studioInvoiceRow(no, room, t, info) {
     start: rocSlash(start),
     end: rocSlash(end),
     left: leaseDaysLeft(end),
-    renew: /已續約/.test(note) || String(no) === "7632"
+    renew: /已續約/.test(note) || String(no) === "7632",
+    stub: !!(part && part.kind === "stub")
   };
 }
 function invoiceOverviewRows(kind) {
@@ -7224,8 +7246,7 @@ function invoiceOverviewRows(kind) {
   const seen = new Set();
   const rows = [];
   (state.tenants || []).forEach(t => {
-    if (!t || t.former || t.demo || t.incoming || t.prospect || t.placeholder || t.loginRevoked || t.sessionEnded) return;
-    if (!String(t.name || "").trim()) return;
+    if (!studioInvoiceEligible(t)) return;
     const room = (state.rooms || []).find(r => r && r.id === t.roomId);
     if (!room || room.demo || roomIsFactory(room) || room.status === "office") return;
     const no = String(room.no || "");
@@ -7242,7 +7263,7 @@ function invoiceOverviewRows(kind) {
     if (!info || !info.name) return;
     const room = (state.rooms || []).find(r => String(r.no) === String(no));
     if (!room || room.demo) return;
-    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming && !x.loginRevoked);
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && studioInvoiceEligible(x) && !x.demo);
     if (!t && room.status === "vacant") return;
     seen.add(String(no));
     rows.push(studioInvoiceRow(no, room, t, info));
@@ -7417,7 +7438,7 @@ function drawInvoiceOverviewCanvas(rows, kind) {
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
   ctx.font = font("500 18px");
-  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。發票日期為租金所屬月份1日。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
+  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。發票日期為租金所屬月份1日。不足月當月開日拆金額，次月起開一年約月租。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
   ctx.textAlign = "left";
   return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
 }
@@ -7737,6 +7758,14 @@ function tenantLeaseParts(t, r) {
   if (!start) return [];
   return studioLeasePack(start, studioContractRent(t, r)).parts;
 }
+function leasePartForYm(t, r, ym) {
+  const y = String(ym || payYmNow()).slice(0, 7);
+  return (tenantLeaseParts(t, r) || []).find(p => {
+    const a = String(p.start || "").slice(0, 7);
+    const b = String(p.end || "").slice(0, 7);
+    return a && b && y >= a && y <= b;
+  }) || null;
+}
 function applyStudioLeasePack(t, room, startYmd) {
   if (!t) return null;
   const start = ymdOf(startYmd) || ymdOf(t.leaseStart);
@@ -7748,17 +7777,20 @@ function applyStudioLeasePack(t, room, startYmd) {
   t.stubRent = ((pack.parts.find(x => x.kind === "stub") || {}).rent) || 0;
   return pack;
 }
+function ensureStudioLeasePacks(data) {
+  if (!data) return;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.placeholder) return;
+    const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+    if (!room || room.demo || roomIsFactory(room) || room.status === "office") return;
+    if (Array.isArray(t.leases) && t.leases.length) return;
+    if (!ymdOf(t.leaseStart)) return;
+    applyStudioLeasePack(t, room, t.leaseStart);
+  });
+}
 function tenantRentForYm(t, r, ym, info) {
-  const y = String(ym || payYmNow()).slice(0, 7);
-  const parts = tenantLeaseParts(t, r);
-  if (parts && parts.length) {
-    const hit = parts.find(p => {
-      const a = String(p.start || "").slice(0, 7);
-      const b = String(p.end || "").slice(0, 7);
-      return a && b && y >= a && y <= b;
-    });
-    if (hit && Number(hit.rent) > 0) return Number(hit.rent);
-  }
+  const part = leasePartForYm(t, r, ym);
+  if (part && Number(part.rent) > 0) return Number(part.rent);
   return Number(r && r.rent) || Number(t && t.rent) || Number(info && info.rent) || studioContractRent(t, r) || 0;
 }
 function leasePackSummaryHtml(pack, monthly) {
