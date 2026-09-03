@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-17-05";
-const APP_EDIT_COUNT = 589;
+const APP_STAMP = "2026-09-03-17-12";
+const APP_EDIT_COUNT = 590;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["跑業務可一次上傳很多本簿子，之後再傳會接在後面"] },
+  { ver: APP_STAMP, items: ["空房前任改顯示真正上一任並雲端同步；7652 前任為小芬，測試入住不覆蓋"] },
+  { ver: "2026-09-03-17-05", items: ["跑業務可一次上傳很多本簿子，之後再傳會接在後面"] },
   { ver: "2026-09-03-16-38", items: ["日曆行程改成藍色，和進帳綠色、出帳紅色分開"] },
   { ver: "2026-09-03-16-32", items: ["總覽日曆進出帳改成條例，拿掉橢圓圖卡避免壓到進帳文字"] },
   { ver: "2026-09-03-16-25", items: ["強制退租保留日曆繳費紀錄；測試房 7652 退租會一併清掉該房帳"] },
@@ -775,7 +776,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0140") return;
+    if (!m || !m[1] || m[1] === "0141") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1319,8 +1320,12 @@ function sameTenantName(a, b) {
   if (!ka || !kb) return false;
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
+function isDisplayFormer(x) {
+  if (!x || !x.former || x.demo || x.placeholder || x.practiceStay || x.cancelledApply || x.prospect || x.incoming) return false;
+  return !!String(x.name || "").trim();
+}
 function formerTenantsOf(roomId, currentName) {
-  const list = (state.tenants || []).filter(x => x && x.roomId === roomId && x.former && String(x.name || "").trim());
+  const list = (state.tenants || []).filter(x => x && x.roomId === roomId && isDisplayFormer(x));
   const byName = new Map();
   list.forEach(x => {
     const k = personKey(x.name);
@@ -1445,7 +1450,7 @@ const FORMER_STUDIO = {
   "7051": [{ name: "楊旻憲", leftOn: "2026-03-01", phone: "0903-045-123", note: "換房至 7032，7051 現為空房" }],
   "7242": [{ name: "陳智泓", leftOn: "2025-11-30", note: "換房至 7642" }],
   "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }],
-  "7231": [{ name: "林科承、朱宣羽", leftOn: "2026-09-02", phone: "0968-887-012／0982-606-649", note: "115/9/2 最新名單已無此房，改空房" }]
+  "7652": [{ name: "小芬", leftOn: "2026-09-03", note: "不足月後退租。7652 為測試空房，之後測試入住不覆蓋這筆前任。" }]
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).filter(([, v]) => v && v.name).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -3151,6 +3156,7 @@ function ensureStudioTenant(data, no) {
 }
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
+  let dirty = false;
   Object.keys(FORMER_STUDIO || {}).forEach(no => {
     const room = data.rooms.find(r => r.no === no);
     if (!room) return;
@@ -3163,6 +3169,9 @@ function applyFormerStudio(data) {
         if (f.phone) hit.phone = f.phone;
         if (f.note) hit.note = f.note;
         if (f.idNo) hit.idNo = f.idNo;
+        hit.former = true;
+        hit.practiceStay = false;
+        hit.cancelledApply = false;
         return;
       }
       data.tenants.push({
@@ -3175,10 +3184,28 @@ function applyFormerStudio(data) {
         idNo: f.idNo || "",
         note: f.note || "",
         dueDay: 1,
-        paid: true
+        paid: true,
+        edited: true,
+        editedAt: Date.now()
       });
+      dirty = true;
     });
   });
+  hidePracticeFormers(data);
+  if (dirty) try { markCloudDirty(); } catch {}
+}
+function hidePracticeFormers(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  let dirty = false;
+  (data.tenants || []).forEach(t => {
+    if (!t) return;
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    if (isPracticeStudioNo(r && r.no) && t.former && !sameTenantName(t.name, "小芬")) {
+      if (!t.practiceStay) { t.practiceStay = true; t.edited = true; t.editedAt = Date.now(); dirty = true; }
+    }
+    if (t.cancelledApply && t.former) { t.former = false; t.edited = true; t.editedAt = Date.now(); dirty = true; }
+  });
+  if (dirty) try { markCloudDirty(); } catch {}
 }
 function loadLocal() {
   try {
@@ -3371,7 +3398,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -9982,7 +10009,8 @@ function cancelIncomingTenant(inc) {
   const r = (state.rooms || []).find(x => x && x.id === inc.roomId)
     || (state.rooms || []).find(x => x && String(x.no) === String(inc.roomNo || ""));
   const now = Date.now();
-  inc.former = true;
+  inc.cancelledApply = true;
+  inc.former = false;
   inc.incoming = false;
   inc.prospect = false;
   inc.applyPending = false;
@@ -10081,6 +10109,7 @@ function forceVacateTenant(t) {
     x.editedAt = now;
     x.eSignRev = now;
     x.eSign = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+    if (isPracticeStudioNo(no)) x.practiceStay = true;
   });
   try {
     if (!state.eSigns || typeof state.eSigns !== "object") state.eSigns = {};
