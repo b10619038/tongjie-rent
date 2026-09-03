@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-17-32";
-const APP_EDIT_COUNT = 593;
+const APP_STAMP = "2026-09-03-17-38";
+const APP_EDIT_COUNT = 594;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -38,6 +38,22 @@ function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPre
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
 function isDemoFactoryRoom(r) { return !!(r && (r.id === "r-demo-f" || r.no === "F0000" || (r.demo && r.kind === "factory"))); }
+function isVacatedTenant(t) {
+  if (!t) return true;
+  return !!(t.former || t.loginRevoked || t.sessionEnded || t.clearedApply || t.cancelledApply || t.practiceStay);
+}
+function isDashTenant(t) {
+  if (!t || isDemoTenant(t) || isVacatedTenant(t) || t.incoming || t.prospect || t.placeholder) return false;
+  if (!String(t.name || "").trim()) return false;
+  try {
+    const r = (typeof state !== "undefined" && (state.rooms || []).find(x => x && x.id === t.roomId));
+    if (isPracticeStudioNo(r && r.no)) {
+      if (r.status === "vacant") return false;
+      if (r.tenantId && r.tenantId !== t.id) return false;
+    }
+  } catch {}
+  return true;
+}
 function isDemoTenant(t) {
   if (!t) return false;
   if (t.demo || t.id === "t-demo" || t.id === "t-demo-f" || t.id === "t-dev-preview") return true;
@@ -64,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["新增一筆改成進帳對金額、統潔對銀行"] },
+  { ver: APP_STAMP, items: ["7652 強制退租後不再出現繳費回報與年度水費；還在住才會記"] },
+  { ver: "2026-09-03-17-32", items: ["新增一筆改成進帳對金額、統潔對銀行"] },
   { ver: "2026-09-03-17-28", items: ["租客自己刪掉的公告，重開 APP 也不會再出現"] },
   { ver: "2026-09-03-17-20", items: ["已退租或已處理的入住申請不再重複通知其他裝置"] },
   { ver: "2026-09-03-17-12", items: ["空房前任改顯示真正上一任並雲端同步；7652 前任為小芬，測試入住不覆蓋"] },
@@ -780,7 +797,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0144") return;
+    if (!m || !m[1] || m[1] === "0145") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -3257,6 +3274,17 @@ function hidePracticeFormers(data) {
     const r = (data.rooms || []).find(x => x && x.id === t.roomId);
     if (isPracticeStudioNo(r && r.no) && t.former && !sameTenantName(t.name, "小芬")) {
       if (!t.practiceStay) { t.practiceStay = true; t.edited = true; t.editedAt = Date.now(); dirty = true; }
+    }
+    if (isPracticeStudioNo(r && r.no) && !t.former && !t.incoming && !t.prospect && !t.placeholder) {
+      const current = r.tenantId && t.id === r.tenantId && r.status !== "vacant";
+      if (!current && !sameTenantName(t.name, "小芬")) {
+        t.former = true;
+        t.practiceStay = true;
+        t.leftOn = t.leftOn || ymdOf(nowStamp());
+        t.edited = true;
+        t.editedAt = Date.now();
+        dirty = true;
+      }
     }
     if (t.cancelledApply && t.former) { t.former = false; t.edited = true; t.editedAt = Date.now(); dirty = true; }
   });
@@ -9704,7 +9732,7 @@ function waterDueSoon() {
     const today = ymdOf(nowStamp());
     const t0 = new Date(today + "T00:00:00").getTime();
     return (state.tenants || []).filter(t => {
-      if (!t || isDemoTenant(t) || !(t.name || "").trim()) return false;
+      if (!isDashTenant(t)) return false;
       const r = (state.rooms || []).find(x => x.id === t.roomId);
       if (!r || r.kind === "factory" || r.status === "office") return false;
       const water = String((r.utilities || {}).water || WATER_FEE_TEXT);
@@ -14887,8 +14915,8 @@ function adminDash() {
   const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
   const solarTotal = factories.length + STUDIO_BUILDINGS.length;
   const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
-  const unpaidTenants = state.tenants.filter(t => !t.paid && !t.former && !isDemoTenant(t));
-  const expiring = state.tenants.filter(t => !isDemoTenant(t)).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
+  const unpaidTenants = state.tenants.filter(t => isDashTenant(t) && !t.paid);
+  const expiring = state.tenants.filter(isDashTenant).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
   const fixes = {
     open: state.repairs.filter(x => x.status === "open" && !isDemoRepair(x)).length,
@@ -14960,8 +14988,8 @@ function adminDash() {
         }).join("") : `<div class="empty">本月已全部收款</div>`}
       </div>
       <div class="card card-body"><h2 class="dash-h">繳費回報</h2>
-        ${state.tenants.filter(t => t.paid && (t.paidVia || t.lineNotified)).length
-          ? state.tenants.filter(t => t.paid && (t.paidVia || t.lineNotified)).slice().sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || ""))).map(t => {
+        ${state.tenants.filter(t => isDashTenant(t) && t.paid && (t.paidVia || t.lineNotified)).length
+          ? state.tenants.filter(t => isDashTenant(t) && t.paid && (t.paidVia || t.lineNotified)).slice().sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || ""))).map(t => {
               const room = state.rooms.find(x => x.id === t.roomId);
               return `<div class="mini clickable" data-admin-room="${t.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(t.name)}</b><span>${t.lineNotified ? "LINE 已通知" : "App 回報"}</span></div>`;
             }).join("")
