@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-16-18";
-const APP_EDIT_COUNT = 585;
+const APP_STAMP = "2026-09-03-16-25";
+const APP_EDIT_COUNT = 586;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["不足月繳費改記日拆金額，租客圖卡現任下方顯示未足月租金"] },
+  { ver: APP_STAMP, items: ["強制退租保留日曆繳費紀錄；測試房 7652 退租會一併清掉該房帳"] },
+  { ver: "2026-09-03-16-18", items: ["不足月繳費改記日拆金額，租客圖卡現任下方顯示未足月租金"] },
   { ver: "2026-09-03-16-10", items: ["第一份房屋租賃契約書封面拿掉不足月（日拆）字樣"] },
   { ver: "2026-09-03-16-05", items: ["不足月新客顯示不足月未繳、到期請馬上繳費，日拆註解換行，下月恢復正常"] },
   { ver: "2026-09-03-15-55", items: ["租客主畫面本月租金會顯示不足月日拆，下個月自動改成正常月租"] },
@@ -771,7 +772,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0136") return;
+    if (!m || !m[1] || m[1] === "0137") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6031,6 +6032,22 @@ function tenantPaidOnValue(t) {
   if (t && t.paid && ymd && ymd.slice(0, 7) === payYmNow()) return ymd;
   return monthDueYmd();
 }
+function isPracticeStudioNo(no) {
+  return String(no || "") === "7652";
+}
+function bookBelongsRoomNo(b, no) {
+  if (!b || !no) return false;
+  if (String(b.roomNo || "") === String(no)) return true;
+  return new RegExp("(^|[\\s　])" + String(no) + "([\\s　]|$)").test(String(b.note || ""));
+}
+function purgePracticeRoomLedger(data, no) {
+  if (!data || !isPracticeStudioNo(no)) return 0;
+  const gone = (data.books || []).filter(b => bookBelongsRoomNo(b, no)).map(b => b.id);
+  if (!gone.length) return 0;
+  data.ledgerGone = unionGone(data.ledgerGone, gone);
+  data.books = (data.books || []).filter(b => b && gone.indexOf(b.id) < 0);
+  return gone.length;
+}
 function rentAutoBookId(t, ym) {
   return "bk-rent-" + String(t && t.id || "") + "-" + (ym || payYmNow());
 }
@@ -6077,8 +6094,9 @@ function dropFactoryRentAutos(data) {
 function upsertRentAutoBookOn(data, t) {
   if (!data || !t) return;
   const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+  const practice = isPracticeStudioNo(room && room.no);
   if (!paidThisMonth(t) || isDemoTenant(t) || !room || room.demo || room.status === "office" || roomIsFactory(room) || studioMirrorHostNo(room.no)) {
-    dropRentAutoBookOn(data, t);
+    if (practice || isDemoTenant(t) || (room && room.demo)) dropRentAutoBookOn(data, t);
     return;
   }
   const amount = thisMonthRentOf(t, room) || Number(room.rent) || Number(t.rent) || 0;
@@ -6140,8 +6158,11 @@ function syncPaidRentBooks(data) {
     const factory = roomIsFactory(room) || (tenant && factoryRooms.has(tenant.roomId));
     if (factory) { gone.push(b.id); return false; }
     if (keep.has(b.id)) return true;
-    gone.push(b.id);
-    return false;
+    if (isPracticeStudioNo(room && room.no) || (room && room.demo) || (tenant && isDemoTenant(tenant))) {
+      gone.push(b.id);
+      return false;
+    }
+    return true;
   });
   if (gone.length) data.ledgerGone = unionGone(data.ledgerGone, gone);
 }
@@ -9972,7 +9993,9 @@ function vacateConfirmHtml() {
   const name = t.name || "";
   const hint = (t.incoming || t.prospect)
     ? "這筆入住申請／交接會取消，該房會變空房或回到原租客。"
-    : "這位租客會立刻退租，無法再用姓名或電話登入，房間改為空房。";
+    : isPracticeStudioNo(no)
+      ? "7652 是測試房。強制退租後，日曆裡 7652 的繳費紀錄也會一併刪除。"
+      : "這位租客會立刻退租，無法再用姓名或電話登入，房間改為空房。日曆裡已入帳的繳費紀錄會保留。";
   return `<div class="install-mask" id="vacate-mask">
     <div class="install-sheet">
       <div class="label">強制退租</div>
@@ -10051,6 +10074,9 @@ function forceVacateTenant(t) {
   restoreLiveRoom(r);
   if (Array.isArray(state.notices) && r) {
     state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
+  }
+  if (isPracticeStudioNo(no)) {
+    try { purgePracticeRoomLedger(state, no); } catch {}
   }
   save();
   try { pushCloud(); } catch {}
