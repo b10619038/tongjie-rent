@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-15-55";
-const APP_EDIT_COUNT = 582;
+const APP_STAMP = "2026-09-03-16-05";
+const APP_EDIT_COUNT = 583;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客主畫面本月租金會顯示不足月日拆，下個月自動改成正常月租"] },
+  { ver: APP_STAMP, items: ["不足月新客顯示不足月未繳、到期請馬上繳費，日拆註解換行，下月恢復正常"] },
+  { ver: "2026-09-03-15-55", items: ["租客主畫面本月租金會顯示不足月日拆，下個月自動改成正常月租"] },
   { ver: "2026-09-03-15-48", items: ["強制退租會先跳出確認，確定後才執行"] },
   { ver: "2026-09-03-15-40", items: ["報修、公告、催繳、入住與退租關著 App 也會推播到後台與租客"] },
   { ver: "2026-09-03-15-28", items: ["開立發票總覽跟當月合約同步：不足月開日拆，次月改一年約，各裝置同一張表"] },
@@ -768,7 +769,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0133") return;
+    if (!m || !m[1] || m[1] === "0134") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6003,9 +6004,15 @@ function adminInvoice() {
   </div>`;
 }
 function statusLabel(s) { return { rented: "滿租", vacant: "空置", repair: "維修中", office: "辦公室" }[s] || s; }
-function payLabel(tenant) {
+function payLabel(tenant, room) {
   if (!tenant) return { text: "—", cls: "paid" };
-  return tenant.paid ? { text: "本月已繳", cls: "paid" } : { text: "本月未繳", cls: "unpaid" };
+  const stub = isStubMonthNow(tenant, room);
+  if (tenant.paid) return { text: stub ? "不足月已繳" : "本月已繳", cls: "paid" };
+  return { text: stub ? "不足月未繳" : "本月未繳", cls: "unpaid" };
+}
+function payChip(t, r, unpaid) {
+  if (unpaid) return { text: isStubMonthNow(t, r) ? "不足月未繳" : "本月未繳", cls: "unpaid" };
+  return payLabel(t, r);
 }
 function payYmNow() {
   const d = new Date();
@@ -6209,13 +6216,15 @@ function onTogglePayEvent(e) {
     const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
     if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
   }
-  btn.textContent = t.paid ? "本月已繳" : "本月未繳";
+  const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+  const pay = payLabel(t, room);
+  btn.textContent = pay.text;
   btn.classList.toggle("paid", !!t.paid);
   btn.classList.toggle("unpaid", !t.paid);
   btn.classList.remove("is-press");
   btn.classList.add("is-pop");
   ui.keepScroll = true;
-  toast(t.paid ? "已標為本月已繳" : "已標為本月未繳");
+  toast(t.paid ? ("已標為" + pay.text) : ("已標為" + pay.text));
   if (t.paid && !isDemoTenant(t)) {
     const room = (state.rooms || []).find(r => r && r.id === t.roomId);
     try { pushPhoneNotify("本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} 本月租金已入帳`, room ? room.no : "tenants"); } catch {}
@@ -7826,12 +7835,18 @@ function thisMonthRentOf(t, r) {
 function thisMonthRentPart(t, r) {
   return leasePartForYm(t, r, payYmNow());
 }
-function thisMonthRentLine(t, r) {
+function isStubMonthNow(t, r) {
+  if (!t) return false;
+  if (!r) r = ((typeof state !== "undefined" && state.rooms) || []).find(x => x && x.id === t.roomId);
+  const part = thisMonthRentPart(t, r);
+  return !!(part && part.kind === "stub");
+}
+function thisMonthRentLineHtml(t, r) {
   const ym = payYmNow();
   const y = Number(ym.slice(0, 4));
   const m = Number(ym.slice(5, 7));
-  const part = thisMonthRentPart(t, r);
-  return y + " 年 " + m + " 月租金" + (part && part.kind === "stub" ? "（不足月日拆）" : "");
+  const stub = isStubMonthNow(t, r);
+  return escapeHtml(y + " 年 " + m + " 月租金") + (stub ? `<span class="rent-sub">（不足月日拆）</span>` : "");
 }
 function leasePackSummaryHtml(pack, monthly) {
   if (!pack || !pack.parts || !pack.parts.length) return "";
@@ -11543,7 +11558,8 @@ function announceCardsHtml() {
 
 function homeView() {
   const t = me(); const r = myRoom();
-  const left = daysLeft(t.leaseEnd); const pay = payLabel(t);
+  const left = daysLeft(t.leaseEnd); const pay = payLabel(t, r);
+  const stubNow = isStubMonthNow(t, r);
   const hasAnn = visibleAnnouncements().length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
   return `
@@ -11569,16 +11585,9 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
-          <div class="stat"><div class="label">${thisMonthRentPart(t, r) && thisMonthRentPart(t, r).kind === "stub" ? "本月租金（日拆）" : "本月租金"}</div><b>${thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "—"}</b></div>
+          <div class="stat"><div class="label">本月租金${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "—"}</b></div>
         </div>
-        ${(() => {
-          const part = thisMonthRentPart(t, r);
-          const monthly = studioContractRent(t, r);
-          if (part && part.kind === "stub" && monthly) {
-            return `<div class="small" style="margin-top:8px">下個月起每月 ${money(monthly)}</div>`;
-          }
-          return "";
-        })()}
+        ${stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : ""}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? `<div class="esign-cta" style="pointer-events:none">已簽約　等待後台確認</div>`
@@ -11588,10 +11597,10 @@ function homeView() {
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
-        <div class="row"><span class="k">${escapeHtml(thisMonthRentLine(t, r))}</span><span class="v">${thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "—"}</span></div>
+        <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "—"}</span></div>
         <div class="row"><span class="k">狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
         <div class="row"><span class="k">實際匯款日</span><span class="v">${ymdOf(t.remitOn) ? rocSlash(t.remitOn) : (paidThisMonth(t) && ymdOf(t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")}</span></div>
-        <div class="row"><span class="k">到期日</span><span class="v">每月 ${rentDueDay(t)} 日前</span></div>
+        <div class="row"><span class="k">到期日</span><span class="v">${stubNow ? "請馬上繳費" : ("每月 " + rentDueDay(t) + " 日前")}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
@@ -11646,6 +11655,8 @@ function payView() {
   const paid = !!(t && t.paid);
   const pack = tenantPayAccounts(t, r);
   const co = companyInfo();
+  const stubNow = isStubMonthNow(t, r);
+  const pay = payLabel(t, r);
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
@@ -11654,11 +11665,11 @@ function payView() {
       ${tenantNudgeNoteHtml(t)}
       ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
-        <div class="small">${thisMonthRentPart(t, r) && thisMonthRentPart(t, r).kind === "stub" ? "本月應繳（不足月日拆）" : "本月應繳"}</div>
+        <div class="small">本月應繳${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
         <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(thisMonthRentOf(t, r))}</div>
-        ${thisMonthRentPart(t, r) && thisMonthRentPart(t, r).kind === "stub" && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}</div>` : ""}
+        ${stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : ""}
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
-        <div style="margin-top:10px"><span class="pay-pill ${paid ? "paid" : "unpaid"}">${paid ? "本月已繳" : "本月未繳"}</span>
+        <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
         <div class="row" style="margin-top:10px"><span class="k">實際匯款日</span><span class="v">${ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")}</span></div>
       </div>
@@ -11975,8 +11986,8 @@ function leaseView() {
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <div class="row"><span class="k">剩餘天數</span><span class="v">${left == null ? "—" : left + " 天"}</span></div>
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
-        <div class="row"><span class="k">${thisMonthRentPart(t, r) && thisMonthRentPart(t, r).kind === "stub" ? "本月應繳（日拆）" : "每月租金"}</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>
-        ${thisMonthRentPart(t, r) && thisMonthRentPart(t, r).kind === "stub" ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
+        <div class="row wrap"><span class="k">${isStubMonthNow(t, r) ? `本月應繳<span class="rent-sub">（不足月日拆）</span>` : "每月租金"}</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>
+        ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
       </div>
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
       <div class="card card-body slide-left rules">${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>
@@ -15148,7 +15159,7 @@ function tenantEntryDetailsHtml(kind, entry) {
   const foldId = kind === "factory" ? "fg-" + entry.key : t.id;
   const open = !!(ui.tenantOpen && ui.tenantOpen[foldId]);
   const unpaid = tenants.some(x => !x.paid);
-  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  const pay = payChip(t, r, unpaid);
   const nos = rooms.map(x => x.no).filter(Boolean).join("、") || (r ? r.no : "—");
   const sites = [...new Set(rooms.map(x => x.group).filter(Boolean))].join("、");
   const roomRentLine = (tt, rr) => {
@@ -15242,7 +15253,7 @@ function tenantEntryCardHtml(kind, entry) {
   if (!t) return "";
   const foldId = t.id;
   const unpaid = tenants.some(x => !x.paid);
-  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  const pay = payChip(t, r, unpaid);
   const inc = r && incomingOf(r.id);
   const unread = !!(inc && inc.applyUnread);
   return `<div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
@@ -15689,7 +15700,7 @@ function tenantSheetView() {
   const t = entry.tenants[0];
   const r = (entry.rooms && entry.rooms[0]) || (state.rooms || []).find(x => x.id === t.roomId);
   const unpaid = entry.tenants.some(x => !x.paid);
-  const pay = unpaid ? { text: "本月未繳", cls: "unpaid" } : payLabel(t);
+  const pay = payChip(t, r, unpaid);
   const enter = ui.sheetEnter ? " tenant-sheet-enter" : "";
   ui.sheetEnter = false;
   return `<div class="admin-grid list tenant-sheet-page${enter}">
