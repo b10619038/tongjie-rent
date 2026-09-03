@@ -3150,7 +3150,9 @@ img.avatar { object-fit: cover; display: block; }
 a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-box; }
 
 .move-in-page.move-in-enter .move-head,
-.move-in-page.move-in-enter .back.move-head,
+.move-in-page.move-in-enter .back.move-head {
+  animation: moveHeadIn .42s cubic-bezier(.22,.82,.22,1) both;
+}
 .move-in-page.move-in-enter .move-card {
   animation: moveSheetIn .42s cubic-bezier(.22,.82,.22,1) both;
 }
@@ -3159,6 +3161,10 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 .move-in-page.move-in-enter .move-card.c3 { animation-delay: .14s; }
 .move-in-page.move-in-enter .move-card.c4 { animation-delay: .19s; }
 .move-in-page.move-in-enter .move-card.c5 { animation-delay: .24s; }
+@keyframes moveHeadIn {
+  from { transform: translateX(-72px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 @keyframes moveSheetIn {
   from { transform: translateX(72px); opacity: 0; }
   to { transform: none; opacity: 1; }
