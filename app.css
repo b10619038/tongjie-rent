@@ -464,7 +464,9 @@ input, textarea, select {
 .keep-still .slide-up-card,
 .keep-still .room-seq,
 .keep-still .spin-in,
-.keep-still .guide-slide { animation: none !important; }
+.keep-still .guide-slide,
+.keep-still .move-card,
+.keep-still .move-head { animation: none !important; }
 .slide-up-card { animation: slideUpCard .8s ease both; }
 @keyframes slideRight { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes slideLeft { from { transform: translateX(28px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -3146,3 +3148,82 @@ img.avatar { object-fit: cover; display: block; }
   background: rgba(255,255,255,.92);
 }
 a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-box; }
+
+.move-in-page.move-in-enter .move-head,
+.move-in-page.move-in-enter .back.move-head,
+.move-in-page.move-in-enter .move-card {
+  animation: moveSheetIn .42s cubic-bezier(.22,.82,.22,1) both;
+}
+.move-in-page.move-in-enter .move-card.c1 { animation-delay: .04s; }
+.move-in-page.move-in-enter .move-card.c2 { animation-delay: .09s; }
+.move-in-page.move-in-enter .move-card.c3 { animation-delay: .14s; }
+.move-in-page.move-in-enter .move-card.c4 { animation-delay: .19s; }
+.move-in-page.move-in-enter .move-card.c5 { animation-delay: .24s; }
+@keyframes moveSheetIn {
+  from { transform: translateX(72px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.move-room-btn {
+  width: 100%;
+  min-height: 52px;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: var(--card);
+  color: var(--ink);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+.move-room-ph { color: var(--muted); grid-column: 1 / -1; }
+.move-pick-no { font-weight: 700; letter-spacing: .04em; }
+.move-pick-dates {
+  text-align: right;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+  justify-self: end;
+}
+.move-pick-dates span { display: block; }
+.move-pick-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(23,33,31,.38);
+  z-index: 60;
+}
+.move-pick-sheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 92vw);
+  background: var(--paper);
+  overflow: auto;
+  padding: 18px 10px calc(24px + var(--safe-b, 0px));
+  animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
+  box-shadow: -12px 0 28px rgba(23,33,31,.12);
+}
+.move-pick-title {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 8px 14px 12px;
+}
+.move-pick-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.move-pick-row.on { background: var(--ok-soft); }
+.move-pick-row .move-pick-dates { font-size: 13px; }

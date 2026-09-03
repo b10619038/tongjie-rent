@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-01-40";
-const APP_EDIT_COUNT = 572;
+const APP_STAMP = "2026-09-03-13-08";
+const APP_EDIT_COUNT = 573;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["發票買受人改跟現任／新租客名字雲端同步"] },
+  { ver: APP_STAMP, items: ["我要入住圖卡從右邊滑入，房號選單入住日期靠右對齊"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
   { ver: "2026-08-31-13-52", items: ["設定新增公司門禁密碼"] },
@@ -757,7 +757,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0123") return;
+    if (!m || !m[1] || m[1] === "0124") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -10812,6 +10812,27 @@ function desktopInstallCardHtml() {
     <button class="btn-navy" id="install-desktop" type="button">下載安裝電腦版</button>
   </div>`;
 }
+function moveRoomMeta(x, dummy) {
+  const o = roomCurrentTenant(x);
+  const start = roomSoonestStart(x, dummy || { incoming: true });
+  return { vacant: !o, end: (o && o.leaseEnd) || "", start, no: x.no || "" };
+}
+function applyMoveRoom(id) {
+  captureMoveInDraft();
+  const d = ensureMoveIn();
+  d.roomId = id || "";
+  d.signAppointAt = "";
+  const r = (state.rooms || []).find(x => x.id === d.roomId);
+  if (r) {
+    const range = continueLeaseRange(r, { incoming: true });
+    d.leaseStart = range.start;
+    d.leaseEnd = range.end;
+  }
+  ui.signCalYear = 0;
+  ui.signCalMonth = 0;
+  ui.moveRoomPick = false;
+  render();
+}
 function moveInView() {
   const d = ensureMoveIn();
   const rooms = moveInRooms();
@@ -10836,31 +10857,52 @@ function moveInView() {
   const slots = r ? nextSignSlots(8, d.signAppointAt, win.min, ymdOf(d.signAppointAt) || day) : [];
   const fastSlot = r ? nextSignSlots(1, d.signAppointAt, win.min, "", win.maxFast)[0] : "";
   const occ = r ? roomCurrentTenant(r) : null;
-  const opts = [`<option value="">請選房號</option>`].concat(rooms.map(x => {
-    const o = roomCurrentTenant(x);
-    const start = roomSoonestStart(x, dummy);
-    const hint = !o ? "空房" : ("現約至 " + (o.leaseEnd || "—"));
-    return `<option value="${escapeHtml(x.id)}" ${d.roomId === x.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}　入住 ${start}</option>`;
-  })).join("");
-  return `<div class="gate">
-    <button class="back slide-right" id="back-gate" type="button">← 返回</button>
-    <div class="slide-right">
+  const enter = ui.moveEnter ? " move-in-enter" : "";
+  ui.moveEnter = false;
+  const selMeta = r ? moveRoomMeta(r, dummy) : null;
+  const pickRows = rooms.map(x => {
+    const m = moveRoomMeta(x, dummy);
+    const on = d.roomId === x.id ? " on" : "";
+    return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
+      <span class="move-pick-no">${escapeHtml(m.no)}</span>
+      <span class="move-pick-dates"><span>${m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—")}</span><span>入住 ${escapeHtml(m.start)}</span></span>
+    </button>`;
+  }).join("");
+  const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask" id="move-pick-mask">
+    <div class="move-pick-sheet" role="listbox">
+      <div class="move-pick-title">請選房號</div>
+      <button type="button" class="move-pick-row${d.roomId ? "" : " on"}" data-move-room="">
+        <span class="move-pick-no">不選</span>
+        <span class="move-pick-dates"><span>請選房號</span></span>
+      </button>
+      ${pickRows}
+    </div>
+  </div>` : "";
+  return `<div class="gate move-in-page${enter}">
+    <button class="back move-head" id="back-gate" type="button">← 返回</button>
+    <div class="move-head">
       <div class="logo">TONG JIE</div>
       <h1>我要入住</h1>
       <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽，後台會出現這間的新客。</p>
     </div>
-    <div class="card card-body slide-left" style="margin-top:12px;text-align:left">
+    <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
-      <label class="field"><span>房號</span><select id="move-room">${opts}</select></label>
+      <label class="field"><span>房號</span>
+        <button type="button" class="move-room-btn" id="move-room-open">
+          ${selMeta
+            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—")}</span><span>入住 ${escapeHtml(selMeta.start)}</span></span>`
+            : `<span class="move-room-ph">請選房號</span>`}
+        </button>
+      </label>
       ${r ? `<p class="small" style="margin:6px 0 0">${escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(null, r)))}</p>` : ""}
     </div>
-    <div class="card card-body slide-left" style="margin-top:12px;text-align:left">
+    <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
       <div class="label">基本資料</div>
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" /></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" /></label>
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="可之後再補" autocomplete="off" /></label>
     </div>
-    <div class="card card-body slide-left" style="margin-top:12px;text-align:left">
+    <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
       <p class="small" style="margin:0 0 8px">實體蓋章地址：${escapeHtml(STAMP_OFFICE)}。最快取 15 天內、其他房號還沒約的空檔。</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
@@ -10868,14 +10910,15 @@ function moveInView() {
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
         <p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>` : ""}
     </div>
-    <div class="card card-body slide-left" style="margin-top:12px;text-align:left">
+    <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
       <div class="label">合約起迄（一年）</div>
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）")) : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
       <label class="field"><span>起始日</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
       <label class="field"><span>截止日</span><input id="move-end" type="date" min="${escapeHtml(d.leaseStart || minStart)}" value="${escapeHtml(d.leaseEnd || cont.end)}" /></label>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-    <button class="btn-navy slide-left" id="move-submit" type="button" style="margin-top:16px;margin-bottom:28px">送出並進入預覽</button>
+    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:28px">送出並進入預覽</button>
+    ${pickSheet}
   </div>`;
 }
 function gateView() {
@@ -15730,7 +15773,15 @@ function tryForgot() {
 function bindGate() {
   bindHistoryBack();
   document.querySelectorAll("[data-go]").forEach(btn => {
-    btn.onclick = () => { ui.page = btn.dataset.go; ui.loginError = ""; ui.foundPass = null; render(); };
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.page = btn.dataset.go;
+      ui.loginError = "";
+      ui.foundPass = null;
+      if (ui.page === "move-in") ui.moveEnter = true;
+      render();
+    };
   });
   bindMoveInForm();
   const bioBtn = document.getElementById("bio-login");
@@ -16165,7 +16216,6 @@ function captureMoveInDraft() {
     const el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   };
-  if (document.getElementById("move-room")) d.roomId = val("move-room");
   if (document.getElementById("move-name")) d.name = val("move-name");
   if (document.getElementById("move-phone")) d.phone = val("move-phone");
   if (document.getElementById("move-idno")) d.idNo = val("move-idno");
@@ -16174,24 +16224,24 @@ function captureMoveInDraft() {
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
-  const roomSel = document.getElementById("move-room");
-  if (roomSel) {
-    roomSel.onchange = () => {
-      captureMoveInDraft();
-      const d = ensureMoveIn();
-      d.roomId = roomSel.value;
-      d.signAppointAt = "";
-      const r = (state.rooms || []).find(x => x.id === d.roomId);
-      if (r) {
-        const range = continueLeaseRange(r, { incoming: true });
-        d.leaseStart = range.start;
-        d.leaseEnd = range.end;
-      }
-      ui.signCalYear = 0;
-      ui.signCalMonth = 0;
-      render();
+  const openBtn = document.getElementById("move-room-open");
+  if (openBtn) openBtn.onclick = e => {
+    e.preventDefault();
+    captureMoveInDraft();
+    ui.moveRoomPick = true;
+    render();
+  };
+  const mask = document.getElementById("move-pick-mask");
+  if (mask) mask.onclick = e => {
+    if (e.target === mask) { ui.moveRoomPick = false; render(); }
+  };
+  document.querySelectorAll("[data-move-room]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      applyMoveRoom(btn.dataset.moveRoom || "");
     };
-  }
+  });
   ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -18653,7 +18703,15 @@ document.addEventListener("click", e => {
   const app = document.getElementById("app");
   if (!app || !app.contains(e.target)) return;
   const goBtn = e.target.closest("[data-go]");
-  if (goBtn && !ui.role) { ui.page = goBtn.dataset.go; ui.loginError = ""; render(); return; }
+  if (goBtn && !ui.role) {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.page = goBtn.dataset.go;
+    ui.loginError = "";
+    if (ui.page === "move-in") ui.moveEnter = true;
+    render();
+    return;
+  }
   const ntf = e.target.closest("#set-notify");
   if (ntf) {
     e.preventDefault();
