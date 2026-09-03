@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-15-28";
-const APP_EDIT_COUNT = 579;
+const APP_STAMP = "2026-09-03-15-40";
+const APP_EDIT_COUNT = 580;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["開立發票總覽跟當月合約同步：不足月開日拆，次月改一年約，各裝置同一張表"] },
+  { ver: APP_STAMP, items: ["報修、公告、催繳、入住與退租關著 App 也會推播到後台與租客"] },
+  { ver: "2026-09-03-15-28", items: ["開立發票總覽跟當月合約同步：不足月開日拆，次月改一年約，各裝置同一張表"] },
   { ver: "2026-09-03-15-20", items: ["不足月合約當月發票開日拆金額，次月自動改開一年約月租"] },
   { ver: "2026-09-03-15-05", items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
   { ver: "2026-09-03-14-50", items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
@@ -639,7 +640,7 @@ if ("serviceWorker" in navigator) {
       ui.updateNotes = true;
       try { render(); } catch {}
     }
-    if (e.data && e.data.type === "OPEN" && ui.role === "admin") {
+    if (e.data && e.data.type === "OPEN") {
       if (e.data.page) ui.page = e.data.page;
       try { persistUi(); render(); } catch {}
     }
@@ -765,7 +766,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0130") return;
+    if (!m || !m[1] || m[1] === "0131") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6213,6 +6214,10 @@ function onTogglePayEvent(e) {
   btn.classList.add("is-pop");
   ui.keepScroll = true;
   toast(t.paid ? "已標為本月已繳" : "已標為本月未繳");
+  if (t.paid && !isDemoTenant(t)) {
+    const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+    try { pushPhoneNotify("本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} 本月租金已入帳`, room ? room.no : "tenants"); } catch {}
+  }
   setTimeout(() => { btn.classList.remove("is-pop"); }, 180);
   setTimeout(() => { render(); }, 260);
 }
@@ -6751,7 +6756,8 @@ function subscribePushOnly() {
   });
 }
 async function enablePush(forceAsk) {
-  const force = forceAsk || (typeof ui !== "undefined" && ui.role === "admin");
+  const granted = (typeof Notification !== "undefined" && Notification.permission === "granted");
+  const force = forceAsk || (typeof ui !== "undefined" && ui.role === "admin") || granted;
   if (!isInstalledApp() && !force) return false;
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return false;
   if (Notification.permission === "denied") return false;
@@ -6822,9 +6828,28 @@ function showOsBanner(title, body, tag) {
   else viaPage();
   try { ringChime(); } catch {}
 }
+function notifyExtra(title, target) {
+  const map = {
+    "入住申請": { tag: "tongjie-apply", page: "tenants" },
+    "新報修": { tag: "tongjie-repair", page: "tenants" },
+    "繳費回報": { tag: "tongjie-pay", page: "tenants" },
+    "續約申請": { tag: "tongjie-renew", page: "tenants" },
+    "電子合約已簽署": { tag: "tongjie-sign", page: "tenants" },
+    "管理員公告": { tag: "tongjie-ann", page: "home" },
+    "使用規範已更新": { tag: "tongjie-rules", page: "home" },
+    "屋主催繳": { tag: "tongjie-nudge", page: "pay" },
+    "報修進度": { tag: "tongjie-repair", page: "repair" },
+    "報修預約已安排": { tag: "tongjie-repair", page: "repair" },
+    "續約簽約時間": { tag: "tongjie-renew", page: "home" },
+    "入住已確認": { tag: "tongjie-movein", page: "home" },
+    "租約已結束": { tag: "tongjie-out", page: "home" },
+    "本月租金已入帳": { tag: "tongjie-paid", page: "pay" }
+  };
+  return map[title] || { tag: "tongjie-" + String(title || "msg"), page: target === "admin" ? "tenants" : "home" };
+}
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
-  const extra = target === "admin" ? { tag: "tongjie-apply", page: "tenants" } : null;
+  const extra = notifyExtra(title, target);
   if (target && !isDevPreview()) sendRemoteNotify(target, title, text, extra);
   if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
   const show = () => showOsBanner(title, text);
@@ -9760,6 +9785,7 @@ function promoteProspect(t, r) {
     ui.prospectPreview = false;
     persistUi();
   }
+  try { pushPhoneNotify("入住已確認", `${r.no || ""} ${t.name || ""} 已成為正式租客`, r.no || "tenants"); } catch {}
   return true;
 }
 function maybePromoteProspect(t) {
@@ -9950,6 +9976,7 @@ function forceVacateTenant(t) {
   }
   save();
   try { pushCloud(); } catch {}
+  try { pushPhoneNotify("租約已結束", ((r && r.no) || "") + " 已辦理退租", (r && r.no) || "tenants"); } catch {}
   toast("已強制退租，" + ((r && r.no) || "") + (r && r.tenantId ? " 已交下一位" : " 改為空房"));
 }
 function completeHandover(oldT, r, co) {
@@ -17682,6 +17709,8 @@ function bindAdmin() {
       if (!text) { toast("請填寫使用規範"); return; }
       state.houseRules = text;
       save();
+      try { pushCloud(); } catch {}
+      try { pushPhoneNotify("使用規範已更新", "請查看最新使用規範", "tenants"); } catch {}
       toast("使用規範已更新，租客租約會同步");
     };
     document.querySelectorAll("#rules-form textarea").forEach(el => {

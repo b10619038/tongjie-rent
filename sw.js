@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v646";
-const BUILD = "20260903-0130";
+const CACHE = "tongjie-app-v647";
+const BUILD = "20260903-0131";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -56,7 +56,7 @@ self.addEventListener("push", event => {
     }
     const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const visible = cl.some(c => c.visibilityState === "visible");
-    if (visible && data.tag !== "tongjie-apply") return;
+    if (visible) return;
     await self.registration.showNotification(data.title || "統潔＆信潔開發", {
       body: data.body || "",
       icon: "/icon-192.png",
