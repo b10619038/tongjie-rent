@@ -10011,6 +10011,7 @@ function completeHandover(oldT, r, co) {
       ui.prospectPreview = false;
       persistUi();
     }
+    try { pushPhoneNotify("入住已確認", `${r.no || ""} ${neu.name || ""} 已成為正式租客`, r.no || "tenants"); } catch {}
   } else {
     r.tenantId = null;
     if (r.status !== "repair") r.status = "vacant";
