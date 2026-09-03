@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-17-28";
-const APP_EDIT_COUNT = 592;
+const APP_STAMP = "2026-09-03-17-32";
+const APP_EDIT_COUNT = 593;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -64,7 +64,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["租客自己刪掉的公告，重開 APP 也不會再出現"] },
+  { ver: APP_STAMP, items: ["新增一筆改成進帳對金額、統潔對銀行"] },
+  { ver: "2026-09-03-17-28", items: ["租客自己刪掉的公告，重開 APP 也不會再出現"] },
   { ver: "2026-09-03-17-20", items: ["已退租或已處理的入住申請不再重複通知其他裝置"] },
   { ver: "2026-09-03-17-12", items: ["空房前任改顯示真正上一任並雲端同步；7652 前任為小芬，測試入住不覆蓋"] },
   { ver: "2026-09-03-17-05", items: ["跑業務可一次上傳很多本簿子，之後再傳會接在後面"] },
@@ -779,7 +780,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0143") return;
+    if (!m || !m[1] || m[1] === "0144") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -9076,18 +9077,15 @@ function monthCashHtml() {
           <option value="in" ${(ed ? ed.type : "in") !== "out" ? "selected" : ""}>進帳</option>
           <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
         </select>
+        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
+      </div>
+      <div class="cal-form-row" id="book-bank-row">
         <select name="company">
           ${bookAccountOptions(ed ? ed.company : "統潔")}
         </select>
+        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : "統潔"), ed && ed.bank ? rowBank(ed) : "聯邦") || "<span></span>"}
       </div>
-      <div class="cal-form-row" id="book-bank-row" style="${banksOf(normalizeBookCompany(ed ? ed.company : "統潔")).length ? "" : "display:none"}">
-        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : "統潔"), ed && ed.bank ? rowBank(ed) : "聯邦")}
-        <span class="small" style="align-self:center">統潔分聯邦／農會／兆豐，信潔為聯邦</span>
-      </div>
-      <div class="cal-form-row">
-        ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
-        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
-      </div>
+      ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
       <div class="cal-form-row">
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
         <div class="book-up" id="book-up">
@@ -9100,7 +9098,7 @@ function monthCashHtml() {
           <input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
         </div>
       </div>
-      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。上傳簿子照片或 Excel，系統會依簿子上的時間入帳；手動記入則用上方日曆點的那天。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。上傳簿子照片或 Excel，系統會依簿子上的時間入帳；手動記入則用上方日曆點的那天。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -19166,11 +19164,19 @@ function bindCashCal() {
       const row = document.getElementById("book-bank-row");
       if (!row) return;
       const banks = banksOf(acct);
-      if (!banks.length) { row.style.display = "none"; return; }
-      row.style.display = "";
       const cur = form.bank && form.bank.value;
-      const sel = row.querySelector("select");
-      if (sel) sel.outerHTML = bankSelectHtml(acct, cur);
+      const sel = row.querySelector("select[name=bank]");
+      if (!banks.length) {
+        if (sel) sel.outerHTML = "<span></span>";
+        return;
+      }
+      const html = bankSelectHtml(acct, cur);
+      if (sel) sel.outerHTML = html;
+      else {
+        const hole = row.querySelector("span");
+        if (hole) hole.outerHTML = html;
+        else row.insertAdjacentHTML("beforeend", html);
+      }
     };
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
