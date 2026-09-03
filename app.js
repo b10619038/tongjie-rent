@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-17-12";
-const APP_EDIT_COUNT = 590;
+const APP_STAMP = "2026-09-03-17-20";
+const APP_EDIT_COUNT = 591;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["空房前任改顯示真正上一任並雲端同步；7652 前任為小芬，測試入住不覆蓋"] },
+  { ver: APP_STAMP, items: ["已退租或已處理的入住申請不再重複通知其他裝置"] },
+  { ver: "2026-09-03-17-12", items: ["空房前任改顯示真正上一任並雲端同步；7652 前任為小芬，測試入住不覆蓋"] },
   { ver: "2026-09-03-17-05", items: ["跑業務可一次上傳很多本簿子，之後再傳會接在後面"] },
   { ver: "2026-09-03-16-38", items: ["日曆行程改成藍色，和進帳綠色、出帳紅色分開"] },
   { ver: "2026-09-03-16-32", items: ["總覽日曆進出帳改成條例，拿掉橢圓圖卡避免壓到進帳文字"] },
@@ -776,7 +777,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0141") return;
+    if (!m || !m[1] || m[1] === "0142") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -1323,6 +1324,54 @@ function sameTenantName(a, b) {
 function isDisplayFormer(x) {
   if (!x || !x.former || x.demo || x.placeholder || x.practiceStay || x.cancelledApply || x.prospect || x.incoming) return false;
   return !!String(x.name || "").trim();
+}
+function applyPingKey(p) {
+  if (!p) return "";
+  return [p.at || "", p.roomNo || "", p.name || ""].join("|");
+}
+function applyPingAlreadySeen(p) {
+  const k = applyPingKey(p);
+  if (!k) return true;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-apply-seen") || "[]");
+    return raw.indexOf(k) >= 0;
+  } catch { return false; }
+}
+function markApplyPingSeen(p) {
+  const k = applyPingKey(p);
+  if (!k) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-apply-seen") || "[]");
+    if (raw.indexOf(k) < 0) raw.push(k);
+    localStorage.setItem("tj-apply-seen", JSON.stringify(raw.slice(-60)));
+  } catch {}
+}
+function applyStillLive(t) {
+  return !!(t && (t.applyPending || t.incoming || t.prospect) && !t.former && !t.cancelledApply && !t.loginRevoked && !t.clearedApply && !t.sessionEnded);
+}
+function applyPingStillLive(ping, tenants) {
+  if (!ping || !ping.name) return false;
+  return (tenants || []).some(t => applyStillLive(t) && sameTenantName(t.name, ping.name));
+}
+function pruneDeadApplyNotices(data) {
+  if (!data) return;
+  const live = (data.tenants || []).filter(applyStillLive).map(t => {
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    return { no: r && r.no, name: t.name };
+  });
+  const gone = [];
+  data.notices = (data.notices || []).filter(n => {
+    if (!n || n.type !== "apply") return true;
+    const ok = live.some(x => String(x.no || "") === String(n.roomNo || "") && (!n.text || String(n.text).indexOf(String(x.name || "")) >= 0));
+    if (ok) return true;
+    if (n.id) gone.push(n.id);
+    return false;
+  });
+  if (gone.length) {
+    if (!Array.isArray(data.noticeGone)) data.noticeGone = [];
+    data.noticeGone = unionGone(data.noticeGone, gone);
+  }
+  if (data.applyPing && !applyPingStillLive(data.applyPing, data.tenants)) data.applyPing = null;
 }
 function formerTenantsOf(roomId, currentName) {
   const list = (state.tenants || []).filter(x => x && x.roomId === roomId && isDisplayFormer(x));
@@ -2222,6 +2271,7 @@ function normalize(data) {
     }
   });
   if (!Array.isArray(data.notices)) data.notices = [];
+  if (!Array.isArray(data.noticeGone)) data.noticeGone = [];
   if (!Array.isArray(data.announcements)) data.announcements = [];
   applyAnnMedia(data);
   data.announcements.forEach(a => {
@@ -2327,6 +2377,7 @@ function normalize(data) {
   ensureDemoTenant(data);
   ensureDemoRepair(data);
   applyESigns(data);
+  pruneDeadApplyNotices(data);
   mergeLedgerInto(data, loadLedgerBackup());
   persistLedger(data);
   return data;
@@ -3743,12 +3794,15 @@ function ingestPaidCloud(raw) {
     const applyAt = Number(o.applyPing && o.applyPing.at) || 0;
     if (applyAt && applyAt > (ingestPaidCloud.applyPing || 0)) {
       ingestPaidCloud.applyPing = applyAt;
-      if (ui.role === "admin" && o.applyPing && o.applyPing.name) {
-        const line = `${o.applyPing.roomNo || ""} ${o.applyPing.name} 想要入住`.trim();
-        try { showOsBanner("入住申請", line); } catch {}
+      const ping = o.applyPing;
+      const live = applyPingStillLive(ping, o.tenants || state.tenants);
+      if (ui.role === "admin" && ping && ping.name && live && !applyPingAlreadySeen(ping)) {
+        markApplyPingSeen(ping);
+        const line = `${ping.roomNo || ""} ${ping.name} 想要入住`.trim();
+        try { showOsBanner("入住申請", line, "tongjie-apply-" + applyAt); } catch {}
         toast("入住申請　" + line);
       }
-      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+      if (live) try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at)) return;
     if (composingNow()) return;
@@ -3782,6 +3836,7 @@ function moneyCloudBlob() {
       loginRevoked: !!t.loginRevoked,
       sessionEnded: !!t.sessionEnded,
       clearedApply: !!t.clearedApply,
+      cancelledApply: !!t.cancelledApply,
       officialAt: Number(t.officialAt) || 0,
       leaseStart: t.leaseStart || "",
       leaseEnd: t.leaseEnd || "",
@@ -3938,6 +3993,12 @@ function mergeSharedInto(target, other) {
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
+  target.noticeGone = unionGone(target.noticeGone, other.noticeGone);
+  if (target.noticeGone && target.noticeGone.length) {
+    const g = new Set(target.noticeGone);
+    target.notices = (target.notices || []).filter(x => x && !g.has(x.id));
+  }
+  pruneDeadApplyNotices(target);
   target.checkouts = unionById(target.checkouts, other.checkouts);
   mergeLedgerInto(target, other);
   target.eSigns = mergeESignMaps(collectESigns(other), collectESigns(target));
@@ -4599,7 +4660,9 @@ async function pushCloud() {
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media"]),
-      notices: mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]),
+      notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
+      noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
+      applyPing: state.applyPing || null,
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
@@ -4649,6 +4712,8 @@ async function pushCloud() {
         repairs: payload.repairs,
         announcements: payload.announcements,
         notices: payload.notices,
+        noticeGone: payload.noticeGone,
+        applyPing: payload.applyPing,
         checkouts: payload.checkouts,
         eSigns: payload.eSigns,
         repairs: payload.repairs,
@@ -6884,7 +6949,7 @@ function showOsBanner(title, body, tag) {
     subtitle: "統潔開發",
     vibrate: [200, 80, 200],
     tag: tag || ("tongjie-" + title),
-    renotify: true,
+    renotify: false,
     silent: false
   };
   const viaSw = () => navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts));
@@ -6917,7 +6982,8 @@ function pushPhoneNotify(title, body, target) {
   const extra = notifyExtra(title, target);
   if (target && !isDevPreview()) sendRemoteNotify(target, title, text, extra);
   if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
-  const show = () => showOsBanner(title, text);
+  const tag = title === "入住申請" ? extra.tag + "-" + Date.now() : extra.tag;
+  const show = () => showOsBanner(title, text, tag);
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") { show(); return; }
   if (Notification.permission !== "denied" && !(isIOS() && !isStandalone())) {
@@ -9880,6 +9946,7 @@ function promoteProspect(t, r) {
   delete r.incomingTenantId;
   r.edited = true;
   r.editedAt = Date.now();
+  pruneDeadApplyNotices(state);
   if (ui.role === "tenant" && ui.tenantId === t.id) {
     ui.prospectPreview = false;
     persistUi();
@@ -9961,6 +10028,7 @@ function submitMoveIn() {
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   state.applyPing = { at: Date.now(), roomNo: room.no, name };
+  markApplyPingSeen(state.applyPing);
   if (!state.notices) state.notices = [];
   state.notices.push({ id: "n" + Date.now(), type: "apply", roomNo: room.no, text: `${room.no} ${name} 申請入住`, createdAt: t.applyAt, read: false });
   save();
@@ -10022,6 +10090,7 @@ function cancelIncomingTenant(inc) {
   inc.edited = true;
   inc.editedAt = now;
   const live = restoreLiveRoom(r);
+  pruneDeadApplyNotices(state);
   if (Array.isArray(state.notices) && r) {
     state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
   }
@@ -10122,6 +10191,7 @@ function forceVacateTenant(t) {
   if (Array.isArray(state.notices) && r) {
     state.notices = state.notices.filter(n => !(n && n.type === "apply" && n.roomNo === r.no));
   }
+  pruneDeadApplyNotices(state);
   if (isPracticeStudioNo(no)) {
     try { purgePracticeRoomLedger(state, no); } catch {}
   }
@@ -10168,6 +10238,7 @@ function completeHandover(oldT, r, co) {
     if (r.status !== "repair") r.status = "vacant";
   }
   r.edited = true;
+  pruneDeadApplyNotices(state);
 }
 function postCheckoutBooks(co, t, r) {
   if (!co || !t) return;
