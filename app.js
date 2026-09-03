@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-15-05";
-const APP_EDIT_COUNT = 577;
+const APP_STAMP = "2026-09-03-15-20";
+const APP_EDIT_COUNT = 578;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
+  { ver: APP_STAMP, items: ["不足月合約當月發票開日拆金額，次月自動改開一年約月租"] },
+  { ver: "2026-09-03-15-05", items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
   { ver: "2026-09-03-14-50", items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
   { ver: "2026-09-03-14-40", items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
@@ -763,7 +764,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0128") return;
+    if (!m || !m[1] || m[1] === "0129") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5896,8 +5897,12 @@ function invoiceCopyHtml(r, t, copyName) {
   const item = (ui.invoiceItem && !/^\d+月(份)?(廠房)?租金(收入)?$/.test(ui.invoiceItem)) ? ui.invoiceItem : itemDefault;
   const qty = (ui.invoiceQty && ui.invoiceQty !== "1") ? ui.invoiceQty : "一式";
   const editedAmt = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "";
+  const billedYm = (invoiceRentYmd() || todayYmd()).slice(0, 7);
   const br = invoiceTaxBreakdown(r, t, editedAmt ? ui.invoiceAmt : null);
-  const total = editedAmt ? Number(ui.invoiceAmt) : (triple ? br.total : (Number(r.rent) || Number(t && t.rent) || 0));
+  const liveAmt = factory
+    ? (triple ? br.total : (Number(r.rent) || Number(t && t.rent) || 0))
+    : tenantRentForYm(t, r, billedYm);
+  const total = editedAmt ? Number(ui.invoiceAmt) : liveAmt;
   const sales = triple ? br.sales : total;
   const taxAmt = triple ? br.tax : 0;
   const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(sales || "");
@@ -7192,9 +7197,10 @@ function studioInvoiceRow(no, room, t, info) {
   const paid = !!(t && paidThisMonth(t));
   const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
   const invoiceYmd = paid ? ((t.paidYm || payYmNow()) + "-01") : "";
+  const billYm = (t && t.paidYm) || payYmNow();
   const bankKey = tenantPayBankKey(t || info, room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
-  const rent = tenantRentForYm(t, room, t && (t.paidYm || payYmNow()), info);
+  const rent = tenantRentForYm(t, room, billYm, info);
   const note = String((t && t.note) || "") + " " + String(info.note || "");
   const start = (t && t.leaseStart) || info.leaseStart || "";
   const end = (t && t.leaseEnd) || info.leaseEnd || "";
@@ -7743,10 +7749,16 @@ function applyStudioLeasePack(t, room, startYmd) {
   return pack;
 }
 function tenantRentForYm(t, r, ym, info) {
-  const y = String(ym || payYmNow());
+  const y = String(ym || payYmNow()).slice(0, 7);
   const parts = tenantLeaseParts(t, r);
-  const stub = parts.find(x => x.kind === "stub");
-  if (stub && String(stub.start || "").slice(0, 7) === y) return Number(stub.rent) || 0;
+  if (parts && parts.length) {
+    const hit = parts.find(p => {
+      const a = String(p.start || "").slice(0, 7);
+      const b = String(p.end || "").slice(0, 7);
+      return a && b && y >= a && y <= b;
+    });
+    if (hit && Number(hit.rent) > 0) return Number(hit.rent);
+  }
   return Number(r && r.rent) || Number(t && t.rent) || Number(info && info.rent) || studioContractRent(t, r) || 0;
 }
 function leasePackSummaryHtml(pack, monthly) {
@@ -15576,14 +15588,12 @@ function bindTenantListTools() {
       e.stopPropagation();
       ui.invoiceRoomId = btn.dataset.invoice;
       ui.invoiceFrom = "tenants";
-      if (ui.invoiceBuyerFor !== ui.invoiceRoomId) {
-        ui.invoiceBuyer = "";
-        ui.invoiceBuyerFor = ui.invoiceRoomId;
-        ui.invoiceAmt = "";
-        ui.invoiceItem = "";
-        ui.invoicePrice = "";
-        ui.invoiceTaxId = "";
-      }
+      ui.invoiceBuyerFor = ui.invoiceRoomId;
+      ui.invoiceBuyer = "";
+      ui.invoiceAmt = "";
+      ui.invoiceItem = "";
+      ui.invoicePrice = "";
+      ui.invoiceTaxId = "";
       ui.page = "invoice";
       render();
     };
@@ -17367,14 +17377,12 @@ function bindAdmin() {
       e.stopPropagation();
       ui.invoiceRoomId = btn.dataset.invoice;
       ui.invoiceFrom = ui.page === "room-edit" ? "room-edit" : "tenants";
-      if (ui.invoiceBuyerFor !== ui.invoiceRoomId) {
-        ui.invoiceBuyer = "";
-        ui.invoiceBuyerFor = ui.invoiceRoomId;
-        ui.invoiceAmt = "";
-        ui.invoiceItem = "";
-        ui.invoicePrice = "";
-        ui.invoiceTaxId = "";
-      }
+      ui.invoiceBuyerFor = ui.invoiceRoomId;
+      ui.invoiceBuyer = "";
+      ui.invoiceAmt = "";
+      ui.invoiceItem = "";
+      ui.invoicePrice = "";
+      ui.invoiceTaxId = "";
       ui.page = "invoice";
       render();
     };
