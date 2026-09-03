@@ -21,8 +21,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-14-50";
-const APP_EDIT_COUNT = 576;
+const APP_STAMP = "2026-09-03-15-05";
+const APP_EDIT_COUNT = 577;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -63,7 +63,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
+  { ver: APP_STAMP, items: ["入住申請會推到所有後台手機與電腦，關著 App 也會收到"] },
+  { ver: "2026-09-03-14-50", items: ["7251 呂佳芸不是空房，租約繳費跟 7651 吳慧青補助掛名同步"] },
   { ver: "2026-09-03-14-40", items: ["套房不足月開日拆短約，次月1號另開一年約，簽名一次套兩份並雲端同步"] },
   { ver: "2026-08-31-13-56", items: ["公司門禁新增辦公室門鎖並移除複製"] },
   { ver: "2026-08-31-13-53", items: ["公司門禁加上 M3F 密碼鎖說明"] },
@@ -616,7 +617,7 @@ function bindThemePicker() {
     };
   });
 }
-const VAPID_PUBLIC = "BBLxqQE_pC44KpT3eLZJCPvDhN4yrRkOBTkBhCpqHMsu2R05TcESfM5AN3PKUGTdGf1ED4Ae90EDfaAm2vo658M";
+const VAPID_PUBLIC = "BJB6y_l_IvFM91YDqrBmIAzUJZE_TM9QbxIIY1Nl14LoGHNfmAymDjDVYDdOmdAZU_VPs1fkaR9BM4voY4QjM3U";
 window.__swReg = null;
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => {
@@ -635,6 +636,10 @@ if ("serviceWorker" in navigator) {
       ui.updateReady = true;
       ui.updateNotes = true;
       try { render(); } catch {}
+    }
+    if (e.data && e.data.type === "OPEN" && ui.role === "admin") {
+      if (e.data.page) ui.page = e.data.page;
+      try { persistUi(); render(); } catch {}
     }
   });
 }
@@ -758,7 +763,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0127") return;
+    if (!m || !m[1] || m[1] === "0128") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -6588,11 +6593,17 @@ function toast(msg) {
     if (n) n.remove();
   }, 1800);
 }
-function sendRemoteNotify(target, title, body) {
+function sendRemoteNotify(target, title, body, extra) {
   fetch(LINE_HOOK + "/api/push", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
-    body: JSON.stringify({ target: target || "all", title, body })
+    body: JSON.stringify({
+      target: target || "all",
+      title,
+      body,
+      tag: extra && extra.tag,
+      page: extra && extra.page
+    })
   }).catch(() => {});
 }
 function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
@@ -6721,7 +6732,8 @@ function subscribePushOnly() {
   });
 }
 async function enablePush(forceAsk) {
-  if (!isInstalledApp() && !forceAsk) return false;
+  const force = forceAsk || (typeof ui !== "undefined" && ui.role === "admin");
+  if (!isInstalledApp() && !force) return false;
   if (!("Notification" in window) || typeof Notification.requestPermission !== "function") return false;
   if (Notification.permission === "denied") return false;
   if (isIOS() && !isStandalone()) return false;
@@ -6735,7 +6747,12 @@ async function enablePush(forceAsk) {
   return true;
 }
 function armPushAsk() {
-  if (!ui.role || !isInstalledApp()) return;
+  if (!ui.role) return;
+  if (ui.role === "admin") {
+    enablePush(true).then(ok => { if (ok) maybeNudgeNotifies(); });
+    return;
+  }
+  if (!isInstalledApp()) return;
   if (notifyStatus() === "granted") {
     subscribePushOnly();
     maybeNudgeNotifies();
@@ -6761,9 +6778,11 @@ function shouldShowLocalBanner(target) {
   return !!(ui.role === "tenant" && room && String(room.no) === String(target));
 }
 function canOsNotify() {
-  if (!isInstalledApp()) return false;
   if (!("Notification" in window)) return false;
-  return Notification.permission === "granted";
+  if (Notification.permission !== "granted") return false;
+  if (ui.role === "admin") return true;
+  if (!isInstalledApp()) return false;
+  return true;
 }
 function showOsBanner(title, body, tag) {
   if (!canOsNotify()) return;
@@ -6786,7 +6805,8 @@ function showOsBanner(title, body, tag) {
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
-  if (target && !isDevPreview()) sendRemoteNotify(target, title, text);
+  const extra = target === "admin" ? { tag: "tongjie-apply", page: "tenants" } : null;
+  if (target && !isDevPreview()) sendRemoteNotify(target, title, text, extra);
   if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
   const show = () => showOsBanner(title, text);
   if (!("Notification" in window)) return;
@@ -15930,7 +15950,7 @@ function tryLogin() {
     persistUi();
     audit("登入", "管理員密碼 " + no);
     beatPresence();
-    render(); enablePush().then(() => maybeNudgeNotifies()); armPushAsk(); return;
+    render(); enablePush(true).then(() => maybeNudgeNotifies()); armPushAsk(); return;
   }
   if (ui.page === "admin-login") {
     ui.loginAdmin = no;

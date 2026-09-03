@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v643";
-const BUILD = "20260903-0127";
+const CACHE = "tongjie-app-v644";
+const BUILD = "20260903-0128";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -48,16 +48,18 @@ self.addEventListener("fetch", e => {
 });
 self.addEventListener("push", event => {
   event.waitUntil((async () => {
-    const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    if (cl.some(c => c.visibilityState === "visible")) return;
     let data = { title: "統潔＆信潔開發", body: "" };
     try {
       if (event.data) data = event.data.json();
     } catch {
       try { data.body = event.data ? event.data.text() : ""; } catch {}
     }
+    const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const visible = cl.some(c => c.visibilityState === "visible");
+    if (visible && data.tag !== "tongjie-apply") return;
     await self.registration.showNotification(data.title || "統潔＆信潔開發", {
       body: data.body || "",
+      icon: "/icon-192.png",
       badge: "/icon-192.png",
       lang: "zh-Hant",
       subtitle: data.subtitle || "統潔開發",
@@ -72,10 +74,12 @@ self.addEventListener("push", event => {
 self.addEventListener("notificationclick", event => {
   event.notification.close();
   event.waitUntil((async () => {
+    const data = event.notification.data || {};
     const all = await clients.matchAll({ type: "window", includeUncontrolled: true });
     if (event.notification.tag === "tongjie-update") {
       all.forEach(c => c.postMessage({ type: "SHOW_CHANGELOG" }));
     }
+    if (data.page) all.forEach(c => c.postMessage({ type: "OPEN", page: data.page }));
     if (all[0]) return all[0].focus();
     return clients.openWindow("/");
   })());
