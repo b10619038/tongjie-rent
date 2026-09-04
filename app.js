@@ -4,6 +4,7 @@ const ANN_MEDIA_KEY = "tongjie_ann_media_v1";
 const HIDDEN_ANN_KEY = "tj-hidden-anns";
 const REPAIR_MEDIA_KEY = "tongjie_repair_media_v1";
 const REPAIR_STAT_KEY = "tongjie_repair_stat_v1";
+const AVATAR_KEY = "tongjie_tenant_avatars_v1";
 const PAID_KEY = "tongjie_paid_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
@@ -23,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-32";
-const APP_EDIT_COUNT = 679;
+const APP_STAMP = "2026-09-04-17-40";
+const APP_EDIT_COUNT = 680;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0230";
+const FILE_VER = "0231";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
+  { ver: APP_VERSION, items: ["租客頭貼雲端同步，退租後才刪除"] },
+  { ver: "2026-09-04-17-32-679", items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
   { ver: "2026-09-04-17-24-678", items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
   { ver: "2026-09-04-17-20-677", items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
   { ver: "2026-09-04-17-14-676", items: ["合約簽名放大，不壓到上下黑線"] },
@@ -2680,6 +2682,7 @@ function normalize(data) {
   if (!Array.isArray(data.repairs)) data.repairs = [];
   applyRepairMedia(data);
   applyRepairStat(data);
+  applyAvatars(data);
   data.repairs = data.repairs.filter(r => !(r && r.id === "rep1" && r.roomId === "r6831"));
   if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && n.id !== "n1" && n.repairId !== "rep1");
   const r6831 = (data.rooms || []).find(x => x && (x.id === "r6831" || x.no === "6831"));
@@ -3826,6 +3829,58 @@ function persistRepairStat(data) {
   });
   try { localStorage.setItem(REPAIR_STAT_KEY, JSON.stringify(map)); } catch {}
 }
+function loadAvatarMap() {
+  try { return JSON.parse(localStorage.getItem(AVATAR_KEY) || "{}") || {}; } catch { return {}; }
+}
+function persistAvatars(data) {
+  if (!data) return;
+  const map = loadAvatarMap();
+  const live = {};
+  (data.tenants || []).forEach(t => {
+    if (!t || !t.id) return;
+    if (t.former || t.demo || t.loginRevoked) return;
+    const src = t.avatar && String(t.avatar).length > 40 ? t.avatar : "";
+    if (src) live[t.id] = { src, ts: Number(t.avatarAt || t.editedAt) || Date.now() };
+    else if (map[t.id] && map[t.id].src) live[t.id] = map[t.id];
+  });
+  try { localStorage.setItem(AVATAR_KEY, JSON.stringify(live)); } catch {}
+}
+function applyAvatars(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  const map = loadAvatarMap();
+  data.tenants.forEach(t => {
+    if (!t || !t.id) return;
+    if (t.former || t.loginRevoked) {
+      t.avatar = "";
+      t.avatarAt = 0;
+      return;
+    }
+    const hit = map[t.id];
+    if (!(t.avatar && String(t.avatar).length > 40) && hit && hit.src) {
+      t.avatar = hit.src;
+      t.avatarAt = Number(hit.ts) || t.avatarAt || 0;
+    }
+  });
+}
+function setTenantAvatar(t, src) {
+  if (!t) return;
+  t.avatar = src || "";
+  t.avatarAt = src ? Date.now() : 0;
+  t.edited = true;
+  t.editedAt = Date.now();
+}
+function clearTenantAvatar(t) {
+  if (!t) return;
+  t.avatar = "";
+  t.avatarAt = 0;
+  try {
+    const map = loadAvatarMap();
+    if (map[t.id]) {
+      delete map[t.id];
+      localStorage.setItem(AVATAR_KEY, JSON.stringify(map));
+    }
+  } catch {}
+}
 function applyRepairStat(data) {
   if (!data || !Array.isArray(data.repairs)) return;
   const map = loadRepairStatMap();
@@ -3857,7 +3912,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -3903,6 +3958,18 @@ function pickNewerEntity(a, b, keys) {
   }
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
+  }
+  if (keys && keys.indexOf("avatar") >= 0) {
+    const aAv = a && a.avatar && String(a.avatar).length > 40 ? a.avatar : "";
+    const bAv = b && b.avatar && String(b.avatar).length > 40 ? b.avatar : "";
+    const aTs = Number(a && (a.avatarAt || a.editedAt)) || 0;
+    const bTs = Number(b && (b.avatarAt || b.editedAt)) || 0;
+    if (a.former || b.former) {
+      if (out.former) { out.avatar = ""; out.avatarAt = 0; }
+    } else if (aAv || bAv) {
+      if (aAv && bAv) { out.avatar = aTs >= bTs ? aAv : bAv; out.avatarAt = Math.max(aTs, bTs); }
+      else { out.avatar = aAv || bAv; out.avatarAt = aAv ? aTs : bTs; }
+    }
   }
   if (keys && keys.indexOf("leases") >= 0) {
     const la = Array.isArray(a && a.leases) ? a.leases : [];
@@ -4556,6 +4623,7 @@ async function pullCloud() {
     applyAnnMedia(state);
     applyRepairMedia(state);
     applyRepairStat(state);
+    applyAvatars(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
       mergeDevBundle(state, data);
@@ -4576,6 +4644,7 @@ async function pullCloud() {
       persistLedger(state);
       persistAnnMedia(state);
       persistRepairMedia(state); persistRepairStat(state);
+      persistAvatars(state);
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -4620,10 +4689,13 @@ async function pullCloud() {
     resetFactoryPaidMarks(state);
     applyPaidMarks(state);
     persistPaidMarks(state);
+    applyAvatars(state);
+    persistAvatars(state);
     syncPaidRentBooks(state);
     persistLedger(state);
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
+    persistAvatars(state);
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -5007,6 +5079,7 @@ async function pushPresence() {
     persistLedger(state);
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
+    persistAvatars(state);
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   } catch {}
   finally { if (timer) clearTimeout(timer); }
@@ -5132,6 +5205,8 @@ async function pushCloud() {
     state.bankSlips = payload.bankSlips;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
+    applyAvatars(state);
+    persistAvatars(state);
     if (payload.paidMarks) state.paidMarks = payload.paidMarks;
     applyPaidMarks(payload);
     applyPaidMarks(state);
@@ -5185,7 +5260,7 @@ async function pushCloud() {
       try { publishLiveCloud(); } catch {}
     }
   } catch { ui.cloudOk = false; }
-  try { persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
+  try { persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
   try { publishPaidCloud(); } catch {}
   pushBusy = false;
   if (pushAgain || cloudDirty) {
@@ -5245,11 +5320,12 @@ function save(force) {
   try {
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
+    persistAvatars(state);
     state.updatedAt = Date.now();
     persistLedger(state);
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
+    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 120);
@@ -7768,7 +7844,7 @@ function staffAvatarSvg() {
 }
 function avatarHtml(t, size) {
   const cls = "avatar" + (size === "sm" ? " sm" : "");
-  if (t && t.avatar) return `<img class="${cls}" src="${t.avatar}" alt="">`;
+  if (t && !t.former && !t.loginRevoked && t.avatar && String(t.avatar).length > 40) return `<img class="${cls}" src="${t.avatar}" alt="">`;
   return `<span class="${cls} ph default">${defaultAvatarSvg()}</span>`;
 }
 function staffAvatarHtml(size, title) {
@@ -10945,6 +11021,7 @@ function forceVacateTenant(t) {
     x.eSignRev = now;
     x.eSign = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
     x.signAppointAt = "";
+    clearTenantAvatar(x);
     if (isPracticeStudioNo(no)) x.practiceStay = false;
   });
   try {
@@ -10975,6 +11052,7 @@ function completeHandover(oldT, r, co) {
     oldT.leftOn = (co && co.at) || ymdOf(nowStamp());
     oldT.edited = true;
     oldT.sessionEnded = true;
+    clearTenantAvatar(oldT);
   }
   const neu = incomingOf(r.id);
   if (r.no) unbindRoomLine(r.no, oldT);
@@ -17630,8 +17708,10 @@ function bindTenant() {
     const t = me();
     if (!t) return;
     try {
-      t.avatar = await compressImage(f, 480);
+      setTenantAvatar(t, await compressImage(f, 280));
+      persistAvatars(state);
       save();
+      try { pushCloud(); } catch {}
       toast("大頭貼已更新");
       render();
     } catch { toast("照片讀取失敗"); }
@@ -18982,8 +19062,10 @@ function bindAdmin() {
       state.tenants.push(t); r.tenantId = t.id;
     }
     try {
-      t.avatar = await compressImage(f, 480);
+      setTenantAvatar(t, await compressImage(f, 280));
+      persistAvatars(state);
       save();
+      try { pushCloud(); } catch {}
       ui.keepScroll = true;
       toast("大頭貼已更新");
       render();
