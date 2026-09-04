@@ -2099,9 +2099,21 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     break-after: page;
     box-shadow: none;
     margin: 0;
+    width: 210mm;
+    height: 297mm;
     min-height: 297mm;
+    overflow: hidden;
+    border: 0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  body.print-lease .lease-pg::before {
+    content: "";
+    position: absolute;
+    inset: 7mm;
+    border: 3px solid #c1121f;
+    pointer-events: none;
+    z-index: 2;
   }
   body.print-lease .lease-ink { color: #1a57c5 !important; }
   body.print-lease .lease-sign-line.signed {
@@ -2133,10 +2145,10 @@ body.print-lease .studio-lease-paper { display: block; }
   max-width: none;
   min-height: 297mm;
   height: auto;
-  padding: 16mm 12mm 18mm;
+  padding: 16mm 14mm 18mm;
   font-size: 13px;
   line-height: 1.85;
-  border-width: 3px;
+  border: 0;
   margin: 0 0 16px;
 }
 .lease-preview .lease-pg.cover { min-height: 297mm; }
@@ -2218,13 +2230,21 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   width: 210mm;
   min-height: 297mm;
   padding: 16mm 14mm 18mm;
-  border: 3px solid #c1121f;
+  border: 0;
   background: #fff;
   color: #111;
   font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", serif;
   font-size: 13px;
   line-height: 1.85;
   margin: 0 auto 12px;
+}
+.lease-pg::before {
+  content: "";
+  position: absolute;
+  inset: 7mm;
+  border: 3px solid #c1121f;
+  pointer-events: none;
+  z-index: 2;
 }
 .lease-pg.cover {
   display: flex;

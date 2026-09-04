@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-24";
-const APP_EDIT_COUNT = 678;
+const APP_STAMP = "2026-09-04-17-32";
+const APP_EDIT_COUNT = 679;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0229";
+const FILE_VER = "0230";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
+  { ver: APP_VERSION, items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
+  { ver: "2026-09-04-17-24-678", items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
   { ver: "2026-09-04-17-20-677", items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
   { ver: "2026-09-04-17-14-676", items: ["合約簽名放大，不壓到上下黑線"] },
   { ver: "2026-09-04-17-10-675", items: ["房屋租賃契約書每一面改回滿版"] },
@@ -11544,25 +11545,57 @@ function paintDomPage(el) {
   return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
 }
 function printLeaseIframe(html) {
-  const css = [...document.querySelectorAll("link[rel=stylesheet]")].map(l => l.getAttribute("href")).filter(Boolean)
-    .map(h => "<link rel=\"stylesheet\" href=\"" + h + "\">").join("");
-  const doc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + css
-    + "<style>@page{size:A4;margin:12mm}html,body{margin:0;background:#fff}.studio-lease-paper,.lease-preview{display:block!important;width:auto}.term-hint{display:none!important}</style></head>"
-    + "<body class=\"print-lease\">" + html + "</body></html>";
+  const links = [...document.querySelectorAll("link[rel=stylesheet]")].map(l => l.href).filter(Boolean)
+    .map(h => "<link rel=\"stylesheet\" href=\"" + String(h).replace(/"/g, "") + "\">").join("");
+  const extra = "@page{size:A4 portrait;margin:0}"
+    + "html,body{margin:0;padding:0;background:#fff}"
+    + ".term-hint,.lightbox-bar{display:none!important}"
+    + ".studio-lease-paper,.lease-preview{display:block!important;width:210mm;margin:0;padding:0}"
+    + ".lease-pg{box-sizing:border-box;width:210mm!important;height:297mm!important;min-height:297mm!important;margin:0!important;padding:16mm 14mm 18mm!important;page-break-after:always;break-after:page;overflow:hidden;box-shadow:none!important;border:0!important;background:#fff;position:relative}"
+    + ".lease-pg:last-child{page-break-after:auto}"
+    + ".lease-pg::before{content:\"\";position:absolute;inset:7mm;border:3px solid #c1121f;pointer-events:none;z-index:2}"
+    + ".lease-esig{height:40px!important;max-width:200px!important;object-fit:contain;object-position:left bottom;vertical-align:bottom;margin:0 4px 5px;background:transparent}"
+    + ".lease-ink{color:#1a57c5!important}";
+  const doc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + links
+    + "<style>" + extra + "</style></head><body class=\"print-lease\">" + html + "</body></html>";
   const iframe = document.createElement("iframe");
   iframe.setAttribute("title", " ");
-  iframe.style.cssText = "position:fixed;width:0;height:0;border:0;left:0;bottom:0;";
-  const blob = new Blob([doc], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  iframe.src = url;
+  iframe.style.cssText = "position:fixed;left:0;top:0;width:210mm;height:297mm;opacity:0;pointer-events:none;border:0;z-index:-1";
   document.body.appendChild(iframe);
+  let done = false;
   const go = () => {
+    if (done) return;
+    done = true;
     try { iframe.contentDocument.title = " "; } catch {}
     try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch {}
-    setTimeout(() => { iframe.remove(); URL.revokeObjectURL(url); }, 1500);
+    setTimeout(() => { if (iframe.parentNode) iframe.remove(); }, 2500);
   };
-  iframe.onload = () => setTimeout(go, 400);
-  setTimeout(go, 1200);
+  iframe.onload = () => {
+    const d = iframe.contentDocument;
+    try { d.title = " "; } catch {}
+    const ready = [];
+    try {
+      [...d.querySelectorAll("img")].forEach(img => {
+        if (img.complete) return;
+        ready.push(new Promise(res => {
+          img.addEventListener("load", res, { once: true });
+          img.addEventListener("error", res, { once: true });
+          setTimeout(res, 1500);
+        }));
+      });
+      [...d.querySelectorAll("link[rel=stylesheet]")].forEach(link => {
+        ready.push(new Promise(res => {
+          link.addEventListener("load", res, { once: true });
+          link.addEventListener("error", res, { once: true });
+          setTimeout(res, 1200);
+        }));
+      });
+      if (d.fonts && d.fonts.ready) ready.push(d.fonts.ready.catch(() => {}));
+    } catch {}
+    Promise.all(ready).then(() => setTimeout(go, 250)).catch(() => setTimeout(go, 400));
+  };
+  iframe.srcdoc = doc;
+  setTimeout(go, 5000);
 }
 function closeLeasePrintPreview() {
   const el = document.getElementById("lease-preview-box");
@@ -11592,7 +11625,8 @@ function showLeasePrintPreview(t, r) {
   document.getElementById("lease-prev-print").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    printLeaseIframe(studioLeasePapersHtml(t, r, false));
+    const hold = document.querySelector("#lease-preview-box .lease-preview-scroll");
+    printLeaseIframe(hold ? hold.innerHTML : studioLeasePapersHtml(t, r, true));
   };
 }
 function printStudioLease(t, r) {
