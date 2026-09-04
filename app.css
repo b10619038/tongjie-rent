@@ -2130,19 +2130,27 @@ body.print-lease .studio-lease-paper { display: block; }
 }
 .lease-preview .lease-pg {
   width: 100%;
-  min-height: 0;
+  max-width: none;
+  min-height: 297mm;
   height: auto;
-  padding: 14px 12px 22px;
-  font-size: 12px;
-  line-height: 1.7;
-  border-width: 2px;
-  margin: 0 0 12px;
+  padding: 16mm 12mm 18mm;
+  font-size: 13px;
+  line-height: 1.85;
+  border-width: 3px;
+  margin: 0 0 16px;
 }
-.lease-preview .lease-pg.cover { min-height: 220px; }
-.lease-preview .lease-cover-mid h3 { font-size: 18px; padding: 8px 14px; letter-spacing: .18em; }
-.lease-preview .lease-cover-addr { font-size: 14px; }
-.lease-preview .lease-pg h4 { font-size: 16px; }
-.lease-preview .lease-pgno { position: static; margin-top: 10px; font-size: 11px; }
+.lease-preview .lease-pg.cover { min-height: 297mm; }
+.lease-preview .lease-cover-mid h3 { font-size: 26px; padding: 10px 22px; letter-spacing: .28em; }
+.lease-preview .lease-cover-addr { font-size: 16px; }
+.lease-preview .lease-pg h4 { font-size: 20px; }
+.lease-preview .lease-pgno {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8mm;
+  margin-top: 0;
+  font-size: 12px;
+}
 .lease-ink {
   color: #1a57c5;
   font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "BiauKai", serif;
