@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-11-59";
-const APP_EDIT_COUNT = 621;
+const APP_STAMP = "2026-09-04-12-02";
+const APP_EDIT_COUNT = 622;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0172";
+const FILE_VER = "0173";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
+  { ver: APP_VERSION, items: ["更新點過後不會一直重複跳出"] },
+  { ver: "2026-09-04-11-59-621", items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
   { ver: "2026-09-04-11-56-620", items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
   { ver: "2026-09-04-11-54-619", items: ["送出並進入預覽會先跳出確認"] },
   { ver: "2026-09-04-11-51-618", items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
@@ -764,19 +765,41 @@ function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; 
 function lastSeenVersion() {
   try { return localStorage.getItem("tj-last-ver") || ""; } catch { return ""; }
 }
+function dismissedBuild() {
+  try { return localStorage.getItem("tj-dismiss-build") || ""; } catch { return ""; }
+}
 function seedSeenVersion() {
-  if (lastSeenVersion()) return;
+  const last = lastSeenVersion();
+  if (last === "pending-reload") {
+    markVersionSeen();
+    return;
+  }
+  if (last) return;
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
 }
 function hasUnseenUpdate() {
   const last = lastSeenVersion();
-  if (!last) return false;
+  if (!last || last === "pending-reload") return false;
+  if (dismissedBuild() === FILE_VER) return false;
+  if (ui.pendingFileVer && dismissedBuild() === ui.pendingFileVer) return false;
   return last !== APP_VERSION;
 }
 function markVersionSeen() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+  try { localStorage.setItem("tj-dismiss-build", FILE_VER); } catch {}
   ui.updateReady = false;
   ui.updateNotes = false;
+  ui.pendingFileVer = FILE_VER;
+}
+function closeUpdateNotes() {
+  const remote = String(ui.pendingFileVer || FILE_VER);
+  try { localStorage.setItem("tj-dismiss-build", remote); } catch {}
+  ui.updateReady = false;
+  ui.updateNotes = false;
+  const mask = document.getElementById("update-mask");
+  if (mask) mask.remove();
+  const bar = document.getElementById("apply-update");
+  if (bar) bar.remove();
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -808,8 +831,8 @@ function unseenChangelog() {
   const notes = take(raw);
   return notes.length ? notes : take(CHANGELOG.slice(0, 4));
 }
-function changelogSheetHtml() {
-  if (!ui.updateNotes) return "";
+function changelogSheetHtml() { return ""; }
+function changelogMarkup() {
   const notes = unseenChangelog();
   const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(changelogLabel(n.ver))}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`).join("");
   return `<div class="install-mask" id="update-mask">
@@ -821,6 +844,34 @@ function changelogSheetHtml() {
       <button class="ghost" id="update-close" type="button">稍後</button>
     </div>
   </div>`;
+}
+function bindUpdateSheet(mask) {
+  if (!mask || mask.dataset.bound === "1") return;
+  mask.dataset.bound = "1";
+  mask.onclick = e => { if (e.target.id === "update-mask") { closeUpdateNotes(); } };
+  const now = mask.querySelector("#apply-update-now");
+  if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
+  const close = mask.querySelector("#update-close");
+  if (close) close.onclick = e => { e.preventDefault(); closeUpdateNotes(); };
+}
+function ensureChangelogSheet() {
+  let mask = document.getElementById("update-mask");
+  if (!ui.updateNotes) {
+    if (mask) mask.remove();
+    return;
+  }
+  if (mask) {
+    bindUpdateSheet(mask);
+    return;
+  }
+  document.body.insertAdjacentHTML("beforeend", changelogMarkup());
+  bindUpdateSheet(document.getElementById("update-mask"));
+}
+function openUpdateNotes() {
+  ui.updateNotes = true;
+  const bar = document.getElementById("apply-update");
+  if (bar) bar.remove();
+  ensureChangelogSheet();
 }
 function personPickSheetHtml() {
   if (!ui.personPick) return "";
@@ -867,7 +918,10 @@ function aiPersonaSheetHtml() {
 }
 function updateBarHtml() { return ""; }
 function ensureUpdateBar() {
-  const need = !ui.updateNotes && (hasUnseenUpdate() || ui.updateReady);
+  const dismissed = dismissedBuild();
+  const remote = String(ui.pendingFileVer || "");
+  const skip = (remote && dismissed === remote) || dismissed === FILE_VER;
+  const need = !ui.updateNotes && !skip && (hasUnseenUpdate() || ui.updateReady);
   let el = document.getElementById("apply-update");
   if (!need) {
     if (el) el.remove();
@@ -886,11 +940,7 @@ function ensureUpdateBar() {
   el.className = "home-upd" + (lift ? " lift" : "");
   el.setAttribute("role", "button");
   el.textContent = text;
-  el.onclick = () => {
-    ui.updateNotes = true;
-    try { el.remove(); } catch {}
-    render();
-  };
+  el.onclick = () => { openUpdateNotes(); };
   document.body.appendChild(el);
 }
 async function wipeClientCache() {
@@ -906,7 +956,10 @@ async function wipeClientCache() {
 function applyAppUpdate() {
   persistLogin();
   persistUi();
-  markVersionSeen();
+  try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
+  try { localStorage.setItem("tj-dismiss-build", ""); } catch {}
+  ui.updateNotes = false;
+  ui.updateReady = false;
   try { __reloading = true; } catch {}
   wipeClientCache().finally(() => {
     location.href = "/index.html?v=0030&t=" + Date.now();
@@ -922,11 +975,15 @@ async function pollRemoteBuild() {
 }
 function flagAppUpdate(fileVer) {
   const ver = String(fileVer || "");
+  if (ver) ui.pendingFileVer = ver;
+  if (ver && dismissedBuild() === ver) return;
+  if (ver === FILE_VER && lastSeenVersion() === APP_VERSION) return;
   try { announceBuild(ver); } catch {}
-  if (ui.updateReady) {
-    try { ensureUpdateBar(); } catch {}
+  if (ui.updateNotes) {
+    try { ensureChangelogSheet(); } catch {}
     return;
   }
+  if (ui.updateReady && document.getElementById("apply-update")) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch { try { render(); } catch {} }
 }
@@ -952,6 +1009,7 @@ async function pullBuild() {
   } catch {}
 }
 function promptAppUpdate(reg) {
+  if (dismissedBuild() === FILE_VER || (ui.pendingFileVer && dismissedBuild() === ui.pendingFileVer)) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch { try { render(); } catch {} }
   if (lastSeenVersion() === APP_VERSION) return;
@@ -11424,7 +11482,7 @@ function paintApp() {
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
-    const overlays = !!(ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml);
+    const overlays = !!(ui.notifyGuide || ui.installSheet || toastHtml);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
     if (same && !overlays && page === "home") return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
@@ -11438,7 +11496,7 @@ function paintApp() {
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
-    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
+    const overlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
       || (ui.checkoutTenantId && ui.checkoutKind === "pick")
       || ui.vacateConfirmId
       || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
@@ -16737,12 +16795,7 @@ function bindGate() {
 }
 function bindUpdateBar() {
   ensureUpdateBar();
-  const now = document.getElementById("apply-update-now");
-  if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
-  const close = document.getElementById("update-close");
-  if (close) close.onclick = () => { markVersionSeen(); render(); };
-  const mask = document.getElementById("update-mask");
-  if (mask) mask.onclick = e => { if (e.target.id === "update-mask") { markVersionSeen(); render(); } };
+  ensureChangelogSheet();
   const reload = document.getElementById("force-reload-app");
   if (reload) reload.onclick = e => {
     e.preventDefault();
@@ -19747,7 +19800,7 @@ async function boot() {
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
     seedSeenVersion();
-    if (hasUnseenUpdate()) ui.updateReady = true;
+    if (hasUnseenUpdate() && dismissedBuild() !== FILE_VER) ui.updateReady = true;
     try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
