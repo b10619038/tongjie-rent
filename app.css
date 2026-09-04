@@ -737,6 +737,16 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .row.wrap { align-items: flex-start; }
 .row.wrap .v { text-align: right; font-size: 13px; line-height: 1.5; }
+.water-fee-row { align-items: flex-start; }
+.water-fee-v {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+  line-height: 1.35;
+  white-space: nowrap;
+}
 .row-end { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .live-pill {
   display: inline-flex; align-items: center; gap: 5px;

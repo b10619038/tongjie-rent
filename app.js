@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-49";
-const APP_EDIT_COUNT = 637;
+const APP_STAMP = "2026-09-04-12-52";
+const APP_EDIT_COUNT = 638;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0188";
+const FILE_VER = "0189";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["下拉重新整理的提示改到畫面最上方"] },
+  { ver: APP_VERSION, items: ["水費改兩行顯示，移除下次日期"] },
+  { ver: "2026-09-04-12-49-637", items: ["下拉重新整理的提示改到畫面最上方"] },
   { ver: "2026-09-04-12-48-636", items: ["房間按鈕改成床的圖示"] },
   { ver: "2026-09-04-12-45-635", items: ["更新提示恢復，新版本會再出現"] },
   { ver: "2026-09-04-12-43-634", items: ["底欄已選中的按鈕點擊不再跳動"] },
@@ -12582,7 +12583,7 @@ function roomExtrasHtml(r) {
           <span class="k">電費</span>
           <span class="v linkish">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span>
         </div>
-        <div class="row"><span class="k">水費</span><span class="v">${escapeHtml(util.water || WATER_FEE_TEXT)}${(() => { try { const t = me(); const d = t ? waterDueDate(t) : ""; return d ? "　下次 " + d : ""; } catch { return ""; } })()}</span></div>
+        <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>一年優惠 NT$ 1,800</span></span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">
