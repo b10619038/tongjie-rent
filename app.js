@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-13";
-const APP_EDIT_COUNT = 625;
+const APP_STAMP = "2026-09-04-12-20";
+const APP_EDIT_COUNT = 626;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0176";
+const FILE_VER = "0177";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人承租時電話與身分證可填一組或兩組"] },
+  { ver: APP_VERSION, items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
+  { ver: "2026-09-04-12-13-625", items: ["兩人承租時電話與身分證可填一組或兩組"] },
   { ver: "2026-09-04-12-06-624", items: ["同一畫面點過更新後不再重複跳出"] },
   { ver: "2026-09-04-12-04-623", items: ["申請入住姓名、電話、身分證依格式自動整理"] },
   { ver: "2026-09-04-12-02-622", items: ["更新點過後不會一直重複跳出"] },
@@ -12227,12 +12228,21 @@ function announceCardsHtml() {
     </div>`).join("");
 }
 
+function tenantNameHeadingHtml(name) {
+  const parts = String(name || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return `<h1 class="name-stack">${parts.slice(0, 2).map(p => `<span>${escapeHtml(p)}</span>`).join("")}</h1>`;
+  }
+  return `<h1>${escapeHtml(parts[0] || "租客")}</h1>`;
+}
 function homeView() {
   const t = me(); const r = myRoom();
   const left = daysLeft(t.leaseEnd); const pay = payLabel(t, r);
   const stubNow = isStubMonthNow(t, r);
   const hasAnn = visibleAnnouncements().length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
+  const prospectNote = isProspectPreview() ? tenantHandoverNoteHtml(t, r) : "";
+  const handoverNote = isProspectPreview() ? "" : tenantHandoverNoteHtml(t, r);
   return `
     <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
       <div class="hello-card">
@@ -12240,16 +12250,17 @@ function homeView() {
           <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
           <div>
             <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : isProspectPreview() ? "看房預覽" : skyLabel(ui.sky)}</div>
-            <h1>${t.name ? escapeHtml(t.name) : "租客"}</h1>
+            ${tenantNameHeadingHtml(t.name)}
           </div>
         </div>
       </div>
       <button class="back" id="logout-tenant" type="button">${ui.devPreview ? "返回後台" : isProspectPreview() ? "離開預覽" : "登出"}</button>
     </div>
     <div class="screen">
+      ${prospectNote}
       ${hasAnn ? announceBlock : ""}
       ${tenantNudgeNoteHtml(t)}
-      ${tenantHandoverNoteHtml(t, r)}
+      ${handoverNote}
       <div class="hero-card">
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${r.title}</div>

@@ -2327,6 +2327,14 @@ body.rev-zooming { overflow: hidden; }
 }
 .item img, .item .ph { width: 72px; height: 72px; object-fit: cover; border-radius: 14px; }
 .who-line { display: flex; align-items: center; gap: 12px; }
+.hello-card h1.name-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.15;
+}
+.hello-card h1.name-stack span { display: block; }
 .who-mini { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .who-mini .k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who-text { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
