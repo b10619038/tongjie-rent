@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-33";
-const APP_EDIT_COUNT = 631;
+const APP_STAMP = "2026-09-04-12-40";
+const APP_EDIT_COUNT = 632;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0182";
+const FILE_VER = "0183";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["底欄圖示高度對齊扳手，點選會再放大"] },
+  { ver: APP_VERSION, items: ["合約還沒開始時顯示未開始倒數"] },
+  { ver: "2026-09-04-12-33-631", items: ["底欄圖示高度對齊扳手，點選會再放大"] },
   { ver: "2026-09-04-12-30-630", items: ["租約剩餘天數改依今天與雲端合約截止日計算"] },
   { ver: "2026-09-04-12-26-629", items: ["入住申請自動排到本月未繳上方"] },
   { ver: "2026-09-04-12-24-628", items: ["租客登入可用任一人的姓名或手機號碼"] },
@@ -8223,6 +8224,11 @@ function tenantLeaseParts(t, r) {
   if (!start) return [];
   return studioLeasePack(start, studioContractRent(t, r)).parts;
 }
+function tenantOccupancyStart(t, r) {
+  const parts = tenantLeaseParts(t, r);
+  if (parts.length && parts[0] && parts[0].start) return ymdOf(parts[0].start);
+  return ymdOf(t && t.leaseStart) || "";
+}
 function tenantOccupancyEnd(t, r) {
   const parts = tenantLeaseParts(t, r);
   if (parts.length) {
@@ -8230,6 +8236,16 @@ function tenantOccupancyEnd(t, r) {
     if (last && last.end) return ymdOf(last.end);
   }
   return ymdOf(t && t.leaseEnd) || "";
+}
+function leaseRemainHtml(t, r) {
+  const start = tenantOccupancyStart(t, r);
+  const end = tenantOccupancyEnd(t, r);
+  if (!end) return "—";
+  if (start && todayYmd() < start) return `<span class="remain-wait">未開始倒數</span>`;
+  const n = daysLeft(end);
+  if (n == null) return "—";
+  if (n < 0) return "已到期";
+  return n + " 天";
 }
 function leasePartForYm(t, r, ym) {
   const y = String(ym || payYmNow()).slice(0, 7);
@@ -12252,7 +12268,7 @@ function tenantNameHeadingHtml(name) {
 }
 function homeView() {
   const t = me(); const r = myRoom();
-  const left = daysLeft(tenantOccupancyEnd(t, r)); const pay = payLabel(t, r);
+  const pay = payLabel(t, r);
   const stubNow = isStubMonthNow(t, r);
   const hasAnn = visibleAnnouncements().length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
@@ -12281,7 +12297,7 @@ function homeView() {
         <div class="room-name">${r.no}　${r.title}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
-          <div class="stat"><div class="label">租約剩餘天數</div><b>${left == null ? "—" : left + " 天"}</b></div>
+          <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat"><div class="label">本月租金${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "—"}</b></div>
         </div>
         ${stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : ""}
@@ -12671,7 +12687,7 @@ function eContractDocHtml(t, r) {
   </div>`;
 }
 function leaseView() {
-  const t = me(); const r = myRoom(); const left = daysLeft(t.leaseEnd);
+  const t = me(); const r = myRoom();
   return `<div class="topbar"><div class="slide-right"><div class="eyebrow">LEASE</div><h1>租約</h1></div></div>
     <div class="screen">
       ${tenantHandoverNoteHtml(t, r)}
@@ -12681,7 +12697,7 @@ function leaseView() {
         <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart || "—"}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd || "—"}</span></div>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
-        <div class="row"><span class="k">剩餘天數</span><span class="v">${left == null ? "—" : left + " 天"}</span></div>
+        <div class="row"><span class="k">剩餘天數</span><span class="v">${leaseRemainHtml(t, r)}</span></div>
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
         <div class="row wrap"><span class="k">${isStubMonthNow(t, r) ? `本月應繳<span class="rent-sub">（不足月日拆）</span>` : "每月租金"}</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
@@ -12715,7 +12731,9 @@ function leaseView() {
           : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`;
       })()}
       ${t.leaseEnd ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">${(() => {
-        const left = daysLeft(t.leaseEnd);
+        const start = tenantOccupancyStart(t, r);
+        if (start && todayYmd() < start) return `合約尚未開始（${start} 起）。開始後才會倒數剩餘天數。`;
+        const left = daysLeft(tenantOccupancyEnd(t, r));
         const by = renewConfirmYmd(t);
         const nxt = continueLeaseRange(r, t);
         if (left != null && left <= 30) return `合約 ${t.leaseEnd} 到期，剩餘 ${left} 天。請在這 30 天內確定是否續約。一年約最快可延續 ${nxt.start} ～ ${nxt.end}。`;
