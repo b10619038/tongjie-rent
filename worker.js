@@ -227,11 +227,9 @@ async function saveSubs(env, list) {
   }));
 }
 async function lineToken() {
-  const r = await fetch("https://api.line.me/oauth2/v2.1/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "grant_type=client_credentials&client_id=" + CID + "&client_secret=" + SEC
-  });
+  const body = "grant_type=client_credentials&client_id=" + CID + "&client_secret=" + SEC;
+  const headers = { "Content-Type": "application/x-www-form-urlencoded" };
+  const r = await fetch("https://api.line.me/v2/oauth/accessToken", { method: "POST", headers, body });
   const j = await r.json();
   return j.access_token;
 }
@@ -307,7 +305,7 @@ export default {
 
     if (url.pathname === "/binds" && request.method === "GET") {
       const data = await getBinds();
-      return cors(Object.assign({}, data, { workerVer: "0235" }));
+      return cors(Object.assign({}, data, { workerVer: "0236" }));
     }
 
     if (url.pathname === "/unbind" && request.method === "POST") {

@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-21-45";
-const APP_EDIT_COUNT = 685;
+const APP_STAMP = "2026-09-04-21-52";
+const APP_EDIT_COUNT = 686;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0235";
+const FILE_VER = "0236";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -1432,12 +1432,31 @@ function lineBindName(no) {
   return "";
 }
 async function refreshLineBinds() {
+  const merge = (a, b) => {
+    a = a || {}; b = b || {};
+    return {
+      byRoom: Object.assign({}, a.byRoom, b.byRoom),
+      byUser: Object.assign({}, a.byUser, b.byUser),
+      payProofs: Object.assign({}, a.payProofs, b.payProofs),
+      payUsers: Object.assign({}, a.payUsers, b.payUsers),
+      workerVer: b.workerVer || a.workerVer || ""
+    };
+  };
+  let out = ui.lineBinds || { byRoom: {}, byUser: {}, payProofs: {} };
+  const urls = [LINE_HOOK + "/binds"];
   try {
-    const res = await fetch(LINE_HOOK + "/binds");
-    ui.lineBinds = await res.json();
-  } catch {
-    ui.lineBinds = ui.lineBinds || { byRoom: {}, byUser: {} };
+    if (typeof location !== "undefined" && location.origin && /^https?:$/.test(location.protocol)) {
+      urls.push(location.origin + "/line-binds");
+    }
+  } catch {}
+  for (const u of urls) {
+    try {
+      const res = await fetch(u, { cache: "no-store" });
+      if (!res.ok) continue;
+      out = merge(out, await res.json());
+    } catch {}
   }
+  ui.lineBinds = out;
 }
 function linePayProofOf(no) {
   const p = ui.lineBinds && ui.lineBinds.payProofs && ui.lineBinds.payProofs[String(no || "")];
