@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-06";
-const APP_EDIT_COUNT = 624;
+const APP_STAMP = "2026-09-04-12-13";
+const APP_EDIT_COUNT = 625;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0175";
+const FILE_VER = "0176";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["同一畫面點過更新後不再重複跳出"] },
+  { ver: APP_VERSION, items: ["兩人承租時電話與身分證可填一組或兩組"] },
+  { ver: "2026-09-04-12-06-624", items: ["同一畫面點過更新後不再重複跳出"] },
   { ver: "2026-09-04-12-04-623", items: ["申請入住姓名、電話、身分證依格式自動整理"] },
   { ver: "2026-09-04-12-02-622", items: ["更新點過後不會一直重複跳出"] },
   { ver: "2026-09-04-11-59-621", items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
@@ -10199,7 +10200,8 @@ function ensureMoveIn() {
   return ui.moveIn;
 }
 function phonePassOf(phone) {
-  const d = String(phone || "").replace(/\D/g, "");
+  const first = normalizeMobile(phone).split("、")[0] || "";
+  const d = String(first || "").replace(/\D/g, "");
   return d.length >= 4 ? d.slice(-4) : "";
 }
 function chineseNameRuns(s) {
@@ -10218,16 +10220,46 @@ function personNameOk(s) {
   const parts = n.split("、").filter(Boolean);
   return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[\u4e00-\u9fff]{2,4}$/.test(p));
 }
-function normalizeMobile(s) {
+function oneMobile(s) {
   let d = String(s || "").replace(/\D/g, "");
   if (d.startsWith("886")) d = "0" + d.slice(3);
   if (d.length === 9 && d.startsWith("9")) d = "0" + d;
   return d.slice(0, 10);
 }
-function mobileOk(s) {
-  return /^09\d{8}$/.test(normalizeMobile(s));
+function normalizeMobile(s, soft) {
+  const raw = String(s || "");
+  const hasSep = /[、，,\/]/.test(raw);
+  if (hasSep) {
+    const chunks = raw.split(/[、，,\/]+/);
+    const a = oneMobile(chunks[0]);
+    const rest = chunks.slice(1).join("");
+    if (soft) {
+      let b = rest.replace(/\D/g, "");
+      if (b.startsWith("886")) b = "0" + b.slice(3);
+      if (b.length === 9 && b.startsWith("9")) b = "0" + b;
+      b = b.slice(0, 10);
+      return b ? a + "、" + b : a + "、";
+    }
+    const b = oneMobile(rest);
+    return b ? a + "、" + b : a;
+  }
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("886")) d = "0" + d.slice(3);
+  if (d.length > 10) {
+    const a = oneMobile(d.slice(0, 10));
+    let b = d.slice(10, 20);
+    if (b.length === 9 && b.startsWith("9")) b = "0" + b;
+    b = b.slice(0, 10);
+    if (soft) return b ? a + "、" + b : a + "、";
+    return b ? a + "、" + oneMobile(b) : a;
+  }
+  return oneMobile(d);
 }
-function normalizeIdNo(s) {
+function mobileOk(s) {
+  const parts = normalizeMobile(s).split("、").filter(Boolean);
+  return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^09\d{8}$/.test(p));
+}
+function oneIdNo(s) {
   const t = String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   let out = "";
   for (let i = 0; i < t.length && out.length < 10; i++) {
@@ -10238,28 +10270,48 @@ function normalizeIdNo(s) {
   }
   return out;
 }
+function normalizeIdNo(s, soft) {
+  const raw = String(s || "");
+  const hasSep = /[、，,\/]/.test(raw);
+  if (hasSep) {
+    const chunks = raw.split(/[、，,\/]+/);
+    const a = oneIdNo(chunks[0]);
+    const rest = chunks.slice(1).join("");
+    const b = oneIdNo(rest);
+    if (soft) return b ? a + "、" + b : a + "、";
+    return b ? a + "、" + b : a;
+  }
+  const packed = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (packed.length > 10) {
+    const a = oneIdNo(packed.slice(0, 10));
+    const b = oneIdNo(packed.slice(10, 20));
+    if (soft) return b ? a + "、" + b : a + "、";
+    return b ? a + "、" + b : a;
+  }
+  return oneIdNo(packed);
+}
 function idNoOk(s) {
   const v = normalizeIdNo(s);
   if (!v) return true;
-  return /^[A-Z]\d{9}$/.test(v);
+  const parts = v.split("、").filter(Boolean);
+  return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[A-Z]\d{9}$/.test(p));
 }
 function bindFormatField(el, kind) {
   if (!el || el.dataset.fmtBound === "1") return;
   el.dataset.fmtBound = "1";
   const apply = (soft) => {
-    const start = el.selectionStart;
     let next = el.value;
     if (kind === "name") next = soft ? next.replace(/[^\u4e00-\u9fff、，,\s與和\/]/g, "") : normalizePersonName(next);
-    else if (kind === "phone") next = normalizeMobile(next);
-    else if (kind === "id") next = normalizeIdNo(next);
+    else if (kind === "phone") next = normalizeMobile(next, soft);
+    else if (kind === "id") next = normalizeIdNo(next, soft);
     if (el.value !== next) {
       el.value = next;
-      try { if (typeof start === "number") el.setSelectionRange(next.length, next.length); } catch {}
+      try { el.setSelectionRange(next.length, next.length); } catch {}
     }
   };
   el.addEventListener("compositionstart", () => { el.dataset.ime = "1"; });
   el.addEventListener("compositionend", () => { el.dataset.ime = ""; apply(false); });
-  el.addEventListener("input", () => { if (el.dataset.ime === "1") return; apply(kind === "name"); });
+  el.addEventListener("input", () => { if (el.dataset.ime === "1") return; apply(true); });
   el.addEventListener("blur", () => apply(false));
 }
 function canPromoteProspect(t, r) {
@@ -11849,8 +11901,8 @@ function moveInView() {
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
       <div class="label">基本資料</div>
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /></label>
-      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="10" /></label>
-      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="10" /></label>
+      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
+      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
