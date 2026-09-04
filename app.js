@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-43";
-const APP_EDIT_COUNT = 634;
+const APP_STAMP = "2026-09-04-12-45";
+const APP_EDIT_COUNT = 635;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0185";
+const FILE_VER = "0186";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["底欄已選中的按鈕點擊不再跳動"] },
+  { ver: APP_VERSION, items: ["更新提示恢復，新版本會再出現"] },
+  { ver: "2026-09-04-12-43-634", items: ["底欄已選中的按鈕點擊不再跳動"] },
   { ver: "2026-09-04-12-42-633", items: ["還沒到本月租期時租金顯示尚無需繳費"] },
   { ver: "2026-09-04-12-40-632", items: ["合約還沒開始時顯示未開始倒數"] },
   { ver: "2026-09-04-12-33-631", items: ["底欄圖示高度對齊扳手，點選會再放大"] },
@@ -784,16 +785,18 @@ function isDismissed(ver) {
   const d = dismissedBuild();
   const v = String(ver || "");
   if (!d || !v) return false;
-  if (d === v) return true;
-  if (/^\d+$/.test(d) && /^\d+$/.test(v) && Number(v) <= Number(d)) return true;
-  return false;
+  return d === v;
 }
 function rememberDismiss(ver) {
-  const v = String(ver || FILE_VER);
-  const d = dismissedBuild();
-  let keep = v;
-  if (/^\d+$/.test(d) && /^\d+$/.test(v) && Number(d) > Number(v)) keep = d;
-  try { localStorage.setItem("tj-dismiss-build", keep); } catch {}
+  const v = String(ver || "");
+  if (!v) return;
+  try { localStorage.setItem("tj-dismiss-build", v); } catch {}
+}
+function isNewerBuild(ver) {
+  const v = String(ver || "");
+  if (!v || v === FILE_VER) return false;
+  if (/^\d+$/.test(v) && /^\d+$/.test(FILE_VER)) return Number(v) > Number(FILE_VER);
+  return true;
 }
 function seedSeenVersion() {
   const last = lastSeenVersion();
@@ -806,16 +809,14 @@ function seedSeenVersion() {
 }
 function hasUnseenUpdate() {
   const last = lastSeenVersion();
+  if (ui.pendingFileVer && isNewerBuild(ui.pendingFileVer) && !isDismissed(ui.pendingFileVer)) return true;
   if (!last || last === "pending-reload") return false;
-  if (isDismissed(FILE_VER) || isDismissed(ui.pendingFileVer)) return false;
   return last !== APP_VERSION;
 }
 function markVersionSeen() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
-  rememberDismiss(FILE_VER);
   ui.updateReady = false;
   ui.updateNotes = false;
-  ui.pendingFileVer = FILE_VER;
 }
 function hideUpdateUi() {
   ui.updateReady = false;
@@ -826,7 +827,10 @@ function hideUpdateUi() {
   if (bar) bar.remove();
 }
 function closeUpdateNotes() {
-  rememberDismiss(ui.pendingFileVer || FILE_VER);
+  if (ui.pendingFileVer && isNewerBuild(ui.pendingFileVer)) rememberDismiss(ui.pendingFileVer);
+  else {
+    try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+  }
   hideUpdateUi();
 }
 function changelogStamp(ver) {
@@ -896,12 +900,7 @@ function ensureChangelogSheet() {
   bindUpdateSheet(document.getElementById("update-mask"));
 }
 function openUpdateNotes() {
-  const remote = String(ui.pendingFileVer || FILE_VER);
-  rememberDismiss(remote);
-  if (remote === FILE_VER) {
-    try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
-  }
-  ui.updateReady = false;
+  ui.updateReady = true;
   ui.updateNotes = true;
   const bar = document.getElementById("apply-update");
   if (bar) bar.remove();
@@ -956,9 +955,9 @@ function ensureUpdateBar() {
     hideUpdateUi();
     return;
   }
-  const remote = String(ui.pendingFileVer || FILE_VER);
-  const skip = isDismissed(remote) || isDismissed(FILE_VER);
-  const need = !ui.updateNotes && !skip && (hasUnseenUpdate() || ui.updateReady);
+  const remote = String(ui.pendingFileVer || "");
+  const newer = !!(remote && isNewerBuild(remote) && !isDismissed(remote));
+  const need = !ui.updateNotes && (newer || hasUnseenUpdate() || ui.updateReady);
   let el = document.getElementById("apply-update");
   if (!need) {
     if (el) el.remove();
@@ -993,9 +992,12 @@ async function wipeClientCache() {
 function applyAppUpdate() {
   persistLogin();
   persistUi();
-  const remote = String(ui.pendingFileVer || FILE_VER);
+  if (!ui.pendingFileVer || !isNewerBuild(ui.pendingFileVer)) {
+    markVersionSeen();
+    hideUpdateUi();
+    return;
+  }
   try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
-  rememberDismiss(remote);
   hideUpdateUi();
   try { __reloading = true; } catch {}
   wipeClientCache().finally(() => {
@@ -1016,12 +1018,11 @@ async function pollRemoteBuild() {
 function flagAppUpdate(fileVer) {
   if (typeof __reloading !== "undefined" && __reloading) return;
   const ver = String(fileVer || "");
-  if (ver) ui.pendingFileVer = ver;
-  if (isDismissed(ver) || isDismissed(FILE_VER)) return;
-  if (ver === FILE_VER && lastSeenVersion() === APP_VERSION) return;
+  if (!isNewerBuild(ver)) return;
+  if (isDismissed(ver)) return;
+  ui.pendingFileVer = ver;
   try { announceBuild(ver); } catch {}
   if (ui.updateNotes) return;
-  if (ui.updateReady && document.getElementById("apply-update")) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch {}
 }
@@ -1047,10 +1048,9 @@ async function pullBuild() {
   } catch {}
 }
 function promptAppUpdate(reg) {
-  if (isDismissed(FILE_VER) || isDismissed(ui.pendingFileVer)) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch {}
-  if (lastSeenVersion() === APP_VERSION) return;
+  if (lastSeenVersion() === APP_VERSION && !isNewerBuild(ui.pendingFileVer)) return;
   if (canOsNotify()) {
     try {
       const n = new Notification("統潔開發有新版本", {
