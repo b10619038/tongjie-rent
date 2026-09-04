@@ -11,6 +11,7 @@ const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
+const BUILD_API = LINE_HOOK + "/api/build";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
 const LOGIN_KEY = "tongjie_login_v1";
@@ -22,9 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-11-47";
-const APP_EDIT_COUNT = 617;
+const APP_STAMP = "2026-09-04-11-51";
+const APP_EDIT_COUNT = 618;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
+const FILE_VER = "0169";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -81,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
+  { ver: APP_VERSION, items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
+  { ver: "2026-09-04-11-47-617", items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
   { ver: "2026-09-04-10-49-616", items: ["有新版本提示只跳一次，點進去前會固定住"] },
   { ver: "2026-09-04-10-47-615", items: ["更新提示改成點此更新"] },
   { ver: "2026-09-04-10-45-614", items: ["更新畫面只顯示內容清單，版本號改成時間加累計次數"] },
@@ -913,12 +916,41 @@ function applyAppUpdate() {
 }
 async function pollRemoteBuild() {
   try {
-    if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0168") return;
-    ui.updateReady = true;
-    try { render(); } catch {}
+    if (!m || !m[1] || m[1] === FILE_VER) return;
+    flagAppUpdate(m[1]);
+  } catch {}
+}
+function flagAppUpdate(fileVer) {
+  const ver = String(fileVer || "");
+  try { announceBuild(ver); } catch {}
+  if (ui.updateReady) {
+    try { ensureUpdateBar(); } catch {}
+    return;
+  }
+  ui.updateReady = true;
+  try { ensureUpdateBar(); } catch { try { render(); } catch {} }
+}
+async function announceBuild(fileVer) {
+  const ver = String(fileVer || FILE_VER);
+  if (announceBuild.sent === ver) return;
+  announceBuild.sent = ver;
+  try {
+    await fetch(BUILD_API, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+      body: JSON.stringify({ fileVer: ver, stamp: APP_STAMP, edit: APP_EDIT_COUNT, at: Date.now() })
+    });
+  } catch {}
+}
+async function pullBuild() {
+  try {
+    const res = await fetch(BUILD_API + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (!res.ok) return;
+    const o = await res.json();
+    const ver = String((o && o.fileVer) || "");
+    if (ver && Number(ver) > Number(FILE_VER)) flagAppUpdate(ver);
   } catch {}
 }
 function promptAppUpdate(reg) {
@@ -970,9 +1002,21 @@ function watchAppUpdate(reg) {
   const check = () => { try { reg.update(); } catch {} };
   check();
   setInterval(check, 8 * 1000);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { check(); pollRemoteBuild(); } });
+  const tickBuild = () => {
+    check();
+    pollRemoteBuild();
+    pullBuild();
+  };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") tickBuild(); });
+  window.addEventListener("focus", tickBuild);
+  window.addEventListener("online", tickBuild);
   pollRemoteBuild();
-  setInterval(pollRemoteBuild, 30 * 1000);
+  announceBuild(FILE_VER);
+  setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    pollRemoteBuild();
+  }, 4000);
+  setInterval(pollRemoteBuild, 20000);
 }
 let __reloading = false;
 if ("serviceWorker" in navigator) {
@@ -19706,6 +19750,7 @@ async function boot() {
       };
       const prevSig = coreSig(state);
       const changed = await pullCloud();
+      try { await pullBuild(); } catch {}
       refreshOnlineBadges();
       if (coreSig(state) !== prevSig) {
         notifyCloudChanges(before);

@@ -4,6 +4,7 @@ const APP_KEY = "tj-82934388";
 const BIND_URL = "https://internal/binds";
 const STATE_URL = "https://internal/app";
 const PUSH_URL = "https://internal/push-subs";
+const BUILD_URL = "https://internal/build";
 const HINT = "請傳送「房號 姓名」，例如 6821 黃宥宇";
 const VAPID_PUBLIC = "BJB6y_l_IvFM91YDqrBmIAzUJZE_TM9QbxIIY1Nl14LoGHNfmAymDjDVYDdOmdAZU_VPs1fkaR9BM4voY4QjM3U";
 const VAPID_PRIVATE = "FY7eYWJWbf1fihooAP5GwbY_kd3zRH-B4DG11twaR1o";
@@ -130,6 +131,23 @@ async function putState(env, data) {
     headers: { "Cache-Control": "max-age=31536000", "Content-Type": "application/json" }
   }));
 }
+async function getBuild(env) {
+  if (env.DATA) {
+    const raw = await env.DATA.get("build");
+    if (raw) {
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+  }
+  const hit = await caches.default.match(BUILD_URL);
+  return hit ? hit.json() : null;
+}
+async function putBuild(env, data) {
+  const body = JSON.stringify(data);
+  if (env.DATA) await env.DATA.put("build", body);
+  await caches.default.put(BUILD_URL, new Response(body, {
+    headers: { "Cache-Control": "max-age=31536000", "Content-Type": "application/json" }
+  }));
+}
 async function getSubs(env) {
   if (env.DATA) {
     const raw = await env.DATA.get("pushSubs");
@@ -195,6 +213,30 @@ export default {
         try {
           const data = await request.json();
           await putState(env, data);
+          return cors({ ok: true });
+        } catch (e) {
+          return cors({ error: String((e && e.message) || e) }, 500);
+        }
+      }
+    }
+
+    if (url.pathname === "/api/build") {
+      if (!keyOk(request)) return cors({ error: "key" }, 403);
+      if (request.method === "GET") return cors((await getBuild(env)) || {});
+      if (request.method === "PUT") {
+        try {
+          const data = await request.json();
+          const cur = (await getBuild(env)) || {};
+          const nv = Number(data && data.fileVer) || 0;
+          const ov = Number(cur.fileVer) || 0;
+          if (nv >= ov) {
+            await putBuild(env, {
+              fileVer: String((data && data.fileVer) || ""),
+              stamp: (data && data.stamp) || "",
+              edit: (data && data.edit) || 0,
+              at: Date.now()
+            });
+          }
           return cors({ ok: true });
         } catch (e) {
           return cors({ error: String((e && e.message) || e) }, 500);
