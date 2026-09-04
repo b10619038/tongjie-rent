@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-33";
-const APP_EDIT_COUNT = 605;
+const APP_STAMP = "2026-09-04-09-41";
+const APP_EDIT_COUNT = 606;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["簽約時間改為現在以後最快可約，手機電腦同一套空檔"] },
+  { ver: APP_STAMP, items: ["登入三個圖塊與指紋登入改從右邊滑入"] },
+  { ver: "2026-09-04-09-33", items: ["簽約時間改為現在以後最快可約，手機電腦同一套空檔"] },
   { ver: "2026-09-04-09-29", items: ["申請入住選房號不會再從右邊滑兩次"] },
   { ver: "2026-09-04-09-27", items: ["申請入住選房號改成最快可入住"] },
   { ver: "2026-09-04-09-25", items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
@@ -824,7 +825,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0156") return;
+    if (!m || !m[1] || m[1] === "0157") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11584,19 +11585,19 @@ function gateView() {
       <p class="small"><a href="mailto:jie59056503@gmail.com">jie59056503@gmail.com</a></p>
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
     </div>
-    <button class="role-btn slide-left" data-go="move-in">
+    <button class="role-btn slide-left r1" data-go="move-in">
       <strong>申請入住</strong>
       <span>看房滿意後填表，選房號與簽約時間，送到後台新客。</span>
     </button>
-    <button class="role-btn slide-left delay" data-go="tenant-login">
+    <button class="role-btn slide-left r2" data-go="tenant-login">
       <strong>租客登入</strong>
       <span>請輸入房號，密碼為電話後四碼，也可用姓名。</span>
     </button>
-    <button class="role-btn slide-left delay" data-go="admin-login">
+    <button class="role-btn slide-left r3" data-go="admin-login">
       <strong>管理員後台</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
-    ${bioEnrolled() ? `<button class="role-btn slide-left delay" id="bio-login" type="button">
+    ${bioEnrolled() ? `<button class="role-btn slide-left r4" id="bio-login" type="button">
       <strong>${bioLabel()}</strong>
       <span>用這台手機的指紋或臉直接進入上次的帳號。</span>
     </button>` : ""}
