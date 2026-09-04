@@ -2799,7 +2799,7 @@ img.avatar { object-fit: cover; display: block; }
   left: 16px;
   right: 16px;
   bottom: calc(32px + var(--safe-b));
-  z-index: 80;
+  z-index: 96;
   background: var(--teal);
   color: var(--on-teal, #fff);
   text-align: center;

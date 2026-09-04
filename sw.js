@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v686";
-const BUILD = "20260904-0170";
+const CACHE = "tongjie-app-v687";
+const BUILD = "20260904-0171";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -26,6 +26,13 @@ self.addEventListener("fetch", e => {
   e.respondWith((async () => {
     try {
       const res = await fetch(e.request, { cache: "no-store" });
+      if (res && res.ok && (path === "/" || path.endsWith(".html") || path.endsWith("index.html"))) {
+        try {
+          const txt = await res.clone().text();
+          const m = String(txt).match(/app\.js\?v=(\d+)/);
+          if (m && m[1]) pingClients(m[1]);
+        } catch {}
+      }
       if (res && res.ok && !live) {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
@@ -46,6 +53,27 @@ self.addEventListener("fetch", e => {
     }
   })());
 });
+function pingClients(fileVer) {
+  const ver = String(fileVer || "");
+  if (!ver || pingClients.last === ver) return;
+  pingClients.last = ver;
+  self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    list.forEach(c => {
+      try { c.postMessage({ type: "NEW_BUILD", fileVer: ver }); } catch {}
+    });
+  }).catch(() => {});
+}
+async function pingBuild() {
+  try {
+    const res = await fetch("/index.html?nocache=1&t=" + Date.now(), { cache: "no-store" });
+    if (!res || !res.ok) return;
+    const txt = await res.text();
+    const m = String(txt).match(/app\.js\?v=(\d+)/);
+    if (m && m[1]) pingClients(m[1]);
+  } catch {}
+}
+setInterval(pingBuild, 4000);
+pingBuild();
 self.addEventListener("push", event => {
   event.waitUntil((async () => {
     let data = { title: "統潔＆信潔開發", body: "" };

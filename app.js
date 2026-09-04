@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-11-54";
-const APP_EDIT_COUNT = 619;
+const APP_STAMP = "2026-09-04-11-56";
+const APP_EDIT_COUNT = 620;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0170";
+const FILE_VER = "0171";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["送出並進入預覽會先跳出確認"] },
+  { ver: APP_VERSION, items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
+  { ver: "2026-09-04-11-54-619", items: ["送出並進入預覽會先跳出確認"] },
   { ver: "2026-09-04-11-51-618", items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
   { ver: "2026-09-04-11-47-617", items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
   { ver: "2026-09-04-10-49-616", items: ["有新版本提示只跳一次，點進去前會固定住"] },
@@ -742,10 +743,13 @@ if ("serviceWorker" in navigator) {
     return navigator.serviceWorker.ready;
   }).then(r => { window.__swReg = r; }).catch(() => {});
   navigator.serviceWorker.addEventListener("message", e => {
+    if (e.data && e.data.type === "NEW_BUILD" && e.data.fileVer && String(e.data.fileVer) !== FILE_VER) {
+      try { flagAppUpdate(e.data.fileVer); } catch {}
+    }
     if (e.data && e.data.type === "SHOW_CHANGELOG") {
       ui.updateReady = true;
       ui.updateNotes = true;
-      try { render(); } catch {}
+      try { ensureUpdateBar(); render(); } catch {}
     }
     if (e.data && e.data.type === "OPEN") {
       if (e.data.page) ui.page = e.data.page;
@@ -955,10 +959,9 @@ async function pullBuild() {
   } catch {}
 }
 function promptAppUpdate(reg) {
-  if (lastSeenVersion() === APP_VERSION) return;
-  if (ui.updateReady) return;
   ui.updateReady = true;
-  try { render(); } catch {}
+  try { ensureUpdateBar(); } catch { try { render(); } catch {} }
+  if (lastSeenVersion() === APP_VERSION) return;
   if (canOsNotify()) {
     try {
       const n = new Notification("統潔開發有新版本", {
@@ -1023,8 +1026,9 @@ let __reloading = false;
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
-    __reloading = true;
     try { persistLogin(); persistUi(); } catch {}
+    ui.updateReady = true;
+    try { ensureUpdateBar(); } catch { try { render(); } catch {} }
   });
 }
 function urlBase64ToUint8Array(b64) {
@@ -19801,6 +19805,7 @@ async function boot() {
       const prevSig = coreSig(state);
       const changed = await pullCloud();
       try { await pullBuild(); } catch {}
+      try { await pollRemoteBuild(); } catch {}
       refreshOnlineBadges();
       if (coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
