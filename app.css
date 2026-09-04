@@ -2933,16 +2933,24 @@ img.avatar { object-fit: cover; display: block; }
   box-shadow: 0 16px 40px rgba(0,0,0,.14);
 }
 #checkout-form-mask {
-  place-items: start center;
+  display: block;
+  place-items: unset;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  align-items: start;
+  padding: 12px 12px calc(24px + var(--safe-b, 0px));
 }
 .install-sheet.checkout-sheet {
   width: min(720px, 100%);
   max-height: none;
-  margin: 12px auto 24px;
+  margin: 8px auto 28px;
   overflow: visible;
+}
+#checkout-form-card {
+  overflow: visible !important;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
 }
 .install-sheet h2 { margin: 4px 0 10px; font-size: 20px; }
 .notify-steps { margin: 8px 0 12px; }

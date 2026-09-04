@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-33";
-const APP_EDIT_COUNT = 654;
+const APP_STAMP = "2026-09-04-13-35";
+const APP_EDIT_COUNT = 655;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0205";
+const FILE_VER = "0206";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["中途退租會跳出終止租賃契約"] },
+  { ver: APP_VERSION, items: ["正常退租一打開就看到交接確認書"] },
+  { ver: "2026-09-04-13-33-654", items: ["中途退租會跳出終止租賃契約"] },
   { ver: "2026-09-04-13-25-653", items: ["新租客簽約後後台會立刻同步已簽約"] },
   { ver: "2026-09-04-13-22-652", items: ["租客畫面房間圖示改成開門"] },
   { ver: "2026-09-04-13-17-651", items: ["緊急聯絡人與電話可填一人，兩人中間用、"] },
@@ -11438,6 +11439,8 @@ function checkoutFormHtml() {
     return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
+    <div class="label" style="margin-top:12px">文件預覽</div>
+    ${termPrintPackHtml(t, r, paperCo, "early")}
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>租賃物標示</span><input id="co-property" type="text" value="${escapeHtml(prop)}" /></label>
     <label class="field"><span>身分證字號</span><input id="co-idno" type="text" value="${escapeHtml(co.idNo || t.idNo || "")}" /></label>
@@ -11465,12 +11468,13 @@ function checkoutFormHtml() {
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
       ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消終止契約</button>`}
     </div>
-    ${termPrintPackHtml(t, r, paperCo, "early")}
   </div>`;
   }
   return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。列印交接確認書後雙方蓋章即可。"}</div>
+    <div class="label" style="margin-top:12px">文件預覽</div>
+    ${termPrintPackHtml(t, r, paperCo, "normal")}
     <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
@@ -11499,7 +11503,6 @@ function checkoutFormHtml() {
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
       ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消退租單</button>`}
     </div>
-    ${termPrintPackHtml(t, r, paperCo, "normal")}
   </div>`;
 }
 function readCheckoutForm() {
