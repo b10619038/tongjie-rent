@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-14";
-const APP_EDIT_COUNT = 676;
+const APP_STAMP = "2026-09-04-17-20";
+const APP_EDIT_COUNT = 677;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0227";
+const FILE_VER = "0228";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約簽名放大，不壓到上下黑線"] },
+  { ver: APP_VERSION, items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
+  { ver: "2026-09-04-17-14-676", items: ["合約簽名放大，不壓到上下黑線"] },
   { ver: "2026-09-04-17-10-675", items: ["房屋租賃契約書每一面改回滿版"] },
   { ver: "2026-09-04-17-06-674", items: ["回報已繳費並附上截圖改成綠色可按按鈕"] },
   { ver: "2026-09-04-17-02-673", items: ["本月已繳費先變淡，回報截圖後才解鎖"] },
@@ -6690,7 +6691,14 @@ function upsertRentAutoBookOn(data, t) {
     if (practice || isDemoTenant(t) || (room && room.demo)) dropRentAutoBookOn(data, t);
     return;
   }
-  const amount = thisMonthRentOf(t, room) || Number(room.rent) || Number(t.rent) || 0;
+  if (!roomIsFactory(room) && !(Array.isArray(t.leases) && t.leases.length) && ymdOf(t.leaseStart)) {
+    try { applyStudioLeasePack(t, room, t.leaseStart); } catch {}
+  }
+  if (!leaseCoversYm(t, room, payYmNow())) {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  const amount = thisMonthRentOf(t, room) || 0;
   if (!amount) {
     dropRentAutoBookOn(data, t);
     return;
@@ -6842,7 +6850,8 @@ function onTogglePayEvent(e) {
   toast(t.paid ? ("已標為" + pay.text) : ("已標為" + pay.text));
   if (t.paid && !isDemoTenant(t)) {
     const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-    try { pushPhoneNotify("本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} 本月租金已入帳`, room ? room.no : "tenants"); } catch {}
+    const stub = isStubMonthNow(t, room);
+    try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
   }
   setTimeout(() => { btn.classList.remove("is-pop"); }, 180);
   setTimeout(() => { render(); }, 260);
@@ -8799,19 +8808,19 @@ function collectLedger() {
   state.tenants.filter(t => paidThisMonth(t) && !isDemoTenant(t)).forEach(t => {
     const room = state.rooms.find(r => r.id === t.roomId);
     if (!room || room.status === "office" || room.demo) return;
+    if (roomIsFactory(room)) return;
     const date = ymdOf(t.paidAt) || tenantPaidOnValue(t);
     if (!date) return;
     const no = room ? String(room.no) : "";
     const ym = date.slice(0, 7);
     if (no && takenYm[ym + "|" + no]) return;
-    if (roomIsFactory(room) && (state.books || []).some(b => b && ymdOf(b.date).slice(0, 7) === ym && (
-      String(b.roomNo || "") === no || (t.name && String(b.note || "").indexOf(t.name) >= 0)
-    ))) return;
-    const amount = Number(room && room.rent) || Number(t.rent) || 0;
+    if (!leaseCoversYm(t, room, payYmNow())) return;
+    const stub = isStubMonthNow(t, room);
+    const amount = thisMonthRentOf(t, room) || 0;
     if (!amount) return;
     rows.push({
       id: "rent-" + t.id, type: "in", date, amount,
-      roomNo: no, note: (t.name || "") + " 租金", company: t.payCompany || roomCompany(room || {}),
+      roomNo: no, note: (t.name || "") + (stub ? " 不足月租金" : " 租金"), company: t.payCompany || roomCompany(room || {}),
       bank: tenantPayBankKey(t, room) || "",
       source: "rent", canDel: false, canEdit: false
     });
