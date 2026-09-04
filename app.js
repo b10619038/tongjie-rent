@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-20";
-const APP_EDIT_COUNT = 677;
+const APP_STAMP = "2026-09-04-17-24";
+const APP_EDIT_COUNT = 678;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0228";
+const FILE_VER = "0229";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
+  { ver: APP_VERSION, items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
+  { ver: "2026-09-04-17-20-677", items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
   { ver: "2026-09-04-17-14-676", items: ["合約簽名放大，不壓到上下黑線"] },
   { ver: "2026-09-04-17-10-675", items: ["房屋租賃契約書每一面改回滿版"] },
   { ver: "2026-09-04-17-06-674", items: ["回報已繳費並附上截圖改成綠色可按按鈕"] },
@@ -11563,42 +11564,39 @@ function printLeaseIframe(html) {
   iframe.onload = () => setTimeout(go, 400);
   setTimeout(go, 1200);
 }
-async function printStudioLease(t, r) {
+function closeLeasePrintPreview() {
+  const el = document.getElementById("lease-preview-box");
+  if (el) el.remove();
+}
+function showLeasePrintPreview(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
   if (es && es.sig) t.eSign = es;
-  const html = studioLeasePapersHtml(t, r, false);
+  const html = studioLeasePapersHtml(t, r, true);
   if (!html) { toast("合約無法產生"); return; }
-  const olds = document.querySelectorAll(".studio-lease-paper");
-  olds.forEach(el => { if (!el.closest(".lease-preview") && !el.closest(".screen")) el.remove(); });
-  const host = document.createElement("div");
-  host.style.cssText = "position:fixed;left:0;top:0;width:210mm;background:#fff;opacity:0;pointer-events:none;z-index:-1;";
-  host.innerHTML = html;
-  const papers = [...host.children];
-  papers.forEach(p => { p.classList.add("lease-preview"); p.style.display = "block"; });
-  document.body.appendChild(host);
-  toast("正在產生合約…");
-  try {
-    await waitImgs(host);
-    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
-    const pages = [];
-    for (const paper of papers) {
-      const pgs = [...paper.querySelectorAll(".lease-pg")];
-      const list = pgs.length ? pgs : [paper];
-      for (const pg of list) pages.push(paintDomPage(pg));
-    }
-    if (!pages.length) throw new Error("empty");
-    const no = String((r && r.no) || "").replace(/[\\/:*?"<>|]/g, "");
-    const name = String((t && t.name) || "").replace(/[\\/:*?"<>|、]/g, "");
-    await downloadJpegPagesPdf(pages, "統潔-" + no + (name ? "-" + name : "") + "-房屋租賃契約書.pdf", false);
-    toast("已下載合約");
-  } catch (err) {
-    try { console.error(err); } catch {}
-    printLeaseIframe(html);
-    toast("已開啟列印，可存成 PDF");
-  } finally {
-    if (host.parentNode) host.remove();
-  }
+  closeLeasePrintPreview();
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox lease-print-preview";
+  wrap.id = "lease-preview-box";
+  const title = "房屋租賃契約書　" + (r.no || "") + (t.name ? "　" + t.name : "");
+  wrap.innerHTML = `
+    <div class="lightbox-bar">
+      <button type="button" id="lease-prev-close">關閉</button>
+      <span>${escapeHtml(title)}</span>
+      <button type="button" class="btn-navy" id="lease-prev-print">列印</button>
+    </div>
+    <div class="lease-preview-scroll">${html}</div>`;
+  document.body.appendChild(wrap);
+  document.getElementById("lease-prev-close").onclick = closeLeasePrintPreview;
+  wrap.addEventListener("click", e => { if (e.target === wrap) closeLeasePrintPreview(); });
+  document.getElementById("lease-prev-print").onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    printLeaseIframe(studioLeasePapersHtml(t, r, false));
+  };
+}
+function printStudioLease(t, r) {
+  showLeasePrintPreview(t, r);
 }
 function checkoutFormHtml() {
   const id = ui.checkoutTenantId;

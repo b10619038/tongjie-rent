@@ -2623,6 +2623,47 @@ img.avatar { object-fit: cover; display: block; }
   height: auto;
   border-radius: 8px;
 }
+.lease-print-preview {
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  background: #2a2a2a;
+}
+.lease-print-preview .lightbox-bar {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  background: #1a1a1a;
+}
+.lease-print-preview .lightbox-bar span {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+.lease-print-preview .lightbox-bar .btn-navy {
+  width: auto;
+  padding: 8px 18px;
+  margin: 0;
+}
+.lease-preview-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 12px 28px;
+  background: #c5c5c5;
+  -webkit-overflow-scrolling: touch;
+}
+.lease-preview-scroll .studio-lease-paper {
+  display: block !important;
+  width: min(210mm, 100%);
+  margin: 0 auto;
+}
+.lease-preview-scroll .studio-lease-paper .term-hint { display: none; }
+.lease-preview-scroll .lease-pg {
+  width: 100%;
+  min-height: 297mm;
+  margin: 0 auto 16px;
+  box-shadow: 0 6px 22px rgba(0,0,0,.22);
+}
 
 .role-btn, .room-row, .clickable, .card.item, .issue-opt, .mini.clickable, [data-room] {
   border-radius: 22px; overflow: hidden;
