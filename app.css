@@ -3471,13 +3471,125 @@ html[data-theme="void"] .theme-swatch.on {
   border-color: #f0f0f0;
 }
 html[data-theme="void"] .theme-mask { background: rgba(0,0,0,.62); }
-html[data-theme="void"] .pay-pill.paid { background: #243028; color: #d8f0dc; }
-html[data-theme="void"] .pay-pill.unpaid { background: #3a1c1c; color: #ffb4ae; }
+html[data-theme="void"] .pay-pill.paid,
+html[data-theme="void"] button.pay-toggle.paid { background: #243028; color: #d8f0dc; border-color: #3d5a44; }
+html[data-theme="void"] .pay-pill.unpaid,
+html[data-theme="void"] button.pay-toggle.unpaid { background: #3a1c1c; color: #ffb4ae; border-color: #6a3333; }
 html[data-theme="void"] .tab { color: #c8c8c8; }
-html[data-theme="void"] .tab.on { color: #ffffff; }
-html[data-theme="void"] .cal-cell { color: #e8e8e8; }
+html[data-theme="void"] .tab.on { color: #111111 !important; }
+html[data-theme="void"] .cal-cell { color: #e8e8e8; border-color: #5e5e5e; }
 html[data-theme="void"] .handover-box { background: #2a2218; }
 html[data-theme="void"] .handover-box .label,
 html[data-theme="void"] .pay-pill.hand { color: #efc89a; }
 html[data-theme="void"] .led-trip { color: #8ab4ff; }
-html[data-theme="void"] .move-room-btn { color: #f5f5f5; }
+html[data-theme="void"] .move-room-btn { color: #f5f5f5; border-color: #5e5e5e; }
+html[data-theme="void"] .card,
+html[data-theme="void"] .ghost,
+html[data-theme="void"] .switch-tile,
+html[data-theme="void"] .role-btn,
+html[data-theme="void"] .room-row,
+html[data-theme="void"] .issue-opt,
+html[data-theme="void"] .tenant-search,
+html[data-theme="void"] .mini,
+html[data-theme="void"] .invoice-overview-btn {
+  border-color: #5e5e5e;
+}
+html[data-theme="void"] .ghost.on,
+html[data-theme="void"] .log-filters .ghost.on {
+  background: #f0f0f0;
+  color: #111111;
+  border-color: #f0f0f0;
+}
+html[data-theme="void"] .primary,
+html[data-theme="void"] .btn-navy,
+html[data-theme="void"] .btn-navy:hover,
+html[data-theme="void"] .btn-navy:disabled {
+  background: #f0f0f0;
+  color: #111111;
+}
+html[data-theme="void"] .badge.rented,
+html[data-theme="void"] .badge.doing {
+  background: #243044;
+  color: #9ec4ff;
+}
+html[data-theme="void"] .badge.vacant,
+html[data-theme="void"] .badge.office {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+html[data-theme="void"] .badge.repair,
+html[data-theme="void"] .badge.open {
+  background: #3a2e18;
+  color: #f0c888;
+}
+html[data-theme="void"] .badge.done {
+  background: #243028;
+  color: #d8f0dc;
+}
+html[data-theme="void"] .v-edit {
+  background: #1c1c1c !important;
+  color: #f5f5f5 !important;
+  border-color: #5e5e5e;
+}
+html[data-theme="void"] .live-pill {
+  background: #2a2a2a;
+  color: #c8c8c8;
+}
+html[data-theme="void"] .live-pill.on {
+  background: #1c3324;
+  color: #8ee0a8;
+}
+html[data-theme="void"] .preview-banner {
+  background: #3a2e18;
+  color: #f0c888;
+}
+html[data-theme="void"] .fix-pills span {
+  background: #243044;
+  color: #9ec4ff;
+}
+html[data-theme="void"] .seg {
+  background: #1c1c1c;
+  border: 1px solid #5e5e5e;
+}
+html[data-theme="void"] .seg-bg { background: #2e2e2e; }
+html[data-theme="void"] .bar { background: #2a2a2a; }
+html[data-theme="void"] .chip {
+  background: #2a2a2a;
+  color: #f5f5f5;
+}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"] {
+  background: #1c3324;
+  color: #8ee0a8;
+  border-color: #3d5a44;
+}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on {
+  background: #2f7d4a;
+  color: #fff;
+  border-color: #2f7d4a;
+}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"] {
+  background: #3a1c1c;
+  color: #ffb4ae;
+  border-color: #6a3333;
+}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on {
+  background: #c4453c;
+  color: #fff;
+  border-color: #c4453c;
+}
+html[data-theme="void"] #tenant-vacant-btn.on {
+  background: #f0f0f0;
+  color: #111;
+}
+html[data-theme="void"] .switch-tile { color: #f0f0f0; }
+html[data-theme="void"] .back,
+html[data-theme="void"] .section-title span,
+html[data-theme="void"] .linkish { color: #d6d6d6; }
+html[data-theme="void"] .nudge-note { background: #3a1c1c; border-color: #6a3333; }
+html[data-theme="void"] .nudge-note .label { color: #ffb4ae; }
+html[data-theme="void"] .cal-w { color: #b0b0b0; }
+html[data-theme="void"] .acct-chip,
+html[data-theme="void"] .site-chip {
+  border-color: #5e5e5e;
+  color: #f5f5f5;
+}

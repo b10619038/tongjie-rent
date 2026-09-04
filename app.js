@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-05";
-const APP_EDIT_COUNT = 609;
+const APP_STAMP = "2026-09-04-10-12";
+const APP_EDIT_COUNT = 610;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
+  { ver: APP_STAMP, items: ["極黑登入後圖卡邊框與反白字對比加強"] },
+  { ver: "2026-09-04-10-05", items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
   { ver: "2026-09-04-10-03", items: ["登入說明改成房間、租約、租金與報修，管理平台"] },
   { ver: "2026-09-04-10-01", items: ["登入公司名稱在手機改成一行並依螢幕縮放"] },
   { ver: "2026-09-04-09-41", items: ["登入三個圖塊與指紋登入改從右邊滑入"] },
@@ -462,7 +463,7 @@ const THEMES = [
   { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" },
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
-  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#161616", chip: "#1c1c1c", ink: "#f5f5f5", paper: "#000000", card: "#111111", line: "#2c2c2c", muted: "#8d8d8d", inkSoft: "#c8c8c8", onTeal: "#111111", bar: "#000000" }
+  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#1e1e1e", chip: "#242424", ink: "#f5f5f5", paper: "#000000", card: "#111111", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#000000" }
 ];
 function currentThemeId() {
   try { return localStorage.getItem(THEME_KEY) || "sage"; } catch { return "sage"; }
@@ -828,7 +829,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0160") return;
+    if (!m || !m[1] || m[1] === "0161") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
