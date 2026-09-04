@@ -22,8 +22,9 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-42";
-const APP_EDIT_COUNT = 613;
+const APP_STAMP = "2026-09-04-10-45";
+const APP_EDIT_COUNT = 614;
+const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,11 +81,12 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["滑動螢幕時不會誤觸輸入格跳出鍵盤"] },
-  { ver: "2026-09-04-10-39", items: ["主題色調面板只跳出一次，不再重複滑入"] },
-  { ver: "2026-09-04-10-16", items: ["登入開場影片提高畫質"] },
-  { ver: "2026-09-04-10-12", items: ["極黑登入後圖卡邊框與反白字對比加強"] },
-  { ver: "2026-09-04-10-05", items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
+  { ver: APP_VERSION, items: ["更新畫面只顯示內容清單，版本號改成時間加累計次數"] },
+  { ver: "2026-09-04-10-42-613", items: ["滑動螢幕時不會誤觸輸入格跳出鍵盤"] },
+  { ver: "2026-09-04-10-39-612", items: ["主題色調面板只跳出一次，不再重複滑入"] },
+  { ver: "2026-09-04-10-16-611", items: ["登入開場影片提高畫質"] },
+  { ver: "2026-09-04-10-12-610", items: ["極黑登入後圖卡邊框與反白字對比加強"] },
+  { ver: "2026-09-04-10-05-609", items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
   { ver: "2026-09-04-10-03", items: ["登入說明改成房間、租約、租金與報修，管理平台"] },
   { ver: "2026-09-04-10-01", items: ["登入公司名稱在手機改成一行並依螢幕縮放"] },
   { ver: "2026-09-04-09-41", items: ["登入三個圖塊與指紋登入改從右邊滑入"] },
@@ -448,7 +450,6 @@ const CHANGELOG = [
   { ver: "2026-08-28-上午1:28", items: ["管理員公告改為連點兩下按愛心，讚與笑臉已移除"] }
 ];
 const APP_BUILD_NO = APP_EDIT_COUNT;
-const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const THEME_KEY = "tongjie_theme";
 const FONT_KEY = "tongjie_font";
 const THEMES = [
@@ -766,11 +767,26 @@ function markVersionSeen() {
   ui.updateReady = false;
   ui.updateNotes = false;
 }
+function changelogStamp(ver) {
+  const s = String(ver || "");
+  const m = s.match(/^(\d{4}-\d{2}-\d{2}-\d{2}-\d{2})(?:-\d+)?$/);
+  return m ? m[1] : s;
+}
+function changelogLabel(ver) {
+  const s = String(ver || "");
+  if (s === APP_STAMP || s === APP_VERSION) return "版本 " + APP_VERSION;
+  if (/^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d+$/.test(s)) return "版本 " + s;
+  return "版本 " + s;
+}
 function unseenChangelog() {
   const last = lastSeenVersion();
   if (last === APP_VERSION) return [];
-  const idx = CHANGELOG.findIndex(x => x.ver === last);
-  const raw = idx < 0 ? CHANGELOG.slice(0, 4) : CHANGELOG.slice(0, idx);
+  const lastStamp = changelogStamp(last);
+  const idx = CHANGELOG.findIndex(x => {
+    const v = String(x.ver || "");
+    return v === last || v === lastStamp || changelogStamp(v) === last || changelogStamp(v) === lastStamp;
+  });
+  const raw = idx < 0 ? CHANGELOG.slice(0, 4) : (idx === 0 ? CHANGELOG.slice(0, 1) : CHANGELOG.slice(0, idx));
   const dev = isDeveloper();
   return raw.map(n => {
     if (n.onlyDev && !dev) return null;
@@ -781,13 +797,22 @@ function unseenChangelog() {
 }
 function changelogSheetHtml() {
   if (!ui.updateNotes) return "";
-  const notes = unseenChangelog();
-  const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(n.ver)}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`).join("");
+  let notes = unseenChangelog();
+  if (!notes.length) {
+    const dev = isDeveloper();
+    notes = CHANGELOG.slice(0, 4).map(n => {
+      if (n.onlyDev && !dev) return null;
+      const items = (n.items || []).slice();
+      if (dev && n.devItems) items.push(...n.devItems);
+      return items.length ? { ver: n.ver, items } : null;
+    }).filter(Boolean);
+  }
+  const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(changelogLabel(n.ver))}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`).join("");
   return `<div class="install-mask" id="update-mask">
     <div class="install-sheet">
       <div class="label">軟體更新</div>
       <h2>這次更新內容如下:</h2>
-      <div class="log-list">${blocks || `<p class="small">版本 ${escapeHtml(APP_VERSION)}</p>`}</div>
+      <div class="log-list">${blocks}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
     </div>
@@ -865,7 +890,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0164") return;
+    if (!m || !m[1] || m[1] === "0165") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
