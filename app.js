@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-24";
-const APP_EDIT_COUNT = 628;
+const APP_STAMP = "2026-09-04-12-26";
+const APP_EDIT_COUNT = 629;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0179";
+const FILE_VER = "0180";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客登入可用任一人的姓名或手機號碼"] },
+  { ver: APP_VERSION, items: ["入住申請自動排到本月未繳上方"] },
+  { ver: "2026-09-04-12-24-628", items: ["租客登入可用任一人的姓名或手機號碼"] },
   { ver: "2026-09-04-12-22-627", items: ["空房入住申請只顯示姓名，不再出現箭頭"] },
   { ver: "2026-09-04-12-20-626", items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
   { ver: "2026-09-04-12-13-625", items: ["兩人承租時電話與身分證可填一組或兩組"] },
@@ -15696,6 +15697,14 @@ function vacantSheetDetailsHtml(r) {
       ${handoverBoxHtml(null, r)}
       ${incomingOf(r.id) ? `<button type="button" class="ghost" data-force-vacate="${escapeHtml(incomingOf(r.id).id)}" style="margin-top:8px">強制退租</button>` : ""}`;
 }
+function tenantApplyRank(t) {
+  if (!t || isDemoTenant(t)) return 1;
+  if (t.applyPending || t.prospect || t.incoming) return 0;
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const inc = r && incomingOf(r.id);
+  if (inc && !inc.former && (inc.applyPending || inc.prospect || inc.incoming)) return 0;
+  return 1;
+}
 function tenantListOfKind(kind, opts) {
   try { ensureDemoTenant(state); } catch {}
   const factory = kind === "factory";
@@ -15726,7 +15735,9 @@ function tenantListOfKind(kind, opts) {
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
     if (da === 0) return 0;
-    if (!!a.incoming !== !!b.incoming) return a.incoming ? 1 : -1;
+    const aa = tenantApplyRank(a);
+    const ab = tenantApplyRank(b);
+    if (aa !== ab) return aa - ab;
     if (!!a.paid !== !!b.paid) return a.paid ? 1 : -1;
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
@@ -15760,7 +15771,15 @@ function tenantListOfKind(kind, opts) {
   }
   const rank = new Map(ui.tenantOrder.map((id, i) => [id, i]));
   uniq.forEach(t => { if (t && t.id && !rank.has(t.id)) { rank.set(t.id, ui.tenantOrder.length); ui.tenantOrder.push(t.id); } });
-  uniq.sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
+  uniq.sort((a, b) => {
+    const da = isDemoTenant(a) ? 0 : 1;
+    const db = isDemoTenant(b) ? 0 : 1;
+    if (da !== db) return da - db;
+    const aa = tenantApplyRank(a);
+    const ab = tenantApplyRank(b);
+    if (aa !== ab) return aa - ab;
+    return (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999);
+  });
   return uniq;
 }
 function tenantEntriesOfKind(kind, opts) {
@@ -15838,7 +15857,7 @@ function tenantListInnerHtml(kind) {
         </div>`;
     }).join("")}</div>` : ""}
     ${entries.length || vacantHits.length || applyVacant.length || formerVacant.length
-      ? entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + applyVacant.map(r => vacantRoomCardHtml(r)).join("") + formerVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
+      ? applyVacant.map(r => vacantRoomCardHtml(r)).join("") + entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + formerVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
       : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有本月已繳" : tenantChipOn() === "unpaid" ? "目前沒有本月未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
 }
 function tenantEntryDetailsHtml(kind, entry) {
