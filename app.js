@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-55";
-const APP_EDIT_COUNT = 640;
+const APP_STAMP = "2026-09-04-12-57";
+const APP_EDIT_COUNT = 641;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0191";
+const FILE_VER = "0192";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間按鈕改成簡潔床鋪圖示"] },
+  { ver: APP_VERSION, items: ["入住申請全後台同步，確認可以入住後其他裝置變已入住"] },
+  { ver: "2026-09-04-12-55-640", items: ["房間按鈕改成簡潔床鋪圖示"] },
   { ver: "2026-09-04-12-53-639", items: ["點租客登入不再卡一下"] },
   { ver: "2026-09-04-12-52-638", items: ["水費改兩行顯示，移除下次日期"] },
   { ver: "2026-09-04-12-49-637", items: ["下拉重新整理的提示改到畫面最上方"] },
@@ -1632,6 +1633,46 @@ function markApplyPingSeen(p) {
 }
 function applyStillLive(t) {
   return !!(t && (t.applyPending || t.incoming || t.prospect) && !t.former && !t.cancelledApply && !t.loginRevoked && !t.clearedApply && !t.sessionEnded);
+}
+function applyCloudFlags(t, src) {
+  if (!t || !src) return;
+  if (src.cancelledApply || src.loginRevoked || src.clearedApply || src.sessionEnded) {
+    if (src.cancelledApply) t.cancelledApply = true;
+    if (src.loginRevoked) t.loginRevoked = true;
+    if (src.clearedApply) t.clearedApply = true;
+    if (src.sessionEnded) t.sessionEnded = true;
+    t.applyPending = false;
+    t.applyUnread = false;
+    t.incoming = false;
+    t.prospect = false;
+    return;
+  }
+  const off = Math.max(Number(t.officialAt) || 0, Number(src.officialAt) || 0);
+  if (off) {
+    t.officialAt = off;
+    t.incoming = false;
+    t.prospect = false;
+    t.applyPending = false;
+    t.applyUnread = false;
+    if (src.roomId) t.roomId = src.roomId;
+    return;
+  }
+  if (src.applyPending || src.incoming || src.prospect) {
+    t.applyPending = !!(t.applyPending || src.applyPending);
+    t.incoming = !!(t.incoming || src.incoming || src.applyPending);
+    t.prospect = !!(t.prospect || src.prospect);
+    t.applyUnread = !!(t.applyUnread || src.applyUnread);
+  }
+}
+function applyStatusPill(inc, t, r) {
+  const x = (inc && applyStillLive(inc)) ? inc : ((t && applyStillLive(t)) ? t : null);
+  if (x) {
+    if (r && tenantContractStatus(x, r) === "signed") return { text: "已簽約待確認", cls: "hand" };
+    if (x.applyPending) return { text: "入住申請", cls: "hand" };
+    return { text: "交接中", cls: "hand" };
+  }
+  if (t && t.officialAt && !t.former && !t.cancelledApply) return { text: "已入住", cls: "paid" };
+  return null;
 }
 function applyPingStillLive(ping, tenants) {
   if (!ping || !ping.name) return false;
@@ -3810,12 +3851,24 @@ function pickNewerEntity(a, b, keys) {
     if (!Array.isArray(out.leases) || !out.leases.length) out.leases = (winner && Array.isArray(winner.leases) && winner.leases.length) ? winner.leases : (la.length ? la : lb);
   }
   if (keys && keys.indexOf("incoming") >= 0) {
-    const off = Math.max(Number(a && a.officialAt) || 0, Number(b && b.officialAt) || 0);
-    if (off && !out.former && !out.loginRevoked && !out.sessionEnded && !out.clearedApply) {
+    const cancelled = !!(out.cancelledApply || out.loginRevoked || out.sessionEnded || out.clearedApply);
+    const off = Math.max(Number(a && a.officialAt) || 0, Number(b && b.officialAt) || 0, Number(out.officialAt) || 0);
+    if (cancelled) {
+      out.applyPending = false;
+      out.applyUnread = false;
+      out.incoming = false;
+      out.prospect = false;
+    } else if (off) {
       out.officialAt = off;
       out.incoming = false;
       out.prospect = false;
       out.applyPending = false;
+      out.applyUnread = false;
+    } else {
+      out.applyPending = !!(a && a.applyPending) || !!(b && b.applyPending) || !!out.applyPending;
+      out.incoming = !!(a && a.incoming) || !!(b && b.incoming) || out.applyPending;
+      out.prospect = !!(a && a.prospect) || !!(b && b.prospect);
+      out.applyUnread = !!(a && a.applyUnread) || !!(b && b.applyUnread) || !!out.applyUnread;
     }
   }
   return out;
@@ -4033,7 +4086,7 @@ function ingestPaidCloud(raw) {
             roomId: src.roomId,
             name: src.name,
             phone: src.phone || "",
-            incoming: !!src.incoming,
+            incoming: !!src.incoming || !!src.applyPending,
             prospect: !!src.prospect,
             applyPending: !!src.applyPending,
             applyUnread: !!src.applyUnread,
@@ -4055,24 +4108,29 @@ function ingestPaidCloud(raw) {
           state.tenants.push(t);
           byId.set(t.id, t);
         } else {
-          if (Number(src.editedAt || 0) < Number(t.editedAt || 0)) return;
+          applyCloudFlags(t, src);
+          if (Number(src.editedAt || 0) < Number(t.editedAt || 0) && Number(src.officialAt || 0) <= (Number(t.officialAt) || 0)) {
+            if ("paid" in src) {
+              t.paid = !!src.paid;
+              t.paidTouched = true;
+              if (src.paidYm) t.paidYm = src.paidYm || payYmNow();
+              t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
+            }
+            return;
+          }
         }
-        if (src.paidYm && src.paidYm !== payYmNow() && !("incoming" in src)) return;
         if ("paid" in src) t.paid = !!src.paid;
         t.paidTouched = true;
         if (src.paidYm) t.paidYm = src.paidYm || payYmNow();
         t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
         t.paidVia = src.paid ? (src.paidVia || "") : "";
         if (src.remitOn) t.remitOn = src.remitOn;
-        if ("incoming" in src) t.incoming = !!src.incoming;
-        if ("prospect" in src) t.prospect = !!src.prospect;
-        if ("applyPending" in src) t.applyPending = !!src.applyPending;
-        if ("applyUnread" in src) t.applyUnread = !!src.applyUnread;
+        applyCloudFlags(t, src);
         if ("former" in src) t.former = !!src.former;
         if ("loginRevoked" in src) t.loginRevoked = !!src.loginRevoked;
         if ("sessionEnded" in src) t.sessionEnded = !!src.sessionEnded;
         if ("clearedApply" in src) t.clearedApply = !!src.clearedApply;
-        if (Number(src.officialAt) > (Number(t.officialAt) || 0)) t.officialAt = src.officialAt;
+        if ("cancelledApply" in src && src.cancelledApply) t.cancelledApply = true;
         if (src.leaseStart) t.leaseStart = src.leaseStart;
         if (src.leaseEnd) t.leaseEnd = src.leaseEnd;
         if (Array.isArray(src.leases) && src.leases.length) t.leases = src.leases;
@@ -4082,7 +4140,7 @@ function ingestPaidCloud(raw) {
         if (src.name) t.name = src.name;
         if (src.phone) t.phone = src.phone;
         if (src.roomId) t.roomId = src.roomId;
-        if (src.editedAt) t.editedAt = src.editedAt;
+        if (src.editedAt && Number(src.editedAt) >= Number(t.editedAt || 0)) t.editedAt = src.editedAt;
         if (Array.isArray(src.hiddenAnns) && src.hiddenAnns.length) {
           t.hiddenAnns = [...new Set([].concat(t.hiddenAnns || [], src.hiddenAnns.map(String)))];
           try { saveHiddenAnnsFor(t); } catch {}
@@ -4107,14 +4165,15 @@ function ingestPaidCloud(raw) {
     if (applyAt && applyAt > (ingestPaidCloud.applyPing || 0)) {
       ingestPaidCloud.applyPing = applyAt;
       const ping = o.applyPing;
-      const live = applyPingStillLive(ping, o.tenants || state.tenants);
+      const confirmed = !!(ping && (ping.kind === "official" || ping.officialAt));
+      const live = !confirmed && applyPingStillLive(ping, o.tenants || state.tenants);
       if (ui.role === "admin" && ping && ping.name && live && !applyPingAlreadySeen(ping)) {
         markApplyPingSeen(ping);
         const line = `${ping.roomNo || ""} ${ping.name} 想要入住`.trim();
         try { showOsBanner("入住申請", line, "tongjie-apply-" + applyAt); } catch {}
         toast("入住申請　" + line);
       }
-      if (live) try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at)) return;
     if (composingNow()) return;
@@ -10428,7 +10487,7 @@ function promoteProspect(t, r) {
     ui.prospectPreview = false;
     persistUi();
   }
-  try { pushPhoneNotify("入住已確認", `${r.no || ""} ${t.name || ""} 已成為正式租客`, r.no || "tenants"); } catch {}
+  try { pushPhoneNotify("入住已確認", `${r.no || ""} ${t.name || ""} 已入住`, r.no || "tenants"); } catch {}
   return true;
 }
 function maybePromoteProspect(t) {
@@ -10580,13 +10639,16 @@ function confirmIncomingApply(inc) {
   const r = (state.rooms || []).find(x => x && x.id === inc.roomId);
   if (r && canPromoteProspect(inc, r)) {
     promoteProspect(inc, r);
+    state.applyPing = { at: Date.now(), kind: "official", roomNo: r.no, name: inc.name, tenantId: inc.id, officialAt: inc.officialAt };
     save();
     try { pushCloud(); } catch {}
-    toast("已確認，" + (r.no || "") + " 成為正式租客（看房畫面會自動轉，不用重登）。開立發票總覽已更新");
+    try { publishPaidCloud(); } catch {}
+    toast("已確認，" + (r.no || "") + " 已入住。其他後台會同步成已入住");
     return;
   }
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   toast("已確認，改為交接中。舊客退租完成後才轉正式");
 }
 function restoreLiveRoom(r) {
@@ -10815,7 +10877,7 @@ function incomingActionHtml(inc, r) {
       <p class="small">${signed
         ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
         : (live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。")}</p>
-      <button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認正式入住" : "確認交接中"}</button>
+      <button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認可以入住" : "確認交接中"}</button>
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
     </div>`;
 }
@@ -15767,13 +15829,14 @@ function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
   const inc = incomingOf(r.id);
-  const unread = !!(inc && inc.applyUnread);
+  const unread = !!(inc && (inc.applyUnread || inc.applyPending));
   const last = formerTenantsOf(r.id)[0];
   const who = inc && inc.name ? "　" + inc.name : (last && last.name ? "　前任 " + last.name : "");
   const label = roomIsFactory(r) ? displayRoomNo(r) : studioListNo(r);
+  const pill = applyStatusPill(inc, inc, r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${inc ? `<span class="pay-pill hand">${tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc.applyPending ? "入住申請" : "交接中")}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -16056,12 +16119,13 @@ function tenantEntryCardHtml(kind, entry) {
   const unpaid = tenants.some(x => !x.paid);
   const pay = payChip(t, r, unpaid);
   const inc = r && incomingOf(r.id);
-  const unread = !!(inc && inc.applyUnread);
+  const unread = !!(inc && (inc.applyUnread || inc.applyPending));
+  const pill = applyStatusPill(inc, t, r);
   return `<div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) || inc ? `<span class="pay-pill hand">${inc && tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc && inc.applyPending ? "入住申請" : "交接中")}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>`;
 }
@@ -16457,12 +16521,7 @@ function openTenantSheet(id) {
       ? (state.rooms || []).find(x => x.id === rid)
       : (t && (state.rooms || []).find(x => x.id === t.roomId));
     const inc = room && incomingOf(room.id);
-    if (inc && inc.applyUnread) {
-      inc.applyUnread = false;
-      inc.editedAt = Date.now();
-      save();
-      try { pushCloud(); } catch {}
-    }
+    // 沒按確認可以入住前，申請提示要留在所有後台，開圖卡不清掉
   } catch {}
   try { persistUi(); } catch {}
   requestAnimationFrame(() => render());
