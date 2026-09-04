@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-39";
-const APP_EDIT_COUNT = 612;
+const APP_STAMP = "2026-09-04-10-42";
+const APP_EDIT_COUNT = 613;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["主題色調面板只跳出一次，不再重複滑入"] },
+  { ver: APP_STAMP, items: ["滑動螢幕時不會誤觸輸入格跳出鍵盤"] },
+  { ver: "2026-09-04-10-39", items: ["主題色調面板只跳出一次，不再重複滑入"] },
   { ver: "2026-09-04-10-16", items: ["登入開場影片提高畫質"] },
   { ver: "2026-09-04-10-12", items: ["極黑登入後圖卡邊框與反白字對比加強"] },
   { ver: "2026-09-04-10-05", items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
@@ -864,7 +865,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0163") return;
+    if (!m || !m[1] || m[1] === "0164") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -19664,6 +19665,40 @@ window.addEventListener("pagehide", persistLogin);
 window.addEventListener("beforeunload", persistLogin);
 window.addEventListener("resize", () => { try { fitGateTitle(); } catch {} });
 if (window.visualViewport) visualViewport.addEventListener("resize", () => { try { fitGateTitle(); } catch {} });
+(function guardAccidentalFieldFocus() {
+  if (window.__tjFieldGuard) return;
+  window.__tjFieldGuard = true;
+  let lastScrollAt = 0;
+  let startY = 0;
+  const isField = el => {
+    if (!el || !el.tagName) return false;
+    const tag = el.tagName;
+    if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") return false;
+    const type = String(el.type || "").toLowerCase();
+    if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio" || type === "range" || type === "button" || type === "submit") return false;
+    return true;
+  };
+  const bump = () => { lastScrollAt = Date.now(); };
+  window.addEventListener("touchmove", e => {
+    bump();
+    const y = e.touches && e.touches[0] ? e.touches[0].clientY : startY;
+    if (Math.abs(y - startY) < 12) return;
+    const a = document.activeElement;
+    if (isField(a)) try { a.blur(); } catch {}
+  }, { capture: true, passive: true });
+  window.addEventListener("wheel", bump, { capture: true, passive: true });
+  document.addEventListener("scroll", bump, { capture: true, passive: true });
+  document.addEventListener("touchstart", e => {
+    startY = e.touches && e.touches[0] ? e.touches[0].clientY : 0;
+    const t = e.target && e.target.closest && e.target.closest("input, textarea, select");
+    if (!isField(t)) return;
+    if (Date.now() - lastScrollAt < 450) e.preventDefault();
+  }, { capture: true, passive: false });
+  document.addEventListener("focusin", e => {
+    if (!isField(e.target)) return;
+    if (Date.now() - lastScrollAt < 450) try { e.target.blur(); } catch {}
+  });
+})();
 window.addEventListener("pageshow", () => { try { restoreUi(); } catch {} });
 window.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") persistLogin();
