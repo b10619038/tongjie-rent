@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-22";
-const APP_EDIT_COUNT = 652;
+const APP_STAMP = "2026-09-04-13-25";
+const APP_EDIT_COUNT = 653;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0203";
+const FILE_VER = "0204";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客畫面房間圖示改成開門"] },
+  { ver: APP_VERSION, items: ["新租客簽約後後台會立刻同步已簽約"] },
+  { ver: "2026-09-04-13-22-652", items: ["租客畫面房間圖示改成開門"] },
   { ver: "2026-09-04-13-17-651", items: ["緊急聯絡人與電話可填一人，兩人中間用、"] },
   { ver: "2026-09-04-13-14-650", items: ["房間圖示改成床頭加枕頭的正方形床"] },
   { ver: "2026-09-04-13-13-649", items: ["租客與管理員登入頁字和圖卡滑入恢復"] },
@@ -4155,6 +4156,18 @@ function ingestPaidCloud(raw) {
         if (src.phone) t.phone = src.phone;
         if (src.roomId) t.roomId = src.roomId;
         if (src.editedAt && Number(src.editedAt) >= Number(t.editedAt || 0)) t.editedAt = src.editedAt;
+        if (src.eSignStatus === "signed") {
+          const ts = Number(src.eSignTs) || 0;
+          if (!t.eSign || t.eSign.status !== "signed" || ts >= (Number(t.eSign.ts) || 0)) {
+            t.eSign = Object.assign({}, t.eSign || {}, {
+              status: "signed",
+              at: src.eSignAt || (t.eSign && t.eSign.at) || nowStamp(),
+              ts: ts || Date.now(),
+              sig: (t.eSign && t.eSign.sig) || "",
+              sig2: (t.eSign && t.eSign.sig2) || ""
+            });
+          }
+        }
         if (Array.isArray(src.hiddenAnns) && src.hiddenAnns.length) {
           t.hiddenAnns = [...new Set([].concat(t.hiddenAnns || [], src.hiddenAnns.map(String)))];
           try { saveHiddenAnnsFor(t); } catch {}
@@ -4189,7 +4202,12 @@ function ingestPaidCloud(raw) {
       }
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
-    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at)) return;
+    const signAt = Number(o.eSignPing && o.eSignPing.at) || 0;
+    if (signAt && signAt > (ingestPaidCloud.eSignPing || 0)) {
+      ingestPaidCloud.eSignPing = signAt;
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+    }
+    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
     if (composingNow()) return;
     ui.keepScroll = true;
     try { render(); } catch {}
@@ -4230,7 +4248,10 @@ function moneyCloudBlob() {
       rent: Number(t.rent) || 0,
       invoiceBuyer: t.invoiceBuyer || "",
       phone: t.phone || "",
-      hiddenAnns: Array.isArray(t.hiddenAnns) ? t.hiddenAnns : []
+      hiddenAnns: Array.isArray(t.hiddenAnns) ? t.hiddenAnns : [],
+      eSignStatus: t.eSign && t.eSign.status || "",
+      eSignAt: t.eSign && t.eSign.at || "",
+      eSignTs: Number(t.eSign && t.eSign.ts) || 0
     })),
     books: (state.books || []).map(b => {
       const o = Object.assign({}, b);
@@ -4244,7 +4265,8 @@ function moneyCloudBlob() {
     }),
     ledgerGone: state.ledgerGone || [],
     repairPing: Number(state.repairPing) || 0,
-    applyPing: state.applyPing || null
+    applyPing: state.applyPing || null,
+    eSignPing: state.eSignPing || null
   });
 }
 let __moneyPubTimer = 0;
@@ -5004,9 +5026,14 @@ function factoryNamedCount(data) {
 }
 let cloudDirty = false;
 let lastCloudHash = "";
+let pushBusy = false;
+let pushAgain = false;
 function markCloudDirty() { cloudDirty = true; }
 async function pushCloud() {
-  if (!cloudDirty) return;
+  if (!cloudDirty && !pushAgain) return;
+  if (pushBusy) { pushAgain = true; return; }
+  pushBusy = true;
+  pushAgain = false;
   try {
     applyCompany(state);
     stripDevMemosFromState();
@@ -5116,6 +5143,12 @@ async function pushCloud() {
   } catch { ui.cloudOk = false; }
   try { persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); } catch {}
   try { publishPaidCloud(); } catch {}
+  pushBusy = false;
+  if (pushAgain || cloudDirty) {
+    pushAgain = false;
+    cloudDirty = true;
+    setTimeout(() => { try { pushCloud(); } catch {} }, 30);
+  }
 }
 function cloudAnnMedia(list) {
   return (list || []).map(m => {
@@ -12788,6 +12821,10 @@ function canvasToSig(c) {
     const g = out.getContext("2d");
     g.clearRect(0, 0, w, h);
     g.drawImage(c, 0, 0, w, h);
+    try {
+      const jpg = out.toDataURL("image/jpeg", 0.62);
+      if (jpg && jpg.length < 180000) return jpg;
+    } catch {}
     return out.toDataURL("image/png");
   } catch {
     try { return c.toDataURL("image/png"); } catch { return ""; }
@@ -12820,7 +12857,7 @@ function tenantMark(t, i, name) {
 function tenantContractStatus(t, r) {
   const es = getESign(t);
   if (es && es.cleared && es.status !== "signed") return "unsigned";
-  if (es && es.status === "signed" && es.sig) return "signed";
+  if (es && es.status === "signed" && (es.sig || es.ts || es.at)) return "signed";
   if (r && r.contractImages && r.contractImages.length) return "paper";
   return "unsigned";
 }
@@ -17981,7 +18018,9 @@ function bindSignPad() {
     saveESignRecord(t, rec);
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
+    state.eSignPing = { at: Date.now(), tenantId: t && t.id, roomNo: r && r.no, name: t && t.name };
     save(true);
+    try { publishPaidCloud(); } catch {}
     try { pushCloud(); } catch {}
     pushPhoneNotify("電子合約已簽署", `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已完成線上簽署`, "admin");
     if (t && (t.prospect || t.incoming)) {
