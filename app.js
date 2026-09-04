@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-21-10";
-const APP_EDIT_COUNT = 682;
+const APP_STAMP = "2026-09-04-21-20";
+const APP_EDIT_COUNT = 683;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0233";
+const FILE_VER = "0234";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
+  { ver: APP_VERSION, items: ["開發者薪資只顯示在開發者後台"] },
+  { ver: "2026-09-04-21-10-682", items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
   { ver: "2026-09-04-19-40-681", items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
   { ver: "2026-09-04-17-40-680", items: ["租客頭貼雲端同步，退租後才刪除"] },
   { ver: "2026-09-04-17-32-679", items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
@@ -2073,26 +2074,22 @@ function ensureDevCycleJobs(data) {
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   if (!Array.isArray(data.devMemos)) data.devMemos = [];
   DEV_CYCLE_JOBS.forEach(job => {
-    const money = isMoneyText(job.text) || job.id === "cycle-dev-salary";
-    const list = money ? data.aiMemos : data.devMemos;
-    const other = money ? data.devMemos : data.aiMemos;
-    const ix = other.findIndex(m => m && m.id === job.id);
+    const ix = data.aiMemos.findIndex(m => m && (m.id === job.id || isDevOnlyMemo(m)));
     if (ix >= 0) {
-      const taken = other.splice(ix, 1)[0];
-      if (!list.some(m => m && m.id === job.id)) list.push(taken);
+      const taken = data.aiMemos.splice(ix, 1)[0];
+      if (!data.devMemos.some(m => m && m.id === (taken && taken.id || job.id))) data.devMemos.push(taken);
     }
-    const hit = list.find(m => m && m.id === job.id);
+    const hit = data.devMemos.find(m => m && m.id === job.id);
     if (hit) {
       if (!hit.edited) {
         hit.text = job.text;
         hit.monthDay = job.monthDay;
       }
       hit.cycle = true;
-      if (money && !hit.owner) hit.owner = "1240";
-      else if (!money) hit.owner = "1240";
+      hit.owner = "1240";
       return;
     }
-    list.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
+    data.devMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
 }
 const FACTORY_GROUP_ORDER = FACTORY_GROUPS.map(g => g.group);
@@ -4720,13 +4717,19 @@ async function pullCloud() {
 function isMoneyText(s) {
   return /薪資|薪水|工資|租金|房租|押金|收支|營收|盈餘|發票|匯款|轉帳|現金|銀行|對帳|帳本|進帳|出帳|支出|收入|NT\$|勞保|健保|勞退|營業稅|水費|電費|利息|仲介|工程款|垃圾|清運|退稅|稅|保險箱/.test(String(s || ""));
 }
-function isMoneyMemo(m) {
+function isDevOnlyMemo(m) {
   if (!m) return false;
   if (m.id === "cycle-dev-salary") return true;
+  return /開發者薪資/.test(String(m.text || ""));
+}
+function isMoneyMemo(m) {
+  if (!m || isDevOnlyMemo(m)) return false;
   return isMoneyText(m.text || m.note || "");
 }
 function isDevMemo(m) {
-  if (!m || isMoneyMemo(m)) return false;
+  if (!m) return false;
+  if (isDevOnlyMemo(m)) return true;
+  if (isMoneyMemo(m)) return false;
   return (m.owner || "") === "1240";
 }
 function mergeMemoRow(a, b) {
@@ -4868,7 +4871,7 @@ function memoOwner() {
   return (ui && (ui.adminCode === "1240" || ui.devPreview)) ? "1240" : "7651";
 }
 function myMemos() {
-  const shared = (state.aiMemos || []).filter(m => m && !isDevMemo(m));
+  const shared = (state.aiMemos || []).filter(m => m && !isDevMemo(m) && !isDevOnlyMemo(m));
   if (memoOwner() === "1240") {
     const mine = Array.isArray(state.devMemos) ? state.devMemos : [];
     const ids = new Set(mine.map(m => m && m.id));
