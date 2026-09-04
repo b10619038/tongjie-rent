@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-21-52";
-const APP_EDIT_COUNT = 686;
+const APP_STAMP = "2026-09-04-21-56";
+const APP_EDIT_COUNT = 687;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0236";
+const FILE_VER = "0237";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
+  { ver: APP_VERSION, items: ["列印已簽署合約排在產出發票上方"] },
+  { ver: "2026-09-04-21-52-686", items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
   { ver: "2026-09-04-21-20-683", items: ["開發者薪資只顯示在開發者後台"] },
   { ver: "2026-09-04-21-10-682", items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
   { ver: "2026-09-04-19-40-681", items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
@@ -16979,11 +16980,11 @@ function tenantEntryDetailsHtml(kind, entry) {
         const list = kind === "factory" ? tenants.slice(0, 1) : tenants;
         return list.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId) || r;
-        return `<button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
+        return `${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(tt, rr).length > 1 ? "（兩份）" : ""}</button>` : ""}
+      <button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
       ${kind !== "factory" ? `<button class="ghost" data-force-vacate="${tt.id}" style="margin-top:8px">強制退租</button>` : ""}
-      ${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(tt, rr).length > 1 ? "（兩份）" : ""}</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
       ${tt.incoming ? "" : handoverBoxHtml(tt, rr)}`;
         }).join("");
