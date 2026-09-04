@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-29";
-const APP_EDIT_COUNT = 604;
+const APP_STAMP = "2026-09-04-09-33";
+const APP_EDIT_COUNT = 605;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["申請入住選房號不會再從右邊滑兩次"] },
+  { ver: APP_STAMP, items: ["簽約時間改為現在以後最快可約，手機電腦同一套空檔"] },
+  { ver: "2026-09-04-09-29", items: ["申請入住選房號不會再從右邊滑兩次"] },
   { ver: "2026-09-04-09-27", items: ["申請入住選房號改成最快可入住"] },
   { ver: "2026-09-04-09-25", items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
   { ver: "2026-09-04-09-24", items: ["申請入住底部圖卡不再被綠色背景卡住"] },
@@ -823,7 +824,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0155") return;
+    if (!m || !m[1] || m[1] === "0156") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -2923,8 +2924,20 @@ function applyFactoryRoster(data) {
     if (room.status !== "repair") room.status = "rented";
   });
 }
+function taipeiNow() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Taipei",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false, hourCycle: "h23"
+    }).formatToParts(new Date());
+    const g = t => Number((parts.find(p => p.type === t) || {}).value);
+    return new Date(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"), g("second"));
+  } catch { return new Date(); }
+}
 function todayYmd() {
-  const d = new Date();
+  const d = taipeiNow();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function invoiceRentYmd() {
@@ -8097,13 +8110,7 @@ function continueLeaseRange(room, t) {
 }
 function signWindow(room, t) {
   const today = todayYmd();
-  const occ = roomCurrentTenant(room);
-  let min = today;
-  if (occ && (!t || occ.id !== t.id) && occ.leaseEnd) {
-    const from = addDaysYmd(occ.leaseEnd, -15);
-    if (from && from > min) min = from;
-  }
-  return { min, maxFast: addDaysYmd(min, 15) };
+  return { min: today, maxFast: addDaysYmd(today, 15) };
 }
 function earliestSignYmd(room, t) {
   return signWindow(room, t).min;
@@ -8128,14 +8135,17 @@ function signSlotKey(at) {
 }
 function busySignHours() {
   const set = new Set();
-  calendarItems().forEach(it => {
-    const k = signSlotKey(it.at);
-    if (k) set.add(k);
-  });
   (state.tenants || []).forEach(t => {
-    if (t && t.signAppointAt) set.add(signSlotKey(t.signAppointAt));
+    if (!t || !t.signAppointAt) return;
+    if (t.former || t.cancelledApply || t.practiceStay || t.clearedApply) return;
+    set.add(signSlotKey(t.signAppointAt));
   });
   return set;
+}
+function slotIsOpen(at) {
+  if (!at) return false;
+  const t = Date.parse(String(at).replace(" ", "T"));
+  return Number.isFinite(t) && t >= taipeiNow().getTime() + 20 * 60000;
 }
 function nextSignSlots(n, keep, minYmd, onlyDay, maxYmd) {
   const need = n || 8;
@@ -8144,7 +8154,7 @@ function nextSignSlots(n, keep, minYmd, onlyDay, maxYmd) {
   if (keepKey) busy.delete(keepKey);
   const hours = [10, 11, 14, 15, 16, 17];
   const out = [];
-  const now = new Date();
+  const now = taipeiNow();
   const p = x => String(x).padStart(2, "0");
   const min = ymdOf(minYmd) || todayYmd();
   const max = ymdOf(maxYmd);
@@ -8166,7 +8176,7 @@ function nextSignSlots(n, keep, minYmd, onlyDay, maxYmd) {
       out.push(key);
     });
   }
-  if (keep && ymdOf(keep) && (!onlyDay || ymdOf(keep) === onlyDay) && !out.includes(keep)) out.unshift(keep);
+  if (keep && slotIsOpen(keep) && ymdOf(keep) && (!onlyDay || ymdOf(keep) === onlyDay) && !out.includes(keep)) out.unshift(keep);
   return out.slice(0, need);
 }
 function signSlotLabel(at, fastest) {
@@ -11432,6 +11442,7 @@ function moveInView() {
     d.leaseStart = minStart;
     d.leaseEnd = cont.end;
   }
+  if (d.signAppointAt && !slotIsOpen(d.signAppointAt)) d.signAppointAt = "";
   let day = ymdOf(d.signAppointAt);
   if (!day || day < win.min) day = win.min;
   let daySlots = r ? nextSignSlots(8, d.signAppointAt, win.min, day) : [];
@@ -11493,7 +11504,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
-      <p class="small" style="margin:0 0 8px">實體蓋章地址：${escapeHtml(STAMP_OFFICE)}。最快取 15 天內、其他房號還沒約的空檔。</p>
+      <p class="small" style="margin:0 0 8px">實體蓋章地址：${escapeHtml(STAMP_OFFICE)}。最快取現在以後、還沒被約走的時段。</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -12328,6 +12339,7 @@ function leaseSignView() {
   } else if (t && t.leaseStart) {
     applyStudioLeasePack(t, r, t.leaseStart);
   }
+  if (t && t.signAppointAt && !slotIsOpen(t.signAppointAt)) t.signAppointAt = "";
   let day = ymdOf(t && t.signAppointAt);
   if (!day || day < win.min) day = win.min;
   let daySlots = nextSignSlots(8, t && t.signAppointAt, win.min, day);
@@ -12366,7 +12378,7 @@ function leaseSignView() {
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">簽約日期時間</div>
-        <p class="small" style="margin:0 0 8px">實體蓋章地址：${STAMP_OFFICE}。最快取 15 天內、其他房號還沒約的空檔。灰色是已滿或未開放。</p>
+        <p class="small" style="margin:0 0 8px">實體蓋章地址：${STAMP_OFFICE}。最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
