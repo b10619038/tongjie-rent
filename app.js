@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-16-24";
-const APP_EDIT_COUNT = 667;
+const APP_STAMP = "2026-09-04-16-36";
+const APP_EDIT_COUNT = 668;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0218";
+const FILE_VER = "0219";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽日曆會在簽約日期那天顯示記"] },
+  { ver: APP_VERSION, items: ["合約簽名不碰到黑線，下載合約不再出現網頁標題和網址"] },
+  { ver: "2026-09-04-16-24-667", items: ["總覽日曆會在簽約日期那天顯示記"] },
   { ver: "2026-09-04-16-20-666", items: ["簽約日期會留在租客圖卡與本月工作，不再被畫面清掉"] },
   { ver: "2026-09-04-16-14-665", items: ["合約簽名不再蓋到上排字，電腦手機同一排法"] },
   { ver: "2026-09-04-16-08-664", items: ["新客簽約時間同步本月工作與日曆，強制退租會拿掉"] },
@@ -11443,7 +11444,52 @@ function studioLeasePreviewHtml(t, r) {
 function isStudioLeaseRoom(r) {
   return !!(r && r.kind !== "factory" && !isStoreNo(r.no));
 }
-function printStudioLease(t, r) {
+function inlineCloneForCapture(el) {
+  const clone = el.cloneNode(true);
+  const walk = (src, dst) => {
+    if (!src || !dst || src.nodeType !== 1) return;
+    try {
+      const cs = getComputedStyle(src);
+      let s = "";
+      for (let i = 0; i < cs.length; i++) {
+        const k = cs[i];
+        s += k + ":" + cs.getPropertyValue(k) + ";";
+      }
+      dst.setAttribute("style", s);
+    } catch {}
+    const a = src.children, b = dst.children;
+    for (let i = 0; i < a.length && i < b.length; i++) walk(a[i], b[i]);
+  };
+  walk(el, clone);
+  return clone;
+}
+async function nodeToJpegPage(el) {
+  const w = Math.max(800, Math.ceil(el.offsetWidth || el.scrollWidth || 794));
+  const h = Math.max(1100, Math.ceil(el.offsetHeight || el.scrollHeight || 1123));
+  const clone = inlineCloneForCapture(el);
+  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(clone)}</foreignObject></svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = reject;
+      im.src = url;
+    });
+    const c = document.createElement("canvas");
+    c.width = w * 2;
+    c.height = h * 2;
+    const g = c.getContext("2d");
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+async function printStudioLease(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
   if (es && es.sig) t.eSign = es;
@@ -11453,37 +11499,32 @@ function printStudioLease(t, r) {
   hold.innerHTML = studioLeasePapersHtml(t, r, false);
   const papers = [...hold.children];
   if (!papers.length) { toast("合約無法產生"); return; }
-  papers.forEach(p => document.body.appendChild(p));
-  document.body.classList.add("print-lease");
-  let done = false;
-  const after = () => {
-    if (done) return;
-    done = true;
-    document.body.classList.remove("print-lease");
-    papers.forEach(p => { if (p && p.parentNode) p.remove(); });
-  };
-  window.addEventListener("afterprint", after, { once: true });
-  const imgs = papers.flatMap(p => [...p.querySelectorAll("img")]);
-  let printed = false;
-  const startPrint = () => {
-    if (printed) return;
-    printed = true;
-    try { window.print(); } catch { after(); }
-  };
-  if (!imgs.length) startPrint();
-  else {
-    let left = imgs.length;
-    const tick = () => { left -= 1; if (left <= 0) startPrint(); };
-    imgs.forEach(img => {
-      if (img.complete) tick();
-      else {
-        img.addEventListener("load", tick, { once: true });
-        img.addEventListener("error", tick, { once: true });
-      }
-    });
-    setTimeout(startPrint, 800);
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;background:#fff;z-index:-1;";
+  papers.forEach(p => {
+    p.classList.add("lease-preview");
+    p.style.display = "block";
+    host.appendChild(p);
+  });
+  document.body.appendChild(host);
+  toast("正在產生合約…");
+  try {
+    const pages = [];
+    for (const paper of papers) {
+      const pgs = [...paper.querySelectorAll(".lease-pg")];
+      const list = pgs.length ? pgs : [paper];
+      for (const pg of list) pages.push(await nodeToJpegPage(pg));
+    }
+    const no = (r && r.no) || "";
+    const name = (t && t.name) || "";
+    await downloadJpegPagesPdf(pages, `統潔-${no}${name ? "-" + name : ""}-房屋租賃契約書.pdf`, false);
+    toast("已下載合約");
+  } catch (err) {
+    try { console.error(err); } catch {}
+    toast("下載失敗，請再試一次");
+  } finally {
+    if (host.parentNode) host.remove();
   }
-  setTimeout(after, 120000);
 }
 function checkoutFormHtml() {
   const id = ui.checkoutTenantId;
