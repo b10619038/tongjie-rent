@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-53";
-const APP_EDIT_COUNT = 639;
+const APP_STAMP = "2026-09-04-12-55";
+const APP_EDIT_COUNT = 640;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0190";
+const FILE_VER = "0191";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點租客登入不再卡一下"] },
+  { ver: APP_VERSION, items: ["房間按鈕改成簡潔床鋪圖示"] },
+  { ver: "2026-09-04-12-53-639", items: ["點租客登入不再卡一下"] },
   { ver: "2026-09-04-12-52-638", items: ["水費改兩行顯示，移除下次日期"] },
   { ver: "2026-09-04-12-49-637", items: ["下拉重新整理的提示改到畫面最上方"] },
   { ver: "2026-09-04-12-48-636", items: ["房間按鈕改成床的圖示"] },
@@ -7446,7 +7447,7 @@ function notifyCloudChanges(before) {
 function icon(name) {
   const map = {
     home: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 3.5l8 7V21H4z"/><path d="M9 21v-7h6v7"/></svg>',
-    room: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.2" width="14" height="8.3" rx="2.4"/><rect x="6.5" y="5.4" width="4.6" height="3.5" rx="1.5"/><rect x="12.9" y="5.4" width="4.6" height="3.5" rx="1.5"/><path d="M4 12.6h16c.7 0 1.2.5 1.2 1.2V19a1.8 1.8 0 0 1-1.8 1.8H4.6A1.8 1.8 0 0 1 2.8 19v-5.2c0-.7.5-1.2 1.2-1.2z"/></svg>',
+    room: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3.4" width="12" height="7.4" rx="2.6"/><rect x="7.3" y="7.6" width="4.1" height="2.4" rx=".8"/><rect x="12.6" y="7.6" width="4.1" height="2.4" rx=".8"/><rect x="4.2" y="11.2" width="15.6" height="7" rx="2.4"/><path d="M6.6 18.2v2.3M17.4 18.2v2.3"/></svg>',
     lease: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8.2L20 8.3V20.5H7z"/><path d="M15.2 3.5V8.3H20"/><path d="M10 12h6M10 16h6"/></svg>',
     fix: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
