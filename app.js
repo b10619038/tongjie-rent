@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-16-36";
-const APP_EDIT_COUNT = 668;
+const APP_STAMP = "2026-09-04-16-42";
+const APP_EDIT_COUNT = 669;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0219";
+const FILE_VER = "0220";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約簽名不碰到黑線，下載合約不再出現網頁標題和網址"] },
+  { ver: APP_VERSION, items: ["列印已簽署合約改為直接下載 PDF，不再顯示下載失敗"] },
+  { ver: "2026-09-04-16-36-668", items: ["合約簽名不碰到黑線，下載合約不再出現網頁標題和網址"] },
   { ver: "2026-09-04-16-24-667", items: ["總覽日曆會在簽約日期那天顯示記"] },
   { ver: "2026-09-04-16-20-666", items: ["簽約日期會留在租客圖卡與本月工作，不再被畫面清掉"] },
   { ver: "2026-09-04-16-14-665", items: ["合約簽名不再蓋到上排字，電腦手機同一排法"] },
@@ -11444,84 +11445,141 @@ function studioLeasePreviewHtml(t, r) {
 function isStudioLeaseRoom(r) {
   return !!(r && r.kind !== "factory" && !isStoreNo(r.no));
 }
-function inlineCloneForCapture(el) {
-  const clone = el.cloneNode(true);
-  const walk = (src, dst) => {
-    if (!src || !dst || src.nodeType !== 1) return;
-    try {
-      const cs = getComputedStyle(src);
-      let s = "";
-      for (let i = 0; i < cs.length; i++) {
-        const k = cs[i];
-        s += k + ":" + cs.getPropertyValue(k) + ";";
-      }
-      dst.setAttribute("style", s);
-    } catch {}
-    const a = src.children, b = dst.children;
-    for (let i = 0; i < a.length && i < b.length; i++) walk(a[i], b[i]);
-  };
-  walk(el, clone);
-  return clone;
-}
-async function nodeToJpegPage(el) {
-  const w = Math.max(800, Math.ceil(el.offsetWidth || el.scrollWidth || 794));
-  const h = Math.max(1100, Math.ceil(el.offsetHeight || el.scrollHeight || 1123));
-  const clone = inlineCloneForCapture(el);
-  clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(clone)}</foreignObject></svg>`;
-  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
-  try {
-    const img = await new Promise((resolve, reject) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.onerror = reject;
-      im.src = url;
+function waitImgs(root) {
+  const imgs = [...(root.querySelectorAll ? root.querySelectorAll("img") : [])];
+  if (!imgs.length) return Promise.resolve();
+  return Promise.all(imgs.map(img => {
+    if (img.complete && img.naturalWidth) return Promise.resolve();
+    return new Promise(res => {
+      const done = () => res();
+      img.addEventListener("load", done, { once: true });
+      img.addEventListener("error", done, { once: true });
+      setTimeout(done, 1500);
     });
-    const c = document.createElement("canvas");
-    c.width = w * 2;
-    c.height = h * 2;
-    const g = c.getContext("2d");
-    g.fillStyle = "#ffffff";
-    g.fillRect(0, 0, c.width, c.height);
-    g.drawImage(img, 0, 0, c.width, c.height);
-    return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  }));
+}
+function paintDomPage(el) {
+  const box = el.getBoundingClientRect();
+  const w = Math.max(700, Math.ceil(box.width || 794));
+  const h = Math.max(900, Math.ceil(box.height || 1123));
+  const scale = 2;
+  const c = document.createElement("canvas");
+  c.width = w * scale;
+  c.height = h * scale;
+  const g = c.getContext("2d");
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, c.width, c.height);
+  g.scale(scale, scale);
+  const ox = box.left, oy = box.top;
+  const draw = node => {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      const raw = String(node.textContent || "");
+      if (!raw.replace(/\s/g, "")) return;
+      const parent = node.parentElement;
+      if (!parent) return;
+      const cs = getComputedStyle(parent);
+      if (cs.display === "none" || cs.visibility === "hidden") return;
+      const range = document.createRange();
+      try { range.selectNodeContents(node); } catch { return; }
+      const rects = [...range.getClientRects()];
+      if (!rects.length) return;
+      g.fillStyle = cs.color || "#111";
+      g.font = cs.font || "13px serif";
+      g.textBaseline = "alphabetic";
+      const r0 = rects[0];
+      g.fillText(raw.replace(/\s+/g, " "), r0.left - ox, r0.top - oy + r0.height * 0.8, Math.max(12, r0.width + 24));
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const cs = getComputedStyle(node);
+    if (cs.display === "none" || cs.visibility === "hidden") return;
+    const r = node.getBoundingClientRect();
+    const x = r.left - ox, y = r.top - oy;
+    const bg = cs.backgroundColor;
+    if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+      g.fillStyle = bg;
+      g.fillRect(x, y, r.width, r.height);
+    }
+    const bw = parseFloat(cs.borderTopWidth) || 0;
+    if (bw > 0 && cs.borderTopStyle !== "none") {
+      g.strokeStyle = cs.borderTopColor || "#111";
+      g.lineWidth = bw;
+      g.strokeRect(x + bw / 2, y + bw / 2, Math.max(0, r.width - bw), Math.max(0, r.height - bw));
+    } else {
+      const bb = parseFloat(cs.borderBottomWidth) || 0;
+      if (bb > 0 && cs.borderBottomStyle !== "none") {
+        g.strokeStyle = cs.borderBottomColor || "#111";
+        g.lineWidth = bb;
+        g.beginPath();
+        g.moveTo(x, y + r.height - bb / 2);
+        g.lineTo(x + r.width, y + r.height - bb / 2);
+        g.stroke();
+      }
+    }
+    if (node.tagName === "IMG" && node.naturalWidth) {
+      try { g.drawImage(node, x, y, r.width, r.height); } catch {}
+      return;
+    }
+    [...node.childNodes].forEach(draw);
+  };
+  draw(el);
+  return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
+}
+function printLeaseIframe(html) {
+  const css = [...document.querySelectorAll("link[rel=stylesheet]")].map(l => l.getAttribute("href")).filter(Boolean)
+    .map(h => "<link rel=\"stylesheet\" href=\"" + h + "\">").join("");
+  const doc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + css
+    + "<style>@page{size:A4;margin:12mm}html,body{margin:0;background:#fff}.studio-lease-paper,.lease-preview{display:block!important;width:auto}.term-hint{display:none!important}</style></head>"
+    + "<body class=\"print-lease\">" + html + "</body></html>";
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("title", " ");
+  iframe.style.cssText = "position:fixed;width:0;height:0;border:0;left:0;bottom:0;";
+  const blob = new Blob([doc], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  const go = () => {
+    try { iframe.contentDocument.title = " "; } catch {}
+    try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch {}
+    setTimeout(() => { iframe.remove(); URL.revokeObjectURL(url); }, 1500);
+  };
+  iframe.onload = () => setTimeout(go, 400);
+  setTimeout(go, 1200);
 }
 async function printStudioLease(t, r) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
   if (es && es.sig) t.eSign = es;
+  const html = studioLeasePapersHtml(t, r, false);
+  if (!html) { toast("合約無法產生"); return; }
   const olds = document.querySelectorAll(".studio-lease-paper");
   olds.forEach(el => { if (!el.closest(".lease-preview") && !el.closest(".screen")) el.remove(); });
-  const hold = document.createElement("div");
-  hold.innerHTML = studioLeasePapersHtml(t, r, false);
-  const papers = [...hold.children];
-  if (!papers.length) { toast("合約無法產生"); return; }
   const host = document.createElement("div");
-  host.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;background:#fff;z-index:-1;";
-  papers.forEach(p => {
-    p.classList.add("lease-preview");
-    p.style.display = "block";
-    host.appendChild(p);
-  });
+  host.style.cssText = "position:fixed;left:0;top:0;width:210mm;background:#fff;opacity:0;pointer-events:none;z-index:-1;";
+  host.innerHTML = html;
+  const papers = [...host.children];
+  papers.forEach(p => { p.classList.add("lease-preview"); p.style.display = "block"; });
   document.body.appendChild(host);
   toast("正在產生合約…");
   try {
+    await waitImgs(host);
+    await new Promise(res => requestAnimationFrame(() => requestAnimationFrame(res)));
     const pages = [];
     for (const paper of papers) {
       const pgs = [...paper.querySelectorAll(".lease-pg")];
       const list = pgs.length ? pgs : [paper];
-      for (const pg of list) pages.push(await nodeToJpegPage(pg));
+      for (const pg of list) pages.push(paintDomPage(pg));
     }
-    const no = (r && r.no) || "";
-    const name = (t && t.name) || "";
-    await downloadJpegPagesPdf(pages, `統潔-${no}${name ? "-" + name : ""}-房屋租賃契約書.pdf`, false);
+    if (!pages.length) throw new Error("empty");
+    const no = String((r && r.no) || "").replace(/[\\/:*?"<>|]/g, "");
+    const name = String((t && t.name) || "").replace(/[\\/:*?"<>|、]/g, "");
+    await downloadJpegPagesPdf(pages, "統潔-" + no + (name ? "-" + name : "") + "-房屋租賃契約書.pdf", false);
     toast("已下載合約");
   } catch (err) {
     try { console.error(err); } catch {}
-    toast("下載失敗，請再試一次");
+    printLeaseIframe(html);
+    toast("已開啟列印，可存成 PDF");
   } finally {
     if (host.parentNode) host.remove();
   }
