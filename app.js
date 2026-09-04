@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-20";
-const APP_EDIT_COUNT = 626;
+const APP_STAMP = "2026-09-04-12-22";
+const APP_EDIT_COUNT = 627;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0177";
+const FILE_VER = "0178";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
+  { ver: APP_VERSION, items: ["空房入住申請只顯示姓名，不再出現箭頭"] },
+  { ver: "2026-09-04-12-20-626", items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
   { ver: "2026-09-04-12-13-625", items: ["兩人承租時電話與身分證可填一組或兩組"] },
   { ver: "2026-09-04-12-06-624", items: ["同一畫面點過更新後不再重複跳出"] },
   { ver: "2026-09-04-12-04-623", items: ["申請入住姓名、電話、身分證依格式自動整理"] },
@@ -15664,13 +15665,20 @@ function studioListNo(r) {
   if (isStoreNo(no)) return no + "(店面)";
   return no;
 }
+function tenantCardWhoHtml(t, r, inc) {
+  const occ = roomCurrentTenant(r);
+  const live = occ && occ.name && (!inc || occ.id !== inc.id) ? String(occ.name || "").trim() : "";
+  const neu = inc && inc.name ? String(inc.name || "").trim() : "";
+  if (live && neu && !nameMatch(live, neu)) return escapeHtml(live) + " → " + escapeHtml(neu);
+  return escapeHtml(neu || live || (t && t.name) || "");
+}
 function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
   const inc = incomingOf(r.id);
   const unread = !!(inc && inc.applyUnread);
   const last = formerTenantsOf(r.id)[0];
-  const who = inc && inc.name ? " → " + inc.name : (last && last.name ? "　前任 " + last.name : "");
+  const who = inc && inc.name ? "　" + inc.name : (last && last.name ? "　前任 " + last.name : "");
   const label = roomIsFactory(r) ? displayRoomNo(r) : studioListNo(r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
@@ -15944,7 +15952,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${escapeHtml(t.name)}${inc && inc.name ? " → " + escapeHtml(inc.name) : ""}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) || inc ? `<span class="pay-pill hand">${inc && tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc && inc.applyPending ? "入住申請" : "交接中")}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${isHandoverRoom(r, t) || inc ? `<span class="pay-pill hand">${inc && tenantContractStatus(inc, r) === "signed" ? "已簽約待確認" : (inc && inc.applyPending ? "入住申請" : "交接中")}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>`;
 }
