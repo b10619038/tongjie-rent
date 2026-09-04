@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-50";
-const APP_EDIT_COUNT = 662;
+const APP_STAMP = "2026-09-04-15-54";
+const APP_EDIT_COUNT = 663;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0213";
+const FILE_VER = "0214";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約簽名不再變黑，改回藍色親筆"] },
+  { ver: APP_VERSION, items: ["合約還沒開始的新租客本月不開立發票"] },
+  { ver: "2026-09-04-15-50-662", items: ["合約簽名不再變黑，改回藍色親筆"] },
   { ver: "2026-09-04-15-42-661", items: ["選中時段拿掉深綠色邊框"] },
   { ver: "2026-09-04-15-40-660", items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
   { ver: "2026-09-04-15-29-659", items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
@@ -7858,11 +7859,31 @@ function leaseDaysLeft(end) {
   n.setHours(0, 0, 0, 0);
   return Math.round((t - n) / 86400000);
 }
-function studioInvoiceEligible(t) {
+function studioInvoiceEligible(t, room) {
   if (!t || t.former || t.demo || t.placeholder || t.loginRevoked || t.sessionEnded) return false;
   if (!String(t.name || "").trim()) return false;
-  if (t.applyPending) return false;
+  if (t.applyPending || t.incoming || t.prospect) return false;
+  if (room && !leaseCoversYm(t, room, payYmNow())) return false;
   return true;
+}
+function openInvoiceForRoom(roomId, from) {
+  const r = (state.rooms || []).find(x => x && x.id === roomId);
+  const t = r ? invoiceTenantOf(r) : null;
+  if (r && t && !roomIsFactory(r) && !leaseCoversYm(t, r, payYmNow())) {
+    const start = tenantOccupancyStart(t, r) || t.leaseStart || "";
+    toast("合約 " + (start || "") + " 才開始，本月不開立發票");
+    return;
+  }
+  ui.invoiceRoomId = roomId;
+  ui.invoiceFrom = from || "tenants";
+  ui.invoiceBuyerFor = ui.invoiceRoomId;
+  ui.invoiceBuyer = "";
+  ui.invoiceAmt = "";
+  ui.invoiceItem = "";
+  ui.invoicePrice = "";
+  ui.invoiceTaxId = "";
+  ui.page = "invoice";
+  render();
 }
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
@@ -7898,8 +7919,9 @@ function invoiceOverviewRows(kind) {
   const seen = new Set();
   const rows = [];
   (state.tenants || []).forEach(t => {
-    if (!studioInvoiceEligible(t)) return;
+    if (!t) return;
     const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+    if (!studioInvoiceEligible(t, room)) return;
     if (!room || room.demo || roomIsFactory(room) || room.status === "office") return;
     const no = String(room.no || "");
     if (!/^\d{4}$/.test(no) || no === "0000") return;
@@ -7915,10 +7937,16 @@ function invoiceOverviewRows(kind) {
     if (!info || !info.name) return;
     const room = (state.rooms || []).find(r => String(r.no) === String(no));
     if (!room || room.demo) return;
-    const t = (state.tenants || []).find(x => x && x.roomId === room.id && studioInvoiceEligible(x) && !x.demo);
-    if (!t && room.status === "vacant") return;
+    const live = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && String(x.name || "").trim());
+    if (live) {
+      if (!studioInvoiceEligible(live, room)) return;
+      seen.add(String(no));
+      rows.push(studioInvoiceRow(no, room, live, info));
+      return;
+    }
+    if (room.status === "vacant") return;
     seen.add(String(no));
-    rows.push(studioInvoiceRow(no, room, t, info));
+    rows.push(studioInvoiceRow(no, room, null, info));
   });
   rows.sort((a, b) => {
     const da = a.remitYmd || a.invoiceYmd || "";
@@ -7947,6 +7975,7 @@ function factoryInvoiceOverviewRows() {
     const paidT = tenants.find(x => paidThisMonth(x));
     const paid = !!paidT;
     const src = paidT || t;
+    if (src && src.leaseStart && String(src.leaseStart).slice(0, 7) > payYmNow()) return;
     const remitYmd = paid ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "";
     const invoiceYmd = paid ? ((src.paidYm || payYmNow()) + "-01") : "";
     const room = rooms[0];
@@ -16770,16 +16799,7 @@ function bindTenantListTools() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.invoiceRoomId = btn.dataset.invoice;
-      ui.invoiceFrom = "tenants";
-      ui.invoiceBuyerFor = ui.invoiceRoomId;
-      ui.invoiceBuyer = "";
-      ui.invoiceAmt = "";
-      ui.invoiceItem = "";
-      ui.invoicePrice = "";
-      ui.invoiceTaxId = "";
-      ui.page = "invoice";
-      render();
+      openInvoiceForRoom(btn.dataset.invoice, "tenants");
     };
   });
   document.querySelectorAll("#tenant-list [data-toggle-pay]").forEach(btn => {
@@ -18638,16 +18658,7 @@ function bindAdmin() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.invoiceRoomId = btn.dataset.invoice;
-      ui.invoiceFrom = ui.page === "room-edit" ? "room-edit" : "tenants";
-      ui.invoiceBuyerFor = ui.invoiceRoomId;
-      ui.invoiceBuyer = "";
-      ui.invoiceAmt = "";
-      ui.invoiceItem = "";
-      ui.invoicePrice = "";
-      ui.invoiceTaxId = "";
-      ui.page = "invoice";
-      render();
+      openInvoiceForRoom(btn.dataset.invoice, ui.page === "room-edit" ? "room-edit" : "tenants");
     };
   });
   const printInv = document.getElementById("print-invoice");
