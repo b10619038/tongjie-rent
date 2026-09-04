@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-02";
-const APP_EDIT_COUNT = 622;
+const APP_STAMP = "2026-09-04-12-04";
+const APP_EDIT_COUNT = 623;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0173";
+const FILE_VER = "0174";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新點過後不會一直重複跳出"] },
+  { ver: APP_VERSION, items: ["申請入住姓名、電話、身分證依格式自動整理"] },
+  { ver: "2026-09-04-12-02-622", items: ["更新點過後不會一直重複跳出"] },
   { ver: "2026-09-04-11-59-621", items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
   { ver: "2026-09-04-11-56-620", items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
   { ver: "2026-09-04-11-54-619", items: ["送出並進入預覽會先跳出確認"] },
@@ -10174,6 +10175,66 @@ function phonePassOf(phone) {
   const d = String(phone || "").replace(/\D/g, "");
   return d.length >= 4 ? d.slice(-4) : "";
 }
+function chineseNameRuns(s) {
+  return [...String(s || "").matchAll(/[\u4e00-\u9fff]+/g)].map(m => m[0]);
+}
+function normalizePersonName(s) {
+  const runs = chineseNameRuns(s);
+  if (runs.length >= 2) return runs.slice(0, 2).join("、");
+  const one = runs[0] || "";
+  if (one.length === 6) return one.slice(0, 3) + "、" + one.slice(3);
+  if (one.length === 8) return one.slice(0, 4) + "、" + one.slice(4);
+  return one;
+}
+function personNameOk(s) {
+  const n = normalizePersonName(s);
+  const parts = n.split("、").filter(Boolean);
+  return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[\u4e00-\u9fff]{2,4}$/.test(p));
+}
+function normalizeMobile(s) {
+  let d = String(s || "").replace(/\D/g, "");
+  if (d.startsWith("886")) d = "0" + d.slice(3);
+  if (d.length === 9 && d.startsWith("9")) d = "0" + d;
+  return d.slice(0, 10);
+}
+function mobileOk(s) {
+  return /^09\d{8}$/.test(normalizeMobile(s));
+}
+function normalizeIdNo(s) {
+  const t = String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  let out = "";
+  for (let i = 0; i < t.length && out.length < 10; i++) {
+    const ch = t[i];
+    if (!out.length) {
+      if (/[A-Z]/.test(ch)) out += ch;
+    } else if (/\d/.test(ch)) out += ch;
+  }
+  return out;
+}
+function idNoOk(s) {
+  const v = normalizeIdNo(s);
+  if (!v) return true;
+  return /^[A-Z]\d{9}$/.test(v);
+}
+function bindFormatField(el, kind) {
+  if (!el || el.dataset.fmtBound === "1") return;
+  el.dataset.fmtBound = "1";
+  const apply = (soft) => {
+    const start = el.selectionStart;
+    let next = el.value;
+    if (kind === "name") next = soft ? next.replace(/[^\u4e00-\u9fff、，,\s與和\/]/g, "") : normalizePersonName(next);
+    else if (kind === "phone") next = normalizeMobile(next);
+    else if (kind === "id") next = normalizeIdNo(next);
+    if (el.value !== next) {
+      el.value = next;
+      try { if (typeof start === "number") el.setSelectionRange(next.length, next.length); } catch {}
+    }
+  };
+  el.addEventListener("compositionstart", () => { el.dataset.ime = "1"; });
+  el.addEventListener("compositionend", () => { el.dataset.ime = ""; apply(false); });
+  el.addEventListener("input", () => { if (el.dataset.ime === "1") return; apply(kind === "name"); });
+  el.addEventListener("blur", () => apply(false));
+}
 function canPromoteProspect(t, r) {
   if (!t || t.former || t.demo || isDemoTenant(t)) return false;
   if (!r || r.demo || r.status === "office" || r.status === "repair") return false;
@@ -10245,12 +10306,16 @@ function enterProspect(t, room) {
 }
 function submitMoveIn() {
   const d = ensureMoveIn();
-  const name = String(d.name || "").trim();
-  const phone = String(d.phone || "").trim();
+  d.name = normalizePersonName(d.name);
+  d.phone = normalizeMobile(d.phone);
+  d.idNo = normalizeIdNo(d.idNo);
+  const name = d.name;
+  const phone = d.phone;
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) { toast("請先選房號"); return; }
-  if (!name) { toast("請填姓名"); return; }
-  if (!phone) { toast("請填電話"); return; }
+  if (!personNameOk(name)) { toast("請填中文姓名"); return; }
+  if (!mobileOk(phone)) { toast("請填手機號碼"); return; }
+  if (d.idNo && !idNoOk(d.idNo)) { toast("請填身分證"); return; }
   const minStart = roomSoonestStart(room, { incoming: true });
   if (!d.leaseStart || d.leaseStart < minStart) {
     d.leaseStart = minStart;
@@ -10306,12 +10371,16 @@ function submitMoveIn() {
 function askMoveSubmit() {
   captureMoveInDraft();
   const d = ensureMoveIn();
-  const name = String(d.name || "").trim();
-  const phone = String(d.phone || "").trim();
+  d.name = normalizePersonName(d.name);
+  d.phone = normalizeMobile(d.phone);
+  d.idNo = normalizeIdNo(d.idNo);
+  const name = d.name;
+  const phone = d.phone;
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) { toast("請先選房號"); return; }
-  if (!name) { toast("請填姓名"); return; }
-  if (!phone) { toast("請填電話"); return; }
+  if (!personNameOk(name)) { toast("請填中文姓名"); return; }
+  if (!mobileOk(phone)) { toast("請填手機號碼"); return; }
+  if (d.idNo && !idNoOk(d.idNo)) { toast("請填身分證"); return; }
   ui.moveSubmitConfirm = true;
   render();
 }
@@ -11752,9 +11821,9 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
       <div class="label">基本資料</div>
-      <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" /></label>
-      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" /></label>
-      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" /></label>
+      <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /></label>
+      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="10" /></label>
+      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="10" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
@@ -17154,9 +17223,9 @@ function captureMoveInDraft() {
     const el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   };
-  if (document.getElementById("move-name")) d.name = val("move-name");
-  if (document.getElementById("move-phone")) d.phone = val("move-phone");
-  if (document.getElementById("move-idno")) d.idNo = val("move-idno");
+  if (document.getElementById("move-name")) d.name = normalizePersonName(val("move-name"));
+  if (document.getElementById("move-phone")) d.phone = normalizeMobile(val("move-phone"));
+  if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
 }
@@ -17196,6 +17265,9 @@ function bindMoveInForm() {
     el.onchange = captureMoveInDraft;
     el.onblur = captureMoveInDraft;
   });
+  bindFormatField(document.getElementById("move-name"), "name");
+  bindFormatField(document.getElementById("move-phone"), "phone");
+  bindFormatField(document.getElementById("move-idno"), "id");
   const startEl = document.getElementById("move-start");
   if (startEl) {
     startEl.onchange = () => {
