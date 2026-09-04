@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-24";
-const APP_EDIT_COUNT = 601;
+const APP_STAMP = "2026-09-04-09-25";
+const APP_EDIT_COUNT = 602;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["申請入住底部圖卡不再被綠色背景卡住"] },
+  { ver: APP_STAMP, items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
+  { ver: "2026-09-04-09-24", items: ["申請入住底部圖卡不再被綠色背景卡住"] },
   { ver: "2026-09-04-09-20", items: ["簽約日期的年月改成同一行，上一月下一月縮小"] },
   { ver: "2026-09-04-09-16", items: ["極黑色調下看不見的字會自動改成淺色"] },
   { ver: "2026-09-04-09-12", items: ["調色盤關閉改成確定，選好色調後收回右下角"] },
@@ -820,7 +821,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0152") return;
+    if (!m || !m[1] || m[1] === "0153") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11484,7 +11485,7 @@ function moveInView() {
       <div class="label">基本資料</div>
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" /></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" /></label>
-      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="可之後再補" autocomplete="off" /></label>
+      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
