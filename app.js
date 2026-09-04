@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-07";
-const APP_EDIT_COUNT = 645;
+const APP_STAMP = "2026-09-04-13-10";
+const APP_EDIT_COUNT = 646;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0196";
+const FILE_VER = "0197";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台未確認入住時，不再跳出已確認提示"] },
+  { ver: APP_VERSION, items: ["房間床鋪圖示改成正方形，不再拉長"] },
+  { ver: "2026-09-04-13-07-645", items: ["後台未確認入住時，不再跳出已確認提示"] },
   { ver: "2026-09-04-13-05-644", items: ["更新後點租客登入不會再跳回首頁"] },
   { ver: "2026-09-04-13-03-643", items: ["兩人簽名框改成一樣大小"] },
   { ver: "2026-09-04-12-59-642", items: ["房間圖示改回原本的床，改成正方形"] },
@@ -7544,7 +7545,7 @@ function notifyCloudChanges(before) {
 function icon(name) {
   const map = {
     home: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 3.5l8 7V21H4z"/><path d="M9 21v-7h6v7"/></svg>',
-    room: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="9" rx="2.6"/><rect x="6.4" y="5.5" width="5" height="4.2" rx="1.6"/><rect x="12.6" y="5.5" width="5" height="4.2" rx="1.6"/><rect x="4" y="12.2" width="16" height="8" rx="2.2"/></svg>',
+    room: '<svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="8" rx="2.4"/><rect x="6.6" y="5.8" width="4.6" height="3.4" rx="1.4"/><rect x="12.8" y="5.8" width="4.6" height="3.4" rx="1.4"/><rect x="5" y="12.2" width="14" height="8.3" rx="2.4"/></svg>',
     lease: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8.2L20 8.3V20.5H7z"/><path d="M15.2 3.5V8.3H20"/><path d="M10 12h6M10 16h6"/></svg>',
     fix: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',

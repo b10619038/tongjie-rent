@@ -838,6 +838,10 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .nav-ic svg {
   width: 22px;
   height: 22px;
+  max-width: 22px;
+  max-height: 22px;
+  aspect-ratio: 1;
+  flex: none;
 }
 .nav button { overflow: visible; }
 .nav button.active .nav-ic { transform: scale(1.34); }
