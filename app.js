@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-47";
-const APP_EDIT_COUNT = 615;
+const APP_STAMP = "2026-09-04-10-49";
+const APP_EDIT_COUNT = 616;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -81,7 +81,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新提示改成點此更新"] },
+  { ver: APP_VERSION, items: ["有新版本提示只跳一次，點進去前會固定住"] },
+  { ver: "2026-09-04-10-47-615", items: ["更新提示改成點此更新"] },
   { ver: "2026-09-04-10-45-614", items: ["更新畫面只顯示內容清單，版本號改成時間加累計次數"] },
   { ver: "2026-09-04-10-42-613", items: ["滑動螢幕時不會誤觸輸入格跳出鍵盤"] },
   { ver: "2026-09-04-10-39-612", items: ["主題色調面板只跳出一次，不再重複滑入"] },
@@ -862,10 +863,33 @@ function aiPersonaSheetHtml() {
     </div>
   </div>`;
 }
-function updateBarHtml() {
-  if (!hasUnseenUpdate() && !ui.updateReady) return "";
-  const lift = ui.role === "tenant" ? " lift" : "";
-  return `<div class="home-upd${lift}" id="apply-update">有新版本 ${APP_VERSION}，點此更新</div>`;
+function updateBarHtml() { return ""; }
+function ensureUpdateBar() {
+  const need = !ui.updateNotes && (hasUnseenUpdate() || ui.updateReady);
+  let el = document.getElementById("apply-update");
+  if (!need) {
+    if (el) el.remove();
+    return;
+  }
+  const lift = ui.role === "tenant";
+  const text = "有新版本 " + APP_VERSION + "，點此更新";
+  if (el) {
+    el.classList.add("shown");
+    el.classList.toggle("lift", lift);
+    if (el.textContent !== text) el.textContent = text;
+    return;
+  }
+  el = document.createElement("div");
+  el.id = "apply-update";
+  el.className = "home-upd" + (lift ? " lift" : "");
+  el.setAttribute("role", "button");
+  el.textContent = text;
+  el.onclick = () => {
+    ui.updateNotes = true;
+    try { el.remove(); } catch {}
+    render();
+  };
+  document.body.appendChild(el);
 }
 async function wipeClientCache() {
   try {
@@ -891,7 +915,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0166") return;
+    if (!m || !m[1] || m[1] === "0167") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11304,7 +11328,7 @@ function paintApp() {
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
-    const overlays = !!(ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml || ui.updateReady || bar);
+    const overlays = !!(ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
     if (same && !overlays && page === "home") return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
@@ -16607,8 +16631,7 @@ function bindGate() {
   if (desk) desk.onclick = () => installApp("desktop");
 }
 function bindUpdateBar() {
-  const btn = document.getElementById("apply-update");
-  if (btn) btn.onclick = () => { ui.updateNotes = true; render(); };
+  ensureUpdateBar();
   const now = document.getElementById("apply-update-now");
   if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
   const close = document.getElementById("update-close");

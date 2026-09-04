@@ -2809,10 +2809,11 @@ img.avatar { object-fit: cover; display: block; }
   font-weight: 800;
   letter-spacing: .02em;
   box-shadow: 0 10px 24px rgba(0,0,0,.14);
-  animation: homeUpdIn .45s ease both;
+  animation: homeUpdIn .45s ease 1 both;
   cursor: pointer;
   pointer-events: auto;
 }
+.home-upd.shown { animation: none; }
 .home-upd.lift { bottom: calc(102px + var(--safe-b)); }
 @keyframes homeUpdIn {
   from { opacity: 0; transform: translateY(16px); }
