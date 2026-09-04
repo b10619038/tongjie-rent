@@ -2149,6 +2149,7 @@ body.print-lease .studio-lease-paper { display: block; }
   vertical-align: bottom;
   margin: 0;
   filter: none;
+  background: #ffffff;
 }
 body.print-lease .lease-esig { height: 40px; max-width: 160px; }
 .lease-sign-line {
@@ -2719,6 +2720,7 @@ img.avatar { object-fit: cover; display: block; }
   object-fit: contain;
   object-position: left center;
   display: block;
+  background: #ffffff;
 }
 .fold-head {
   width: 100%; margin: 0; padding: 6px 0;

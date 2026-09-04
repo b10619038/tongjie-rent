@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-42";
-const APP_EDIT_COUNT = 661;
+const APP_STAMP = "2026-09-04-15-50";
+const APP_EDIT_COUNT = 662;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0212";
+const FILE_VER = "0213";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選中時段拿掉深綠色邊框"] },
+  { ver: APP_VERSION, items: ["合約簽名不再變黑，改回藍色親筆"] },
+  { ver: "2026-09-04-15-42-661", items: ["選中時段拿掉深綠色邊框"] },
   { ver: "2026-09-04-15-40-660", items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
   { ver: "2026-09-04-15-29-659", items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
   { ver: "2026-09-04-15-10-658", items: ["7652 強制退租後前任改為實際兩人姓名並雲端同步"] },
@@ -12854,6 +12855,18 @@ function saveESignRecord(t, rec) {
   } catch {}
   if (isDevPreview() || (t && t.demo)) ui.devESign = rec;
 }
+function bleachSigCanvas(g, w, h) {
+  try {
+    const pix = g.getImageData(0, 0, w, h);
+    const d = pix.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.max(d[i], d[i + 1], d[i + 2]) < 48) {
+        d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = 255;
+      }
+    }
+    g.putImageData(pix, 0, 0);
+  } catch {}
+}
 function canvasToSig(c) {
   if (!c) return "";
   try {
@@ -12862,16 +12875,63 @@ function canvasToSig(c) {
     out.width = w;
     out.height = h;
     const g = out.getContext("2d");
-    g.clearRect(0, 0, w, h);
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, w, h);
     g.drawImage(c, 0, 0, w, h);
-    try {
-      const jpg = out.toDataURL("image/jpeg", 0.62);
-      if (jpg && jpg.length < 180000) return jpg;
-    } catch {}
+    bleachSigCanvas(g, w, h);
     return out.toDataURL("image/png");
   } catch {
     try { return c.toDataURL("image/png"); } catch { return ""; }
   }
+}
+function repairSigDataUrl(src) {
+  return new Promise(resolve => {
+    if (!src || String(src).indexOf("data:image") !== 0) return resolve(src || "");
+    if (String(src).indexOf("image/jpeg") < 0) return resolve(src);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth || 480, h = img.naturalHeight || 168;
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, w, h);
+        g.drawImage(img, 0, 0);
+        bleachSigCanvas(g, w, h);
+        resolve(c.toDataURL("image/png"));
+      } catch { resolve(src); }
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+async function repairStoredESigns(data) {
+  if (!data) return false;
+  let dirty = false;
+  const fix = async rec => {
+    if (!rec) return;
+    if (rec.sig && String(rec.sig).indexOf("image/jpeg") >= 0) {
+      rec.sig = await repairSigDataUrl(rec.sig);
+      rec.ts = Math.max(Number(rec.ts) || 0, Date.now());
+      dirty = true;
+    }
+    if (rec.sig2 && String(rec.sig2).indexOf("image/jpeg") >= 0) {
+      rec.sig2 = await repairSigDataUrl(rec.sig2);
+      rec.ts = Math.max(Number(rec.ts) || 0, Date.now());
+      dirty = true;
+    }
+  };
+  for (const t of data.tenants || []) if (t && t.eSign) await fix(t.eSign);
+  if (data.eSigns && typeof data.eSigns === "object") {
+    for (const k of Object.keys(data.eSigns)) await fix(data.eSigns[k]);
+  }
+  if (dirty) {
+    try { persistESignsMap(collectESigns(data)); } catch {}
+    try { markCloudDirty(); } catch {}
+  }
+  return dirty;
 }
 function saveESignLocal(t, rec) {
   if (!t || !t.id || !rec) return;
@@ -20334,6 +20394,12 @@ async function boot() {
       persistLedger(state);
     } catch {}
     const got = await pullCloud();
+    try {
+      if (await repairStoredESigns(state)) {
+        persistESignsMap(state.eSigns);
+        await pushCloud();
+      }
+    } catch {}
     rollRentMonthIfNeeded();
     applyPaidMarks(state);
     persistPaidMarks(state);
