@@ -2092,16 +2092,17 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   }
   body.print-lease .lease-ink { color: #1a57c5 !important; }
   body.print-lease .lease-sign-line.signed {
-    height: 46px;
+    height: auto;
     overflow: visible;
   }
   body.print-lease .lease-sign-line .lease-esig,
   body.print-lease .lease-esig {
     position: static !important;
     display: inline-block;
-    height: 42px !important;
-    max-width: 180px !important;
-    vertical-align: bottom;
+    height: 26px !important;
+    max-width: 140px !important;
+    vertical-align: -6px;
+    background: transparent;
   }
   body.print-lease .lease-pg:last-child { page-break-after: auto; }
   body.print-lease .studio-lease-paper + .studio-lease-paper { page-break-before: always; break-before: page; }
@@ -2142,35 +2143,47 @@ body.print-lease .studio-lease-paper { display: block; }
 .lease-ink.wide { min-width: 12em; }
 .lease-esig {
   display: inline-block;
-  height: 36px;
-  max-width: 140px;
+  height: 26px;
+  max-width: 130px;
   object-fit: contain;
   object-position: left bottom;
-  vertical-align: bottom;
-  margin: 0;
+  vertical-align: -6px;
+  margin: 0 2px;
   filter: none;
-  background: #ffffff;
+  background: transparent;
 }
-body.print-lease .lease-esig { height: 40px; max-width: 160px; }
+body.print-lease .lease-esig { height: 26px; max-width: 140px; }
 .lease-sign-line {
   display: inline-block;
-  width: 9em;
+  min-width: 8em;
+  width: auto;
   border-bottom: 1px solid #111;
-  height: 1.15em;
-  vertical-align: bottom;
-  margin: 0 8px;
+  height: auto;
+  line-height: 1.15;
+  vertical-align: baseline;
+  margin: 0 6px;
   position: relative;
+  padding: 0 2px;
 }
 .lease-sign-line.signed {
-  height: 1.2em;
+  height: auto;
   overflow: visible;
 }
 .lease-sign-line .lease-esig {
-  position: absolute;
-  left: 0;
-  bottom: 2px;
-  height: 38px;
-  max-width: 100%;
+  position: static;
+  height: 26px;
+  max-width: 130px;
+  vertical-align: -6px;
+}
+.lease-preview .lease-sign-line.signed {
+  height: auto;
+}
+.lease-preview .lease-sign-line .lease-esig,
+.lease-preview .lease-esig {
+  position: static;
+  height: 24px;
+  max-width: 120px;
+  vertical-align: -5px;
 }
 .lease-pg {
   position: relative;

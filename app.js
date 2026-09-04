@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-16-08";
-const APP_EDIT_COUNT = 664;
+const APP_STAMP = "2026-09-04-16-14";
+const APP_EDIT_COUNT = 665;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0215";
+const FILE_VER = "0216";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客簽約時間同步本月工作與日曆，強制退租會拿掉"] },
+  { ver: APP_VERSION, items: ["合約簽名不再蓋到上排字，電腦手機同一排法"] },
+  { ver: "2026-09-04-16-08-664", items: ["新客簽約時間同步本月工作與日曆，強制退租會拿掉"] },
   { ver: "2026-09-04-15-54-663", items: ["合約還沒開始的新租客本月不開立發票"] },
   { ver: "2026-09-04-15-50-662", items: ["合約簽名不再變黑，改回藍色親筆"] },
   { ver: "2026-09-04-15-42-661", items: ["選中時段拿掉深綠色邊框"] },
