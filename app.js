@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-48";
-const APP_EDIT_COUNT = 636;
+const APP_STAMP = "2026-09-04-12-49";
+const APP_EDIT_COUNT = 637;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0187";
+const FILE_VER = "0188";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間按鈕改成床的圖示"] },
+  { ver: APP_VERSION, items: ["下拉重新整理的提示改到畫面最上方"] },
+  { ver: "2026-09-04-12-48-636", items: ["房間按鈕改成床的圖示"] },
   { ver: "2026-09-04-12-45-635", items: ["更新提示恢復，新版本會再出現"] },
   { ver: "2026-09-04-12-43-634", items: ["底欄已選中的按鈕點擊不再跳動"] },
   { ver: "2026-09-04-12-42-633", items: ["還沒到本月租期時租金顯示尚無需繳費"] },
@@ -7023,6 +7024,21 @@ function unreadAppoints(tenantId) {
 }
 
 let toastTimer = 0;
+function showTopHint(msg) {
+  let el = document.getElementById("top-hint");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "top-hint";
+    el.className = "top-hint";
+    document.body.appendChild(el);
+  }
+  el.textContent = String(msg || "");
+  el.classList.add("shown");
+  clearTimeout(showTopHint.t);
+  showTopHint.t = setTimeout(() => {
+    el.classList.remove("shown");
+  }, 1800);
+}
 function showToastBanner(msg) {
   const app = document.getElementById("app");
   if (!app) return;
@@ -20073,7 +20089,7 @@ function bindPullRefresh() {
       lastRenderRole = ui.role;
       ui.keepScroll = false;
       render();
-      toast("已重新整理");
+      showTopHint("已重新整理");
       return;
     }
     setH(0);

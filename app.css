@@ -201,6 +201,29 @@ input, textarea, select {
 .ptr.on { color: var(--teal); }
 .ptr.busy em { display: block; animation: ptrSpin .7s linear infinite; }
 @keyframes ptrSpin { to { transform: rotate(360deg); } }
+.top-hint {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  z-index: 260;
+  background: var(--teal);
+  color: var(--on-teal, #fff);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(23, 33, 31, .18);
+  transform: translateY(-140%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .28s ease, opacity .28s ease;
+}
+.top-hint.shown {
+  transform: translateY(0);
+  opacity: 1;
+}
 
 .topbar {
   padding: 18px 20px 22px;
