@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-11-56";
-const APP_EDIT_COUNT = 620;
+const APP_STAMP = "2026-09-04-11-59";
+const APP_EDIT_COUNT = 621;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0171";
+const FILE_VER = "0172";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
+  { ver: APP_VERSION, items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
+  { ver: "2026-09-04-11-56-620", items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
   { ver: "2026-09-04-11-54-619", items: ["送出並進入預覽會先跳出確認"] },
   { ver: "2026-09-04-11-51-618", items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
   { ver: "2026-09-04-11-47-617", items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
@@ -748,8 +749,7 @@ if ("serviceWorker" in navigator) {
     }
     if (e.data && e.data.type === "SHOW_CHANGELOG") {
       ui.updateReady = true;
-      ui.updateNotes = true;
-      try { ensureUpdateBar(); render(); } catch {}
+      try { ensureUpdateBar(); } catch {}
     }
     if (e.data && e.data.type === "OPEN") {
       if (e.data.page) ui.page = e.data.page;
@@ -791,38 +791,31 @@ function changelogLabel(ver) {
 }
 function unseenChangelog() {
   const last = lastSeenVersion();
-  if (last === APP_VERSION) return [];
-  const lastStamp = changelogStamp(last);
-  const idx = CHANGELOG.findIndex(x => {
-    const v = String(x.ver || "");
-    return v === last || v === lastStamp || changelogStamp(v) === last || changelogStamp(v) === lastStamp;
-  });
-  const raw = idx < 0 ? CHANGELOG.slice(0, 4) : (idx === 0 ? CHANGELOG.slice(0, 1) : CHANGELOG.slice(0, idx));
   const dev = isDeveloper();
-  return raw.map(n => {
+  const take = (raw) => raw.map(n => {
     if (n.onlyDev && !dev) return null;
     const items = (n.items || []).slice();
     if (dev && n.devItems) items.push(...n.devItems);
     return items.length ? { ver: n.ver, items } : null;
   }).filter(Boolean);
+  if (last === APP_VERSION) return take(CHANGELOG.slice(0, 4));
+  const lastStamp = changelogStamp(last);
+  const idx = CHANGELOG.findIndex(x => {
+    const v = String(x.ver || "");
+    return v === last || v === lastStamp || changelogStamp(v) === last || changelogStamp(v) === lastStamp;
+  });
+  const raw = idx < 0 ? CHANGELOG.slice(0, 6) : CHANGELOG.slice(0, Math.max(idx, 4));
+  const notes = take(raw);
+  return notes.length ? notes : take(CHANGELOG.slice(0, 4));
 }
 function changelogSheetHtml() {
   if (!ui.updateNotes) return "";
-  let notes = unseenChangelog();
-  if (!notes.length) {
-    const dev = isDeveloper();
-    notes = CHANGELOG.slice(0, 4).map(n => {
-      if (n.onlyDev && !dev) return null;
-      const items = (n.items || []).slice();
-      if (dev && n.devItems) items.push(...n.devItems);
-      return items.length ? { ver: n.ver, items } : null;
-    }).filter(Boolean);
-  }
+  const notes = unseenChangelog();
   const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(changelogLabel(n.ver))}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`).join("");
   return `<div class="install-mask" id="update-mask">
     <div class="install-sheet">
       <div class="label">軟體更新</div>
-      <h2>這次更新內容如下:</h2>
+      <h2>更新紀錄</h2>
       <div class="log-list">${blocks}</div>
       <button class="btn-navy" id="apply-update-now" type="button">立即更新</button>
       <button class="ghost" id="update-close" type="button">稍後</button>
@@ -971,7 +964,7 @@ function promptAppUpdate(reg) {
         lang: "zh-Hant",
         subtitle: "統潔開發"
       });
-      n.onclick = () => { window.focus(); ui.updateNotes = true; render(); n.close(); };
+      n.onclick = () => { window.focus(); ui.updateReady = true; try { ensureUpdateBar(); } catch {} n.close(); };
     } catch {}
     if (reg && reg.showNotification) {
       reg.showNotification("統潔開發有新版本", {
