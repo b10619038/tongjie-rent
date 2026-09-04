@@ -956,6 +956,36 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   overflow: visible;
   background: var(--card);
 }
+html:has(.move-in-page),
+body:has(.move-in-page) {
+  height: 100% !important;
+  max-height: 100dvh;
+  overflow: hidden !important;
+}
+#app:has(.move-in-page) {
+  height: 100% !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+#app:has(.move-in-page) > div {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.gate.move-in-page {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  padding-bottom: calc(48px + var(--safe-b, 0px));
+}
 .logo { font-size: 13px; letter-spacing: 0.28em; color: var(--muted); display: block; margin: 20px 0 10px; }
 .gate h1 { font-size: 28px; margin: 10px 0 12px; line-height: 1.35; }
 .gate h1.firm-name {
