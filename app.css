@@ -2107,16 +2107,16 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   body.print-lease .lease-sign-line.signed {
     height: auto;
     overflow: visible;
-    padding: 2px 2px 4px;
+    padding: 2px 4px 6px;
   }
   body.print-lease .lease-sign-line .lease-esig,
   body.print-lease .lease-esig {
     position: static !important;
     display: inline-block;
-    height: 22px !important;
-    max-width: 120px !important;
+    height: 40px !important;
+    max-width: 200px !important;
     vertical-align: bottom;
-    margin: 0 2px 4px;
+    margin: 0 4px 5px;
     background: transparent;
   }
   body.print-lease .lease-pg:last-child { page-break-after: auto; }
@@ -2166,16 +2166,16 @@ body.print-lease .studio-lease-paper { display: block; }
 .lease-ink.wide { min-width: 12em; }
 .lease-esig {
   display: inline-block;
-  height: 22px;
-  max-width: 120px;
+  height: 40px;
+  max-width: 200px;
   object-fit: contain;
   object-position: left bottom;
   vertical-align: bottom;
-  margin: 0 2px 4px;
+  margin: 0 4px 5px;
   filter: none;
   background: transparent;
 }
-body.print-lease .lease-esig { height: 22px; max-width: 120px; }
+body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-sign-line {
   display: inline-block;
   min-width: 8em;
@@ -2186,30 +2186,31 @@ body.print-lease .lease-esig { height: 22px; max-width: 120px; }
   vertical-align: baseline;
   margin: 0 6px;
   position: relative;
-  padding: 2px 2px 4px;
+  padding: 2px 4px 6px;
 }
 .lease-sign-line.signed {
   height: auto;
   overflow: visible;
+  min-width: 10em;
 }
 .lease-sign-line .lease-esig {
   position: static;
-  height: 22px;
-  max-width: 120px;
+  height: 40px;
+  max-width: 200px;
   vertical-align: bottom;
-  margin: 0 2px 4px;
+  margin: 0 4px 5px;
 }
 .lease-preview .lease-sign-line.signed {
   height: auto;
-  padding: 2px 2px 4px;
+  padding: 2px 4px 6px;
 }
 .lease-preview .lease-sign-line .lease-esig,
 .lease-preview .lease-esig {
   position: static;
-  height: 20px;
-  max-width: 110px;
+  height: 40px;
+  max-width: 200px;
   vertical-align: bottom;
-  margin: 0 2px 4px;
+  margin: 0 4px 5px;
 }
 .lease-pg {
   position: relative;

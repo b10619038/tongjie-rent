@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-10";
-const APP_EDIT_COUNT = 675;
+const APP_STAMP = "2026-09-04-17-14";
+const APP_EDIT_COUNT = 676;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0226";
+const FILE_VER = "0227";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房屋租賃契約書每一面改回滿版"] },
+  { ver: APP_VERSION, items: ["合約簽名放大，不壓到上下黑線"] },
+  { ver: "2026-09-04-17-10-675", items: ["房屋租賃契約書每一面改回滿版"] },
   { ver: "2026-09-04-17-06-674", items: ["回報已繳費並附上截圖改成綠色可按按鈕"] },
   { ver: "2026-09-04-17-02-673", items: ["本月已繳費先變淡，回報截圖後才解鎖"] },
   { ver: "2026-09-04-16-56-672", items: ["繳費要先回報截圖，才能點本月已繳費"] },
