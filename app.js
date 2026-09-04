@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-04";
-const APP_EDIT_COUNT = 623;
+const APP_STAMP = "2026-09-04-12-06";
+const APP_EDIT_COUNT = 624;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0174";
+const FILE_VER = "0175";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["申請入住姓名、電話、身分證依格式自動整理"] },
+  { ver: APP_VERSION, items: ["同一畫面點過更新後不再重複跳出"] },
+  { ver: "2026-09-04-12-04-623", items: ["申請入住姓名、電話、身分證依格式自動整理"] },
   { ver: "2026-09-04-12-02-622", items: ["更新點過後不會一直重複跳出"] },
   { ver: "2026-09-04-11-59-621", items: ["更新只留歷史紀錄視窗，不再先跳出這次的更新"] },
   { ver: "2026-09-04-11-56-620", items: ["開著同一畫面也會跳出更新提示，不用返回或重開"] },
@@ -769,6 +770,21 @@ function lastSeenVersion() {
 function dismissedBuild() {
   try { return localStorage.getItem("tj-dismiss-build") || ""; } catch { return ""; }
 }
+function isDismissed(ver) {
+  const d = dismissedBuild();
+  const v = String(ver || "");
+  if (!d || !v) return false;
+  if (d === v) return true;
+  if (/^\d+$/.test(d) && /^\d+$/.test(v) && Number(v) <= Number(d)) return true;
+  return false;
+}
+function rememberDismiss(ver) {
+  const v = String(ver || FILE_VER);
+  const d = dismissedBuild();
+  let keep = v;
+  if (/^\d+$/.test(d) && /^\d+$/.test(v) && Number(d) > Number(v)) keep = d;
+  try { localStorage.setItem("tj-dismiss-build", keep); } catch {}
+}
 function seedSeenVersion() {
   const last = lastSeenVersion();
   if (last === "pending-reload") {
@@ -781,26 +797,27 @@ function seedSeenVersion() {
 function hasUnseenUpdate() {
   const last = lastSeenVersion();
   if (!last || last === "pending-reload") return false;
-  if (dismissedBuild() === FILE_VER) return false;
-  if (ui.pendingFileVer && dismissedBuild() === ui.pendingFileVer) return false;
+  if (isDismissed(FILE_VER) || isDismissed(ui.pendingFileVer)) return false;
   return last !== APP_VERSION;
 }
 function markVersionSeen() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
-  try { localStorage.setItem("tj-dismiss-build", FILE_VER); } catch {}
+  rememberDismiss(FILE_VER);
   ui.updateReady = false;
   ui.updateNotes = false;
   ui.pendingFileVer = FILE_VER;
 }
-function closeUpdateNotes() {
-  const remote = String(ui.pendingFileVer || FILE_VER);
-  try { localStorage.setItem("tj-dismiss-build", remote); } catch {}
+function hideUpdateUi() {
   ui.updateReady = false;
   ui.updateNotes = false;
   const mask = document.getElementById("update-mask");
   if (mask) mask.remove();
   const bar = document.getElementById("apply-update");
   if (bar) bar.remove();
+}
+function closeUpdateNotes() {
+  rememberDismiss(ui.pendingFileVer || FILE_VER);
+  hideUpdateUi();
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -869,6 +886,12 @@ function ensureChangelogSheet() {
   bindUpdateSheet(document.getElementById("update-mask"));
 }
 function openUpdateNotes() {
+  const remote = String(ui.pendingFileVer || FILE_VER);
+  rememberDismiss(remote);
+  if (remote === FILE_VER) {
+    try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
+  }
+  ui.updateReady = false;
   ui.updateNotes = true;
   const bar = document.getElementById("apply-update");
   if (bar) bar.remove();
@@ -919,9 +942,12 @@ function aiPersonaSheetHtml() {
 }
 function updateBarHtml() { return ""; }
 function ensureUpdateBar() {
-  const dismissed = dismissedBuild();
-  const remote = String(ui.pendingFileVer || "");
-  const skip = (remote && dismissed === remote) || dismissed === FILE_VER;
+  if (typeof __reloading !== "undefined" && __reloading) {
+    hideUpdateUi();
+    return;
+  }
+  const remote = String(ui.pendingFileVer || FILE_VER);
+  const skip = isDismissed(remote) || isDismissed(FILE_VER);
   const need = !ui.updateNotes && !skip && (hasUnseenUpdate() || ui.updateReady);
   let el = document.getElementById("apply-update");
   if (!need) {
@@ -957,36 +983,37 @@ async function wipeClientCache() {
 function applyAppUpdate() {
   persistLogin();
   persistUi();
+  const remote = String(ui.pendingFileVer || FILE_VER);
   try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
-  try { localStorage.setItem("tj-dismiss-build", ""); } catch {}
-  ui.updateNotes = false;
-  ui.updateReady = false;
+  rememberDismiss(remote);
+  hideUpdateUi();
   try { __reloading = true; } catch {}
   wipeClientCache().finally(() => {
-    location.href = "/index.html?v=0030&t=" + Date.now();
+    try { location.replace(location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now()); }
+    catch { location.reload(); }
   });
 }
 async function pollRemoteBuild() {
+  if (typeof __reloading !== "undefined" && __reloading) return;
   try {
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1] || m[1] === FILE_VER) return;
+    if (isDismissed(m[1])) return;
     flagAppUpdate(m[1]);
   } catch {}
 }
 function flagAppUpdate(fileVer) {
+  if (typeof __reloading !== "undefined" && __reloading) return;
   const ver = String(fileVer || "");
   if (ver) ui.pendingFileVer = ver;
-  if (ver && dismissedBuild() === ver) return;
+  if (isDismissed(ver) || isDismissed(FILE_VER)) return;
   if (ver === FILE_VER && lastSeenVersion() === APP_VERSION) return;
   try { announceBuild(ver); } catch {}
-  if (ui.updateNotes) {
-    try { ensureChangelogSheet(); } catch {}
-    return;
-  }
+  if (ui.updateNotes) return;
   if (ui.updateReady && document.getElementById("apply-update")) return;
   ui.updateReady = true;
-  try { ensureUpdateBar(); } catch { try { render(); } catch {} }
+  try { ensureUpdateBar(); } catch {}
 }
 async function announceBuild(fileVer) {
   const ver = String(fileVer || FILE_VER);
@@ -1006,13 +1033,13 @@ async function pullBuild() {
     if (!res.ok) return;
     const o = await res.json();
     const ver = String((o && o.fileVer) || "");
-    if (ver && Number(ver) > Number(FILE_VER)) flagAppUpdate(ver);
+    if (ver && Number(ver) > Number(FILE_VER) && !isDismissed(ver)) flagAppUpdate(ver);
   } catch {}
 }
 function promptAppUpdate(reg) {
-  if (dismissedBuild() === FILE_VER || (ui.pendingFileVer && dismissedBuild() === ui.pendingFileVer)) return;
+  if (isDismissed(FILE_VER) || isDismissed(ui.pendingFileVer)) return;
   ui.updateReady = true;
-  try { ensureUpdateBar(); } catch { try { render(); } catch {} }
+  try { ensureUpdateBar(); } catch {}
   if (lastSeenVersion() === APP_VERSION) return;
   if (canOsNotify()) {
     try {
@@ -19872,7 +19899,7 @@ async function boot() {
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
     seedSeenVersion();
-    if (hasUnseenUpdate() && dismissedBuild() !== FILE_VER) ui.updateReady = true;
+    if (hasUnseenUpdate()) ui.updateReady = true;
     try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
