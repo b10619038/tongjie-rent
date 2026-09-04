@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-40";
-const APP_EDIT_COUNT = 660;
+const APP_STAMP = "2026-09-04-15-42";
+const APP_EDIT_COUNT = 661;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0211";
+const FILE_VER = "0212";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
+  { ver: APP_VERSION, items: ["選中時段拿掉深綠色邊框"] },
+  { ver: "2026-09-04-15-40-660", items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
   { ver: "2026-09-04-15-29-659", items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
   { ver: "2026-09-04-15-10-658", items: ["7652 強制退租後前任改為實際兩人姓名並雲端同步"] },
   { ver: "2026-09-04-13-54-657", items: ["申請入住頁手機可上下滑動"] },
