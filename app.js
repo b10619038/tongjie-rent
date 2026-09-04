@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-35";
-const APP_EDIT_COUNT = 655;
+const APP_STAMP = "2026-09-04-13-37";
+const APP_EDIT_COUNT = 656;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0206";
+const FILE_VER = "0207";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租一打開就看到交接確認書"] },
+  { ver: APP_VERSION, items: ["兩人簽名在簽約時間下方同一行顯示"] },
+  { ver: "2026-09-04-13-35-655", items: ["正常退租一打開就看到交接確認書"] },
   { ver: "2026-09-04-13-33-654", items: ["中途退租會跳出終止租賃契約"] },
   { ver: "2026-09-04-13-25-653", items: ["新租客簽約後後台會立刻同步已簽約"] },
   { ver: "2026-09-04-13-22-652", items: ["租客畫面房間圖示改成開門"] },
@@ -16177,9 +16178,10 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${t.signAppointAt ? `<div class="row"><span class="k">簽約時間</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div>` : ""}
       ${(() => {
         const es = getESign(t);
-        return es && es.sig && String(es.sig).startsWith("data:")
-          ? `<img src="${es.sig}" alt="簽名" style="height:52px;max-width:180px;object-fit:contain;display:block;margin:6px 0 2px">`
-          : "";
+        const a = es && es.sig && String(es.sig).startsWith("data:") ? es.sig : "";
+        const b = es && es.sig2 && String(es.sig2).startsWith("data:") ? es.sig2 : "";
+        if (!a && !b) return "";
+        return `<div class="esig-row">${a ? `<img src="${a}" alt="簽名" class="esig-thumb">` : ""}${b ? `<img src="${b}" alt="簽名" class="esig-thumb">` : ""}</div>`;
       })()}
       ${t.note ? `<div class="row wrap"><span class="k">備註</span><span class="v">${escapeHtml(t.note)}</span></div>` : ""}
       ${(() => {

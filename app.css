@@ -2669,6 +2669,21 @@ img.avatar { object-fit: cover; display: block; }
 .tenant-sheet-page .slide-up { animation: none !important; transform: none !important; }
 @keyframes sheetIn { from { transform: translateX(56px); opacity: .35; } to { transform: none; opacity: 1; } }
 #tenant-sheet .te-row { margin-top: 4px; }
+.esig-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 2px;
+}
+.esig-thumb {
+  height: 52px;
+  max-width: calc(50% - 6px);
+  flex: 1 1 0;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
+}
 .fold-head {
   width: 100%; margin: 0; padding: 6px 0;
   border: 0; background: transparent; cursor: pointer;
