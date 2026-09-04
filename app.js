@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-54";
-const APP_EDIT_COUNT = 663;
+const APP_STAMP = "2026-09-04-16-08";
+const APP_EDIT_COUNT = 664;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0214";
+const FILE_VER = "0215";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約還沒開始的新租客本月不開立發票"] },
+  { ver: APP_VERSION, items: ["新客簽約時間同步本月工作與日曆，強制退租會拿掉"] },
+  { ver: "2026-09-04-15-54-663", items: ["合約還沒開始的新租客本月不開立發票"] },
   { ver: "2026-09-04-15-50-662", items: ["合約簽名不再變黑，改回藍色親筆"] },
   { ver: "2026-09-04-15-42-661", items: ["選中時段拿掉深綠色邊框"] },
   { ver: "2026-09-04-15-40-660", items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
@@ -8826,6 +8827,15 @@ function attachMemoRows(rows) {
       source: "memo", canDel: !memo.cycle, canEdit: false, cycle: !!memo.cycle
     });
   });
+  signAppointMemos().forEach(memo => {
+    const date = ymdOf(memo.date);
+    if (!date || date.slice(0, 7) !== ym) return;
+    rows.push({
+      id: memo.id, type: "memo", date, amount: 0,
+      roomNo: "", note: memo.text || "", company: "", bank: "",
+      source: "sign", canDel: false, canEdit: false, cycle: false
+    });
+  });
   return rows;
 }
 function ledgerDupKey(row) {
@@ -9413,7 +9423,7 @@ function calDayListHtml(selected, rangeLabel, extra) {
           : `<span class="${x.type === "in" ? "led-in" : "led-out"}">${x.type === "in" ? "進帳" : "出帳"}</span> · ${escapeHtml(ledgerLineLabel(x))} · ${money(x.amount)}`}</b>
           ${x.canDel ? `<button type="button" class="led-del" data-del-book="${x.id}">刪除</button>` : ""}
         </div>
-        <span class="led-note">${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.cycle ? "本月工作" : "工作助手記下") : (x.note || "")))}</span>
+        <span class="led-note">${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.source === "sign" ? "簽約預約" : (x.cycle ? "本月工作" : "工作助手記下")) : (x.note || "")))}</span>
       </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
 }
 function refreshCalSearchLive() {
@@ -9508,6 +9518,7 @@ function bindCalLedgerRows() {
       const src = el.dataset.editSrc;
       const id = el.dataset.editLed;
       if (src === "rent") { toast("這筆是租客繳費自動帶入，請到「租客」修改"); return; }
+      if (src === "sign") { toast("這筆是新租客簽約時間，強制退租後會自動拿掉"); return; }
       if (src === "memo") { toast("這筆是工作助手記下的行程，可按刪除拿掉"); return; }
       if (src === "errand") {
         const eid = String(id || "").replace(/^errand-/, "");
@@ -10816,6 +10827,7 @@ function cancelIncomingTenant(inc) {
   inc.sessionEnded = true;
   inc.clearedApply = true;
   inc.loginRevoked = true;
+  inc.signAppointAt = "";
   inc.edited = true;
   inc.editedAt = now;
   const live = restoreLiveRoom(r);
@@ -10907,6 +10919,7 @@ function forceVacateTenant(t) {
     x.editedAt = now;
     x.eSignRev = now;
     x.eSign = { status: "unsigned", cleared: true, ts: now, at: nowStamp() };
+    x.signAppointAt = "";
     if (isPracticeStudioNo(no)) x.practiceStay = false;
   });
   try {
@@ -14552,7 +14565,8 @@ function adminAi() {
       const summary = bits.join(" · ");
       const memoRows = arr => arr.map(m => {
         const on = ui.workMemoId === m.id;
-        const editing = on && ui.workEditId === m.id;
+        const locked = m.source === "sign" || String(m.id || "").indexOf("signap-") === 0;
+        const editing = on && ui.workEditId === m.id && !locked;
         const dateVal = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : (typeof workOccurYmd === "function" ? workOccurYmd(m) : "");
         return `
             <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
@@ -14565,7 +14579,7 @@ function adminAi() {
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
               </div>
-            </form>` : on ? `<div class="unpaid-tools work-memo-tools">
+            </form>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
@@ -14954,11 +14968,32 @@ function openGoogleMemo(m) {
   window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei" + recur, "_blank", "noopener");
 }
 function upcomingMemos() {
-  return myMemos().filter(m => !isMemoDone(m)).slice().sort((a, b) => {
-    const da = nextCycleDate(a) + (a.time || "");
-    const db = nextCycleDate(b) + (b.time || "");
+  return myMemos().filter(m => !isMemoDone(m)).concat(signAppointMemos()).slice().sort((a, b) => {
+    const da = (a.source === "sign" ? (a.date || "") : nextCycleDate(a)) + (a.time || "");
+    const db = (b.source === "sign" ? (b.date || "") : nextCycleDate(b)) + (b.time || "");
     return da.localeCompare(db);
   });
+}
+function signAppointMemos() {
+  const out = [];
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.placeholder || t.cancelledApply || t.sessionEnded) return;
+    const at = String(t.signAppointAt || "").trim();
+    if (!at) return;
+    const ymd = ymdOf(at);
+    if (!ymd) return;
+    const room = (state.rooms || []).find(x => x && x.id === t.roomId);
+    const clock = formatDateTime12(at.replace("T", " ")).replace(/^\d{4}-\d{2}-\d{2}\s*/, "").trim();
+    out.push({
+      id: "signap-" + t.id,
+      text: ((room && room.no) ? room.no + " " : "") + (t.name || "") + " 簽約",
+      date: ymd,
+      time: clock,
+      source: "sign",
+      tenantId: t.id
+    });
+  });
+  return out;
 }
 function workOccurYmd(m) {
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) {
