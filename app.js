@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-14";
-const APP_EDIT_COUNT = 650;
+const APP_STAMP = "2026-09-04-13-17";
+const APP_EDIT_COUNT = 651;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0201";
+const FILE_VER = "0202";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間圖示改成床頭加枕頭的正方形床"] },
+  { ver: APP_VERSION, items: ["緊急聯絡人與電話可填一人，兩人中間用、"] },
+  { ver: "2026-09-04-13-14-650", items: ["房間圖示改成床頭加枕頭的正方形床"] },
   { ver: "2026-09-04-13-13-649", items: ["租客與管理員登入頁字和圖卡滑入恢復"] },
   { ver: "2026-09-04-13-12-648", items: ["管理員後台說明補上句號"] },
   { ver: "2026-09-04-13-11-647", items: ["登入頁小字說明改回原本大小"] },
@@ -13006,8 +13007,8 @@ function leaseSignView() {
         <div class="label">承租人資料（藍字印在合約上）</div>
         <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
         <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
-        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || "")}" placeholder="${two ? "兩人請用／分開" : ""}" autocomplete="off" /></label>
-        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || "")}" placeholder="${two ? "兩人請用／分開" : ""}" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || "")}" placeholder="姓名" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || "")}" placeholder="手機號碼" autocomplete="off" /></label>
       </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -17694,8 +17695,8 @@ function captureSignDraft() {
   };
   const idNo = val("sign-idno"); if (document.getElementById("sign-idno")) t.idNo = idNo;
   const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = phone;
-  const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = emName;
-  const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = emPhone;
+  const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = normalizePersonName(emName);
+  const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = normalizeMobile(emPhone);
   const start = val("sign-lease-start");
   if (document.getElementById("sign-lease-start") && start) {
     if (start !== t.leaseStart) ui.signLeaseCustom = true;
@@ -17840,6 +17841,10 @@ function bindSignAgree() {
   }
 }
 function bindSignPad() {
+  bindFormatField(document.getElementById("sign-emname"), "name");
+  bindFormatField(document.getElementById("sign-emphone"), "phone");
+  bindFormatField(document.getElementById("sign-phone"), "phone");
+  bindFormatField(document.getElementById("sign-idno"), "id");
   const INK = "#1a57c5";
   const bindOne = (c, strokesKey) => {
     if (!c) return;
@@ -17950,10 +17955,10 @@ function bindSignPad() {
     const emName = val("sign-emname");
     const emPhone = val("sign-emphone");
     if (t) {
-      if (idNo) t.idNo = idNo;
-      if (phone) t.phone = phone;
-      if (emName) t.emergencyName = emName;
-      if (emPhone) t.emergencyPhone = emPhone;
+      if (idNo) t.idNo = normalizeIdNo(idNo);
+      if (phone) t.phone = normalizeMobile(phone);
+      if (emName) t.emergencyName = normalizePersonName(emName);
+      if (emPhone) t.emergencyPhone = normalizeMobile(emPhone);
       captureSignDraft();
       t.edited = true;
       t.editedAt = Date.now();
