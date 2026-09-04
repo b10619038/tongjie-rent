@@ -521,6 +521,7 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 }
 .pay-pill.paid { background: var(--ok-soft); color: var(--ok); }
 .pay-pill.unpaid { background: var(--rose-soft); color: var(--rose); }
+.pay-pill.wait { background: #ececec; color: #6a6a6a; }
 .pay-pill.hand { background: #f3e4cf; color: #8a5a22; }
 .handover-box {
   margin-top: 12px;
