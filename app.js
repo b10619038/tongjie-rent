@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-16-56";
-const APP_EDIT_COUNT = 672;
+const APP_STAMP = "2026-09-04-17-02";
+const APP_EDIT_COUNT = 673;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0223";
+const FILE_VER = "0224";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費要先回報截圖，才能點本月已繳費"] },
+  { ver: APP_VERSION, items: ["本月已繳費先變淡，回報截圖後才解鎖"] },
+  { ver: "2026-09-04-16-56-672", items: ["繳費要先回報截圖，才能點本月已繳費"] },
   { ver: "2026-09-04-16-50-671", items: ["租客繳費按鈕改為：回報已繳費並附上截圖"] },
   { ver: "2026-09-04-16-46-670", items: ["租客繳費：官方 LINE 通知改到本月已繳費上方"] },
   { ver: "2026-09-04-16-42-669", items: ["列印已簽署合約改為直接下載 PDF，不再顯示下載失敗"] },
@@ -12792,7 +12793,7 @@ function payView() {
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
       <button type="button" class="ghost slide-left" id="line-paid" style="margin-top:14px">${t && t.lineNotified ? "再次回報已繳費並附上截圖" : "回報已繳費並附上截圖"}</button>
-      <button type="button" class="btn-navy slide-left" id="mark-paid" style="margin-top:8px" ${paid || !(t && t.lineNotified) ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
+      <button type="button" class="btn-navy slide-left${paid || (t && t.lineNotified) ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !(t && t.lineNotified) ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
       <p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方「回報已繳費並附上截圖」，到官方 LINE 傳轉帳截圖後，再回來點「本月已繳費」。</p>
     </div>`;
 }

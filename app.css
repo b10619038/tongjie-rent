@@ -1110,6 +1110,18 @@ textarea { min-height: 92px; resize: vertical; }
 .btn-navy { background: var(--teal); color: var(--on-teal, #fff); border-radius: 999px; }
 .btn-navy:hover { background: var(--teal-mid); }
 .btn-navy:disabled { opacity: 0.55; cursor: default; background: var(--teal); }
+.btn-navy.pay-locked,
+#mark-paid.pay-locked {
+  opacity: 0.28 !important;
+  filter: grayscale(0.45);
+  pointer-events: none;
+  cursor: default;
+  box-shadow: none;
+}
+#mark-paid:not(.pay-locked):not(:disabled) {
+  opacity: 1;
+  filter: none;
+}
 .ghost { background: var(--card); color: var(--teal); border: 1.5px solid var(--line); }
 .danger { background: var(--rose-soft); color: var(--rose); }
 .nudge-bounce {
