@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-25";
-const APP_EDIT_COUNT = 602;
+const APP_STAMP = "2026-09-04-09-27";
+const APP_EDIT_COUNT = 603;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
+  { ver: APP_STAMP, items: ["申請入住選房號改成最快可入住"] },
+  { ver: "2026-09-04-09-25", items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
   { ver: "2026-09-04-09-24", items: ["申請入住底部圖卡不再被綠色背景卡住"] },
   { ver: "2026-09-04-09-20", items: ["簽約日期的年月改成同一行，上一月下一月縮小"] },
   { ver: "2026-09-04-09-16", items: ["極黑色調下看不見的字會自動改成淺色"] },
@@ -821,7 +822,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0153") return;
+    if (!m || !m[1] || m[1] === "0154") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11450,7 +11451,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
       <span class="move-pick-no">${escapeHtml(m.no)}</span>
-      <span class="move-pick-dates"><span>${m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—")}</span><span>入住 ${escapeHtml(m.start)}</span></span>
+      <span class="move-pick-dates"><span>${m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—")}</span><span>最快可入住 ${escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
   const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask" id="move-pick-mask">
@@ -11475,7 +11476,7 @@ function moveInView() {
       <label class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
-            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—")}</span><span>入住 ${escapeHtml(selMeta.start)}</span></span>`
+            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—")}</span><span>最快可入住 ${escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
       </label>
@@ -12344,7 +12345,7 @@ function leaseSignView() {
     const start = roomSoonestStart(x, t);
     const vacant = !o || (t && o.id === t.id && tenantContractStatus(t, x) === "unsigned");
     const hint = vacant ? "空房" : ("現約至 " + (o.leaseEnd || "—"));
-    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}　入住 ${start}</option>`;
+    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}　最快可入住 ${start}</option>`;
   }).join("");
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
