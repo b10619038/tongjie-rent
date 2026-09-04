@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-21-20";
-const APP_EDIT_COUNT = 683;
+const APP_STAMP = "2026-09-04-21-45";
+const APP_EDIT_COUNT = 685;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0234";
+const FILE_VER = "0235";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者薪資只顯示在開發者後台"] },
+  { ver: APP_VERSION, items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
+  { ver: "2026-09-04-21-20-683", items: ["開發者薪資只顯示在開發者後台"] },
   { ver: "2026-09-04-21-10-682", items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
   { ver: "2026-09-04-19-40-681", items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
   { ver: "2026-09-04-17-40-680", items: ["租客頭貼雲端同步，退租後才刪除"] },
@@ -1438,6 +1439,72 @@ async function refreshLineBinds() {
     ui.lineBinds = ui.lineBinds || { byRoom: {}, byUser: {} };
   }
 }
+function linePayProofOf(no) {
+  const p = ui.lineBinds && ui.lineBinds.payProofs && ui.lineBinds.payProofs[String(no || "")];
+  if (!p || String(p.ym) !== payYmNow()) return null;
+  return p;
+}
+function linePayReady(t, r) {
+  const p = linePayProofOf(r && r.no);
+  return !!(p && p.hasText && p.hasImage);
+}
+function tenantLineUnlocked(t, r) {
+  if (!t) return false;
+  if (t.paid) return true;
+  if (String(t.lineProofYm || "") === payYmNow()) return true;
+  if (linePayReady(t, r)) return true;
+  if (isDemoTenant(t) && t.lineNotified) return true;
+  return false;
+}
+async function syncLinePayProof() {
+  await refreshLineBinds();
+  const t = typeof me === "function" ? me() : null;
+  const r = typeof myRoom === "function" ? myRoom() : null;
+  if (!t || !r || t.paid || isDemoTenant(t)) return false;
+  if (!linePayReady(t, r)) return false;
+  if (t.lineProofYm === payYmNow() && t.lineNotified) return false;
+  t.lineNotified = true;
+  t.lineProofYm = payYmNow();
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  clearTimeout(saveTimer);
+  try { pushCloud(); } catch {}
+  return true;
+}
+function armLinePayProofPoll() {
+  if (!ui.payProofVis) {
+    ui.payProofVis = 1;
+    const onBack = () => {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      if (ui.page !== "pay") return;
+      syncLinePayProof().then(ok => {
+        if (!ok) return;
+        toast("已收到 LINE 回報與截圖，可以點本月已繳費");
+        ui.keepScroll = true;
+        render();
+      });
+    };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("focus", onBack);
+  }
+  if (ui.payProofTimer) return;
+  let n = 0;
+  const tick = async () => {
+    ui.payProofTimer = 0;
+    if (ui.page !== "pay" && ui.page !== "home") return;
+    const ok = await syncLinePayProof();
+    if (ok) {
+      toast("已收到 LINE 回報與截圖，可以點本月已繳費");
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    n += 1;
+    if (n < 48) ui.payProofTimer = setTimeout(tick, 2500);
+  };
+  ui.payProofTimer = setTimeout(tick, 1200);
+}
 function unbindRoomLine(no, oldT) {
   if (!no) return;
   const body = `${no}${oldT && oldT.name ? " " + oldT.name : ""}　租約已結束，之後通知不再寄到此對話。新客請加入官方 LINE，傳送「${no} 姓名」完成綁定。`;
@@ -1801,6 +1868,7 @@ function applyMonthlyUnpaid(data) {
     t.paidAt = "";
     t.paidVia = "";
     t.lineNotified = false;
+    t.lineProofYm = "";
     t.paidYm = ym;
     t.paidTouched = false;
     dropRentAutoBookOn(data, t);
@@ -3918,7 +3986,7 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -6895,6 +6963,7 @@ function toggleTenantPaid(id) {
     } else {
       x.paidVia = "";
       x.lineNotified = false;
+      x.lineProofYm = "";
       x.paidAt = "";
       stampPaidMark(state, x);
       dropRentAutoBookOn(state, x);
@@ -7131,6 +7200,7 @@ function resetDemoCycle(kind) {
   t.paidAt = "";
   t.paidVia = "";
   t.lineNotified = false;
+  t.lineProofYm = "";
   t.leftOn = "";
   t.name = "開發者測試";
   if (!factory) t.loginPass = "0000";
@@ -13100,11 +13170,14 @@ function homeView() {
 function markTenantLineReported() {
   const t = me();
   if (!t) return;
-  t.lineNotified = true;
-  t.edited = true;
-  save();
-  clearTimeout(saveTimer);
-  try { pushCloud(); } catch {}
+  if (isDemoTenant(t)) {
+    t.lineNotified = true;
+    t.lineProofYm = payYmNow();
+    t.edited = true;
+    save();
+    clearTimeout(saveTimer);
+    try { pushCloud(); } catch {}
+  }
 }
 function markTenantPaid(via) {
   const t = me(); const r = myRoom();
@@ -13115,7 +13188,10 @@ function markTenantPaid(via) {
   t.paidTouched = true;
   t.paidYm = payYmNow();
   if (!t.remitOn) t.remitOn = ymdOf(t.paidAt);
-  if (via === "line") t.lineNotified = true;
+  if (via === "line") {
+    t.lineNotified = true;
+    t.lineProofYm = payYmNow();
+  }
   stampPaidMark(state, t);
   try { ensureDemoTenant(state); } catch {}
   upsertRentAutoBookOn(state, t);
@@ -13148,6 +13224,17 @@ function payView() {
   const co = companyInfo();
   const stubNow = isStubMonthNow(t, r);
   const pay = payLabel(t, r);
+  const lineOk = !!(paid || tenantLineUnlocked(t, r));
+  const proof = linePayProofOf(r && r.no);
+  const proofHint = paid
+    ? ""
+    : lineOk
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
+      : (proof && proof.hasText)
+        ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到回報文字，請再在 LINE 傳轉帳截圖。</p>`
+        : (proof && proof.hasImage)
+          ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到截圖，請再在 LINE 傳回報文字。</p>`
+          : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
@@ -13168,9 +13255,9 @@ function payView() {
       ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
-      <button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">${t && t.lineNotified ? "再次回報已繳費並附上截圖" : "回報已繳費並附上截圖"}</button>
-      <button type="button" class="btn-navy slide-left${paid || (t && t.lineNotified) ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !(t && t.lineNotified) ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
-      <p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方「回報已繳費並附上截圖」，到官方 LINE 傳轉帳截圖後，再回來點「本月已繳費」。</p>
+      <button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>
+      <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
+      ${proofHint}
     </div>`;
 }
 function roomsView() {
@@ -18081,10 +18168,14 @@ function bindTenant() {
   if (markPaid) {
     markPaid.onclick = () => {
       const t0 = me();
+      const r0 = myRoom();
       if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
-      if (!t0 || !t0.lineNotified) { toast("請先回報已繳費並附上截圖"); return; }
-      if (t0.paid) return;
-      markTenantPaid(t0.lineNotified ? "line" : "app");
+      if (!t0 || t0.paid) return;
+      if (!isDemoTenant(t0) && !tenantLineUnlocked(t0, r0)) {
+        toast("請先在官方 LINE 傳送回報和轉帳截圖");
+        return;
+      }
+      markTenantPaid(t0.lineNotified || tenantLineUnlocked(t0, r0) ? "line" : "app");
       toast("已回報本月已繳費");
       ui.keepScroll = true;
       render();
@@ -18101,10 +18192,14 @@ function bindTenant() {
       const url = lineOaMessageUrl(msg);
       window.open(url, "_blank", "noopener");
       markTenantLineReported();
-      toast("請在 LINE 傳送截圖後，再點下方「本月已繳費」");
+      toast("請在 LINE 把回報和轉帳截圖一起按傳送");
+      armLinePayProofPoll();
       ui.keepScroll = true;
       render();
     };
+    if (ui.page === "pay") {
+      syncLinePayProof().then(ok => { if (ok) { ui.keepScroll = true; render(); } });
+    }
   }
   document.querySelectorAll("[data-gcal]").forEach(btn => {
     btn.onclick = e => {
