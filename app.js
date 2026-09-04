@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-29";
-const APP_EDIT_COUNT = 659;
+const APP_STAMP = "2026-09-04-15-40";
+const APP_EDIT_COUNT = 660;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0210";
+const FILE_VER = "0211";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
+  { ver: APP_VERSION, items: ["簽約時段有選中色，點日曆不會跳回頂部"] },
+  { ver: "2026-09-04-15-29-659", items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
   { ver: "2026-09-04-15-10-658", items: ["7652 強制退租後前任改為實際兩人姓名並雲端同步"] },
   { ver: "2026-09-04-13-54-657", items: ["申請入住頁手機可上下滑動"] },
   { ver: "2026-09-04-13-37-656", items: ["兩人簽名在簽約時間下方同一行顯示"] },
@@ -11871,15 +11872,26 @@ function paintApp() {
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
+    const gateSc = document.querySelector(".move-in-page");
+    const oldGate = gateSc ? gateSc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
     const overlays = !!(ui.notifyGuide || ui.installSheet || toastHtml);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
     if (same && !overlays && page === "home") return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
-    ui.keepScroll = false;
     root.innerHTML = `<div class="${still ? "keep-still" : ""}">${bar}${toastHtml}${gateView()}${sheet}${ver}${guide}${theme}</div>${introHtml()}`;
     lastRenderRole = ui.role;
     lastRenderPage = page;
     safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); bindMoveSubmitConfirm(); });
+    if (still && page === "move-in") {
+      const sc = document.querySelector(".move-in-page");
+      if (sc) {
+        sc.scrollTop = oldGate;
+        requestAnimationFrame(() => { sc.scrollTop = oldGate; });
+      } else {
+        window.scrollTo(0, oldGate);
+      }
+    }
+    ui.keepScroll = false;
     return;
   }
   if (ui.role === "admin") {
@@ -17721,6 +17733,7 @@ function bindMoveInForm() {
       if (m > 12) { m = 1; y += 1; }
       ui.signCalYear = y;
       ui.signCalMonth = m;
+      ui.keepScroll = true;
       render();
     };
   });
@@ -17735,6 +17748,7 @@ function bindMoveInForm() {
       const hit = nextSignSlots(1, d.signAppointAt, min, btn.dataset.signCalDay)[0];
       if (!hit) { toast("這天已滿或尚未開放"); return; }
       d.signAppointAt = hit;
+      ui.keepScroll = true;
       render();
     };
   });
@@ -17743,6 +17757,7 @@ function bindMoveInForm() {
       e.preventDefault();
       captureMoveInDraft();
       ensureMoveIn().signAppointAt = btn.dataset.signSlot;
+      ui.keepScroll = true;
       render();
     };
   });
@@ -17851,6 +17866,7 @@ function bindSignTermSlots() {
       if (m > 12) { m = 1; y += 1; }
       ui.signCalYear = y;
       ui.signCalMonth = m;
+      ui.keepScroll = true;
       render();
     };
   });
@@ -17871,6 +17887,7 @@ function bindSignTermSlots() {
       t.editedAt = Date.now();
       save();
       try { pushCloud(); } catch {}
+      ui.keepScroll = true;
       render();
     };
   });
@@ -17885,6 +17902,7 @@ function bindSignTermSlots() {
       t.editedAt = Date.now();
       save();
       try { pushCloud(); } catch {}
+      ui.keepScroll = true;
       render();
     };
   });
