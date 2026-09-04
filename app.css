@@ -33,6 +33,12 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
+html:has(.gate), body:has(.gate) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
 #app {
   min-height: 100%;
   min-height: 100dvh;
@@ -940,7 +946,7 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   padding: 28px 22px calc(180px + var(--safe-b, 0px));
   flex: 1 0 auto;
 }
-#app:has(> .gate) {
+#app:has(.gate) {
   height: auto;
   min-height: 100dvh;
   overflow: visible;
@@ -974,12 +980,13 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
 .gate .role-btn.r4 { animation-delay: .22s; }
 .role-btn strong { display: block; font-size: 18px; margin-bottom: 6px; }
 .role-btn span { color: var(--muted); font-size: 13px; line-height: 1.45; }
-.gate.login-page .slide-left,
 .gate.login-page .slide-right {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
+  animation: moveHeadIn .42s cubic-bezier(.22,.82,.22,1) both;
 }
+.gate.login-page .slide-left {
+  animation: moveSheetIn .42s cubic-bezier(.22,.82,.22,1) both;
+}
+.gate.login-page .login-block.slide-left { animation-delay: .06s; }
 .login-block { background: var(--ok-soft); border-radius: 22px; padding: 18px; display: grid; gap: 10px; position: relative; z-index: 6; isolation: isolate; overflow: visible; pointer-events: auto !important; }
 .login-block input,
 .login-block button {

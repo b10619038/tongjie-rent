@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-12";
-const APP_EDIT_COUNT = 648;
+const APP_STAMP = "2026-09-04-13-13";
+const APP_EDIT_COUNT = 649;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0199";
+const FILE_VER = "0200";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員後台說明補上句號"] },
+  { ver: APP_VERSION, items: ["租客與管理員登入頁字和圖卡滑入恢復"] },
+  { ver: "2026-09-04-13-12-648", items: ["管理員後台說明補上句號"] },
   { ver: "2026-09-04-13-11-647", items: ["登入頁小字說明改回原本大小"] },
   { ver: "2026-09-04-13-10-646", items: ["房間床鋪圖示改成正方形，不再拉長"] },
   { ver: "2026-09-04-13-07-645", items: ["後台未確認入住時，不再跳出已確認提示"] },
@@ -12136,13 +12137,13 @@ function gateView() {
   if (ui.page === "tenant-login" || ui.page === "admin-login") {
     const isAdmin = ui.page === "admin-login";
     return `<div class="gate login-page">
-      <button class="back" id="back-gate" type="button">← 返回</button>
-      <div>
+      <button class="back slide-right" id="back-gate" type="button">← 返回</button>
+      <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
         <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
       </div>
-      <div class="login-block">
+      <div class="login-block slide-left">
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
         ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
