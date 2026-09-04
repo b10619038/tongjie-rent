@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-49";
-const APP_EDIT_COUNT = 616;
+const APP_STAMP = "2026-09-04-11-47";
+const APP_EDIT_COUNT = 617;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -81,7 +81,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["有新版本提示只跳一次，點進去前會固定住"] },
+  { ver: APP_VERSION, items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
+  { ver: "2026-09-04-10-49-616", items: ["有新版本提示只跳一次，點進去前會固定住"] },
   { ver: "2026-09-04-10-47-615", items: ["更新提示改成點此更新"] },
   { ver: "2026-09-04-10-45-614", items: ["更新畫面只顯示內容清單，版本號改成時間加累計次數"] },
   { ver: "2026-09-04-10-42-613", items: ["滑動螢幕時不會誤觸輸入格跳出鍵盤"] },
@@ -915,7 +916,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0167") return;
+    if (!m || !m[1] || m[1] === "0168") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -5037,14 +5038,17 @@ function navSnap() {
     invoiceRoomId: ui.invoiceRoomId || "",
     nearbyOpen: !!ui.nearbyOpen,
     themeOpen: !!ui.themeOpen,
+    moveRoomPick: !!ui.moveRoomPick,
     d: navDepth()
   };
 }
 function navDepth() {
   if (ui.themeOpen || ui.nearbyOpen) return 70;
+  if (ui.moveRoomPick) return 25;
   if (ui.checkoutTenantId) return 50;
   if (ui.editAcct) return 40;
   if (!ui.role) {
+    if (ui.page === "move-in") return 15;
     if (ui.page === "tenant-setpass" || ui.page === "tenant-forgot") return 20;
     if (ui.page === "tenant-login" || ui.page === "admin-login") return 10;
     return 0;
@@ -5064,7 +5068,7 @@ function navDepth() {
   return deep[ui.page] || 0;
 }
 function navKey(s) {
-  return [s.role, s.page, s.roomId, s.checkoutTenantId, s.editAcct, s.invoiceRoomId, s.nearbyOpen ? 1 : 0, s.themeOpen ? 1 : 0, s.d].join("|");
+  return [s.role, s.page, s.roomId, s.checkoutTenantId, s.editAcct, s.invoiceRoomId, s.nearbyOpen ? 1 : 0, s.themeOpen ? 1 : 0, s.moveRoomPick ? 1 : 0, s.d].join("|");
 }
 function applyNavSnap(s) {
   if (!s) return;
@@ -5078,6 +5082,7 @@ function applyNavSnap(s) {
   if (s.invoiceRoomId) ui.invoiceRoomId = s.invoiceRoomId;
   ui.nearbyOpen = !!s.nearbyOpen;
   ui.themeOpen = !!s.themeOpen;
+  ui.moveRoomPick = !!s.moveRoomPick;
 }
 function syncHistory() {
   if (!ui || ui.navPop) return;
@@ -11518,6 +11523,14 @@ function applyMoveRoom(id) {
   }
   ui.signCalYear = 0;
   ui.signCalMonth = 0;
+  closeMoveRoomPick();
+}
+function closeMoveRoomPick() {
+  if (!ui.moveRoomPick) {
+    render();
+    return;
+  }
+  if (tryHistoryBack()) return;
   ui.moveRoomPick = false;
   render();
 }
@@ -11561,6 +11574,7 @@ function moveInView() {
   }).join("");
   const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask${pickEnter ? " move-pick-enter" : ""}" id="move-pick-mask">
     <div class="move-pick-sheet" role="listbox">
+      <button class="back" id="move-pick-back" type="button">← 返回</button>
       <div class="move-pick-title">請選房號</div>
       <button type="button" class="move-pick-row${d.roomId ? "" : " on"}" data-move-room="">
         <span class="move-pick-no">不選</span>
@@ -17016,7 +17030,14 @@ function bindMoveInForm() {
   };
   const mask = document.getElementById("move-pick-mask");
   if (mask) mask.onclick = e => {
-    if (e.target === mask) { ui.moveRoomPick = false; render(); }
+    if (e.target === mask) closeMoveRoomPick();
+  };
+  const pickBack = document.getElementById("move-pick-back");
+  if (pickBack) pickBack.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    captureMoveInDraft();
+    closeMoveRoomPick();
   };
   document.querySelectorAll("[data-move-room]").forEach(btn => {
     btn.onclick = e => {

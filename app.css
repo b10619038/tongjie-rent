@@ -3339,27 +3339,30 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 .move-pick-mask {
   position: fixed;
   inset: 0;
-  background: rgba(23,33,31,.38);
-  z-index: 60;
+  background: var(--paper);
+  z-index: 80;
 }
 .move-pick-sheet {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(420px, 92vw);
+  inset: 0;
+  width: 100%;
+  max-width: none;
   background: var(--paper);
   overflow: auto;
-  padding: 18px 10px calc(24px + var(--safe-b, 0px));
-  box-shadow: -12px 0 28px rgba(23,33,31,.12);
+  -webkit-overflow-scrolling: touch;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(24px + var(--safe-b, 0px));
+  box-shadow: none;
 }
 .move-pick-mask.move-pick-enter .move-pick-sheet {
   animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
 }
+.move-pick-sheet .back {
+  margin: 4px 14px 2px;
+}
 .move-pick-title {
-  font-size: 15px;
-  font-weight: 700;
-  padding: 8px 14px 12px;
+  font-size: 22px;
+  font-weight: 800;
+  padding: 6px 14px 16px;
 }
 .move-pick-row {
   width: 100%;
