@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-10-16";
-const APP_EDIT_COUNT = 611;
+const APP_STAMP = "2026-09-04-10-39";
+const APP_EDIT_COUNT = 612;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登入開場影片提高畫質"] },
+  { ver: APP_STAMP, items: ["主題色調面板只跳出一次，不再重複滑入"] },
+  { ver: "2026-09-04-10-16", items: ["登入開場影片提高畫質"] },
   { ver: "2026-09-04-10-12", items: ["極黑登入後圖卡邊框與反白字對比加強"] },
   { ver: "2026-09-04-10-05", items: ["登入說明改成房間、租約、租金與報修 — 管理平台"] },
   { ver: "2026-09-04-10-03", items: ["登入說明改成房間、租約、租金與報修，管理平台"] },
@@ -637,8 +638,13 @@ function showThemeFab() {
 function themePickerHtml() {
   if (!showThemeFab()) return "";
   const lift = ui.role === "tenant" ? " lift" : "";
+  return `<button type="button" class="theme-fab${lift}" id="theme-open" aria-label="主題色調">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"/></svg>
+  </button>`;
+}
+function themePanelMarkup() {
   const cur = currentThemeId();
-  const panel = ui.themeOpen ? `<div class="theme-mask" id="theme-mask">
+  return `<div class="theme-mask" id="theme-mask">
     <div class="theme-panel">
       <div class="label">整體風格</div>
       <h2>選擇色調</h2>
@@ -649,40 +655,68 @@ function themePickerHtml() {
       </div>
       <button type="button" class="btn-navy" id="theme-close">確定</button>
     </div>
-  </div>` : "";
-  return `${panel}<button type="button" class="theme-fab${lift}" id="theme-open" aria-label="主題色調">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"/></svg>
-  </button>`;
+  </div>`;
+}
+function bindThemePanelEvents(mask) {
+  if (!mask || mask.dataset.bound === "1") return;
+  mask.dataset.bound = "1";
+  mask.onclick = e => { if (e.target.id === "theme-mask") closeThemePicker(); };
+  const close = mask.querySelector("#theme-close");
+  if (close) close.onclick = e => { e.stopPropagation(); closeThemePicker(); };
+  mask.querySelectorAll("[data-theme]").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      applyTheme(btn.dataset.theme);
+      mask.querySelectorAll("[data-theme]").forEach(x => x.classList.toggle("on", x.dataset.theme === btn.dataset.theme));
+    };
+  });
+}
+function ensureThemePanel() {
+  if (!ui.themeOpen) return;
+  let mask = document.getElementById("theme-mask");
+  if (mask) {
+    bindThemePanelEvents(mask);
+    return;
+  }
+  document.body.insertAdjacentHTML("beforeend", themePanelMarkup());
+  mask = document.getElementById("theme-mask");
+  bindThemePanelEvents(mask);
 }
 function closeThemePicker() {
   const mask = document.getElementById("theme-mask");
-  if (!mask) { ui.themeOpen = false; render(); return; }
+  ui.themeOpen = false;
+  if (!mask) return;
   if (mask.classList.contains("out")) return;
   mask.classList.add("out");
   let done = false;
   const go = () => {
     if (done) return;
     done = true;
-    ui.themeOpen = false;
-    render();
+    if (mask.parentNode) mask.remove();
   };
   mask.addEventListener("animationend", go, { once: true });
   setTimeout(go, 360);
 }
 function bindThemePicker() {
+  if (!showThemeFab()) {
+    ui.themeOpen = false;
+    const leftover = document.getElementById("theme-mask");
+    if (leftover) leftover.remove();
+    return;
+  }
   const open = document.getElementById("theme-open");
-  if (open) open.onclick = e => { e.stopPropagation(); ui.themeOpen = true; render(); };
-  const close = document.getElementById("theme-close");
-  if (close) close.onclick = e => { e.stopPropagation(); closeThemePicker(); };
-  const mask = document.getElementById("theme-mask");
-  if (mask) mask.onclick = e => { if (e.target.id === "theme-mask") closeThemePicker(); };
-  document.querySelectorAll("[data-theme]").forEach(btn => {
-    btn.onclick = e => {
-      e.stopPropagation();
-      applyTheme(btn.dataset.theme);
-      document.querySelectorAll("[data-theme]").forEach(x => x.classList.toggle("on", x.dataset.theme === btn.dataset.theme));
-    };
-  });
+  if (open) open.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (ui.themeOpen && document.getElementById("theme-mask")) return;
+    ui.themeOpen = true;
+    ensureThemePanel();
+  };
+  if (ui.themeOpen) ensureThemePanel();
+  else {
+    const leftover = document.getElementById("theme-mask");
+    if (leftover && !leftover.classList.contains("out")) leftover.remove();
+  }
 }
 const VAPID_PUBLIC = "BJB6y_l_IvFM91YDqrBmIAzUJZE_TM9QbxIIY1Nl14LoGHNfmAymDjDVYDdOmdAZU_VPs1fkaR9BM4voY4QjM3U";
 window.__swReg = null;
@@ -830,7 +864,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0162") return;
+    if (!m || !m[1] || m[1] === "0163") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11243,7 +11277,7 @@ function paintApp() {
   const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
-    const overlays = !!(ui.themeOpen || ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml || ui.updateReady || bar);
+    const overlays = !!(ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml || ui.updateReady || bar);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
     if (same && !overlays && page === "home") return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
@@ -11257,10 +11291,10 @@ function paintApp() {
   if (ui.role === "admin") {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
-    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.themeOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
+    const overlays = ui.updateNotes || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
       || (ui.checkoutTenantId && ui.checkoutKind === "pick")
       || ui.vacateConfirmId
-      || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("theme-mask") || document.getElementById("nearby-mask");
+      || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
