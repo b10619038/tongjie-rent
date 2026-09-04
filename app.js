@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-26";
-const APP_EDIT_COUNT = 629;
+const APP_STAMP = "2026-09-04-12-30";
+const APP_EDIT_COUNT = 630;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0180";
+const FILE_VER = "0181";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["入住申請自動排到本月未繳上方"] },
+  { ver: APP_VERSION, items: ["租約剩餘天數改依今天與雲端合約截止日計算"] },
+  { ver: "2026-09-04-12-26-629", items: ["入住申請自動排到本月未繳上方"] },
   { ver: "2026-09-04-12-24-628", items: ["租客登入可用任一人的姓名或手機號碼"] },
   { ver: "2026-09-04-12-22-627", items: ["空房入住申請只顯示姓名，不再出現箭頭"] },
   { ver: "2026-09-04-12-20-626", items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
@@ -1510,7 +1511,10 @@ const DEFAULT_RULES = `1. 每月租金請於每月 1 日前完成，逾期將依
 6. 電費請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
 7. 訪客請由承租人陪同，勿將房間轉租或借給他人長期居住。
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
-const TODAY = new Date("2026-08-26T00:00:00");
+function todayDate() {
+  const d = taipeiNow();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
 const STUDIO_NOS = [
   "6811", "6821", "6822", "6823", "6831", "6832", "6841", "6842",
   "7011", "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
@@ -6078,7 +6082,7 @@ function maybeAuditBrowse() {
 }
 function daysLeft(end) {
   if (!end) return null;
-  const n = Math.ceil((new Date(end + "T00:00:00") - TODAY) / 86400000);
+  const n = Math.ceil((new Date(end + "T00:00:00") - todayDate()) / 86400000);
   return Number.isFinite(n) ? n : null;
 }
 function leaseLeftText(end) {
@@ -6087,8 +6091,8 @@ function leaseLeftText(end) {
   return n < 0 ? "已到期" : n + " 天";
 }
 function rentOverdueDays() {
-  const due = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
-  return Math.max(0, Math.floor((TODAY - due) / 86400000));
+  const due = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
+  return Math.max(0, Math.floor((todayDate() - due) / 86400000));
 }
 function money(n) { return "NT$ " + Number(n).toLocaleString("zh-TW"); }
 function rocDate(d) {
@@ -6417,7 +6421,7 @@ function payChip(t, r, unpaid) {
   return payLabel(t, r);
 }
 function payYmNow() {
-  const d = new Date();
+  const d = taipeiNow();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }
 function monthDueYmd() {
@@ -8217,6 +8221,14 @@ function tenantLeaseParts(t, r) {
   const start = ymdOf(t && t.leaseStart);
   if (!start) return [];
   return studioLeasePack(start, studioContractRent(t, r)).parts;
+}
+function tenantOccupancyEnd(t, r) {
+  const parts = tenantLeaseParts(t, r);
+  if (parts.length) {
+    const last = parts[parts.length - 1];
+    if (last && last.end) return ymdOf(last.end);
+  }
+  return ymdOf(t && t.leaseEnd) || "";
 }
 function leasePartForYm(t, r, ym) {
   const y = String(ym || payYmNow()).slice(0, 7);
@@ -12239,7 +12251,7 @@ function tenantNameHeadingHtml(name) {
 }
 function homeView() {
   const t = me(); const r = myRoom();
-  const left = daysLeft(t.leaseEnd); const pay = payLabel(t, r);
+  const left = daysLeft(tenantOccupancyEnd(t, r)); const pay = payLabel(t, r);
   const stubNow = isStubMonthNow(t, r);
   const hasAnn = visibleAnnouncements().length > 0;
   const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
