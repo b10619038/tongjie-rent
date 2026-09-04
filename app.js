@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-19-40";
-const APP_EDIT_COUNT = 681;
+const APP_STAMP = "2026-09-04-21-10";
+const APP_EDIT_COUNT = 682;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0232";
+const FILE_VER = "0233";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
+  { ver: APP_VERSION, items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
+  { ver: "2026-09-04-19-40-681", items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
   { ver: "2026-09-04-17-40-680", items: ["租客頭貼雲端同步，退租後才刪除"] },
   { ver: "2026-09-04-17-32-679", items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
   { ver: "2026-09-04-17-24-678", items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
@@ -2755,6 +2756,7 @@ function normalize(data) {
   ensureCheckout6832(data);
   ensureDemoTenant(data);
   ensureDemoRepair(data);
+  try { ensurePhoneLoginPasses(data); } catch {}
   applyESigns(data);
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
@@ -4652,6 +4654,7 @@ async function pullCloud() {
       persistAnnMedia(state);
       persistRepairMedia(state); persistRepairStat(state);
       persistAvatars(state);
+      try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -4703,6 +4706,7 @@ async function pullCloud() {
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
+    try { ensurePhoneLoginPasses(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     ui.cloudOk = true;
     return true;
@@ -10761,7 +10765,37 @@ function ensureMoveIn() {
 function phonePassOf(phone) {
   const first = normalizeMobile(phone).split("、")[0] || "";
   const d = String(first || "").replace(/\D/g, "");
-  return d.length >= 4 ? d.slice(-4) : "";
+  return /^09\d{8}$/.test(d) ? d : "";
+}
+function tenantMobilesOf(phone) {
+  return normalizeMobile(phone || "").split("、").map(x => String(x || "").replace(/\D/g, "")).filter(x => /^09\d{8}$/.test(x));
+}
+function isPhoneDerivedPass(pass, phone) {
+  const p = String(pass || "").replace(/\D/g, "");
+  if (!p) return true;
+  const mobiles = tenantMobilesOf(phone);
+  if (!mobiles.length) return false;
+  return mobiles.some(m => p === m || p === m.slice(-4));
+}
+function syncTenantLoginPass(t) {
+  if (!t || t.demo || t.former || t.id === "t-demo" || t.id === "t-demo-f" || t.id === "t-dev-preview") return false;
+  if (t.loginPass === "0000" && /開發者/.test(String(t.name || ""))) return false;
+  const full = phonePassOf(t.phone);
+  if (!full) return false;
+  const cur = String(t.loginPass || "").replace(/\D/g, "");
+  if (cur === full && String(t.loginPass || "") === full) return false;
+  if (cur && cur !== full && !isPhoneDerivedPass(t.loginPass, t.phone)) return false;
+  t.loginPass = full;
+  t.edited = true;
+  t.editedAt = Date.now();
+  return true;
+}
+function ensurePhoneLoginPasses(data) {
+  if (!data || !Array.isArray(data.tenants)) return 0;
+  let n = 0;
+  data.tenants.forEach(t => { if (syncTenantLoginPass(t)) n += 1; });
+  if (n) try { markCloudDirty(); } catch {}
+  return n;
 }
 function chineseNameRuns(s) {
   return [...String(s || "").matchAll(/[\u4e00-\u9fff]+/g)].map(m => m[0]);
@@ -16789,7 +16823,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
       ${kind !== "factory" ? formerTenantsOf(r && r.id, t && t.name).map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("") : ""}
       ${t.paidVia || t.lineNotified ? `<div class="row"><span class="k">繳費回報</span><span class="v">${t.lineNotified || t.paidVia === "line" ? "官方 LINE 已通知" : "App 已回報"}</span></div>` : ""}
-      ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "尚未設定") : ""}
+      ${kind !== "factory" ? teField("登入密碼", "loginPass", t.id, r && r.id, t.loginPass || "", "text", "完整手機號碼") : ""}
       ${(() => {
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
@@ -16883,11 +16917,18 @@ function applyLiveTenantEdit(el) {
     ui.invoiceBuyer = "";
     ui.invoiceBuyerFor = "";
   }
-  else if (key === "phone" && t) t.phone = val;
+  else if (key === "phone" && t) {
+    const oldPhone = t.phone;
+    t.phone = val;
+    if (isPhoneDerivedPass(t.loginPass, oldPhone)) {
+      const next = phonePassOf(val);
+      if (next) t.loginPass = next;
+    }
+  }
+  else if (key === "loginPass" && t) t.loginPass = val || phonePassOf(t.phone) || "";
   else if (key === "idNo" && t) t.idNo = val;
   else if (key === "emergencyName" && t) t.emergencyName = val;
   else if (key === "emergencyPhone" && t) t.emergencyPhone = val;
-  else if (key === "loginPass" && t) t.loginPass = val;
   else if (key === "contactName" && t) t.contactName = val;
   else if (key === "taxId" && t) t.taxId = val;
   else if (key === "bankLast5" && t) t.bankLast5 = val;
@@ -17576,6 +17617,10 @@ function saveRoomEdit(form) {
     t.name = g("name"); t.phone = g("phone"); t.idNo = g("idNo"); t.address = g("address");
     t.emergencyName = g("emergencyName"); t.emergencyPhone = g("emergencyPhone");
     t.loginPass = String(g("loginPass") || "").trim();
+    if (!t.loginPass || isPhoneDerivedPass(t.loginPass, t.phone)) {
+      const next = phonePassOf(t.phone);
+      if (next) t.loginPass = next;
+    }
     t.bankLast5 = String(g("bankLast5") || "").trim();
     t.taxId = String(g("taxId") || "").trim();
     t.contactName = String(g("contactName") || "").trim();
