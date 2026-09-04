@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-15-10";
-const APP_EDIT_COUNT = 658;
+const APP_STAMP = "2026-09-04-15-29";
+const APP_EDIT_COUNT = 659;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0209";
+const FILE_VER = "0210";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7652 強制退租後前任改為實際兩人姓名並雲端同步"] },
+  { ver: APP_VERSION, items: ["7652 空房前任改顯示最後退租的兩人姓名"] },
+  { ver: "2026-09-04-15-10-658", items: ["7652 強制退租後前任改為實際兩人姓名並雲端同步"] },
   { ver: "2026-09-04-13-54-657", items: ["申請入住頁手機可上下滑動"] },
   { ver: "2026-09-04-13-37-656", items: ["兩人簽名在簽約時間下方同一行顯示"] },
   { ver: "2026-09-04-13-35-655", items: ["正常退租一打開就看到交接確認書"] },
@@ -1627,8 +1628,23 @@ function sameTenantName(a, b) {
   return ka === kb || ka.includes(kb) || kb.includes(ka);
 }
 function isDisplayFormer(x) {
-  if (!x || !x.former || x.demo || x.placeholder || x.practiceStay || x.cancelledApply || x.prospect || x.incoming) return false;
+  if (!x || !x.former || x.demo || x.placeholder || x.cancelledApply || x.prospect || x.incoming) return false;
   return !!String(x.name || "").trim();
+}
+function latestFormerOf(roomId) {
+  const list = (state.tenants || []).filter(x => x && x.roomId === roomId && isDisplayFormer(x));
+  list.sort((a, b) => {
+    const d = String(b.leftOn || "").localeCompare(String(a.leftOn || ""));
+    if (d) return d;
+    return (Number(b.officialAt || b.editedAt || 0) - Number(a.officialAt || a.editedAt || 0));
+  });
+  return list[0] || null;
+}
+function formerTenantsOf(roomId, currentName) {
+  const last = latestFormerOf(roomId);
+  if (!last) return [];
+  if (currentName && sameTenantName(last.name, currentName)) return [];
+  return [last];
 }
 function applyPingKey(p) {
   if (!p) return "";
@@ -1717,19 +1733,6 @@ function pruneDeadApplyNotices(data) {
     data.noticeGone = unionGone(data.noticeGone, gone);
   }
   if (data.applyPing && !applyPingStillLive(data.applyPing, data.tenants)) data.applyPing = null;
-}
-function formerTenantsOf(roomId, currentName) {
-  const list = (state.tenants || []).filter(x => x && x.roomId === roomId && isDisplayFormer(x));
-  const byName = new Map();
-  list.forEach(x => {
-    const k = personKey(x.name);
-    if (!k) return;
-    const cur = byName.get(k);
-    if (!cur || String(x.leftOn || "") > String(cur.leftOn || "")) byName.set(k, x);
-  });
-  let out = [...byName.values()].sort((a, b) => String(b.leftOn || "").localeCompare(String(a.leftOn || "")));
-  if (currentName) out = out.filter(x => !sameTenantName(x.name, currentName));
-  return out;
 }
 function studioMonthPay(no) {
   return STUDIO_MONTH_PAY[String(no || "")] || null;
