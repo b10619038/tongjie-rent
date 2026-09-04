@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-16-20";
-const APP_EDIT_COUNT = 666;
+const APP_STAMP = "2026-09-04-16-24";
+const APP_EDIT_COUNT = 667;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0217";
+const FILE_VER = "0218";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約日期會留在租客圖卡與本月工作，不再被畫面清掉"] },
+  { ver: APP_VERSION, items: ["總覽日曆會在簽約日期那天顯示記"] },
+  { ver: "2026-09-04-16-20-666", items: ["簽約日期會留在租客圖卡與本月工作，不再被畫面清掉"] },
   { ver: "2026-09-04-16-14-665", items: ["合約簽名不再蓋到上排字，電腦手機同一排法"] },
   { ver: "2026-09-04-16-08-664", items: ["新客簽約時間同步本月工作與日曆，強制退租會拿掉"] },
   { ver: "2026-09-04-15-54-663", items: ["合約還沒開始的新租客本月不開立發票"] },
@@ -2654,6 +2655,7 @@ function normalize(data) {
   applyESigns(data);
   migrateDevLocalInto(data);
   ensureCycleJobs(data);
+  try { restoreMissingSignAppoint(data); } catch {}
   try { ensureDevCycleJobs(data); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
@@ -14976,6 +14978,24 @@ function upcomingMemos() {
     return da.localeCompare(db);
   });
 }
+function restoreMissingSignAppoint(data) {
+  if (!data || !Array.isArray(data.tenants)) return false;
+  let dirty = false;
+  data.tenants.forEach(t => {
+    if (!t || t.former || t.demo || t.placeholder || t.cancelledApply || t.sessionEnded) return;
+    if (String(t.signAppointAt || "").trim()) return;
+    const cands = data.tenants.filter(x =>
+      x && x.id !== t.id && x.roomId === t.roomId && String(x.signAppointAt || "").trim() && sameTenantName(x.name, t.name)
+    );
+    if (!cands.length) return;
+    cands.sort((a, b) => String(b.signAppointAt).localeCompare(String(a.signAppointAt)));
+    t.signAppointAt = cands[0].signAppointAt;
+    t.edited = true;
+    t.editedAt = Date.now();
+    dirty = true;
+  });
+  return dirty;
+}
 function signAppointMemos() {
   const out = [];
   (state.tenants || []).forEach(t => {
@@ -20447,6 +20467,7 @@ async function boot() {
       persistLedger(state);
     } catch {}
     const got = await pullCloud();
+    try { if (restoreMissingSignAppoint(state)) { markCloudDirty(); await pushCloud(); } } catch {}
     try {
       if (await repairStoredESigns(state)) {
         persistESignsMap(state.eSigns);
