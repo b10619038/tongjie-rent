@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-42";
-const APP_EDIT_COUNT = 633;
+const APP_STAMP = "2026-09-04-12-43";
+const APP_EDIT_COUNT = 634;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0184";
+const FILE_VER = "0185";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["還沒到本月租期時租金顯示尚無需繳費"] },
+  { ver: APP_VERSION, items: ["底欄已選中的按鈕點擊不再跳動"] },
+  { ver: "2026-09-04-12-42-633", items: ["還沒到本月租期時租金顯示尚無需繳費"] },
   { ver: "2026-09-04-12-40-632", items: ["合約還沒開始時顯示未開始倒數"] },
   { ver: "2026-09-04-12-33-631", items: ["底欄圖示高度對齊扳手，點選會再放大"] },
   { ver: "2026-09-04-12-30-630", items: ["租約剩餘天數改依今天與雲端合約截止日計算"] },
@@ -12055,16 +12056,27 @@ function gateView() {
   </div>`;
 }
 
+function navKeyOf(page) {
+  const p = page || (typeof ui !== "undefined" && ui && ui.page) || "home";
+  if (p === "room-detail" || p === "parking" || p === "balcony" || p === "trash") return "rooms";
+  if (p === "repair-done") return "repair";
+  if (p === "pay") return "home";
+  if (p === "lease-sign") return "lease";
+  if (p === "howto") return "settings";
+  if (p === "home" || p === "rooms" || p === "lease" || p === "repair" || p === "settings") return p;
+  return "home";
+}
 function nav() {
   const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"]];
+  const tab = navKeyOf();
   return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
       : id === "home" ? unreadAnnouncements(ui.tenantId).length
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
-    const on = ui.page === id || ((ui.page === "room-detail" || ui.page === "parking" || ui.page === "balcony" || ui.page === "trash") && id === "rooms") || (ui.page === "repair-done" && id === "repair") || (ui.page === "pay" && id === "home") || (ui.page === "lease-sign" && id === "lease") || (ui.page === "howto" && id === "settings");
-    return `<button type="button" data-page="${id}" class="${on ? "active land" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
+    const on = tab === id;
+    return `<button type="button" data-page="${id}" class="${on ? "active" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
 function bindNavPill() {
@@ -12074,9 +12086,17 @@ function bindNavPill() {
   if (!bar || !bg || !on) return;
   const extra = 6;
   const dest = (scale) => "translate3d(" + Math.max(0, on.offsetLeft - extra / 2) + "px,0,0) scale(" + scale + ")";
+  const tab = navKeyOf();
+  const moved = ui.navTab != null && ui.navTab !== tab;
+  ui.navTab = tab;
+  if (moved) {
+    on.classList.add("land");
+    bg.classList.add("land");
+    setTimeout(() => {
+      try { on.classList.remove("land"); bg.classList.remove("land"); } catch {}
+    }, 580);
+  }
   const prev = ui.navPill;
-  on.classList.add("land");
-  bg.classList.add("land");
   if (prev && prev.x !== on.offsetLeft) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
@@ -17109,6 +17129,7 @@ function bindTenant() {
   bindTenantSettings();
   document.querySelectorAll(".nav [data-page]").forEach(el => {
     el.addEventListener("pointerdown", () => {
+      if (el.classList.contains("active")) return;
       el.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
       el.style.transform = "scale(1.22)";
       const ic = el.querySelector(".nav-ic");
@@ -17126,7 +17147,8 @@ function bindTenant() {
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
-      if (next === ui.page && !el.closest(".nav")) return;
+      if (next === ui.page) return;
+      if (el.closest(".nav") && navKeyOf(next) === navKeyOf()) return;
       if (el.closest(".nav")) {
         const on = document.querySelector(".nav button.active");
         if (on) ui.navPill = { x: Math.max(0, on.offsetLeft - 3), w: on.offsetWidth + 6 };
