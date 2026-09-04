@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-07";
-const APP_EDIT_COUNT = 596;
+const APP_STAMP = "2026-09-04-09-09";
+const APP_EDIT_COUNT = 597;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登入畫面「我是租客」改成「租客登入」"] },
+  { ver: APP_STAMP, items: ["登入畫面「我是管理員」改成「管理員後台」"] },
+  { ver: "2026-09-04-09-07", items: ["登入畫面「我是租客」改成「租客登入」"] },
   { ver: "2026-09-04-09-05", items: ["登入畫面「我要入住」改成「申請入住」"] },
   { ver: "2026-09-03-17-38", items: ["7652 強制退租後不再出現繳費回報與年度水費；還在住才會記"] },
   { ver: "2026-09-03-17-32", items: ["新增一筆改成進帳對金額、統潔對銀行"] },
@@ -799,7 +800,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0147") return;
+    if (!m || !m[1] || m[1] === "0148") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11556,7 +11557,7 @@ function gateView() {
       <span>請輸入房號，密碼為電話後四碼，也可用姓名。</span>
     </button>
     <button class="role-btn slide-left delay" data-go="admin-login">
-      <strong>我是管理員</strong>
+      <strong>管理員後台</strong>
       <span>請輸入管理員密碼後，查看全部房間、租客與報修</span>
     </button>
     ${bioEnrolled() ? `<button class="role-btn slide-left delay" id="bio-login" type="button">
