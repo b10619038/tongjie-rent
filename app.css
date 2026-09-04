@@ -3331,8 +3331,10 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   background: var(--paper);
   overflow: auto;
   padding: 18px 10px calc(24px + var(--safe-b, 0px));
-  animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
   box-shadow: -12px 0 28px rgba(23,33,31,.12);
+}
+.move-pick-mask.move-pick-enter .move-pick-sheet {
+  animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
 }
 .move-pick-title {
   font-size: 15px;

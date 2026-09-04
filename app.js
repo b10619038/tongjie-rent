@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-27";
-const APP_EDIT_COUNT = 603;
+const APP_STAMP = "2026-09-04-09-29";
+const APP_EDIT_COUNT = 604;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["申請入住選房號改成最快可入住"] },
+  { ver: APP_STAMP, items: ["申請入住選房號不會再從右邊滑兩次"] },
+  { ver: "2026-09-04-09-27", items: ["申請入住選房號改成最快可入住"] },
   { ver: "2026-09-04-09-25", items: ["申請入住身分證提示改成蓋章簽約時須核對身分"] },
   { ver: "2026-09-04-09-24", items: ["申請入住底部圖卡不再被綠色背景卡住"] },
   { ver: "2026-09-04-09-20", items: ["簽約日期的年月改成同一行，上一月下一月縮小"] },
@@ -822,7 +823,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0154") return;
+    if (!m || !m[1] || m[1] === "0155") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11445,6 +11446,8 @@ function moveInView() {
   const occ = r ? roomCurrentTenant(r) : null;
   const enter = ui.moveEnter ? " move-in-enter" : "";
   ui.moveEnter = false;
+  const pickEnter = ui.movePickEnter;
+  ui.movePickEnter = false;
   const selMeta = r ? moveRoomMeta(r, dummy) : null;
   const pickRows = rooms.map(x => {
     const m = moveRoomMeta(x, dummy);
@@ -11454,7 +11457,7 @@ function moveInView() {
       <span class="move-pick-dates"><span>${m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—")}</span><span>最快可入住 ${escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
-  const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask" id="move-pick-mask">
+  const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask${pickEnter ? " move-pick-enter" : ""}" id="move-pick-mask">
     <div class="move-pick-sheet" role="listbox">
       <div class="move-pick-title">請選房號</div>
       <button type="button" class="move-pick-row${d.roomId ? "" : " on"}" data-move-room="">
@@ -11473,13 +11476,13 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
-      <label class="field"><span>房號</span>
+      <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
             ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—")}</span><span>最快可入住 ${escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
-      </label>
+      </div>
       ${r ? `<p class="small" style="margin:6px 0 0">${escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(null, r)))}</p>` : ""}
     </div>
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
@@ -16889,8 +16892,11 @@ function bindMoveInForm() {
   const openBtn = document.getElementById("move-room-open");
   if (openBtn) openBtn.onclick = e => {
     e.preventDefault();
+    e.stopPropagation();
+    if (ui.moveRoomPick) return;
     captureMoveInDraft();
     ui.moveRoomPick = true;
+    ui.movePickEnter = true;
     render();
   };
   const mask = document.getElementById("move-pick-mask");
@@ -19373,6 +19379,7 @@ document.addEventListener("click", e => {
   if (!app || !app.contains(e.target)) return;
   const goBtn = e.target.closest("[data-go]");
   if (goBtn && !ui.role) {
+    if (e.defaultPrevented) return;
     e.preventDefault();
     e.stopPropagation();
     ui.page = goBtn.dataset.go;
