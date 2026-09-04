@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-17-40";
-const APP_EDIT_COUNT = 680;
+const APP_STAMP = "2026-09-04-19-40";
+const APP_EDIT_COUNT = 681;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0231";
+const FILE_VER = "0232";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客頭貼雲端同步，退租後才刪除"] },
+  { ver: APP_VERSION, items: ["本月對帳只對照不改帳", "線上簽約改為誰先簽完誰得房，其他人改看其他間或排到期後"] },
+  { ver: "2026-09-04-17-40-680", items: ["租客頭貼雲端同步，退租後才刪除"] },
   { ver: "2026-09-04-17-32-679", items: ["列印合約改跟預覽同一版面，紅框往內縮"] },
   { ver: "2026-09-04-17-24-678", items: ["列印已簽署合約改為先預覽 A4，右上角再列印"] },
   { ver: "2026-09-04-17-20-677", items: ["後台點不足月已繳，總覽日曆記不足月日拆金額"] },
@@ -1489,9 +1490,15 @@ function hideNudgeForMe(id) {
 }
 function tenantHandoverNoteHtml(t, r) {
   if (isProspectPreview()) {
+    const holder = r && roomSignedHolder(r, t && t.id);
+    const wait = roomTakenByOther(t, r);
+    const waitLine = wait
+      ? `<p>這間已被 ${escapeHtml(holder.name || "其他人")} 先簽約。你目前排在 ${escapeHtml(tenantOccupancyEnd(holder, r) || holder.leaseEnd || "")} 到期後，也可返回改選其他房。</p>`
+      : "";
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
       <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。以後換手機：房號＋任一人的姓名或手機號碼。蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
+      ${waitLine}
     </div>`;
   }
   if (!t || !r || t.demo || r.demo || t.former || t.incoming) return "";
@@ -8657,6 +8664,66 @@ function roomCurrentTenant(room) {
   if (!room) return null;
   return (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.placeholder) || null;
 }
+function roomSignedHolder(room, exceptId) {
+  if (!room) return null;
+  const skip = String(exceptId || "");
+  const signedInc = incomingsOf(room.id).filter(x => x && x.id !== skip && tenantContractStatus(x, room) === "signed")
+    .sort((a, b) => (Number(a.eSign && a.eSign.ts) || 0) - (Number(b.eSign && b.eSign.ts) || 0));
+  if (signedInc[0]) return signedInc[0];
+  const occ = roomCurrentTenant(room);
+  if (occ && occ.id !== skip && (tenantContractStatus(occ, room) === "signed" || tenantContractStatus(occ, room) === "paper" || occ.officialAt)) return occ;
+  return null;
+}
+function claimRoomBySign(t, r) {
+  if (!t || !r || t.former) return { ok: true };
+  (state.rooms || []).forEach(x => {
+    if (!x || x.id === r.id) return;
+    if (x.incomingTenantId !== t.id) return;
+    const next = incomingsOf(x.id).find(y => y && y.id !== t.id && tenantContractStatus(y, x) === "signed");
+    if (next) x.incomingTenantId = next.id;
+    else delete x.incomingTenantId;
+    x.edited = true;
+  });
+  if (t.roomId !== r.id) {
+    t.roomId = r.id;
+    t.signRoomId = r.id;
+    t.edited = true;
+    t.editedAt = Date.now();
+  }
+  const holder = roomSignedHolder(r, t.id);
+  const myTs = Number(t.eSign && t.eSign.ts) || Date.now();
+  if (holder && holder.id !== t.id && tenantContractStatus(holder, r) === "signed") {
+    const holdTs = Number(holder.eSign && holder.eSign.ts) || 0;
+    if (holdTs && holdTs <= myTs) {
+      const next = addDaysYmd(tenantOccupancyEnd(holder, r) || holder.leaseEnd, 1);
+      if (next) {
+        try { applyStudioLeasePack(t, r, next); } catch {}
+        t.waitAfter = holder.id;
+        t.edited = true;
+        t.editedAt = Date.now();
+      }
+      return { ok: false, holder, next };
+    }
+  }
+  r.incomingTenantId = t.id;
+  r.edited = true;
+  incomingsOf(r.id).forEach(x => {
+    if (!x || x.id === t.id) return;
+    if (tenantContractStatus(x, r) === "signed") return;
+    const next = addDaysYmd(tenantOccupancyEnd(t, r) || t.leaseEnd, 1);
+    if (next && (!x.leaseStart || x.leaseStart < next)) {
+      try { applyStudioLeasePack(x, r, next); } catch {}
+      x.waitAfter = t.id;
+      x.edited = true;
+      x.editedAt = Date.now();
+    }
+  });
+  return { ok: true };
+}
+function roomTakenByOther(t, r) {
+  const holder = r && roomSignedHolder(r, t && t.id);
+  return !!(holder && holder.id !== (t && t.id) && tenantContractStatus(holder, r) === "signed");
+}
 function canPickSignRoom(t) {
   return isDemoTenant(t) || !!(t && t.incoming);
 }
@@ -8682,12 +8749,21 @@ function studioSignRooms(currentRoom) {
 }
 function roomSoonestStart(room, t) {
   const today = todayYmd();
+  const selfId = t && t.id;
   const occ = roomCurrentTenant(room);
   let after = "";
   if (occ && occ.leaseEnd) {
     const same = !!(t && occ.id === t.id);
     if (!same || tenantContractStatus(t, room) === "signed" || tenantContractStatus(t, room) === "paper") {
       after = addDaysYmd(occ.leaseEnd, 1);
+    }
+  }
+  const holder = roomSignedHolder(room, selfId);
+  if (holder && holder.id !== selfId) {
+    const end = tenantOccupancyEnd(holder, room) || holder.leaseEnd;
+    if (end) {
+      const nxt = addDaysYmd(end, 1);
+      if (nxt && nxt > (after || "")) after = nxt;
     }
   }
   if (after && after > today) return after;
@@ -8965,6 +9041,100 @@ function dedupeLedger(rows) {
 }
 function guessCashType(text, fallback) {
   return cellType(text, "") || fallback || "in";
+}
+function bookStudioNos(b) {
+  const nos = [];
+  const roomNo = String((b && b.roomNo) || "");
+  if (/^(68|70|72|76)\d{2}$/.test(roomNo)) nos.push(roomNo);
+  const note = String((b && b.note) || "");
+  const re = /\b((?:68|70|72|76)\d{2})\b/g;
+  let m;
+  while ((m = re.exec(note))) nos.push(m[1]);
+  return [...new Set(nos)];
+}
+function isPassbookInBook(b) {
+  if (!b || isRentAutoBook(b) || b.demo) return false;
+  if (String(b.type) === "out") return false;
+  if (Number(b.amount) <= 0) return false;
+  if (b.roomNo === "0000" || b.roomNo === "DEMO") return false;
+  return true;
+}
+function bookLooksLikeRent(b) {
+  return /租金|房租|套房/.test(String((b && b.note) || ""));
+}
+function monthReconRows(ym) {
+  const y = String(ym || payYmNow()).slice(0, 7);
+  const studioRooms = (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !r.demo && r.status !== "office" && !isPracticeStudioNo(r.no));
+  const byNo = new Map(studioRooms.map(r => [String(r.no), r]));
+  const app = [];
+  studioRooms.forEach(r => {
+    const t = (state.tenants || []).find(x => x && x.roomId === r.id && !x.former && !x.incoming && !x.placeholder && !isDemoTenant(x));
+    if (!t || !leaseCoversYm(t, r, y)) return;
+    const amt = tenantRentForYm(t, r, y) || 0;
+    if (!amt) return;
+    const autoId = rentAutoBookId(t, y);
+    const hasAuto = (state.books || []).some(b => b && b.id === autoId);
+    const paid = y === payYmNow() ? (paidThisMonth(t) || hasAuto) : hasAuto;
+    app.push({ room: r, t, no: String(r.no), name: t.name || "", amount: amt, paid });
+  });
+  const books = (state.books || []).filter(b => isPassbookInBook(b) && ymdOf(b.date).slice(0, 7) === y);
+  const used = new Set();
+  const takeBook = (no, amount) => {
+    const sameNo = b => !used.has(b.id) && bookStudioNos(b).indexOf(String(no)) >= 0;
+    const hit = books.find(b => sameNo(b) && Number(b.amount) === Number(amount) && bookLooksLikeRent(b));
+    if (hit) { used.add(hit.id); return hit; }
+    const sameAmt = books.find(b => sameNo(b) && Number(b.amount) === Number(amount));
+    if (sameAmt) { used.add(sameAmt.id); return sameAmt; }
+    const loose = books.find(b => sameNo(b) && bookLooksLikeRent(b));
+    if (loose) { used.add(loose.id); return loose; }
+    return null;
+  };
+  const rows = [];
+  app.forEach(a => {
+    const b = takeBook(a.no, a.amount);
+    if (a.paid && b && Number(b.amount) === Number(a.amount)) {
+      rows.push({ kind: "ok", no: a.no, name: a.name, app: a.amount, book: Number(b.amount), date: ymdOf(b.date), note: b.note || "" });
+    } else if (a.paid && b) {
+      rows.push({ kind: "diff", no: a.no, name: a.name, app: a.amount, book: Number(b.amount), date: ymdOf(b.date), note: b.note || "" });
+    } else if (a.paid && !b) {
+      rows.push({ kind: "app", no: a.no, name: a.name, app: a.amount, book: 0, date: "", note: "" });
+    } else if (!a.paid && b) {
+      rows.push({ kind: "book", no: a.no, name: a.name, app: 0, book: Number(b.amount), date: ymdOf(b.date), note: b.note || "" });
+    }
+  });
+  books.forEach(b => {
+    if (used.has(b.id)) return;
+    if (!bookLooksLikeRent(b)) return;
+    const nos = bookStudioNos(b).filter(n => byNo.has(n));
+    if (!nos.length) return;
+    nos.forEach(no => {
+      if (rows.some(x => x.no === no && (x.kind === "ok" || x.kind === "diff" || x.kind === "book"))) return;
+      const r = byNo.get(no);
+      const t = r && (state.tenants || []).find(x => x && x.roomId === r.id && !x.former && !x.incoming);
+      rows.push({ kind: "book", no, name: (t && t.name) || "", app: 0, book: Number(b.amount) || 0, date: ymdOf(b.date), note: b.note || "" });
+    });
+  });
+  const order = { app: 0, book: 1, diff: 2, ok: 3 };
+  rows.sort((a, b) => (order[a.kind] - order[b.kind]) || String(a.no).localeCompare(String(b.no)));
+  return rows;
+}
+function monthReconHtml(ym) {
+  const y = String(ym || payYmNow()).slice(0, 7);
+  const rows = monthReconRows(y);
+  const nApp = rows.filter(x => x.kind === "app").length;
+  const nBook = rows.filter(x => x.kind === "book").length;
+  const nDiff = rows.filter(x => x.kind === "diff").length;
+  const nOk = rows.filter(x => x.kind === "ok").length;
+  const line = (x) => {
+    const cls = x.kind === "ok" ? "recon-ok" : x.kind === "diff" ? "recon-warn" : "recon-bad";
+    const tag = x.kind === "ok" ? "對得上" : x.kind === "diff" ? "金額不同" : x.kind === "app" ? "App 已繳、簿子沒有" : "簿子有、App 未繳";
+    return `<div class="recon-row ${cls}"><span>${escapeHtml(x.no)}　${escapeHtml(x.name || "")}</span><span>${tag}</span><span>${x.app ? money(x.app) : "—"} / ${x.book ? money(x.book) : "—"}</span>${x.date ? `<span class="small">${escapeHtml(x.date)}</span>` : ""}</div>`;
+  };
+  return `<div class="recon-box" id="month-recon">
+      <div class="small">只對照、不改帳。以銀行簿子為準。左邊 App 應收，右邊簿子進帳。系統自動入帳與廠房都不列入。</div>
+      <div class="small" style="margin:6px 0 8px">對得上 ${nOk}　App有簿子無 ${nApp}　簿子有App無 ${nBook}　金額不同 ${nDiff}</div>
+      ${rows.length ? rows.map(line).join("") : `<div class="empty">這個月套房還沒有可對的租金</div>`}
+    </div>`;
 }
 function isCashAccount(name) {
   const a = cellAccount(name) || name;
@@ -9697,6 +9867,7 @@ function monthCashHtml() {
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
         <button type="button" class="ghost" id="print-cal">列印</button>
+        <button type="button" class="ghost${ui.reconOpen ? " on" : ""}" id="open-recon">${ui.reconOpen ? "收起對帳" : "本月對帳"}</button>
       </div>
     </div>
     <div class="card card-body tenant-search cal-search no-print">
@@ -9733,6 +9904,7 @@ function monthCashHtml() {
     <div class="cal-day">
       ${calDayListHtml(selected, rangeLabel, rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : "")}
     </div>
+    ${ui.reconOpen ? monthReconHtml(key) : ""}
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
@@ -10513,7 +10685,15 @@ function lastCheckout(tenantId) {
   return list.length ? list[list.length - 1] : null;
 }
 function incomingOf(roomId) {
-  return (state.tenants || []).find(x => x && x.roomId === roomId && x.incoming && !x.former && !x.loginRevoked && !x.sessionEnded) || null;
+  const list = incomingsOf(roomId);
+  if (!list.length) return null;
+  const r = (state.rooms || []).find(x => x && x.id === roomId);
+  const signed = list.filter(x => tenantContractStatus(x, r) === "signed")
+    .sort((a, b) => (Number(a.eSign && a.eSign.ts) || 0) - (Number(b.eSign && b.eSign.ts) || 0));
+  return signed[0] || list[0] || null;
+}
+function incomingsOf(roomId) {
+  return (state.tenants || []).filter(x => x && x.roomId === roomId && x.incoming && !x.former && !x.loginRevoked && !x.sessionEnded && !x.cancelledApply && !x.clearedApply);
 }
 function isHandoverRoom(r, t) {
   if (!r || r.demo) return false;
@@ -10529,9 +10709,11 @@ function discardCheckoutDraft(tenantId) {
 function addIncomingTenant(roomId, fields) {
   const r = (state.rooms || []).find(x => x.id === roomId);
   if (!r) return null;
-  if (incomingOf(roomId)) return incomingOf(roomId);
   const name = String(fields.name || "").trim();
   if (!name) return null;
+  const phone = String(fields.phone || "").trim();
+  const same = incomingsOf(roomId).find(x => nameMatch(x.name, name) || (phone && String(x.phone || "") === phone));
+  if (same) return same;
   const listed = studioRentOf(r.no);
   const rent = Number(String(fields.rent || "").replace(/[^\d.-]/g, "")) || listed || Number(r.rent) || 0;
   const deposit = Number(String(fields.deposit || "").replace(/[^\d.-]/g, "")) || (rent ? rent * 2 : 0);
@@ -10561,8 +10743,10 @@ function addIncomingTenant(roomId, fields) {
   applyStudioLeasePack(t, r, t.leaseStart);
   if (!state.tenants) state.tenants = [];
   state.tenants.push(t);
-  r.incomingTenantId = t.id;
-  r.edited = true;
+  if (!roomSignedHolder(r, t.id)) {
+    r.incomingTenantId = t.id;
+    r.edited = true;
+  }
   return t;
 }
 function moveInRooms() {
@@ -10709,6 +10893,16 @@ function promoteProspect(t, r) {
   (state.tenants || []).forEach(x => {
     if (!x || x.id === t.id || x.demo || x.roomId !== r.id) return;
     if (x.former) return;
+    if (x.incoming || x.prospect) {
+      const next = addDaysYmd(tenantOccupancyEnd(t, r) || t.leaseEnd, 1);
+      if (next && (!x.leaseStart || x.leaseStart < next)) {
+        try { applyStudioLeasePack(x, r, next); } catch {}
+        x.waitAfter = t.id;
+        x.edited = true;
+        x.editedAt = Date.now();
+      }
+      return;
+    }
     x.former = true;
     x.incoming = false;
     x.leftOn = ymdOf(nowStamp());
@@ -10776,26 +10970,31 @@ function submitMoveIn() {
   }
   const pack = studioLeasePack(d.leaseStart, studioContractRent(null, room));
   d.leaseEnd = pack.occupancyEnd;
-  const exist = incomingOf(room.id);
-  if (exist) {
-    const same = nameMatch(exist.name, name) || String(exist.phone || "") === phone;
-    if (same) {
-      exist.phone = phone || exist.phone;
-      exist.idNo = d.idNo || exist.idNo;
-      exist.signAppointAt = d.signAppointAt || exist.signAppointAt;
-      exist.leaseStart = d.leaseStart || exist.leaseStart;
-      exist.leaseEnd = d.leaseEnd || exist.leaseEnd;
-      exist.applyUnread = true;
-      exist.loginPass = phonePassOf(phone) || exist.loginPass;
-      exist.editedAt = Date.now();
-      save();
-      try { pushCloud(); } catch {}
-      toast("已回到這筆入住申請");
-      enterProspect(exist, room);
-      return;
-    }
-    toast("這間已有人在辦入住，請換一間或洽管理員");
+  const existSame = incomingsOf(room.id).find(x => nameMatch(x.name, name) || String(x.phone || "") === phone);
+  if (existSame) {
+    existSame.phone = phone || existSame.phone;
+    existSame.idNo = d.idNo || existSame.idNo;
+    existSame.signAppointAt = d.signAppointAt || existSame.signAppointAt;
+    existSame.leaseStart = d.leaseStart || existSame.leaseStart;
+    existSame.leaseEnd = d.leaseEnd || existSame.leaseEnd;
+    existSame.applyUnread = true;
+    existSame.loginPass = phonePassOf(phone) || existSame.loginPass;
+    existSame.editedAt = Date.now();
+    save();
+    try { pushCloud(); } catch {}
+    toast("已回到這筆入住申請");
+    enterProspect(existSame, room);
     return;
+  }
+  const holder = roomSignedHolder(room);
+  if (holder && holder.id) {
+    const next = addDaysYmd(tenantOccupancyEnd(holder, room) || holder.leaseEnd, 1);
+    if (next && d.leaseStart < next) {
+      d.leaseStart = next;
+      const pack2 = studioLeasePack(d.leaseStart, studioContractRent(null, room));
+      d.leaseEnd = pack2.occupancyEnd;
+      toast("這間已被先簽約，已幫你排到 " + next + " 起。也可改選其他房");
+    }
   }
   const t = addIncomingTenant(room.id, {
     name, phone, idNo: d.idNo, leaseStart: d.leaseStart, leaseEnd: d.leaseEnd,
@@ -11121,21 +11320,28 @@ function incomingActionHtml(inc, r) {
   if (!inc || !r || inc.former || inc.demo) return "";
   const live = canPromoteProspect(inc, r);
   const signed = tenantContractStatus(inc, r) === "signed";
+  const holder = roomSignedHolder(r, inc.id);
+  const queued = !signed && holder && tenantContractStatus(holder, r) === "signed";
+  const label = signed ? "已簽約待確認" : queued ? "排隊（該約到期後）" : (inc.applyPending ? "入住申請" : "交接中");
+  const hint = queued
+    ? `這間已被 ${holder.name || "其他人"} 先簽約。此筆排在 ${inc.leaseStart || "該約到期後"} 起。`
+    : signed
+      ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
+      : (live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。");
   return `<div class="handover-box">
-      <div class="label">${signed ? "已簽約待確認" : (inc.applyPending ? "入住申請" : "交接中")}</div>
-      <p class="small">${signed
-        ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
-        : (live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。")}</p>
-      <button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認可以入住" : "確認交接中"}</button>
+      <div class="label">${label}　${escapeHtml(inc.name || "")}</div>
+      <p class="small">${escapeHtml(hint)}</p>
+      ${queued ? "" : `<button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認可以入住" : "確認交接中"}</button>`}
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
     </div>`;
 }
 function handoverBoxHtml(t, r) {
   if (!r || r.demo || (t && t.demo)) return "";
-  const inc = incomingOf(r.id);
+  const all = incomingsOf(r.id);
   if (t && t.incoming) return incomingActionHtml(t, r);
-  if (inc) {
-    return incomingActionHtml(inc, r) + `<div class="handover-box">
+  if (all.length) {
+    const inc = incomingOf(r.id) || all[0];
+    return all.map(x => incomingActionHtml(x, r)).join("") + `<div class="handover-box">
       ${teField("姓名", "name", inc.id, r.id, inc.name || "")}
       ${teField("電話", "phone", inc.id, r.id, inc.phone || "", "tel", "手機號碼")}
       ${teField("身分證", "idNo", inc.id, r.id, inc.idNo || "")}
@@ -11147,7 +11353,7 @@ function handoverBoxHtml(t, r) {
       ${teField("押金", "deposit", inc.id, r.id, inc.deposit != null ? inc.deposit : "", "number", "空白＝兩個月")}
       ${inc.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(inc.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
       <button type="button" class="btn-navy" data-print-lease="${inc.id}">下載合約</button>
-      <div class="small">舊客辦完退租後，新客會自動接手這間，租金押金一併套用。</div>
+      <div class="small">舊客辦完退租後，已簽約的新客會接手這間。還沒簽的人會排在該約到期後。</div>
     </div>`;
   }
   const open = !!(ui.handoverAdd && ui.handoverAdd[r.id]);
@@ -12331,8 +12537,17 @@ function desktopInstallCardHtml() {
 }
 function moveRoomMeta(x, dummy) {
   const o = roomCurrentTenant(x);
+  const holder = roomSignedHolder(x, dummy && dummy.id);
   const start = roomSoonestStart(x, dummy || { incoming: true });
-  return { vacant: !o, end: (o && o.leaseEnd) || "", start, no: x.no || "" };
+  const signed = !!(holder && holder.incoming && tenantContractStatus(holder, x) === "signed");
+  return {
+    vacant: !o && !signed,
+    end: signed ? (tenantOccupancyEnd(holder, x) || holder.leaseEnd || "") : ((o && o.leaseEnd) || ""),
+    start,
+    no: x.no || "",
+    taken: signed,
+    takenName: signed ? (holder.name || "") : ""
+  };
 }
 function applyMoveRoom(id) {
   captureMoveInDraft();
@@ -12393,7 +12608,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
       <span class="move-pick-no">${escapeHtml(m.no)}</span>
-      <span class="move-pick-dates"><span>${m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—")}</span><span>最快可入住 ${escapeHtml(m.start)}</span></span>
+      <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—"))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
   const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask${pickEnter ? " move-pick-enter" : ""}" id="move-pick-mask">
@@ -12419,7 +12634,7 @@ function moveInView() {
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
-            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—")}</span><span>最快可入住 ${escapeHtml(selMeta.start)}</span></span>`
+            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
       </div>
@@ -12818,7 +13033,9 @@ function homeView() {
         ${stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : ""}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
-            ? `<div class="esign-cta" style="pointer-events:none">已簽約　等待後台確認</div>`
+            ? (roomTakenByOther(t, r)
+              ? `<button type="button" class="esign-cta" data-page="lease-sign">這間已被先簽約　改選其他房</button>`
+              : `<div class="esign-cta" style="pointer-events:none">已簽約　等待後台確認</div>`)
             : `<button type="button" class="esign-cta" data-page="lease-sign">我要簽約</button>`)
           : (tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : "")}
       </div>
@@ -13306,9 +13523,14 @@ function leaseView() {
           </div>`;
         }
         if (st === "signed") {
+          const wait = roomTakenByOther(t, r);
+          const holder = wait ? roomSignedHolder(r, t && t.id) : null;
           return `<div class="card card-body">
             <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
-            <p class="small" style="margin-top:8px">你已完成藍字簽名，兩份合約都已套入。管理員列印後只蓋公司章。</p>
+            <p class="small" style="margin-top:8px">${wait
+              ? `這間已被 ${escapeHtml((holder && holder.name) || "其他人")} 先簽約。你已排在 ${escapeHtml((holder && (tenantOccupancyEnd(holder, r) || holder.leaseEnd)) || "該約到期後")} 之後，也可改選其他空房。`
+              : "你已完成藍字簽名，兩份合約都已套入。管理員列印後只蓋公司章。"}</p>
+            ${wait && canPickSignRoom(t) ? `<button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:8px">改選其他房</button>` : ""}
             ${t.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
             ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
           </div>`;
@@ -13388,11 +13610,9 @@ function leaseSignView() {
   const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
   const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
   const roomOpts = rooms.map(x => {
-    const o = roomCurrentTenant(x);
-    const start = roomSoonestStart(x, t);
-    const vacant = !o || (t && o.id === t.id && tenantContractStatus(t, x) === "unsigned");
-    const hint = vacant ? "空房" : ("現約至 " + (o.leaseEnd || "—"));
-    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}　最快可入住 ${start}</option>`;
+    const m = moveRoomMeta(x, t);
+    const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ("現約至 " + (m.end || "—") + "　最快可入住 " + m.start));
+    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}</option>`;
   }).join("");
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
@@ -16333,10 +16553,12 @@ function tenantCardWhoHtml(t, r, inc) {
 function vacantRoomCardHtml(r) {
   if (!r) return "";
   const foldId = "vac-" + r.id;
+  const list = incomingsOf(r.id);
   const inc = incomingOf(r.id);
-  const unread = !!(inc && (inc.applyUnread || inc.applyPending));
+  const unread = list.some(x => x && (x.applyUnread || x.applyPending));
   const last = formerTenantsOf(r.id)[0];
-  const who = inc && inc.name ? "　" + inc.name : (last && last.name ? "　前任 " + last.name : "");
+  const names = list.map(x => x && x.name).filter(Boolean).join("、");
+  const who = names ? "　" + names : (last && last.name ? "　前任 " + last.name : "");
   const label = roomIsFactory(r) ? displayRoomNo(r) : studioListNo(r);
   const pill = applyStatusPill(inc, inc, r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
@@ -16357,7 +16579,11 @@ function vacantSheetDetailsHtml(r) {
 }
 function tenantApplyRank(t) {
   if (!t || isDemoTenant(t)) return 1;
-  if (t.applyPending || t.prospect || t.incoming) return 0;
+  if (t.applyPending || t.prospect || t.incoming) {
+    const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+    if (r && tenantContractStatus(t, r) === "signed") return -1;
+    return 0;
+  }
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
   const inc = r && incomingOf(r.id);
   if (inc && !inc.former && (inc.applyPending || inc.prospect || inc.incoming)) return 0;
@@ -18191,10 +18417,18 @@ function bindSignTermSlots() {
       const t = me();
       if (!t || !canPickSignRoom(t)) return;
       t.signRoomId = roomSel.value;
+      if (roomSel.value) t.roomId = roomSel.value;
       ui.signRoomId = roomSel.value;
       ui.signLeaseCustom = false;
       t.signAppointAt = "";
-      applyOneYearLease(t, signTargetRoom(t));
+      const r = signTargetRoom(t);
+      applyOneYearLease(t, r);
+      if (t && r && tenantContractStatus(t, r) === "signed") {
+        const claimed = claimRoomBySign(t, r);
+        if (claimed && claimed.ok === false) {
+          toast("這間已被其他人先簽約。已幫你排到 " + (claimed.next || "該約到期後") + "，也可改選其他房");
+        }
+      }
       ui.signCalYear = 0;
       ui.signCalMonth = 0;
       t.editedAt = Date.now();
@@ -18458,8 +18692,16 @@ function bindSignPad() {
       t.applyUnread = true;
       t.applyPending = true;
       t.editedAt = Date.now();
+      const claimed = claimRoomBySign(t, r);
       save();
       try { pushCloud(); } catch {}
+      if (claimed && claimed.ok === false) {
+        toast("這間已被其他人先簽約。已幫你排到 " + (claimed.next || "該約到期後") + "，也可改選其他房");
+        ui.page = "lease";
+        ui.signing = false;
+        render();
+        return;
+      }
     }
     ui.page = "lease";
     ui.signing = false;
@@ -20270,6 +20512,17 @@ function bindCashCal() {
   if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("cal"); };
   const printCal = document.getElementById("print-cal");
   if (printCal) printCal.onclick = e => { e.preventDefault(); e.stopPropagation(); printMonthCash(); };
+  const openRecon = document.getElementById("open-recon");
+  if (openRecon) openRecon.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.reconOpen = !ui.reconOpen;
+    stay();
+    if (ui.reconOpen) {
+      const box = document.getElementById("month-recon");
+      if (box && box.scrollIntoView) try { box.scrollIntoView({ block: "nearest" }); } catch {}
+    }
+  };
   const clearFilter = document.getElementById("cal-filter-clear");
   if (clearFilter) clearFilter.onclick = e => {
     e.preventDefault();
