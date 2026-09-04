@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-03-17-38";
-const APP_EDIT_COUNT = 594;
+const APP_STAMP = "2026-09-04-09-05";
+const APP_EDIT_COUNT = 595;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["7652 強制退租後不再出現繳費回報與年度水費；還在住才會記"] },
+  { ver: APP_STAMP, items: ["登入畫面「我要入住」改成「申請入住」"] },
+  { ver: "2026-09-03-17-38", items: ["7652 強制退租後不再出現繳費回報與年度水費；還在住才會記"] },
   { ver: "2026-09-03-17-32", items: ["新增一筆改成進帳對金額、統潔對銀行"] },
   { ver: "2026-09-03-17-28", items: ["租客自己刪掉的公告，重開 APP 也不會再出現"] },
   { ver: "2026-09-03-17-20", items: ["已退租或已處理的入住申請不再重複通知其他裝置"] },
@@ -797,7 +798,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0145") return;
+    if (!m || !m[1] || m[1] === "0146") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
@@ -11443,7 +11444,7 @@ function moveInView() {
     <button class="back move-head" id="back-gate" type="button">← 返回</button>
     <div class="move-head">
       <div class="logo">TONG JIE</div>
-      <h1>我要入住</h1>
+      <h1>申請入住</h1>
       <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽，後台會出現這間的新客。</p>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
@@ -11546,7 +11547,7 @@ function gateView() {
       <p class="lead">房間、租約、租金與報修，集中在同一個地方管理。</p>
     </div>
     <button class="role-btn slide-left" data-go="move-in">
-      <strong>我要入住</strong>
+      <strong>申請入住</strong>
       <span>看房滿意後填表，選房號與簽約時間，送到後台新客。</span>
     </button>
     <button class="role-btn slide-left delay" data-go="tenant-login">
