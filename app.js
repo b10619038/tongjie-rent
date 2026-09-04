@@ -22,8 +22,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-09-09";
-const APP_EDIT_COUNT = 597;
+const APP_STAMP = "2026-09-04-09-12";
+const APP_EDIT_COUNT = 598;
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -80,7 +80,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_STAMP, items: ["登入畫面「我是管理員」改成「管理員後台」"] },
+  { ver: APP_STAMP, items: ["調色盤關閉改成確定，選好色調後收回右下角"] },
+  { ver: "2026-09-04-09-09", items: ["登入畫面「我是管理員」改成「管理員後台」"] },
   { ver: "2026-09-04-09-07", items: ["登入畫面「我是租客」改成「租客登入」"] },
   { ver: "2026-09-04-09-05", items: ["登入畫面「我要入住」改成「申請入住」"] },
   { ver: "2026-09-03-17-38", items: ["7652 強制退租後不再出現繳費回報與年度水費；還在住才會記"] },
@@ -632,25 +633,40 @@ function themePickerHtml() {
           <i></i><span>${t.name}</span>
         </button>`).join("")}
       </div>
-      <button type="button" class="ghost" id="theme-close">關閉</button>
+      <button type="button" class="btn-navy" id="theme-close">確定</button>
     </div>
   </div>` : "";
   return `${panel}<button type="button" class="theme-fab${lift}" id="theme-open" aria-label="主題色調">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M5 12H3M21 12h-2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"/></svg>
   </button>`;
 }
+function closeThemePicker() {
+  const mask = document.getElementById("theme-mask");
+  if (!mask) { ui.themeOpen = false; render(); return; }
+  if (mask.classList.contains("out")) return;
+  mask.classList.add("out");
+  let done = false;
+  const go = () => {
+    if (done) return;
+    done = true;
+    ui.themeOpen = false;
+    render();
+  };
+  mask.addEventListener("animationend", go, { once: true });
+  setTimeout(go, 360);
+}
 function bindThemePicker() {
   const open = document.getElementById("theme-open");
-  if (open) open.onclick = e => { e.stopPropagation(); ui.themeOpen = !ui.themeOpen; render(); };
+  if (open) open.onclick = e => { e.stopPropagation(); ui.themeOpen = true; render(); };
   const close = document.getElementById("theme-close");
-  if (close) close.onclick = () => { ui.themeOpen = false; render(); };
+  if (close) close.onclick = e => { e.stopPropagation(); closeThemePicker(); };
   const mask = document.getElementById("theme-mask");
-  if (mask) mask.onclick = e => { if (e.target.id === "theme-mask") { ui.themeOpen = false; render(); } };
+  if (mask) mask.onclick = e => { if (e.target.id === "theme-mask") closeThemePicker(); };
   document.querySelectorAll("[data-theme]").forEach(btn => {
     btn.onclick = e => {
       e.stopPropagation();
       applyTheme(btn.dataset.theme);
-      render();
+      document.querySelectorAll("[data-theme]").forEach(x => x.classList.toggle("on", x.dataset.theme === btn.dataset.theme));
     };
   });
 }
@@ -800,7 +816,7 @@ async function pollRemoteBuild() {
     if (sessionStorage.getItem("tj-bust-done")) return;
     const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
-    if (!m || !m[1] || m[1] === "0148") return;
+    if (!m || !m[1] || m[1] === "0149") return;
     ui.updateReady = true;
     try { render(); } catch {}
   } catch {}
