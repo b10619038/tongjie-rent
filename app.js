@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-11-51";
-const APP_EDIT_COUNT = 618;
+const APP_STAMP = "2026-09-04-11-54";
+const APP_EDIT_COUNT = 619;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0169";
+const FILE_VER = "0170";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
+  { ver: APP_VERSION, items: ["送出並進入預覽會先跳出確認"] },
+  { ver: "2026-09-04-11-51-618", items: ["開著畫面也能快速收到更新，各裝置經網站與雲端同步"] },
   { ver: "2026-09-04-11-47-617", items: ["選房號改成滿版，手機側邊返回會回到申請入住"] },
   { ver: "2026-09-04-10-49-616", items: ["有新版本提示只跳一次，點進去前會固定住"] },
   { ver: "2026-09-04-10-47-615", items: ["更新提示改成點此更新"] },
@@ -10247,6 +10248,55 @@ function submitMoveIn() {
   toast("已送出，進入看房預覽");
   enterProspect(t, room);
 }
+function askMoveSubmit() {
+  captureMoveInDraft();
+  const d = ensureMoveIn();
+  const name = String(d.name || "").trim();
+  const phone = String(d.phone || "").trim();
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (!room) { toast("請先選房號"); return; }
+  if (!name) { toast("請填姓名"); return; }
+  if (!phone) { toast("請填電話"); return; }
+  ui.moveSubmitConfirm = true;
+  render();
+}
+function closeMoveSubmitConfirm() {
+  ui.moveSubmitConfirm = false;
+  render();
+}
+function moveSubmitConfirmHtml() {
+  if (!ui.moveSubmitConfirm || ui.page !== "move-in") return "";
+  const d = ensureMoveIn();
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (!room) return "";
+  const name = String(d.name || "").trim();
+  const phone = String(d.phone || "").trim();
+  const when = d.signAppointAt ? formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "尚未選時段";
+  const start = d.leaseStart || "";
+  const end = d.leaseEnd || "";
+  return `<div class="install-mask" id="move-submit-mask">
+    <div class="install-sheet">
+      <div class="label">申請入住</div>
+      <h2>確定要送出嗎？</h2>
+      <p class="small">房號　${escapeHtml(room.no || "")}<br>姓名　${escapeHtml(name)}<br>電話　${escapeHtml(phone)}<br>簽約　${escapeHtml(when)}${start ? "<br>入住　" + escapeHtml(start) + (end ? " ～ " + escapeHtml(end) : "") : ""}</p>
+      <p class="small">送出後會進入看房預覽，後台會收到這筆入住申請。</p>
+      <button type="button" class="btn-navy" id="move-submit-yes">確定送出</button>
+      <button type="button" class="ghost" id="move-submit-no">取消</button>
+    </div>
+  </div>`;
+}
+function bindMoveSubmitConfirm() {
+  const mask = document.getElementById("move-submit-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "move-submit-mask") closeMoveSubmitConfirm(); };
+  const no = document.getElementById("move-submit-no");
+  if (no) no.onclick = closeMoveSubmitConfirm;
+  const yes = document.getElementById("move-submit-yes");
+  if (yes) yes.onclick = () => {
+    ui.moveSubmitConfirm = false;
+    captureMoveInDraft();
+    submitMoveIn();
+  };
+}
 function confirmIncomingApply(inc) {
   if (!inc) return;
   inc.applyPending = false;
@@ -11374,7 +11424,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml();
+  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const overlays = !!(ui.notifyGuide || ui.installSheet || ui.updateNotes || toastHtml);
@@ -11385,7 +11435,7 @@ function paintApp() {
     root.innerHTML = `<div class="${still ? "keep-still" : ""}">${bar}${toastHtml}${gateView()}${sheet}${ver}${guide}${theme}</div>${introHtml()}`;
     lastRenderRole = ui.role;
     lastRenderPage = page;
-    safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); });
+    safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); bindMoveSubmitConfirm(); });
     return;
   }
   if (ui.role === "admin") {
@@ -17152,7 +17202,7 @@ function bindMoveInForm() {
   if (go) go.onclick = e => {
     e.preventDefault();
     captureMoveInDraft();
-    submitMoveIn();
+    askMoveSubmit();
   };
 }
 function captureSignDraft() {
