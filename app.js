@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-12-22";
-const APP_EDIT_COUNT = 627;
+const APP_STAMP = "2026-09-04-12-24";
+const APP_EDIT_COUNT = 628;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0178";
+const FILE_VER = "0179";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["空房入住申請只顯示姓名，不再出現箭頭"] },
+  { ver: APP_VERSION, items: ["租客登入可用任一人的姓名或手機號碼"] },
+  { ver: "2026-09-04-12-22-627", items: ["空房入住申請只顯示姓名，不再出現箭頭"] },
   { ver: "2026-09-04-12-20-626", items: ["租客姓名上下兩行，看房預覽圖卡改到公告上方"] },
   { ver: "2026-09-04-12-13-625", items: ["兩人承租時電話與身分證可填一組或兩組"] },
   { ver: "2026-09-04-12-06-624", items: ["同一畫面點過更新後不再重複跳出"] },
@@ -1436,10 +1437,9 @@ function hideNudgeForMe(id) {
 }
 function tenantHandoverNoteHtml(t, r) {
   if (isProspectPreview()) {
-    const pass = phonePassOf(t && t.phone);
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
-      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。${pass ? "以後換手機：房號＋姓名，密碼 " + escapeHtml(pass) + "（電話後四碼）。" : "以後換手機用房號＋姓名，密碼是電話後四碼。"}蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
+      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。以後換手機：房號＋任一人的姓名或手機號碼。蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
     </div>`;
   }
   if (!t || !r || t.demo || r.demo || t.former || t.incoming) return "";
@@ -10368,7 +10368,7 @@ function maybePromoteProspect(t) {
   save();
   try { pushCloud(); } catch {}
   if (ui.role === "tenant" && ui.tenantId === t.id) {
-    toast("已成為 " + (r.no || "") + " 租客。換手機用房號＋姓名，密碼電話後四碼");
+    toast("已成為 " + (r.no || "") + " 租客。換手機用房號＋姓名或手機號碼");
   }
   return true;
 }
@@ -11933,14 +11933,14 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>忘記密碼</h1>
-        <p class="lead">輸入房號與姓名，核對後顯示登入密碼。</p>
+        <p class="lead">輸入房號與姓名，核對後顯示可用的登入方式。</p>
       </div>
       <div class="login-block slide-left">
         <input id="forgot-room" type="text" inputmode="numeric" maxlength="8" placeholder="房號" value="${escapeHtml(ui.loginRoom || "")}" />
         <input id="forgot-name" type="text" placeholder="租客姓名" value="${escapeHtml(ui.forgotName || "")}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         ${ui.foundPass != null ? `<div class="pass-found">${ui.foundPass ? escapeHtml(ui.foundPass) : "尚未設定密碼"}</div>
-          <div class="small">${ui.foundPass ? "請用此密碼登入。預設是電話後四碼，也可用姓名。" : "預設密碼是電話後四碼，也可用姓名。"}</div>` : ""}
+          <div class="small">可用任一人的姓名或手機號碼登入。</div>` : ""}
         <button class="btn-navy" id="do-forgot" type="button">找回密碼</button>
       </div>
     </div>`;
@@ -11968,11 +11968,11 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號與登入密碼。密碼為電話後四碼，也可用姓名。"}</p>
+        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
       </div>
       <div class="login-block slide-left">
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
-        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="40" placeholder="電話後四碼或姓名" />`}
+        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
         ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
@@ -11994,7 +11994,7 @@ function gateView() {
     </button>
     <button class="role-btn slide-left r2" data-go="tenant-login">
       <strong>租客登入</strong>
-      <span>請輸入房號，密碼為電話後四碼，也可用姓名。</span>
+      <span>請輸入房號，密碼可用姓名或手機號碼。</span>
     </button>
     <button class="role-btn slide-left r3" data-go="admin-login">
       <strong>管理員後台</strong>
@@ -16770,15 +16770,51 @@ function enterTenant(room, tenant) {
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
 }
+function tenantPassHint(t) {
+  const names = String((t && t.name) || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
+  const phones = normalizeMobile((t && t.phone) || "").split("、").filter(Boolean);
+  const bits = [...names, ...phones];
+  return bits.length ? bits.join("　或　") : "";
+}
+function tenantPassKeys(t) {
+  const keys = new Set();
+  const add = v => {
+    const s = String(v || "").trim();
+    if (!s) return;
+    keys.add(s);
+    const compact = s.replace(/\s+/g, "").replace(/[、，,\/\-]/g, "");
+    if (compact) keys.add(compact);
+  };
+  add(t && t.loginPass);
+  const names = String((t && t.name) || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
+  names.forEach(add);
+  if (names.length) {
+    add(names.join(""));
+    add(names.join("、"));
+  }
+  const phones = normalizeMobile((t && t.phone) || "").split("、").filter(Boolean);
+  phones.forEach(p => {
+    add(p);
+    const d = p.replace(/\D/g, "");
+    add(d);
+    if (d.length >= 4) add(d.slice(-4));
+  });
+  String((t && t.phone) || "").split(/[、，,\/\s]+/).forEach(add);
+  return keys;
+}
 function tenantPassOk(t, pass) {
   if (!t || !pass) return false;
   if (t.former || t.sessionEnded || t.clearedApply || t.loginRevoked || t.placeholder) return false;
-  if (t.loginPass && pass === String(t.loginPass)) return true;
-  const p4 = phonePassOf(t.phone);
-  if (p4 && pass === p4) return true;
-  const name = String(t.name || "").replace(/\s+/g, "").replace(/、/g, "");
-  const typed = String(pass || "").replace(/\s+/g, "").replace(/、/g, "");
-  return !!(name && typed.length >= 2 && (name === typed || name.includes(typed) || typed.includes(name)));
+  const typed = String(pass || "").trim();
+  const compact = typed.replace(/\s+/g, "").replace(/[、，,\/\-]/g, "");
+  if (!typed) return false;
+  const keys = tenantPassKeys(t);
+  if (keys.has(typed) || keys.has(compact)) return true;
+  if (/^09\d{8}$/.test(compact) || /^09\d{8}$/.test(normalizeMobile(typed))) {
+    const mob = normalizeMobile(typed);
+    if (keys.has(mob)) return true;
+  }
+  return false;
 }
 function tryLogin() {
   const input = document.getElementById("room-login");
@@ -16863,7 +16899,7 @@ function tryForgot() {
   ui.loginRoom = no;
   ui.forgotName = name;
   ui.loginError = "";
-  ui.foundPass = tenant.loginPass || phonePassOf(tenant.phone) || String(tenant.name || "").replace(/\s+/g, "");
+  ui.foundPass = tenantPassHint(tenant);
   audit("找回密碼", "房號 " + room.no);
   render();
 }
