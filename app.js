@@ -23,10 +23,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-13-25";
-const APP_EDIT_COUNT = 653;
+const APP_STAMP = "2026-09-04-13-33";
+const APP_EDIT_COUNT = 654;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0204";
+const FILE_VER = "0205";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -83,7 +83,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新租客簽約後後台會立刻同步已簽約"] },
+  { ver: APP_VERSION, items: ["中途退租會跳出終止租賃契約"] },
+  { ver: "2026-09-04-13-25-653", items: ["新租客簽約後後台會立刻同步已簽約"] },
   { ver: "2026-09-04-13-22-652", items: ["租客畫面房間圖示改成開門"] },
   { ver: "2026-09-04-13-17-651", items: ["緊急聯絡人與電話可填一人，兩人中間用、"] },
   { ver: "2026-09-04-13-14-650", items: ["房間圖示改成床頭加枕頭的正方形床"] },
@@ -11016,8 +11017,9 @@ function checkoutOverlayHtml() {
   const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
   if (!t) return "";
   const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
-  if (checkoutKindOf(lastCheckout(t.id) || {})) return "";
-  return checkoutPickHtml(t, r);
+  const kind = checkoutKindOf(lastCheckout(t.id) || {});
+  if (!kind) return checkoutPickHtml(t, r);
+  return `<div class="install-mask" id="checkout-form-mask"><div class="install-sheet checkout-sheet">${checkoutFormHtml()}</div></div>`;
 }
 function checkoutPickHtml(t, r) {
   return `<div class="install-mask" id="checkout-pick-mask">
@@ -11665,10 +11667,14 @@ function bindOps() {
   if (pickMask) pickMask.onclick = e => {
     if (e.target === pickMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
   };
+  const formMask = document.getElementById("checkout-form-mask");
+  if (formMask) formMask.onclick = e => {
+    if (e.target === formMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
+  };
   const pickNormal = document.getElementById("co-kind-normal");
-  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); ui.checkoutKind = "normal"; ui.adminJump = "checkout-form-card"; ui.keepScroll = false; render(); };
+  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
   const pickEarly = document.getElementById("co-kind-early");
-  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); ui.checkoutKind = "early"; ui.adminJump = "checkout-form-card"; ui.keepScroll = false; render(); };
+  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
   const resetKind = document.getElementById("co-kind-reset");
   if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
   const printTerm = document.getElementById("co-print-term");
@@ -11856,7 +11862,7 @@ function paintApp() {
     const track = document.querySelector(".tabs-track");
     const sc = document.querySelector(".admin-scroll");
     const overlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
-      || (ui.checkoutTenantId && ui.checkoutKind === "pick")
+      || ui.checkoutTenantId
       || ui.vacateConfirmId
       || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
@@ -16725,7 +16731,6 @@ function bindTenantListTools() {
 function adminTenants() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
   return `<div class="admin-grid list">
-    ${checkoutFormHtml()}
     <div class="card card-body">
       <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
         <i class="seg-bg"></i>
@@ -16828,7 +16833,6 @@ function adminRoomEdit() {
   if (!r) return `<div class="empty">找不到房間</div>`;
   const t = state.tenants.find(x => x.id === r.tenantId);
   return `<div class="admin-grid list">
-    ${checkoutFormHtml()}
     <form class="card card-body" id="room-edit-form" novalidate>
       <button class="back" type="button" data-admin="rooms">← 所有資產</button>
       <h2 class="dash-h">${r.no}　${r.title}</h2>
