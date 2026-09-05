@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-20";
-const APP_EDIT_COUNT = 697;
+const APP_STAMP = "2026-09-05-11-22";
+const APP_EDIT_COUNT = 698;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0247";
+const FILE_VER = "0248";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
+  { ver: APP_VERSION, items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
+  { ver: "2026-09-05-11-20-697", items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
   { ver: "2026-09-05-11-15-696", items: ["上傳檔名右邊可叉叉刪除該檔"] },
   { ver: "2026-09-05-11-14-695", items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
   { ver: "2026-09-05-11-09-694", items: ["新增一筆上傳只顯示檔名，不出現圖片預覽"] },
@@ -21019,17 +21020,8 @@ function bindCashCal() {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
       const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
       const date = ymdOf((form.date && form.date.value) || picked);
-      if (!amount && !ui.editBookId) {
-        if (bookUpFileList().length || (liveLastImport() && liveLastImport().rows && liveLastImport().rows.length)) {
-          toast("簿子已記入日曆。若要再手記一筆，請填金額並選進帳或出帳");
-          return;
-        }
-        toast("手記請填金額，並選進帳或出帳。上傳簿子請按上傳");
-        return;
-      }
       if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
-      if (form.type.value === "auto") { toast("請改選進帳或出帳後再記入"); return; }
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
