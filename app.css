@@ -2016,7 +2016,12 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; }
 .cal-nav .ghost {
   width: auto;
-  min-width: 88px;
+  min-width: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+  min-height: 0;
+  height: auto;
   transform-origin: center center;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
