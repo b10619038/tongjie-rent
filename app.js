@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-52";
-const APP_EDIT_COUNT = 751;
+const APP_STAMP = "2026-09-05-18-53";
+const APP_EDIT_COUNT = 752;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0301";
+const FILE_VER = "0302";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -64,6 +64,7 @@ function isDemoTenant(t) {
   if (!t) return false;
   if (t.demo || t.id === "t-demo" || t.id === "t-demo-f" || t.id === "t-dev-preview") return true;
   if (t.loginPass === "0000" && /開發者/.test(String(t.name || ""))) return true;
+  if (/開發者測試/.test(String(t.name || ""))) return true;
   try {
     const r = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === t.roomId);
     return isDemoRoom(r);
@@ -86,7 +87,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客列表不再顯示開發者測試"] },
+  { ver: APP_VERSION, items: ["廠房租客列表也不再顯示開發者測試"] },
+  { ver: "2026-09-05-18-52-751", items: ["租客列表不再顯示開發者測試"] },
   { ver: "2026-09-05-18-49-750", items: ["行程進帳出帳圓鈕拿掉邊線"] },
   { ver: "2026-09-05-18-47-749", items: ["租客圖卡改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-18-46-748", items: ["開立發票總覽按鈕改成 iPhone 輕點回彈"] },
@@ -18388,6 +18390,7 @@ function tenantListOfKind(kind, opts) {
     if (!String(t.name || "").trim()) return false;
     if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
+    if (isDemoRoom(r) || isDemoFactoryRoom(r)) return false;
     if (all) return true;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     const chip = tenantChipOn();
@@ -18476,7 +18479,10 @@ function tenantListInnerHtml(kind) {
       ? rooms.map(r => vacantRoomCardHtml(r)).join("")
       : `<div class="empty">${normSearch(ui.tenantQ) ? miss : empty}</div>`;
   }
-  const entries = tenantEntriesOfKind(kind);
+  const entries = tenantEntriesOfKind(kind).filter(e =>
+    !(e.tenants || []).some(t => isDemoTenant(t) || /開發者測試/.test(String(t.name || ""))) &&
+    !(e.rooms || []).some(r => isDemoRoom(r) || isDemoFactoryRoom(r) || r.no === "F0000" || r.no === "0000")
+  );
   const q = normSearch(ui.tenantQ);
   const vacantHits = (q && tenantChipOn() !== "vacant")
     ? vacantRoomsOfKind(kind).filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
@@ -18628,6 +18634,7 @@ function tenantEntryCardHtml(kind, entry) {
   const t = tenants[0];
   const r = rooms[0];
   if (!t) return "";
+  if (isDemoTenant(t) || isDemoRoom(r) || isDemoFactoryRoom(r) || /開發者測試/.test(String(t.name || ""))) return "";
   const foldId = t.id;
   const unpaid = tenants.some(x => !x.paid);
   const pay = payChip(t, r, unpaid);
