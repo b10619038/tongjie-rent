@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-05";
-const APP_EDIT_COUNT = 758;
+const APP_STAMP = "2026-09-05-19-09";
+const APP_EDIT_COUNT = 759;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0308";
+const FILE_VER = "0309";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["套房分組圖卡與全部展開改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["滑動租客列表時不會誤開單一租客"] },
+  { ver: "2026-09-05-19-05-758", items: ["套房分組圖卡與全部展開改成輕點回彈"] },
   { ver: "2026-09-05-18-59-757", items: ["租客圖卡按壓效果修好，按下會整張縮小"] },
   { ver: "2026-09-05-18-57-756", items: ["首頁四個登入圖卡改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-18-56-755", items: ["上一月下一月圖塊縮小"] },
@@ -19010,24 +19011,65 @@ function bindAssetSearch() {
   inp.oninput = apply;
 }
 function bindTenantFold() {
+  const sc = document.querySelector(".admin-scroll");
+  if (sc && !sc.dataset.tenantGuard) {
+    sc.dataset.tenantGuard = "1";
+    sc.addEventListener("scroll", () => {
+      ui.tenantDrag = true;
+      document.querySelectorAll(".is-press").forEach(x => x.classList.remove("is-press"));
+    }, { passive: true });
+  }
   document.querySelectorAll("[data-fold-tenant]").forEach(el => {
     const id = el.dataset.foldTenant;
     if (!id) return;
     const target = el.closest(".swipe-wrap") || el;
+    let x0 = 0, y0 = 0, moved = false, top0 = 0;
     const pressOn = e => {
       if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay]")) return;
+      const p = e.touches ? e.touches[0] : e;
+      x0 = p.clientX; y0 = p.clientY; moved = false; ui.tenantDrag = false;
+      top0 = sc ? sc.scrollTop : 0;
+      if (target.dataset) target.dataset.scrolled = "0";
       target.classList.add("is-press");
       try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
     };
+    const track = e => {
+      const p = e.touches ? e.touches[0] : e;
+      if (!p) return;
+      if (Math.abs(p.clientX - x0) > 8 || Math.abs(p.clientY - y0) > 8) moved = true;
+      if (sc && Math.abs(sc.scrollTop - top0) > 1) moved = true;
+      if (moved) {
+        ui.tenantDrag = true;
+        target.classList.remove("is-press");
+        if (target.dataset) target.dataset.scrolled = "1";
+      }
+    };
     const pressOff = () => target.classList.remove("is-press");
     el.onpointerdown = pressOn;
+    el.onpointermove = track;
     el.onpointerup = pressOff;
     el.onpointercancel = pressOff;
     el.ontouchstart = pressOn;
+    el.ontouchmove = track;
     el.ontouchend = pressOff;
     el.onclick = e => {
       if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay]")) return;
-      if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
+      const wrap = el.closest(".swipe-wrap");
+      if (wrap && (wrap.dataset.swiping === "1" || wrap.dataset.scrolled === "1")) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (moved || ui.tenantDrag) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (sc && Math.abs(sc.scrollTop - top0) > 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       setTimeout(() => openTenantSheet(id), 80);
@@ -20642,7 +20684,7 @@ function bindLineSwipe() {
     const onDown = e => {
       if (e.target.closest("button") || e.target.closest("select") || e.target.closest("a")) return;
       const p = e.touches ? e.touches[0] : e;
-      active = true; moved = false; wrap.dataset.swiping = "0";
+      active = true; moved = false; wrap.dataset.swiping = "0"; wrap.dataset.scrolled = "0";
       startX = p.clientX; startY = p.clientY; dx = 0;
       const dock = document.getElementById("line-dock");
       if (dock && !dock.classList.contains("open")) {
@@ -20656,7 +20698,12 @@ function bindLineSwipe() {
       const mx = p.clientX - startX;
       const my = p.clientY - startY;
       if (!moved && Math.abs(mx) < 10 && Math.abs(my) < 10) return;
-      if (!moved && Math.abs(my) > Math.abs(mx)) { active = false; return; }
+      if (!moved && Math.abs(my) > Math.abs(mx)) {
+        active = false;
+        wrap.dataset.scrolled = "1";
+        wrap.classList.remove("is-press");
+        return;
+      }
       moved = true;
       wrap.dataset.swiping = "1";
       wrap.classList.remove("is-press");
