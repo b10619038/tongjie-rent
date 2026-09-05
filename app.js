@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-39";
-const APP_EDIT_COUNT = 745;
+const APP_STAMP = "2026-09-05-18-41";
+const APP_EDIT_COUNT = 746;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0295";
+const FILE_VER = "0296";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上一月下一月改成 iPhone 輕點回彈，換月不再整頁卡頓"] },
+  { ver: APP_VERSION, items: ["日曆行程進帳出帳圓鈕改成輕點回彈"] },
+  { ver: "2026-09-05-18-39-745", items: ["上一月下一月改成 iPhone 輕點回彈，換月不再整頁卡頓"] },
   { ver: "2026-09-05-18-36-744", items: ["上一月下一月縮放更快更跟手"] },
   { ver: "2026-09-05-18-22-743", items: ["行程點完成會記在當天總覽，不是原定日期"] },
   { ver: "2026-09-05-18-08-742", items: ["整月圈選再按一次可取消、都不選"] },
@@ -10151,6 +10152,31 @@ function swapCalMonth(dir) {
     void grid.offsetWidth;
     grid.classList.add("swap");
   }
+  bindCashCal();
+}
+function refreshCalSurface() {
+  rememberBookForm();
+  const card = document.getElementById("month-cash");
+  if (!card) {
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const tmp = document.createElement("div");
+  tmp.innerHTML = monthCashHtml();
+  const next = tmp.firstElementChild;
+  if (!next) return;
+  const take = sel => {
+    const a = card.querySelector(sel);
+    const b = next.querySelector(sel);
+    if (a && b) a.replaceWith(b);
+  };
+  take(".cal-grid");
+  take(".cal-day");
+  take(".cal-sum-actions");
+  card.querySelectorAll("[data-cal-kind]").forEach(btn => {
+    btn.classList.toggle("on", calKindOn(btn.dataset.calKind));
+  });
   bindCashCal();
 }
 function refreshCalSearchLive() {
@@ -22383,6 +22409,12 @@ function bindCashCal() {
     stay();
   };
   document.querySelectorAll("[data-cal-kind]").forEach(btn => {
+    btn.onpointerdown = () => {
+      btn.classList.add("is-press");
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+    };
+    btn.onpointerup = () => btn.classList.remove("is-press");
+    btn.onpointercancel = () => btn.classList.remove("is-press");
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -22390,7 +22422,8 @@ function bindCashCal() {
       const cur = calKinds();
       cur[k] = !calKindOn(k);
       persistCalKinds();
-      stay();
+      btn.classList.toggle("on", calKindOn(k));
+      refreshCalSurface();
     };
   });
   const search = document.getElementById("cal-search");

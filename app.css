@@ -2060,6 +2060,15 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   align-items: center;
   justify-content: center;
   opacity: .38;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  transform-origin: center center;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
 }
 .cal-kind.memo { color: #1d4e89; }
 .cal-kind.in { color: #2f6b3c; }
@@ -2068,6 +2077,12 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .cal-kind.memo.on { background: #e6f1fb; border-color: #1d4e89; }
 .cal-kind.in.on { background: #e7f4ea; border-color: #2f6b3c; }
 .cal-kind.out.on { background: #fbeaea; border-color: #c45c4a; }
+.cal-kind:active,
+.cal-kind.is-press {
+  transform: scale(0.88);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .cal-sum-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .bank-picks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .bank-pick {
