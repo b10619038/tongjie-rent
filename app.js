@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-34";
-const APP_EDIT_COUNT = 707;
+const APP_STAMP = "2026-09-05-12-41";
+const APP_EDIT_COUNT = 708;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0257";
+const FILE_VER = "0258";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會簿子改依七欄規則讀：只記有日期的支出或存入與摘要"] },
+  { ver: APP_VERSION, items: ["農會同一天多筆會拆開，結存不再當成金額"] },
+  { ver: "2026-09-05-12-34-707", items: ["農會簿子改依七欄規則讀：只記有日期的支出或存入與摘要"] },
   { ver: "2026-09-05-12-27-706", items: ["日曆上一月／下一月按下去有明顯縮放"] },
   { ver: "2026-09-05-12-21-705", items: ["日曆上一月／下一月按下去有顏色，且不再把畫面跳走"] },
   { ver: "2026-09-05-12-16-704", items: ["農會只記入有日期的支出或存入：不含結存、右欄備註、星號與括號"] },
@@ -10504,15 +10505,6 @@ function looksLikeNonghui(text) {
   const n = (s.replace(/\s+/g, "").match(/11[0-9]\d{4}/g) || []).length;
   return n >= 2;
 }
-function nonghuiLessonNote(chunk) {
-  const s = String(chunk || "");
-  if (/火震/.test(s)) return { note: "火震險", type: "out" };
-  if (/人壽|壽險/.test(s)) return { note: "人壽險", type: "out" };
-  if (/還本|本息|EAH/i.test(s)) return { note: "還本息", type: "out" };
-  if (/活息/.test(s)) return { note: "活息", type: "in" };
-  if (/IC轉|ＩＣ轉|I\s*C轉|CER\s*700|轉\s*700/i.test(s)) return { note: "IC轉", type: "in" };
-  return null;
-}
 function nonghuiMoneyList(chunk) {
   let s = String(chunk || "").replace(/\([^)]*\)/g, " ");
   const out = [];
@@ -10525,54 +10517,88 @@ function nonghuiMoneyList(chunk) {
   s.replace(/(\d{1,3}(?:,\d{3})+[.,]\d{2}|\d+[.,]\d{2})/g, (_, n) => push(n));
   return out;
 }
-function parseNonghuiTxnAmount(chunk) {
-  const list = nonghuiMoneyList(chunk);
-  if (list.length >= 2) return list[0];
-  return list[0] || 0;
+function nonghuiDateHits(s) {
+  const hits = [];
+  const add = (index, y, mo, d, len) => {
+    if (y < 110 || y > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) return;
+    hits.push({
+      i: index,
+      len,
+      date: (y + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0")
+    });
+  };
+  let m;
+  const re7 = /(11[0-9]|12[0-5])(\d{2})(\d{2})/g;
+  while ((m = re7.exec(s))) {
+    if (/^\d{3}/.test(s.slice(m.index + 7))) continue;
+    if (m.index > 0 && /\d/.test(s[m.index - 1])) {
+      const prev = s.slice(Math.max(0, m.index - 3), m.index);
+      if (!/\.?00$/.test(prev)) continue;
+    }
+    add(m.index, Number(m[1]), Number(m[2]), Number(m[3]), 7);
+  }
+  const reS = /(11[0-9]|12[0-5])[\/.\-年](\d{1,2})[\/.\-月]?(\d{1,2})/g;
+  while ((m = reS.exec(s))) add(m.index, Number(m[1]), Number(m[2]), Number(m[3]), m[0].length);
+  hits.sort((a, b) => a.i - b.i);
+  return hits;
+}
+function nonghuiLessonHits(s) {
+  const rules = [
+    { re: /火震險?\d*/g, note: "火震險", type: "out" },
+    { re: /人壽險|人壽|壽險/g, note: "人壽險", type: "out" },
+    { re: /還本息\d*|還本|本息|EAH\d*/gi, note: "還本息", type: "out" },
+    { re: /活息/g, note: "活息", type: "in" },
+    { re: /IC轉\d*|I\s*C轉\d*|CER\s*700|轉700/gi, note: "IC轉", type: "in" }
+  ];
+  const hits = [];
+  rules.forEach(rule => {
+    const re = new RegExp(rule.re.source, rule.re.flags.includes("g") ? rule.re.flags : rule.re.flags + "g");
+    let m;
+    while ((m = re.exec(s))) hits.push({ i: m.index, len: m[0].length, note: rule.note, type: rule.type });
+  });
+  hits.sort((a, b) => a.i - b.i || b.len - a.len);
+  const kept = [];
+  hits.forEach(h => {
+    if (kept.some(k => h.i < k.i + k.len && k.i < h.i + h.len)) return;
+    kept.push(h);
+  });
+  return kept.sort((a, b) => a.i - b.i);
 }
 function parseNonghuiPassbook(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
   const prepped = String(text || "")
     .replace(/\u3000/g, " ")
+    .replace(/[ＩIＩ]\s*[ＣCＣ]\s*轉/g, "IC轉")
     .replace(/帳號[:：]?\s*[\d-]+/g, " ")
     .replace(/本數[:：]?\s*\d+/g, " ")
     .replace(/\([^)]{0,40}\)/g, " ")
-    .replace(/\bB\d{3,5}\b/g, " ")
-    .replace(/\b\d{1,2}\/\d{1,2}\b/g, " ");
+    .replace(/\bB\d{3,5}\b/g, " ");
   const compact = prepped.replace(/\s+/g, "");
-  const marks = [];
-  const re = /(11[0-9]|12[0-5])(\d{2})(\d{2})/g;
-  let m;
-  while ((m = re.exec(compact))) {
-    const y0 = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-    if (y0 < 110 || y0 > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
-    if (/^\d{3}/.test(compact.slice(m.index + 7))) continue;
-    if (m.index > 0 && /\d/.test(compact[m.index - 1])) {
-      const prev = compact.slice(Math.max(0, m.index - 3), m.index);
-      if (!/\.?00$/.test(prev)) continue;
-    }
-    const date = (y0 + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
-    marks.push({ i: m.index, date });
-  }
+  const dates = nonghuiDateHits(compact);
+  const lessons = nonghuiLessonHits(compact);
   const rows = [];
-  for (let i = 0; i < marks.length; i++) {
-    const chunk = compact.slice(marks[i].i, i + 1 < marks.length ? marks[i + 1].i : compact.length);
-    if (/帳號/.test(chunk)) continue;
-    const lesson = nonghuiLessonNote(chunk);
-    if (!lesson) continue;
-    const money = nonghuiMoneyList(chunk);
-    if (!money.length) continue;
+  lessons.forEach((lesson, idx) => {
+    let dateHit = null;
+    dates.forEach(d => { if (d.i <= lesson.i) dateHit = d; });
+    if (!dateHit) dateHit = dates.find(d => d.i - lesson.i < 48) || null;
+    if (!dateHit) return;
+    const end = idx + 1 < lessons.length ? lessons[idx + 1].i : compact.length;
+    const window = compact.slice(lesson.i, end);
+    if (/帳號/.test(window)) return;
+    const money = nonghuiMoneyList(window);
+    if (!money.length) return;
     const amount = money.length >= 2 ? money[0] : money[0];
-    if (!(amount >= 1 && amount < 2000000)) continue;
+    if (lesson.note !== "活息" && amount < 100) return;
+    if (!(amount >= 1 && amount < 2000000)) return;
     rows.push({
-      date: marks[i].date,
+      date: dateHit.date,
       type: lesson.type,
       amount,
       company: defCo,
       bank: "農會",
       note: lesson.note
     });
-  }
+  });
   return rows;
 }
 function parseStarMoney(line) {
@@ -10625,7 +10651,9 @@ function parsePassbookOcr(text, defaults) {
   const defBank = (defaults && defaults.bank) || "";
   const auto = defaults && defaults.type === "auto";
   const defType = auto ? "" : (defaults && defaults.type === "out" ? "out" : "in");
-  if (looksLikeNonghui(text)) return parseNonghuiPassbook(text, defaults);
+  const nh = parseNonghuiPassbook(text, defaults);
+  if (nh.length) return nh;
+  if (looksLikeNonghui(text)) return [];
   const rows = [];
   String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
     const line = String(raw || "").trim();
