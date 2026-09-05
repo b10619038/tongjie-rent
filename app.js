@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-03";
-const APP_EDIT_COUNT = 703;
+const APP_STAMP = "2026-09-05-12-16";
+const APP_EDIT_COUNT = 704;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0253";
+const FILE_VER = "0254";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會簿子加強認字：影像清晰化、結存升降判斷進出，失敗可再認一次"] },
+  { ver: APP_VERSION, items: ["農會只記入有日期的支出或存入：不含結存、右欄備註、星號與括號"] },
+  { ver: "2026-09-05-12-03-703", items: ["農會簿子加強認字：影像清晰化、結存升降判斷進出，失敗可再認一次"] },
   { ver: "2026-09-05-11-55-702", items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
   { ver: "2026-09-05-11-39-701", items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
   { ver: "2026-09-05-11-33-700", items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
@@ -10476,8 +10477,8 @@ function undoLastBookImport() {
 }
 function guessPassbookType(line, nums) {
   const s = String(line || "");
-  const outHit = /支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款|現提|金融卡提款|轉帳支出|跨行手續|本行轉出|還本|壽險|火震|保險/.test(s);
-  const inHit = /存入|匯入|轉入|利息|放款|入帳|現存|轉帳存入|薪轉|租金|現金存款|金融卡轉入|IC轉|ＩＣ轉|I\s*C轉|活息/.test(s);
+  const outHit = /支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款|現提|金融卡提款|轉帳支出|跨行手續|本行轉出|還本|壽險|火震|保險|EAH/.test(s);
+  const inHit = /存入|匯入|轉入|利息|放款|入帳|現存|轉帳存入|薪轉|租金|現金存款|金融卡轉入|IC轉|ＩＣ轉|I\s*C轉|活息|CER/.test(s);
   if (outHit && !inHit) return "out";
   if (inHit && !outHit) return "in";
   const n = (nums || []).filter(v => Number(v) >= 100);
@@ -10532,42 +10533,94 @@ function nonghuiNote(line) {
   s = s.replace(/結存|支出金額|存入金額|備註/g, " ");
   return s.replace(/\s+/g, " ").trim().slice(0, 48);
 }
+function parseNonghuiMoneyToken(raw) {
+  let s = String(raw || "").replace(/[^\d.,]/g, "");
+  if (!s) return 0;
+  let m = s.match(/^(\d{1,3}(?:,\d{3})+)[.,](\d{2})/);
+  if (m) return Number(m[1].replace(/,/g, ""));
+  m = s.match(/^(\d+)[.,](\d{2})/);
+  if (m) return Number(m[1]);
+  m = s.match(/^(\d{1,3}(?:,\d{3})+)$/);
+  if (m) return Number(m[1].replace(/,/g, ""));
+  const n = Number(s.replace(/,/g, ""));
+  return n > 0 && n < 5000000 ? n : 0;
+}
+function parseNonghuiTxnAmount(chunk) {
+  let s = String(chunk || "");
+  s = s.replace(/\([^)]*\)/g, " ");
+  s = s.replace(/\bB\d{3,5}\b/g, " ");
+  s = s.replace(/\b\d{1,2}\/\d{1,2}\b/g, " ");
+  s = s.replace(/本數[:：]?\s*\d+/g, " ");
+  const starred = [];
+  s.replace(/[＊*%$xX]\s*([\d,]+(?:[.,]\d{2})?)/g, (_, n) => {
+    const v = parseNonghuiMoneyToken(n);
+    if (v > 0) starred.push(v);
+  });
+  if (starred.length >= 2) return starred[0];
+  if (starred.length === 1) return starred[0];
+  const all = [];
+  s.replace(/(\d{1,3}(?:,\d{3})+[.,]\d{2}|\d+[.,]\d{2})/g, (_, n) => {
+    const v = parseNonghuiMoneyToken(n);
+    if (v >= 1 && v < 5000000) all.push(v);
+  });
+  if (all.length >= 2) return all[0];
+  return all[0] || 0;
+}
+function cleanNonghuiNote(chunk) {
+  let s = String(chunk || "");
+  s = s.replace(/1[0-2]\d\s*\d{2}\s*\d{2}/, " ");
+  s = s.replace(/\([^)]*\)/g, " ");
+  s = s.replace(/[＊*%$xX:]\s*[\d,.]*/g, " ");
+  s = s.replace(/\bB\d{3,5}\b|\b\d{1,2}\/\d{1,2}\b|本數[:：]?\s*\d+/g, " ");
+  s = s.replace(/\d{6,}/g, " ");
+  s = s.replace(/結存|支出金額|存入金額|備註|年月日|摘要/g, " ");
+  const raw = s.replace(/\s+/g, " ").trim();
+  if (/火震/.test(raw)) return "火震險";
+  if (/壽險|人壽/.test(raw)) return "人壽險";
+  if (/還本|本息|EAH/i.test(raw)) return "還本息";
+  if (/活息/.test(raw)) return "活息";
+  if (/IC|ＩＣ|I\s*C|CER\s*700|轉\s*700/i.test(raw)) return "IC轉";
+  return raw.replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, " ").replace(/\s+/g, " ").trim().slice(0, 24);
+}
 function parseNonghuiPassbook(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
-  const auto = !defaults || defaults.type === "auto" || !defaults.type;
-  const defType = auto ? "" : (defaults.type === "out" ? "out" : "in");
-  const src = String(text || "").replace(/\u3000/g, " ");
+  const prepped = String(text || "")
+    .replace(/\u3000/g, " ")
+    .replace(/帳號[:：]?\s*[\d-]+/g, " ")
+    .replace(/本數[:：]?\s*\d+/g, " ")
+    .replace(/\([^)]{0,40}\)/g, " ")
+    .replace(/\bB\d{3,5}\b/g, " ")
+    .replace(/\b\d{1,2}\/\d{1,2}\b/g, " ");
+  const compact = prepped.replace(/\s+/g, "");
   const marks = [];
-  const re = /(1[0-2]\d)\s*(\d{2})\s*(\d{2})/g;
+  const re = /(11[0-9]|12[0-5])(\d{2})(\d{2})/g;
   let m;
-  while ((m = re.exec(src))) {
+  while ((m = re.exec(compact))) {
     const y0 = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
-    if (y0 < 90 || y0 > 199 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    if (y0 < 110 || y0 > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    if (/^\d{3}/.test(compact.slice(m.index + 7))) continue;
+    if (m.index > 0 && /\d/.test(compact[m.index - 1])) {
+      const prev = compact.slice(Math.max(0, m.index - 3), m.index);
+      if (!/\.?00$/.test(prev)) continue;
+    }
     const date = (y0 + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
     marks.push({ i: m.index, date });
   }
   const rows = [];
-  let prevBal = 0;
   for (let i = 0; i < marks.length; i++) {
-    const chunk = src.slice(marks[i].i, i + 1 < marks.length ? marks[i + 1].i : src.length);
+    const chunk = compact.slice(marks[i].i, i + 1 < marks.length ? marks[i + 1].i : compact.length);
     if (/帳號/.test(chunk)) continue;
-    const money = parseStarMoney(chunk);
-    if (!money.length) continue;
-    const bal = money[money.length - 1];
-    const amount = money.length >= 2 ? money[money.length - 2] : money[0];
-    if (!amount) continue;
-    const note = nonghuiNote(chunk);
-    let type = guessPassbookType(note + " " + chunk, money) || defType;
-    if (type !== "in" && type !== "out" && prevBal) {
-      if (bal > prevBal + 0.4) type = "in";
-      else if (bal < prevBal - 0.4) type = "out";
-    }
+    const amount = parseNonghuiTxnAmount(chunk);
+    if (!(amount >= 1 && amount < 5000000)) continue;
+    const note = cleanNonghuiNote(chunk);
+    if (!note) continue;
+    let type = guessPassbookType(note, [amount]);
     if (type !== "in" && type !== "out") {
-      if (money.length >= 2) type = "in";
+      if (/還本|本息|壽險|火震|保險|EAH/i.test(note + chunk)) type = "out";
+      else if (/IC|ＩＣ|活息|轉|CER/i.test(note + chunk)) type = "in";
       else continue;
     }
-    rows.push({ date: marks[i].date, type, amount, company: defCo, bank: "農會", note: note || "農會簿子" });
-    if (bal) prevBal = bal;
+    rows.push({ date: marks[i].date, type, amount, company: defCo, bank: "農會", note });
   }
   return rows;
 }
