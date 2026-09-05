@@ -1462,10 +1462,10 @@ input[type="file"] {
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .issue-opt.selected {
-  background: var(--press-on);
-  border-color: var(--teal);
+  background: #ececec;
+  border-color: #cfcfcf;
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--teal);
+  box-shadow: none;
 }
 .sign-term { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 4px; font-weight: 700; line-height: 1.4; }
 .sign-term input { margin-top: 3px; }
@@ -3258,7 +3258,7 @@ img.avatar { object-fit: cover; display: block; }
   .nav button:hover, .linkish:hover, .section-title [data-page]:hover, .esign-cta:hover {
     background-color: var(--press);
   }
-  .issue-opt.selected:hover { background-color: var(--press-on); color: var(--ink); }
+  .issue-opt.selected:hover { background-color: #e4e4e4; color: var(--ink); }
   .tab:hover { background-color: transparent; color: var(--ink); }
   .tab.on:hover { background-color: transparent; color: var(--on-teal); }
 }
