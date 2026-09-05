@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-16-58";
-const APP_EDIT_COUNT = 730;
+const APP_STAMP = "2026-09-05-17-02";
+const APP_EDIT_COUNT = 731;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0280";
+const FILE_VER = "0281";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
+  { ver: APP_VERSION, items: ["有「繳」的字改判出帳，不再誤成收現"] },
+  { ver: "2026-09-05-16-58-730", items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
   { ver: "2026-09-05-16-53-729", items: ["本月工作標題右邊加上藍色行程"] },
   { ver: "2026-09-05-16-29-728", items: ["跑業務手寫改叫白紙，可留檔下載"] },
   { ver: "2026-09-05-16-25-727", items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
@@ -2834,6 +2835,7 @@ function normalize(data) {
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
+  try { retitlePayOutErrands(data); } catch {}
   if (!Array.isArray(data.ledgerGone)) data.ledgerGone = [];
   if (!Array.isArray(data.checkouts)) data.checkouts = [];
   if (!Array.isArray(data.lunchSpots)) data.lunchSpots = [];
@@ -11779,8 +11781,35 @@ function guessBill(text) {
   if (/垃圾|清潔費/.test(s)) return { name: "清潔費", place: "超商" };
   if (/中華電信|遠傳|台哥大|台灣大哥大|亞太/.test(s)) return { name: "電信費", place: "超商" };
   if (/地價稅|房屋稅|牌照稅|所得稅/.test(s)) return { name: "稅金", place: "超商" };
+  if (/火險|地震險|產險|保險費|保險/.test(s)) return { name: "保險", place: "超商" };
   if (/繳費單|繳款單|帳單|繳費/.test(s)) return { name: "繳費", place: "超商" };
   return null;
+}
+function isPayOutText(text) {
+  const s = String(text || "");
+  if (!s || !/繳/.test(s)) return false;
+  if (/收租|收現|收錢/.test(s) && !/繳費|繳款|繳稅|繳納|火險|保險/.test(s)) return false;
+  return true;
+}
+function retitlePayOutErrands(data) {
+  if (!data) return;
+  (data.errands || []).forEach(e => {
+    if (!e) return;
+    const blob = [e.title, e.note, e.summary].filter(Boolean).join(" ");
+    if (!isPayOutText(blob)) return;
+    if (!e.pendingBank && !/收租|收現/.test(String(e.title || ""))) return;
+    e.pendingBank = false;
+    if (/收租|收現/.test(String(e.title || ""))) {
+      e.title = /火險|保險/.test(blob) ? "繳費　保險" : "繳費";
+    }
+    const books = data.books || [];
+    books.forEach(b => {
+      if (!b) return;
+      if (b.linkedId !== e.id && e.linkedId !== b.id) return;
+      b.type = "out";
+      b.pendingBank = false;
+    });
+  });
 }
 function inferOneFile(file) {
   const blob = String((file && file.name) || "");
@@ -11797,13 +11826,20 @@ function inferOneFile(file) {
   let pendingBank = false;
   let place = bank;
   let cashType = cellType(blob, amount) || "in";
-  const collecting = /收租|租金|收現|現金|收錢/.test(blob) && !isDepositRefund(blob);
+  const collecting = /收租|租金|收現|收錢|收到現金|收了現金/.test(blob) && !/繳/.test(blob) && !isDepositRefund(blob);
   if (isDepositRefund(blob)) {
     title = "退還押金" + (party ? "　" + party.name : "");
     cashType = "out";
     pendingBank = false;
     if (!company) company = cellAccount(blob) || "統潔";
-  } else if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款/.test(blob))) {
+  } else if (isPayOutText(blob) || (bill && /繳/.test(blob))) {
+    title = bill ? ("繳費　" + bill.name) : (/火險|保險/.test(blob) ? "繳費　保險" : "繳費");
+    cashType = "out";
+    pendingBank = false;
+    place = place || (bill && bill.place) || (/超商|7-?11|全家|萊爾富|\bOK\b/.test(blob) ? "超商" : place);
+    if (/現金/.test(blob) && !company) company = "現金(保險箱)";
+    if (!company) company = cellAccount(blob) || "統潔";
+  } else if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款|繳/.test(blob))) {
     title = party
       ? ("收" + (bill ? bill.name : "租") + "　" + party.name)
       : (bill ? ("收" + bill.name + "／收現") : "收租／收現");
