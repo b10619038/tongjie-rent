@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-08";
-const APP_EDIT_COUNT = 712;
+const APP_STAMP = "2026-09-05-14-18";
+const APP_EDIT_COUNT = 713;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0262";
+const FILE_VER = "0263";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
+  { ver: APP_VERSION, items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
+  { ver: "2026-09-05-14-08-712", items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
   { ver: "2026-09-05-14-01-711", items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
   { ver: "2026-09-05-13-03-710", items: ["雲端認字改直接連 Google，設定可測試連線"] },
   { ver: "2026-09-05-12-51-709", items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
@@ -874,15 +875,15 @@ function visionSettingsHtml() {
   const n = visionUseCount();
   const tail = has ? String(state.visionKey).trim().slice(-4) : "";
   return `<div class="card card-body">
-    <div class="label">雲端認字（Google）</div>
+    <div class="label">雲端看圖（Gemini）</div>
     <div class="row"><span class="k">狀態</span><span class="v">${has ? "已接 · 尾碼 " + escapeHtml(tail) : "尚未接"}</span></div>
-    <div class="row"><span class="k">本月已用</span><span class="v">${n}／1,000 張免費</span></div>
-    <p class="small" style="margin-top:8px">每月前 1,000 張免費，下月歸零。上傳簿子會送到 Google 認字，再套農會規則。請用開發者自己的金鑰。</p>
+    <div class="row"><span class="k">認字備用</span><span class="v">${n}／1,000 張免費</span></div>
+    <p class="small" style="margin-top:8px">上傳簿子先讓 Gemini 看懂欄位（走 Google 試用額度）。看不懂才改用認字。同一把金鑰即可。</p>
     ${ui.visionLastError ? `<p class="small" style="margin-top:8px;color:var(--rose)">${escapeHtml(ui.visionLastError)}</p>` : ""}
     <ol class="small" style="margin:8px 0 0 18px;padding:0">
-      <li>打開 <a href="https://console.cloud.google.com/apis/library/vision.googleapis.com" target="_blank" rel="noopener">Cloud Vision API</a> 並啟用</li>
-      <li>到「憑證」建立 API 金鑰，可限制只能用 Cloud Vision API</li>
-      <li>把金鑰貼下方後按儲存</li>
+      <li>打開 <a href="https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com" target="_blank" rel="noopener">Gemini API</a> 並啟用</li>
+      <li>憑證裡這把金鑰的「API 限制」要勾 <b>Generative Language API</b>（可同時勾 Cloud Vision API）</li>
+      <li>測試連線通過後再傳簿子</li>
     </ol>
     <input id="vision-key" type="password" autocomplete="off" placeholder="${has ? "已儲存，要換再貼新的" : "貼上 Google API 金鑰"}" style="margin-top:10px" />
     <div class="btn-row" style="margin-top:8px">
@@ -10917,53 +10918,175 @@ async function ocrPassbookCloud(file) {
   }
 }
 function visionErrText(err) {
-  const msg = String((err && (err.message || err.status)) || err || "");
+  const msg = String((err && (err.message || err.status || err.statusText)) || err || "");
+  if (/API_KEY_SERVICE_BLOCKED|SERVICE_BLOCKED/i.test(msg)) {
+    return "金鑰還沒開放 Gemini。請啟用 Gemini API，並在金鑰的 API 限制勾選 Generative Language API";
+  }
   if (/API key not valid|API_KEY_INVALID/i.test(msg)) return "金鑰無效，請重新貼上";
-  if (/PERMISSION_DENIED|has not been used|disabled|not enabled/i.test(msg)) return "尚未啟用 Cloud Vision API";
+  if (/PERMISSION_DENIED|has not been used|disabled|not enabled|FAILED_PRECONDITION/i.test(msg) && /generativelanguage|Gemini/i.test(msg)) {
+    return "尚未啟用 Gemini API，請到程式庫搜尋 Gemini 並啟用";
+  }
+  if (/PERMISSION_DENIED|has not been used|disabled|not enabled/i.test(msg)) return "尚未啟用對應的 Google API";
   if (/billing|BILLING/i.test(msg)) return "Google 要先開帳單，額度內不會扣錢";
-  return msg.slice(0, 80) || "雲端認字失敗";
+  return msg.slice(0, 120) || "雲端看圖失敗";
+}
+const GEMINI_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"];
+function geminiPassbookPrompt() {
+  return "這是台灣農會存摺照片。請讀每一筆「左邊有日期」的交易，輸出 JSON 陣列。\n"
+    + "規則：\n"
+    + "1. 日期是民國7碼，如 1131213＝113年12月13日＝西元2024-12-13（民國年+1911）\n"
+    + "2. 摘要欄才是備註：IC轉、還本息、活息、人壽險、火震險。不要讀最右邊備註欄（B1216、06/03 那些）\n"
+    + "3. * 只表示金額在支出欄或存入欄，不要記入\n"
+    + "4. 支出金額右邊括號()內容不要\n"
+    + "5. 結存金額不要入帳\n"
+    + "6. 沒有日期的行不要（帳號、本數、標題、空行）\n"
+    + "7. IC轉、活息＝進帳 in；還本息、人壽險、火震險＝出帳 out\n"
+    + "8. amount 是該行支出或存入的整數，不要小數、不要逗號、不要結存\n"
+    + "只輸出 JSON，不要其他字：\n"
+    + "[{\"date\":\"2024-12-13\",\"type\":\"in\",\"amount\":23000,\"note\":\"IC轉\"}]";
+}
+function parseGeminiBookRows(raw, defaults) {
+  let s = String(raw || "").trim();
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  const m = s.match(/\[[\s\S]*\]/);
+  if (!m) return [];
+  let arr;
+  try { arr = JSON.parse(m[0]); } catch { return []; }
+  if (!Array.isArray(arr)) return [];
+  const defCo = (defaults && defaults.company) || "統潔";
+  const defBank = (defaults && defaults.bank) || "農會";
+  const out = [];
+  arr.forEach(item => {
+    if (!item) return;
+    let date = String(item.date || "").trim();
+    const roc7 = date.replace(/\D/g, "");
+    if (/^\d{7}$/.test(roc7)) {
+      const y = Number(roc7.slice(0, 3)) + 1911;
+      date = y + "-" + roc7.slice(3, 5) + "-" + roc7.slice(5, 7);
+    } else {
+      const p = date.match(/^(\d{2,3})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+      if (p) {
+        let y = Number(p[1]);
+        if (y < 200) y += 1911;
+        date = y + "-" + String(Number(p[2])).padStart(2, "0") + "-" + String(Number(p[3])).padStart(2, "0");
+      }
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    let type = String(item.type || "").toLowerCase();
+    const note0 = String(item.note || item.摘要 || "");
+    if (type !== "in" && type !== "out") {
+      if (/還本|壽險|火震|保險|支出/.test(note0)) type = "out";
+      else if (/IC轉|ＩＣ轉|活息|存入/.test(note0)) type = "in";
+    }
+    if (type !== "in" && type !== "out") return;
+    const amount = Math.round(Number(String(item.amount).replace(/[^\d.-]/g, "")) || 0);
+    if (amount < 1 || amount >= 2000000) return;
+    let note = note0;
+    if (/火震/.test(note0)) note = "火震險";
+    else if (/人壽|壽險/.test(note0)) note = "人壽險";
+    else if (/還本|本息/.test(note0)) note = "還本息";
+    else if (/活息/.test(note0)) note = "活息";
+    else if (/IC|ＩＣ|轉700|轉812/.test(note0)) note = "IC轉";
+    else note = String(note0).replace(/\d{4,}/g, "").trim().slice(0, 24) || (type === "in" ? "存入" : "支出");
+    out.push({ date, type, amount, company: defCo, bank: defBank, note });
+  });
+  return out;
+}
+async function readPassbookGemini(file, defaults) {
+  const key = String((state && state.visionKey) || "").trim();
+  if (!key) return [];
+  const image = await fileToVisionJpeg(file);
+  if (!image) { ui.visionLastError = "照片轉檔失敗"; return []; }
+  const models = ui.geminiModel ? [ui.geminiModel].concat(GEMINI_MODELS.filter(m => m !== ui.geminiModel)) : GEMINI_MODELS.slice();
+  let lastErr = "";
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: "image/jpeg", data: image } },
+              { text: geminiPassbookPrompt() }
+            ]
+          }],
+          generationConfig: { temperature: 0, responseMimeType: "application/json" }
+        })
+      });
+      const data = await res.json();
+      if (data && data.error) {
+        lastErr = visionErrText(data.error);
+        if (/金鑰無效|尚未啟用|還沒開放|帳單/.test(lastErr)) {
+          ui.visionLastError = lastErr;
+          return [];
+        }
+        continue;
+      }
+      const text = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p && p.text).filter(Boolean).join("\n");
+      const rows = parseGeminiBookRows(text, defaults);
+      if (rows.length) {
+        ui.geminiModel = model;
+        ui.visionLastError = "";
+        return rows;
+      }
+      lastErr = "Gemini 沒讀出完整帳";
+    } catch {
+      lastErr = "連不上 Gemini";
+    }
+  }
+  ui.visionLastError = lastErr;
+  return [];
 }
 async function testVisionKey() {
   const key = String((state && state.visionKey) || "").trim();
   if (!key) { toast("請先儲存金鑰"); return; }
-  toast("正在測試雲端認字…");
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 16; canvas.height = 16;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 16, 16);
-    ctx.fillStyle = "#000"; ctx.font = "12px sans-serif"; ctx.fillText("1", 4, 12);
-    const image = canvas.toDataURL("image/jpeg", 0.8).replace(/^data:image\/jpeg;base64,/, "");
-    const res = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        requests: [{ image: { content: image }, features: [{ type: "TEXT_DETECTION" }] }]
-      })
-    });
-    const data = await res.json();
-    const err = (data && data.error) || (data && data.responses && data.responses[0] && data.responses[0].error);
-    if (err) {
-      ui.visionLastError = visionErrText(err);
-      toast(ui.visionLastError);
+  toast("正在測試 Gemini…");
+  const canvas = document.createElement("canvas");
+  canvas.width = 16; canvas.height = 16;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 16, 16);
+  ctx.fillStyle = "#000"; ctx.font = "12px sans-serif"; ctx.fillText("1", 4, 12);
+  const image = canvas.toDataURL("image/jpeg", 0.8).replace(/^data:image\/jpeg;base64,/, "");
+  let lastErr = "";
+  for (let i = 0; i < GEMINI_MODELS.length; i++) {
+    const model = GEMINI_MODELS[i];
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: "只回 JSON 陣列 []" }] }],
+          generationConfig: { temperature: 0, responseMimeType: "application/json" }
+        })
+      });
+      const data = await res.json();
+      if (data && data.error) {
+        lastErr = visionErrText(data.error);
+        if (/金鑰無效|尚未啟用|還沒開放|帳單/.test(lastErr)) break;
+        continue;
+      }
+      ui.geminiModel = model;
+      ui.visionLastError = "";
+      toast("Gemini 已通，可以傳簿子了");
       ui.keepScroll = true;
       render();
       return;
+    } catch {
+      lastErr = "連不上 Gemini";
     }
-    ui.visionLastError = "";
-    toast("雲端認字已通，可以傳簿子了");
-    ui.keepScroll = true;
-    render();
-  } catch {
-    ui.visionLastError = "連不上 Google";
-    toast(ui.visionLastError);
   }
+  ui.visionLastError = lastErr || "Gemini 測試失敗";
+  toast(ui.visionLastError);
+  ui.keepScroll = true;
+  render();
 }
 async function importPassbookPhotos(files, defaults, after) {
   const list = [...(files || [])].filter(f => f && !isSheetFile(f));
   if (!list.length) { toast("請選簿子照片"); return; }
   const cloudOn = !!(state.visionKey && String(state.visionKey).trim());
-  toast(cloudOn ? "雲端認字中，金流以簿子為準…" : "正在查看簿子照片，金流以簿子為準…");
+  toast(cloudOn ? "Gemini 看圖中，金流以簿子為準…" : "正在查看簿子照片，金流以簿子為準…");
   let rows = [];
   let worker = null;
   if (!cloudOn) {
@@ -10976,8 +11099,14 @@ async function importPassbookPhotos(files, defaults, after) {
     let got = [];
     let ocrText = "";
     if (cloudOn) {
+      try { got = await readPassbookGemini(f, defaults); } catch {}
+      if (got.length) {
+        got.forEach(r => { r.importFile = f.name || r.importFile || ""; });
+        rows = rows.concat(got);
+        continue;
+      }
+      if (ui.visionLastError) toast(ui.visionLastError);
       try { ocrText = await ocrPassbookCloud(f); } catch {}
-      if (!ocrText && ui.visionLastError) toast(ui.visionLastError);
     }
     if (!ocrText) {
       if (!worker) {
