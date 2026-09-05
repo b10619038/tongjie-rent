@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-46";
-const APP_EDIT_COUNT = 716;
+const APP_STAMP = "2026-09-05-14-50";
+const APP_EDIT_COUNT = 717;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0266";
+const FILE_VER = "0267";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
+  { ver: APP_VERSION, items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
+  { ver: "2026-09-05-14-46-716", items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
   { ver: "2026-09-05-14-40-715", items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
   { ver: "2026-09-05-14-28-714", items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
   { ver: "2026-09-05-14-18-713", items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
@@ -10122,14 +10123,11 @@ function monthCashHtml() {
       ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
       <div class="cal-form-row">
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : escapeHtml(ui.bookNote || "")}" />
-        <div class="book-up" id="book-up">
-          <button type="button" class="upload" id="book-up-open">上傳</button>
-          <input id="book-up-files" type="file" multiple hidden accept=".jpg,.jpeg,.png,.heic,.webp,.bmp,.gif,.tif,.tiff,.xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
-        </div>
       </div>
       ${bookUpFilesHtml()}
       <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會依表格的帳戶、銀行、簿子自動對上統潔／信潔、聯邦／農會／兆豐。照片只留檔名可下載，不記入日曆。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳檔案" : "記入日曆")}</button>
+      ${ed ? "" : `<input id="book-up-files" type="file" multiple hidden accept=".jpg,.jpeg,.png,.heic,.webp,.bmp,.gif,.tif,.tiff,.xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />`}
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
     ${lastBookImportHtml()}
@@ -21750,16 +21748,6 @@ function bindCashCal() {
       rememberBookForm(form);
       const auto = form.type.value === "auto";
       if (!amount && !ui.editBookId && auto) {
-        const posted = currentUploadPostedCount();
-        if (posted) {
-          toast("這批 Excel 有 " + posted + " 筆已在日曆，請點有點的日期或看下方剛剛上傳的紀錄");
-          return;
-        }
-        const photos = bookVault().filter(x => x && x.kind !== "sheet");
-        if (photos.length) {
-          toast("照片不會記入日曆。請點下載，傳到聊天給我過目後再同步。");
-          return;
-        }
         const up = document.getElementById("book-up-files");
         if (up) { up.click(); return; }
         return;
