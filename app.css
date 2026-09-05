@@ -1840,11 +1840,30 @@ input[type="file"] {
   line-height: 1.2;
   letter-spacing: 0;
 }
-.errand-kinds {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+#errand-form .tenant-slim-head {
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+}
+#errand-form .fold-head {
+  flex: 0 0 auto;
+  width: auto;
+}
+#errand-form .errand-kinds {
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+#errand-form .errand-head-end {
+  margin-left: auto;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+#errand-form #errand-to-ball {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 .errand-kinds button {
   -webkit-appearance: none;
