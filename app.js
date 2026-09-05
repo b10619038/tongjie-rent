@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-05";
-const APP_EDIT_COUNT = 722;
+const APP_STAMP = "2026-09-05-15-07";
+const APP_EDIT_COUNT = 723;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0272";
+const FILE_VER = "0273";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
+  { ver: APP_VERSION, items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
+  { ver: "2026-09-05-15-05-722", items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
   { ver: "2026-09-05-15-01-721", items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
   { ver: "2026-09-05-14-57-720", items: ["新增一筆的備註欄改為全寬"] },
   { ver: "2026-09-05-14-56-719", items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
@@ -9390,7 +9391,8 @@ function rememberedBookBank(company) {
   return allowed[0] || "";
 }
 function bookAccountOptions(selected) {
-  const withAuto = selected === "auto" || selected === "";
+  const typeAuto = !ui.editBookId && (ui.bookType === "auto" || !ui.bookType);
+  const withAuto = typeAuto || selected === "auto" || selected === "";
   const sel = String(selected || (withAuto ? "auto" : "統潔"));
   const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
   const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
@@ -9492,8 +9494,9 @@ function bankSelectHtml(acct, selected) {
   }
   const banks = banksOf(acct);
   if (!banks.length) return "";
-  const withAuto = selected === "auto";
-  const sel = withAuto ? "auto" : (banks.includes(selected) ? selected : banks[0]);
+  const typeAuto = !ui.editBookId && (ui.bookType === "auto" || !ui.bookType);
+  const withAuto = typeAuto || selected === "auto";
+  const sel = selected === "auto" ? "auto" : (banks.includes(selected) ? selected : (withAuto ? "auto" : banks[0]));
   const opt = (v, label) => `<option value="${v}" ${v === sel ? "selected" : ""}>${label || v}</option>`;
   return `<select name="bank">${withAuto ? opt("auto", "自動感應") : ""}${banks.map(b => opt(b)).join("")}</select>`;
 }
@@ -10162,7 +10165,7 @@ function monthCashHtml() {
         <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : escapeHtml(ui.bookNote || "")}" />
       </div>
       ${bookUpFilesHtml()}
-      <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會依表格的帳戶、銀行、簿子自動對上統潔／信潔、聯邦／農會／兆豐。照片只留檔名可下載，不記入日曆。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會依表格帳戶、銀行、簿子自動對上。照片若上面已選統潔、聯邦，檔名會改成統潔聯邦.jpg；不記入日曆。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳檔案" : "記入日曆")}</button>
       ${ed ? "" : `<input id="book-up-files" type="file" multiple hidden accept=".jpg,.jpeg,.png,.heic,.webp,.bmp,.gif,.tif,.tiff,.xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />`}
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
@@ -10612,12 +10615,46 @@ async function compressUploadImage(file) {
     return file;
   }
 }
-async function storeUploadFile(file) {
+function bookUploadTag() {
+  const f = document.getElementById("book-form");
+  if (!f) return "";
+  const cv = String((f.company && f.company.value) || "");
+  const bv = String((f.bank && f.bank.value) || "");
+  let c = "";
+  if (cv && cv !== "auto") {
+    const p = personOfAccount(cv);
+    c = String(p || accountLabel(cv) || cv).replace(/[·\s]/g, "");
+  }
+  const b = (bv && bv !== "auto") ? bv : "";
+  return (c + b).replace(/[\\/:*?"<>|]/g, "");
+}
+function uniqueUploadName(base, ext, used) {
+  const e = String(ext || "jpg").toLowerCase() === "jpeg" ? "jpg" : String(ext || "jpg").toLowerCase();
+  let name = base + "." + e;
+  let n = 2;
+  while ((used && used[name]) || bookVault().some(x => x && x.name === name)) {
+    name = base + "-" + n + "." + e;
+    n += 1;
+  }
+  if (used) used[name] = true;
+  return name;
+}
+async function storeUploadFile(file, tag, used) {
   const packed = await compressUploadImage(file);
-  const rec = rememberBookUpFile((packed && packed.name) || (file && file.name) || "", [], packed);
+  if (!packed) return false;
+  let named = packed;
+  if (tag && !isSheetFile(packed) && !isSheetFile(file)) {
+    const orig = String(packed.name || file.name || "photo.jpg");
+    const ext = (/\.([a-z0-9]+)$/i.exec(orig) || [,"jpg"])[1];
+    const name = uniqueUploadName(tag, ext, used);
+    named = new File([packed], name, { type: packed.type || "image/jpeg", lastModified: Date.now() });
+  } else if (used) {
+    used[String(packed.name || file.name || "")] = true;
+  }
+  const rec = rememberBookUpFile(named.name || "", [], named);
   if (!rec) return false;
-  try { await putUploadBlob(rec.id, packed); } catch {}
-  rec._blob = packed;
+  try { await putUploadBlob(rec.id, named); } catch {}
+  rec._blob = named;
   return rec;
 }
 async function flushUploadCloud(recs) {
@@ -21879,20 +21916,7 @@ function bindCashCal() {
     if (ui.editBookId) return;
     const row = document.getElementById("book-bank-row");
     if (!row || !form.company) return;
-    if (auto) {
-      ui.bookCompany = "auto";
-      ui.bookBank = "auto";
-      form.company.innerHTML = bookAccountOptions("auto");
-      const bankSel = row.querySelector("select[name=bank]");
-      const html = bankSelectHtml("auto", "auto");
-      if (bankSel) bankSel.outerHTML = html;
-      else {
-        const hole = row.querySelector("span");
-        if (hole) hole.outerHTML = html;
-      }
-      const next = row.querySelector("select[name=bank]");
-      if (next) next.onchange = () => rememberBookForm(form);
-    } else if (form.company.value === "auto") {
+    if (!auto && form.company.value === "auto") {
       ui.bookCompany = "統潔";
       ui.bookBank = rememberedBookBank("統潔");
       form.company.innerHTML = bookAccountOptions("統潔");
@@ -21919,9 +21943,11 @@ function bindCashCal() {
     const sheets = files.filter(f => isSheetFile(f));
     const imgs = files.filter(f => !isSheetFile(f));
     toast(imgs.length ? "正在縮小照片並留下…" : "正在留下檔案…");
+    const tag = bookUploadTag();
+    const used = Object.create(null);
     const recs = [];
     for (let i = 0; i < files.length; i++) {
-      recs.push(await storeUploadFile(files[i]));
+      recs.push(await storeUploadFile(files[i], isSheetFile(files[i]) ? "" : tag, used));
     }
     ui.bookUpNames = bookVault().map(x => x.name).join("、");
     save();
