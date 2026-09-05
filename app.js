@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-17-21";
-const APP_EDIT_COUNT = 736;
+const APP_STAMP = "2026-09-05-17-24";
+const APP_EDIT_COUNT = 737;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0286";
+const FILE_VER = "0287";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳轉帳字體與進帳出帳對齊，拿掉底線"] },
+  { ver: APP_VERSION, items: ["本月工作右邊只留過期，拿掉近3天與未繳"] },
+  { ver: "2026-09-05-17-21-736", items: ["業務上傳轉帳字體與進帳出帳對齊，拿掉底線"] },
   { ver: "2026-09-05-17-15-734", items: ["業務上傳新增藍色轉帳，現金存銀行同一筆不會算兩次"] },
   { ver: "2026-09-05-17-10-733", items: ["刪除業務紀錄會同步拿掉總覽日曆那一筆"] },
   { ver: "2026-09-05-17-06-732", items: ["記入日曆不會再被雲端舊資料蓋掉消失"] },
@@ -16649,8 +16650,6 @@ function adminAi() {
       const g = groupUpcomingMemos();
       const bits = [];
       if (g.overdue.length) bits.push("過期 " + g.overdue.length);
-      if (g.soon.length) bits.push("近3天 " + g.soon.length);
-      if (plan.unpaid) bits.push("未繳 " + plan.unpaid);
       const summary = bits.join(" · ");
       const memoRows = arr => arr.map(m => {
         const on = ui.workMemoId === m.id;
