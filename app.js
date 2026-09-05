@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-22";
-const APP_EDIT_COUNT = 743;
+const APP_STAMP = "2026-09-05-18-36";
+const APP_EDIT_COUNT = 744;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0293";
+const FILE_VER = "0294";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["行程點完成會記在當天總覽，不是原定日期"] },
+  { ver: APP_VERSION, items: ["上一月下一月縮放更快更跟手"] },
+  { ver: "2026-09-05-18-22-743", items: ["行程點完成會記在當天總覽，不是原定日期"] },
   { ver: "2026-09-05-18-08-742", items: ["整月圈選再按一次可取消、都不選"] },
   { ver: "2026-09-05-18-07-741", items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
   { ver: "2026-09-05-17-27-739", items: ["業務上傳排法改回，只把浮動球往右靠"] },
@@ -22375,7 +22376,27 @@ function bindCashCal() {
         try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
         render();
       };
-      setTimeout(go, 150);
+  document.querySelectorAll("[data-cal-nav]").forEach(btn => {
+    btn.onpointerdown = () => btn.classList.add("is-press");
+    btn.onpointerup = () => {};
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      btn.classList.add("is-press");
+      const dir = Number(btn.dataset.calNav);
+      const go = () => {
+        let y = ui.calYear, m = ui.calMonth + dir;
+        if (m < 1) { m = 12; y -= 1; }
+        if (m > 12) { m = 1; y += 1; }
+        ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
+        ui.adminJump = "month-cash";
+        rememberBookForm();
+        try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
+        render();
+      };
+      setTimeout(go, 55);
+    };
+  });
     };
   });
   const grid = document.querySelector(".cal-grid");

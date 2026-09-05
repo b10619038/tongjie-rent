@@ -2004,14 +2004,15 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   min-width: 88px;
   transform-origin: center center;
   -webkit-tap-highlight-color: transparent;
-  transition: background .14s ease, color .14s ease, border-color .14s ease, transform .14s cubic-bezier(.2,1.4,.3,1);
+  will-change: transform;
+  transition: background .08s ease-out, color .08s ease-out, border-color .08s ease-out, transform .08s ease-out;
 }
 .cal-nav .ghost:active,
 .cal-nav .ghost.is-press {
   background: var(--teal);
   color: var(--on-teal, #fff);
   border-color: var(--teal);
-  transform: scale(0.86);
+  transform: scale(0.92);
 }
 .cal-sum-row {
   display: flex;
