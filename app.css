@@ -1842,7 +1842,6 @@ input[type="file"] {
 }
 #errand-form .tenant-slim-head {
   width: 100%;
-  justify-content: space-between;
   gap: 8px;
 }
 #errand-form .fold-head {
@@ -1850,20 +1849,15 @@ input[type="file"] {
   width: auto;
 }
 #errand-form .errand-kinds {
-  flex: 1 1 auto;
-  justify-content: center;
-  min-width: 0;
-}
-#errand-form .errand-head-end {
-  margin-left: auto;
   flex: 0 0 auto;
-  flex-wrap: nowrap;
-  gap: 6px;
+  justify-content: flex-start;
 }
 #errand-form #errand-to-ball {
+  margin-left: auto;
   width: auto;
   padding: 6px 10px;
   font-size: 12px;
+  flex: 0 0 auto;
 }
 .errand-kinds button {
   -webkit-appearance: none;
