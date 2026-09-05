@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-06";
-const APP_EDIT_COUNT = 773;
+const APP_STAMP = "2026-09-05-21-08";
+const APP_EDIT_COUNT = 774;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0323";
+const FILE_VER = "0324";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客房間圖卡改成 iPhone 輕點回彈"] },
+  { ver: APP_VERSION, items: ["租客房間圖卡按壓修好，不再被滑入動畫蓋掉"] },
+  { ver: "2026-09-05-21-06-773", items: ["租客房間圖卡改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-21-05-772", items: ["尚未簽約按鈕改成原木綠，不再用深黑"] },
   { ver: "2026-09-05-21-04-771", items: ["繳費租金綁定LINE房間資訊周邊景點改成輕點回彈"] },
   { ver: "2026-09-05-21-03-770", items: ["查看照片按鈕改成 iPhone 輕點回彈"] },
@@ -19874,7 +19875,7 @@ function bindTenant() {
         });
         if (changed) save();
       }
-      if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => render(), 80);
+      if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => render(), 140);
       else render();
     };
   });
@@ -20014,7 +20015,7 @@ function bindTenant() {
   document.querySelectorAll(".room-row").forEach(el => bindIosPress(el));
   document.querySelectorAll("[data-room]").forEach(el => {
     bindIosPress(el);
-    el.onclick = () => { ui.roomId = el.dataset.room; ui.page = "room-detail"; setTimeout(() => render(), 80); };
+    el.onclick = () => { ui.roomId = el.dataset.room; ui.page = "room-detail"; setTimeout(() => render(), 140); };
   });
   document.querySelectorAll("[data-type]").forEach(el => {
     el.onclick = e => {
@@ -20794,13 +20795,17 @@ function setFactoryPack(pack, close) {
   }
 }
 function bindIosPress(el) {
-  if (!el) return;
-  el.onpointerdown = () => {
+  if (!el || el.dataset.iosPress === "1") return;
+  el.dataset.iosPress = "1";
+  const on = () => {
     el.classList.add("is-press");
     try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
   };
-  el.onpointerup = () => el.classList.remove("is-press");
-  el.onpointercancel = () => el.classList.remove("is-press");
+  const off = () => el.classList.remove("is-press");
+  el.addEventListener("pointerdown", on);
+  el.addEventListener("pointerup", off);
+  el.addEventListener("pointercancel", off);
+  el.addEventListener("lostpointercapture", off);
 }
 function bindFactoryFold() {
   document.querySelectorAll("[data-factory-fold]").forEach(btn => {
