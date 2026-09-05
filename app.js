@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-01";
-const APP_EDIT_COUNT = 721;
+const APP_STAMP = "2026-09-05-15-05";
+const APP_EDIT_COUNT = 722;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0271";
+const FILE_VER = "0272";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
+  { ver: APP_VERSION, items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
+  { ver: "2026-09-05-15-01-721", items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
   { ver: "2026-09-05-14-57-720", items: ["新增一筆的備註欄改為全寬"] },
   { ver: "2026-09-05-14-56-719", items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
   { ver: "2026-09-05-14-50-717", items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
@@ -10580,13 +10581,57 @@ function rememberBookUpFile(name, ids, file) {
   }
   return cur;
 }
+function uploadJpegName(file) {
+  const n = String((file && file.name) || "photo.jpg");
+  if (/\.jpe?g$/i.test(n)) return n;
+  const base = n.replace(/\.[^.]+$/, "") || "photo";
+  return base + ".jpg";
+}
+async function compressUploadImage(file) {
+  if (!file || isSheetFile(file)) return file;
+  const name = String(file.name || "");
+  const type = String(file.type || "");
+  if (!/^image\//i.test(type) && !/\.(jpe?g|png|heic|heif|webp|bmp|gif|tif|tiff)$/i.test(name)) return file;
+  if (file.size && file.size < 360000 && /jpe?g/i.test(type || name)) return file;
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+    try { bmp.close(); } catch {}
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
+    if (!blob) return file;
+    if (file.size && blob.size >= file.size * 0.92 && /jpe?g/i.test(type || name)) return file;
+    return new File([blob], uploadJpegName(file), { type: "image/jpeg", lastModified: Date.now() });
+  } catch {
+    return file;
+  }
+}
 async function storeUploadFile(file) {
-  const rec = rememberBookUpFile((file && file.name) || "", [], file);
+  const packed = await compressUploadImage(file);
+  const rec = rememberBookUpFile((packed && packed.name) || (file && file.name) || "", [], packed);
   if (!rec) return false;
-  try { await putUploadBlob(rec.id, file); } catch {}
-  const ok = await pushUploadCloud(rec.id, file);
-  rec.cloud = !!ok;
-  return ok;
+  try { await putUploadBlob(rec.id, packed); } catch {}
+  rec._blob = packed;
+  return rec;
+}
+async function flushUploadCloud(recs) {
+  const list = (recs || []).filter(r => r && r.id && !r.cloud);
+  if (!list.length) return false;
+  const results = await Promise.all(list.map(async rec => {
+    const blob = rec._blob || BOOK_UP_BLOBS[rec.name] || await getUploadBlob(rec.id);
+    if (!blob) return false;
+    const ok = await pushUploadCloud(rec.id, blob);
+    rec.cloud = !!ok;
+    try { delete rec._blob; } catch {}
+    return ok;
+  }));
+  return results.some(Boolean);
 }
 function bookUpFilesHtml() {
   const list = bookVault();
@@ -21873,22 +21918,25 @@ function bindCashCal() {
     if (!files.length) return;
     const sheets = files.filter(f => isSheetFile(f));
     const imgs = files.filter(f => !isSheetFile(f));
-    toast("正在上傳並同步雲端…");
-    let cloudOk = true;
+    toast(imgs.length ? "正在縮小照片並留下…" : "正在留下檔案…");
+    const recs = [];
     for (let i = 0; i < files.length; i++) {
-      const ok = await storeUploadFile(files[i]);
-      if (!ok) cloudOk = false;
+      recs.push(await storeUploadFile(files[i]));
     }
     ui.bookUpNames = bookVault().map(x => x.name).join("、");
     save();
+    stay();
     if (sheets[0]) {
-      if (imgs.length) toast(cloudOk ? "已同步雲端。照片不記入；Excel 正在辨識…" : "雲端稍後再試。Excel 正在辨識…");
-      else if (!cloudOk) toast("Excel 正在辨識；檔案雲端稍後再試");
+      toast("Excel 正在辨識記入日曆，照片背景同步雲端");
       importExcelBooks(sheets[0], stay);
     } else {
-      toast(cloudOk ? "照片已同步雲端，其他裝置可下載。不會記入日曆。" : "照片已留下，雲端還沒通，請稍後再按下載試試");
-      stay();
+      toast("照片已留下，背景同步雲端。不會記入日曆。");
     }
+    flushUploadCloud(recs.filter(Boolean)).then(ok => {
+      save();
+      stay();
+      if (ok) toast("已同步雲端，其他裝置可下載");
+    });
   };
   if (form) {
     form.querySelectorAll("input, select").forEach(el => {
