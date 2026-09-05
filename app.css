@@ -3074,6 +3074,65 @@ img.avatar { object-fit: cover; display: block; }
   font: inherit; font-weight: 700; cursor: pointer; background: var(--card); color: var(--ink);
 }
 .lightbox-nav button:disabled { opacity: .4; }
+.photo-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+}
+.photo-zoom-bg {
+  position: absolute;
+  inset: 0;
+  background: #0a0a0a;
+  opacity: 0;
+  transition: opacity .36s ease;
+}
+.photo-zoom.on .photo-zoom-bg { opacity: .92; }
+.photo-zoom.out .photo-zoom-bg { opacity: 0; }
+.photo-zoom-img {
+  position: fixed;
+  z-index: 1;
+  display: block;
+  object-fit: cover;
+  transform-origin: center center;
+  border-radius: 16px;
+  will-change: transform, border-radius;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  background: #111;
+}
+.photo-zoom.on .photo-zoom-img { object-fit: contain; }
+.photo-zoom-close {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 16px;
+  z-index: 2;
+  border: 0;
+  background: rgba(255,255,255,.94);
+  color: #111;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .28s ease;
+}
+.photo-zoom.on .photo-zoom-close { opacity: 1; }
+.photo-zoom.out .photo-zoom-close { opacity: 0; }
+.photo-zoom-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+}
+.photo-zoom.on .photo-zoom-caption { opacity: .9; transition: opacity .28s .08s; }
+.photo-zoom.out .photo-zoom-caption { opacity: 0; }
+[data-open-topup] { cursor: pointer; }
 .invoice-preview .invoice-preview-scroll {
   width: 100%;
   max-height: calc(100% - 64px);

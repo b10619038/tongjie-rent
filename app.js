@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-16";
-const APP_EDIT_COUNT = 777;
+const APP_STAMP = "2026-09-05-21-23";
+const APP_EDIT_COUNT = 778;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0327";
+const FILE_VER = "0328";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客底部導航避開系統手勢條，不再被切到"] },
+  { ver: APP_VERSION, items: ["點儲值機說明時，照片從該行放大展開"] },
+  { ver: "2026-09-05-21-16-777", items: ["租客底部導航避開系統手勢條，不再被切到"] },
   { ver: "2026-09-05-21-13-776", items: ["租客房間圖卡滑入速度調回適中"] },
   { ver: "2026-09-05-21-11-775", items: ["租客房間圖卡從右滑入加快"] },
   { ver: "2026-09-05-21-08-774", items: ["租客房間圖卡按壓修好，不再被滑入動畫蓋掉"] },
@@ -8193,12 +8194,81 @@ function pendingPreviewHtml() { return mediaPreviewHtml(ui.repairMedia, "data-de
 function closeContractViewer() { const el = document.getElementById("contract-box"); if (el) el.remove(); }
 function closeMediaViewer() {
   const el = document.getElementById("media-box");
-  if (el) { el.querySelectorAll("video").forEach(v => { v.pause(); v.src = ""; }); el.remove(); }
+  if (!el) return;
+  el.querySelectorAll("video").forEach(v => { v.pause(); v.src = ""; });
+  if (typeof el._zoomBack === "function" && !el.classList.contains("out")) {
+    el._zoomBack();
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 400);
+    return;
+  }
+  el.remove();
 }
-function openMediaViewer(list, index) {
+function openZoomPhoto(item, originEl) {
+  closeMediaViewer();
+  const origin = originEl && originEl.getBoundingClientRect ? originEl.getBoundingClientRect() : null;
+  const wrap = document.createElement("div");
+  wrap.className = "photo-zoom";
+  wrap.id = "media-box";
+  wrap.innerHTML = `
+    <div class="photo-zoom-bg"></div>
+    <img class="photo-zoom-img" src="${item.src}" alt="">
+    <button type="button" class="photo-zoom-close" id="lb-close">關閉</button>
+    ${item.title ? `<div class="photo-zoom-caption">${escapeHtml(item.title)}</div>` : ""}`;
+  document.body.appendChild(wrap);
+  const img = wrap.querySelector(".photo-zoom-img");
+  const place = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const nw = img.naturalWidth || 1200;
+    const nh = img.naturalHeight || 900;
+    const s = Math.min((vw * 0.92) / nw, (vh * 0.78) / nh);
+    const tw = Math.max(8, nw * s);
+    const th = Math.max(8, nh * s);
+    const tx = (vw - tw) / 2;
+    const ty = (vh - th) / 2;
+    img.style.width = tw + "px";
+    img.style.height = th + "px";
+    img.style.left = tx + "px";
+    img.style.top = ty + "px";
+    let start = "none";
+    if (origin && origin.width) {
+      const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
+      const dy = (origin.top + origin.height / 2) - (ty + th / 2);
+      const sx = origin.width / tw;
+      const sy = origin.height / th;
+      start = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+    }
+    img.style.transition = "none";
+    img.style.transform = start === "none" ? "scale(.92)" : start;
+    img.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      wrap.classList.add("on");
+      img.style.transition = "transform .42s cubic-bezier(.22,1,.36,1), border-radius .42s cubic-bezier(.22,1,.36,1)";
+      img.style.transform = "translate(0,0) scale(1)";
+      img.style.borderRadius = "12px";
+    });
+    wrap._zoomBack = () => {
+      wrap.classList.remove("on");
+      wrap.classList.add("out");
+      img.style.transform = start === "none" ? "scale(.92)" : start;
+      img.style.borderRadius = "16px";
+    };
+  };
+  if (img.complete && img.naturalWidth) place();
+  else img.onload = place;
+  document.getElementById("lb-close").onclick = e => { e.stopPropagation(); closeMediaViewer(); };
+  wrap.addEventListener("click", e => {
+    if (e.target === wrap || e.target.classList.contains("photo-zoom-bg")) closeMediaViewer();
+  });
+}
+function openMediaViewer(list, index, originEl) {
   closeMediaViewer(); closeContractViewer();
   if (!list.length) return;
   const item = list[index];
+  if (item.kind === "image" && originEl) {
+    openZoomPhoto(item, originEl);
+    return;
+  }
   const wrap = document.createElement("div");
   wrap.className = "lightbox"; wrap.id = "media-box";
   wrap.innerHTML = `
@@ -20068,10 +20138,11 @@ function bindTenant() {
   }
   bindMediaViewers();
   document.querySelectorAll("[data-open-topup]").forEach(el => {
+    bindIosPress(el);
     el.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0);
+      openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0, el);
     };
   });
   const contracts = (myRoom() && myRoom().contractImages) || [];
