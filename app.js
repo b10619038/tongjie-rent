@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-17";
-const APP_EDIT_COUNT = 726;
+const APP_STAMP = "2026-09-05-16-25";
+const APP_EDIT_COUNT = 727;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0276";
+const FILE_VER = "0277";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
+  { ver: APP_VERSION, items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
+  { ver: "2026-09-05-15-17-726", items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
   { ver: "2026-09-05-15-10-725", items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
   { ver: "2026-09-05-15-09-724", items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
   { ver: "2026-09-05-15-07-723", items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
@@ -4270,13 +4271,15 @@ function ingestFileCloud(raw) {
         mime: String(o.mime || ""),
         ids: [],
         cloud: true,
-        src: o.src || ""
+        src: o.src || "",
+        from: o.from || "book"
       };
       state.bookVault.unshift(rec);
     } else {
       if (o.src) rec.src = o.src;
       rec.cloud = true;
       if (o.name) rec.name = o.name;
+      if (o.from) rec.from = o.from;
     }
     if (rec.src) {
       const blob = dataUrlToBlob(rec.src);
@@ -4723,7 +4726,8 @@ function mergeBookVault(a, b, gone) {
       ids: Array.isArray(x.ids) ? x.ids.filter(Boolean) : [],
       cloud: !!x.cloud,
       mime: String(x.mime || ""),
-      src: String(x.src || (cur && cur.src) || "")
+      src: String(x.src || (cur && cur.src) || ""),
+      from: String(x.from || (cur && cur.from) || "book")
     };
     if (!cur) { map[x.id] = copy; return; }
     if (String(copy.at) >= String(cur.at)) {
@@ -10704,6 +10708,7 @@ function publishFileCloud(rec, gone) {
       src: rec.src || "",
       size: rec.size || 0,
       at: rec.at || nowStamp(),
+      from: rec.from || "book",
       device: liveDeviceId()
     };
   const raw = JSON.stringify(msg);
@@ -10716,7 +10721,7 @@ function publishFileCloud(rec, gone) {
   }
   return false;
 }
-function rememberBookUpFile(name, ids, file) {
+function rememberBookUpFile(name, ids, file, extra) {
   const n = String(name || "").trim();
   if (!n) return null;
   const list = bookVault();
@@ -10730,10 +10735,12 @@ function rememberBookUpFile(name, ids, file) {
       size: (file && file.size) || 0,
       mime: (file && file.type) || "",
       cloud: false,
+      from: (extra && extra.from) || "book",
       ids: []
     };
     list.unshift(cur);
   }
+  if (extra && extra.from) cur.from = extra.from;
   const have = new Set(cur.ids || []);
   (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
   if (file) {
@@ -10799,7 +10806,7 @@ function uniqueUploadName(base, ext, used) {
   if (used) used[name] = true;
   return name;
 }
-async function storeUploadFile(file, tag, used) {
+async function storeUploadFile(file, tag, used, extra) {
   const packed = await compressUploadImage(file);
   if (!packed) return false;
   let named = packed;
@@ -10811,7 +10818,7 @@ async function storeUploadFile(file, tag, used) {
   } else if (used) {
     used[String(packed.name || file.name || "")] = true;
   }
-  const rec = rememberBookUpFile(named.name || "", [], named);
+  const rec = rememberBookUpFile(named.name || "", [], named, extra);
   if (!rec) return false;
   try { await putUploadBlob(rec.id, named); } catch {}
   rec._blob = named;
@@ -10836,27 +10843,36 @@ async function flushUploadCloud(recs) {
   try { publishLiveCloud(); } catch {}
   return any;
 }
-function bookUpFilesHtml() {
-  const list = bookVault();
+function bookUpList(from) {
+  const all = bookVault();
+  if (from === "errand") return all.filter(f => f && f.from === "errand");
+  return all.filter(f => f && f.from !== "errand");
+}
+function bookUpFilesHtml(from) {
+  const list = bookUpList(from);
   if (!list.length) return "";
   const n = list.length;
+  const allId = from === "errand" ? "errand-up-all" : "book-up-all";
+  const dlId = from === "errand" ? "errand-up-dl-sel" : "book-up-dl-sel";
   return `<div class="book-up-files">
     ${n > 1 ? `<div class="book-up-tools">
-      <label><input type="checkbox" id="book-up-all" />全選 ${n} 份</label>
-      <button type="button" class="ghost" id="book-up-dl-sel">下載選取</button>
+      <label><input type="checkbox" id="${allId}" />全選 ${n} 份</label>
+      <button type="button" class="ghost" id="${dlId}">下載選取</button>
     </div>` : ""}
-    ${list.map((f, i) => `
+    ${list.map(f => `
       <div class="book-up-file">
-        ${n > 1 ? `<label class="book-up-pick"><input type="checkbox" data-up-pick="${i}" /></label>` : ""}
+        ${n > 1 ? `<label class="book-up-pick"><input type="checkbox" data-up-pick="${escapeHtml(f.id)}" /></label>` : ""}
         <div class="book-up-body">
           <div class="book-up-top">
             <div class="book-up-meta">
               <span>${escapeHtml(f.name || "未命名")}</span>
-              <em>${f.kind === "sheet" ? "Excel · 已記入日曆" : "照片 · 未記入日曆"} · ${f.cloud ? "已同步雲端" : "本機"}</em>
+              <em>${f.from === "errand"
+                ? (f.kind === "sheet" ? "Excel · 跑業務" : "手寫小抄 · 可下載")
+                : (f.kind === "sheet" ? "Excel · 已記入日曆" : "照片 · 未記入日曆")} · ${f.cloud ? "已同步雲端" : "本機"}</em>
             </div>
-            <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
+            <button type="button" class="book-up-x" data-del-up-id="${escapeHtml(f.id)}" aria-label="刪除">×</button>
           </div>
-          <button type="button" class="ghost book-up-dl" data-dl-up-i="${i}">下載</button>
+          <button type="button" class="ghost book-up-dl" data-dl-up-id="${escapeHtml(f.id)}">下載</button>
         </div>
       </div>`).join("")}
   </div>`;
@@ -10898,8 +10914,8 @@ function clickDownloadBlob(blob, name) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2500);
 }
-async function downloadVaultAt(i) {
-  const rec = bookVault()[i];
+async function downloadVaultById(id) {
+  const rec = bookVault().find(x => x && x.id === id);
   if (!rec) return;
   toast("準備下載 " + (rec.name || "") + "…");
   const blob = await vaultBlobOf(rec);
@@ -10908,11 +10924,12 @@ async function downloadVaultAt(i) {
   toast("已開始下載 " + rec.name);
 }
 async function downloadVaultPicked() {
-  const list = bookVault();
   const boxes = [...document.querySelectorAll("[data-up-pick]")];
-  const want = boxes.map(el => el.checked ? list[Number(el.dataset.upPick)] : null).filter(Boolean);
+  const byId = Object.create(null);
+  bookVault().forEach(x => { if (x && x.id) byId[x.id] = x; });
+  const want = boxes.map(el => el.checked ? byId[el.dataset.upPick] : null).filter(Boolean);
   if (boxes.length && !want.length) { toast("請先勾選，或點全選"); return; }
-  const pack = want.length ? want : list.slice();
+  const pack = want.slice();
   if (!pack.length) { toast("沒有可下載的檔案"); return; }
   if (pack.length === 1) {
     toast("準備下載 " + (pack[0].name || "") + "…");
@@ -10945,7 +10962,7 @@ async function downloadVaultPicked() {
     }
     if (!n) { toast("沒有可下載的檔案"); return; }
     const out = await zip.generateAsync({ type: "blob" });
-    clickDownloadBlob(out, "簿子上傳.zip");
+    clickDownloadBlob(out, want.some(x => x.from === "errand") ? "小抄上傳.zip" : "簿子上傳.zip");
     toast("已打包 " + n + " 份，開始下載");
   } catch {
     toast("打包失敗，改成一張張下載");
@@ -10954,6 +10971,52 @@ async function downloadVaultPicked() {
       if (blob) clickDownloadBlob(blob, pack[i].name || ("檔案" + (i + 1)));
     }
   }
+}
+function removeBookUpFileById(id) {
+  const list = bookVault();
+  const i = list.findIndex(x => x && x.id === id);
+  if (i < 0) return;
+  removeBookUpFileAt(i);
+}
+function bindBookUpFiles() {
+  document.querySelectorAll("[data-del-up-id]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      removeBookUpFileById(btn.dataset.delUpId);
+      ui.keepScroll = true;
+      try { render(); } catch {}
+    };
+  });
+  document.querySelectorAll("[data-dl-up-id]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadVaultById(btn.dataset.dlUpId);
+    };
+  });
+  document.querySelectorAll("[id$='-up-all']").forEach(allPick => {
+    allPick.onchange = () => {
+      const root = allPick.closest(".book-up-files");
+      if (!root) return;
+      root.querySelectorAll("[data-up-pick]").forEach(el => { el.checked = allPick.checked; });
+    };
+  });
+  document.querySelectorAll("[data-up-pick]").forEach(el => {
+    el.onchange = () => {
+      const root = el.closest(".book-up-files");
+      const allPick = root && root.querySelector("[id$='-up-all']");
+      const boxes = root ? [...root.querySelectorAll("[data-up-pick]")] : [];
+      if (allPick) allPick.checked = boxes.length > 0 && boxes.every(x => x.checked);
+    };
+  });
+  document.querySelectorAll("[id$='-up-dl-sel']").forEach(dlSel => {
+    dlSel.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadVaultPicked();
+    };
+  });
 }
 function removeBookUpFileAt(i) {
   const list = bookVault();
@@ -16260,10 +16323,11 @@ function saveErrandBallPos(p) {
   try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
 }
 function errandFormInnerHtml() {
-  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙另拍一張。按「上傳照片」可一次選很多張，每張會分開預判；之後再傳會接在後面。分不出哪家銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
+  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙小抄另拍一張。手寫字 App 看不懂，小抄會留檔可下載，傳到這個對話給我看。按「上傳照片」可一次很多張；分不出銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
           <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
-          <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*" multiple hidden /></label>
+          <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.webp,.xlsx,.xls,.csv" multiple hidden /></label>
+          ${bookUpFilesHtml("errand")}
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
           <button class="btn-navy" type="button" id="errand-submit" style="margin-top:10px">登錄這筆</button>`;
 }
@@ -21836,7 +21900,26 @@ function bindAdminAi() {
     const box = document.getElementById("errand-absorb");
     if (box) box.textContent = got.line || "";
     refreshErrandGuessBox();
-    toast(shots.length ? ("已加入 " + shots.length + " 張，共 " + ui.errandGuesses.length + " 張") : (got.line || "已吸收檔案"));
+    toast(shots.length ? ("已加入 " + shots.length + " 張，小抄可下載") : (got.line || "已吸收檔案"));
+    const note = String(ui.errandNote || "").trim().replace(/[\\/:*?"<>|]/g, "").slice(0, 12);
+    const tag = note ? ("小抄" + note) : "小抄";
+    const used = Object.create(null);
+    const recs = [];
+    for (let i = 0; i < files.length; i++) {
+      recs.push(await storeUploadFile(files[i], isSheetFile(files[i]) ? "" : tag, used, { from: "errand" }));
+    }
+    save();
+    ui.keepScroll = true;
+    ui.errandOpen = true;
+    ui.errandBallOpen = true;
+    try { render(); } catch {}
+    flushUploadCloud(recs.filter(Boolean)).then(ok => {
+      save();
+      ui.keepScroll = true;
+      ui.errandOpen = true;
+      try { render(); } catch {}
+      if (ok) toast("小抄已同步，可下載");
+    });
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
     btn.onclick = e => {
@@ -21954,6 +22037,7 @@ function bindAdminAi() {
       render();
     };
   });
+  bindBookUpFiles();
   bindAiBlockReorder();
 }
 function bindCashCal() {
@@ -22275,37 +22359,7 @@ function bindCashCal() {
       undoLastBookImport();
       stay();
     };
-    document.querySelectorAll("[data-del-up-i]").forEach(btn => {
-      btn.onclick = e => {
-        e.preventDefault();
-        e.stopPropagation();
-        removeBookUpFileAt(Number(btn.dataset.delUpI));
-        stay();
-      };
-    });
-    document.querySelectorAll("[data-dl-up-i]").forEach(btn => {
-      btn.onclick = e => {
-        e.preventDefault();
-        e.stopPropagation();
-        downloadVaultAt(Number(btn.dataset.dlUpI));
-      };
-    });
-    const allPick = document.getElementById("book-up-all");
-    if (allPick) allPick.onchange = () => {
-      document.querySelectorAll("[data-up-pick]").forEach(el => { el.checked = allPick.checked; });
-    };
-    document.querySelectorAll("[data-up-pick]").forEach(el => {
-      el.onchange = () => {
-        const boxes = [...document.querySelectorAll("[data-up-pick]")];
-        if (allPick) allPick.checked = boxes.length > 0 && boxes.every(x => x.checked);
-      };
-    });
-    const dlSel = document.getElementById("book-up-dl-sel");
-    if (dlSel) dlSel.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      downloadVaultPicked();
-    };
+    bindBookUpFiles();
   }
 }
 
