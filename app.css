@@ -1810,7 +1810,17 @@ input[type="file"] {
   overflow: visible;
   flex: none;
 }
-#work-card .work-memo {
+#work-card .work-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+#work-card .work-title .led-trip {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1d4e89;
+}
   cursor: pointer;
   border-radius: 12px;
   padding: 8px 8px;

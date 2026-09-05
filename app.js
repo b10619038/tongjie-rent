@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-16-29";
-const APP_EDIT_COUNT = 728;
+const APP_STAMP = "2026-09-05-16-53";
+const APP_EDIT_COUNT = 729;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0278";
+const FILE_VER = "0279";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["跑業務手寫改叫白紙，可留檔下載"] },
+  { ver: APP_VERSION, items: ["本月工作標題右邊加上藍色行程"] },
+  { ver: "2026-09-05-16-29-728", items: ["跑業務手寫改叫白紙，可留檔下載"] },
   { ver: "2026-09-05-16-25-727", items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
   { ver: "2026-09-05-15-17-726", items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
   { ver: "2026-09-05-15-10-725", items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
@@ -16514,7 +16515,7 @@ function adminAi() {
       return `<div class="card card-body tenant-slim${workOpen ? " open" : ""}" id="work-card">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="work-fold">
-          <span class="k">本月工作</span>
+          <span class="work-title"><span class="k">本月工作</span><span class="led-trip">行程</span></span>
           <span class="row-end"><span class="small">${escapeHtml(summary)}</span><span class="fold-caret"></span></span>
         </button>
         ${aiDragBtn()}
