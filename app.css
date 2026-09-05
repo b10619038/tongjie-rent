@@ -2956,6 +2956,16 @@ img.avatar { object-fit: cover; display: block; }
 .back {
   border: 0; background: transparent; color: var(--teal-mid);
   font: inherit; font-weight: 700; cursor: pointer; margin: 8px 0 28px; padding: 0; display: inline-block;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: left center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.back:active,
+.back.is-press {
+  transform: scale(0.92);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .seg {
   position: relative; display: grid; grid-template-columns: 1fr 1fr;
