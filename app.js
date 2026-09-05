@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-10-51";
-const APP_EDIT_COUNT = 689;
+const APP_STAMP = "2026-09-05-10-53";
+const APP_EDIT_COUNT = 690;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0239";
+const FILE_VER = "0240";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆下方可看剛剛上傳的紀錄，並一次刪除這批測試帳"] },
+  { ver: APP_VERSION, items: ["新增一筆可選自動感應，上傳簿子後自行判斷進帳或出帳"] },
+  { ver: "2026-09-05-10-51-689", items: ["新增一筆下方可看剛剛上傳的紀錄，並一次刪除這批測試帳"] },
   { ver: "2026-09-05-10-31-688", items: ["開立發票總覽：提前匯款發票開1日，1日當天或之後開匯款日"] },
   { ver: "2026-09-04-21-56-687", items: ["列印已簽署合約排在產出發票上方"] },
   { ver: "2026-09-04-21-52-686", items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
@@ -10015,9 +10016,10 @@ function monthCashHtml() {
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
-        <select name="type" class="book-type ${(ed && ed.type === "out") ? "out" : "in"}">
-          <option value="in" ${(ed ? ed.type : "in") !== "out" ? "selected" : ""}>進帳</option>
-          <option value="out" ${(ed && ed.type === "out") ? "selected" : ""}>出帳</option>
+        <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : "auto"}">
+          ${ed ? "" : `<option value="auto" selected>自動感應</option>`}
+          <option value="in" ${ed && ed.type !== "out" ? "selected" : ""}>進帳</option>
+          <option value="out" ${ed && ed.type === "out" ? "selected" : ""}>出帳</option>
         </select>
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
       </div>
@@ -10040,7 +10042,7 @@ function monthCashHtml() {
           <input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
         </div>
       </div>
-      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。上傳簿子照片或 Excel，系統會依簿子上的時間入帳；手動記入則用上方日曆點的那天。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。選「自動感應」再上傳簿子，每一筆進／出由照片判斷；手動記入請改選進帳或出帳。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -10368,10 +10370,29 @@ function undoLastBookImport() {
   toast("已刪除這批上傳的 " + ids.length + " 筆");
   return ids.length;
 }
+function guessPassbookType(line, nums) {
+  const s = String(line || "");
+  const outHit = /支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款|現提|金融卡提款|轉帳支出|跨行手續|本行轉出/.test(s);
+  const inHit = /存入|匯入|轉入|利息|放款|入帳|現存|轉帳存入|薪轉|租金|現金存款|金融卡轉入/.test(s);
+  if (outHit && !inHit) return "out";
+  if (inHit && !outHit) return "in";
+  const n = (nums || []).filter(v => Number(v) >= 100);
+  if (n.length >= 3) {
+    const bal = Math.max.apply(null, n);
+    const left = n[0], mid = n[1];
+    const lastIsBal = n[n.length - 1] === bal;
+    if (lastIsBal) {
+      if (left >= 100 && left !== bal && !(mid >= 100 && mid !== bal)) return "out";
+      if (mid >= 100 && mid !== bal && !(left >= 100 && left !== bal)) return "in";
+    }
+  }
+  return "";
+}
 function parsePassbookOcr(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
   const defBank = (defaults && defaults.bank) || "";
-  const defType = defaults && defaults.type === "out" ? "out" : "in";
+  const auto = defaults && defaults.type === "auto";
+  const defType = auto ? "" : (defaults && defaults.type === "out" ? "out" : "in");
   const rows = [];
   String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
     const line = String(raw || "").trim();
@@ -10397,9 +10418,16 @@ function parsePassbookOcr(text, defaults) {
       const rest = nums.filter(n => n !== max);
       if (rest.length) amount = rest[0];
     }
-    let type = defType;
-    if (/支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款/.test(line)) type = "out";
-    else if (/存入|匯入|轉入|利息|放款|入帳/.test(line)) type = "in";
+    const guessed = guessPassbookType(line, nums);
+    const type = guessed || defType;
+    if (type !== "in" && type !== "out") return;
+    if (nums.length >= 3) {
+      const bal = Math.max.apply(null, nums);
+      if (nums[nums.length - 1] === bal) {
+        if (type === "out" && nums[0] !== bal) amount = nums[0];
+        if (type === "in" && nums[1] !== bal) amount = nums[1];
+      }
+    }
     rows.push({ date, type, amount, company: defCo, bank: defBank, note: line.slice(0, 48) });
   });
   return rows;
@@ -10435,22 +10463,25 @@ async function importPassbookPhotos(files, defaults, after) {
       } catch {}
     }
     if (!got.length) {
-      const g = inferOneFile(f);
-      if (g.date && g.amount) {
-        got = [{
-          date: g.date,
-          type: g.cashType === "out" ? "out" : ((defaults && defaults.type) || "in"),
-          amount: g.amount,
-          company: (defaults && defaults.company) || g.company || "統潔",
-          bank: (defaults && defaults.bank) || g.place || "",
-          note: "簿子照片 · " + (f.name || "")
-        }];
+      if (!(defaults && defaults.type === "auto")) {
+        const g = inferOneFile(f);
+        if (g.date && g.amount) {
+          got = [{
+            date: g.date,
+            type: g.cashType === "out" ? "out" : ((defaults && defaults.type) || "in"),
+            amount: g.amount,
+            company: (defaults && defaults.company) || g.company || "統潔",
+            bank: (defaults && defaults.bank) || g.place || "",
+            note: "簿子照片 · " + (f.name || "")
+          }];
+        }
       }
     } else if (defaults) {
       got.forEach(r => {
         if (defaults.company) r.company = defaults.company;
         if (defaults.bank) r.bank = defaults.bank;
       });
+      if (defaults.type === "auto") got = got.filter(r => r.type === "in" || r.type === "out");
     }
     rows = rows.concat(got);
   }
@@ -20842,7 +20873,7 @@ function bindCashCal() {
   const bookDefaults = () => {
     const f = document.getElementById("book-form");
     return {
-      type: f && f.type && f.type.value === "out" ? "out" : "in",
+      type: f && f.type && f.type.value === "out" ? "out" : (f && f.type && f.type.value === "auto" ? "auto" : "in"),
       company: normalizeBookCompany(f && f.company && f.company.value),
       bank: (f && f.bank && f.bank.value) || ""
     };
@@ -20884,8 +20915,8 @@ function bindCashCal() {
       el.onclick = e => { e.stopPropagation(); el.focus(); };
     });
     if (form.type) form.type.onchange = () => {
-      form.type.classList.remove("in", "out");
-      form.type.classList.add(form.type.value === "out" ? "out" : "in");
+      form.type.classList.remove("in", "out", "auto");
+      form.type.classList.add(form.type.value === "out" ? "out" : (form.type.value === "auto" ? "auto" : "in"));
     };
     if (form.company) form.company.onchange = () => {
       const acct = normalizeBookCompany(form.company.value);
@@ -20912,6 +20943,7 @@ function bindCashCal() {
       const date = ymdOf((form.date && form.date.value) || picked);
       if (!amount) { toast("請填金額，或改上傳簿子"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
+      if (form.type.value === "auto") { toast("手動記入請選進帳或出帳；上傳照片可用自動感應"); return; }
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
