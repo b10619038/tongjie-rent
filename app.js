@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-36";
-const APP_EDIT_COUNT = 744;
+const APP_STAMP = "2026-09-05-18-39";
+const APP_EDIT_COUNT = 745;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0294";
+const FILE_VER = "0295";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上一月下一月縮放更快更跟手"] },
+  { ver: APP_VERSION, items: ["上一月下一月改成 iPhone 輕點回彈，換月不再整頁卡頓"] },
+  { ver: "2026-09-05-18-36-744", items: ["上一月下一月縮放更快更跟手"] },
   { ver: "2026-09-05-18-22-743", items: ["行程點完成會記在當天總覽，不是原定日期"] },
   { ver: "2026-09-05-18-08-742", items: ["整月圈選再按一次可取消、都不選"] },
   { ver: "2026-09-05-18-07-741", items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
@@ -10106,6 +10107,51 @@ function calDayListHtml(selected, rangeLabel, extra) {
         </div>
         <span class="led-note">${escapeHtml((x.date || "").slice(8) + "日　" + (x.type === "memo" ? (x.source === "sign" ? "簽約預約" : (x.cycle ? "本月工作" : "工作助手記下")) : (x.note || "")))}</span>
       </div>`).join("") : ((ui.calDay || normSearch(ui.calQ)) ? `<div class="empty">${normSearch(ui.calQ) ? "找不到符合的進出帳" : "這段期間尚無紀錄"}</div>` : "")}`;
+}
+function swapCalMonth(dir) {
+  let y = ui.calYear, m = ui.calMonth + dir;
+  if (m < 1) { m = 12; y -= 1; }
+  if (m > 12) { m = 1; y += 1; }
+  ui.calYear = y;
+  ui.calMonth = m;
+  ui.calDay = 1;
+  ui.calDayEnd = 0;
+  rememberBookForm();
+  const card = document.getElementById("month-cash");
+  if (!card) {
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const html = monthCashHtml();
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  const next = tmp.firstElementChild;
+  if (!next) {
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const take = sel => {
+    const a = card.querySelector(sel);
+    const b = next.querySelector(sel);
+    if (a && b) a.replaceWith(b);
+  };
+  const title = card.querySelector(".cal-nav strong");
+  const nextTitle = next.querySelector(".cal-nav strong");
+  if (title && nextTitle) title.textContent = nextTitle.textContent;
+  take(".cal-sum-row");
+  take(".cal-sum-actions");
+  take(".cal-grid");
+  take(".cal-day");
+  const grid = card.querySelector(".cal-grid");
+  if (grid) {
+    grid.style.setProperty("--cal-dx", (dir > 0 ? 22 : -22) + "px");
+    grid.classList.remove("swap");
+    void grid.offsetWidth;
+    grid.classList.add("swap");
+  }
+  bindCashCal();
 }
 function refreshCalSearchLive() {
   ensureCalMonth();
@@ -22359,44 +22405,17 @@ function bindCashCal() {
     };
   }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
-    btn.onpointerdown = () => btn.classList.add("is-press");
-    btn.onpointerup = () => {};
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
+    btn.onpointerdown = () => {
       btn.classList.add("is-press");
-      const dir = Number(btn.dataset.calNav);
-      const go = () => {
-        let y = ui.calYear, m = ui.calMonth + dir;
-        if (m < 1) { m = 12; y -= 1; }
-        if (m > 12) { m = 1; y += 1; }
-        ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
-        ui.adminJump = "month-cash";
-        rememberBookForm();
-        try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
-        render();
-      };
-  document.querySelectorAll("[data-cal-nav]").forEach(btn => {
-    btn.onpointerdown = () => btn.classList.add("is-press");
-    btn.onpointerup = () => {};
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      btn.classList.add("is-press");
-      const dir = Number(btn.dataset.calNav);
-      const go = () => {
-        let y = ui.calYear, m = ui.calMonth + dir;
-        if (m < 1) { m = 12; y -= 1; }
-        if (m > 12) { m = 1; y += 1; }
-        ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
-        ui.adminJump = "month-cash";
-        rememberBookForm();
-        try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
-        render();
-      };
-      setTimeout(go, 55);
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
     };
-  });
+    btn.onpointerup = () => btn.classList.remove("is-press");
+    btn.onpointercancel = () => btn.classList.remove("is-press");
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dir = Number(btn.dataset.calNav) || 0;
+      swapCalMonth(dir);
     };
   });
   const grid = document.querySelector(".cal-grid");

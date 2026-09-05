@@ -2004,15 +2004,29 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   min-width: 88px;
   transform-origin: center center;
   -webkit-tap-highlight-color: transparent;
-  will-change: transform;
-  transition: background .08s ease-out, color .08s ease-out, border-color .08s ease-out, transform .08s ease-out;
+  touch-action: manipulation;
+  user-select: none;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
 }
 .cal-nav .ghost:active,
 .cal-nav .ghost.is-press {
   background: var(--teal);
   color: var(--on-teal, #fff);
   border-color: var(--teal);
-  transform: scale(0.92);
+  transform: scale(0.94);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+.cal-grid.swap {
+  animation: cal-swap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes cal-swap {
+  from { opacity: .28; transform: translateX(var(--cal-dx, 18px)); }
+  to { opacity: 1; transform: none; }
 }
 .cal-sum-row {
   display: flex;
