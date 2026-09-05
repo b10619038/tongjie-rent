@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-23";
-const APP_EDIT_COUNT = 778;
+const APP_STAMP = "2026-09-05-21-28";
+const APP_EDIT_COUNT = 779;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0328";
+const FILE_VER = "0329";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點儲值機說明時，照片從該行放大展開"] },
+  { ver: APP_VERSION, items: ["儲值機照片改從這三個字等比放大"] },
+  { ver: "2026-09-05-21-23-778", items: ["點儲值機說明時，照片從該行放大展開"] },
   { ver: "2026-09-05-21-16-777", items: ["租客底部導航避開系統手勢條，不再被切到"] },
   { ver: "2026-09-05-21-13-776", items: ["租客房間圖卡滑入速度調回適中"] },
   { ver: "2026-09-05-21-11-775", items: ["租客房間圖卡從右滑入加快"] },
@@ -8234,9 +8235,8 @@ function openZoomPhoto(item, originEl) {
     if (origin && origin.width) {
       const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
       const dy = (origin.top + origin.height / 2) - (ty + th / 2);
-      const sx = origin.width / tw;
-      const sy = origin.height / th;
-      start = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+      const s0 = Math.max(origin.width, origin.height) / Math.max(tw, th);
+      start = `translate(${dx}px, ${dy}px) scale(${s0})`;
     }
     img.style.transition = "none";
     img.style.transform = start === "none" ? "scale(.92)" : start;
@@ -15167,7 +15167,12 @@ function roomExtrasHtml(r) {
       <div class="card card-body slide-left">
         <div class="row clickable" data-open-topup role="button">
           <span class="k">電費</span>
-          <span class="v linkish">${escapeHtml(util.electric || "5樓設有自助儲值機可以刷卡儲值")}</span>
+          <span class="v linkish">${(function (t) {
+            const s = String(t || "5樓設有自助儲值機可以刷卡儲值");
+            const i = s.indexOf("儲值機");
+            if (i < 0) return `<span class="topup-origin">${escapeHtml(s)}</span>`;
+            return escapeHtml(s.slice(0, i)) + `<span class="topup-origin">儲值機</span>` + escapeHtml(s.slice(i + 3));
+          })(util.electric)}</span>
         </div>
         <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>一年優惠 NT$ 1,800</span></span></div>
       </div>
@@ -20142,7 +20147,7 @@ function bindTenant() {
     el.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0, el);
+      openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0, el.querySelector(".topup-origin") || el);
     };
   });
   const contracts = (myRoom() && myRoom().contractImages) || [];
