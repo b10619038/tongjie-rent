@@ -1767,7 +1767,7 @@ input[type="file"] {
   .occ-shot { width: min(96px, 26vw); height: min(62px, 17vw); border-radius: 12px; }
   .solar-shot { width: min(96px, 26vw); height: min(62px, 17vw); border-radius: 12px; }
   .theme-fab { right: 12px; bottom: calc(16px + var(--safe-b)); }
-  .ver { padding-left: 16px; padding-right: 16px; padding-bottom: calc(12px + var(--safe-b)); }
+  .ver { padding-left: 16px; padding-right: 16px; }
 }
 .dash-hero { display: grid; gap: 12px; grid-template-columns: 1fr; }
 .dash-two { display: grid; gap: 12px; }
@@ -3596,15 +3596,23 @@ img.avatar { object-fit: cover; display: block; }
   bottom: 0;
   z-index: 40;
   margin: 0;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(44px + var(--safe-b));
+  padding: 0 16px var(--safe-b);
+  box-sizing: border-box;
   text-align: center;
   font-size: 11px;
+  line-height: 1;
   color: var(--muted);
   letter-spacing: .04em;
   pointer-events: none;
   background: var(--paper);
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
   text-overflow: ellipsis;
 }
 .home-upd {
