@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-51";
-const APP_EDIT_COUNT = 709;
+const APP_STAMP = "2026-09-05-13-03";
+const APP_EDIT_COUNT = 710;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0259";
+const FILE_VER = "0260";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
+  { ver: APP_VERSION, items: ["雲端認字改直接連 Google，設定可測試連線"] },
+  { ver: "2026-09-05-12-51-709", items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
   { ver: "2026-09-05-12-41-708", items: ["農會同一天多筆會拆開，結存不再當成金額"] },
   { ver: "2026-09-05-12-34-707", items: ["農會簿子改依七欄規則讀：只記有日期的支出或存入與摘要"] },
   { ver: "2026-09-05-12-27-706", items: ["日曆上一月／下一月按下去有明顯縮放"] },
@@ -875,6 +876,7 @@ function visionSettingsHtml() {
     <div class="row"><span class="k">狀態</span><span class="v">${has ? "已接 · 尾碼 " + escapeHtml(tail) : "尚未接"}</span></div>
     <div class="row"><span class="k">本月已用</span><span class="v">${n}／1,000 張免費</span></div>
     <p class="small" style="margin-top:8px">每月前 1,000 張免費，下月歸零。上傳簿子會送到 Google 認字，再套農會規則。請用開發者自己的金鑰。</p>
+    ${ui.visionLastError ? `<p class="small" style="margin-top:8px;color:var(--rose)">${escapeHtml(ui.visionLastError)}</p>` : ""}
     <ol class="small" style="margin:8px 0 0 18px;padding:0">
       <li>打開 <a href="https://console.cloud.google.com/apis/library/vision.googleapis.com" target="_blank" rel="noopener">Cloud Vision API</a> 並啟用</li>
       <li>到「憑證」建立 API 金鑰，可限制只能用 Cloud Vision API</li>
@@ -883,6 +885,7 @@ function visionSettingsHtml() {
     <input id="vision-key" type="password" autocomplete="off" placeholder="${has ? "已儲存，要換再貼新的" : "貼上 Google API 金鑰"}" style="margin-top:10px" />
     <div class="btn-row" style="margin-top:8px">
       <button type="button" class="btn-navy" id="vision-key-save">儲存金鑰</button>
+      <button type="button" class="ghost" id="vision-key-test">測試連線</button>
       ${has ? `<button type="button" class="ghost" id="vision-key-clear">清除</button>` : ""}
     </div>
   </div>`;
@@ -10822,21 +10825,83 @@ async function ocrPassbookCloud(file) {
   const key = String((state && state.visionKey) || "").trim();
   if (!key) return "";
   const image = await fileToVisionJpeg(file);
-  if (!image) return "";
-  const payload = JSON.stringify({ image, key });
-  const headers = { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY };
-  const urls = [LINE_HOOK + "/api/vision", "/vision-ocr"];
-  for (let i = 0; i < urls.length; i++) {
-    try {
-      const res = await fetch(urls[i], { method: "POST", headers, body: payload });
-      const data = await res.json();
-      if (data && data.ok && String(data.text || "").trim()) {
-        bumpVisionCount();
-        return String(data.text);
-      }
-    } catch {}
+  if (!image) { ui.visionLastError = "照片轉檔失敗"; return ""; }
+  try {
+    const res = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: image },
+          features: [{ type: "DOCUMENT_TEXT_DETECTION" }],
+          imageContext: { languageHints: ["zh-Hant", "zh-TW", "en"] }
+        }]
+      })
+    });
+    const data = await res.json();
+    const err = (data && data.error) || (data && data.responses && data.responses[0] && data.responses[0].error);
+    if (err) {
+      ui.visionLastError = visionErrText(err);
+      return "";
+    }
+    const resp = data && data.responses && data.responses[0];
+    const text = (resp && resp.fullTextAnnotation && resp.fullTextAnnotation.text)
+      || (resp && resp.textAnnotations && resp.textAnnotations[0] && resp.textAnnotations[0].description)
+      || "";
+    if (String(text).trim()) {
+      bumpVisionCount();
+      ui.visionLastError = "";
+      return String(text);
+    }
+    ui.visionLastError = "雲端沒讀到字";
+    return "";
+  } catch {
+    ui.visionLastError = "連不上 Google";
+    return "";
   }
-  return "";
+}
+function visionErrText(err) {
+  const msg = String((err && (err.message || err.status)) || err || "");
+  if (/API key not valid|API_KEY_INVALID/i.test(msg)) return "金鑰無效，請重新貼上";
+  if (/PERMISSION_DENIED|has not been used|disabled|not enabled/i.test(msg)) return "尚未啟用 Cloud Vision API";
+  if (/billing|BILLING/i.test(msg)) return "Google 要先開帳單，額度內不會扣錢";
+  return msg.slice(0, 80) || "雲端認字失敗";
+}
+async function testVisionKey() {
+  const key = String((state && state.visionKey) || "").trim();
+  if (!key) { toast("請先儲存金鑰"); return; }
+  toast("正在測試雲端認字…");
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 16; canvas.height = 16;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 16, 16);
+    ctx.fillStyle = "#000"; ctx.font = "12px sans-serif"; ctx.fillText("1", 4, 12);
+    const image = canvas.toDataURL("image/jpeg", 0.8).replace(/^data:image\/jpeg;base64,/, "");
+    const res = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [{ image: { content: image }, features: [{ type: "TEXT_DETECTION" }] }]
+      })
+    });
+    const data = await res.json();
+    const err = (data && data.error) || (data && data.responses && data.responses[0] && data.responses[0].error);
+    if (err) {
+      ui.visionLastError = visionErrText(err);
+      toast(ui.visionLastError);
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    ui.visionLastError = "";
+    toast("雲端認字已通，可以傳簿子了");
+    ui.keepScroll = true;
+    render();
+  } catch {
+    ui.visionLastError = "連不上 Google";
+    toast(ui.visionLastError);
+  }
 }
 async function importPassbookPhotos(files, defaults, after) {
   const list = [...(files || [])].filter(f => f && !isSheetFile(f));
@@ -10856,6 +10921,7 @@ async function importPassbookPhotos(files, defaults, after) {
     let ocrText = "";
     if (cloudOn) {
       try { ocrText = await ocrPassbookCloud(f); } catch {}
+      if (!ocrText && ui.visionLastError) toast(ui.visionLastError);
     }
     if (!ocrText) {
       if (!worker) {
@@ -20520,6 +20586,12 @@ function bindAdminSettings() {
     toast("雲端認字已接上");
     ui.keepScroll = true;
     render();
+  };
+  const visTest = document.getElementById("vision-key-test");
+  if (visTest) visTest.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    testVisionKey();
   };
   const visClear = document.getElementById("vision-key-clear");
   if (visClear) visClear.onclick = e => {
