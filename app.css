@@ -2062,7 +2062,18 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   color: #111;
 }
 .cal-card { overflow: visible; }
-.cal-toolbar { display: flex; gap: 8px; margin: 0; flex-shrink: 0; }
+.cal-head {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.cal-head .small {
+  writing-mode: horizontal-tb;
+  white-space: normal;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.cal-toolbar { display: flex; gap: 8px; margin: 0; flex-wrap: wrap; min-width: 0; }
 .cal-search { margin: 8px 0 4px; padding: 8px 14px; position: relative; z-index: 8; isolation: isolate; pointer-events: auto !important; overflow: visible; }
 .cal-search input,
 #cal-search {

@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-07";
-const APP_EDIT_COUNT = 723;
+const APP_STAMP = "2026-09-05-15-09";
+const APP_EDIT_COUNT = 724;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0273";
+const FILE_VER = "0274";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
+  { ver: APP_VERSION, items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
+  { ver: "2026-09-05-15-07-723", items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
   { ver: "2026-09-05-15-05-722", items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
   { ver: "2026-09-05-15-01-721", items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
   { ver: "2026-09-05-14-57-720", items: ["新增一筆的備註欄改為全寬"] },
@@ -10098,11 +10099,9 @@ function monthCashHtml() {
     : q ? "搜尋結果"
     : "點選、拉選日期或搜尋查看進出帳";
   return `<div class="card card-body cal-card" id="month-cash">
-    <div class="row">
-      <div>
-        <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-        <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calFirm ? " · " + escapeHtml(ui.calFirm) : "") + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
-      </div>
+    <div class="cal-head">
+      <h2 class="dash-h" style="margin:0">本月進出帳</h2>
+      <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calFirm ? " · " + escapeHtml(ui.calFirm) : "") + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
         <button type="button" class="ghost" id="print-cal">列印</button>
