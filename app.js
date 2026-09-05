@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-59";
-const APP_EDIT_COUNT = 757;
+const APP_STAMP = "2026-09-05-19-05";
+const APP_EDIT_COUNT = 758;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0307";
+const FILE_VER = "0308";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客圖卡按壓效果修好，按下會整張縮小"] },
+  { ver: APP_VERSION, items: ["套房分組圖卡與全部展開改成輕點回彈"] },
+  { ver: "2026-09-05-18-59-757", items: ["租客圖卡按壓效果修好，按下會整張縮小"] },
   { ver: "2026-09-05-18-57-756", items: ["首頁四個登入圖卡改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-18-56-755", items: ["上一月下一月圖塊縮小"] },
   { ver: "2026-09-05-18-55-754", items: ["租客圖卡按下會整張縮小回彈"] },
@@ -20717,8 +20718,18 @@ function setFactoryPack(pack, close) {
     pack.addEventListener("transitionend", onEnd);
   }
 }
+function bindIosPress(el) {
+  if (!el) return;
+  el.onpointerdown = () => {
+    el.classList.add("is-press");
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+  };
+  el.onpointerup = () => el.classList.remove("is-press");
+  el.onpointercancel = () => el.classList.remove("is-press");
+}
 function bindFactoryFold() {
   document.querySelectorAll("[data-factory-fold]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -20733,7 +20744,9 @@ function bindFactoryFold() {
     };
   });
   const allBtn = document.getElementById("factory-all");
-  if (allBtn) allBtn.onclick = e => {
+  if (allBtn) {
+    bindIosPress(allBtn);
+    allBtn.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     const heads = [...document.querySelectorAll("[data-factory-fold]")];
@@ -20745,10 +20758,12 @@ function bindFactoryFold() {
     });
     document.querySelectorAll("[data-factory-pack]").forEach(p => setFactoryPack(p, close));
     allBtn.textContent = close ? "全部展開" : "全部收合";
-  };
+    };
+  }
 }
 function bindStudioFold() {
   document.querySelectorAll("[data-studio-fold]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -20763,7 +20778,9 @@ function bindStudioFold() {
     };
   });
   const allBtn = document.getElementById("studio-all");
-  if (allBtn) allBtn.onclick = e => {
+  if (allBtn) {
+    bindIosPress(allBtn);
+    allBtn.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     const heads = [...document.querySelectorAll("[data-studio-fold]")];
@@ -20775,7 +20792,8 @@ function bindStudioFold() {
     });
     document.querySelectorAll("[data-studio-pack]").forEach(p => setFactoryPack(p, close));
     allBtn.textContent = close ? "全部展開" : "全部收合";
-  };
+    };
+  }
 }
 function applyAnnouncementReaction(id) {
   if (!ui.tenantId) return;
