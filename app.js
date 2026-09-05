@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-07";
-const APP_EDIT_COUNT = 741;
+const APP_STAMP = "2026-09-05-18-08";
+const APP_EDIT_COUNT = 742;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0291";
+const FILE_VER = "0292";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
+  { ver: APP_VERSION, items: ["整月圈選再按一次可取消、都不選"] },
+  { ver: "2026-09-05-18-07-741", items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
   { ver: "2026-09-05-17-27-739", items: ["業務上傳排法改回，只把浮動球往右靠"] },
   { ver: "2026-09-05-17-25-738", items: ["業務上傳左邊、浮動球靠右邊對齊"] },
   { ver: "2026-09-05-17-24-737", items: ["本月工作右邊只留過期，拿掉近3天與未繳"] },
@@ -10303,7 +10304,7 @@ function monthCashHtml() {
       </div>
     </div>
     <div class="cal-sum-actions no-print">
-      <button type="button" class="ghost" id="cal-month-all">整月圈選</button>
+      <button type="button" class="ghost${rangeStart === 1 && rangeEnd === dim ? " on" : ""}" id="cal-month-all">${rangeStart === 1 && rangeEnd === dim ? "取消圈選" : "整月圈選"}</button>
       ${filter ? `<button type="button" class="ghost" id="cal-filter-clear" style="width:auto;padding:6px 10px">全部帳戶</button>` : ""}
     </div>
     <div class="cal-grid">
@@ -22298,8 +22299,15 @@ function bindCashCal() {
     e.preventDefault();
     e.stopPropagation();
     ensureCalMonth();
-    ui.calDay = 1;
-    ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
+    const last = new Date(ui.calYear, ui.calMonth, 0).getDate();
+    const allOn = ui.calDay === 1 && ui.calDayEnd === last;
+    if (allOn) {
+      ui.calDay = 0;
+      ui.calDayEnd = 0;
+    } else {
+      ui.calDay = 1;
+      ui.calDayEnd = last;
+    }
     stay();
   };
   document.querySelectorAll("[data-cal-kind]").forEach(btn => {
