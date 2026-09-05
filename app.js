@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-41";
-const APP_EDIT_COUNT = 708;
+const APP_STAMP = "2026-09-05-12-51";
+const APP_EDIT_COUNT = 709;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0258";
+const FILE_VER = "0259";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會同一天多筆會拆開，結存不再當成金額"] },
+  { ver: APP_VERSION, items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
+  { ver: "2026-09-05-12-41-708", items: ["農會同一天多筆會拆開，結存不再當成金額"] },
   { ver: "2026-09-05-12-34-707", items: ["農會簿子改依七欄規則讀：只記有日期的支出或存入與摘要"] },
   { ver: "2026-09-05-12-27-706", items: ["日曆上一月／下一月按下去有明顯縮放"] },
   { ver: "2026-09-05-12-21-705", items: ["日曆上一月／下一月按下去有顏色，且不再把畫面跳走"] },
@@ -848,6 +849,44 @@ function isPhone() {
   return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
 }
 function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; }
+function visionYm() {
+  try { return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 7); } catch {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  }
+}
+function visionUseCount() {
+  const u = state.visionUse;
+  if (!u || u.ym !== visionYm()) return 0;
+  return Number(u.n) || 0;
+}
+function bumpVisionCount() {
+  const ym = visionYm();
+  if (!state.visionUse || state.visionUse.ym !== ym) state.visionUse = { ym, n: 0 };
+  state.visionUse.n = (Number(state.visionUse.n) || 0) + 1;
+  try { save(); } catch {}
+}
+function visionSettingsHtml() {
+  const has = !!(state.visionKey && String(state.visionKey).trim());
+  const n = visionUseCount();
+  const tail = has ? String(state.visionKey).trim().slice(-4) : "";
+  return `<div class="card card-body">
+    <div class="label">雲端認字（Google）</div>
+    <div class="row"><span class="k">狀態</span><span class="v">${has ? "已接 · 尾碼 " + escapeHtml(tail) : "尚未接"}</span></div>
+    <div class="row"><span class="k">本月已用</span><span class="v">${n}／1,000 張免費</span></div>
+    <p class="small" style="margin-top:8px">每月前 1,000 張免費，下月歸零。上傳簿子會送到 Google 認字，再套農會規則。請用開發者自己的金鑰。</p>
+    <ol class="small" style="margin:8px 0 0 18px;padding:0">
+      <li>打開 <a href="https://console.cloud.google.com/apis/library/vision.googleapis.com" target="_blank" rel="noopener">Cloud Vision API</a> 並啟用</li>
+      <li>到「憑證」建立 API 金鑰，可限制只能用 Cloud Vision API</li>
+      <li>把金鑰貼下方後按儲存</li>
+    </ol>
+    <input id="vision-key" type="password" autocomplete="off" placeholder="${has ? "已儲存，要換再貼新的" : "貼上 Google API 金鑰"}" style="margin-top:10px" />
+    <div class="btn-row" style="margin-top:8px">
+      <button type="button" class="btn-navy" id="vision-key-save">儲存金鑰</button>
+      ${has ? `<button type="button" class="ghost" id="vision-key-clear">清除</button>` : ""}
+    </div>
+  </div>`;
+}
 function lastSeenVersion() {
   try { return localStorage.getItem("tj-last-ver") || ""; } catch { return ""; }
 }
@@ -10754,20 +10793,76 @@ async function ocrPassbookFile(file, worker) {
   }
   return texts.join("\n");
 }
+async function fileToVisionJpeg(file) {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const max = 1600;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+    try { bmp.close(); } catch {}
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.88));
+    if (!blob) return "";
+    const buf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  } catch {
+    return "";
+  }
+}
+async function ocrPassbookCloud(file) {
+  const key = String((state && state.visionKey) || "").trim();
+  if (!key) return "";
+  const image = await fileToVisionJpeg(file);
+  if (!image) return "";
+  const payload = JSON.stringify({ image, key });
+  const headers = { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY };
+  const urls = [LINE_HOOK + "/api/vision", "/vision-ocr"];
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      const res = await fetch(urls[i], { method: "POST", headers, body: payload });
+      const data = await res.json();
+      if (data && data.ok && String(data.text || "").trim()) {
+        bumpVisionCount();
+        return String(data.text);
+      }
+    } catch {}
+  }
+  return "";
+}
 async function importPassbookPhotos(files, defaults, after) {
   const list = [...(files || [])].filter(f => f && !isSheetFile(f));
   if (!list.length) { toast("請選簿子照片"); return; }
-  toast("正在查看簿子照片，金流以簿子為準…");
+  const cloudOn = !!(state.visionKey && String(state.visionKey).trim());
+  toast(cloudOn ? "雲端認字中，金流以簿子為準…" : "正在查看簿子照片，金流以簿子為準…");
   let rows = [];
   let worker = null;
-  try { worker = await makeOcrWorker(); } catch {}
-  if (!worker) toast("認字套件載入較慢或失敗，改用較簡單的認字再試");
+  if (!cloudOn) {
+    try { worker = await makeOcrWorker(); } catch {}
+    if (!worker) toast("認字套件載入較慢或失敗，改用較簡單的認字再試");
+  }
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
     toast("正在看第 " + (i + 1) + "／" + list.length + " 張簿子…");
     let got = [];
     let ocrText = "";
-    try { ocrText = await ocrPassbookFile(f, worker); } catch {}
+    if (cloudOn) {
+      try { ocrText = await ocrPassbookCloud(f); } catch {}
+    }
+    if (!ocrText) {
+      if (!worker) {
+        try { worker = await makeOcrWorker(); } catch {}
+      }
+      try { ocrText = await ocrPassbookFile(f, worker); } catch {}
+    }
     if (ocrText) got = parsePassbookOcr(ocrText, defaults);
     if (!got.length) {
       if (!(defaults && defaults.type === "auto")) {
@@ -15267,6 +15362,7 @@ function adminSettings() {
       <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
     </div>
+    ${isDeveloper() ? visionSettingsHtml() : ""}
     ${bioSettingsHtml()}
     <div class="card card-body">
       <div class="label">通知</div>
@@ -15328,6 +15424,7 @@ function howtoSections() {
     { id: "a-firm", h: "資料", p: "公司資料、公司帳戶、相關帳戶、每月寄發票與公司門禁都在這一頁。" }
   ];
   const dev = admin.concat([
+    { id: "d-ocr", h: "雲端認字", p: "設定裡可貼 Google Cloud Vision 金鑰。每月前 1,000 張免費。上傳簿子會先給雲端認字，再依農會欄位規則記入。金鑰只顯示給開發者。" },
     { id: "d-log", h: "日誌", p: "看租客、管理員、開發者是否在線，以及操作紀錄。這頁只有開發者看得到。" },
     { id: "d-prev", h: "租客預覽", p: "右上角「租客」可模擬已登入的租客畫面，方便試功能。預覽不計入任何金額。" },
     { id: "d-priv", h: "只給開發者看的", p: "開發者私事（提問紀錄、一般提醒）會同步到其他開發者裝置，不會出現在管理員後台。只要和錢有關（薪資、租金、帳務、發票等），管理員與開發者都會同步看到。" }
@@ -20410,6 +20507,31 @@ function bindTenantSettings() {
 }
 function bindAdminSettings() {
   bindLookSettings();
+  const visSave = document.getElementById("vision-key-save");
+  if (visSave) visSave.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.getElementById("vision-key");
+    const key = el ? String(el.value || "").trim() : "";
+    if (!key) { toast("請先貼上 Google API 金鑰"); return; }
+    state.visionKey = key;
+    save();
+    try { pushCloud(); } catch {}
+    toast("雲端認字已接上");
+    ui.keepScroll = true;
+    render();
+  };
+  const visClear = document.getElementById("vision-key-clear");
+  if (visClear) visClear.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    state.visionKey = "";
+    save();
+    try { pushCloud(); } catch {}
+    toast("已關閉雲端認字");
+    ui.keepScroll = true;
+    render();
+  };
   const notify = document.getElementById("set-notify");
   if (notify) notify.onclick = e => {
     e.preventDefault();
