@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-17-27";
-const APP_EDIT_COUNT = 739;
+const APP_STAMP = "2026-09-05-18-06";
+const APP_EDIT_COUNT = 740;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0289";
+const FILE_VER = "0290";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳排法改回，只把浮動球往右靠"] },
+  { ver: APP_VERSION, items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
+  { ver: "2026-09-05-17-27-739", items: ["業務上傳排法改回，只把浮動球往右靠"] },
   { ver: "2026-09-05-17-25-738", items: ["業務上傳左邊、浮動球靠右邊對齊"] },
   { ver: "2026-09-05-17-24-737", items: ["本月工作右邊只留過期，拿掉近3天與未繳"] },
   { ver: "2026-09-05-17-21-736", items: ["業務上傳轉帳字體與進帳出帳對齊，拿掉底線"] },
@@ -10208,6 +10209,25 @@ function bindCalLedgerRows() {
     };
   });
 }
+function calKinds() {
+  if (!ui.calKinds) {
+    try {
+      const raw = JSON.parse(localStorage.getItem("tongjie_cal_kinds") || "null");
+      if (raw && typeof raw === "object") ui.calKinds = { memo: raw.memo !== false, in: raw.in !== false, out: raw.out !== false };
+    } catch {}
+    if (!ui.calKinds) ui.calKinds = { memo: true, in: true, out: true };
+  }
+  return ui.calKinds;
+}
+function persistCalKinds() {
+  try { localStorage.setItem("tongjie_cal_kinds", JSON.stringify(calKinds())); } catch {}
+}
+function calKindOn(type) {
+  const k = calKinds();
+  if (type === "memo") return k.memo !== false;
+  if (type === "out") return k.out !== false;
+  return k.in !== false;
+}
 function monthCashHtml() {
   ensureCalMonth();
   const editing = ui.editBookId ? (state.books || []).find(b => b.id === ui.editBookId) : null;
@@ -10224,9 +10244,10 @@ function monthCashHtml() {
   const allRows = collectLedger().filter(x => x.date && x.date.slice(0, 7) === key);
   const filter = ui.calFilter || "";
   const q = normSearch(ui.calQ);
-  const rows = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank, ui.calFirm) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const shown = allRows.filter(x => ledgerMatchesFilter(x, filter, ui.calBank, ui.calFirm) && (!q || normSearch(ledgerSearchHay(x)).indexOf(q) >= 0));
+  const rows = shown.filter(x => calKindOn(x.type));
   const hitDays = new Set(rows.map(x => Number(String(x.date).slice(8, 10))));
-  const inn = rows.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
+  const inn = shown.filter(x => x.type === "in").reduce((s, x) => s + x.amount, 0);
   const out = rows.filter(x => x.type === "out").reduce((s, x) => s + x.amount, 0);
   const first = new Date(y, m - 1, 1);
   const start = first.getDay();
@@ -10269,10 +10290,19 @@ function monthCashHtml() {
       <strong>${y} 年 ${m} 月</strong>
       <button type="button" class="ghost" data-cal-nav="1">下一月</button>
     </div>
-    <div class="cal-sum">
-      <span>進帳 ${money(inn)}</span>
-      <span>出帳 ${money(out)}</span>
-      <span>結餘 ${money(inn - out)}</span>
+    <div class="cal-sum-row">
+      <div class="cal-sum">
+        <span>進帳 ${money(inn)}</span>
+        <span>出帳 ${money(out)}</span>
+        <span>結餘 ${money(inn - out)}</span>
+      </div>
+      <div class="cal-kinds">
+        <button type="button" class="cal-kind memo${calKindOn("memo") ? " on" : ""}" data-cal-kind="memo">行程</button>
+        <button type="button" class="cal-kind in${calKindOn("in") ? " on" : ""}" data-cal-kind="in">進帳</button>
+        <button type="button" class="cal-kind out${calKindOn("out") ? " on" : ""}" data-cal-kind="out">出帳</button>
+      </div>
+    </div>
+    <div class="cal-sum-actions no-print">
       <button type="button" class="ghost" id="cal-month-all">整月圈選</button>
       ${filter ? `<button type="button" class="ghost" id="cal-filter-clear" style="width:auto;padding:6px 10px">全部帳戶</button>` : ""}
     </div>
@@ -10288,7 +10318,7 @@ function monthCashHtml() {
           <em>${d}</em>
           ${di ? `<span class="in">+${di.toLocaleString("zh-TW")}</span>` : ""}
           ${dout ? `<span class="out">-${dout.toLocaleString("zh-TW")}</span>` : ""}
-          ${hasMemo ? `<span class="mark">記</span>` : ""}
+          ${hasMemo ? `<span class="mark trip">記</span>` : ""}
         </button>`;
       }).join("")}
     </div>
@@ -22272,6 +22302,17 @@ function bindCashCal() {
     ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
     stay();
   };
+  document.querySelectorAll("[data-cal-kind]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const k = btn.dataset.calKind;
+      const cur = calKinds();
+      cur[k] = !calKindOn(k);
+      persistCalKinds();
+      stay();
+    };
+  });
   const search = document.getElementById("cal-search");
   if (search) {
     search.onpointerdown = e => { e.stopPropagation(); setTimeout(() => search.focus(), 0); };
