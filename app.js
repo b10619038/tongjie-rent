@@ -12,6 +12,7 @@ const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
+const FILE_API = LINE_HOOK + "/api/file/";
 const BUILD_API = LINE_HOOK + "/api/build";
 const SYNC_KEY = "tj-82934388";
 const UI_KEY = "tongjie_ui_v2";
@@ -24,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-50";
-const APP_EDIT_COUNT = 717;
+const APP_STAMP = "2026-09-05-14-52";
+const APP_EDIT_COUNT = 718;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0267";
+const FILE_VER = "0268";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
+  { ver: APP_VERSION, items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
+  { ver: "2026-09-05-14-50-717", items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
   { ver: "2026-09-05-14-46-716", items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
   { ver: "2026-09-05-14-40-715", items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
   { ver: "2026-09-05-14-28-714", items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
@@ -4650,6 +4652,33 @@ function mergeTenants(a, b) {
   return gone.size ? merged.filter(x => x && !gone.has(x.id)) : merged;
 }
 function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
+function mergeBookVault(a, b) {
+  const map = Object.create(null);
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    const copy = {
+      id: String(x.id),
+      name: String(x.name || ""),
+      kind: x.kind === "sheet" ? "sheet" : "photo",
+      at: String(x.at || ""),
+      size: Number(x.size) || 0,
+      ids: Array.isArray(x.ids) ? x.ids.filter(Boolean) : [],
+      cloud: !!x.cloud,
+      mime: String(x.mime || "")
+    };
+    const cur = map[x.id];
+    if (!cur) { map[x.id] = copy; return; }
+    if (String(copy.at) >= String(cur.at)) {
+      copy.ids = [...new Set([].concat(cur.ids || [], copy.ids || []))];
+      copy.cloud = !!(cur.cloud || copy.cloud);
+      map[x.id] = copy;
+    } else {
+      cur.ids = [...new Set([].concat(cur.ids || [], copy.ids || []))];
+      cur.cloud = !!(cur.cloud || copy.cloud);
+    }
+  });
+  return Object.keys(map).map(k => map[k]).sort((p, q) => String(q.at || "").localeCompare(String(p.at || "")));
+}
 function mergeSharedInto(target, other) {
   if (!target || !other) return target;
   target.tenants = mergeEntities(target.tenants, other.tenants, TENANT_SYNC_KEYS);
@@ -4678,6 +4707,7 @@ function mergeSharedInto(target, other) {
   const tc = Number(target.company && target.company.updatedAt) || 0;
   if (other.company && oc >= tc) target.company = Object.assign({}, target.company || {}, other.company);
   if (other.accountOpenings) target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
+  target.bookVault = mergeBookVault(target.bookVault, other.bookVault);
   target.paidMarks = mergePaidMarkMaps(target.paidMarks, other.paidMarks);
   applyPaidMarks(target);
   return target;
@@ -4769,6 +4799,7 @@ async function pullCloud() {
       books: state.books, errands: state.errands, bankSlips: state.bankSlips,
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
       lastBookImport: state.lastBookImport,
+      bookVault: state.bookVault,
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
       paidMarks: state.paidMarks
     };
@@ -4819,6 +4850,7 @@ async function pullCloud() {
     if (mineSnap.lastBookImport && (!state.lastBookImport || String(mineSnap.lastBookImport.at || "") >= String(state.lastBookImport.at || ""))) {
       state.lastBookImport = mineSnap.lastBookImport;
     }
+    state.bookVault = mergeBookVault(state.bookVault, mineSnap.bookVault);
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
     if (mineDocsVer && !state.docsImportVer) state.docsImportVer = mineDocsVer;
     applyJuly115Books(state);
@@ -5362,7 +5394,8 @@ async function pushCloud() {
       applyPing: state.applyPing || null,
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
-      docsImportVer: state.docsImportVer || (remote && remote.docsImportVer)
+      docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
+      bookVault: mergeBookVault(remote && remote.bookVault, state.bookVault)
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -5416,7 +5449,8 @@ async function pushCloud() {
         checkouts: payload.checkouts,
         eSigns: payload.eSigns,
         repairs: payload.repairs,
-        company: payload.company
+        company: payload.company,
+        bookVault: payload.bookVault
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
@@ -10472,9 +10506,47 @@ function delUploadBlob(id) {
     } catch { res(false); }
   })).catch(() => false);
 }
+function fileApiUrl(id) {
+  return FILE_API + encodeURIComponent(String(id || ""));
+}
+async function pushUploadCloud(id, file) {
+  if (!id || !file) return false;
+  try {
+    const buf = await (file.arrayBuffer ? file.arrayBuffer() : new Response(file).arrayBuffer());
+    const res = await fetch(fileApiUrl(id), {
+      method: "PUT",
+      headers: {
+        "X-Tongjie-Key": SYNC_KEY,
+        "Content-Type": file.type || "application/octet-stream",
+        "X-File-Name": encodeURIComponent(file.name || "file")
+      },
+      body: buf
+    });
+    return !!(res && res.ok);
+  } catch {
+    return false;
+  }
+}
+async function pullUploadCloud(id) {
+  if (!id) return null;
+  try {
+    const res = await fetch(fileApiUrl(id), { headers: { "X-Tongjie-Key": SYNC_KEY } });
+    if (!res || !res.ok) return null;
+    const blob = await res.blob();
+    return blob && blob.size ? blob : null;
+  } catch {
+    return null;
+  }
+}
+async function delUploadCloud(id) {
+  if (!id) return;
+  try {
+    await fetch(fileApiUrl(id), { method: "DELETE", headers: { "X-Tongjie-Key": SYNC_KEY } });
+  } catch {}
+}
 function rememberBookUpFile(name, ids, file) {
   const n = String(name || "").trim();
-  if (!n) return;
+  if (!n) return null;
   const list = bookVault();
   let cur = list.find(x => x && x.name === n);
   if (!cur) {
@@ -10484,6 +10556,8 @@ function rememberBookUpFile(name, ids, file) {
       kind: file && isSheetFile(file) ? "sheet" : "photo",
       at: nowStamp(),
       size: (file && file.size) || 0,
+      mime: (file && file.type) || "",
+      cloud: false,
       ids: []
     };
     list.unshift(cur);
@@ -10491,9 +10565,20 @@ function rememberBookUpFile(name, ids, file) {
   const have = new Set(cur.ids || []);
   (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
   if (file) {
+    if (file.size) cur.size = file.size;
+    if (file.type) cur.mime = file.type;
     BOOK_UP_BLOBS[n] = file;
     try { putUploadBlob(cur.id, file); } catch {}
   }
+  return cur;
+}
+async function storeUploadFile(file) {
+  const rec = rememberBookUpFile((file && file.name) || "", [], file);
+  if (!rec) return false;
+  try { await putUploadBlob(rec.id, file); } catch {}
+  const ok = await pushUploadCloud(rec.id, file);
+  rec.cloud = !!ok;
+  return ok;
 }
 function bookUpFilesHtml() {
   const list = bookVault();
@@ -10502,7 +10587,7 @@ function bookUpFilesHtml() {
       <div class="book-up-file">
         <div class="book-up-meta">
           <span>${escapeHtml(f.name || "")}</span>
-          <em>${f.kind === "sheet" ? "Excel · 由 App 辨識記入日曆" : "照片 · 未記入日曆"}</em>
+          <em>${f.kind === "sheet" ? "Excel · 由 App 辨識記入日曆" : "照片 · 未記入日曆"} · ${f.cloud ? "已同步雲端" : "本機"}</em>
         </div>
         <button type="button" class="ghost book-up-dl" data-dl-up-i="${i}">下載</button>
         <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
@@ -10511,11 +10596,20 @@ function bookUpFilesHtml() {
 async function downloadVaultAt(i) {
   const rec = bookVault()[i];
   if (!rec) return;
+  toast("準備下載 " + (rec.name || "") + "…");
   let blob = BOOK_UP_BLOBS[rec.name] || null;
   if (!blob && rec.id) {
     try { blob = await getUploadBlob(rec.id); } catch { blob = null; }
   }
-  if (!blob) { toast("這份檔案已不在這台手機，請再上傳一次"); return; }
+  if (!blob && rec.id) {
+    blob = await pullUploadCloud(rec.id);
+    if (blob) {
+      try { await putUploadBlob(rec.id, blob); } catch {}
+      BOOK_UP_BLOBS[rec.name] = blob;
+      rec.cloud = true;
+    }
+  }
+  if (!blob) { toast("這份檔案雲端還沒到，請稍後再試或再上傳一次"); return; }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -10531,6 +10625,7 @@ function removeBookUpFileAt(i) {
   const item = list[i];
   if (!item) return;
   try { delUploadBlob(item.id); } catch {}
+  try { delUploadCloud(item.id); } catch {}
   if (item.name) delete BOOK_UP_BLOBS[item.name];
   list.splice(i, 1);
   ui.bookUpNames = list.map(x => x.name).join("、");
@@ -21686,20 +21781,26 @@ function bindCashCal() {
       upFiles.click();
     };
   }
-  if (upFiles) upFiles.onchange = () => {
+  if (upFiles) upFiles.onchange = async () => {
     const files = [...(upFiles.files || [])];
     upFiles.value = "";
     if (!files.length) return;
     const sheets = files.filter(f => isSheetFile(f));
     const imgs = files.filter(f => !isSheetFile(f));
-    files.forEach(f => rememberBookUpFile(f.name || "", [], f));
+    toast("正在上傳並同步雲端…");
+    let cloudOk = true;
+    for (let i = 0; i < files.length; i++) {
+      const ok = await storeUploadFile(files[i]);
+      if (!ok) cloudOk = false;
+    }
     ui.bookUpNames = bookVault().map(x => x.name).join("、");
     save();
     if (sheets[0]) {
-      if (imgs.length) toast("照片已留下，不會記入。Excel 正在辨識記入日曆…");
+      if (imgs.length) toast(cloudOk ? "已同步雲端。照片不記入；Excel 正在辨識…" : "雲端稍後再試。Excel 正在辨識…");
+      else if (!cloudOk) toast("Excel 正在辨識；檔案雲端稍後再試");
       importExcelBooks(sheets[0], stay);
     } else {
-      toast("照片已留下檔名，不會記入日曆。請下載後傳到聊天給我過目，再同步日曆。");
+      toast(cloudOk ? "照片已同步雲端，其他裝置可下載。不會記入日曆。" : "照片已留下，雲端還沒通，請稍後再按下載試試");
       stay();
     }
   };

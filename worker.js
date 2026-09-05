@@ -77,8 +77,8 @@ function cors(data, status) {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, X-Tongjie-Key",
-      "Access-Control-Allow-Methods": "GET,PUT,POST,OPTIONS"
+      "Access-Control-Allow-Headers": "Content-Type, X-Tongjie-Key, X-File-Name",
+      "Access-Control-Allow-Methods": "GET,PUT,POST,DELETE,OPTIONS"
     }
   });
 }
@@ -264,6 +264,47 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors("", 204);
+
+    if (url.pathname.startsWith("/api/file/")) {
+      if (!keyOk(request)) return cors({ error: "key" }, 403);
+      const rawId = decodeURIComponent(url.pathname.slice("/api/file/".length));
+      const id = String(rawId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 80);
+      if (!id || !env.DATA) return cors({ error: "file" }, 400);
+      const kvKey = "file:" + id;
+      if (request.method === "PUT") {
+        const buf = await request.arrayBuffer();
+        if (!buf || !buf.byteLength) return cors({ error: "empty" }, 400);
+        if (buf.byteLength > 12 * 1024 * 1024) return cors({ error: "too-big" }, 413);
+        let name = "";
+        try { name = decodeURIComponent(request.headers.get("X-File-Name") || ""); } catch { name = ""; }
+        const type = request.headers.get("Content-Type") || "application/octet-stream";
+        await env.DATA.put(kvKey, buf, { metadata: { name: String(name).slice(0, 180), type: String(type).slice(0, 80) } });
+        return cors({ ok: true, id, size: buf.byteLength });
+      }
+      if (request.method === "GET") {
+        const got = await env.DATA.getWithMetadata(kvKey, "arrayBuffer");
+        if (!got || !got.value) return new Response("not found", {
+          status: 404,
+          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-Tongjie-Key, X-File-Name" }
+        });
+        const meta = got.metadata || {};
+        const name = String(meta.name || id);
+        return new Response(got.value, {
+          status: 200,
+          headers: {
+            "Content-Type": meta.type || "application/octet-stream",
+            "Content-Disposition": "attachment; filename*=UTF-8''" + encodeURIComponent(name),
+            "X-File-Name": encodeURIComponent(name),
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "Content-Disposition, X-File-Name"
+          }
+        });
+      }
+      if (request.method === "DELETE") {
+        await env.DATA.delete(kvKey);
+        return cors({ ok: true });
+      }
+    }
 
     if (url.pathname === "/api/vision" && request.method === "POST") {
       if (!keyOk(request)) return cors({ error: "key" }, 403);
