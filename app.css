@@ -1155,6 +1155,18 @@ textarea { min-height: 92px; resize: vertical; }
   border: 0; border-radius: 14px; padding: 13px 16px;
   font: inherit; font-weight: 700; cursor: pointer; width: 100%;
 }
+.ghost {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ghost:active,
+.ghost.is-press {
+  transform: scale(0.94);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .primary { background: var(--teal); color: var(--on-teal, #fff); }
 .btn-dark { background: #3a3a3a; color: #fff; }
 .btn-navy { background: var(--teal); color: var(--on-teal, #fff); border-radius: 999px; }
@@ -1438,6 +1450,16 @@ input[type="file"] {
   border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; cursor: pointer;
   color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: scale 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.issue-opt:active,
+.issue-opt.is-press {
+  scale: 0.94;
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .sign-term { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 4px; font-weight: 700; line-height: 1.4; }
 .sign-term input { margin-top: 3px; }
