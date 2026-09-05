@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-27";
-const APP_EDIT_COUNT = 765;
+const APP_STAMP = "2026-09-05-19-32";
+const APP_EDIT_COUNT = 766;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0315";
+const FILE_VER = "0316";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["返回按鈕改成 iPhone 輕點回彈"] },
+  { ver: APP_VERSION, items: ["整月圈選按鈕改成 iPhone 輕點回彈"] },
+  { ver: "2026-09-05-19-27-765", items: ["返回按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-25-764", items: ["本月工作日曆編輯完成按鈕改成輕點回彈"] },
   { ver: "2026-09-05-19-20-763", items: ["自動最佳化按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-19-762", items: ["調色盤色塊改成 iPhone 輕點回彈"] },
@@ -22549,7 +22550,9 @@ function bindCashCal() {
     stay();
   };
   const allMonth = document.getElementById("cal-month-all");
-  if (allMonth) allMonth.onclick = e => {
+  if (allMonth) {
+    bindIosPress(allMonth);
+    allMonth.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     ensureCalMonth();
@@ -22562,8 +22565,9 @@ function bindCashCal() {
       ui.calDay = 1;
       ui.calDayEnd = last;
     }
-    stay();
-  };
+    setTimeout(stay, 80);
+    };
+  }
   document.querySelectorAll("[data-cal-kind]").forEach(btn => {
     btn.onpointerdown = () => {
       btn.classList.add("is-press");

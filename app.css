@@ -2270,6 +2270,19 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .cal-cell.dim { opacity: .38; }
 .cal-toolbar .ghost { width: auto; margin: 0; padding: 8px 14px; }
 .cal-toolbar .ghost.on { background: var(--ok-soft); color: var(--ok); }
+#cal-month-all {
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#cal-month-all:active,
+#cal-month-all.is-press {
+  transform: scale(0.97);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .recon-box {
   margin-top: 14px;
   padding: 12px 12px 8px;
