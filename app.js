@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-33";
-const APP_EDIT_COUNT = 781;
+const APP_STAMP = "2026-09-05-21-34";
+const APP_EDIT_COUNT = 782;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0331";
+const FILE_VER = "0332";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["綁定 LINE 與周邊景點小圖對齊"] },
+  { ver: APP_VERSION, items: ["修好租客畫面公告照片打不開的問題"] },
+  { ver: "2026-09-05-21-33-781", items: ["綁定 LINE 與周邊景點小圖對齊"] },
   { ver: "2026-09-05-21-31-780", items: ["公告拿掉查看照片，點縮圖即可放大"] },
   { ver: "2026-09-05-21-28-779", items: ["儲值機照片改從這三個字等比放大"] },
   { ver: "2026-09-05-21-23-778", items: ["點儲值機說明時，照片從該行放大展開"] },
@@ -14767,7 +14768,7 @@ function announcePosterLabel(a) {
 function announceMediaHtml(a) {
   const media = (a && a.media) || [];
   if (!media.length) return "";
-  const thumbs = media.map(m => {
+  const thumbs = media.map((m, i) => {
     const kind = m.kind === "video" ? "video" : "image";
     const inner = kind === "video"
       ? `<video src="${m.src || ""}" muted playsinline></video>`
