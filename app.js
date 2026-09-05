@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-09";
-const APP_EDIT_COUNT = 694;
+const APP_STAMP = "2026-09-05-11-14";
+const APP_EDIT_COUNT = 695;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0244";
+const FILE_VER = "0245";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆上傳只顯示檔名，不出現圖片預覽"] },
+  { ver: APP_VERSION, items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
+  { ver: "2026-09-05-11-09-694", items: ["新增一筆上傳只顯示檔名，不出現圖片預覽"] },
   { ver: "2026-09-05-11-08-693", items: ["金額空白時上傳簿子，預設自動感應進出帳"] },
   { ver: "2026-09-05-11-00-692", items: ["新增一筆自動感應改為藍色字"] },
   { ver: "2026-09-05-10-58-691", items: ["新增一筆選進帳時改為綠色字"] },
@@ -20949,9 +20950,24 @@ function bindCashCal() {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
       const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
       const date = ymdOf((form.date && form.date.value) || picked);
-      if (!amount) { toast("請填金額，或改上傳簿子"); return; }
+      if (!amount && !ui.editBookId) {
+        const live = liveLastImport();
+        if (live && live.rows && live.rows.length) {
+          toast("這批已記入日曆，可看下方剛剛上傳的紀錄");
+          return;
+        }
+        const up = document.getElementById("book-up-files");
+        if (up) {
+          toast("請選簿子檔案，金額與進出帳由檔案自動感應");
+          up.click();
+          return;
+        }
+        toast("請上傳簿子");
+        return;
+      }
+      if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
-      if (form.type.value === "auto") { toast("手動記入請選進帳或出帳；上傳照片可用自動感應"); return; }
+      if (form.type.value === "auto") { toast("手動記入請選進帳或出帳；上傳簿子可用自動感應"); return; }
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
