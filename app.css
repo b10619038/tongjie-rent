@@ -1178,11 +1178,20 @@ textarea { min-height: 92px; resize: vertical; }
   animation: esignEdge 1.6s ease-out 1.5s infinite;
 }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-.btn-row .ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+.btn-row .ghost,
+.btn-row .btn-navy {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-row .ghost:active,
+.btn-row .ghost.is-press,
+.btn-row .btn-navy:active,
+.btn-row .btn-navy.is-press {
+  transform: scale(0.94);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .btn-ic {
   display: grid;
