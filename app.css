@@ -80,6 +80,10 @@ input, textarea, select {
   position: relative;
   z-index: 2;
 }
+#book-form.is-auto > .cal-form-row:first-of-type {
+  grid-template-columns: 1fr;
+}
+#book-form.is-auto input[name="amount"] { display: none; }
 #errand-form {
   position: relative;
   z-index: 6;

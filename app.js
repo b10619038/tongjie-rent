@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-27";
-const APP_EDIT_COUNT = 699;
+const APP_STAMP = "2026-09-05-11-33";
+const APP_EDIT_COUNT = 700;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0249";
+const FILE_VER = "0250";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
+  { ver: APP_VERSION, items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
+  { ver: "2026-09-05-11-27-699", items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
   { ver: "2026-09-05-11-22-698", items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
   { ver: "2026-09-05-11-20-697", items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
   { ver: "2026-09-05-11-15-696", items: ["上傳檔名右邊可叉叉刪除該檔"] },
@@ -10042,7 +10043,7 @@ function monthCashHtml() {
       ${calDayListHtml(selected, rangeLabel, rangeStart && rangeEnd !== rangeStart ? `　共 ${rangeEnd - rangeStart + 1} 天` : "")}
     </div>
     ${ui.reconOpen ? monthReconHtml(key) : ""}
-    <form id="book-form" class="cal-form">
+    <form id="book-form" class="cal-form${!ed && (!ui.bookType || ui.bookType === "auto") ? " is-auto" : ""}">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
         <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : ((ui.bookType === "out") ? "out" : (ui.bookType === "in" ? "in" : "auto"))}">
@@ -10050,7 +10051,7 @@ function monthCashHtml() {
           <option value="in" ${(ed ? ed.type !== "out" : ui.bookType === "in") ? "selected" : ""}>進帳</option>
           <option value="out" ${(ed ? ed.type === "out" : ui.bookType === "out") ? "selected" : ""}>出帳</option>
         </select>
-        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : escapeHtml(ui.bookAmount || "")}" />
+        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : escapeHtml(ui.bookAmount || "")}" ${!ed && (!ui.bookType || ui.bookType === "auto") ? "hidden" : ""} />
       </div>
       <div class="cal-form-row" id="book-bank-row">
         <select name="company">
@@ -10067,8 +10068,8 @@ function monthCashHtml() {
         </div>
       </div>
       ${bookUpFilesHtml()}
-      <div class="small">${ed ? "可改日期、金額與備註。" : "手記：選帳戶（可選趙文榮）、進帳或出帳、填金額，再按記入日曆。上傳簿子請按上傳，不用填金額。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
-      <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "自動感應＝上傳簿子，不用填金額。要手記再改選進帳或出帳，金額欄才會出現。"}</div>
+      <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳並記入" : "記入日曆")}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
     ${lastBookImportHtml()}
@@ -20977,7 +20978,12 @@ function bindCashCal() {
   const paintBookType = () => {
     if (!form || !form.type) return;
     form.type.classList.remove("in", "out", "auto");
-    form.type.classList.add(form.type.value === "out" ? "out" : (form.type.value === "auto" ? "auto" : "in"));
+    const auto = form.type.value === "auto";
+    form.type.classList.add(form.type.value === "out" ? "out" : (auto ? "auto" : "in"));
+    form.classList.toggle("is-auto", auto && !ui.editBookId);
+    if (form.amount && !ui.editBookId) form.amount.hidden = auto;
+    const saveBtn = document.getElementById("book-save");
+    if (saveBtn && !ui.editBookId) saveBtn.textContent = auto ? "上傳並記入" : "記入日曆";
   };
   const upOpen = document.getElementById("book-up-open");
   const upFiles = document.getElementById("book-up-files");
@@ -21055,6 +21061,16 @@ function bindCashCal() {
       const picked = ui.calYear ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay || 1).padStart(2, "0")}` : ymdOf(nowStamp());
       const date = ymdOf((form.date && form.date.value) || picked);
       rememberBookForm(form);
+      const auto = form.type.value === "auto";
+      if (!amount && !ui.editBookId && auto) {
+        if (bookUpFileList().length || (liveLastImport() && liveLastImport().rows && liveLastImport().rows.length)) {
+          toast("這批已記入日曆");
+          return;
+        }
+        const up = document.getElementById("book-up-files");
+        if (up) { up.click(); return; }
+        return;
+      }
       if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
       const payload = {
