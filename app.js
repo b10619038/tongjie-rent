@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-52";
-const APP_EDIT_COUNT = 718;
+const APP_STAMP = "2026-09-05-14-56";
+const APP_EDIT_COUNT = 719;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0268";
+const FILE_VER = "0269";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -10522,7 +10522,11 @@ async function pushUploadCloud(id, file) {
       },
       body: buf
     });
-    return !!(res && res.ok);
+    if (!res || !res.ok) return false;
+    const ct = String(res.headers.get("Content-Type") || "");
+    if (ct.indexOf("json") < 0) return false;
+    const data = await res.json();
+    return !!(data && data.ok);
   } catch {
     return false;
   }
@@ -10532,6 +10536,8 @@ async function pullUploadCloud(id) {
   try {
     const res = await fetch(fileApiUrl(id), { headers: { "X-Tongjie-Key": SYNC_KEY } });
     if (!res || !res.ok) return null;
+    const ct = String(res.headers.get("Content-Type") || "").toLowerCase();
+    if (ct.indexOf("text/") >= 0 || ct.indexOf("json") >= 0) return null;
     const blob = await res.blob();
     return blob && blob.size ? blob : null;
   } catch {
