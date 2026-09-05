@@ -1510,6 +1510,16 @@ input[type="file"] {
 .ann-thumb {
   border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: #111;
   cursor: pointer; display: block; width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: scale 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ann-thumb:active,
+.ann-thumb.is-press {
+  scale: 0.96;
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .ann-thumb img, .ann-thumb video { width: 100%; height: 110px; object-fit: cover; display: block; }
 

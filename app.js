@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-28";
-const APP_EDIT_COUNT = 779;
+const APP_STAMP = "2026-09-05-21-31";
+const APP_EDIT_COUNT = 780;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0329";
+const FILE_VER = "0330";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["儲值機照片改從這三個字等比放大"] },
+  { ver: APP_VERSION, items: ["公告拿掉查看照片，點縮圖即可放大"] },
+  { ver: "2026-09-05-21-28-779", items: ["儲值機照片改從這三個字等比放大"] },
   { ver: "2026-09-05-21-23-778", items: ["點儲值機說明時，照片從該行放大展開"] },
   { ver: "2026-09-05-21-16-777", items: ["租客底部導航避開系統手勢條，不再被切到"] },
   { ver: "2026-09-05-21-13-776", items: ["租客房間圖卡滑入速度調回適中"] },
@@ -8304,7 +8305,11 @@ function bindMediaViewers() {
         }
         const list = media.filter(m => m && m.src && (!kind || m.kind === kind));
         if (!list.length) { toast("沒有可查看的照片或影片"); return; }
-        openMediaViewer(list, 0);
+        const rawIdx = Number(btn.dataset.viewIdx);
+        const picked = Number.isFinite(rawIdx) ? media[rawIdx] : null;
+        const start = Math.max(0, picked ? list.indexOf(picked) : 0);
+        const origin = btn.classList.contains("ann-thumb") ? (btn.querySelector("img,video") || btn) : null;
+        openMediaViewer(list, start, origin);
       } catch (err) { try { console.error(err); } catch {} toast("無法開啟照片"); }
     };
   });
@@ -14766,9 +14771,9 @@ function announceMediaHtml(a) {
     const inner = kind === "video"
       ? `<video src="${m.src || ""}" muted playsinline></video>`
       : `<img src="${m.src || ""}" alt="">`;
-    return `<button type="button" class="ann-thumb" data-view-media="${escapeHtml(a.id)}|${kind}">${inner}</button>`;
+    return `<button type="button" class="ann-thumb" data-view-media="${escapeHtml(a.id)}|${kind}" data-view-idx="${i}">${inner}</button>`;
   }).join("");
-  return `<div class="ann-thumbs">${thumbs}</div>${repairMediaButtons({ id: a.id, media, photo: null })}`;
+  return `<div class="ann-thumbs">${thumbs}</div>`;
 }
 function announceBodyHtml(a, actions) {
   const unread = ui.tenantId && (isDevPreview() ? !(ui.devReadAnns || {})[a.id] : !(a.readBy || []).includes(ui.tenantId));
