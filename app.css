@@ -900,12 +900,12 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   margin-top: 14px;
   width: 100%;
   border: 0;
-  border-radius: 16px;
+  border-radius: 999px;
   padding: 12px 14px;
   font: inherit;
   font-weight: 800;
-  background: #1b1b1b;
-  color: #fff;
+  background: var(--teal);
+  color: var(--on-teal, #fff);
   text-align: left;
   isolation: isolate;
   animation: esignBounce .7s cubic-bezier(.22,1.4,.32,1) .9s both;

@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-04";
-const APP_EDIT_COUNT = 771;
+const APP_STAMP = "2026-09-05-21-05";
+const APP_EDIT_COUNT = 772;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0321";
+const FILE_VER = "0322";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費租金綁定LINE房間資訊周邊景點改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["尚未簽約按鈕改成原木綠，不再用深黑"] },
+  { ver: "2026-09-05-21-04-771", items: ["繳費租金綁定LINE房間資訊周邊景點改成輕點回彈"] },
   { ver: "2026-09-05-21-03-770", items: ["查看照片按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-21-00-769", items: ["工作助手圖卡與編輯刪除改成輕點回彈"] },
   { ver: "2026-09-05-19-34-768", items: ["租客搜尋篩選空房改成空套房"] },
