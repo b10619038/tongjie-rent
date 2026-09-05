@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-33";
-const APP_EDIT_COUNT = 700;
+const APP_STAMP = "2026-09-05-11-39";
+const APP_EDIT_COUNT = 701;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0250";
+const FILE_VER = "0251";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
+  { ver: APP_VERSION, items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
+  { ver: "2026-09-05-11-33-700", items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
   { ver: "2026-09-05-11-27-699", items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
   { ver: "2026-09-05-11-22-698", items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
   { ver: "2026-09-05-11-20-697", items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
@@ -10335,6 +10336,9 @@ function importPassbookRows(list, sourceLabel) {
     };
   }
   if (added || paired) {
+    ui.calFilter = "";
+    ui.calBank = "";
+    ui.calFirm = "";
     try {
       pushAiLog({
         role: "ai",
@@ -10410,6 +10414,12 @@ function removeBookUpFileAt(i) {
   ui.bookUpFiles = list;
   ui.bookUpNames = list.map(x => x.name).join("、");
   toast(ids.length ? ("已刪除 " + item.name) : ("已拿掉 " + item.name));
+}
+function currentUploadPostedCount() {
+  const have = new Set((state.books || []).map(b => b && b.id).filter(Boolean));
+  let n = 0;
+  bookUpFileList().forEach(f => (f.ids || []).forEach(id => { if (have.has(id)) n += 1; }));
+  return n;
 }
 function liveLastImport() {
   const rec = state.lastBookImport;
@@ -10585,9 +10595,13 @@ async function importPassbookPhotos(files, defaults, after) {
   }
   const r = importPassbookRows(rows, "簿子照片");
   attachImportFiles(state.lastBookImport && state.lastBookImport.id);
-  toast("簿子對帳完成：新增 " + r.added + " 筆"
-    + (r.paired ? "、對上現金 " + r.paired + " 筆" : "")
-    + (r.skipped ? "、已有紀錄不重複 " + r.skipped + " 筆" : ""));
+  if (r.added || r.paired) {
+    toast("已記入 " + (r.added + r.paired) + " 筆，請看日曆上有點的日期，或下方剛剛上傳的紀錄");
+  } else if (r.skipped) {
+    toast("簿子上的帳日曆裡已經有了，沒有新增");
+  } else {
+    toast("照片看不出完整進出帳，沒有記入日曆");
+  }
   if (after) after();
 }
 async function importExcelBooks(file, after) {
@@ -21063,8 +21077,13 @@ function bindCashCal() {
       rememberBookForm(form);
       const auto = form.type.value === "auto";
       if (!amount && !ui.editBookId && auto) {
-        if (bookUpFileList().length || (liveLastImport() && liveLastImport().rows && liveLastImport().rows.length)) {
-          toast("這批已記入日曆");
+        const posted = currentUploadPostedCount();
+        if (posted) {
+          toast("這批有 " + posted + " 筆已在日曆，請點有點的日期或看下方剛剛上傳的紀錄");
+          return;
+        }
+        if (bookUpFileList().length) {
+          toast("檔案有了，但沒有讀出新帳。請換較清楚的簿子，或改傳 Excel");
           return;
         }
         const up = document.getElementById("book-up-files");
