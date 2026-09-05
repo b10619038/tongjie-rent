@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-44";
-const APP_EDIT_COUNT = 787;
+const APP_STAMP = "2026-09-05-21-54";
+const APP_EDIT_COUNT = 788;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0337";
+const FILE_VER = "0338";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["版本號回到原位再稍往下"] },
+  { ver: APP_VERSION, items: ["整體報表：匯出列印與帳戶案場上下對調"] },
+  { ver: "2026-09-05-21-44-787", items: ["版本號回到原位再稍往下"] },
   { ver: "2026-09-05-21-40-786", items: ["版本號改在底部白條上下置中"] },
   { ver: "2026-09-05-21-39-785", items: ["報修類型選取後會顯示已選"] },
   { ver: "2026-09-05-21-38-784", items: ["綁定LINE、測試通知、重新定位也改成輕點回彈"] },
@@ -10027,10 +10028,9 @@ function overallReportHtml() {
     <div class="report-head">
       <div class="report-title-row">
         <h2 class="dash-h" style="margin:0">整體報表</h2>
-        <div class="seg ${siteOn ? "is-site" : "is-account"}" id="report-view-seg">
-          <i class="seg-bg"></i>
-          <button type="button" class="${siteOn ? "" : "on"}" data-report-view="account">帳戶</button>
-          <button type="button" class="${siteOn ? "on" : ""}" data-report-view="site">案場</button>
+        <div class="report-print-btns no-print">
+          <button type="button" class="ghost" id="export-report">匯出</button>
+          <button type="button" class="ghost" id="print-report">列印</button>
         </div>
       </div>
       <div class="small">${siteOn ? "各牛案場實收：本期收入、支出與盈餘（含牛10）" : "四戶歷史營收：本期收支與截至本期的營收總額"}</div>
@@ -10040,8 +10040,11 @@ function overallReportHtml() {
           <button type="button" class="${yearOn ? "on" : ""}" data-report-mode="year">年</button>
           <button type="button" class="${yearOn ? "" : "on"}" data-report-mode="month">月</button>
         </div>
-        <button type="button" class="ghost" id="export-report">匯出</button>
-        <button type="button" class="ghost" id="print-report">列印</button>
+        <div class="seg ${siteOn ? "is-site" : "is-account"}" id="report-view-seg">
+          <i class="seg-bg"></i>
+          <button type="button" class="${siteOn ? "" : "on"}" data-report-view="account">帳戶</button>
+          <button type="button" class="${siteOn ? "on" : ""}" data-report-view="site">案場</button>
+        </div>
       </div>
     </div>
     <div id="report-body">${overallReportBodyHtml()}</div>

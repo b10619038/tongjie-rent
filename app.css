@@ -2767,8 +2767,10 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .report-title-row {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
+.report-print-btns { display: flex; gap: 8px; margin-left: auto; flex: 0 0 auto; }
+.report-print-btns .ghost { width: auto; margin: 0; }
 .report-title-row .seg { margin: 0; width: 148px; flex: 0 0 148px; }
-#report-view-seg { width: 148px; margin: 0; flex: 0 0 148px; }
+#report-view-seg { width: 148px; margin: 0 0 0 auto; flex: 0 0 148px; }
 .rev-sheet { margin-top: 18px; }
 .rev-card {
   border: 1px solid var(--line);
@@ -2844,7 +2846,6 @@ body.rev-zooming { overflow: hidden; }
 .report-actions .ghost {
   width: auto; margin: 0;
 }
-#export-report { margin-left: auto; }
 #report-period-seg { width: 132px; margin: 0; flex: 0 0 132px; }
 .acct-grid {
   display: grid; gap: 10px; margin-top: 4px;
