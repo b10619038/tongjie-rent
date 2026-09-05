@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-33";
-const APP_EDIT_COUNT = 767;
+const APP_STAMP = "2026-09-05-19-34";
+const APP_EDIT_COUNT = 768;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0317";
+const FILE_VER = "0318";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["營收圖表年月切換改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["租客搜尋篩選空房改成空套房"] },
+  { ver: "2026-09-05-19-33-767", items: ["營收圖表年月切換改成輕點回彈"] },
   { ver: "2026-09-05-19-32-766", items: ["整月圈選按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-27-765", items: ["返回按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-25-764", items: ["本月工作日曆編輯完成按鈕改成輕點回彈"] },
@@ -18377,7 +18378,7 @@ function vacantRoomCardHtml(r) {
   const pill = applyStatusPill(inc, inc, r);
   return `<div class="card card-body clickable tenant-slim" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空房"}</span>`}<span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini"><span class="k">${escapeHtml(label)}${escapeHtml(who)}</span></span><span class="row-end">${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : `<span class="pay-pill">${roomIsFactory(r) ? "空廠房" : "空套房"}</span>`}<span class="fold-caret go-right"></span></span></div>
     </div>`;
 }
 function vacantSheetDetailsHtml(r) {
@@ -18498,8 +18499,8 @@ function tenantEntriesOfKind(kind, opts) {
 function tenantListInnerHtml(kind) {
   if (tenantChipOn() === "vacant") {
     const rooms = vacantRoomsOfKind(kind);
-    const empty = kind === "factory" ? "目前沒有空廠房" : "目前沒有空房";
-    const miss = kind === "factory" ? "找不到符合的空廠房" : "找不到符合的空房";
+    const empty = kind === "factory" ? "目前沒有空廠房" : "目前沒有空套房";
+    const miss = kind === "factory" ? "找不到符合的空廠房" : "找不到符合的空套房";
     return rooms.length
       ? rooms.map(r => vacantRoomCardHtml(r)).join("")
       : `<div class="empty">${normSearch(ui.tenantQ) ? miss : empty}</div>`;
@@ -18939,7 +18940,7 @@ function applyTenantKind(kind) {
   const search = document.getElementById("tenant-search");
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const vacBtn = document.getElementById("tenant-vacant-btn");
-  if (vacBtn) vacBtn.textContent = next === "factory" ? "空廠房" : "空房";
+  if (vacBtn) vacBtn.textContent = next === "factory" ? "空廠房" : "空套房";
   const box = document.getElementById("tenant-list");
   if (box) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -19251,7 +19252,7 @@ function adminTenants() {
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
       <div class="tenant-search-chips" id="tenant-chip-row">
-        <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空房"}</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空套房"}</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>
