@@ -24,10 +24,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-55";
-const APP_EDIT_COUNT = 702;
+const APP_STAMP = "2026-09-05-12-03";
+const APP_EDIT_COUNT = 703;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0252";
+const FILE_VER = "0253";
+const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
+  { ver: APP_VERSION, items: ["農會簿子加強認字：影像清晰化、結存升降判斷進出，失敗可再認一次"] },
+  { ver: "2026-09-05-11-55-702", items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
   { ver: "2026-09-05-11-39-701", items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
   { ver: "2026-09-05-11-33-700", items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
   { ver: "2026-09-05-11-27-699", items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
@@ -10358,7 +10360,7 @@ function bookUpFileList() {
   if (!Array.isArray(ui.bookUpFiles)) ui.bookUpFiles = [];
   return ui.bookUpFiles;
 }
-function rememberBookUpFile(name, ids) {
+function rememberBookUpFile(name, ids, file) {
   const n = String(name || "").trim();
   if (!n) return;
   const list = bookUpFileList();
@@ -10367,6 +10369,7 @@ function rememberBookUpFile(name, ids) {
     const have = new Set(cur.ids || []);
     (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
   } else list.push({ name: n, ids: (ids || []).filter(Boolean) });
+  if (file) BOOK_UP_BLOBS[n] = file;
 }
 function bookUpFilesHtml() {
   const list = bookUpFileList();
@@ -10498,15 +10501,13 @@ function isNonghuiPassbookText(text) {
 }
 function parseStarMoney(line) {
   const out = [];
-  String(line || "").replace(/\*\s*([\d,]+(?:\.\d+)?)/g, (_, n) => {
+  const push = n => {
     const v = Number(String(n).replace(/,/g, ""));
     if (v > 0 && v < 100000000) out.push(v);
-  });
+  };
+  String(line || "").replace(/[＊*★☆xX]\s*([\d,]+(?:\.\d+)?)/g, (_, n) => push(n));
   if (out.length) return out;
-  String(line || "").replace(/(\d{1,3}(?:,\d{3})+(?:\.\d{2})|\d+\.\d{2})/g, (_, n) => {
-    const v = Number(String(n).replace(/,/g, ""));
-    if (v > 0 && v < 100000000) out.push(v);
-  });
+  String(line || "").replace(/(\d{1,3}(?:,\d{3})+(?:\.\d{2})|\d+\.\d{2})/g, (_, n) => push(n));
   return out;
 }
 function rocYmd7(line) {
@@ -10535,24 +10536,39 @@ function parseNonghuiPassbook(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
   const auto = !defaults || defaults.type === "auto" || !defaults.type;
   const defType = auto ? "" : (defaults.type === "out" ? "out" : "in");
+  const src = String(text || "").replace(/\u3000/g, " ");
+  const marks = [];
+  const re = /(1[0-2]\d)\s*(\d{2})\s*(\d{2})/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const y0 = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (y0 < 90 || y0 > 199 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    const date = (y0 + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    marks.push({ i: m.index, date });
+  }
   const rows = [];
-  String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
-    const line = String(raw || "").trim();
-    if (!line) return;
-    if (/帳號|本數|支出金額|存入金額|結存金額|年月日|竭誠為您/.test(line) && !rocYmd7(line)) return;
-    if (/帳號/.test(line)) return;
-    const date = rocYmd7(line);
-    if (!date) return;
-    const money = parseStarMoney(line);
-    if (!money.length) return;
+  let prevBal = 0;
+  for (let i = 0; i < marks.length; i++) {
+    const chunk = src.slice(marks[i].i, i + 1 < marks.length ? marks[i + 1].i : src.length);
+    if (/帳號/.test(chunk)) continue;
+    const money = parseStarMoney(chunk);
+    if (!money.length) continue;
+    const bal = money[money.length - 1];
     const amount = money.length >= 2 ? money[money.length - 2] : money[0];
-    if (!amount) return;
-    const note = nonghuiNote(line);
-    const guessed = guessPassbookType(note + " " + line, money);
-    const type = guessed || defType;
-    if (type !== "in" && type !== "out") return;
-    rows.push({ date, type, amount, company: defCo, bank: "農會", note: note || "農會簿子" });
-  });
+    if (!amount) continue;
+    const note = nonghuiNote(chunk);
+    let type = guessPassbookType(note + " " + chunk, money) || defType;
+    if (type !== "in" && type !== "out" && prevBal) {
+      if (bal > prevBal + 0.4) type = "in";
+      else if (bal < prevBal - 0.4) type = "out";
+    }
+    if (type !== "in" && type !== "out") {
+      if (money.length >= 2) type = "in";
+      else continue;
+    }
+    rows.push({ date: marks[i].date, type, amount, company: defCo, bank: "農會", note: note || "農會簿子" });
+    if (bal) prevBal = bal;
+  }
   return rows;
 }
 function parsePassbookOcr(text, defaults) {
@@ -10560,7 +10576,7 @@ function parsePassbookOcr(text, defaults) {
   const defBank = (defaults && defaults.bank) || "";
   const auto = defaults && defaults.type === "auto";
   const defType = auto ? "" : (defaults && defaults.type === "out" ? "out" : "in");
-  if (isNonghuiPassbookText(text) || (String(text || "").match(/1[0-2]\d\d{4}/g) || []).length >= 3) {
+  if (isNonghuiPassbookText(text) || (String(text || "").match(/1[0-2]\d\s*\d{2}\s*\d{2}/g) || []).length >= 2) {
     const nh = parseNonghuiPassbook(text, defaults);
     if (nh.length) return nh;
   }
@@ -10612,26 +10628,73 @@ function loadTesseract() {
     document.head.appendChild(s);
   });
 }
+async function prepPassbookImage(file) {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const w0 = bmp.width, h0 = bmp.height;
+    const scale = Math.max(1.4, Math.min(2.2, 1600 / Math.max(w0, 1)));
+    const w = Math.round(w0 * scale), h = Math.round(h0 * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      let g = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+      g = (g - 128) * 1.55 + 136;
+      g = g < 95 ? 0 : (g > 210 ? 255 : g);
+      d[i] = d[i + 1] = d[i + 2] = g;
+    }
+    ctx.putImageData(img, 0, 0);
+    try { bmp.close(); } catch {}
+    return canvas;
+  } catch {
+    return file;
+  }
+}
+async function makeOcrWorker() {
+  const T = await loadTesseract();
+  if (!T || !T.createWorker) return null;
+  const langs = ["chi_tra+eng", "chi_tra", "eng"];
+  for (let i = 0; i < langs.length; i++) {
+    try {
+      const w = await T.createWorker(langs[i]);
+      if (w) return w;
+    } catch {}
+  }
+  return null;
+}
+async function ocrPassbookFile(file, worker) {
+  const img = await prepPassbookImage(file);
+  const texts = [];
+  if (worker) {
+    for (let p = 0; p < 2; p++) {
+      try {
+        if (worker.setParameters) await worker.setParameters({ tessedit_pageseg_mode: String(p === 0 ? 6 : 4) });
+        const ret = await worker.recognize(img);
+        const t = ret && ret.data && ret.data.text ? String(ret.data.text) : "";
+        if (t.trim()) texts.push(t);
+      } catch {}
+    }
+  }
+  return texts.join("\n");
+}
 async function importPassbookPhotos(files, defaults, after) {
   const list = [...(files || [])].filter(f => f && !isSheetFile(f));
   if (!list.length) { toast("請選簿子照片"); return; }
   toast("正在查看簿子照片，金流以簿子為準…");
   let rows = [];
   let worker = null;
-  try {
-    const T = await loadTesseract();
-    if (T && T.createWorker) worker = await T.createWorker("chi_tra+eng");
-  } catch {}
+  try { worker = await makeOcrWorker(); } catch {}
+  if (!worker) toast("認字套件載入較慢或失敗，改用較簡單的認字再試");
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
     toast("正在看第 " + (i + 1) + "／" + list.length + " 張簿子…");
     let got = [];
-    if (worker) {
-      try {
-        const ret = await worker.recognize(f);
-        got = parsePassbookOcr((ret && ret.data && ret.data.text) || "", defaults);
-      } catch {}
-    }
+    let ocrText = "";
+    try { ocrText = await ocrPassbookFile(f, worker); } catch {}
+    if (ocrText) got = parsePassbookOcr(ocrText, defaults);
     if (!got.length) {
       if (!(defaults && defaults.type === "auto")) {
         const g = inferOneFile(f);
@@ -21082,7 +21145,7 @@ function bindCashCal() {
     const files = [...(upFiles.files || [])];
     upFiles.value = "";
     if (!files.length) return;
-    files.forEach(f => rememberBookUpFile(f.name || "", []));
+    files.forEach(f => rememberBookUpFile(f.name || "", [], f));
     ui.bookUpNames = bookUpFileList().map(x => x.name).join("、");
     const imgs = files.filter(f => !isSheetFile(f));
     const sheets = files.filter(f => isSheetFile(f));
@@ -21152,8 +21215,10 @@ function bindCashCal() {
           toast("這批有 " + posted + " 筆已在日曆，請點有點的日期或看下方剛剛上傳的紀錄");
           return;
         }
-        if (bookUpFileList().length) {
-          toast("檔案有了，但沒有讀出新帳。請換較清楚的簿子，或改傳 Excel");
+        const pending = bookUpFileList().map(f => f && f.name && BOOK_UP_BLOBS[f.name]).filter(Boolean);
+        if (pending.length) {
+          toast("再認一次簿子…");
+          importPassbookPhotos(pending, bookDefaults(), stay);
           return;
         }
         const up = document.getElementById("book-up-files");
