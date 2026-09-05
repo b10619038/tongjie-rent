@@ -2021,7 +2021,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
-.cal-grid.swap {
+.cal-grid.swap,
+.acct-grid.swap {
   animation: cal-swap 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes cal-swap {

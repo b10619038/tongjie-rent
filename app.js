@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-41";
-const APP_EDIT_COUNT = 746;
+const APP_STAMP = "2026-09-05-18-45";
+const APP_EDIT_COUNT = 747;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0296";
+const FILE_VER = "0297";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["日曆行程進帳出帳圓鈕改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["統潔信潔上方上一月下一月也改成 iPhone 輕點回彈"] },
+  { ver: "2026-09-05-18-41-746", items: ["日曆行程進帳出帳圓鈕改成輕點回彈"] },
   { ver: "2026-09-05-18-39-745", items: ["上一月下一月改成 iPhone 輕點回彈，換月不再整頁卡頓"] },
   { ver: "2026-09-05-18-36-744", items: ["上一月下一月縮放更快更跟手"] },
   { ver: "2026-09-05-18-22-743", items: ["行程點完成會記在當天總覽，不是原定日期"] },
@@ -9943,24 +9944,51 @@ function applyReportView(view) {
     render();
   }
 }
+function swapReportPeriod(dir) {
+  shiftReport(dir);
+  const body = document.getElementById("report-body");
+  if (!body) {
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const tmp = document.createElement("div");
+  tmp.innerHTML = overallReportBodyHtml();
+  const title = body.querySelector(".cal-nav strong");
+  const nextTitle = tmp.querySelector(".cal-nav strong");
+  if (title && nextTitle) title.textContent = nextTitle.textContent;
+  const nav = body.querySelector(".cal-nav");
+  [...body.children].forEach(ch => { if (ch !== nav) ch.remove(); });
+  [...tmp.children].forEach(ch => {
+    if (ch.classList && ch.classList.contains("cal-nav")) return;
+    body.appendChild(ch);
+  });
+  const grid = body.querySelector(".acct-grid");
+  if (grid) {
+    grid.style.setProperty("--cal-dx", (dir > 0 ? 22 : -22) + "px");
+    grid.classList.remove("swap");
+    void grid.offsetWidth;
+    grid.classList.add("swap");
+  }
+  bindReportBody();
+  const pies = document.getElementById("report-pies");
+  if (pies) {
+    pies.innerHTML = reportPiesHtml();
+    bindReportModeBtns();
+  }
+}
 function bindReportBody() {
   document.querySelectorAll("[data-report-nav]").forEach(btn => {
+    btn.onpointerdown = () => {
+      btn.classList.add("is-press");
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+    };
+    btn.onpointerup = () => btn.classList.remove("is-press");
+    btn.onpointercancel = () => btn.classList.remove("is-press");
     btn.onclick = e => {
       e.preventDefault();
-      shiftReport(Number(btn.dataset.reportNav));
-      const body = document.getElementById("report-body");
-      if (body) {
-        body.innerHTML = overallReportBodyHtml();
-        bindReportBody();
-      } else {
-        ui.keepScroll = true;
-        render();
-      }
-      const pies = document.getElementById("report-pies");
-      if (pies) {
-        pies.innerHTML = reportPiesHtml();
-        bindReportModeBtns();
-      }
+      e.stopPropagation();
+      swapReportPeriod(Number(btn.dataset.reportNav) || 0);
     };
   });
   document.querySelectorAll("[data-filter-acct]").forEach(card => {
