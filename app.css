@@ -1831,26 +1831,39 @@ input[type="file"] {
 }
 #errand-form .work-title .led-in,
 #errand-form .work-title .led-out,
+#errand-form .work-title .led-xfer,
 .errand-ball-sheet .work-title .led-in,
-.errand-ball-sheet .work-title .led-out {
+.errand-ball-sheet .work-title .led-out,
+.errand-ball-sheet .work-title .led-xfer {
   font-size: 13px;
   font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 .errand-kinds {
   display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
 }
 .errand-kinds button {
+  -webkit-appearance: none;
+  appearance: none;
   border: 0;
   background: transparent;
   padding: 0;
-  font: inherit;
+  margin: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
   cursor: pointer;
 }
-.led-xfer { color: #1d4e89; font-weight: 800; }
-.errand-kinds .on { text-decoration: underline; text-underline-offset: 3px; }
+.led-xfer { color: #1d4e89; }
+.errand-kinds button:not(.on) { opacity: .55; }
+.errand-kinds .on { opacity: 1; text-decoration: none; }
+#work-card .work-memo {
   cursor: pointer;
   border-radius: 12px;
   padding: 8px 8px;
