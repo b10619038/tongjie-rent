@@ -1181,6 +1181,41 @@ textarea { min-height: 92px; resize: vertical; }
   margin-top: -2px;
   word-break: break-all;
 }
+.book-up-files {
+  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+}
+.book-up-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 6px 8px 12px;
+  background: #fff;
+}
+.book-up-file span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #24332a);
+}
+.book-up-x {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: #8a6a62;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
 .book-up-menu {
   position: absolute;
   right: 0;

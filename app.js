@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-14";
-const APP_EDIT_COUNT = 695;
+const APP_STAMP = "2026-09-05-11-15";
+const APP_EDIT_COUNT = 696;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0245";
+const FILE_VER = "0246";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
+  { ver: APP_VERSION, items: ["上傳檔名右邊可叉叉刪除該檔"] },
+  { ver: "2026-09-05-11-14-695", items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
   { ver: "2026-09-05-11-09-694", items: ["新增一筆上傳只顯示檔名，不出現圖片預覽"] },
   { ver: "2026-09-05-11-08-693", items: ["金額空白時上傳簿子，預設自動感應進出帳"] },
   { ver: "2026-09-05-11-00-692", items: ["新增一筆自動感應改為藍色字"] },
@@ -10042,7 +10043,7 @@ function monthCashHtml() {
           <input id="book-up-files" type="file" multiple hidden accept=".jpg,.jpeg,.png,.heic,.webp,.bmp,.gif,.tif,.tiff,.xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
         </div>
       </div>
-      ${ui.bookUpNames ? `<div class="small book-up-names">${escapeHtml(ui.bookUpNames)}</div>` : ""}
+      ${bookUpFilesHtml()}
       <div class="small">${ed ? "可改日期、金額與備註。" : "金額空白就直接上傳簿子，進出帳與金額由照片自動感應。要手記再填金額並選進帳或出帳。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
@@ -10271,12 +10272,13 @@ function importPassbookRows(list, sourceLabel) {
         state.books.push({
           id: id + "x", type: "out", date, amount, company: "現金(保險箱)",
           bank: "", note: "轉存銀行（對應 " + (cash.note || "現金") + "）", linkedId: cash.id,
-          importBatch: batchId, fromPassbook: true
+          importBatch: batchId, fromPassbook: true, importFile: String(row.importFile || "")
         });
         state.books.push({
           id, type: "in", date, amount,
           company: company === "現金(保險箱)" ? "統潔" : company,
-          bank, note: note + "（對應先前現金）", linkedId: cash.id, fromPassbook: true, importBatch: batchId
+          bank, note: note + "（對應先前現金）", linkedId: cash.id, fromPassbook: true, importBatch: batchId,
+          importFile: String(row.importFile || "")
         });
         ids.push(id + "x", id);
         paired += 1;
@@ -10288,7 +10290,8 @@ function importPassbookRows(list, sourceLabel) {
     const nid = "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6);
     state.books.push({
       id: nid,
-      type, date, amount, company, bank, note, roomNo: "", createdAt: nowStamp(), fromPassbook: true, importBatch: batchId
+      type, date, amount, company, bank, note, roomNo: "", createdAt: nowStamp(), fromPassbook: true, importBatch: batchId,
+      importFile: String(row.importFile || "")
     });
     ids.push(nid);
     added += 1;
@@ -10321,6 +10324,68 @@ function importPassbookRows(list, sourceLabel) {
     try { pushCloud(); } catch {}
   }
   return { added, skipped, paired, ids };
+}
+function bookUpFileList() {
+  if (!Array.isArray(ui.bookUpFiles)) ui.bookUpFiles = [];
+  return ui.bookUpFiles;
+}
+function rememberBookUpFile(name, ids) {
+  const n = String(name || "").trim();
+  if (!n) return;
+  const list = bookUpFileList();
+  const cur = list.find(x => x && x.name === n);
+  if (cur) {
+    const have = new Set(cur.ids || []);
+    (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
+  } else list.push({ name: n, ids: (ids || []).filter(Boolean) });
+}
+function bookUpFilesHtml() {
+  const list = bookUpFileList();
+  if (!list.length) return "";
+  return `<div class="book-up-files">${list.map((f, i) => `
+      <div class="book-up-file">
+        <span>${escapeHtml(f.name || "")}</span>
+        <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
+      </div>`).join("")}</div>`;
+}
+function attachImportFiles(batchId) {
+  if (!batchId) return;
+  const groups = {};
+  (state.books || []).forEach(b => {
+    if (!b || b.importBatch !== batchId) return;
+    const n = String(b.importFile || "");
+    if (!n) return;
+    if (!groups[n]) groups[n] = [];
+    groups[n].push(b.id);
+  });
+  Object.keys(groups).forEach(n => rememberBookUpFile(n, groups[n]));
+}
+function removeBookUpFileAt(i) {
+  const list = bookUpFileList();
+  const item = list[i];
+  if (!item) return;
+  const ids = (item.ids || []).slice();
+  if (ids.length) {
+    (state.books || []).forEach(c => {
+      if (!c || ids.indexOf(c.id) >= 0) return;
+      if (c.linkedId && ids.indexOf(c.linkedId) >= 0) {
+        c.pendingBank = true;
+        c.linkedId = "";
+        c.pairOutId = "";
+      }
+    });
+    markLedgerGone(ids);
+    if (state.lastBookImport && Array.isArray(state.lastBookImport.ids)) {
+      state.lastBookImport.ids = state.lastBookImport.ids.filter(id => ids.indexOf(id) < 0);
+      if (!state.lastBookImport.ids.length) state.lastBookImport = null;
+    }
+    save();
+    try { pushCloud(); } catch {}
+  }
+  list.splice(i, 1);
+  ui.bookUpFiles = list;
+  ui.bookUpNames = list.map(x => x.name).join("、");
+  toast(ids.length ? ("已刪除 " + item.name) : ("已拿掉 " + item.name));
 }
 function liveLastImport() {
   const rec = state.lastBookImport;
@@ -10473,7 +10538,8 @@ async function importPassbookPhotos(files, defaults, after) {
             amount: g.amount,
             company: (defaults && defaults.company) || g.company || "統潔",
             bank: (defaults && defaults.bank) || g.place || "",
-            note: "簿子照片 · " + (f.name || "")
+            note: "簿子照片 · " + (f.name || ""),
+            importFile: f.name || ""
           }];
         }
       }
@@ -10484,6 +10550,7 @@ async function importPassbookPhotos(files, defaults, after) {
       });
       if (defaults.type === "auto") got = got.filter(r => r.type === "in" || r.type === "out");
     }
+    got.forEach(r => { r.importFile = f.name || r.importFile || ""; });
     rows = rows.concat(got);
   }
   if (worker) try { await worker.terminate(); } catch {}
@@ -10493,6 +10560,7 @@ async function importPassbookPhotos(files, defaults, after) {
     return;
   }
   const r = importPassbookRows(rows, "簿子照片");
+  attachImportFiles(state.lastBookImport && state.lastBookImport.id);
   toast("簿子對帳完成：新增 " + r.added + " 筆"
     + (r.paired ? "、對上現金 " + r.paired + " 筆" : "")
     + (r.skipped ? "、已有紀錄不重複 " + r.skipped + " 筆" : ""));
@@ -10518,7 +10586,9 @@ async function importExcelBooks(file, after) {
       });
     }
     const list = mapSheetRows(rows);
+    list.forEach(x => { x.importFile = name; });
     const n = importBooksFromRows(list, name);
+    attachImportFiles(state.lastBookImport && state.lastBookImport.id);
     toast(n ? "工作助手已記入 " + n + " 筆進出帳（與跑業務重複的已跳過）" : "看不懂這份表，請用日期、進帳／出帳、金額、帳戶、備註欄位");
     if (after) after();
   } catch (err) {
@@ -20902,7 +20972,8 @@ function bindCashCal() {
     const files = [...(upFiles.files || [])];
     upFiles.value = "";
     if (!files.length) return;
-    ui.bookUpNames = files.map(f => f.name).filter(Boolean).join("、");
+    files.forEach(f => rememberBookUpFile(f.name || "", []));
+    ui.bookUpNames = bookUpFileList().map(x => x.name).join("、");
     const imgs = files.filter(f => !isSheetFile(f));
     const sheets = files.filter(f => isSheetFile(f));
     const after = stay;
@@ -21052,6 +21123,14 @@ function bindCashCal() {
       undoLastBookImport();
       stay();
     };
+    document.querySelectorAll("[data-del-up-i]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeBookUpFileAt(Number(btn.dataset.delUpI));
+        stay();
+      };
+    });
   }
 }
 
