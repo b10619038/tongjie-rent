@@ -1461,6 +1461,12 @@ input[type="file"] {
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
+.issue-opt.selected {
+  background: var(--press-on);
+  border-color: var(--teal);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
 .sign-term { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 4px; font-weight: 700; line-height: 1.4; }
 .sign-term input { margin-top: 3px; }
 .sign-slot-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
