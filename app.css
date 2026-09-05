@@ -1836,6 +1836,21 @@ input[type="file"] {
   font-size: 13px;
   font-weight: 800;
 }
+.errand-kinds {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.errand-kinds button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.led-xfer { color: #1d4e89; font-weight: 800; }
+.errand-kinds .on { text-decoration: underline; text-underline-offset: 3px; }
   cursor: pointer;
   border-radius: 12px;
   padding: 8px 8px;

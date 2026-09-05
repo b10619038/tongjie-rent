@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-17-10";
-const APP_EDIT_COUNT = 733;
+const APP_STAMP = "2026-09-05-17-15";
+const APP_EDIT_COUNT = 734;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0283";
+const FILE_VER = "0284";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["刪除業務紀錄會同步拿掉總覽日曆那一筆"] },
+  { ver: APP_VERSION, items: ["業務上傳新增藍色轉帳，現金存銀行同一筆不會算兩次"] },
+  { ver: "2026-09-05-17-10-733", items: ["刪除業務紀錄會同步拿掉總覽日曆那一筆"] },
   { ver: "2026-09-05-17-06-732", items: ["記入日曆不會再被雲端舊資料蓋掉消失"] },
   { ver: "2026-09-05-17-02-731", items: ["有「繳」的字改判出帳，不再誤成收現"] },
   { ver: "2026-09-05-16-58-730", items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
@@ -11868,6 +11869,33 @@ function retitlePayOutErrands(data) {
     });
   });
 }
+function isXferText(text) {
+  const s = String(text || "");
+  if (!s || isPayOutText(s)) return false;
+  return /轉帳|轉存|轉到|轉入銀行|存進銀行|存到銀行|存入銀行|現金存|保險箱轉|從保險箱/.test(s);
+}
+function applyErrandKind(item, kind) {
+  if (!item || !kind) return item;
+  item.cashType = kind === "out" ? "out" : (kind === "xfer" ? "xfer" : "in");
+  item.xfer = kind === "xfer";
+  if (kind === "xfer") {
+    item.title = "轉帳" + (item.place && item.place !== "現金" ? "　" + item.place : "");
+    item.pendingBank = false;
+    item.needBank = !item.place || item.place === "現金";
+    if (!item.company || item.company === "現金(保險箱)") item.company = "統潔";
+    item.needCompany = false;
+    item.fromAccount = "現金(保險箱)";
+  } else if (kind === "out") {
+    item.pendingBank = false;
+    item.needBank = false;
+    if (/收租|收現/.test(String(item.title || ""))) item.title = "繳費";
+  } else {
+    if (!item.company) item.company = "現金(保險箱)";
+    item.pendingBank = item.company === "現金(保險箱)";
+    item.needBank = false;
+  }
+  return item;
+}
 function inferOneFile(file) {
   const blob = String((file && file.name) || "");
   const party = guessParty(blob);
@@ -11896,7 +11924,13 @@ function inferOneFile(file) {
     place = place || (bill && bill.place) || (/超商|7-?11|全家|萊爾富|\bOK\b/.test(blob) ? "超商" : place);
     if (/現金/.test(blob) && !company) company = "現金(保險箱)";
     if (!company) company = cellAccount(blob) || "統潔";
-  } else if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款|繳/.test(blob))) {
+  } else if (isXferText(blob) || ui.errandKind === "xfer") {
+    title = "轉帳" + (place ? "　" + place : "");
+    cashType = "xfer";
+    pendingBank = false;
+    if (!company || company === "現金(保險箱)") company = cellAccount(blob) || "統潔";
+    if (!place || place === "現金") place = bank || "";
+  } else if (collecting || (party && !bank && !/存摺|對帳|簿子|繳費|繳款|繳|轉帳/.test(blob))) {
     title = party
       ? ("收" + (bill ? bill.name : "租") + "　" + party.name)
       : (bill ? ("收" + bill.name + "／收現") : "收租／收現");
@@ -11922,14 +11956,18 @@ function inferOneFile(file) {
     place = "現金";
     cashType = "in";
   }
-  return {
+  const row = {
     date, title, place, amount, company,
     note: [bill && bill.name, party && party.name, blob].filter(Boolean).join(" · "),
     pendingBank, party, bill, files: blob, fileName: blob, cashType,
     needCompany: !company,
-    needBank: !place && cashType !== "out" && !pendingBank,
-    needAmount: !amount
+    needBank: (!place || place === "現金") && cashType === "xfer" ? true : (!place && cashType !== "out" && cashType !== "xfer" && !pendingBank),
+    needAmount: !amount,
+    xfer: cashType === "xfer",
+    fromAccount: cashType === "xfer" ? "現金(保險箱)" : ""
   };
+  if (ui.errandKind) applyErrandKind(row, ui.errandKind);
+  return row;
 }
 function inferFromUpload(files) {
   const list = [...(files || [])].filter(f => !isSheetFile(f)).map(inferOneFile);
@@ -11949,13 +11987,19 @@ function errandGuessHtml(g) {
       item.fileName || ("照片 " + (i + 1)),
       item.date, item.title, item.place, item.company,
       item.amount ? money(item.amount) : "",
+      item.cashType === "xfer" ? "轉帳" : "",
       item.cashType === "out" ? "支出" : "",
       item.pendingBank ? "先入現金，待存銀行" : ""
     ].filter(Boolean);
+    const askType = `<div class="bank-picks guess-picks">
+      <button type="button" class="bank-pick${item.cashType === "in" ? " on" : ""}" data-guess-i="${i}" data-guess-type="in">進帳</button>
+      <button type="button" class="bank-pick${item.cashType === "out" ? " on" : ""}" data-guess-i="${i}" data-guess-type="out">出帳</button>
+      <button type="button" class="bank-pick${item.cashType === "xfer" ? " on" : ""}" data-guess-i="${i}" data-guess-type="xfer">轉帳</button>
+    </div>`;
     const askCo = item.needCompany ? `<div class="small">這張是哪間公司？</div><div class="bank-picks guess-picks">${["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"].map(c => `<button type="button" class="bank-pick${item.company === c ? " on" : ""}" data-guess-i="${i}" data-guess-co="${c}">${c}</button>`).join("")}</div>` : "";
-    const askBk = item.needBank ? `<div class="small">這本是哪家銀行？</div><div class="bank-picks guess-picks">${BANK_PLACES.map(b => `<button type="button" class="bank-pick${item.place === b ? " on" : ""}" data-guess-i="${i}" data-guess-bk="${b}">${b}</button>`).join("")}</div>` : "";
+    const askBk = item.needBank ? `<div class="small">${item.cashType === "xfer" ? "轉到哪家銀行？" : "這本是哪家銀行？"}</div><div class="bank-picks guess-picks">${BANK_PLACES.map(b => `<button type="button" class="bank-pick${item.place === b ? " on" : ""}" data-guess-i="${i}" data-guess-bk="${b}">${b}</button>`).join("")}</div>` : "";
     const hint = item.needAmount ? `<div class="small">這張還沒讀到金額。檔名帶數字，或改傳 Excel 會比較準。</div>` : "";
-    return `<div class="mini errand-shot"><b>照片 ${i + 1}<button type="button" class="led-del" data-del-guess="${i}">移除</button></b><span>${escapeHtml(bits.join(" · "))}</span>${askCo}${askBk}${hint}</div>`;
+    return `<div class="mini errand-shot"><b>照片 ${i + 1}<button type="button" class="led-del" data-del-guess="${i}">移除</button></b><span>${escapeHtml(bits.join(" · "))}</span>${askType}${askCo}${askBk}${hint}</div>`;
   }).join("")}</div>`;
 }
 function refreshErrandGuessBox() {
@@ -11991,6 +12035,21 @@ function bindErrandGuessPicks() {
       if (!list[i]) return;
       list[i].place = btn.dataset.guessBk;
       list[i].needBank = false;
+      if (list[i].cashType === "xfer") list[i].title = "轉帳　" + list[i].place;
+      ui.errandGuesses = list;
+      ui.errandGuess = list[0] || null;
+      refreshErrandGuessBox();
+    };
+  });
+  document.querySelectorAll("[data-guess-type]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const list = errandGuessList();
+      const i = Number(btn.dataset.guessI) || 0;
+      if (!list[i]) return;
+      applyErrandKind(list[i], btn.dataset.guessType);
+      ui.errandKind = btn.dataset.guessType;
       ui.errandGuesses = list;
       ui.errandGuess = list[0] || null;
       refreshErrandGuessBox();
@@ -16314,7 +16373,7 @@ function howtoSections() {
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
     { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；舊客 App 會自動登出，LINE 請新客重綁。" },
-    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。業務上傳可記現場進帳、出帳。" },
+    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。業務上傳可記現場進帳、出帳、轉帳。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
     { id: "a-set", h: "設定", p: "帳號、快速登入、通知、精確位置、安裝、調色盤、字體、震動、鈴聲與權限說明。" },
@@ -16419,8 +16478,8 @@ function saveErrandBallPos(p) {
   try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
 }
 function errandFormInnerHtml() {
-  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙另拍一張。手寫字 App 看不懂，白紙會留檔可下載，傳到這個對話給我看。按「上傳照片」可一次很多張；分不出銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
-          <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
+  return `<p class="small" style="margin-top:10px">進帳、出帳、轉帳可點上面藍紅綠色字。轉帳＝現金存銀行或帳戶互轉，同一筆不會算兩次。白紙另拍可下載。分不出銀行時會問你。</p>
+          <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金　或　保險箱轉農會" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.webp,.xlsx,.xls,.csv" multiple hidden /></label>
           ${bookUpFilesHtml("errand")}
@@ -16452,8 +16511,13 @@ function errandBlockHtml() {
   return `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
-          <span class="work-title"><span class="k">業務上傳</span><span class="led-in">進帳</span><span class="led-out">出帳</span></span>
+          <span class="k">業務上傳</span>
         </button>
+        <span class="work-title errand-kinds">
+          <button type="button" class="led-in${ui.errandKind === "in" ? " on" : ""}" data-errand-kind="in">進帳</button>
+          <button type="button" class="led-out${ui.errandKind === "out" ? " on" : ""}" data-errand-kind="out">出帳</button>
+          <button type="button" class="led-xfer${ui.errandKind === "xfer" ? " on" : ""}" data-errand-kind="xfer">轉帳</button>
+        </span>
         <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">浮動球</button>
         <span class="fold-caret" id="errand-caret"></span>
         ${aiDragBtn()}
@@ -16482,7 +16546,12 @@ function ensureErrandBall() {
   wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px"><img src="${aiAvatarSrc()}" alt="跑業務"></button>
     ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
       <div class="errand-ball-sheet card card-body">
-        <div class="row"><h2 class="dash-h work-title" style="margin:0"><span>業務上傳</span><span class="led-in">進帳</span><span class="led-out">出帳</span></h2>
+        <div class="row"><h2 class="dash-h" style="margin:0">業務上傳</h2>
+          <span class="work-title errand-kinds">
+            <button type="button" class="led-in${ui.errandKind === "in" ? " on" : ""}" data-errand-kind="in">進帳</button>
+            <button type="button" class="led-out${ui.errandKind === "out" ? " on" : ""}" data-errand-kind="out">出帳</button>
+            <button type="button" class="led-xfer${ui.errandKind === "xfer" ? " on" : ""}" data-errand-kind="xfer">轉帳</button>
+          </span>
           <button type="button" class="ghost" id="errand-to-card" style="width:auto">改回圖塊</button>
         </div>
         <form id="errand-form" autocomplete="off">${errandFormInnerHtml()}</form>
@@ -21608,19 +21677,33 @@ function submitErrandNow() {
     const company = normalizeBookCompany((g && g.company) || "統潔");
     const id = "er" + Date.now() + "-" + idx;
     const pendingBank = !!(g && g.pendingBank);
-    const cashType = (g && g.cashType) === "out" ? "out" : "in";
-    const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子/.test(title) || /聯邦|兆豐|農會/.test(place));
+    const xfer = (g && g.cashType) === "xfer" || !!(g && g.xfer);
+    const cashType = xfer ? "xfer" : ((g && g.cashType) === "out" ? "out" : "in");
+    const bankLike = cashType !== "out" && (/跑銀行|入帳|對帳|存摺|簿子|轉帳/.test(title) || /聯邦|兆豐|農會/.test(place) || xfer);
     const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
     if (amount && cash) {
       cash.linkedId = id;
       cash.pendingBank = false;
+      cash.editedAt = Date.now();
       state.books.push({
         id: "bk" + Date.now() + "-c" + idx, type: "out", date, amount, company: "現金(保險箱)",
-        bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id
+        bank: "", note: "轉存銀行（對應 " + (cash.note || "現金收租") + "）", linkedId: cash.id, editedAt: Date.now()
       });
       state.books.push({
         id: "bk" + Date.now() + "-b" + idx, type: "in", date, amount, company: company === "現金(保險箱)" ? "統潔" : company,
-        bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id
+        bank: place, note: "銀行入帳（對應先前現金）", linkedId: cash.id, editedAt: Date.now()
+      });
+      nLink += 1;
+    } else if (amount && xfer) {
+      const from = g.fromAccount || "現金(保險箱)";
+      const toCo = company === "現金(保險箱)" ? "統潔" : company;
+      state.books.push({
+        id: "bk" + Date.now() + "-x" + idx, type: "out", date, amount, company: from,
+        bank: "", note: "轉帳　" + (note || title), linkedId: id, editedAt: Date.now()
+      });
+      state.books.push({
+        id: "bk" + Date.now() + "-y" + idx, type: "in", date, amount, company: toCo,
+        bank: place, note: "轉帳入　" + (note || title), linkedId: id, editedAt: Date.now()
       });
       nLink += 1;
     } else if (amount) {
@@ -21660,6 +21743,22 @@ function submitErrandNow() {
 }
 function bindAdminAi() {
   bindErrandGuessPicks();
+  document.querySelectorAll("[data-errand-kind]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const kind = btn.dataset.errandKind;
+      ui.errandKind = ui.errandKind === kind ? "" : kind;
+      const list = errandGuessList();
+      if (ui.errandKind) list.forEach(x => applyErrandKind(x, ui.errandKind));
+      ui.errandGuesses = list;
+      ui.errandGuess = list[0] || null;
+      ui.errandOpen = true;
+      ui.errandBallOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   const openSheet = e => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     ui.aiAvatarSheet = true;
