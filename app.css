@@ -3250,6 +3250,23 @@ img.avatar { object-fit: cover; display: block; }
 }
 .swipe-wrap:not(.slim) .swipe-reveal { top: 14px; height: 28px; }
 .swipe-front { position: relative; background: var(--card); }
+#tenant-list [data-fold-tenant],
+#tenant-list .swipe-wrap.slim {
+  transform-origin: center center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#tenant-list [data-fold-tenant]:active,
+#tenant-list [data-fold-tenant].is-press,
+#tenant-list .swipe-wrap.slim.is-press {
+  transform: scale(0.97);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+#tenant-list .swipe-wrap.slim.is-press [data-fold-tenant] {
+  transform: none;
+}
 .line-dock {
   position: fixed; top: 80px; right: 12px; bottom: 24px;
   width: min(280px, 78vw);

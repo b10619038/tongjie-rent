@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-46";
-const APP_EDIT_COUNT = 748;
+const APP_STAMP = "2026-09-05-18-47";
+const APP_EDIT_COUNT = 749;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0298";
+const FILE_VER = "0299";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽按鈕改成 iPhone 輕點回彈"] },
+  { ver: APP_VERSION, items: ["租客圖卡改成 iPhone 輕點回彈"] },
+  { ver: "2026-09-05-18-46-748", items: ["開立發票總覽按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-18-45-747", items: ["統潔信潔上方上一月下一月也改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-18-41-746", items: ["日曆行程進帳出帳圓鈕改成輕點回彈"] },
   { ver: "2026-09-05-18-39-745", items: ["上一月下一月改成 iPhone 輕點回彈，換月不再整頁卡頓"] },
@@ -19108,6 +19109,17 @@ function tenantSheetView() {
 }
 function bindTenantListTools() {
   bindInvoiceOverviewBtn();
+  document.querySelectorAll("#tenant-list [data-fold-tenant]").forEach(el => {
+    const target = el.closest(".swipe-wrap") || el;
+    el.addEventListener("pointerdown", e => {
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay]")) return;
+      target.classList.add("is-press");
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+    });
+    const up = () => target.classList.remove("is-press");
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
+  });
   document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -20618,7 +20630,6 @@ function bindLineSwipe() {
       const p = e.touches ? e.touches[0] : e;
       active = true; moved = false; wrap.dataset.swiping = "0";
       startX = p.clientX; startY = p.clientY; dx = 0;
-      front.style.transition = "none";
       const dock = document.getElementById("line-dock");
       if (dock && !dock.classList.contains("open")) {
         dock.style.transition = "none";
@@ -20634,6 +20645,8 @@ function bindLineSwipe() {
       if (!moved && Math.abs(my) > Math.abs(mx)) { active = false; return; }
       moved = true;
       wrap.dataset.swiping = "1";
+      wrap.classList.remove("is-press");
+      front.style.transition = "none";
       dx = Math.max(-48, Math.min(0, mx));
       front.style.transform = `translateX(${dx}px)`;
       if (e.cancelable) e.preventDefault();
