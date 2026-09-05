@@ -4282,6 +4282,49 @@ html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on {
   color: #fff;
   border-color: #c4453c;
 }
+#ai-card,
+#work-card,
+#errand-form {
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#ai-card:has(#ai-fold.is-press),
+#work-card:has(#work-fold.is-press),
+#errand-form:has(#errand-fold.is-press) {
+  transform: scale(0.97);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+.btn-row .ghost,
+[data-del-slip],
+#errand-to-ball {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-row .ghost:active,
+.btn-row .ghost.is-press,
+[data-del-slip]:active,
+[data-del-slip].is-press,
+#errand-to-ball:active,
+#errand-to-ball.is-press {
+  transform: scale(0.94);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+.errand-kinds button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.errand-kinds button:active,
+.errand-kinds button.is-press {
+  transform: scale(0.88);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 html[data-theme="void"] #tenant-vacant-btn.on {
   background: #f0f0f0;
   color: #111;

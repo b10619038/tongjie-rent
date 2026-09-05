@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-34";
-const APP_EDIT_COUNT = 768;
+const APP_STAMP = "2026-09-05-21-00";
+const APP_EDIT_COUNT = 769;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0318";
+const FILE_VER = "0319";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客搜尋篩選空房改成空套房"] },
+  { ver: APP_VERSION, items: ["工作助手圖卡與編輯刪除改成輕點回彈"] },
+  { ver: "2026-09-05-19-34-768", items: ["租客搜尋篩選空房改成空套房"] },
   { ver: "2026-09-05-19-33-767", items: ["營收圖表年月切換改成輕點回彈"] },
   { ver: "2026-09-05-19-32-766", items: ["整月圈選按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-27-765", items: ["返回按鈕改成 iPhone 輕點回彈"] },
@@ -22019,6 +22020,7 @@ function submitErrandNow() {
 function bindAdminAi() {
   bindErrandGuessPicks();
   document.querySelectorAll("[data-errand-kind]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -22031,7 +22033,7 @@ function bindAdminAi() {
       ui.errandOpen = true;
       ui.errandBallOpen = true;
       ui.keepScroll = true;
-      render();
+      setTimeout(() => render(), 80);
     };
   });
   const openSheet = e => {
@@ -22104,22 +22106,28 @@ function bindAdminAi() {
     };
   });
   const toBall = document.getElementById("errand-to-ball");
-  if (toBall) toBall.onclick = e => {
+  if (toBall) {
+    bindIosPress(toBall);
+    toBall.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     setErrandMode("ball");
     ui.errandOpen = false;
     ui.errandBallOpen = false;
-    render();
-  };
+    setTimeout(() => render(), 80);
+    };
+  }
   const workFold = document.getElementById("work-fold");
   const workCard = document.getElementById("work-card");
-  if (workFold && workCard) workFold.onclick = e => {
+  if (workFold && workCard) {
+    bindIosPress(workFold);
+    workFold.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     ui.workOpen = !workCard.classList.contains("open");
     workCard.classList.toggle("open", ui.workOpen);
-  };
+    };
+  }
   document.querySelectorAll("[data-work-memo]").forEach(el => {
     el.addEventListener("pointerdown", e => e.stopPropagation());
     el.onclick = e => {
@@ -22256,7 +22264,9 @@ function bindAdminAi() {
   };
   const aiCard = document.getElementById("ai-card");
   const aiFold = document.getElementById("ai-fold");
-  if (aiFold && aiCard) aiFold.onclick = e => {
+  if (aiFold && aiCard) {
+    bindIosPress(aiFold);
+    aiFold.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     const block = aiFold.closest(".ai-block");
@@ -22265,7 +22275,8 @@ function bindAdminAi() {
     aiCard.classList.toggle("open", ui.aiOpen);
     const hint = aiFold.querySelector(".small");
     if (hint) hint.textContent = ui.aiOpen ? "點擊收起" : "點擊展開";
-  };
+    };
+  }
   document.querySelectorAll("[data-ai-q]").forEach(btn => {
     btn.addEventListener("pointerdown", e => { e.stopPropagation(); });
     btn.addEventListener("click", e => {
@@ -22309,7 +22320,9 @@ function bindAdminAi() {
   const errand = document.getElementById("errand-form");
   if (errand) {
     const fold = document.getElementById("errand-fold");
-    if (fold) fold.onclick = e => {
+    if (fold) {
+      bindIosPress(fold);
+      fold.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       const block = fold.closest(".ai-block");
@@ -22319,7 +22332,8 @@ function bindAdminAi() {
       errand.classList.toggle("open", ui.errandOpen);
       const hint = fold.querySelector(".small");
       if (hint) hint.textContent = ui.errandOpen ? "點擊收起" : "點擊展開";
-    };
+      };
+    }
     const caret = document.getElementById("errand-caret");
     if (caret && fold) caret.onclick = e => { e.preventDefault(); e.stopPropagation(); fold.click(); };
     errand.onsubmit = e => {
@@ -22408,16 +22422,18 @@ function bindAdminAi() {
     });
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       deleteLedgerRow(btn.dataset.delErrand, "errand");
       toast("已刪除");
       ui.keepScroll = true;
-      render();
+      setTimeout(() => render(), 80);
     };
   });
   document.querySelectorAll("[data-edit-errand]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -22437,11 +22453,13 @@ function bindAdminAi() {
         }
       }
       ui.keepScroll = true;
-      render();
-      requestAnimationFrame(() => {
-        const box = document.getElementById("book-form");
-        if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      setTimeout(() => {
+        render();
+        requestAnimationFrame(() => {
+          const box = document.getElementById("book-form");
+          if (box) box.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }, 80);
     };
   });
   document.querySelectorAll("[data-del-bank-media]").forEach(btn => {
@@ -22514,13 +22532,14 @@ function bindAdminAi() {
     });
   }
   document.querySelectorAll("[data-del-slip]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       deleteLedgerRow(btn.dataset.delSlip, "slip");
       toast("已刪除");
       ui.keepScroll = true;
-      render();
+      setTimeout(() => render(), 80);
     };
   });
   bindBookUpFiles();
