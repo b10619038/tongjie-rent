@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-22";
-const APP_EDIT_COUNT = 698;
+const APP_STAMP = "2026-09-05-11-27";
+const APP_EDIT_COUNT = 699;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0248";
+const FILE_VER = "0249";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
+  { ver: APP_VERSION, items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
+  { ver: "2026-09-05-11-22-698", items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
   { ver: "2026-09-05-11-20-697", items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
   { ver: "2026-09-05-11-15-696", items: ["上傳檔名右邊可叉叉刪除該檔"] },
   { ver: "2026-09-05-11-14-695", items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
@@ -9275,6 +9276,26 @@ function accountLabel(c) {
   if (p) return "個人戶 · " + p;
   return String(c || "統潔");
 }
+function rememberBookForm(form) {
+  form = form || document.getElementById("book-form");
+  if (!form || ui.editBookId) return;
+  if (form.company) ui.bookCompany = normalizeBookCompany(form.company.value);
+  if (form.type) ui.bookType = form.type.value || "auto";
+  if (form.amount) ui.bookAmount = String(form.amount.value || "");
+  if (form.note) ui.bookNote = String(form.note.value || "");
+  if (form.bank) ui.bookBank = form.bank.value || "";
+  else if (form.company && !banksOf(ui.bookCompany).length) ui.bookBank = "";
+}
+function rememberedBookCompany() {
+  return normalizeBookCompany(ui.bookCompany || "統潔");
+}
+function rememberedBookBank(company) {
+  const acct = normalizeBookCompany(company);
+  const allowed = banksOf(acct);
+  if (!allowed.length) return "";
+  if (ui.bookBank && allowed.includes(ui.bookBank)) return ui.bookBank;
+  return allowed[0] || "";
+}
 function bookAccountOptions(selected) {
   const sel = String(selected || "統潔");
   const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
@@ -9888,7 +9909,7 @@ function deleteLedgerRow(id, src) {
   try { pushCloud(); } catch {}
 }
 function bindCalLedgerRows() {
-  const stay = () => { ui.keepScroll = true; render(); };
+  const stay = () => { rememberBookForm(); ui.keepScroll = true; render(); };
   document.querySelectorAll("[data-del-book]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -10024,22 +10045,22 @@ function monthCashHtml() {
     <form id="book-form" class="cal-form">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
-        <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : "auto"}">
-          ${ed ? "" : `<option value="auto" selected>自動感應</option>`}
-          <option value="in" ${ed && ed.type !== "out" ? "selected" : ""}>進帳</option>
-          <option value="out" ${ed && ed.type === "out" ? "selected" : ""}>出帳</option>
+        <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : ((ui.bookType === "out") ? "out" : (ui.bookType === "in" ? "in" : "auto"))}">
+          ${ed ? "" : `<option value="auto" ${!ui.bookType || ui.bookType === "auto" ? "selected" : ""}>自動感應</option>`}
+          <option value="in" ${(ed ? ed.type !== "out" : ui.bookType === "in") ? "selected" : ""}>進帳</option>
+          <option value="out" ${(ed ? ed.type === "out" : ui.bookType === "out") ? "selected" : ""}>出帳</option>
         </select>
-        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : ""}" />
+        <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : escapeHtml(ui.bookAmount || "")}" />
       </div>
       <div class="cal-form-row" id="book-bank-row">
         <select name="company">
-          ${bookAccountOptions(ed ? ed.company : "統潔")}
+          ${bookAccountOptions(ed ? ed.company : rememberedBookCompany())}
         </select>
-        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : "統潔"), ed && ed.bank ? rowBank(ed) : "聯邦") || "<span></span>"}
+        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : rememberedBookCompany()), ed ? (ed.bank ? rowBank(ed) : "") : rememberedBookBank(rememberedBookCompany())) || "<span></span>"}
       </div>
       ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
       <div class="cal-form-row">
-        <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : ""}" />
+        <input name="note" type="text" placeholder="備註" value="${ed ? escapeHtml(ed.note || "") : escapeHtml(ui.bookNote || "")}" />
         <div class="book-up" id="book-up">
           <button type="button" class="upload" id="book-up-open">上傳</button>
           <input id="book-up-files" type="file" multiple hidden accept=".jpg,.jpeg,.png,.heic,.webp,.bmp,.gif,.tif,.tiff,.xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
@@ -20848,7 +20869,7 @@ function bindAdminAi() {
 }
 function bindCashCal() {
   ensureCalMonth();
-  const stay = () => { ui.keepScroll = true; render(); };
+  const stay = () => { rememberBookForm(); ui.keepScroll = true; render(); };
   const exportCal = document.getElementById("export-cal");
   if (exportCal) exportCal.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("cal"); };
   const printCal = document.getElementById("print-cal");
@@ -20991,20 +21012,28 @@ function bindCashCal() {
       el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
       el.onclick = e => { e.stopPropagation(); el.focus(); };
     });
-    if (form.type) form.type.onchange = () => paintBookType();
+    if (form.type) form.type.onchange = () => { rememberBookForm(form); paintBookType(); };
     if (form.amount) {
-      form.amount.oninput = () => paintBookType();
-      form.amount.onchange = () => paintBookType();
+      form.amount.oninput = () => { rememberBookForm(form); paintBookType(); };
+      form.amount.onchange = () => rememberBookForm(form);
     }
+    if (form.note) {
+      form.note.oninput = () => rememberBookForm(form);
+      form.note.onchange = () => rememberBookForm(form);
+    }
+    if (form.bank) form.bank.onchange = () => rememberBookForm(form);
     paintBookType();
     if (form.company) form.company.onchange = () => {
+      rememberBookForm(form);
       const acct = normalizeBookCompany(form.company.value);
+      ui.bookCompany = acct;
       const row = document.getElementById("book-bank-row");
       if (!row) return;
       const banks = banksOf(acct);
-      const cur = form.bank && form.bank.value;
+      const cur = rememberedBookBank(acct);
       const sel = row.querySelector("select[name=bank]");
       if (!banks.length) {
+        ui.bookBank = "";
         if (sel) sel.outerHTML = "<span></span>";
         return;
       }
@@ -21015,11 +21044,17 @@ function bindCashCal() {
         if (hole) hole.outerHTML = html;
         else row.insertAdjacentHTML("beforeend", html);
       }
+      const next = row.querySelector("select[name=bank]");
+      if (next) {
+        next.onchange = () => rememberBookForm(form);
+        ui.bookBank = next.value || "";
+      }
     };
     const saveBook = () => {
       const amount = Number(String(form.amount.value || "").replace(/[^\d.]/g, "")) || 0;
-      const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
+      const picked = ui.calYear ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay || 1).padStart(2, "0")}` : ymdOf(nowStamp());
       const date = ymdOf((form.date && form.date.value) || picked);
+      rememberBookForm(form);
       if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
       const payload = {
@@ -21091,6 +21126,11 @@ function bindCashCal() {
       const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload);
       state.books.push(row);
       dropCoveredRentAuto(state, row);
+      ui.bookCompany = payload.company;
+      ui.bookBank = payload.bank || "";
+      ui.bookType = payload.type;
+      ui.bookAmount = "";
+      ui.bookNote = "";
       ui.calDay = Number(date.slice(8, 10));
       save();
       toast("已記入日曆");
