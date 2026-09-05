@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-10-53";
-const APP_EDIT_COUNT = 690;
+const APP_STAMP = "2026-09-05-10-58";
+const APP_EDIT_COUNT = 691;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0240";
+const FILE_VER = "0241";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆可選自動感應，上傳簿子後自行判斷進帳或出帳"] },
+  { ver: APP_VERSION, items: ["新增一筆選進帳時改為綠色字"] },
+  { ver: "2026-09-05-10-53-690", items: ["新增一筆可選自動感應，上傳簿子後自行判斷進帳或出帳"] },
   { ver: "2026-09-05-10-51-689", items: ["新增一筆下方可看剛剛上傳的紀錄，並一次刪除這批測試帳"] },
   { ver: "2026-09-05-10-31-688", items: ["開立發票總覽：提前匯款發票開1日，1日當天或之後開匯款日"] },
   { ver: "2026-09-04-21-56-687", items: ["列印已簽署合約排在產出發票上方"] },
