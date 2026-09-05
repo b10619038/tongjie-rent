@@ -1466,7 +1466,20 @@ input[type="file"] {
 }
 .media-thumb img, .media-thumb video { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; background: #111; }
 .media-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
-.media-actions .ghost { flex: 1; min-width: 120px; }
+.media-actions .ghost {
+  flex: 1;
+  min-width: 120px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.media-actions .ghost:active,
+.media-actions .ghost.is-press {
+  transform: scale(0.96);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .ann-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 12px 0 6px; }
 .ann-thumb {
   border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: #111;

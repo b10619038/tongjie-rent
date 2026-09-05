@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-00";
-const APP_EDIT_COUNT = 769;
+const APP_STAMP = "2026-09-05-21-03";
+const APP_EDIT_COUNT = 770;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0319";
+const FILE_VER = "0320";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["工作助手圖卡與編輯刪除改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["查看照片按鈕改成 iPhone 輕點回彈"] },
+  { ver: "2026-09-05-21-00-769", items: ["工作助手圖卡與編輯刪除改成輕點回彈"] },
   { ver: "2026-09-05-19-34-768", items: ["租客搜尋篩選空房改成空套房"] },
   { ver: "2026-09-05-19-33-767", items: ["營收圖表年月切換改成輕點回彈"] },
   { ver: "2026-09-05-19-32-766", items: ["整月圈選按鈕改成 iPhone 輕點回彈"] },
@@ -8187,6 +8188,7 @@ function openMediaViewer(list, index) {
 }
 function bindMediaViewers() {
   document.querySelectorAll("[data-view-media]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
