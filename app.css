@@ -1978,10 +1978,10 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .book-type.in, .book-type option[value="in"] { color: #2f6b3c; font-weight: 800; }
 .book-type.out, .book-type option[value="out"] { color: #c45c4a; font-weight: 800; }
-.book-type.auto, .book-type option[value="auto"] { color: #3d4a42; font-weight: 800; }
+.book-type.auto, .book-type option[value="auto"] { color: #1d4e89; font-weight: 800; }
 #book-form select.book-type.in { color: #2f6b3c !important; }
 #book-form select.book-type.out { color: #c45c4a !important; }
-#book-form select.book-type.auto { color: #3d4a42 !important; }
+#book-form select.book-type.auto { color: #1d4e89 !important; }
 .led-in { color: var(--teal); }
 .led-out { color: #c45c4a; }
 .led-trip { color: #1d4e89; }
