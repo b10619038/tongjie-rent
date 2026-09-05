@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-16-25";
-const APP_EDIT_COUNT = 727;
+const APP_STAMP = "2026-09-05-16-29";
+const APP_EDIT_COUNT = 728;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0277";
+const FILE_VER = "0278";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
+  { ver: APP_VERSION, items: ["跑業務手寫改叫白紙，可留檔下載"] },
+  { ver: "2026-09-05-16-25-727", items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
   { ver: "2026-09-05-15-17-726", items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
   { ver: "2026-09-05-15-10-725", items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
   { ver: "2026-09-05-15-09-724", items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
@@ -10867,7 +10868,7 @@ function bookUpFilesHtml(from) {
             <div class="book-up-meta">
               <span>${escapeHtml(f.name || "未命名")}</span>
               <em>${f.from === "errand"
-                ? (f.kind === "sheet" ? "Excel · 跑業務" : "手寫小抄 · 可下載")
+                ? (f.kind === "sheet" ? "Excel · 跑業務" : "手寫白紙 · 可下載")
                 : (f.kind === "sheet" ? "Excel · 已記入日曆" : "照片 · 未記入日曆")} · ${f.cloud ? "已同步雲端" : "本機"}</em>
             </div>
             <button type="button" class="book-up-x" data-del-up-id="${escapeHtml(f.id)}" aria-label="刪除">×</button>
@@ -10962,7 +10963,7 @@ async function downloadVaultPicked() {
     }
     if (!n) { toast("沒有可下載的檔案"); return; }
     const out = await zip.generateAsync({ type: "blob" });
-    clickDownloadBlob(out, want.some(x => x.from === "errand") ? "小抄上傳.zip" : "簿子上傳.zip");
+    clickDownloadBlob(out, want.some(x => x.from === "errand") ? "白紙上傳.zip" : "簿子上傳.zip");
     toast("已打包 " + n + " 份，開始下載");
   } catch {
     toast("打包失敗，改成一張張下載");
@@ -16323,7 +16324,7 @@ function saveErrandBallPos(p) {
   try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
 }
 function errandFormInnerHtml() {
-  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙小抄另拍一張。手寫字 App 看不懂，小抄會留檔可下載，傳到這個對話給我看。按「上傳照片」可一次很多張；分不出銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
+  return `<p class="small" style="margin-top:10px">不同簿子請各拍今天有蓋章的那一頁，白紙另拍一張。手寫字 App 看不懂，白紙會留檔可下載，傳到這個對話給我看。按「上傳照片」可一次很多張；分不出銀行時會問你。同一筆現金之後存進銀行會自動對帳。</p>
           <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.webp,.xlsx,.xls,.csv" multiple hidden /></label>
@@ -21900,9 +21901,9 @@ function bindAdminAi() {
     const box = document.getElementById("errand-absorb");
     if (box) box.textContent = got.line || "";
     refreshErrandGuessBox();
-    toast(shots.length ? ("已加入 " + shots.length + " 張，小抄可下載") : (got.line || "已吸收檔案"));
+    toast(shots.length ? ("已加入 " + shots.length + " 張，白紙可下載") : (got.line || "已吸收檔案"));
     const note = String(ui.errandNote || "").trim().replace(/[\\/:*?"<>|]/g, "").slice(0, 12);
-    const tag = note ? ("小抄" + note) : "小抄";
+    const tag = note ? ("白紙" + note) : "白紙";
     const used = Object.create(null);
     const recs = [];
     for (let i = 0; i < files.length; i++) {
@@ -21918,7 +21919,7 @@ function bindAdminAi() {
       ui.keepScroll = true;
       ui.errandOpen = true;
       try { render(); } catch {}
-      if (ok) toast("小抄已同步，可下載");
+      if (ok) toast("白紙已同步，可下載");
     });
   };
   document.querySelectorAll("[data-del-errand]").forEach(btn => {
