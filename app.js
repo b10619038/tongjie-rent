@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-13-03";
-const APP_EDIT_COUNT = 710;
+const APP_STAMP = "2026-09-05-14-01";
+const APP_EDIT_COUNT = 711;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0260";
+const FILE_VER = "0261";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["雲端認字改直接連 Google，設定可測試連線"] },
+  { ver: APP_VERSION, items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
+  { ver: "2026-09-05-13-03-710", items: ["雲端認字改直接連 Google，設定可測試連線"] },
   { ver: "2026-09-05-12-51-709", items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
   { ver: "2026-09-05-12-41-708", items: ["農會同一天多筆會拆開，結存不再當成金額"] },
   { ver: "2026-09-05-12-34-707", items: ["農會簿子改依七欄規則讀：只記有日期的支出或存入與摘要"] },
@@ -10559,28 +10560,46 @@ function nonghuiMoneyList(chunk) {
   s.replace(/(\d{1,3}(?:,\d{3})+[.,]\d{2}|\d+[.,]\d{2})/g, (_, n) => push(n));
   return out;
 }
+function nonghuiCompact(text) {
+  return String(text || "")
+    .replace(/\u3000/g, " ")
+    .replace(/[ＩIl1]\s*[ＣCｃ]\s*轉/g, "IC轉")
+    .replace(/[ＩI]C轉/g, "IC轉")
+    .replace(/帳號[:：]?\s*[\d-]+/g, "|")
+    .replace(/本數[:：]?\d{1,3}(?=11[0-9]|12[0-5]|\||$)/g, "|")
+    .replace(/本數[:：]?\d+/g, "|")
+    .replace(/\([^)]{0,48}\)/g, "|")
+    .replace(/B\d{4}(?=11[0-9]|12[0-5]|\||$)/gi, "|")
+    .replace(/B\d{4}/gi, "|")
+    .replace(/備註|結存金額|支出金額|存入金額|年月日|摘要|竭誠為您服務/g, "|")
+    .replace(/\.00/g, ".00|")
+    .replace(/\s+/g, "");
+}
 function nonghuiDateHits(s) {
   const hits = [];
-  const add = (index, y, mo, d, len) => {
-    if (y < 110 || y > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) return;
+  const re7 = /(11[0-9]|12[0-5])(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])/g;
+  let m;
+  while ((m = re7.exec(s))) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (y < 110 || y > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    if (hits.length && m.index < hits[hits.length - 1].i + hits[hits.length - 1].len) continue;
     hits.push({
-      i: index,
-      len,
+      i: m.index,
+      len: 7,
       date: (y + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0")
     });
-  };
-  let m;
-  const re7 = /(11[0-9]|12[0-5])(\d{2})(\d{2})/g;
-  while ((m = re7.exec(s))) {
-    if (/^\d{3}/.test(s.slice(m.index + 7))) continue;
-    if (m.index > 0 && /\d/.test(s[m.index - 1])) {
-      const prev = s.slice(Math.max(0, m.index - 3), m.index);
-      if (!/\.?00$/.test(prev)) continue;
-    }
-    add(m.index, Number(m[1]), Number(m[2]), Number(m[3]), 7);
   }
   const reS = /(11[0-9]|12[0-5])[\/.\-年](\d{1,2})[\/.\-月]?(\d{1,2})/g;
-  while ((m = reS.exec(s))) add(m.index, Number(m[1]), Number(m[2]), Number(m[3]), m[0].length);
+  while ((m = reS.exec(s))) {
+    const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (y < 110 || y > 120 || mo < 1 || mo > 12 || d < 1 || d > 31) continue;
+    if (hits.some(h => Math.abs(h.i - m.index) < 3)) continue;
+    hits.push({
+      i: m.index,
+      len: m[0].length,
+      date: (y + 1911) + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0")
+    });
+  }
   hits.sort((a, b) => a.i - b.i);
   return hits;
 }
@@ -10590,7 +10609,7 @@ function nonghuiLessonHits(s) {
     { re: /人壽險|人壽|壽險/g, note: "人壽險", type: "out" },
     { re: /還本息\d*|還本|本息|EAH\d*/gi, note: "還本息", type: "out" },
     { re: /活息/g, note: "活息", type: "in" },
-    { re: /IC轉\d*|I\s*C轉\d*|CER\s*700|轉700/gi, note: "IC轉", type: "in" }
+    { re: /IC轉\d{0,4}|I\s*C轉\d{0,4}|CER\s*700|轉700|轉812/gi, note: "IC轉", type: "in" }
   ];
   const hits = [];
   rules.forEach(rule => {
@@ -10608,37 +10627,38 @@ function nonghuiLessonHits(s) {
 }
 function parseNonghuiPassbook(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
-  const prepped = String(text || "")
-    .replace(/\u3000/g, " ")
-    .replace(/[ＩIＩ]\s*[ＣCＣ]\s*轉/g, "IC轉")
-    .replace(/帳號[:：]?\s*[\d-]+/g, " ")
-    .replace(/本數[:：]?\s*\d+/g, " ")
-    .replace(/\([^)]{0,40}\)/g, " ")
-    .replace(/\bB\d{3,5}\b/g, " ");
-  const compact = prepped.replace(/\s+/g, "");
+  const compact = nonghuiCompact(text);
   const dates = nonghuiDateHits(compact);
-  const lessons = nonghuiLessonHits(compact);
   const rows = [];
-  lessons.forEach((lesson, idx) => {
-    let dateHit = null;
-    dates.forEach(d => { if (d.i <= lesson.i) dateHit = d; });
-    if (!dateHit) dateHit = dates.find(d => d.i - lesson.i < 48) || null;
-    if (!dateHit) return;
-    const end = idx + 1 < lessons.length ? lessons[idx + 1].i : compact.length;
-    const window = compact.slice(lesson.i, end);
-    if (/帳號/.test(window)) return;
+  const pushRow = (date, lesson, window) => {
+    if (!date || !lesson) return;
+    if (/帳號|本數/.test(window)) return;
     const money = nonghuiMoneyList(window);
     if (!money.length) return;
-    const amount = money.length >= 2 ? money[0] : money[0];
+    const amount = money[0];
     if (lesson.note !== "活息" && amount < 100) return;
     if (!(amount >= 1 && amount < 2000000)) return;
     rows.push({
-      date: dateHit.date,
+      date,
       type: lesson.type,
       amount,
       company: defCo,
       bank: "農會",
       note: lesson.note
+    });
+  };
+  dates.forEach((d, idx) => {
+    const end = idx + 1 < dates.length ? dates[idx + 1].i : compact.length;
+    const window = compact.slice(d.i + d.len, end);
+    const lessons = nonghuiLessonHits(window);
+    if (!lessons.length) return;
+    if (lessons.length === 1) {
+      pushRow(d.date, lessons[0], window);
+      return;
+    }
+    lessons.forEach((lesson, li) => {
+      const wEnd = li + 1 < lessons.length ? lessons[li + 1].i : window.length;
+      pushRow(d.date, lesson, window.slice(lesson.i, wEnd));
     });
   });
   return rows;
