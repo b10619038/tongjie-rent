@@ -487,10 +487,10 @@ input, textarea, select {
 .slide-right { animation: slideRight .8s ease both; }
 .slide-left { animation: slideLeft .8s ease both; }
 .slide-left.delay { animation-delay: .08s; }
-.room-seq { animation: slideLeft .7s cubic-bezier(.22,.82,.22,1) both; }
-.room-seq.s2 { animation-delay: .22s; }
-.room-seq.s3 { animation-delay: .44s; }
-.room-seq.s4 { animation-delay: .66s; }
+.room-seq { animation: slideLeft .32s cubic-bezier(.22,.82,.22,1) both; }
+.room-seq.s2 { animation-delay: .05s; }
+.room-seq.s3 { animation-delay: .10s; }
+.room-seq.s4 { animation-delay: .15s; }
 .slide-up { animation: slideUp .8s ease both; }
 .admin-in-left { animation: slideRight .6s ease both; }
 .admin-in-right { animation: slideLeft .6s ease both; }
