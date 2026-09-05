@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-10-31";
-const APP_EDIT_COUNT = 688;
+const APP_STAMP = "2026-09-05-10-51";
+const APP_EDIT_COUNT = 689;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0238";
+const FILE_VER = "0239";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽：提前匯款發票開1日，1日當天或之後開匯款日"] },
+  { ver: APP_VERSION, items: ["新增一筆下方可看剛剛上傳的紀錄，並一次刪除這批測試帳"] },
+  { ver: "2026-09-05-10-31-688", items: ["開立發票總覽：提前匯款發票開1日，1日當天或之後開匯款日"] },
   { ver: "2026-09-04-21-56-687", items: ["列印已簽署合約排在產出發票上方"] },
   { ver: "2026-09-04-21-52-686", items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
   { ver: "2026-09-04-21-20-683", items: ["開發者薪資只顯示在開發者後台"] },
@@ -10043,6 +10044,7 @@ function monthCashHtml() {
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
+    ${lastBookImportHtml()}
   </div>`;
 }
 function parseCsvText(text) {
@@ -10243,8 +10245,10 @@ function ledgerHasMoney(date, type, amount, company) {
   return found;
 }
 function importPassbookRows(list, sourceLabel) {
-  if (!Array.isArray(list) || !list.length) return { added: 0, skipped: 0, paired: 0 };
+  if (!Array.isArray(list) || !list.length) return { added: 0, skipped: 0, paired: 0, ids: [] };
   if (!state.books) state.books = [];
+  const batchId = "up" + Date.now().toString(36);
+  const ids = [];
   let added = 0, skipped = 0, paired = 0, first = "";
   list.forEach(row => {
     const date = ymdOf(row && row.date);
@@ -10263,23 +10267,27 @@ function importPassbookRows(list, sourceLabel) {
         cash.pairOutId = id + "x";
         state.books.push({
           id: id + "x", type: "out", date, amount, company: "現金(保險箱)",
-          bank: "", note: "轉存銀行（對應 " + (cash.note || "現金") + "）", linkedId: cash.id
+          bank: "", note: "轉存銀行（對應 " + (cash.note || "現金") + "）", linkedId: cash.id,
+          importBatch: batchId, fromPassbook: true
         });
         state.books.push({
           id, type: "in", date, amount,
           company: company === "現金(保險箱)" ? "統潔" : company,
-          bank, note: note + "（對應先前現金）", linkedId: cash.id, fromPassbook: true
+          bank, note: note + "（對應先前現金）", linkedId: cash.id, fromPassbook: true, importBatch: batchId
         });
+        ids.push(id + "x", id);
         paired += 1;
         if (!first) first = date;
         return;
       }
     }
     if (ledgerHasMoney(date, type, amount, company)) { skipped += 1; return; }
+    const nid = "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6);
     state.books.push({
-      id: "bk" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
-      type, date, amount, company, bank, note, roomNo: "", createdAt: nowStamp(), fromPassbook: true
+      id: nid,
+      type, date, amount, company, bank, note, roomNo: "", createdAt: nowStamp(), fromPassbook: true, importBatch: batchId
     });
+    ids.push(nid);
     added += 1;
     if (!first) first = date;
   });
@@ -10287,6 +10295,14 @@ function importPassbookRows(list, sourceLabel) {
     ui.calYear = Number(first.slice(0, 4));
     ui.calMonth = Number(first.slice(5, 7));
     ui.calDay = Number(first.slice(8, 10));
+  }
+  if (added || paired || skipped) {
+    state.lastBookImport = {
+      id: batchId,
+      at: nowStamp(),
+      source: sourceLabel || "簿子照片",
+      added, skipped, paired, ids
+    };
   }
   if (added || paired) {
     try {
@@ -10301,7 +10317,56 @@ function importPassbookRows(list, sourceLabel) {
     save();
     try { pushCloud(); } catch {}
   }
-  return { added, skipped, paired };
+  return { added, skipped, paired, ids };
+}
+function liveLastImport() {
+  const rec = state.lastBookImport;
+  if (!rec) return null;
+  const idset = new Set(rec.ids || []);
+  const rows = (state.books || []).filter(b => b && (idset.has(b.id) || (rec.id && b.importBatch === rec.id)));
+  rows.sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.id).localeCompare(String(b.id)));
+  if (!rows.length && !(rec.skipped > 0 && !(rec.added || rec.paired))) return null;
+  return { rec, rows };
+}
+function lastBookImportHtml() {
+  const live = liveLastImport();
+  if (!live) return "";
+  const rec = live.rec;
+  const rows = live.rows;
+  const bits = [];
+  if (rows.length) bits.push(rows.length + " 筆已記入日曆各天");
+  if (rec.skipped) bits.push("跳過 " + rec.skipped + " 筆（當天同帳戶已有）");
+  if (rec.paired) bits.push("對上現金 " + rec.paired + " 筆");
+  return `<div class="card card-body last-import no-print" id="last-import">
+      <h2 class="dash-h">剛剛上傳的紀錄</h2>
+      <div class="small">${escapeHtml(rec.source || "簿子照片")}${rec.at ? "　" + escapeHtml(String(rec.at)) : ""}</div>
+      <div class="small">${escapeHtml(bits.join("　") || "沒有新增")}</div>
+      ${rows.length ? `<div class="last-import-list">${rows.map(b => `
+        <div class="led-line">
+          <div class="led-head"><b><span class="${b.type === "out" ? "led-out" : "led-in"}">${b.type === "out" ? "出帳" : "進帳"}</span> · ${escapeHtml(rocSlash(b.date) || b.date || "")} · ${money(b.amount)}</b></div>
+          <span class="led-note">${escapeHtml(String(b.note || "").slice(0, 42))}</span>
+        </div>`).join("")}</div>` : ""}
+      ${rows.length ? `<button type="button" class="ghost" id="undo-last-import" style="margin-top:10px">一次刪除這批上傳</button>` : ""}
+    </div>`;
+}
+function undoLastBookImport() {
+  const live = liveLastImport();
+  if (!live || !live.rows.length) { toast("沒有可刪的上傳紀錄"); return 0; }
+  const ids = live.rows.map(b => b.id);
+  (state.books || []).forEach(c => {
+    if (!c || ids.indexOf(c.id) >= 0) return;
+    if (c.linkedId && ids.indexOf(c.linkedId) >= 0) {
+      c.pendingBank = true;
+      c.linkedId = "";
+      c.pairOutId = "";
+    }
+  });
+  markLedgerGone(ids);
+  state.lastBookImport = null;
+  save();
+  try { pushCloud(); } catch {}
+  toast("已刪除這批上傳的 " + ids.length + " 筆");
+  return ids.length;
 }
 function parsePassbookOcr(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
@@ -20924,6 +20989,13 @@ function bindCashCal() {
     form.onsubmit = e => { e.preventDefault(); e.stopPropagation(); saveBook(); };
     const saveBtn = document.getElementById("book-save");
     if (saveBtn) saveBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); saveBook(); };
+    const undoImp = document.getElementById("undo-last-import");
+    if (undoImp) undoImp.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      undoLastBookImport();
+      stay();
+    };
   }
   const xls = document.getElementById("book-xls");
   if (xls) xls.onchange = () => {

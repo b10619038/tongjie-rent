@@ -1915,6 +1915,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   line-height: 1.45;
 }
 .cal-form { margin-top: 12px; display: grid; gap: 8px; position: relative; z-index: 6; isolation: isolate; pointer-events: auto !important; }
+.last-import { margin-top: 12px; }
+.last-import-list { max-height: 280px; overflow: auto; margin-top: 8px; }
 #book-form input,
 #book-form select {
   pointer-events: auto !important;
@@ -2054,7 +2056,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   body.print-report #overall-report { box-shadow: none; border: 0; }
   body.print-cal .dash > *:not(#month-cash) { display: none !important; }
   body.print-cal #month-cash { box-shadow: none; border: 0; overflow: visible; }
-  body.print-cal .cal-form, body.print-cal .cal-toolbar, body.print-cal .recon-box { display: none !important; }
+  body.print-cal .cal-form, body.print-cal .cal-toolbar, body.print-cal .recon-box, body.print-cal .last-import { display: none !important; }
   body.print-report .report-wrap { max-height: none !important; overflow: visible !important; }
   body.print-report .admin-scroll { padding: 0 !important; }
   body.print-report .rev-sheet { overflow: visible; }
