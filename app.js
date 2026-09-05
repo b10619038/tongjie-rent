@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-04-21-56";
-const APP_EDIT_COUNT = 687;
+const APP_STAMP = "2026-09-05-10-31";
+const APP_EDIT_COUNT = 688;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0237";
+const FILE_VER = "0238";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印已簽署合約排在產出發票上方"] },
+  { ver: APP_VERSION, items: ["開立發票總覽：提前匯款發票開1日，1日當天或之後開匯款日"] },
+  { ver: "2026-09-04-21-56-687", items: ["列印已簽署合約排在產出發票上方"] },
   { ver: "2026-09-04-21-52-686", items: ["回報已繳費並附上截圖：LINE 真的送出文字和圖片後，才解鎖本月已繳費"] },
   { ver: "2026-09-04-21-20-683", items: ["開發者薪資只顯示在開發者後台"] },
   { ver: "2026-09-04-21-10-682", items: ["租客登入密碼改為完整手機號碼，有電話就用電話當密碼"] },
@@ -8090,12 +8091,20 @@ function openInvoiceForRoom(roomId, from) {
   ui.page = "invoice";
   render();
 }
+function invoiceYmdFromRemit(remitYmd, billYm) {
+  const ym = String(billYm || payYmNow() || "").slice(0, 7);
+  const start = ym ? ym + "-01" : "";
+  const remit = ymdOf(remitYmd);
+  if (!start) return remit || "";
+  if (!remit) return start;
+  return remit > start ? remit : start;
+}
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const paid = !!(t && paidThisMonth(t));
   const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
   const billYm = (paid && t.paidYm) || payYmNow();
-  const invoiceYmd = paid ? (billYm + "-01") : "";
+  const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
   const bankKey = tenantPayBankKey(t || info, room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
   const part = leasePartForYm(t, room, billYm);
@@ -8182,7 +8191,7 @@ function factoryInvoiceOverviewRows() {
     const src = paidT || t;
     if (src && src.leaseStart && String(src.leaseStart).slice(0, 7) > payYmNow()) return;
     const remitYmd = paid ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "";
-    const invoiceYmd = paid ? ((src.paidYm || payYmNow()) + "-01") : "";
+    const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, src.paidYm || payYmNow()) : "";
     const room = rooms[0];
     const bankKey = tenantPayBankKey(src, room);
     const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
@@ -8324,7 +8333,7 @@ function drawInvoiceOverviewCanvas(rows, kind) {
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
   ctx.font = font("500 18px");
-  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。發票日期為租金所屬月份1日。不足月當月開日拆金額，次月起開一年約月租。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
+  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。提前匯款發票開所屬月1日；1日當天或之後匯款發票開匯款日。不足月當月開日拆金額，次月起開一年約月租。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
   ctx.textAlign = "left";
   return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
 }
