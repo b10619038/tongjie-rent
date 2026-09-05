@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-10";
-const APP_EDIT_COUNT = 725;
+const APP_STAMP = "2026-09-05-15-17";
+const APP_EDIT_COUNT = 726;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0275";
+const FILE_VER = "0276";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
+  { ver: APP_VERSION, items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
+  { ver: "2026-09-05-15-10-725", items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
   { ver: "2026-09-05-15-09-724", items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
   { ver: "2026-09-05-15-07-723", items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
   { ver: "2026-09-05-15-05-722", items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
@@ -4228,6 +4229,7 @@ function loadPaidMarks() {
 const PAID_TOPIC = "tongjie/tj-82934388/paid";
 const MONEY_TOPIC = "tongjie/tj-82934388/money";
 const LIVE_TOPIC = "tongjie/tj-82934388/live";
+const FILE_TOPIC = "tongjie/tj-82934388/files";
 let paidWs = null;
 let paidWsOk = false;
 let paidWsTimer = 0;
@@ -4243,6 +4245,49 @@ function liveDeviceId() {
     try { localStorage.setItem("tj_live_id", liveSelfId); } catch {}
   }
   return liveSelfId;
+}
+function ingestFileCloud(raw) {
+  try {
+    const o = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!o || o.device === liveDeviceId()) return;
+    if (o.gone && o.id) {
+      state.bookVaultGone = unionGone(state.bookVaultGone, [o.id]);
+      applyBookVaultGone(state);
+      ui.keepScroll = true;
+      if (!composingNow()) try { render(); } catch {}
+      return;
+    }
+    if (!o.id) return;
+    if (!Array.isArray(state.bookVault)) state.bookVault = [];
+    let rec = state.bookVault.find(x => x && x.id === o.id);
+    if (!rec) {
+      rec = {
+        id: String(o.id),
+        name: String(o.name || "file"),
+        kind: o.kind === "sheet" ? "sheet" : "photo",
+        at: String(o.at || nowStamp()),
+        size: Number(o.size) || 0,
+        mime: String(o.mime || ""),
+        ids: [],
+        cloud: true,
+        src: o.src || ""
+      };
+      state.bookVault.unshift(rec);
+    } else {
+      if (o.src) rec.src = o.src;
+      rec.cloud = true;
+      if (o.name) rec.name = o.name;
+    }
+    if (rec.src) {
+      const blob = dataUrlToBlob(rec.src);
+      if (blob) {
+        BOOK_UP_BLOBS[rec.name] = blob;
+        try { putUploadBlob(rec.id, blob); } catch {}
+      }
+    }
+    ui.keepScroll = true;
+    if (!composingNow()) try { render(); } catch {}
+  } catch {}
 }
 function ingestLiveCloud(raw) {
   try {
@@ -4578,6 +4623,7 @@ function connectPaidCloud() {
           ws.send(mqttSubPkt(PAID_TOPIC));
           ws.send(mqttSubPkt(MONEY_TOPIC));
           ws.send(mqttSubPkt(LIVE_TOPIC));
+          ws.send(mqttSubPkt(FILE_TOPIC));
         } catch {}
         clearInterval(paidPingTimer);
         paidPingTimer = setInterval(() => {
@@ -4587,6 +4633,7 @@ function connectPaidCloud() {
       }
       if (pkt.type === 3 && pkt.payload) {
         if (pkt.topic === LIVE_TOPIC) ingestLiveCloud(pkt.payload);
+        else if (pkt.topic === FILE_TOPIC) ingestFileCloud(pkt.payload);
         else ingestPaidCloud(pkt.payload);
       }
     };
@@ -4666,6 +4713,7 @@ function mergeBookVault(a, b, gone) {
   const map = Object.create(null);
   [].concat(a || [], b || []).forEach(x => {
     if (!x || !x.id) return;
+    const cur = map[x.id];
     const copy = {
       id: String(x.id),
       name: String(x.name || ""),
@@ -4674,17 +4722,19 @@ function mergeBookVault(a, b, gone) {
       size: Number(x.size) || 0,
       ids: Array.isArray(x.ids) ? x.ids.filter(Boolean) : [],
       cloud: !!x.cloud,
-      mime: String(x.mime || "")
+      mime: String(x.mime || ""),
+      src: String(x.src || (cur && cur.src) || "")
     };
-    const cur = map[x.id];
     if (!cur) { map[x.id] = copy; return; }
     if (String(copy.at) >= String(cur.at)) {
       copy.ids = [...new Set([].concat(cur.ids || [], copy.ids || []))];
       copy.cloud = !!(cur.cloud || copy.cloud);
+      if (!copy.src) copy.src = cur.src || "";
       map[x.id] = copy;
     } else {
       cur.ids = [...new Set([].concat(cur.ids || [], copy.ids || []))];
       cur.cloud = !!(cur.cloud || copy.cloud);
+      if (!cur.src && copy.src) cur.src = copy.src;
     }
   });
   let list = Object.keys(map).map(k => map[k]).sort((p, q) => String(q.at || "").localeCompare(String(p.at || "")));
@@ -4735,6 +4785,7 @@ function mergeSharedInto(target, other) {
   target.bookVaultGone = unionGone(target.bookVaultGone, other.bookVaultGone);
   target.bookVault = mergeBookVault(target.bookVault, other.bookVault, target.bookVaultGone);
   applyBookVaultGone(target);
+  hydrateVaultBlobs(target);
   target.paidMarks = mergePaidMarkMaps(target.paidMarks, other.paidMarks);
   applyPaidMarks(target);
   return target;
@@ -5426,7 +5477,7 @@ async function pushCloud() {
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
       bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
-      bookVault: dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))
+      bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone)))
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -5559,7 +5610,8 @@ function save(force) {
     persistAvatars(state);
     state.updatedAt = Date.now();
     persistLedger(state);
-    localStorage.setItem(KEY, JSON.stringify(state));
+    const dump = Object.assign({}, state, { bookVault: vaultForStore(state.bookVault) });
+    localStorage.setItem(KEY, JSON.stringify(dump));
   } catch {
     try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
   }
@@ -10585,6 +10637,85 @@ async function delUploadCloud(id) {
     await fetch(fileApiUrl(id), { method: "DELETE", headers: { "X-Tongjie-Key": SYNC_KEY } });
   } catch {}
 }
+function blobToDataUrl(blob) {
+  return new Promise(resolve => {
+    if (!blob) { resolve(""); return; }
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ""));
+    r.onerror = () => resolve("");
+    r.readAsDataURL(blob);
+  });
+}
+function dataUrlToBlob(url) {
+  const s = String(url || "");
+  const m = s.match(/^data:([^;]+);base64,(.+)$/);
+  if (!m) return null;
+  try {
+    const bin = atob(m[2]);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: m[1] || "application/octet-stream" });
+  } catch { return null; }
+}
+function vaultForStore(list) {
+  return (list || []).map(x => {
+    if (!x) return x;
+    const o = Object.assign({}, x);
+    delete o.src;
+    delete o._blob;
+    return o;
+  });
+}
+function vaultForCloud(list) {
+  const out = [];
+  let used = 0;
+  const cap = 1600000;
+  (list || []).forEach(x => {
+    if (!x) return;
+    const o = Object.assign({}, x);
+    delete o._blob;
+    if (o.src && used + String(o.src).length > cap) delete o.src;
+    else if (o.src) used += String(o.src).length;
+    out.push(o);
+  });
+  return out;
+}
+function hydrateVaultBlobs(data) {
+  (data && data.bookVault || []).forEach(rec => {
+    if (!rec || !rec.src) return;
+    const blob = dataUrlToBlob(rec.src);
+    if (!blob) return;
+    BOOK_UP_BLOBS[rec.name] = blob;
+    rec.cloud = true;
+    try { putUploadBlob(rec.id, blob); } catch {}
+  });
+}
+function publishFileCloud(rec, gone) {
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+  }
+  const msg = gone
+    ? { gone: true, id: rec && rec.id, at: Date.now(), device: liveDeviceId() }
+    : {
+      id: rec.id,
+      name: rec.name,
+      kind: rec.kind,
+      mime: rec.mime,
+      src: rec.src || "",
+      size: rec.size || 0,
+      at: rec.at || nowStamp(),
+      device: liveDeviceId()
+    };
+  const raw = JSON.stringify(msg);
+  if (!gone && raw.length > 220000) return false;
+  if (paidWs && paidWs.readyState === 1) {
+    try {
+      paidWs.send(mqttPubPkt(FILE_TOPIC, raw, false));
+      return true;
+    } catch { return false; }
+  }
+  return false;
+}
 function rememberBookUpFile(name, ids, file) {
   const n = String(name || "").trim();
   if (!n) return null;
@@ -10624,10 +10755,10 @@ async function compressUploadImage(file) {
   const name = String(file.name || "");
   const type = String(file.type || "");
   if (!/^image\//i.test(type) && !/\.(jpe?g|png|heic|heif|webp|bmp|gif|tif|tiff)$/i.test(name)) return file;
-  if (file.size && file.size < 360000 && /jpe?g/i.test(type || name)) return file;
+  if (file.size && file.size < 120000 && /jpe?g/i.test(type || name)) return file;
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const max = 1600;
+    const max = 1200;
     const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
     const w = Math.max(1, Math.round(bmp.width * scale));
     const h = Math.max(1, Math.round(bmp.height * scale));
@@ -10636,7 +10767,7 @@ async function compressUploadImage(file) {
     canvas.height = h;
     canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
     try { bmp.close(); } catch {}
-    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.68));
     if (!blob) return file;
     if (file.size && blob.size >= file.size * 0.92 && /jpe?g/i.test(type || name)) return file;
     return new File([blob], uploadJpegName(file), { type: "image/jpeg", lastModified: Date.now() });
@@ -10687,17 +10818,23 @@ async function storeUploadFile(file, tag, used) {
   return rec;
 }
 async function flushUploadCloud(recs) {
-  const list = (recs || []).filter(r => r && r.id && !r.cloud);
+  const list = (recs || []).filter(r => r && r.id);
   if (!list.length) return false;
-  const results = await Promise.all(list.map(async rec => {
+  let any = false;
+  await Promise.all(list.map(async rec => {
+    if (rec.cloud && rec.src) { any = true; return; }
     const blob = rec._blob || BOOK_UP_BLOBS[rec.name] || await getUploadBlob(rec.id);
-    if (!blob) return false;
-    const ok = await pushUploadCloud(rec.id, blob);
-    rec.cloud = !!ok;
+    if (!blob) return;
+    if (!rec.src) rec.src = await blobToDataUrl(blob);
+    if (rec.src) {
+      rec.cloud = true;
+      any = true;
+      publishFileCloud(rec);
+    }
     try { delete rec._blob; } catch {}
-    return ok;
   }));
-  return results.some(Boolean);
+  try { publishLiveCloud(); } catch {}
+  return any;
 }
 function bookUpFilesHtml() {
   const list = bookVault();
@@ -10740,6 +10877,7 @@ async function vaultBlobOf(rec) {
   if (!blob && rec.id) {
     try { blob = await getUploadBlob(rec.id); } catch { blob = null; }
   }
+  if (!blob && rec.src) blob = dataUrlToBlob(rec.src);
   if (!blob && rec.id) {
     blob = await pullUploadCloud(rec.id);
     if (blob) {
@@ -10825,6 +10963,7 @@ function removeBookUpFileAt(i) {
   state.bookVaultGone = unionGone(state.bookVaultGone, [id]);
   try { delUploadBlob(id); } catch {}
   try { delUploadCloud(id); } catch {}
+  try { publishFileCloud({ id }, true); } catch {}
   if (item.name) delete BOOK_UP_BLOBS[item.name];
   list.splice(i, 1);
   applyBookVaultGone(state);
