@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-54";
-const APP_EDIT_COUNT = 753;
+const APP_STAMP = "2026-09-05-18-55";
+const APP_EDIT_COUNT = 754;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0303";
+const FILE_VER = "0304";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修列表不再顯示開發者測試"] },
+  { ver: APP_VERSION, items: ["租客圖卡按下會整張縮小回彈"] },
+  { ver: "2026-09-05-18-54-753", items: ["報修列表不再顯示開發者測試"] },
   { ver: "2026-09-05-18-53-752", items: ["廠房租客列表也不再顯示開發者測試"] },
   { ver: "2026-09-05-18-52-751", items: ["租客列表不再顯示開發者測試"] },
   { ver: "2026-09-05-18-49-750", items: ["行程進帳出帳圓鈕拿掉邊線"] },
@@ -19013,7 +19014,7 @@ function bindTenantFold() {
       if (el.closest(".swipe-wrap") && el.closest(".swipe-wrap").dataset.swiping === "1") return;
       e.preventDefault();
       e.stopPropagation();
-      openTenantSheet(id);
+      setTimeout(() => openTenantSheet(id), 70);
     };
   });
 }
@@ -19109,17 +19110,25 @@ function tenantSheetView() {
 }
 function bindTenantListTools() {
   bindInvoiceOverviewBtn();
-  document.querySelectorAll("#tenant-list [data-fold-tenant]").forEach(el => {
-    const target = el.closest(".swipe-wrap") || el;
-    el.addEventListener("pointerdown", e => {
+  const list = document.getElementById("tenant-list");
+  if (list && !list.dataset.pressBound) {
+    list.dataset.pressBound = "1";
+    const pressOf = el => el.closest(".swipe-wrap") || el;
+    list.addEventListener("pointerdown", e => {
+      const el = e.target.closest("[data-fold-tenant]");
+      if (!el || !list.contains(el)) return;
       if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay]")) return;
-      target.classList.add("is-press");
+      pressOf(el).classList.add("is-press");
       try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
     });
-    const up = () => target.classList.remove("is-press");
-    el.addEventListener("pointerup", up);
-    el.addEventListener("pointercancel", up);
-  });
+    const clearPress = e => {
+      const el = e.target.closest("[data-fold-tenant]");
+      if (el) pressOf(el).classList.remove("is-press");
+      list.querySelectorAll(".is-press").forEach(x => x.classList.remove("is-press"));
+    };
+    list.addEventListener("pointerup", clearPress);
+    list.addEventListener("pointercancel", clearPress);
+  }
   document.querySelectorAll("#tenant-list [data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
