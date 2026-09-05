@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-20";
-const APP_EDIT_COUNT = 763;
+const APP_STAMP = "2026-09-05-19-25";
+const APP_EDIT_COUNT = 764;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0313";
+const FILE_VER = "0314";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["自動最佳化按鈕改成 iPhone 輕點回彈"] },
+  { ver: APP_VERSION, items: ["本月工作日曆編輯完成按鈕改成輕點回彈"] },
+  { ver: "2026-09-05-19-20-763", items: ["自動最佳化按鈕改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-19-762", items: ["調色盤色塊改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-17-761", items: ["選房號頁返回與標題拉開距離"] },
   { ver: "2026-09-05-19-16-760", items: ["本月工作有過期行程時，工作助手分頁右上顯示紅標"] },
@@ -22138,6 +22139,7 @@ function bindAdminAi() {
     };
   });
   document.querySelectorAll("[data-edit-memo]").forEach(btn => {
+    bindIosPress(btn);
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
       e.preventDefault();
@@ -22189,7 +22191,9 @@ function bindAdminAi() {
       render();
     };
   });
+  document.querySelectorAll("[data-work-edit-cancel], .work-memo-tools [type='submit']").forEach(btn => bindIosPress(btn));
   document.querySelectorAll("[data-gcal-memo]").forEach(btn => {
+    bindIosPress(btn);
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
       e.preventDefault();
@@ -22199,6 +22203,7 @@ function bindAdminAi() {
     };
   });
   document.querySelectorAll("[data-done-memo]").forEach(btn => {
+    bindIosPress(btn);
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
       e.preventDefault();

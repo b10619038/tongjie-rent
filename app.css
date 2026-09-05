@@ -1924,6 +1924,16 @@ input[type="file"] {
   pointer-events: auto !important;
   position: relative;
   z-index: 8;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+#work-card .work-memo-tools .ghost:active,
+#work-card .work-memo-tools .ghost.is-press {
+  transform: scale(0.94);
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 #work-card .work-edit {
   display: grid;
