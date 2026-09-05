@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-21";
-const APP_EDIT_COUNT = 705;
+const APP_STAMP = "2026-09-05-12-27";
+const APP_EDIT_COUNT = 706;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0255";
+const FILE_VER = "0256";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["日曆上一月／下一月按下去有顏色，且不再把畫面跳走"] },
+  { ver: APP_VERSION, items: ["日曆上一月／下一月按下去有明顯縮放"] },
+  { ver: "2026-09-05-12-21-705", items: ["日曆上一月／下一月按下去有顏色，且不再把畫面跳走"] },
   { ver: "2026-09-05-12-16-704", items: ["農會只記入有日期的支出或存入：不含結存、右欄備註、星號與括號"] },
   { ver: "2026-09-05-12-03-703", items: ["農會簿子加強認字：影像清晰化、結存升降判斷進出，失敗可再認一次"] },
   { ver: "2026-09-05-11-55-702", items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
@@ -21134,7 +21135,7 @@ function bindCashCal() {
         try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
         render();
       };
-      setTimeout(go, 70);
+      setTimeout(go, 150);
     };
   });
   const grid = document.querySelector(".cal-grid");
