@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-18";
-const APP_EDIT_COUNT = 713;
+const APP_STAMP = "2026-09-05-14-28";
+const APP_EDIT_COUNT = 714;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0263";
+const FILE_VER = "0264";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
+  { ver: APP_VERSION, items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
+  { ver: "2026-09-05-14-18-713", items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
   { ver: "2026-09-05-14-08-712", items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
   { ver: "2026-09-05-14-01-711", items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
   { ver: "2026-09-05-13-03-710", items: ["雲端認字改直接連 Google，設定可測試連線"] },
@@ -871,27 +872,7 @@ function bumpVisionCount() {
   try { save(); } catch {}
 }
 function visionSettingsHtml() {
-  const has = !!(state.visionKey && String(state.visionKey).trim());
-  const n = visionUseCount();
-  const tail = has ? String(state.visionKey).trim().slice(-4) : "";
-  return `<div class="card card-body">
-    <div class="label">雲端看圖（Gemini）</div>
-    <div class="row"><span class="k">狀態</span><span class="v">${has ? "已接 · 尾碼 " + escapeHtml(tail) : "尚未接"}</span></div>
-    <div class="row"><span class="k">認字備用</span><span class="v">${n}／1,000 張免費</span></div>
-    <p class="small" style="margin-top:8px">上傳簿子先讓 Gemini 看懂欄位（走 Google 試用額度）。看不懂才改用認字。同一把金鑰即可。</p>
-    ${ui.visionLastError ? `<p class="small" style="margin-top:8px;color:var(--rose)">${escapeHtml(ui.visionLastError)}</p>` : ""}
-    <ol class="small" style="margin:8px 0 0 18px;padding:0">
-      <li>打開 <a href="https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com" target="_blank" rel="noopener">Gemini API</a> 並啟用</li>
-      <li>憑證裡這把金鑰的「API 限制」要勾 <b>Generative Language API</b>（可同時勾 Cloud Vision API）</li>
-      <li>測試連線通過後再傳簿子</li>
-    </ol>
-    <input id="vision-key" type="password" autocomplete="off" placeholder="${has ? "已儲存，要換再貼新的" : "貼上 Google API 金鑰"}" style="margin-top:10px" />
-    <div class="btn-row" style="margin-top:8px">
-      <button type="button" class="btn-navy" id="vision-key-save">儲存金鑰</button>
-      <button type="button" class="ghost" id="vision-key-test">測試連線</button>
-      ${has ? `<button type="button" class="ghost" id="vision-key-clear">清除</button>` : ""}
-    </div>
-  </div>`;
+  return "";
 }
 function lastSeenVersion() {
   try { return localStorage.getItem("tj-last-ver") || ""; } catch { return ""; }
@@ -2850,6 +2831,7 @@ function normalize(data) {
     r6831.status = "rented";
   }
   applyCompany(data);
+  if (data.visionKey) data.visionKey = "";
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
@@ -11085,35 +11067,17 @@ async function testVisionKey() {
 async function importPassbookPhotos(files, defaults, after) {
   const list = [...(files || [])].filter(f => f && !isSheetFile(f));
   if (!list.length) { toast("請選簿子照片"); return; }
-  const cloudOn = !!(state.visionKey && String(state.visionKey).trim());
-  toast(cloudOn ? "Gemini 看圖中，金流以簿子為準…" : "正在查看簿子照片，金流以簿子為準…");
+  toast("正在查看簿子照片，金流以簿子為準…");
   let rows = [];
   let worker = null;
-  if (!cloudOn) {
-    try { worker = await makeOcrWorker(); } catch {}
-    if (!worker) toast("認字套件載入較慢或失敗，改用較簡單的認字再試");
-  }
+  try { worker = await makeOcrWorker(); } catch {}
+  if (!worker) toast("認字套件載入較慢或失敗，改用較簡單的認字再試");
   for (let i = 0; i < list.length; i++) {
     const f = list[i];
     toast("正在看第 " + (i + 1) + "／" + list.length + " 張簿子…");
     let got = [];
     let ocrText = "";
-    if (cloudOn) {
-      try { got = await readPassbookGemini(f, defaults); } catch {}
-      if (got.length) {
-        got.forEach(r => { r.importFile = f.name || r.importFile || ""; });
-        rows = rows.concat(got);
-        continue;
-      }
-      if (ui.visionLastError) toast(ui.visionLastError);
-      try { ocrText = await ocrPassbookCloud(f); } catch {}
-    }
-    if (!ocrText) {
-      if (!worker) {
-        try { worker = await makeOcrWorker(); } catch {}
-      }
-      try { ocrText = await ocrPassbookFile(f, worker); } catch {}
-    }
+    try { ocrText = await ocrPassbookFile(f, worker); } catch {}
     if (ocrText) got = parsePassbookOcr(ocrText, defaults);
     if (!got.length) {
       if (!(defaults && defaults.type === "auto")) {
