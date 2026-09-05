@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-57";
-const APP_EDIT_COUNT = 720;
+const APP_STAMP = "2026-09-05-15-01";
+const APP_EDIT_COUNT = 721;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0270";
+const FILE_VER = "0271";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆的備註欄改為全寬"] },
+  { ver: APP_VERSION, items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
+  { ver: "2026-09-05-14-57-720", items: ["新增一筆的備註欄改為全寬"] },
   { ver: "2026-09-05-14-56-719", items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
   { ver: "2026-09-05-14-50-717", items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
   { ver: "2026-09-05-14-46-716", items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
@@ -10590,20 +10591,40 @@ async function storeUploadFile(file) {
 function bookUpFilesHtml() {
   const list = bookVault();
   if (!list.length) return "";
-  return `<div class="book-up-files">${list.map((f, i) => `
+  const n = list.length;
+  return `<div class="book-up-files">
+    ${n > 1 ? `<div class="book-up-tools">
+      <label><input type="checkbox" id="book-up-all" />全選 ${n} 份</label>
+      <button type="button" class="ghost" id="book-up-dl-sel">下載選取</button>
+    </div>` : ""}
+    ${list.map((f, i) => `
       <div class="book-up-file">
-        <div class="book-up-meta">
-          <span>${escapeHtml(f.name || "")}</span>
-          <em>${f.kind === "sheet" ? "Excel · 由 App 辨識記入日曆" : "照片 · 未記入日曆"} · ${f.cloud ? "已同步雲端" : "本機"}</em>
+        ${n > 1 ? `<label class="book-up-pick"><input type="checkbox" data-up-pick="${i}" /></label>` : ""}
+        <div class="book-up-body">
+          <div class="book-up-top">
+            <div class="book-up-meta">
+              <span>${escapeHtml(f.name || "未命名")}</span>
+              <em>${f.kind === "sheet" ? "Excel · 已記入日曆" : "照片 · 未記入日曆"} · ${f.cloud ? "已同步雲端" : "本機"}</em>
+            </div>
+            <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
+          </div>
+          <button type="button" class="ghost book-up-dl" data-dl-up-i="${i}">下載</button>
         </div>
-        <button type="button" class="ghost book-up-dl" data-dl-up-i="${i}">下載</button>
-        <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
-      </div>`).join("")}</div>`;
+      </div>`).join("")}
+  </div>`;
 }
-async function downloadVaultAt(i) {
-  const rec = bookVault()[i];
-  if (!rec) return;
-  toast("準備下載 " + (rec.name || "") + "…");
+function loadJsZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+    s.onload = () => window.JSZip ? resolve(window.JSZip) : reject(new Error("jszip"));
+    s.onerror = () => reject(new Error("jszip"));
+    document.head.appendChild(s);
+  });
+}
+async function vaultBlobOf(rec) {
+  if (!rec) return null;
   let blob = BOOK_UP_BLOBS[rec.name] || null;
   if (!blob && rec.id) {
     try { blob = await getUploadBlob(rec.id); } catch { blob = null; }
@@ -10616,16 +10637,74 @@ async function downloadVaultAt(i) {
       rec.cloud = true;
     }
   }
-  if (!blob) { toast("這份檔案雲端還沒到，請稍後再試或再上傳一次"); return; }
+  return blob;
+}
+function clickDownloadBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = rec.name || "file";
+  a.download = name || "file";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2500);
+}
+async function downloadVaultAt(i) {
+  const rec = bookVault()[i];
+  if (!rec) return;
+  toast("準備下載 " + (rec.name || "") + "…");
+  const blob = await vaultBlobOf(rec);
+  if (!blob) { toast("這份檔案雲端還沒到，請稍後再試或再上傳一次"); return; }
+  clickDownloadBlob(blob, rec.name || "file");
   toast("已開始下載 " + rec.name);
+}
+async function downloadVaultPicked() {
+  const list = bookVault();
+  const boxes = [...document.querySelectorAll("[data-up-pick]")];
+  const want = boxes.map(el => el.checked ? list[Number(el.dataset.upPick)] : null).filter(Boolean);
+  if (boxes.length && !want.length) { toast("請先勾選，或點全選"); return; }
+  const pack = want.length ? want : list.slice();
+  if (!pack.length) { toast("沒有可下載的檔案"); return; }
+  if (pack.length === 1) {
+    toast("準備下載 " + (pack[0].name || "") + "…");
+    const blob = await vaultBlobOf(pack[0]);
+    if (!blob) { toast("這份檔案還沒準備好"); return; }
+    clickDownloadBlob(blob, pack[0].name || "file");
+    toast("已開始下載 " + pack[0].name);
+    return;
+  }
+  toast("正在打包 " + pack.length + " 份…");
+  try {
+    const JSZip = await loadJsZip();
+    const zip = new JSZip();
+    let n = 0;
+    const used = Object.create(null);
+    for (let i = 0; i < pack.length; i++) {
+      const rec = pack[i];
+      const blob = await vaultBlobOf(rec);
+      if (!blob) continue;
+      let name = rec.name || ("檔案" + (i + 1));
+      if (used[name]) {
+        const dot = name.lastIndexOf(".");
+        const base = dot > 0 ? name.slice(0, dot) : name;
+        const ext = dot > 0 ? name.slice(dot) : "";
+        name = base + "-" + (used[name] + 1) + ext;
+      }
+      used[rec.name || name] = (used[rec.name || name] || 0) + 1;
+      zip.file(name, blob);
+      n += 1;
+    }
+    if (!n) { toast("沒有可下載的檔案"); return; }
+    const out = await zip.generateAsync({ type: "blob" });
+    clickDownloadBlob(out, "簿子上傳.zip");
+    toast("已打包 " + n + " 份，開始下載");
+  } catch {
+    toast("打包失敗，改成一張張下載");
+    for (let i = 0; i < pack.length; i++) {
+      const blob = await vaultBlobOf(pack[i]);
+      if (blob) clickDownloadBlob(blob, pack[i].name || ("檔案" + (i + 1)));
+    }
+  }
 }
 function removeBookUpFileAt(i) {
   const list = bookVault();
@@ -21966,6 +22045,22 @@ function bindCashCal() {
         downloadVaultAt(Number(btn.dataset.dlUpI));
       };
     });
+    const allPick = document.getElementById("book-up-all");
+    if (allPick) allPick.onchange = () => {
+      document.querySelectorAll("[data-up-pick]").forEach(el => { el.checked = allPick.checked; });
+    };
+    document.querySelectorAll("[data-up-pick]").forEach(el => {
+      el.onchange = () => {
+        const boxes = [...document.querySelectorAll("[data-up-pick]")];
+        if (allPick) allPick.checked = boxes.length > 0 && boxes.every(x => x.checked);
+      };
+    });
+    const dlSel = document.getElementById("book-up-dl-sel");
+    if (dlSel) dlSel.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadVaultPicked();
+    };
   }
 }
 
