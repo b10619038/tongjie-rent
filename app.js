@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-15";
-const APP_EDIT_COUNT = 696;
+const APP_STAMP = "2026-09-05-11-20";
+const APP_EDIT_COUNT = 697;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0246";
+const FILE_VER = "0247";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳檔名右邊可叉叉刪除該檔"] },
+  { ver: APP_VERSION, items: ["記入日曆改為手記：選趙文榮等帳戶後填金額即可，不再跳出選檔"] },
+  { ver: "2026-09-05-11-15-696", items: ["上傳檔名右邊可叉叉刪除該檔"] },
   { ver: "2026-09-05-11-14-695", items: ["金額空白按記入日曆改為上傳簿子，不再叫填金額"] },
   { ver: "2026-09-05-11-09-694", items: ["新增一筆上傳只顯示檔名，不出現圖片預覽"] },
   { ver: "2026-09-05-11-08-693", items: ["金額空白時上傳簿子，預設自動感應進出帳"] },
@@ -10044,7 +10045,7 @@ function monthCashHtml() {
         </div>
       </div>
       ${bookUpFilesHtml()}
-      <div class="small">${ed ? "可改日期、金額與備註。" : "金額空白就直接上傳簿子，進出帳與金額由照片自動感應。要手記再填金額並選進帳或出帳。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "手記：選帳戶（可選趙文榮）、進帳或出帳、填金額，再按記入日曆。上傳簿子請按上傳，不用填金額。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -20953,9 +20954,6 @@ function bindCashCal() {
   };
   const paintBookType = () => {
     if (!form || !form.type) return;
-    const amtEl = form.amount;
-    const empty = amtEl && !String(amtEl.value || "").replace(/[^\d.]/g, "");
-    if (empty && form.type.querySelector('option[value="auto"]')) form.type.value = "auto";
     form.type.classList.remove("in", "out", "auto");
     form.type.classList.add(form.type.value === "out" ? "out" : (form.type.value === "auto" ? "auto" : "in"));
   };
@@ -21022,23 +21020,16 @@ function bindCashCal() {
       const picked = ui.calDay ? `${ui.calYear}-${String(ui.calMonth).padStart(2, "0")}-${String(ui.calDay).padStart(2, "0")}` : ymdOf(nowStamp());
       const date = ymdOf((form.date && form.date.value) || picked);
       if (!amount && !ui.editBookId) {
-        const live = liveLastImport();
-        if (live && live.rows && live.rows.length) {
-          toast("這批已記入日曆，可看下方剛剛上傳的紀錄");
+        if (bookUpFileList().length || (liveLastImport() && liveLastImport().rows && liveLastImport().rows.length)) {
+          toast("簿子已記入日曆。若要再手記一筆，請填金額並選進帳或出帳");
           return;
         }
-        const up = document.getElementById("book-up-files");
-        if (up) {
-          toast("請選簿子檔案，金額與進出帳由檔案自動感應");
-          up.click();
-          return;
-        }
-        toast("請上傳簿子");
+        toast("手記請填金額，並選進帳或出帳。上傳簿子請按上傳");
         return;
       }
       if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
-      if (form.type.value === "auto") { toast("手動記入請選進帳或出帳；上傳簿子可用自動感應"); return; }
+      if (form.type.value === "auto") { toast("請改選進帳或出帳後再記入"); return; }
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
