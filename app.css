@@ -3265,28 +3265,23 @@ img.avatar { object-fit: cover; display: block; }
 }
 .swipe-wrap:not(.slim) .swipe-reveal { top: 14px; height: 28px; }
 .swipe-front { position: relative; background: var(--card); }
-#tenant-list [data-fold-tenant],
-#tenant-list .swipe-wrap.slim {
+.swipe-wrap.slim,
+#tenant-list [data-fold-tenant] {
   transform-origin: center center;
   -webkit-tap-highlight-color: transparent;
-  touch-action: pan-y;
+}
+.swipe-wrap.slim {
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
-#tenant-list > [data-fold-tenant]:active,
-#tenant-list > [data-fold-tenant].is-press,
-#tenant-list .swipe-wrap.slim.is-press {
-  transform: scale(0.96);
-  transition-duration: 0.08s;
-  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
-}
-#tenant-list .swipe-wrap.slim.is-press .swipe-front,
+.swipe-wrap.slim.is-press,
 #tenant-list > [data-fold-tenant].is-press,
 #tenant-list > [data-fold-tenant]:active {
-  background: #f2f3f1;
+  transform: scale(0.94);
+  transition: transform 0.08s cubic-bezier(0.4, 0, 1, 1);
 }
-#tenant-list .swipe-front.is-press,
-#tenant-list .swipe-front:active {
-  transform: none;
+.swipe-wrap.slim.is-press .swipe-front,
+#tenant-list > [data-fold-tenant].is-press {
+  background: #ececec;
 }
 .line-dock {
   position: fixed; top: 80px; right: 12px; bottom: 24px;
