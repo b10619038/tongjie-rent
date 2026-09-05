@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-15-09";
-const APP_EDIT_COUNT = 724;
+const APP_STAMP = "2026-09-05-15-10";
+const APP_EDIT_COUNT = 725;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0274";
+const FILE_VER = "0275";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
+  { ver: APP_VERSION, items: ["任一裝置刪除上傳檔案，其他裝置會一併消失"] },
+  { ver: "2026-09-05-15-09-724", items: ["本月進出帳小字改橫式，排在匯出列印按鈕上方"] },
   { ver: "2026-09-05-15-07-723", items: ["上傳照片可把已選的統潔、聯邦寫進檔名"] },
   { ver: "2026-09-05-15-05-722", items: ["上傳照片先縮小再同步雲端，畫面不用等雲端跑完"] },
   { ver: "2026-09-05-15-01-721", items: ["上傳檔案改橫式顯示，可全選一次打包下載"] },
@@ -2824,6 +2825,7 @@ function normalize(data) {
   try { ensureDevCycleJobs(data); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
+  if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
@@ -2974,6 +2976,7 @@ function applyJuly115Books(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
+  if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   const hasJuly = data.books.some(b => b && b.importTag === "july115");
   const hasOpen = Number(data.accountOpenings["統潔"]) > 0 || Number(data.accountOpenings["現金(保險箱)"]) > 0;
@@ -3141,6 +3144,7 @@ function applyAug31Docs(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
+  if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
   const hasDocs = data.books.some(b => b && b.importTag === "aug31docs");
   if (data.docsImportVer === DOCS_IMPORT_VER && hasDocs) return;
   data.books = data.books.filter(b => b && b.importTag !== "aug31docs");
@@ -3176,6 +3180,7 @@ function applyYushengElec(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
+  if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
   if ((data.ledgerGone || []).indexOf(YUSHENG_ELEC_ID) >= 0) return;
   const hit = data.books.some(b => b && (
     b.id === YUSHENG_ELEC_ID ||
@@ -4657,7 +4662,7 @@ function mergeTenants(a, b) {
   return gone.size ? merged.filter(x => x && !gone.has(x.id)) : merged;
 }
 function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
-function mergeBookVault(a, b) {
+function mergeBookVault(a, b, gone) {
   const map = Object.create(null);
   [].concat(a || [], b || []).forEach(x => {
     if (!x || !x.id) return;
@@ -4682,7 +4687,22 @@ function mergeBookVault(a, b) {
       cur.cloud = !!(cur.cloud || copy.cloud);
     }
   });
-  return Object.keys(map).map(k => map[k]).sort((p, q) => String(q.at || "").localeCompare(String(p.at || "")));
+  let list = Object.keys(map).map(k => map[k]).sort((p, q) => String(q.at || "").localeCompare(String(p.at || "")));
+  if (gone && gone.length) list = dropGone(list, gone);
+  return list;
+}
+function applyBookVaultGone(data) {
+  if (!data) return;
+  data.bookVaultGone = unionGone(data.bookVaultGone, []);
+  if (data.bookVaultGone.length > 400) data.bookVaultGone = data.bookVaultGone.slice(-400);
+  const g = new Set((data.bookVaultGone || []).map(String));
+  (data.bookVault || []).forEach(x => {
+    if (!x || !g.has(String(x.id))) return;
+    try { delUploadBlob(x.id); } catch {}
+    if (x.name) delete BOOK_UP_BLOBS[x.name];
+  });
+  g.forEach(id => { try { delUploadBlob(id); } catch {} });
+  data.bookVault = dropGone(data.bookVault, data.bookVaultGone);
 }
 function mergeSharedInto(target, other) {
   if (!target || !other) return target;
@@ -4712,7 +4732,9 @@ function mergeSharedInto(target, other) {
   const tc = Number(target.company && target.company.updatedAt) || 0;
   if (other.company && oc >= tc) target.company = Object.assign({}, target.company || {}, other.company);
   if (other.accountOpenings) target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
-  target.bookVault = mergeBookVault(target.bookVault, other.bookVault);
+  target.bookVaultGone = unionGone(target.bookVaultGone, other.bookVaultGone);
+  target.bookVault = mergeBookVault(target.bookVault, other.bookVault, target.bookVaultGone);
+  applyBookVaultGone(target);
   target.paidMarks = mergePaidMarkMaps(target.paidMarks, other.paidMarks);
   applyPaidMarks(target);
   return target;
@@ -4805,6 +4827,7 @@ async function pullCloud() {
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
       lastBookImport: state.lastBookImport,
       bookVault: state.bookVault,
+      bookVaultGone: state.bookVaultGone,
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
       paidMarks: state.paidMarks
     };
@@ -4855,7 +4878,9 @@ async function pullCloud() {
     if (mineSnap.lastBookImport && (!state.lastBookImport || String(mineSnap.lastBookImport.at || "") >= String(state.lastBookImport.at || ""))) {
       state.lastBookImport = mineSnap.lastBookImport;
     }
-    state.bookVault = mergeBookVault(state.bookVault, mineSnap.bookVault);
+    state.bookVault = mergeBookVault(state.bookVault, mineSnap.bookVault, unionGone(state.bookVaultGone, mineSnap.bookVaultGone));
+    state.bookVaultGone = unionGone(state.bookVaultGone, mineSnap.bookVaultGone);
+    applyBookVaultGone(state);
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
     if (mineDocsVer && !state.docsImportVer) state.docsImportVer = mineDocsVer;
     applyJuly115Books(state);
@@ -5400,7 +5425,8 @@ async function pushCloud() {
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
-      bookVault: mergeBookVault(remote && remote.bookVault, state.bookVault)
+      bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
+      bookVault: dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -5420,6 +5446,9 @@ async function pushCloud() {
     if (payload.notices) state.notices = payload.notices;
     if (payload.checkouts) state.checkouts = payload.checkouts;
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
+    if (payload.bookVault) state.bookVault = payload.bookVault;
+    if (payload.bookVaultGone) state.bookVaultGone = payload.bookVaultGone;
+    applyBookVaultGone(state);
     stripCloudMedia(payload);
     applyESigns(payload);
     const body = JSON.stringify(payload);
@@ -5455,7 +5484,8 @@ async function pushCloud() {
         eSigns: payload.eSigns,
         repairs: payload.repairs,
         company: payload.company,
-        bookVault: payload.bookVault
+        bookVault: payload.bookVault,
+        bookVaultGone: payload.bookVaultGone
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
@@ -10791,11 +10821,14 @@ function removeBookUpFileAt(i) {
   const list = bookVault();
   const item = list[i];
   if (!item) return;
-  try { delUploadBlob(item.id); } catch {}
-  try { delUploadCloud(item.id); } catch {}
+  const id = item.id;
+  state.bookVaultGone = unionGone(state.bookVaultGone, [id]);
+  try { delUploadBlob(id); } catch {}
+  try { delUploadCloud(id); } catch {}
   if (item.name) delete BOOK_UP_BLOBS[item.name];
   list.splice(i, 1);
-  ui.bookUpNames = list.map(x => x.name).join("、");
+  applyBookVaultGone(state);
+  ui.bookUpNames = bookVault().map(x => x.name).join("、");
   save();
   toast("已拿掉 " + item.name);
 }
