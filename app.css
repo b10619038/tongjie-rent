@@ -1215,9 +1215,16 @@ textarea { min-height: 92px; resize: vertical; }
   place-items: center;
   width: 18px;
   height: 18px;
-  flex-shrink: 0;
+  flex: 0 0 18px;
+  line-height: 0;
 }
-.btn-ic svg { display: block; width: 18px; height: 18px; }
+.btn-ic svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  overflow: visible;
+}
 .btn-row .btn-navy { grid-column: 1 / -1; }
 .copy-row {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 8px;
