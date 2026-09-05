@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-39";
-const APP_EDIT_COUNT = 701;
+const APP_STAMP = "2026-09-05-11-55";
+const APP_EDIT_COUNT = 702;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0251";
+const FILE_VER = "0252";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
+  { ver: APP_VERSION, items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
+  { ver: "2026-09-05-11-39-701", items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
   { ver: "2026-09-05-11-33-700", items: ["自動感應時不填金額；手記改選進帳或出帳才出現金額"] },
   { ver: "2026-09-05-11-27-699", items: ["選趙文榮等個人戶後會記住，不會跳回統潔聯邦"] },
   { ver: "2026-09-05-11-22-698", items: ["各帳戶與銀行記入日曆都不再跳出選檔提示"] },
@@ -10472,8 +10473,8 @@ function undoLastBookImport() {
 }
 function guessPassbookType(line, nums) {
   const s = String(line || "");
-  const outHit = /支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款|現提|金融卡提款|轉帳支出|跨行手續|本行轉出/.test(s);
-  const inHit = /存入|匯入|轉入|利息|放款|入帳|現存|轉帳存入|薪轉|租金|現金存款|金融卡轉入/.test(s);
+  const outHit = /支出|提款|轉出|扣款|匯出|手續費|退押|退還押金|繳費|繳款|現提|金融卡提款|轉帳支出|跨行手續|本行轉出|還本|壽險|火震|保險/.test(s);
+  const inHit = /存入|匯入|轉入|利息|放款|入帳|現存|轉帳存入|薪轉|租金|現金存款|金融卡轉入|IC轉|ＩＣ轉|I\s*C轉|活息/.test(s);
   if (outHit && !inHit) return "out";
   if (inHit && !outHit) return "in";
   const n = (nums || []).filter(v => Number(v) >= 100);
@@ -10488,47 +10489,116 @@ function guessPassbookType(line, nums) {
   }
   return "";
 }
+function isNonghuiPassbookText(text) {
+  const s = String(text || "");
+  return /支出金額/.test(s) && /存入金額/.test(s)
+    || /結存金額/.test(s) && /摘要/.test(s)
+    || /竭誠為您服務/.test(s)
+    || /還本息/.test(s) && /IC轉|ＩＣ轉|I\s*C轉/.test(s);
+}
+function parseStarMoney(line) {
+  const out = [];
+  String(line || "").replace(/\*\s*([\d,]+(?:\.\d+)?)/g, (_, n) => {
+    const v = Number(String(n).replace(/,/g, ""));
+    if (v > 0 && v < 100000000) out.push(v);
+  });
+  if (out.length) return out;
+  String(line || "").replace(/(\d{1,3}(?:,\d{3})+(?:\.\d{2})|\d+\.\d{2})/g, (_, n) => {
+    const v = Number(String(n).replace(/,/g, ""));
+    if (v > 0 && v < 100000000) out.push(v);
+  });
+  return out;
+}
+function rocYmd7(line) {
+  const s = String(line || "").replace(/\s+/g, "");
+  const m = s.match(/(1[0-2]\d)(\d{2})(\d{2})/);
+  if (!m) return "";
+  let y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (y < 90 || y > 199 || mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  y += 1911;
+  return y + "-" + String(mo).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function nonghuiNote(line) {
+  let s = String(line || "");
+  s = s.replace(/帳號[:：]?\s*[\d-]+/g, "");
+  s = s.replace(/\*\s*[\d,]+(?:\.\d+)?/g, " ");
+  s = s.replace(/\(\s*[^)]{0,24}\)/g, " ");
+  s = s.replace(/\b\d{9,}\b/g, " ");
+  s = s.replace(/1[0-2]\d\d{4}/, " ");
+  s = s.replace(/\bB\d{3,5}\b/g, " ");
+  s = s.replace(/\b\d{1,2}\/\d{1,2}\b/g, " ");
+  s = s.replace(/本數[:：]?\s*\d+/g, " ");
+  s = s.replace(/結存|支出金額|存入金額|備註/g, " ");
+  return s.replace(/\s+/g, " ").trim().slice(0, 48);
+}
+function parseNonghuiPassbook(text, defaults) {
+  const defCo = (defaults && defaults.company) || "統潔";
+  const auto = !defaults || defaults.type === "auto" || !defaults.type;
+  const defType = auto ? "" : (defaults.type === "out" ? "out" : "in");
+  const rows = [];
+  String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
+    const line = String(raw || "").trim();
+    if (!line) return;
+    if (/帳號|本數|支出金額|存入金額|結存金額|年月日|竭誠為您/.test(line) && !rocYmd7(line)) return;
+    if (/帳號/.test(line)) return;
+    const date = rocYmd7(line);
+    if (!date) return;
+    const money = parseStarMoney(line);
+    if (!money.length) return;
+    const amount = money.length >= 2 ? money[money.length - 2] : money[0];
+    if (!amount) return;
+    const note = nonghuiNote(line);
+    const guessed = guessPassbookType(note + " " + line, money);
+    const type = guessed || defType;
+    if (type !== "in" && type !== "out") return;
+    rows.push({ date, type, amount, company: defCo, bank: "農會", note: note || "農會簿子" });
+  });
+  return rows;
+}
 function parsePassbookOcr(text, defaults) {
   const defCo = (defaults && defaults.company) || "統潔";
   const defBank = (defaults && defaults.bank) || "";
   const auto = defaults && defaults.type === "auto";
   const defType = auto ? "" : (defaults && defaults.type === "out" ? "out" : "in");
+  if (isNonghuiPassbookText(text) || (String(text || "").match(/1[0-2]\d\d{4}/g) || []).length >= 3) {
+    const nh = parseNonghuiPassbook(text, defaults);
+    if (nh.length) return nh;
+  }
   const rows = [];
   String(text || "").replace(/\u3000/g, " ").split(/\n+/).forEach(raw => {
     const line = String(raw || "").trim();
     if (!line) return;
+    if (/帳號/.test(line)) return;
     const dm = line.match(/(1[0-2]\d{2}|20\d{2}|\d{2,3})[\/.\-年]?\s*(\d{1,2})[\/.\-月]?\s*(\d{1,2})/);
+    const compact7 = rocYmd7(line);
     const compact = line.replace(/\s+/g, "").match(/(1[0-2]\d{2})(\d{2})(\d{2})/);
-    let y = 0, m = 0, d = 0;
-    if (dm) { y = Number(String(dm[1]).replace(/\D/g, "")); m = Number(dm[2]); d = Number(dm[3]); }
-    else if (compact) { y = Number(compact[1]); m = Number(compact[2]); d = Number(compact[3]); }
-    if (!y) return;
-    if (y < 200) y += 1911;
-    if (m < 1 || m > 12 || d < 1 || d > 31) return;
-    const date = y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
-    const nums = [];
-    line.replace(/,/g, "").replace(/(\d{3,})/g, (_, n) => {
-      const v = Number(n);
-      if (v >= 100 && v < 100000000) nums.push(v);
-    });
-    if (!nums.length) return;
-    let amount = nums[0];
-    if (nums.length >= 2) {
-      const max = Math.max.apply(null, nums);
-      const rest = nums.filter(n => n !== max);
-      if (rest.length) amount = rest[0];
+    let y = 0, m = 0, d = 0, date = compact7;
+    if (!date && dm) { y = Number(String(dm[1]).replace(/\D/g, "")); m = Number(dm[2]); d = Number(dm[3]); }
+    else if (!date && compact) { y = Number(compact[1]); m = Number(compact[2]); d = Number(compact[3]); }
+    if (!date) {
+      if (!y) return;
+      if (y < 200) y += 1911;
+      if (m < 1 || m > 12 || d < 1 || d > 31) return;
+      date = y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
     }
+    const star = parseStarMoney(line);
+    const nums = star.length ? star.slice() : [];
+    if (!nums.length) {
+      line.replace(/,/g, "").replace(/(\d{3,})/g, (_, n) => {
+        const v = Number(n);
+        if (v >= 100 && v < 100000000) nums.push(v);
+      });
+    }
+    if (!nums.length) return;
+    let amount = nums.length >= 2 ? nums[nums.length - 2] : nums[0];
     const guessed = guessPassbookType(line, nums);
     const type = guessed || defType;
     if (type !== "in" && type !== "out") return;
-    if (nums.length >= 3) {
-      const bal = Math.max.apply(null, nums);
-      if (nums[nums.length - 1] === bal) {
-        if (type === "out" && nums[0] !== bal) amount = nums[0];
-        if (type === "in" && nums[1] !== bal) amount = nums[1];
-      }
-    }
-    rows.push({ date, type, amount, company: defCo, bank: defBank, note: line.slice(0, 48) });
+    rows.push({
+      date, type, amount, company: defCo,
+      bank: defBank,
+      note: (nonghuiNote(line) || line).slice(0, 48)
+    });
   });
   return rows;
 }
@@ -10580,7 +10650,7 @@ async function importPassbookPhotos(files, defaults, after) {
     } else if (defaults) {
       got.forEach(r => {
         if (defaults.company) r.company = defaults.company;
-        if (defaults.bank) r.bank = defaults.bank;
+        if (defaults.bank && !r.bank) r.bank = defaults.bank;
       });
       if (defaults.type === "auto") got = got.filter(r => r.type === "in" || r.type === "out");
     }
