@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-12-16";
-const APP_EDIT_COUNT = 704;
+const APP_STAMP = "2026-09-05-12-21";
+const APP_EDIT_COUNT = 705;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0254";
+const FILE_VER = "0255";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會只記入有日期的支出或存入：不含結存、右欄備註、星號與括號"] },
+  { ver: APP_VERSION, items: ["日曆上一月／下一月按下去有顏色，且不再把畫面跳走"] },
+  { ver: "2026-09-05-12-16-704", items: ["農會只記入有日期的支出或存入：不含結存、右欄備註、星號與括號"] },
   { ver: "2026-09-05-12-03-703", items: ["農會簿子加強認字：影像清晰化、結存升降判斷進出，失敗可再認一次"] },
   { ver: "2026-09-05-11-55-702", items: ["農會簿子可認七碼日期、支出／存入與摘要備註，帳戶仍手選"] },
   { ver: "2026-09-05-11-39-701", items: ["上傳成功才算記入；日曆會跳到該日並顯示全部帳戶"] },
@@ -12930,6 +12931,7 @@ function paintApp() {
         const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
         sc.scrollTop = Math.max(0, top);
+        requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
       } else if (!pageChanged) {
         sc.scrollTop = oldAdmin;
       } else {
@@ -21115,12 +21117,24 @@ function bindCashCal() {
     };
   }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
-    btn.onclick = () => {
-      let y = ui.calYear, m = ui.calMonth + Number(btn.dataset.calNav);
-      if (m < 1) { m = 12; y -= 1; }
-      if (m > 12) { m = 1; y += 1; }
-      ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
-      stay();
+    btn.onpointerdown = () => btn.classList.add("is-press");
+    btn.onpointerup = () => {};
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      btn.classList.add("is-press");
+      const dir = Number(btn.dataset.calNav);
+      const go = () => {
+        let y = ui.calYear, m = ui.calMonth + dir;
+        if (m < 1) { m = 12; y -= 1; }
+        if (m > 12) { m = 1; y += 1; }
+        ui.calYear = y; ui.calMonth = m; ui.calDay = 1; ui.calDayEnd = 0;
+        ui.adminJump = "month-cash";
+        rememberBookForm();
+        try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch {}
+        render();
+      };
+      setTimeout(go, 70);
     };
   });
   const grid = document.querySelector(".cal-grid");
