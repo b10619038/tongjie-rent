@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-53";
-const APP_EDIT_COUNT = 752;
+const APP_STAMP = "2026-09-05-18-54";
+const APP_EDIT_COUNT = 753;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0302";
+const FILE_VER = "0303";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -73,12 +73,13 @@ function isDemoTenant(t) {
 function isDemoRepair(r) {
   if (!r) return false;
   if (r.demo || r.id === "rep-demo" || r.id === "rep1") return true;
-  if (r.roomId === "r-demo" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO" || r.roomNo === "0000") return true;
+  if (r.roomId === "r-demo" || r.roomId === "r-demo-f" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO" || r.roomNo === "0000" || r.roomNo === "F0000") return true;
+  if (/開發者/.test(String(r.note || "")) || /開發者/.test(String(r.type || ""))) return true;
   try {
     const room = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === r.roomId);
-    if (isDemoRoom(room)) return true;
+    if (isDemoRoom(room) || isDemoFactoryRoom(room)) return true;
     const t = (typeof state !== "undefined" && state.tenants || []).find(x => x.id === r.tenantId);
-    if (isDemoTenant(t)) return true;
+    if (isDemoTenant(t) || /開發者/.test(String(t && t.name || ""))) return true;
   } catch {}
   return false;
 }
@@ -87,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房租客列表也不再顯示開發者測試"] },
+  { ver: APP_VERSION, items: ["報修列表不再顯示開發者測試"] },
+  { ver: "2026-09-05-18-53-752", items: ["廠房租客列表也不再顯示開發者測試"] },
   { ver: "2026-09-05-18-52-751", items: ["租客列表不再顯示開發者測試"] },
   { ver: "2026-09-05-18-49-750", items: ["行程進帳出帳圓鈕拿掉邊線"] },
   { ver: "2026-09-05-18-47-749", items: ["租客圖卡改成 iPhone 輕點回彈"] },
@@ -19211,9 +19213,7 @@ function adminTenants() {
   </div>`;
 }
 function adminRepairList() {
-  const all = (state.repairs || []).filter(r => r);
-  if (ui.adminCode === "1240") return all;
-  return all.filter(r => !isDemoRepair(r));
+  return (state.repairs || []).filter(r => r && !isDemoRepair(r));
 }
 function adminRepairs() {
   const list = adminRepairList();
