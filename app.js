@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-28";
-const APP_EDIT_COUNT = 714;
+const APP_STAMP = "2026-09-05-14-40";
+const APP_EDIT_COUNT = 715;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0264";
+const FILE_VER = "0265";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
+  { ver: APP_VERSION, items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
+  { ver: "2026-09-05-14-28-714", items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
   { ver: "2026-09-05-14-18-713", items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
   { ver: "2026-09-05-14-08-712", items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
   { ver: "2026-09-05-14-01-711", items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
@@ -2813,6 +2814,7 @@ function normalize(data) {
   try { restoreMissingSignAppoint(data); } catch {}
   try { ensureDevCycleJobs(data); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.bookVault)) data.bookVault = [];
   data.books = data.books.filter(b => b && b.id !== "bk1787845528053");
   if (!Array.isArray(data.errands)) data.errands = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
@@ -2962,6 +2964,7 @@ function patchNiu78Books(data) {
 function applyJuly115Books(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.bookVault)) data.bookVault = [];
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   const hasJuly = data.books.some(b => b && b.importTag === "july115");
   const hasOpen = Number(data.accountOpenings["統潔"]) > 0 || Number(data.accountOpenings["現金(保險箱)"]) > 0;
@@ -3128,6 +3131,7 @@ function applyOfficeSubsidyTenant(data) {
 function applyAug31Docs(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.bookVault)) data.bookVault = [];
   const hasDocs = data.books.some(b => b && b.importTag === "aug31docs");
   if (data.docsImportVer === DOCS_IMPORT_VER && hasDocs) return;
   data.books = data.books.filter(b => b && b.importTag !== "aug31docs");
@@ -3162,6 +3166,7 @@ function rentDueDay(t) {
 function applyYushengElec(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.bookVault)) data.bookVault = [];
   if ((data.ledgerGone || []).indexOf(YUSHENG_ELEC_ID) >= 0) return;
   const hit = data.books.some(b => b && (
     b.id === YUSHENG_ELEC_ID ||
@@ -10113,7 +10118,7 @@ function monthCashHtml() {
         </div>
       </div>
       ${bookUpFilesHtml()}
-      <div class="small">${ed ? "可改日期、金額與備註。" : "自動感應＝上傳簿子，不用填金額。要手記再改選進帳或出帳，金額欄才會出現。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會自動記入日曆。照片只留檔名、可下載，不會記入；下載後傳到聊天給我過目，再同步日曆。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳並記入" : "記入日曆")}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -10397,29 +10402,122 @@ function importPassbookRows(list, sourceLabel) {
   }
   return { added, skipped, paired, ids };
 }
+function bookVault() {
+  if (!Array.isArray(state.bookVault)) state.bookVault = [];
+  return state.bookVault;
+}
 function bookUpFileList() {
-  if (!Array.isArray(ui.bookUpFiles)) ui.bookUpFiles = [];
-  return ui.bookUpFiles;
+  return bookVault();
+}
+function openUploadDb() {
+  return new Promise((resolve, reject) => {
+    try {
+      const req = indexedDB.open("tongjie-uploads", 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains("files")) req.result.createObjectStore("files");
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    } catch (err) { reject(err); }
+  });
+}
+function putUploadBlob(id, file) {
+  if (!id || !file) return Promise.resolve(false);
+  return openUploadDb().then(db => new Promise(res => {
+    try {
+      const tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").put(file, id);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => res(false);
+    } catch { res(false); }
+  })).catch(() => false);
+}
+function getUploadBlob(id) {
+  if (!id) return Promise.resolve(null);
+  return openUploadDb().then(db => new Promise(res => {
+    try {
+      const tx = db.transaction("files", "readonly");
+      const g = tx.objectStore("files").get(id);
+      g.onsuccess = () => res(g.result || null);
+      g.onerror = () => res(null);
+    } catch { res(null); }
+  })).catch(() => null);
+}
+function delUploadBlob(id) {
+  if (!id) return Promise.resolve(false);
+  return openUploadDb().then(db => new Promise(res => {
+    try {
+      const tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").delete(id);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => res(false);
+    } catch { res(false); }
+  })).catch(() => false);
 }
 function rememberBookUpFile(name, ids, file) {
   const n = String(name || "").trim();
   if (!n) return;
-  const list = bookUpFileList();
-  const cur = list.find(x => x && x.name === n);
-  if (cur) {
-    const have = new Set(cur.ids || []);
-    (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
-  } else list.push({ name: n, ids: (ids || []).filter(Boolean) });
-  if (file) BOOK_UP_BLOBS[n] = file;
+  const list = bookVault();
+  let cur = list.find(x => x && x.name === n);
+  if (!cur) {
+    cur = {
+      id: "up" + Date.now() + Math.random().toString(36).slice(2, 6),
+      name: n,
+      kind: file && isSheetFile(file) ? "sheet" : "photo",
+      at: nowStamp(),
+      size: (file && file.size) || 0,
+      ids: []
+    };
+    list.unshift(cur);
+  }
+  const have = new Set(cur.ids || []);
+  (ids || []).forEach(id => { if (id && !have.has(id)) { cur.ids = cur.ids || []; cur.ids.push(id); } });
+  if (file) {
+    BOOK_UP_BLOBS[n] = file;
+    try { putUploadBlob(cur.id, file); } catch {}
+  }
 }
 function bookUpFilesHtml() {
-  const list = bookUpFileList();
+  const list = bookVault();
   if (!list.length) return "";
   return `<div class="book-up-files">${list.map((f, i) => `
       <div class="book-up-file">
-        <span>${escapeHtml(f.name || "")}</span>
+        <div class="book-up-meta">
+          <span>${escapeHtml(f.name || "")}</span>
+          <em>${f.kind === "sheet" ? "Excel · 由 App 辨識記入日曆" : "照片 · 未記入日曆"}</em>
+        </div>
+        <button type="button" class="ghost book-up-dl" data-dl-up-i="${i}">下載</button>
         <button type="button" class="book-up-x" data-del-up-i="${i}" aria-label="刪除">×</button>
       </div>`).join("")}</div>`;
+}
+async function downloadVaultAt(i) {
+  const rec = bookVault()[i];
+  if (!rec) return;
+  let blob = BOOK_UP_BLOBS[rec.name] || null;
+  if (!blob && rec.id) {
+    try { blob = await getUploadBlob(rec.id); } catch { blob = null; }
+  }
+  if (!blob) { toast("這份檔案已不在這台手機，請再上傳一次"); return; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = rec.name || "file";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2500);
+  toast("已開始下載 " + rec.name);
+}
+function removeBookUpFileAt(i) {
+  const list = bookVault();
+  const item = list[i];
+  if (!item) return;
+  try { delUploadBlob(item.id); } catch {}
+  if (item.name) delete BOOK_UP_BLOBS[item.name];
+  list.splice(i, 1);
+  ui.bookUpNames = list.map(x => x.name).join("、");
+  save();
+  toast("已拿掉 " + item.name);
 }
 function attachImportFiles(batchId) {
   if (!batchId) return;
@@ -10432,33 +10530,6 @@ function attachImportFiles(batchId) {
     groups[n].push(b.id);
   });
   Object.keys(groups).forEach(n => rememberBookUpFile(n, groups[n]));
-}
-function removeBookUpFileAt(i) {
-  const list = bookUpFileList();
-  const item = list[i];
-  if (!item) return;
-  const ids = (item.ids || []).slice();
-  if (ids.length) {
-    (state.books || []).forEach(c => {
-      if (!c || ids.indexOf(c.id) >= 0) return;
-      if (c.linkedId && ids.indexOf(c.linkedId) >= 0) {
-        c.pendingBank = true;
-        c.linkedId = "";
-        c.pairOutId = "";
-      }
-    });
-    markLedgerGone(ids);
-    if (state.lastBookImport && Array.isArray(state.lastBookImport.ids)) {
-      state.lastBookImport.ids = state.lastBookImport.ids.filter(id => ids.indexOf(id) < 0);
-      if (!state.lastBookImport.ids.length) state.lastBookImport = null;
-    }
-    save();
-    try { pushCloud(); } catch {}
-  }
-  list.splice(i, 1);
-  ui.bookUpFiles = list;
-  ui.bookUpNames = list.map(x => x.name).join("、");
-  toast(ids.length ? ("已刪除 " + item.name) : ("已拿掉 " + item.name));
 }
 function currentUploadPostedCount() {
   const have = new Set((state.books || []).map(b => b && b.id).filter(Boolean));
@@ -21560,7 +21631,7 @@ function bindCashCal() {
     form.classList.toggle("is-auto", auto && !ui.editBookId);
     if (form.amount && !ui.editBookId) form.amount.hidden = auto;
     const saveBtn = document.getElementById("book-save");
-    if (saveBtn && !ui.editBookId) saveBtn.textContent = auto ? "上傳並記入" : "記入日曆";
+    if (saveBtn && !ui.editBookId) saveBtn.textContent = auto ? "上傳檔案" : "記入日曆";
   };
   const upOpen = document.getElementById("book-up-open");
   const upFiles = document.getElementById("book-up-files");
@@ -21575,18 +21646,16 @@ function bindCashCal() {
     const files = [...(upFiles.files || [])];
     upFiles.value = "";
     if (!files.length) return;
-    files.forEach(f => rememberBookUpFile(f.name || "", [], f));
-    ui.bookUpNames = bookUpFileList().map(x => x.name).join("、");
-    const imgs = files.filter(f => !isSheetFile(f));
     const sheets = files.filter(f => isSheetFile(f));
-    const after = stay;
-    if (imgs.length && sheets.length) {
-      importPassbookPhotos(imgs, bookDefaults(), () => importExcelBooks(sheets[0], after));
-    } else if (imgs.length) {
-      importPassbookPhotos(imgs, bookDefaults(), after);
-    } else if (sheets[0]) {
-      importExcelBooks(sheets[0], after);
+    const imgs = files.filter(f => !isSheetFile(f));
+    files.forEach(f => rememberBookUpFile(f.name || "", [], f));
+    ui.bookUpNames = bookVault().map(x => x.name).join("、");
+    save();
+    if (sheets[0]) {
+      if (imgs.length) toast("照片已留下，不會記入。Excel 正在辨識記入日曆…");
+      importExcelBooks(sheets[0], stay);
     } else {
+      toast("照片已留下檔名，不會記入日曆。請下載後傳到聊天給我過目，再同步日曆。");
       stay();
     }
   };
@@ -21642,13 +21711,12 @@ function bindCashCal() {
       if (!amount && !ui.editBookId && auto) {
         const posted = currentUploadPostedCount();
         if (posted) {
-          toast("這批有 " + posted + " 筆已在日曆，請點有點的日期或看下方剛剛上傳的紀錄");
+          toast("這批 Excel 有 " + posted + " 筆已在日曆，請點有點的日期或看下方剛剛上傳的紀錄");
           return;
         }
-        const pending = bookUpFileList().map(f => f && f.name && BOOK_UP_BLOBS[f.name]).filter(Boolean);
-        if (pending.length) {
-          toast("再認一次簿子…");
-          importPassbookPhotos(pending, bookDefaults(), stay);
+        const photos = bookVault().filter(x => x && x.kind !== "sheet");
+        if (photos.length) {
+          toast("照片不會記入日曆。請點下載，傳到聊天給我過目後再同步。");
           return;
         }
         const up = document.getElementById("book-up-files");
@@ -21752,6 +21820,13 @@ function bindCashCal() {
         e.stopPropagation();
         removeBookUpFileAt(Number(btn.dataset.delUpI));
         stay();
+      };
+    });
+    document.querySelectorAll("[data-dl-up-i]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        downloadVaultAt(Number(btn.dataset.dlUpI));
       };
     });
   }

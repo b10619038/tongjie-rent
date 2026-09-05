@@ -1199,8 +1199,13 @@ textarea { min-height: 92px; resize: vertical; }
   padding: 8px 6px 8px 12px;
   background: #fff;
 }
-.book-up-file span {
+.book-up-meta {
   flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.book-up-file span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1208,6 +1213,17 @@ textarea { min-height: 92px; resize: vertical; }
   font-size: 13px;
   font-weight: 600;
   color: var(--ink, #24332a);
+}
+.book-up-meta em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--mute, #6b7a70);
+}
+.book-up-dl {
+  flex-shrink: 0;
+  padding: 6px 10px !important;
+  margin: 0 !important;
+  font-size: 12px !important;
 }
 .book-up-x {
   flex-shrink: 0;
