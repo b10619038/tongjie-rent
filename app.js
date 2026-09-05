@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-40";
-const APP_EDIT_COUNT = 715;
+const APP_STAMP = "2026-09-05-14-46";
+const APP_EDIT_COUNT = 716;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0265";
+const FILE_VER = "0266";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
+  { ver: APP_VERSION, items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
+  { ver: "2026-09-05-14-40-715", items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
   { ver: "2026-09-05-14-28-714", items: ["已拿掉雲端看圖，簿子照片不再送到 Google"] },
   { ver: "2026-09-05-14-18-713", items: ["簿子改先讓 Gemini 看圖，同一把 Google 金鑰"] },
   { ver: "2026-09-05-14-08-712", items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
@@ -9330,17 +9331,20 @@ function accountLabel(c) {
 function rememberBookForm(form) {
   form = form || document.getElementById("book-form");
   if (!form || ui.editBookId) return;
-  if (form.company) ui.bookCompany = normalizeBookCompany(form.company.value);
+  if (form.company) ui.bookCompany = form.company.value === "auto" ? "auto" : normalizeBookCompany(form.company.value);
   if (form.type) ui.bookType = form.type.value || "auto";
   if (form.amount) ui.bookAmount = String(form.amount.value || "");
   if (form.note) ui.bookNote = String(form.note.value || "");
   if (form.bank) ui.bookBank = form.bank.value || "";
-  else if (form.company && !banksOf(ui.bookCompany).length) ui.bookBank = "";
+  else if (form.company && form.company.value !== "auto" && !banksOf(ui.bookCompany).length) ui.bookBank = "";
 }
 function rememberedBookCompany() {
+  if (!ui.editBookId && (ui.bookType === "auto" || !ui.bookType) && (!ui.bookCompany || ui.bookCompany === "auto")) return "auto";
+  if (ui.bookCompany === "auto") return "auto";
   return normalizeBookCompany(ui.bookCompany || "統潔");
 }
 function rememberedBookBank(company) {
+  if (company === "auto" || ui.bookBank === "auto") return "auto";
   const acct = normalizeBookCompany(company);
   const allowed = banksOf(acct);
   if (!allowed.length) return "";
@@ -9348,12 +9352,13 @@ function rememberedBookBank(company) {
   return allowed[0] || "";
 }
 function bookAccountOptions(selected) {
-  const sel = String(selected || "統潔");
+  const withAuto = selected === "auto" || selected === "";
+  const sel = String(selected || (withAuto ? "auto" : "統潔"));
   const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
   const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
   const extra = (sel === "個人戶" || (isPersonalKey(sel) && !PERSONAL_ACCOUNTS.includes(sel)))
     ? opt(sel, accountLabel(sel)) : "";
-  return `${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
+  return `${withAuto || sel === "auto" ? opt("auto", "自動感應") : ""}${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
 }
 function isBookCompany(v) {
   return BOOK_ACCOUNTS.includes(v) || PERSONAL_ACCOUNTS.includes(v) || v === "個人戶" || isPersonalKey(v);
@@ -9444,10 +9449,15 @@ function bankPeriodBits(acct, start, end) {
   });
 }
 function bankSelectHtml(acct, selected) {
+  if (acct === "auto") {
+    return `<select name="bank"><option value="auto" selected>自動感應</option></select>`;
+  }
   const banks = banksOf(acct);
   if (!banks.length) return "";
-  const sel = banks.includes(selected) ? selected : banks[0];
-  return `<select name="bank">${banks.map(b => `<option value="${b}" ${b === sel ? "selected" : ""}>${b}</option>`).join("")}</select>`;
+  const withAuto = selected === "auto";
+  const sel = withAuto ? "auto" : (banks.includes(selected) ? selected : banks[0]);
+  const opt = (v, label) => `<option value="${v}" ${v === sel ? "selected" : ""}>${label || v}</option>`;
+  return `<select name="bank">${withAuto ? opt("auto", "自動感應") : ""}${banks.map(b => opt(b)).join("")}</select>`;
 }
 function ensureReportPeriod() {
   const n = new Date();
@@ -10107,7 +10117,7 @@ function monthCashHtml() {
         <select name="company">
           ${bookAccountOptions(ed ? ed.company : rememberedBookCompany())}
         </select>
-        ${bankSelectHtml(normalizeBookCompany(ed ? ed.company : rememberedBookCompany()), ed ? (ed.bank ? rowBank(ed) : "") : rememberedBookBank(rememberedBookCompany())) || "<span></span>"}
+        ${bankSelectHtml(ed ? normalizeBookCompany(ed.company) : rememberedBookCompany(), ed ? (ed.bank ? rowBank(ed) : "") : rememberedBookBank(rememberedBookCompany())) || "<span></span>"}
       </div>
       ${ed ? `<input name="date" type="date" value="${ymdOf(ui.calDay ? (ui.calYear + "-" + String(ui.calMonth).padStart(2, "0") + "-" + String(ui.calDay).padStart(2, "0")) : ed.date)}" />` : ""}
       <div class="cal-form-row">
@@ -10118,8 +10128,8 @@ function monthCashHtml() {
         </div>
       </div>
       ${bookUpFilesHtml()}
-      <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會自動記入日曆。照片只留檔名、可下載，不會記入；下載後傳到聊天給我過目，再同步日曆。"}</div>
-      <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳並記入" : "記入日曆")}</button>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "Excel 會依表格的帳戶、銀行、簿子自動對上統潔／信潔、聯邦／農會／兆豐。照片只留檔名可下載，不記入日曆。"}</div>
+      <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : ((!ui.bookType || ui.bookType === "auto") ? "上傳檔案" : "記入日曆")}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
     ${lastBookImportHtml()}
@@ -10224,15 +10234,15 @@ function cellType(v, amountRaw) {
   if (/^-/.test(String(amountRaw || ""))) return "out";
   return "";
 }
-function mapSheetRows(rows) {
+function mapSheetRows(rows, fileName) {
   if (!rows || !rows.length) return [];
   const norm = r => (r || []).map(c => String(c == null ? "" : c).trim());
   let headAt = -1;
-  const headKeys = /日期|date|期間|進帳|出帳|金額|帳戶|備註|收入|支出|類型|項目/;
+  const headKeys = /日期|date|期間|進帳|出帳|金額|帳戶|備註|收入|支出|類型|項目|銀行|簿子|存摺/;
   for (let i = 0; i < Math.min(rows.length, 10); i++) {
     if (norm(rows[i]).some(c => headKeys.test(c))) { headAt = i; break; }
   }
-  const col = { date: 0, type: -1, amount: -1, inn: -1, out: -1, company: -1, note: -1 };
+  const col = { date: 0, type: -1, amount: -1, inn: -1, out: -1, company: -1, bank: -1, note: -1 };
   if (headAt >= 0) {
     norm(rows[headAt]).forEach((h, i) => {
       if (/日期|date|期間|入帳日|記帳日/.test(h) && col.date === 0) col.date = i;
@@ -10240,12 +10250,21 @@ function mapSheetRows(rows) {
       else if (/本期收入|收入/.test(h) && !/淨/.test(h)) col.inn = i;
       else if (/本期支出|支出/.test(h) && !/淨/.test(h)) col.out = i;
       else if (/金額|amount/.test(h)) col.amount = i;
+      else if (/銀行|存摺/.test(h) && col.bank < 0) col.bank = i;
+      else if (/簿子/.test(h) && col.bank < 0) col.bank = i;
       else if (/帳戶|歸屬|公司|company/.test(h)) col.company = i;
       else if (/備註|說明|項目|note/.test(h)) col.note = i;
     });
   }
+  const fileHint = String(fileName || "");
   const out = [];
   const start = headAt >= 0 ? headAt + 1 : 0;
+  const pack = (date, type, amount, companyCell, bankCell, note, line) => {
+    const blob = [companyCell, bankCell, note, line, fileHint].join(" ");
+    const company = cellAccount(companyCell) || cellAccount(blob) || "統潔";
+    const bank = guessBank(String(bankCell || "")) || guessBank(blob) || "";
+    out.push({ date, type, amount, company, bank, note });
+  };
   for (let i = start; i < rows.length; i++) {
     const raw = rows[i] || [];
     const line = norm(raw).join(" ");
@@ -10253,6 +10272,9 @@ function mapSheetRows(rows) {
     const date = cellYmd(raw[col.date] != null ? raw[col.date] : raw[0]);
     let type = col.type >= 0 ? cellType(raw[col.type], raw[col.amount]) : "";
     let amount = 0;
+    const companyCell = col.company >= 0 ? raw[col.company] : "";
+    const bankCell = col.bank >= 0 ? raw[col.bank] : "";
+    const note = String((col.note >= 0 ? raw[col.note] : raw[1]) || "").trim();
     if (col.inn >= 0 || col.out >= 0) {
       const inn = col.inn >= 0 ? cellAmount(raw[col.inn]) : 0;
       const outAmt = col.out >= 0 ? cellAmount(raw[col.out]) : 0;
@@ -10260,8 +10282,8 @@ function mapSheetRows(rows) {
       else if (outAmt && !inn) { type = "out"; amount = outAmt; }
       else if (inn && outAmt) {
         if (date) {
-          out.push({ date, type: "in", amount: inn, company: cellAccount(raw[col.company]) || "統潔", note: String(raw[col.note] != null ? raw[col.note] : raw[1] || "") });
-          out.push({ date, type: "out", amount: outAmt, company: cellAccount(raw[col.company]) || "統潔", note: String(raw[col.note] != null ? raw[col.note] : raw[1] || "") });
+          pack(date, "in", inn, companyCell, bankCell, note, line);
+          pack(date, "out", outAmt, companyCell, bankCell, note, line);
         }
         continue;
       }
@@ -10275,9 +10297,7 @@ function mapSheetRows(rows) {
     }
     if (!date || !amount) continue;
     if (!type) type = cellType(line, amount) || "in";
-    const company = (col.company >= 0 ? cellAccount(raw[col.company]) : cellAccount(line)) || "統潔";
-    const note = String((col.note >= 0 ? raw[col.note] : raw[1]) || "").trim();
-    out.push({ date, type, amount, company, note });
+    pack(date, type, amount, companyCell, bankCell, note, line);
   }
   return out;
 }
@@ -11211,7 +11231,7 @@ async function importExcelBooks(file, after) {
         rows = rows.concat(sheet);
       });
     }
-    const list = mapSheetRows(rows);
+    const list = mapSheetRows(rows, name);
     list.forEach(x => { x.importFile = name; });
     const n = importBooksFromRows(list, name);
     attachImportFiles(state.lastBookImport && state.lastBookImport.id);
@@ -21632,6 +21652,32 @@ function bindCashCal() {
     if (form.amount && !ui.editBookId) form.amount.hidden = auto;
     const saveBtn = document.getElementById("book-save");
     if (saveBtn && !ui.editBookId) saveBtn.textContent = auto ? "上傳檔案" : "記入日曆";
+    if (ui.editBookId) return;
+    const row = document.getElementById("book-bank-row");
+    if (!row || !form.company) return;
+    if (auto) {
+      ui.bookCompany = "auto";
+      ui.bookBank = "auto";
+      form.company.innerHTML = bookAccountOptions("auto");
+      const bankSel = row.querySelector("select[name=bank]");
+      const html = bankSelectHtml("auto", "auto");
+      if (bankSel) bankSel.outerHTML = html;
+      else {
+        const hole = row.querySelector("span");
+        if (hole) hole.outerHTML = html;
+      }
+      const next = row.querySelector("select[name=bank]");
+      if (next) next.onchange = () => rememberBookForm(form);
+    } else if (form.company.value === "auto") {
+      ui.bookCompany = "統潔";
+      ui.bookBank = rememberedBookBank("統潔");
+      form.company.innerHTML = bookAccountOptions("統潔");
+      const bankSel = row.querySelector("select[name=bank]");
+      const html = bankSelectHtml("統潔", ui.bookBank);
+      if (bankSel) bankSel.outerHTML = html;
+      const next = row.querySelector("select[name=bank]");
+      if (next) next.onchange = () => rememberBookForm(form);
+    }
   };
   const upOpen = document.getElementById("book-up-open");
   const upFiles = document.getElementById("book-up-files");
@@ -21677,19 +21723,14 @@ function bindCashCal() {
     paintBookType();
     if (form.company) form.company.onchange = () => {
       rememberBookForm(form);
-      const acct = normalizeBookCompany(form.company.value);
+      const raw = form.company.value;
+      const acct = raw === "auto" ? "auto" : normalizeBookCompany(raw);
       ui.bookCompany = acct;
+      ui.bookBank = acct === "auto" ? "auto" : rememberedBookBank(acct);
       const row = document.getElementById("book-bank-row");
       if (!row) return;
-      const banks = banksOf(acct);
-      const cur = rememberedBookBank(acct);
       const sel = row.querySelector("select[name=bank]");
-      if (!banks.length) {
-        ui.bookBank = "";
-        if (sel) sel.outerHTML = "<span></span>";
-        return;
-      }
-      const html = bankSelectHtml(acct, cur);
+      const html = bankSelectHtml(acct, ui.bookBank) || "<span></span>";
       if (sel) sel.outerHTML = html;
       else {
         const hole = row.querySelector("span");
@@ -21728,8 +21769,8 @@ function bindCashCal() {
       const payload = {
         type: form.type.value === "out" ? "out" : "in",
         date, amount,
-        company: normalizeBookCompany(form.company && form.company.value),
-        bank: (form.bank && form.bank.value) || "",
+        company: (form.company && form.company.value === "auto") ? "統潔" : normalizeBookCompany(form.company && form.company.value),
+        bank: (form.bank && form.bank.value && form.bank.value !== "auto") ? form.bank.value : "",
         note: (form.note.value || "").trim()
       };
       if (ui.editBookId) {
