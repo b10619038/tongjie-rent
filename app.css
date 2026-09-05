@@ -83,6 +83,10 @@ input, textarea, select {
 #book-form.is-auto > .cal-form-row:first-of-type {
   grid-template-columns: 1fr;
 }
+#book-form input[name="note"] {
+  grid-column: 1 / -1;
+  width: 100%;
+}
 #book-form.is-auto input[name="amount"] { display: none; }
 #errand-form {
   position: relative;

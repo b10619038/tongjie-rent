@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-56";
-const APP_EDIT_COUNT = 719;
+const APP_STAMP = "2026-09-05-14-57";
+const APP_EDIT_COUNT = 720;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0269";
+const FILE_VER = "0270";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
+  { ver: APP_VERSION, items: ["新增一筆的備註欄改為全寬"] },
+  { ver: "2026-09-05-14-56-719", items: ["上傳的照片與 Excel 會同步雲端，其他裝置也可下載"] },
   { ver: "2026-09-05-14-50-717", items: ["新增一筆只留下面綠色上傳，旁邊虛線上傳已拿掉"] },
   { ver: "2026-09-05-14-46-716", items: ["上傳 Excel 時統潔／銀行改自動感應，依表格帳戶、銀行、簿子欄記入"] },
   { ver: "2026-09-05-14-40-715", items: ["新增一筆：Excel 自動記入；照片只留檔名可下載，不進日曆"] },
