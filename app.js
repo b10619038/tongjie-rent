@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-36";
-const APP_EDIT_COUNT = 783;
+const APP_STAMP = "2026-09-05-21-38";
+const APP_EDIT_COUNT = 784;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0333";
+const FILE_VER = "0334";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修類型與刪除報修改成輕點回彈"] },
+  { ver: APP_VERSION, items: ["綁定LINE、測試通知、重新定位也改成輕點回彈"] },
+  { ver: "2026-09-05-21-36-783", items: ["報修類型與刪除報修改成輕點回彈"] },
   { ver: "2026-09-05-21-34-782", items: ["修好租客畫面公告照片打不開的問題"] },
   { ver: "2026-09-05-21-33-781", items: ["綁定 LINE 與周邊景點小圖對齊"] },
   { ver: "2026-09-05-21-31-780", items: ["公告拿掉查看照片，點縮圖即可放大"] },
@@ -6230,12 +6231,15 @@ function bindGeoSettings() {
     render();
   };
   const go = document.getElementById("geo-refresh");
-  if (go) go.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    askPreciseLocation(true);
-    toast("正在重新定位");
-  };
+  if (go) {
+    bindIosPress(go);
+    go.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      askPreciseLocation(true);
+      toast("正在重新定位");
+    };
+  }
   if (locPrefOn()) askPreciseLocation(false);
 }
 function bioEnrolled() {
@@ -20262,11 +20266,14 @@ function bindTenant() {
   bindSignTermSlots();
   bindLookSettings();
   const notify = document.getElementById("set-notify");
-  if (notify) notify.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    askTongjieNotify();
-  };
+  if (notify) {
+    bindIosPress(notify);
+    notify.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      askTongjieNotify();
+    };
+  }
   const install = document.getElementById("set-install");
   if (install) install.onclick = e => {
     e.preventDefault();
@@ -20275,6 +20282,7 @@ function bindTenant() {
     ui.keepScroll = true;
     render();
   };
+  bindGhostPress();
 }
 
 function captureMoveInDraft() {
@@ -20918,6 +20926,9 @@ function bindIosPress(el) {
   el.addEventListener("pointerup", off);
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
+}
+function bindGhostPress() {
+  document.querySelectorAll(".ghost, .btn-navy, .issue-opt").forEach(bindIosPress);
 }
 function bindFactoryFold() {
   document.querySelectorAll("[data-factory-fold]").forEach(btn => {
@@ -21750,6 +21761,7 @@ function tenantSettings() {
 }
 function bindLookSettings() {
   bindGeoSettings();
+  bindGhostPress();
   document.querySelectorAll("#app [data-theme]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -21840,18 +21852,24 @@ function bindTenantSettings() {
   bindLookSettings();
   bindHowtoFold();
   const notify = document.getElementById("set-notify");
-  if (notify) notify.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    askTongjieNotify();
-  };
+  if (notify) {
+    bindIosPress(notify);
+    notify.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      askTongjieNotify();
+    };
+  }
   const bindLine = document.getElementById("bind-line-set");
-  if (bindLine) bindLine.onclick = () => {
-    const r = myRoom(); const t = me();
-    const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
-    window.open(lineOaMessageUrl(msg), "_blank", "noopener");
-    toast("請傳送「房號 姓名」完成綁定");
-  };
+  if (bindLine) {
+    bindIosPress(bindLine);
+    bindLine.onclick = () => {
+      const r = myRoom(); const t = me();
+      const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
+      window.open(lineOaMessageUrl(msg), "_blank", "noopener");
+      toast("請傳送「房號 姓名」完成綁定");
+    };
+  }
   const out = document.getElementById("logout-set");
   if (out) out.onclick = () => {
     if (isDevPreview()) { exitDevPreview(); return; }
