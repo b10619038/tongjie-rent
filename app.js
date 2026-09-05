@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-18-08";
-const APP_EDIT_COUNT = 742;
+const APP_STAMP = "2026-09-05-18-22";
+const APP_EDIT_COUNT = 743;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0292";
+const FILE_VER = "0293";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["整月圈選再按一次可取消、都不選"] },
+  { ver: APP_VERSION, items: ["行程點完成會記在當天總覽，不是原定日期"] },
+  { ver: "2026-09-05-18-08-742", items: ["整月圈選再按一次可取消、都不選"] },
   { ver: "2026-09-05-18-07-741", items: ["總覽日曆橘色列右邊可開關行程、進帳、出帳"] },
   { ver: "2026-09-05-17-27-739", items: ["業務上傳排法改回，只把浮動球往右靠"] },
   { ver: "2026-09-05-17-25-738", items: ["業務上傳左邊、浮動球靠右邊對齊"] },
@@ -5079,6 +5080,9 @@ function mergeMemoRow(a, b) {
   const next = Object.assign({}, a, b);
   if (a.done || b.done) next.done = true;
   next.doneMonths = [...new Set([].concat(a.doneMonths || [], b.doneMonths || []))];
+  next.doneAtMonths = Object.assign({}, a.doneAtMonths || {}, b.doneAtMonths || {});
+  if (String(b.doneAt || "") > String(a.doneAt || "")) next.doneAt = b.doneAt;
+  else if (a.doneAt) next.doneAt = a.doneAt;
   if (a.edited && !b.edited) { next.text = a.text; next.edited = true; }
   return next;
 }
@@ -9352,22 +9356,31 @@ function attachMemoRows(rows) {
   ensureCalMonth();
   const y = ui.calYear, m = ui.calMonth;
   const ym = y + "-" + String(m).padStart(2, "0");
-  (myMemos() || []).forEach(memo => {
-    let date = "";
-    if (memo.monthDay || memo.intervalMonths) {
-      date = cycleDateInMonth(memo, y, m);
-      if (!date) return;
-      if ((memo.doneMonths || []).indexOf(ym) >= 0) return;
-    } else {
-      date = ymdOf(memo.date);
-      if (!date) return;
-      if (memo.done) return;
-    }
+  const pushMemo = (memo, date, done) => {
+    if (!date || date.slice(0, 7) !== ym) return;
     rows.push({
-      id: memo.id, type: "memo", date, amount: 0,
-      roomNo: "", note: memo.text || "", company: "", bank: "",
-      source: "memo", canDel: !memo.cycle, canEdit: false, cycle: !!memo.cycle
+      id: done ? (memo.id + "-done-" + date) : memo.id,
+      type: "memo", date, amount: 0,
+      roomNo: "", note: (memo.text || "") + (done ? "　已完成" : ""), company: "", bank: "",
+      source: "memo", canDel: !done && !memo.cycle, canEdit: false, cycle: !!memo.cycle, done: !!done
     });
+  };
+  (myMemos() || []).forEach(memo => {
+    if (memo.monthDay || memo.intervalMonths) {
+      const occur = cycleDateInMonth(memo, y, m);
+      const doneDay = ymdOf((memo.doneAtMonths && (memo.doneAtMonths[ym] || memo.doneAtMonths[memoOccurKey(memo)])) || "");
+      if (doneDay) pushMemo(memo, doneDay, true);
+      if (!occur) return;
+      if ((memo.doneMonths || []).indexOf(ym) >= 0) return;
+      if (doneDay && doneDay === occur) return;
+      pushMemo(memo, occur, false);
+    } else {
+      if (memo.done) {
+        pushMemo(memo, ymdOf(memo.doneAt) || "", true);
+        return;
+      }
+      pushMemo(memo, ymdOf(memo.date), false);
+    }
   });
   signAppointMemos().forEach(memo => {
     const date = ymdOf(memo.date);
@@ -21975,16 +21988,28 @@ function bindAdminAi() {
         || (state.aiMemos || []).find(x => x.id === id);
       if (!m) { toast("找不到這筆工作"); return; }
       if ((m.owner || "") === "1240" || id === "cycle-dev-salary") m.owner = "1240";
+      const today = ymdOf(nowStamp());
+      m.doneAt = today;
       if (m.monthDay || m.intervalMonths) {
         m.doneMonths = m.doneMonths || [];
         const key = memoOccurKey(m);
         if (m.doneMonths.indexOf(key) < 0) m.doneMonths.push(key);
+        m.doneAtMonths = Object.assign({}, m.doneAtMonths || {});
+        m.doneAtMonths[key] = today;
+        m.doneAtMonths[today.slice(0, 7)] = today;
       } else m.done = true;
+      const p = today.split("-");
+      if (p.length === 3) {
+        ui.calYear = Number(p[0]);
+        ui.calMonth = Number(p[1]);
+        ui.calDay = Number(p[2]);
+        ui.calDayEnd = Number(p[2]);
+      }
       saveMemoChange(m);
       ui.workMemoId = "";
       ui.workEditId = "";
       ui.keepScroll = true;
-      toast(m.monthDay ? "本月這筆已完成，下個月會再提醒" : "這筆提醒已完成");
+      toast(m.monthDay ? "本月這筆已完成，記入今天行程，下個月會再提醒" : "已完成，記入今天行程");
       render();
     };
   });
