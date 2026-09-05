@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-16-53";
-const APP_EDIT_COUNT = 729;
+const APP_STAMP = "2026-09-05-16-58";
+const APP_EDIT_COUNT = 730;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0279";
+const FILE_VER = "0280";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作標題右邊加上藍色行程"] },
+  { ver: APP_VERSION, items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
+  { ver: "2026-09-05-16-53-729", items: ["本月工作標題右邊加上藍色行程"] },
   { ver: "2026-09-05-16-29-728", items: ["跑業務手寫改叫白紙，可留檔下載"] },
   { ver: "2026-09-05-16-25-727", items: ["跑業務的手寫小抄會留檔，可下載傳到對話給我看"] },
   { ver: "2026-09-05-15-17-726", items: ["上傳照片改走已繳同一條即時雲端，不再等慢速檔案通道"] },
@@ -16220,7 +16221,7 @@ function howtoSections() {
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "所有資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
     { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；舊客 App 會自動登出，LINE 請新客重綁。" },
-    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。跑業務上傳入帳可拍照讓系統預判金流。" },
+    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。業務上傳可記現場進帳、出帳。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
     { id: "a-set", h: "設定", p: "帳號、快速登入、通知、精確位置、安裝、調色盤、字體、震動、鈴聲與權限說明。" },
@@ -16358,7 +16359,7 @@ function errandBlockHtml() {
   return `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
-          <span class="k">跑業務上傳入帳</span>
+          <span class="work-title"><span class="k">業務上傳</span><span class="led-in">進帳</span><span class="led-out">出帳</span></span>
         </button>
         <button type="button" class="ghost" id="errand-to-ball" style="width:auto;padding:6px 10px;font-size:12px">浮動球</button>
         <span class="fold-caret" id="errand-caret"></span>
@@ -16388,7 +16389,7 @@ function ensureErrandBall() {
   wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px"><img src="${aiAvatarSrc()}" alt="跑業務"></button>
     ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
       <div class="errand-ball-sheet card card-body">
-        <div class="row"><h2 class="dash-h" style="margin:0">跑業務上傳入帳</h2>
+        <div class="row"><h2 class="dash-h work-title" style="margin:0"><span>業務上傳</span><span class="led-in">進帳</span><span class="led-out">出帳</span></h2>
           <button type="button" class="ghost" id="errand-to-card" style="width:auto">改回圖塊</button>
         </div>
         <form id="errand-form" autocomplete="off">${errandFormInnerHtml()}</form>

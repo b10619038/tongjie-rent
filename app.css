@@ -1821,6 +1821,21 @@ input[type="file"] {
   font-weight: 800;
   color: #1d4e89;
 }
+#errand-form .work-title,
+.errand-ball-sheet .work-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+#errand-form .work-title .led-in,
+#errand-form .work-title .led-out,
+.errand-ball-sheet .work-title .led-in,
+.errand-ball-sheet .work-title .led-out {
+  font-size: 13px;
+  font-weight: 800;
+}
   cursor: pointer;
   border-radius: 12px;
   padding: 8px 8px;
