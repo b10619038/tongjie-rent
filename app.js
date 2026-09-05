@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-21-13";
-const APP_EDIT_COUNT = 776;
+const APP_STAMP = "2026-09-05-21-16";
+const APP_EDIT_COUNT = 777;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0326";
+const FILE_VER = "0327";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客房間圖卡滑入速度調回適中"] },
+  { ver: APP_VERSION, items: ["租客底部導航避開系統手勢條，不再被切到"] },
+  { ver: "2026-09-05-21-13-776", items: ["租客房間圖卡滑入速度調回適中"] },
   { ver: "2026-09-05-21-11-775", items: ["租客房間圖卡從右滑入加快"] },
   { ver: "2026-09-05-21-08-774", items: ["租客房間圖卡按壓修好，不再被滑入動畫蓋掉"] },
   { ver: "2026-09-05-21-06-773", items: ["租客房間圖卡改成 iPhone 輕點回彈"] },
@@ -690,6 +691,29 @@ function applyFont(n) {
   const slider = document.getElementById("font-scale");
   if (slider && slider.value !== String(v)) slider.value = String(v);
   return v;
+}
+function syncAppHeight() {
+  try {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;left:0;bottom:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)";
+    document.documentElement.appendChild(probe);
+    const inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+    probe.remove();
+    if (inset < 12) {
+      document.documentElement.style.setProperty("--safe-b", "24px");
+      const vv = window.visualViewport;
+      const h = Math.round((vv && vv.height) || window.innerHeight || 0);
+      if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+    } else {
+      document.documentElement.style.removeProperty("--app-h");
+    }
+  } catch {}
+}
+syncAppHeight();
+window.addEventListener("resize", syncAppHeight);
+if (window.visualViewport) {
+  visualViewport.addEventListener("resize", syncAppHeight);
+  visualViewport.addEventListener("scroll", syncAppHeight);
 }
 function autoFontScale() {
   const w = Math.round((window.visualViewport && visualViewport.width) || window.innerWidth || 390);
