@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-17-02";
-const APP_EDIT_COUNT = 731;
+const APP_STAMP = "2026-09-05-17-06";
+const APP_EDIT_COUNT = 732;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0281";
+const FILE_VER = "0282";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["有「繳」的字改判出帳，不再誤成收現"] },
+  { ver: APP_VERSION, items: ["記入日曆不會再被雲端舊資料蓋掉消失"] },
+  { ver: "2026-09-05-17-02-731", items: ["有「繳」的字改判出帳，不再誤成收現"] },
   { ver: "2026-09-05-16-58-730", items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
   { ver: "2026-09-05-16-53-729", items: ["本月工作標題右邊加上藍色行程"] },
   { ver: "2026-09-05-16-29-728", items: ["跑業務手寫改叫白紙，可留檔下載"] },
@@ -3861,7 +3862,7 @@ function persistLedger(data) {
   dropFactoryRentAutos(data);
   const cur = loadLedgerBackup() || {};
   const gone = unionGone(cur.ledgerGone, data.ledgerGone);
-  let books = dropGone(unionById(cur.books, data.books), gone);
+  let books = dropGone(unionLedgerById(cur.books, data.books), gone);
   const extraGone = books.filter(b => isFactoryAutoRentBook(b, data)).map(b => b.id).filter(Boolean);
   if (extraGone.length) {
     gone.push(...extraGone);
@@ -3869,8 +3870,8 @@ function persistLedger(data) {
   }
   const merged = {
     books: books.map(slimLedgerItem),
-    errands: dropGone(unionById(cur.errands, data.errands), gone).map(slimLedgerItem),
-    bankSlips: dropGone(unionById(cur.bankSlips, data.bankSlips), gone).map(slimLedgerItem),
+    errands: dropGone(unionLedgerById(cur.errands, data.errands), gone).map(slimLedgerItem),
+    bankSlips: dropGone(unionLedgerById(cur.bankSlips, data.bankSlips), gone).map(slimLedgerItem),
     accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {}),
     lastBookImport: data.lastBookImport || cur.lastBookImport || null,
     ledgerGone: gone
@@ -4079,6 +4080,42 @@ function unionById(a, b) {
     if (!x || !x.id) return;
     const cur = map.get(x.id);
     map.set(x.id, cur ? Object.assign({}, cur, x) : x);
+  });
+  return [...map.values()];
+}
+function ledgerStamp(x) {
+  if (!x) return 0;
+  const n = Number(x.editedAt || x.updatedAt || 0);
+  if (n) return n;
+  const c = Date.parse(String(x.createdAt || "").replace(" ", "T"));
+  return c > 0 ? c : 0;
+}
+function pickLedgerItem(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const aAmt = Number(a.amount) || 0;
+  const bAmt = Number(b.amount) || 0;
+  const aT = ledgerStamp(a);
+  const bT = ledgerStamp(b);
+  let keep = b;
+  let base = a;
+  if (aT !== bT) {
+    keep = aT >= bT ? a : b;
+    base = aT >= bT ? b : a;
+  } else if (aAmt !== bAmt) {
+    keep = aAmt >= bAmt ? a : b;
+    base = aAmt >= bAmt ? b : a;
+  }
+  const out = Object.assign({}, base, keep);
+  if (!out.amount && (aAmt || bAmt)) out.amount = Math.max(aAmt, bAmt);
+  if (keep.note || base.note) out.note = keep.note || base.note;
+  return out;
+}
+function unionLedgerById(a, b) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    map.set(x.id, pickLedgerItem(map.get(x.id), x));
   });
   return [...map.values()];
 }
@@ -4858,9 +4895,9 @@ function syncBookFromErrand(e) {
 function mergeLedgerInto(target, other) {
   if (!target || !other) return;
   target.ledgerGone = unionGone(target.ledgerGone, other.ledgerGone);
-  if (Array.isArray(other.books) && other.books.length) target.books = unionById(target.books, other.books);
-  if (Array.isArray(other.errands) && other.errands.length) target.errands = unionById(target.errands, other.errands);
-  if (Array.isArray(other.bankSlips) && other.bankSlips.length) target.bankSlips = unionById(target.bankSlips, other.bankSlips);
+  if (Array.isArray(other.books) && other.books.length) target.books = unionLedgerById(target.books, other.books);
+  if (Array.isArray(other.errands) && other.errands.length) target.errands = unionLedgerById(target.errands, other.errands);
+  if (Array.isArray(other.bankSlips) && other.bankSlips.length) target.bankSlips = unionLedgerById(target.bankSlips, other.bankSlips);
   if (other.accountOpenings && typeof other.accountOpenings === "object") {
     target.accountOpenings = Object.assign({}, other.accountOpenings, target.accountOpenings || {});
   }
@@ -22320,6 +22357,7 @@ function bindCashCal() {
         const b = (state.books || []).find(x => x.id === ui.editBookId);
         if (b) {
           Object.assign(b, payload);
+          b.editedAt = Date.now();
           syncErrandFromBook(b);
         }
         if (ui.editErrandId) {
@@ -22330,6 +22368,7 @@ function bindCashCal() {
             e.company = payload.company;
             e.place = payload.bank || e.place;
             e.note = payload.note;
+            e.editedAt = Date.now();
             if (payload.note) e.title = payload.note;
             if (b && !e.linkedId) e.linkedId = b.id;
             if (b && !b.linkedId) b.linkedId = e.id;
@@ -22352,14 +22391,24 @@ function bindCashCal() {
           e.company = payload.company;
           e.place = payload.bank || e.place;
           e.note = payload.note;
+          e.editedAt = Date.now();
           if (payload.note) e.title = payload.note;
-          syncBookFromErrand(e);
+          let b = findLinkedBook(e);
+          if (!b && amount) {
+            if (!state.books) state.books = [];
+            b = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp(), linkedId: e.id, editedAt: Date.now() }, payload);
+            state.books.push(b);
+            e.linkedId = b.id;
+          } else {
+            syncBookFromErrand(e);
+            if (b) b.editedAt = Date.now();
+          }
         }
         ui.editErrandId = "";
         ui.calDay = Number(date.slice(8, 10));
         save();
         try { pushCloud(); } catch {}
-        toast("已儲存變更");
+        toast("已記入日曆");
         stay();
         return;
       }
@@ -22375,7 +22424,7 @@ function bindCashCal() {
         return;
       }
       if (!state.books) state.books = [];
-      const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp() }, payload);
+      const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp(), editedAt: Date.now() }, payload);
       state.books.push(row);
       dropCoveredRentAuto(state, row);
       ui.bookCompany = payload.company;
@@ -22385,6 +22434,7 @@ function bindCashCal() {
       ui.bookNote = "";
       ui.calDay = Number(date.slice(8, 10));
       save();
+      try { pushCloud(); } catch {}
       toast("已記入日曆");
       stay();
     };
