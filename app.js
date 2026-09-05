@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-19";
-const APP_EDIT_COUNT = 762;
+const APP_STAMP = "2026-09-05-19-20";
+const APP_EDIT_COUNT = 763;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0312";
+const FILE_VER = "0313";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["調色盤色塊改成 iPhone 輕點回彈"] },
+  { ver: APP_VERSION, items: ["自動最佳化按鈕改成 iPhone 輕點回彈"] },
+  { ver: "2026-09-05-19-19-762", items: ["調色盤色塊改成 iPhone 輕點回彈"] },
   { ver: "2026-09-05-19-17-761", items: ["選房號頁返回與標題拉開距離"] },
   { ver: "2026-09-05-19-16-760", items: ["本月工作有過期行程時，工作助手分頁右上顯示紅標"] },
   { ver: "2026-09-05-19-09-759", items: ["滑動租客列表時不會誤開單一租客"] },
@@ -21520,7 +21521,7 @@ function lookSettingsHtml() {
     <div class="card card-body">
       <div class="row" style="align-items:center">
         <div class="label" style="margin:0">版面字體大小</div>
-        <button type="button" class="ghost" id="font-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
+        <button type="button" class="ghost auto-opt" id="font-auto">自動最佳化</button>
       </div>
       <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
       <div class="font-scale">
@@ -21533,7 +21534,7 @@ function lookSettingsHtml() {
     <div class="card card-body">
       <div class="row" style="align-items:center">
         <div class="label" style="margin:0">按鍵震動</div>
-        <button type="button" class="ghost" id="haptic-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
+        <button type="button" class="ghost auto-opt" id="haptic-auto">自動最佳化</button>
       </div>
       <p class="small">左右滑動調整輕重，最左邊是關閉。Android 會震，iPhone 多數不會。</p>
       <div class="font-scale">
@@ -21546,7 +21547,7 @@ function lookSettingsHtml() {
     <div class="card card-body">
       <div class="row" style="align-items:center">
         <div class="label" style="margin:0">鈴聲</div>
-        <button type="button" class="ghost" id="ring-auto" style="width:auto;padding:6px 12px;font-size:12px">自動最佳化</button>
+        <button type="button" class="ghost auto-opt" id="ring-auto">自動最佳化</button>
       </div>
       <p class="small">左右滑動調整音量，最左邊是關閉。通知與重要提醒會用這個音量。</p>
       <div class="font-scale">
@@ -21647,17 +21648,23 @@ function bindLookSettings() {
     if (ok) render();
   };
   const auto = document.getElementById("font-auto");
-  if (auto) auto.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    autoFontScale();
-  };
+  if (auto) {
+    bindIosPress(auto);
+    auto.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      autoFontScale();
+    };
+  }
   const hapAuto = document.getElementById("haptic-auto");
-  if (hapAuto) hapAuto.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    autoHaptic();
-  };
+  if (hapAuto) {
+    bindIosPress(hapAuto);
+    hapAuto.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      autoHaptic();
+    };
+  }
   const hapSlider = document.getElementById("haptic-scale");
   if (hapSlider) {
     hapSlider.addEventListener("pointerdown", e => e.stopPropagation());
@@ -21672,11 +21679,14 @@ function bindLookSettings() {
     hapSlider.addEventListener("change", () => { applyHaptic(hapSlider.value); buzz(); });
   }
   const ringAuto = document.getElementById("ring-auto");
-  if (ringAuto) ringAuto.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    autoRing();
-  };
+  if (ringAuto) {
+    bindIosPress(ringAuto);
+    ringAuto.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      autoRing();
+    };
+  }
   const ringSlider = document.getElementById("ring-scale");
   if (ringSlider) {
     ringSlider.addEventListener("pointerdown", e => e.stopPropagation());
