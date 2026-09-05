@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-17-06";
-const APP_EDIT_COUNT = 732;
+const APP_STAMP = "2026-09-05-17-10";
+const APP_EDIT_COUNT = 733;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0282";
+const FILE_VER = "0283";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -86,7 +86,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["記入日曆不會再被雲端舊資料蓋掉消失"] },
+  { ver: APP_VERSION, items: ["刪除業務紀錄會同步拿掉總覽日曆那一筆"] },
+  { ver: "2026-09-05-17-06-732", items: ["記入日曆不會再被雲端舊資料蓋掉消失"] },
   { ver: "2026-09-05-17-02-731", items: ["有「繳」的字改判出帳，不再誤成收現"] },
   { ver: "2026-09-05-16-58-730", items: ["跑業務改名業務上傳，右邊加上綠色進帳、紅色出帳"] },
   { ver: "2026-09-05-16-53-729", items: ["本月工作標題右邊加上藍色行程"] },
@@ -4856,17 +4857,38 @@ function isSeedBook(b) {
   if (tag.indexOf("rent-auto-") === 0 || id.indexOf("bk-rent-") === 0) return false;
   return !!(tag || id.indexOf("bk-j115-") === 0 || id.indexOf("bk-a31-") === 0 || id.indexOf("bk-yusheng") === 0);
 }
+function notesOverlap(a, b) {
+  const x = String(a || "").replace(/\s+/g, "");
+  const y = String(b || "").replace(/\s+/g, "");
+  if (!x || !y) return false;
+  return (x.length >= 4 && y.indexOf(x) >= 0) || (y.length >= 4 && x.indexOf(y) >= 0);
+}
+function errandBlob(e) {
+  return [e && e.title, e && e.note, e && e.summary].filter(Boolean).join(" ");
+}
+function bookMatchesErrand(b, e) {
+  if (!b || !e) return false;
+  if (isSeedBook(b) || isRentAutoBook(b) || b.demo) return false;
+  if (b.linkedId === e.id || e.linkedId === b.id) return true;
+  if (ymdOf(b.date) !== ymdOf(e.date)) return false;
+  const amtE = Number(e.amount) || 0;
+  const amtB = Number(b.amount) || 0;
+  if (amtE && amtB && amtE === amtB) return true;
+  return notesOverlap(errandBlob(e), b.note) || notesOverlap(e.title, b.note) || notesOverlap(e.note, b.note);
+}
+function linkedBooksForErrand(errand) {
+  if (!errand) return [];
+  return (state.books || []).filter(b => bookMatchesErrand(b, errand));
+}
 function findLinkedErrand(book) {
   if (!book) return null;
   const list = state.errands || [];
   return list.find(e => e && (e.id === book.linkedId || book.linkedId === e.id || e.linkedId === book.id))
-    || (isSeedBook(book) ? null : list.find(e => e && ymdOf(e.date) === ymdOf(book.date) && Number(e.amount) === Number(book.amount) && Number(e.amount) > 0));
+    || (isSeedBook(book) ? null : list.find(e => bookMatchesErrand(book, e)));
 }
 function findLinkedBook(errand) {
-  if (!errand) return null;
-  const list = state.books || [];
-  return list.find(b => b && (b.linkedId === errand.id || errand.linkedId === b.id))
-    || list.find(b => b && !isSeedBook(b) && ymdOf(b.date) === ymdOf(errand.date) && Number(b.amount) === Number(errand.amount) && Number(b.amount) > 0);
+  const hits = linkedBooksForErrand(errand);
+  return hits[0] || null;
 }
 function syncErrandFromBook(b) {
   const e = findLinkedErrand(b);
@@ -10120,9 +10142,7 @@ function deleteLedgerRow(id, src) {
   const slip = (state.bankSlips || []).find(s => s && (s.id === raw || ("slip-" + s.id) === raw || s.id === raw.replace(/^slip-/, "")));
   if (errand) {
     ids.push(errand.id, "errand-" + errand.id);
-    const twin = findLinkedBook(errand);
-    if (twin) ids.push(twin.id);
-    (state.books || []).forEach(b => { if (b && b.linkedId === errand.id) ids.push(b.id); });
+    linkedBooksForErrand(errand).forEach(b => { if (b && b.id) ids.push(b.id); });
   }
   if (book) {
     ids.push(book.id);
