@@ -4001,12 +4001,12 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
 }
 .move-pick-sheet .back {
-  margin: 4px 14px 2px;
+  margin: 4px 14px 14px;
 }
 .move-pick-title {
   font-size: 22px;
   font-weight: 800;
-  padding: 6px 14px 16px;
+  padding: 4px 14px 18px;
 }
 .move-pick-row {
   width: 100%;

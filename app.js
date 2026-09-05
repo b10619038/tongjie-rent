@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-19-16";
-const APP_EDIT_COUNT = 760;
+const APP_STAMP = "2026-09-05-19-17";
+const APP_EDIT_COUNT = 761;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0310";
+const FILE_VER = "0311";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作有過期行程時，工作助手分頁右上顯示紅標"] },
+  { ver: APP_VERSION, items: ["選房號頁返回與標題拉開距離"] },
+  { ver: "2026-09-05-19-16-760", items: ["本月工作有過期行程時，工作助手分頁右上顯示紅標"] },
   { ver: "2026-09-05-19-09-759", items: ["滑動租客列表時不會誤開單一租客"] },
   { ver: "2026-09-05-19-05-758", items: ["套房分組圖卡與全部展開改成輕點回彈"] },
   { ver: "2026-09-05-18-59-757", items: ["租客圖卡按壓效果修好，按下會整張縮小"] },
