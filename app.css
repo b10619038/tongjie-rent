@@ -1023,6 +1023,20 @@ body:has(.move-in-page) {
 .role-btn {
   display: block; width: 100%; text-align: left; border: 1px solid var(--line);
   background: var(--card); border-radius: 22px; padding: 18px; margin-bottom: 12px; cursor: pointer;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.16s ease;
+}
+.role-btn:active,
+.role-btn.is-press {
+  transform: scale(0.97);
+  background: #f3f3f3;
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .gate .role-btn.slide-left {
   animation: moveSheetIn .42s cubic-bezier(.22,.82,.22,1) both;
