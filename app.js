@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-11-00";
-const APP_EDIT_COUNT = 692;
+const APP_STAMP = "2026-09-05-11-08";
+const APP_EDIT_COUNT = 693;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0242";
+const FILE_VER = "0243";
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
 const DOCS_IMPORT_VER = "aug31docs-v1";
@@ -84,7 +84,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆自動感應改為藍色字"] },
+  { ver: APP_VERSION, items: ["金額空白時上傳簿子，預設自動感應進出帳"] },
+  { ver: "2026-09-05-11-00-692", items: ["新增一筆自動感應改為藍色字"] },
   { ver: "2026-09-05-10-58-691", items: ["新增一筆選進帳時改為綠色字"] },
   { ver: "2026-09-05-10-53-690", items: ["新增一筆可選自動感應，上傳簿子後自行判斷進帳或出帳"] },
   { ver: "2026-09-05-10-51-689", items: ["新增一筆下方可看剛剛上傳的紀錄，並一次刪除這批測試帳"] },
@@ -10044,7 +10045,7 @@ function monthCashHtml() {
           <input id="book-xls" type="file" accept=".xlsx,.xls,.csv,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden />
         </div>
       </div>
-      <div class="small">${ed ? "可改日期、金額與備註。" : "日期不用填。選「自動感應」再上傳簿子，每一筆進／出由照片判斷；手動記入請改選進帳或出帳。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
+      <div class="small">${ed ? "可改日期、金額與備註。" : "金額空白就直接上傳簿子，進出帳與金額由照片自動感應。要手記再填金額並選進帳或出帳。統潔分聯邦／農會／兆豐，信潔為聯邦。金流以銀行簿子為準，同一天同金額同帳戶不會重複。"}</div>
       <button class="btn-navy" type="button" id="book-save">${ed ? "儲存變更" : "記入日曆"}</button>
       ${ed ? `<button type="button" class="ghost" id="cancel-book-edit" style="margin-top:8px">取消編輯</button>` : ""}
     </form>
@@ -20874,11 +20875,21 @@ function bindCashCal() {
   const form = document.getElementById("book-form");
   const bookDefaults = () => {
     const f = document.getElementById("book-form");
+    const amt = f && f.amount ? String(f.amount.value || "").replace(/[^\d.]/g, "") : "";
+    const raw = f && f.type ? String(f.type.value || "") : "auto";
     return {
-      type: f && f.type && f.type.value === "out" ? "out" : (f && f.type && f.type.value === "auto" ? "auto" : "in"),
+      type: !amt ? "auto" : (raw === "out" ? "out" : (raw === "auto" ? "auto" : "in")),
       company: normalizeBookCompany(f && f.company && f.company.value),
       bank: (f && f.bank && f.bank.value) || ""
     };
+  };
+  const paintBookType = () => {
+    if (!form || !form.type) return;
+    const amtEl = form.amount;
+    const empty = amtEl && !String(amtEl.value || "").replace(/[^\d.]/g, "");
+    if (empty && form.type.querySelector('option[value="auto"]')) form.type.value = "auto";
+    form.type.classList.remove("in", "out", "auto");
+    form.type.classList.add(form.type.value === "out" ? "out" : (form.type.value === "auto" ? "auto" : "in"));
   };
   const upOpen = document.getElementById("book-up-open");
   const upMenu = document.getElementById("book-up-menu");
@@ -20916,10 +20927,12 @@ function bindCashCal() {
       el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
       el.onclick = e => { e.stopPropagation(); el.focus(); };
     });
-    if (form.type) form.type.onchange = () => {
-      form.type.classList.remove("in", "out", "auto");
-      form.type.classList.add(form.type.value === "out" ? "out" : (form.type.value === "auto" ? "auto" : "in"));
-    };
+    if (form.type) form.type.onchange = () => paintBookType();
+    if (form.amount) {
+      form.amount.oninput = () => paintBookType();
+      form.amount.onchange = () => paintBookType();
+    }
+    paintBookType();
     if (form.company) form.company.onchange = () => {
       const acct = normalizeBookCompany(form.company.value);
       const row = document.getElementById("book-bank-row");
