@@ -24,10 +24,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-14-01";
-const APP_EDIT_COUNT = 711;
+const APP_STAMP = "2026-09-05-14-08";
+const APP_EDIT_COUNT = 712;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0261";
+const FILE_VER = "0262";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -85,7 +85,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
+  { ver: APP_VERSION, items: ["更新後「剛剛上傳的紀錄」會留下來，仍可一次刪除"] },
+  { ver: "2026-09-05-14-01-711", items: ["農會簿子改依每行日期切開，不再把結存、備註日期黏成錯帳"] },
   { ver: "2026-09-05-13-03-710", items: ["雲端認字改直接連 Google，設定可測試連線"] },
   { ver: "2026-09-05-12-51-709", items: ["開發者可接 Google 雲端認字，簿子照片先走雲端再套農會規則"] },
   { ver: "2026-09-05-12-41-708", items: ["農會同一天多筆會拆開，結存不再當成金額"] },
@@ -3862,6 +3863,7 @@ function persistLedger(data) {
     errands: dropGone(unionById(cur.errands, data.errands), gone).map(slimLedgerItem),
     bankSlips: dropGone(unionById(cur.bankSlips, data.bankSlips), gone).map(slimLedgerItem),
     accountOpenings: Object.assign({}, cur.accountOpenings || {}, data.accountOpenings || {}),
+    lastBookImport: data.lastBookImport || cur.lastBookImport || null,
     ledgerGone: gone
   };
   try { localStorage.setItem(LEDGER_KEY, JSON.stringify(merged)); } catch {}
@@ -4758,6 +4760,10 @@ function mergeLedgerInto(target, other) {
   target.books = dropGone(target.books, target.ledgerGone);
   target.errands = dropGone(target.errands, target.ledgerGone);
   target.bankSlips = dropGone(target.bankSlips, target.ledgerGone);
+  if (!target.lastBookImport && other.lastBookImport) target.lastBookImport = other.lastBookImport;
+  else if (target.lastBookImport && other.lastBookImport && String(other.lastBookImport.at || "") > String(target.lastBookImport.at || "")) {
+    target.lastBookImport = other.lastBookImport;
+  }
 }
 async function pullCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -4772,6 +4778,7 @@ async function pullCloud() {
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
       books: state.books, errands: state.errands, bankSlips: state.bankSlips,
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
+      lastBookImport: state.lastBookImport,
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
       paidMarks: state.paidMarks
     };
@@ -4819,6 +4826,9 @@ async function pullCloud() {
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
     mergeSharedInto(state, mineSnap);
+    if (mineSnap.lastBookImport && (!state.lastBookImport || String(mineSnap.lastBookImport.at || "") >= String(state.lastBookImport.at || ""))) {
+      state.lastBookImport = mineSnap.lastBookImport;
+    }
     if (mineBooksVer && !state.booksImportVer) state.booksImportVer = mineBooksVer;
     if (mineDocsVer && !state.docsImportVer) state.docsImportVer = mineDocsVer;
     applyJuly115Books(state);
@@ -10473,12 +10483,38 @@ function currentUploadPostedCount() {
   bookUpFileList().forEach(f => (f.ids || []).forEach(id => { if (have.has(id)) n += 1; }));
   return n;
 }
+function inferLastImportFromBooks() {
+  const groups = Object.create(null);
+  (state.books || []).forEach(b => {
+    if (!b || !b.importBatch || !(b.fromPassbook || b.importFile)) return;
+    const id = String(b.importBatch);
+    if (!groups[id]) groups[id] = { id, at: "", source: "簿子照片", added: 0, skipped: 0, paired: 0, ids: [] };
+    const g = groups[id];
+    g.ids.push(b.id);
+    g.added += 1;
+    const at = String(b.createdAt || b.at || "");
+    if (at && at > g.at) g.at = at;
+  });
+  const list = Object.keys(groups).map(k => groups[k]);
+  list.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return list[0] || null;
+}
 function liveLastImport() {
-  const rec = state.lastBookImport;
+  let rec = state.lastBookImport;
+  const rowsOf = r => {
+    if (!r) return [];
+    const idset = new Set(r.ids || []);
+    const rows = (state.books || []).filter(b => b && (idset.has(b.id) || (r.id && b.importBatch === r.id)));
+    rows.sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.id).localeCompare(String(b.id)));
+    return rows;
+  };
+  let rows = rowsOf(rec);
+  if (!rows.length) {
+    rec = inferLastImportFromBooks();
+    if (rec && !state.lastBookImport) state.lastBookImport = rec;
+    rows = rowsOf(rec);
+  }
   if (!rec) return null;
-  const idset = new Set(rec.ids || []);
-  const rows = (state.books || []).filter(b => b && (idset.has(b.id) || (rec.id && b.importBatch === rec.id)));
-  rows.sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.id).localeCompare(String(b.id)));
   if (!rows.length && !(rec.skipped > 0 && !(rec.added || rec.paired))) return null;
   return { rec, rows };
 }
