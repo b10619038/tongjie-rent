@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-14-27";
-const APP_EDIT_COUNT = 799;
+const APP_STAMP = "2026-09-06-17-59";
+const APP_EDIT_COUNT = 800;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0349";
+const FILE_VER = "0350";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳244元這類金額會記入日曆出帳"] },
+  { ver: APP_VERSION, items: ["報修類型新增公共設施、地板"] },
+  { ver: "2026-09-06-14-27-799", items: ["業務上傳244元這類金額會記入日曆出帳"] },
   { ver: "2026-09-06-14-18-798", items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
   { ver: "2026-09-06-14-16-797", items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
   { ver: "2026-09-06-12-33-796", items: ["房況與報修標題改成牛10 房況與報修"] },
@@ -15760,7 +15761,7 @@ function repairView() {
         ${mine.map((rep, i) => repairCard(rep, i === 0 ? "slide-up-card" : "")).join("")}
       </div>`;
   }
-  const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具"];
+  const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具", "公共設施", "地板"];
   return `<div class="topbar slide-right"><div>
       <div class="eyebrow">REPAIR</div>
       <h1>報修</h1>
