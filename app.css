@@ -3182,6 +3182,19 @@ img.avatar { object-fit: cover; display: block; }
 .photo-zoom.on .photo-zoom-caption { opacity: .9; transition: opacity .28s .08s; }
 .photo-zoom.out .photo-zoom-caption { opacity: 0; }
 [data-open-topup] { cursor: pointer; }
+[data-zoom-photo] { cursor: pointer; }
+.batt-card {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: scale 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.batt-card:active,
+.batt-card.is-press {
+  scale: 0.97;
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .invoice-preview .invoice-preview-scroll {
   width: 100%;
   max-height: calc(100% - 64px);
