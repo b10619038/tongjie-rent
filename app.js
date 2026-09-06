@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-05-22-04";
-const APP_EDIT_COUNT = 789;
+const APP_STAMP = "2026-09-06-10-23";
+const APP_EDIT_COUNT = 790;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0339";
+const FILE_VER = "0340";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修類型已選改成灰色，不再用綠框"] },
+  { ver: APP_VERSION, items: ["產出發票日期改為實際匯款日（提前匯款則開1日）"] },
+  { ver: "2026-09-05-22-04-789", items: ["報修類型已選改成灰色，不再用綠框"] },
   { ver: "2026-09-05-21-54-788", items: ["整體報表：匯出列印與帳戶案場上下對調"] },
   { ver: "2026-09-05-21-44-787", items: ["版本號回到原位再稍往下"] },
   { ver: "2026-09-05-21-40-786", items: ["版本號改在底部白條上下置中"] },
@@ -7021,7 +7022,7 @@ function invMark(txt, l, t, w, h, cls) {
 function invoiceCopyHtml(r, t, copyName) {
   const factory = r.kind === "factory";
   const triple = invoiceIsTriple(r, t);
-  const p = invoicePeriod();
+  const p = invoicePeriod(dateFromYmd(invoicePrintYmd(t)));
   const addr = invoiceAddr(r, t);
   const buyer = (ui.invoiceBuyerFor === (r && r.id) && ui.invoiceBuyer != null && ui.invoiceBuyer !== "")
     ? ui.invoiceBuyer
@@ -8502,6 +8503,9 @@ function openInvoiceForRoom(roomId, from) {
   ui.invoiceItem = "";
   ui.invoicePrice = "";
   ui.invoiceTaxId = "";
+  ui.invoiceY = "";
+  ui.invoiceMo = "";
+  ui.invoiceDay = "";
   ui.page = "invoice";
   render();
 }
@@ -8512,6 +8516,17 @@ function invoiceYmdFromRemit(remitYmd, billYm) {
   if (!start) return remit || "";
   if (!remit) return start;
   return remit > start ? remit : start;
+}
+function invoicePrintYmd(t) {
+  const paid = paidThisMonth(t);
+  const remit = paid ? (ymdOf(t && t.remitOn) || ymdOf(t && t.paidAt) || "") : "";
+  const billYm = (paid && t && t.paidYm) || payYmNow();
+  return invoiceYmdFromRemit(remit, billYm) || (String(billYm || payYmNow()).slice(0, 7) + "-01");
+}
+function dateFromYmd(ymd) {
+  const m = String(ymd || "").match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return taipeiNow();
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
