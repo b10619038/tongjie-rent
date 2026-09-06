@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-14-16";
-const APP_EDIT_COUNT = 797;
+const APP_STAMP = "2026-09-06-14-18";
+const APP_EDIT_COUNT = 798;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0347";
+const FILE_VER = "0348";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
+  { ver: APP_VERSION, items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
+  { ver: "2026-09-06-14-16-797", items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
   { ver: "2026-09-06-12-33-796", items: ["房況與報修標題改成牛10 房況與報修"] },
   { ver: "2026-09-06-12-29-795", items: ["樓層出租概況標題改成牛10 樓層出租概況"] },
   { ver: "2026-09-06-12-25-794", items: ["樓層出租概況1樓改為4間店面，波波奇已租1間"] },
@@ -6920,8 +6921,10 @@ function factoryInvoiceNote(r, t) {
   const seen = new Set();
   const notes = [];
   const rooms = [];
+  const site = factorySiteKey(r);
   const add = rr => {
     if (!rr) return;
+    if (site && factorySiteKey(rr) && factorySiteKey(rr) !== site) return;
     const n = factoryDoorNote(rr);
     if (!n || seen.has(n)) return;
     seen.add(n);
@@ -6944,6 +6947,11 @@ function factoryInvoiceNote(r, t) {
   }
   return notes.join("、");
 }
+function factorySiteKey(r) {
+  const no = String(r && r.no || "").trim();
+  const m = no.match(/^(牛\d+|拉皮|大樹)/);
+  return m ? m[1] : "";
+}
 function factoryStreetOf(r) {
   const no = String(r && r.no || "").trim();
   const alt = no.replace(/^牛5-(\d{2})$/, "牛5-97-$1");
@@ -6961,7 +6969,7 @@ function compactFactoryDoors(doors) {
     return m ? { pre: m[1], n: m[2], raw: s } : { raw: s };
   });
   const pre = parts[0] && parts[0].pre;
-  if (pre && parts.length > 1 && parts.every(p => p.pre === pre)) {
+  if (pre && parts.length >= 3 && parts.every(p => p.pre === pre)) {
     return pre + "-" + parts.map(p => p.n).join("、");
   }
   return parts.map(p => p.raw).join("、");
