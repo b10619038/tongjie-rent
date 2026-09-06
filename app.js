@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-12-25";
-const APP_EDIT_COUNT = 794;
+const APP_STAMP = "2026-09-06-12-29";
+const APP_EDIT_COUNT = 795;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0344";
+const FILE_VER = "0345";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["樓層出租概況1樓改為4間店面，波波奇已租1間"] },
+  { ver: APP_VERSION, items: ["樓層出租概況標題改成牛10 樓層出租概況"] },
+  { ver: "2026-09-06-12-25-794", items: ["樓層出租概況1樓改為4間店面，波波奇已租1間"] },
   { ver: "2026-09-06-12-20-793", items: ["到期與繳費回報列表左邊房號不再被切到"] },
   { ver: "2026-09-06-11-32-792", items: ["報修類型新增電子鎖、家具"] },
   { ver: "2026-09-06-11-13-791", items: ["資料頁公司門禁下方可點電子鎖電池看照片"] },
@@ -18255,7 +18256,7 @@ function adminDash() {
     ${monthCashHtml()}
     ${cashPairHtml()}
     <div class="dash-two">
-      <div class="card card-body"><h2 class="dash-h">樓層出租概況</h2>
+      <div class="card card-body"><h2 class="dash-h">牛10 樓層出租概況</h2>
         ${floors.map(f => `<div class="bar-row"><span>${f.fl}樓</span><div class="bar"><i style="width:${f.pct}%"></i></div><em>${f.full}/${f.total}</em></div>`).join("")}
       </div>
       <div class="card card-body"><h2 class="dash-h">房況與報修</h2>
