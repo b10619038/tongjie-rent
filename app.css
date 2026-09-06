@@ -1872,7 +1872,16 @@ input[type="file"] {
 .dot.office { background: #888; }
 .fix-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .fix-pills span { background: #e6f1fb; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1d4e89; }
-.mini.clickable { width: 100%; cursor: pointer; }
+.mini {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+  padding: 8px 4px 8px 6px;
+  min-width: 0;
+}
+.mini.clickable { width: 100%; cursor: pointer; border-radius: 12px; overflow: visible; }
 .mini span { color: var(--muted); white-space: nowrap; }
 .mini span.overdue { color: var(--rose); font-weight: 700; }
 #work-card .tenant-slim-inner {
@@ -3254,7 +3263,7 @@ img.avatar { object-fit: cover; display: block; }
   box-shadow: 0 6px 22px rgba(0,0,0,.22);
 }
 
-.role-btn, .room-row, .clickable, .card.item, .issue-opt, .mini.clickable, [data-room] {
+.role-btn, .room-row, .clickable, .card.item, .issue-opt, [data-room] {
   border-radius: 22px; overflow: hidden;
 }
 .led-line.clickable {
@@ -3262,6 +3271,11 @@ img.avatar { object-fit: cover; display: block; }
   overflow: visible;
 }
 .card.card-body.clickable { overflow: visible; }
+.card-body .mini.clickable,
+.card-body .clickable {
+  overflow: visible;
+  border-radius: 12px;
+}
 .ghost, .tab, .nav button, .linkish, .section-title [data-page], .btn-navy {
   border-radius: 999px;
 }
