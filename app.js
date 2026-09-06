@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-12-33";
-const APP_EDIT_COUNT = 796;
+const APP_STAMP = "2026-09-06-14-16";
+const APP_EDIT_COUNT = 797;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0346";
+const FILE_VER = "0347";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房況與報修標題改成牛10 房況與報修"] },
+  { ver: APP_VERSION, items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
+  { ver: "2026-09-06-12-33-796", items: ["房況與報修標題改成牛10 房況與報修"] },
   { ver: "2026-09-06-12-29-795", items: ["樓層出租概況標題改成牛10 樓層出租概況"] },
   { ver: "2026-09-06-12-25-794", items: ["樓層出租概況1樓改為4間店面，波波奇已租1間"] },
   { ver: "2026-09-06-12-20-793", items: ["到期與繳費回報列表左邊房號不再被切到"] },
@@ -6918,11 +6919,14 @@ function factoryDoorNote(r) {
 function factoryInvoiceNote(r, t) {
   const seen = new Set();
   const notes = [];
+  const rooms = [];
   const add = rr => {
+    if (!rr) return;
     const n = factoryDoorNote(rr);
     if (!n || seen.has(n)) return;
     seen.add(n);
     notes.push(n);
+    rooms.push(rr);
   };
   const group = t ? factoryGroupTenants(t) : [];
   if (group.length > 1) {
@@ -6933,7 +6937,34 @@ function factoryInvoiceNote(r, t) {
   } else {
     add(r);
   }
+  notes.sort((a, b) => a.localeCompare(b, "zh-Hant", { numeric: true }));
+  if (notes.length > 1) {
+    const street = factoryStreetOf(rooms[0] || r) || "";
+    return street + compactFactoryDoors(notes) + "號";
+  }
   return notes.join("、");
+}
+function factoryStreetOf(r) {
+  const no = String(r && r.no || "").trim();
+  const alt = no.replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+  for (let i = 0; i < FACTORY_GROUPS.length; i++) {
+    const g = FACTORY_GROUPS[i];
+    const it = (g.items || []).find(x => x.no === no || x.no === alt);
+    if (it) return g.street || "";
+  }
+  return "";
+}
+function compactFactoryDoors(doors) {
+  const parts = (doors || []).map(d => {
+    const s = String(d || "").replace(/號/g, "").trim();
+    const m = s.match(/^(\d+)-(\d+[A-Za-z]?)$/);
+    return m ? { pre: m[1], n: m[2], raw: s } : { raw: s };
+  });
+  const pre = parts[0] && parts[0].pre;
+  if (pre && parts.length > 1 && parts.every(p => p.pre === pre)) {
+    return pre + "-" + parts.map(p => p.n).join("、");
+  }
+  return parts.map(p => p.raw).join("、");
 }
 function formatFactoryAddr(s) {
   return String(s || "").replace(/(\d+)-(\d+[A-Za-z]?)號/g, "$1之$2號").replace(/(\d+)-(\d+[A-Za-z]?)$/g, "$1之$2");
