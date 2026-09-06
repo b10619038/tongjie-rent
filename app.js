@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-12-20";
-const APP_EDIT_COUNT = 793;
+const APP_STAMP = "2026-09-06-12-25";
+const APP_EDIT_COUNT = 794;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0343";
+const FILE_VER = "0344";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["到期與繳費回報列表左邊房號不再被切到"] },
+  { ver: APP_VERSION, items: ["樓層出租概況1樓改為4間店面，波波奇已租1間"] },
+  { ver: "2026-09-06-12-20-793", items: ["到期與繳費回報列表左邊房號不再被切到"] },
   { ver: "2026-09-06-11-32-792", items: ["報修類型新增電子鎖、家具"] },
   { ver: "2026-09-06-11-13-791", items: ["資料頁公司門禁下方可點電子鎖電池看照片"] },
   { ver: "2026-09-06-10-23-790", items: ["產出發票日期改為實際匯款日（提前匯款則開1日）"] },
@@ -18221,9 +18222,13 @@ function adminDash() {
     done: state.repairs.filter(x => x.status === "done" && !isDemoRepair(x)).length
   };
   const floors = [1, 2, 3, 4, 5].map(fl => {
-    const list = studios.filter(r => floorNo(r.no) === fl);
-    const full = list.filter(r => r.status === "rented").length;
-    return { fl, total: list.length, full, pct: list.length ? Math.round(full / list.length * 100) : 0 };
+    const fromState = state.rooms.filter(r => r && r.status !== "office" && r.kind !== "factory" && !isDemoRoom(r) && floorNo(r.no) === fl);
+    const seedNos = STUDIO_NOS.filter(no => floorNo(no) === fl);
+    const seen = new Set(fromState.map(r => String(r.no)));
+    const missing = seedNos.filter(no => !seen.has(String(no))).length;
+    const total = fromState.length + missing;
+    const full = fromState.filter(r => r.status === "rented").length;
+    return { fl, total, full, pct: total ? Math.round(full / total * 100) : 0 };
   });
   const avgRent = studioOcc.rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / studioOcc.rented) : 0;
   return `<div class="dash">
