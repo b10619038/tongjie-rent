@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-14-18";
-const APP_EDIT_COUNT = 798;
+const APP_STAMP = "2026-09-06-14-27";
+const APP_EDIT_COUNT = 799;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0348";
+const FILE_VER = "0349";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
+  { ver: APP_VERSION, items: ["業務上傳244元這類金額會記入日曆出帳"] },
+  { ver: "2026-09-06-14-18-798", items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
   { ver: "2026-09-06-14-16-797", items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
   { ver: "2026-09-06-12-33-796", items: ["房況與報修標題改成牛10 房況與報修"] },
   { ver: "2026-09-06-12-29-795", items: ["樓層出租概況標題改成牛10 樓層出租概況"] },
@@ -4990,18 +4991,73 @@ function syncErrandFromBook(b) {
   if (!e.linkedId) e.linkedId = b.id;
   if (!b.linkedId) b.linkedId = e.id;
 }
-function syncBookFromErrand(e) {
-  const b = findLinkedBook(e);
-  if (!e) return;
-  if (b) {
-    b.date = e.date;
-    b.amount = Number(e.amount) || 0;
-    if (e.company) b.company = e.company;
-    if (e.place) b.bank = e.place;
-    if (e.note || e.title) b.note = e.note || e.title;
-    if (!b.linkedId) b.linkedId = e.id;
-    if (!e.linkedId) e.linkedId = b.id;
+function parseAmountText(s) {
+  const t = String(s || "").replace(/,/g, "");
+  const yuan = t.match(/(\d{2,8})\s*元/);
+  if (yuan) return Number(yuan[1]) || 0;
+  const nt = t.match(/NT\$?\s*(\d{2,8})/i);
+  if (nt) return Number(nt[1]) || 0;
+  return 0;
+}
+function errandAmount(e) {
+  const n = Number(e && e.amount) || 0;
+  if (n) return n;
+  return parseAmountText([e && e.note, e && e.title, e && e.summary].filter(Boolean).join(" "));
+}
+function errandCashType(e) {
+  if (e && (e.cashType === "out" || e.cashType === "in" || e.cashType === "xfer")) return e.cashType === "xfer" ? "out" : e.cashType;
+  return guessCashType([e && e.title, e && e.place, e && e.note, e && e.company].join(" "), "out");
+}
+function ensureErrandBooks() {
+  if (!state || !state.errands) return;
+  if (!state.books) state.books = [];
+  let added = false;
+  state.errands.forEach(e => {
+    if (!e || e.kind === "doc") return;
+    const amount = errandAmount(e);
+    if (!amount) return;
+    if (Number(e.amount) !== amount) e.amount = amount;
+    if (findLinkedBook(e)) return;
+    const type = errandCashType(e);
+    const book = {
+      id: "bk-er-" + String(e.id || Date.now()).replace(/[^\w-]/g, ""),
+      type: type === "out" ? "out" : "in",
+      date: ymdOf(e.date) || todayYmd(),
+      amount,
+      company: e.company || "統潔",
+      bank: e.place || e.bank || "",
+      note: e.note || e.title || "",
+      linkedId: e.id,
+      editedAt: Date.now()
+    };
+    state.books.push(book);
+    e.linkedId = book.id;
+    e.skipLedger = true;
+    added = true;
+  });
+  if (added) {
+    try { markCloudDirty(); } catch {}
+    try { save(); } catch {}
+    try { pushCloud(); } catch {}
   }
+}
+function syncBookFromErrand(e) {
+  if (!e) return;
+  const amount = errandAmount(e);
+  if (amount && Number(e.amount) !== amount) e.amount = amount;
+  let b = findLinkedBook(e);
+  if (!b && amount) {
+    ensureErrandBooks();
+    b = findLinkedBook(e);
+  }
+  if (!b) return;
+  b.date = e.date;
+  b.amount = amount || Number(e.amount) || 0;
+  if (e.company) b.company = e.company;
+  if (e.place) b.bank = e.place;
+  if (e.note || e.title) b.note = e.note || e.title;
+  if (!b.linkedId) b.linkedId = e.id;
+  if (!e.linkedId || e.linkedId === e.id) e.linkedId = b.id;
 }
 function mergeLedgerInto(target, other) {
   if (!target || !other) return;
@@ -9489,6 +9545,7 @@ function ensureCalMonth() {
   ui.calDay = n.getDate();
 }
 function collectLedger() {
+  ensureErrandBooks();
   const rows = [];
   (state.books || []).forEach(b => {
     const amount = Number(b.amount) || 0;
@@ -9515,7 +9572,7 @@ function collectLedger() {
   });
   (state.errands || []).forEach(e => {
     if (e.kind === "doc") return;
-    const amount = Number(e.amount) || 0;
+    const amount = errandAmount(e);
     if (!amount) return;
     if (e.skipLedger) {
       const day = ymdOf(e.date);
@@ -10777,7 +10834,7 @@ function cellType(v, amountRaw) {
   const s = String(v || "");
   if (isDepositRefund(s)) return "out";
   if (/收租|收現|收錢|收入|進帳|貸|\bincome\b/i.test(s) && /收/.test(s)) return "in";
-  if (/出帳|支出|付|借|withdraw|\bout\b|expense|繳費|繳款|帳單|瓦斯|稅/i.test(s)) return "out";
+  if (/出帳|支出|付|借|withdraw|\bout\b|expense|繳費|繳款|帳單|瓦斯|稅|購買|買了|買電池/i.test(s)) return "out";
   if (/水費|電費|台電|台水/.test(s) && !/收/.test(s)) return "out";
   if (/進帳|收入|收|貸|deposit|in|income/i.test(s)) return "in";
   if (typeof amountRaw === "number" && amountRaw < 0) return "out";
@@ -14201,9 +14258,13 @@ function guessMetaFromName(name) {
   const s = String(name || "");
   const dm = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
   const date = dm ? dm[1] + "-" + String(dm[2]).padStart(2, "0") + "-" + String(dm[3]).padStart(2, "0") : "";
-  const mm = s.replace(/\.[a-z0-9]+$/i, "").match(/(\d{4,})/);
-  const amount = mm ? Number(mm[1]) : 0;
-  return { date, amount: amount >= 100 ? amount : 0, company: cellAccount(s) || "", bank: guessBank(s), name: s };
+  let amount = parseAmountText(s);
+  if (!amount) {
+    const mm = s.replace(/\.[a-z0-9]+$/i, "").match(/(\d{4,})/);
+    amount = mm ? Number(mm[1]) : 0;
+    if (amount < 100) amount = 0;
+  }
+  return { date, amount, company: cellAccount(s) || "", bank: guessBank(s), name: s };
 }
 function stripHeavyMedia(data) {
   if (Array.isArray(data.bankSlips)) {
@@ -16871,7 +16932,7 @@ function errandRecordsHtml() {
   return `${errands.length ? errands.map(e => `
       <div class="card card-body">
         <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(ymdOf(e.date) || e.date || "")}</span></div>
-        <div class="small">${escapeHtml([e.company, e.place, e.amount ? money(e.amount) : "", e.pendingBank ? "待入銀行" : (e.linkedId ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
+        <div class="small">${escapeHtml([e.company, e.place, errandAmount(e) ? money(errandAmount(e)) : "", e.pendingBank ? "待入銀行" : (findLinkedBook(e) ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
         <div class="btn-row" style="margin-top:8px">
           <button type="button" class="ghost" data-edit-errand="${e.id}">編輯</button>
           <button type="button" class="ghost" data-del-errand="${e.id}">刪除</button>
@@ -22181,7 +22242,7 @@ function submitErrandNow() {
   let nCash = 0, nOut = 0, nIn = 0, nLink = 0;
   list.forEach((g, idx) => {
     const date = ymdOf((g && g.date) || nowStamp());
-    const amount = Number(g && g.amount) || 0;
+    const amount = Number(g && g.amount) || parseAmountText([g && g.note, g && g.title, g && g.fileName, ui.errandNote].join(" ")) || 0;
     const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
     const place = (g && g.place) || "";
     const note = (g && g.note) || "";
@@ -22230,7 +22291,7 @@ function submitErrandNow() {
     }
     state.errands.push({
       id, kind: "bank", date, title, place, amount, note, company,
-      pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : id,
+      cashType, pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : id,
       skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
     });
     const p = date.split("-");
