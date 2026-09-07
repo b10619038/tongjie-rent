@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-21-46";
-const APP_EDIT_COUNT = 807;
+const APP_STAMP = "2026-09-07-21-53";
+const APP_EDIT_COUNT = 808;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0357";
+const FILE_VER = "0358";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳轉帳會在日曆同時顯示出帳與進帳"] },
+  { ver: APP_VERSION, items: ["業務上傳改成左邊帳戶、中間進出轉帳、右邊金額、下方備註"] },
+  { ver: "2026-09-07-21-46-807", items: ["業務上傳轉帳會在日曆同時顯示出帳與進帳"] },
   { ver: "2026-09-07-21-43-806", items: ["7051 預設月租6000，不可申請租屋補助"] },
   { ver: "2026-09-07-21-40-805", items: ["本月工作點完成後，重開 App 不會再跳出來"] },
   { ver: "2026-09-07-12-01-804", items: ["新增一筆出帳下方加上轉帳"] },
@@ -9984,6 +9985,28 @@ function rememberedBookBank(company) {
   if (ui.bookBank && allowed.includes(ui.bookBank)) return ui.bookBank;
   return allowed[0] || "";
 }
+const ERRAND_PEOPLE = ["趙文榮", "趙文彬", "趙苡真", "趙洪漳", "趙浩鈞", "趙貴美", "江秀霞", "黃思敏", "趙海成、趙正賢"];
+function errandAccountOptions(selected) {
+  const sel = normalizeBookCompany(selected || ui.errandCompany || "統潔");
+  const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
+  return `${opt("統潔")}${opt("信潔")}<optgroup label="個人戶">${ERRAND_PEOPLE.map(p => opt(personalKey(p), p)).join("")}</optgroup>${opt("現金(保險箱)")}`;
+}
+function errandBankSelectHtml(acct, selected) {
+  const banks = banksOf(acct);
+  if (!banks.length) return "";
+  const sel = banks.includes(selected) ? selected : banks[0];
+  return `<select name="bank" id="errand-bank">${banks.map(b => `<option value="${escapeHtml(b)}" ${b === sel ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}</select>`;
+}
+function rememberedErrandCompany() {
+  return normalizeBookCompany(ui.errandCompany || "統潔");
+}
+function rememberedErrandBank(company) {
+  const acct = normalizeBookCompany(company);
+  const allowed = banksOf(acct);
+  if (!allowed.length) return "";
+  if (ui.errandBank && allowed.includes(ui.errandBank)) return ui.errandBank;
+  return allowed[0] || "";
+}
 function bookAccountOptions(selected) {
   const typeAuto = !ui.editBookId && (ui.bookType === "auto" || !ui.bookType);
   const withAuto = typeAuto || selected === "auto" || selected === "";
@@ -12589,7 +12612,7 @@ function paintErrandKindBtns() {
   });
 }
 function applyErrandKindClick(kind) {
-  ui.errandKind = ui.errandKind === kind ? "" : kind;
+  ui.errandKind = kind;
   const list = errandGuessList();
   if (ui.errandKind) list.forEach(x => applyErrandKind(x, ui.errandKind));
   ui.errandGuesses = list;
@@ -17088,8 +17111,23 @@ function saveErrandBallPos(p) {
   try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
 }
 function errandFormInnerHtml() {
-  return `<p class="small" style="margin-top:10px">進帳、出帳、轉帳可點上面藍紅綠色字。轉帳＝現金存銀行或帳戶互轉，同一筆不會算兩次。白紙另拍可下載。分不出銀行時會問你。</p>
-          <input id="errand-note-free" name="memo" type="text" placeholder="例如：收禹旺租金現金　或　保險箱轉農會" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
+  const co = rememberedErrandCompany();
+  const bk = rememberedErrandBank(co);
+  const kind = ui.errandKind || "in";
+  if (!ui.errandKind) ui.errandKind = kind;
+  return `<div class="errand-main">
+            <div class="errand-acct">
+              <select name="company" id="errand-company">${errandAccountOptions(co)}</select>
+              <span id="errand-bank-slot">${errandBankSelectHtml(co, bk)}</span>
+            </div>
+            <span class="work-title errand-kinds">
+              <button type="button" class="led-in${kind === "in" ? " on" : ""}" data-errand-kind="in">進帳</button>
+              <button type="button" class="led-out${kind === "out" ? " on" : ""}" data-errand-kind="out">出帳</button>
+              <button type="button" class="led-xfer${kind === "xfer" ? " on" : ""}" data-errand-kind="xfer">轉帳</button>
+            </span>
+            <input id="errand-amount" name="amount" type="text" inputmode="numeric" placeholder="金額" value="${escapeHtml(ui.errandAmount || "")}" autocomplete="off" />
+          </div>
+          <input id="errand-note-free" name="memo" type="text" placeholder="備註" value="${escapeHtml(ui.errandNote || "")}" autocomplete="off" />
           ${errandGuessHtml(errandGuessList())}
           <label class="upload">上傳照片<input id="errand-photo" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.webp,.xlsx,.xls,.csv" multiple hidden /></label>
           ${bookUpFilesHtml("errand")}
@@ -17123,11 +17161,6 @@ function errandBlockHtml() {
         <button type="button" class="fold-head" id="errand-fold">
           <span class="k">業務上傳</span>
         </button>
-        <span class="work-title errand-kinds">
-          <button type="button" class="led-in${ui.errandKind === "in" ? " on" : ""}" data-errand-kind="in">進帳</button>
-          <button type="button" class="led-out${ui.errandKind === "out" ? " on" : ""}" data-errand-kind="out">出帳</button>
-          <button type="button" class="led-xfer${ui.errandKind === "xfer" ? " on" : ""}" data-errand-kind="xfer">轉帳</button>
-        </span>
         <button type="button" class="ghost" id="errand-to-ball">浮動球</button>
         <span class="fold-caret" id="errand-caret"></span>
         ${aiDragBtn()}
@@ -17157,11 +17190,6 @@ function ensureErrandBall() {
     ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
       <div class="errand-ball-sheet card card-body">
         <div class="row"><h2 class="dash-h" style="margin:0">業務上傳</h2>
-          <span class="work-title errand-kinds">
-            <button type="button" class="led-in${ui.errandKind === "in" ? " on" : ""}" data-errand-kind="in">進帳</button>
-            <button type="button" class="led-out${ui.errandKind === "out" ? " on" : ""}" data-errand-kind="out">出帳</button>
-            <button type="button" class="led-xfer${ui.errandKind === "xfer" ? " on" : ""}" data-errand-kind="xfer">轉帳</button>
-          </span>
           <button type="button" class="ghost" id="errand-to-card" style="width:auto">改回圖塊</button>
         </div>
         <form id="errand-form" autocomplete="off">${errandFormInnerHtml()}</form>
@@ -22437,11 +22465,64 @@ function bindAiBlockReorder() {
     if (e.target.closest(".ai-drag")) { e.preventDefault(); e.stopPropagation(); }
   }, true);
 }
+function readErrandForm() {
+  const form = document.getElementById("errand-form");
+  const company = normalizeBookCompany((form && form.company && form.company.value) || ui.errandCompany || "統潔");
+  const bank = (form && form.bank && form.bank.value) || ui.errandBank || rememberedErrandBank(company);
+  const amtEl = document.getElementById("errand-amount");
+  const amount = Number(String((amtEl && amtEl.value) || ui.errandAmount || "").replace(/[^\d.]/g, "")) || 0;
+  const noteEl = document.getElementById("errand-note-free");
+  const note = String((noteEl && noteEl.value) || ui.errandNote || "").trim();
+  ui.errandCompany = company;
+  ui.errandBank = bank;
+  ui.errandAmount = amount ? String(amount) : String((amtEl && amtEl.value) || ui.errandAmount || "");
+  ui.errandNote = note;
+  return { company, bank, amount, note, kind: ui.errandKind || "in" };
+}
+function bindErrandFormFields() {
+  const form = document.getElementById("errand-form");
+  if (!form) return;
+  const bindBank = () => {
+    const bank = form.bank || document.getElementById("errand-bank");
+    if (bank) bank.onchange = () => { ui.errandBank = bank.value; };
+  };
+  const company = form.company || document.getElementById("errand-company");
+  if (company) company.onchange = () => {
+    ui.errandCompany = company.value;
+    const banks = banksOf(company.value);
+    ui.errandBank = banks.includes(ui.errandBank) ? ui.errandBank : (banks[0] || "");
+    const slot = document.getElementById("errand-bank-slot");
+    if (slot) {
+      slot.innerHTML = errandBankSelectHtml(company.value, ui.errandBank);
+      bindBank();
+    }
+  };
+  bindBank();
+  const amt = document.getElementById("errand-amount");
+  if (amt) amt.oninput = () => { ui.errandAmount = amt.value; };
+}
 function submitErrandNow() {
-  if (!errandGuessList().length && String(ui.errandNote || "").trim()) {
-    ui.errandGuesses = [inferOneFile({ name: ui.errandNote.trim() })];
+  const formv = readErrandForm();
+  if (!formv.kind) { toast("請選進帳、出帳或轉帳"); return; }
+  if (!errandGuessList().length && formv.note) {
+    ui.errandGuesses = [inferOneFile({ name: formv.note })];
   }
-  const list = errandGuessList();
+  let list = errandGuessList().slice();
+  if (!list.length && (formv.amount || formv.note)) {
+    list = [{
+      date: todayYmd(),
+      title: formv.note || (formv.kind === "xfer" ? "轉帳" : formv.kind === "out" ? "出帳" : "進帳"),
+      place: formv.bank,
+      amount: formv.amount,
+      company: formv.company,
+      note: formv.note,
+      cashType: formv.kind,
+      xfer: formv.kind === "xfer",
+      needCompany: false,
+      needBank: false,
+      fromAccount: formv.kind === "xfer" ? "現金(保險箱)" : ""
+    }];
+  }
   if (!list.length) {
     if (ui.errandAbsorb) {
       toast("Excel 已記入進出帳");
@@ -22450,7 +22531,20 @@ function submitErrandNow() {
       render();
       return;
     }
-    toast("請打字說明，或上傳照片／檔案");
+    toast("請填金額或備註，或上傳照片");
+    return;
+  }
+  list.forEach(g => {
+    applyErrandKind(g, formv.kind);
+    g.company = formv.company;
+    g.needCompany = false;
+    g.needBank = false;
+    if (formv.bank) g.place = formv.bank;
+    if (formv.amount) { g.amount = formv.amount; g.needAmount = false; }
+    if (formv.note) g.note = formv.note;
+  });
+  if (!list.some(x => Number(x.amount) || noteAmountSum(x.note || "") || parseAmountText(x.note || ""))) {
+    toast("請填金額");
     return;
   }
   const pending = list.filter(x => x.needCompany || x.needBank);
@@ -22525,6 +22619,7 @@ function submitErrandNow() {
   ui.errandGuess = null;
   ui.errandGuesses = [];
   ui.errandNote = "";
+  ui.errandAmount = "";
   ui.errandOpen = true;
   save();
   toast(nLink ? "轉帳已記入日曆：現金出帳、帳戶進帳" : ("已登錄 " + (list.length || 1) + " 筆"));
@@ -22865,24 +22960,9 @@ function bindAdminAi() {
       memo.addEventListener("click", e => { e.stopPropagation(); memo.focus(); });
       memo.oninput = () => {
         ui.errandNote = String(memo.value || "");
-        const text = ui.errandNote.trim();
-        const photos = (ui.errandGuesses || []).filter(x => x.fromPhoto);
-        if (photos.length) {
-          photos.forEach(x => { x.note = [x.fileName, text].filter(Boolean).join(" · "); });
-          ui.errandGuesses = photos;
-        } else if (text) {
-          const g = inferOneFile({ name: text });
-          g.fileName = text;
-          g.note = text;
-          ui.errandGuesses = [g];
-          ui.errandGuess = g;
-        } else {
-          ui.errandGuesses = [];
-          ui.errandGuess = null;
-        }
-        refreshErrandGuessBox();
       };
     }
+    bindErrandFormFields();
   }
   document.querySelectorAll("[data-del-errand-media]").forEach(btn => {
     btn.onclick = e => {

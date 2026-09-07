@@ -1982,7 +1982,7 @@ input[type="file"] {
 }
 #errand-form .errand-kinds {
   flex: 0 0 auto;
-  justify-content: flex-start;
+  justify-content: center;
 }
 #errand-form #errand-to-ball {
   margin-left: auto;
@@ -1990,6 +1990,43 @@ input[type="file"] {
   padding: 6px 10px;
   font-size: 12px;
   flex: 0 0 auto;
+}
+.errand-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto minmax(86px, 0.8fr);
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.errand-acct {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.errand-acct select,
+#errand-amount,
+#errand-note-free {
+  min-height: 44px;
+  width: 100%;
+  font-size: 16px;
+  background: #fff;
+  color: #111;
+}
+#errand-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+#errand-form .errand-kinds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 2px 2px;
+}
+#errand-note-free {
+  margin-top: 8px;
 }
 .errand-kinds button {
   -webkit-appearance: none;
