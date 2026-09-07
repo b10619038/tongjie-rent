@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-11-20";
-const APP_EDIT_COUNT = 801;
+const APP_STAMP = "2026-09-07-11-47";
+const APP_EDIT_COUNT = 802;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0351";
+const FILE_VER = "0352";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點進帳出帳轉帳不再跳到本月工作"] },
+  { ver: APP_VERSION, items: ["9月2日記電錶加上93-1A南溢製鞋"] },
+  { ver: "2026-09-07-11-20-801", items: ["點進帳出帳轉帳不再跳到本月工作"] },
   { ver: "2026-09-06-17-59-800", items: ["報修類型新增公共設施、地板"] },
   { ver: "2026-09-06-14-27-799", items: ["業務上傳244元這類金額會記入日曆出帳"] },
   { ver: "2026-09-06-14-18-798", items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
@@ -2291,7 +2292,7 @@ const CYCLE_JOBS = [
   { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　93-1B／93-58、60（台電電號 18-33-7421-01-4）", cycle: true, owner: "7651" },
   { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
   { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" },
-  { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B 鈺晟、93-2A 咘然居", cycle: true, owner: "7651" },
+  { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" },
   { id: "cycle-labor-ins", monthDay: 5, text: "繳勞健保（9月級距 42,000 勞1,050／健651、35,000 勞812／健540；10月 35,000 勞870／健540）", cycle: true, owner: "7651" }
 ];
 const DEV_CYCLE_JOBS = [
