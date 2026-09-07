@@ -2017,16 +2017,28 @@ input[type="file"] {
   letter-spacing: .04em;
 }
 .errand-main.is-xfer .errand-side-lab { display: block; }
-#errand-right { min-width: 0; }
+#errand-right { min-width: 0; align-self: center; }
 #errand-right .errand-acct { width: 100%; }
 .errand-acct select,
-#errand-amount,
+#errand-amount {
+  min-height: 34px;
+  height: 34px;
+  max-height: 34px;
+  width: 100%;
+  padding: 0 12px;
+  font-size: 15px;
+  line-height: 34px;
+  background: #fff;
+  color: #111;
+  box-sizing: border-box;
+}
 #errand-note-free {
   min-height: 44px;
   width: 100%;
   font-size: 16px;
   background: #fff;
   color: #111;
+  margin-top: 8px;
 }
 #errand-amount {
   text-align: right;
@@ -2042,9 +2054,6 @@ input[type="file"] {
   gap: 10px;
   padding: 4px 0;
   margin-left: -6px;
-}
-#errand-note-free {
-  margin-top: 8px;
 }
 .errand-log {
   margin-top: 4px;
