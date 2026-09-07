@@ -4121,15 +4121,15 @@ img.avatar { object-fit: cover; display: block; }
 
 .errand-ball {
   position: fixed;
-  z-index: 92;
+  z-index: 240;
   width: 58px;
   height: 58px;
-  border: 0;
+  border: 3px solid #fff;
   padding: 0;
   overflow: hidden;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(0,0,0,.22);
+  background: #1f6f4a;
+  box-shadow: 0 10px 24px rgba(0,0,0,.28);
   touch-action: none;
   cursor: grab;
   pointer-events: auto !important;
@@ -4149,7 +4149,7 @@ img.avatar { object-fit: cover; display: block; }
 .errand-ball-mask {
   position: fixed;
   inset: 0;
-  z-index: 140;
+  z-index: 250;
   background: rgba(0,0,0,.45);
   display: flex;
   align-items: flex-end;

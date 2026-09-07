@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-27";
-const APP_EDIT_COUNT = 814;
+const APP_STAMP = "2026-09-07-22-29";
+const APP_EDIT_COUNT = 815;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0364";
+const FILE_VER = "0365";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳進出轉帳字改置中"] },
+  { ver: APP_VERSION, items: ["浮動球不會再飛出畫面，可改回圖塊"] },
+  { ver: "2026-09-07-22-27-814", items: ["業務上傳進出轉帳字改置中"] },
   { ver: "2026-09-07-22-25-813", items: ["93-1B與93-2A共用電單，總金額除總度數再乘各戶度數開紅單"] },
   { ver: "2026-09-07-22-21-812", items: ["記電錶工作在編輯右邊加上電度紀錄"] },
   { ver: "2026-09-07-22-08-811", items: ["業務上傳標題中間空白也可以點開收合"] },
@@ -17376,12 +17377,28 @@ function setErrandMode(mode) {
 function errandBallPos() {
   try {
     const p = JSON.parse(localStorage.getItem("tongjie_errand_ball") || "null");
-    if (p && typeof p.x === "number" && typeof p.y === "number") return p;
+    if (p && typeof p.x === "number" && typeof p.y === "number") return clampErrandBallPos(p.x, p.y);
   } catch {}
-  return null;
+  return clampErrandBallPos(null, null);
+}
+function clampErrandBallPos(x, y) {
+  const size = 58;
+  const w = Math.max(320, window.innerWidth || 360);
+  const h = Math.max(480, window.innerHeight || 640);
+  const bottom = 128;
+  const defX = Math.max(12, w - size - 16);
+  const defY = Math.max(72, h - size - bottom);
+  const nx = Number(x);
+  const ny = Number(y);
+  const okX = Number.isFinite(nx) && nx >= 8 && nx <= w - size - 8;
+  const okY = Number.isFinite(ny) && ny >= 8 && ny <= h - size - 8;
+  return {
+    x: okX ? nx : defX,
+    y: okY ? ny : defY
+  };
 }
 function saveErrandBallPos(p) {
-  try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(p)); } catch {}
+  try { localStorage.setItem("tongjie_errand_ball", JSON.stringify(clampErrandBallPos(p && p.x, p && p.y))); } catch {}
 }
 function errandFormInnerHtml() {
   const kind = ui.errandKind || "in";
@@ -17445,7 +17462,15 @@ function errandRecordsHtml() {
   return `<div class="errand-log">${lines}${slipLines}</div>`;
 }
 function errandBlockHtml() {
-  if (errandMode() === "ball") return errandRecordsHtml();
+  if (errandMode() === "ball") {
+    return `<div class="card card-body tenant-slim" id="errand-mini">
+      <div class="row tenant-slim-head">
+        <span class="k">業務上傳</span>
+        <button type="button" class="ghost" id="errand-to-card">改回圖塊</button>
+        ${aiDragBtn()}
+      </div>
+    </div>${errandRecordsHtml()}`;
+  }
   return `<form class="card card-body tenant-slim${(ui.errandOpen || ui.bankOpen) ? " open" : ""}" id="errand-form" autocomplete="off">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head" id="errand-fold">
@@ -17472,10 +17497,9 @@ function ensureErrandBall() {
     wrap.id = "errand-float";
     document.body.appendChild(wrap);
   }
-  const saved = errandBallPos();
-  const size = 58;
-  const x = saved ? saved.x : Math.max(12, window.innerWidth - size - 16);
-  const y = saved ? saved.y : Math.max(72, window.innerHeight - size - 108);
+  const saved = clampErrandBallPos((errandBallPos() || {}).x, (errandBallPos() || {}).y);
+  const x = saved.x;
+  const y = saved.y;
   wrap.innerHTML = `<button type="button" class="errand-ball" id="errand-ball" style="left:${x}px;top:${y}px"><img src="${aiAvatarSrc()}" alt="跑業務"></button>
     ${ui.errandBallOpen ? `<div class="errand-ball-mask" id="errand-ball-mask">
       <div class="errand-ball-sheet card card-body">
@@ -17493,10 +17517,7 @@ function bindErrandBall() {
   if (ball) {
     let sx = 0, sy = 0, ox = 0, oy = 0, moved = false, dragging = false;
     const size = 58;
-    const clamp = (nx, ny) => ({
-      x: Math.max(8, Math.min(window.innerWidth - size - 8, nx)),
-      y: Math.max(8, Math.min(window.innerHeight - size - 8, ny))
-    });
+    const clamp = (nx, ny) => clampErrandBallPos(nx, ny);
     const onMove = e => {
       if (!dragging) return;
       const p = e.touches && e.touches[0] ? e.touches[0] : e;
@@ -17560,6 +17581,19 @@ function bindErrandBall() {
     ui.errandOpen = true;
     render();
   };
+}
+function bindErrandToCard() {
+  document.querySelectorAll("#errand-to-card").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      setErrandMode("card");
+      ui.errandBallOpen = false;
+      ui.errandOpen = true;
+      render();
+    };
+  });
 }
 function aiDragBtn() {
   return `<button type="button" class="ai-drag" aria-label="拖移" title="拖移排序"></button>`;
@@ -23043,9 +23077,11 @@ function bindAdminAi() {
     setErrandMode("ball");
     ui.errandOpen = false;
     ui.errandBallOpen = false;
+    try { saveErrandBallPos(clampErrandBallPos(null, null)); } catch {}
     setTimeout(() => render(), 80);
     };
   }
+  bindErrandToCard();
   const workFold = document.getElementById("work-fold");
   const workCard = document.getElementById("work-card");
   if (workFold && workCard) {
