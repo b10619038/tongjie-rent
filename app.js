@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-16";
-const APP_EDIT_COUNT = 826;
+const APP_STAMP = "2026-09-08-00-29";
+const APP_EDIT_COUNT = 827;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0376";
+const FILE_VER = "0377";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["12月套房／廠房設算息可依押金自動計算並列印"] },
+  { ver: APP_VERSION, items: ["入住押金、退租退押金會自動記入日曆；新客兆豐／聯邦，舊客農會"] },
+  { ver: "2026-09-08-00-16-826", items: ["12月套房／廠房設算息可依押金自動計算並列印"] },
   { ver: "2026-09-08-00-07-825", items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
   { ver: "2026-09-08-00-01-824", items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
   { ver: "2026-09-07-23-53-823", items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
@@ -13722,6 +13723,7 @@ function promoteProspect(t, r) {
     x.leftOn = ymdOf(nowStamp());
     x.edited = true;
     x.editedAt = Date.now();
+    try { postDepositBook("out", x, r, x.leftOn); } catch {}
   });
   if (!t.loginPass) t.loginPass = phonePassOf(t.phone);
   t.dueDay = RENT_DUE_DAY;
@@ -13735,6 +13737,7 @@ function promoteProspect(t, r) {
   delete r.incomingTenantId;
   r.edited = true;
   r.editedAt = Date.now();
+  try { postDepositBook("in", t, r, t.leaseStart || todayYmd()); } catch {}
   pruneDeadApplyNotices(state);
   if (ui.role === "tenant" && ui.tenantId === t.id) {
     ui.prospectPreview = false;
@@ -14052,6 +14055,7 @@ function forceVacateTenant(t) {
   if (isPracticeStudioNo(no)) {
     try { purgePracticeRoomLedger(state, no); } catch {}
   }
+  try { postDepositBook("out", t, r, t.leftOn || todayYmd()); } catch {}
   save();
   try { pushCloud(); } catch {}
   try { pushPhoneNotify("租約已結束", ((r && r.no) || "") + " 已辦理退租", (r && r.no) || "tenants"); } catch {}
@@ -14066,6 +14070,7 @@ function completeHandover(oldT, r, co) {
     oldT.edited = true;
     oldT.sessionEnded = true;
     clearTenantAvatar(oldT);
+    if (!co) try { postDepositBook("out", oldT, r, oldT.leftOn); } catch {}
   }
   const neu = incomingOf(r.id);
   if (r.no) unbindRoomLine(r.no, oldT);
@@ -14091,6 +14096,7 @@ function completeHandover(oldT, r, co) {
       persistUi();
     }
     try { pushPhoneNotify("入住已確認", `${r.no || ""} ${neu.name || ""} 已成為正式租客`, r.no || "tenants"); } catch {}
+    try { postDepositBook("in", neu, r, neu.leaseStart || todayYmd()); } catch {}
   } else {
     r.tenantId = null;
     if (r.status !== "repair") r.status = "vacant";
@@ -14098,30 +14104,89 @@ function completeHandover(oldT, r, co) {
   r.edited = true;
   pruneDeadApplyNotices(state);
 }
+function depositCompanyOf(t, r) {
+  if (r && roomIsFactory(r)) {
+    const co = String((t && t.payCompany) || (r && r.company) || "");
+    if (/信潔/.test(co)) return "信潔";
+    if (/統潔/.test(co)) return "統潔";
+    if (/個人戶/.test(co)) return co;
+    if (/現金/.test(co)) return "現金(保險箱)";
+    return (r && r.company) || "統潔";
+  }
+  return "統潔";
+}
+function depositBankOf(t, r) {
+  if (r && roomIsFactory(r)) {
+    const co = String((t && t.payCompany) || "");
+    if (/現金/.test(co)) return "現金";
+    return (t && t.payBank) || "聯邦";
+  }
+  return tenantPayBankKey(t, r);
+}
+function depositBookId(kind, t, r) {
+  return "bk-dep-" + kind + "-" + String((t && t.id) || "") + "-" + String((r && r.no) || "");
+}
+function hasDepositBook(kind, t, r) {
+  if (!t) return false;
+  const id = depositBookId(kind, t, r);
+  const tag = "dep-" + kind + "-" + t.id;
+  return (state.books || []).some(b => b && (b.id === id || b.importTag === tag));
+}
+function postDepositBook(kind, t, r, date, amount) {
+  if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return false;
+  const dep = Math.round(Number(amount != null ? amount : ((t && t.deposit) || (r && r.deposit) || 0)) || 0);
+  if (dep <= 0) return false;
+  if (hasDepositBook(kind, t, r)) return false;
+  if (!state.books) state.books = [];
+  const no = (r && r.no) || t.roomNo || "";
+  const site = (r && r.group) || (r && roomIsFactory(r) ? "" : "牛10");
+  state.books.push({
+    id: depositBookId(kind, t, r),
+    type: kind === "out" ? "out" : "in",
+    date: ymdOf(date) || ymdOf(t.leaseStart) || ymdOf(t.leftOn) || todayYmd(),
+    amount: dep,
+    company: depositCompanyOf(t, r),
+    bank: depositBankOf(t, r),
+    roomNo: String(no),
+    note: (site ? site + "　" : "") + String(no) + " " + (t.name || "") + (kind === "out" ? "　退還押金" : "　押金"),
+    importTag: "dep-" + kind + "-" + t.id,
+    linkedTenantId: t.id,
+    createdAt: nowStamp(),
+    editedAt: Date.now()
+  });
+  try { persistLedger(state); } catch {}
+  return true;
+}
 function postCheckoutBooks(co, t, r) {
   if (!co || !t) return;
   if (isDemoTenant(t) || (r && isDemoRoom(r))) return;
   const refund = Number(co.refund) || 0;
-  if (refund <= 0) return;
+  const deposit = Number(co.deposit) || Number(t.deposit) || Number(r && r.deposit) || 0;
+  const amount = refund > 0 ? refund : deposit;
+  if (amount <= 0) return;
   if (!state.books) state.books = [];
-  const id = "bk-co-" + co.id + "-refund";
-  if (state.books.some(b => b && (b.id === id || b.importTag === "co-" + co.id))) return;
+  const id = depositBookId("out", t, r);
+  if (state.books.some(b => b && (b.id === id || b.importTag === "dep-out-" + t.id || b.importTag === "co-" + co.id))) return;
   const prorate = Number(co.prorate) || 0;
-  const bits = ["退押金 " + money(Number(co.deposit) || 0)];
+  const bits = ["退押金 " + money(deposit || amount)];
   if (Number(co.deduct)) bits.push("扣 " + money(co.deduct));
   if (prorate) bits.push("日租金 " + money(prorate));
+  const site = (r && r.group) || (r && roomIsFactory(r) ? "" : "牛10");
   state.books.push({
     id,
     type: "out",
-    date: co.at || ymdOf(nowStamp()),
-    amount: refund,
-    company: co.payAccount || "現金(保險箱)",
-    bank: co.payBank || "",
-    note: (co.kind === "early" ? "中途退租　" : "退租　") + (r && r.no || "") + " " + (t.name || "") + "　" + bits.join("＋"),
+    date: ymdOf(co.at) || ymdOf(nowStamp()),
+    amount,
+    company: depositCompanyOf(t, r),
+    bank: depositBankOf(t, r),
     roomNo: (r && r.no) || "",
-    importTag: "co-" + co.id,
-    createdAt: nowStamp()
+    note: (site ? site + "　" : "") + (r && r.no || "") + " " + (t.name || "") + "　" + (co.kind === "early" ? "中途退租　" : "退租　") + bits.join("＋"),
+    importTag: "dep-out-" + t.id,
+    linkedTenantId: t.id,
+    createdAt: nowStamp(),
+    editedAt: Date.now()
   });
+  try { persistLedger(state); } catch {}
 }
 function payAcctFields(co) {
   const acct = (co && co.payAccount) || "現金(保險箱)";
