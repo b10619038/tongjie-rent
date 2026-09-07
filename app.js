@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-25";
-const APP_EDIT_COUNT = 813;
+const APP_STAMP = "2026-09-07-22-27";
+const APP_EDIT_COUNT = 814;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0363";
+const FILE_VER = "0364";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["93-1B與93-2A共用電單，總金額除總度數再乘各戶度數開紅單"] },
+  { ver: APP_VERSION, items: ["業務上傳進出轉帳字改置中"] },
+  { ver: "2026-09-07-22-25-813", items: ["93-1B與93-2A共用電單，總金額除總度數再乘各戶度數開紅單"] },
   { ver: "2026-09-07-22-21-812", items: ["記電錶工作在編輯右邊加上電度紀錄"] },
   { ver: "2026-09-07-22-08-811", items: ["業務上傳標題中間空白也可以點開收合"] },
   { ver: "2026-09-07-22-04-810", items: ["業務上傳紀錄改成線條列表，點擊編輯、右邊刪除"] },

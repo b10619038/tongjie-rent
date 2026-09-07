@@ -1996,9 +1996,9 @@ input[type="file"] {
 }
 .errand-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) auto minmax(86px, 0.8fr);
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px 6px;
+  align-items: center;
   margin-top: 10px;
 }
 .errand-main.is-xfer {
@@ -2038,8 +2038,10 @@ input[type="file"] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  justify-self: center;
   gap: 10px;
-  padding: 2px 2px;
+  padding: 4px 0;
+  margin-left: -6px;
 }
 #errand-note-free {
   margin-top: 8px;
