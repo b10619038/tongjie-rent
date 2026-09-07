@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-01";
-const APP_EDIT_COUNT = 824;
+const APP_STAMP = "2026-09-08-00-07";
+const APP_EDIT_COUNT = 825;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0374";
+const FILE_VER = "0375";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
+  { ver: APP_VERSION, items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
+  { ver: "2026-09-08-00-01-824", items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
   { ver: "2026-09-07-23-53-823", items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
   { ver: "2026-09-07-23-51-822", items: ["電度紀錄改左邊日期、右邊度數"] },
   { ver: "2026-09-07-23-44-821", items: ["本月工作上下間距收緊"] },
@@ -2238,7 +2239,7 @@ const FACTORY_GROUPS = [
 ];
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
-  "牛1-61": { name: "林志維", taxId: "", contactName: "", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 50450, deposit: 64000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路61號。個人戶。未稅 $45,000，含扣繳＋健保 $50,450。每月1日現金或匯入趙洪漳。" },
+  "牛1-61": { name: "皇吉企業行", taxId: "", contactName: "林志維", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 50450, deposit: 64000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路61號。皇吉企業行（林志維）。個人戶。未稅 $45,000，含扣繳＋健保 $50,450。每月1日現金或匯入趙洪漳。" },
   "牛1-57巷2": { name: "丞億科技有限公司", taxId: "28280642", contactName: "", phone: "", leaseStart: "2023-11-01", leaseEnd: "2027-10-31", rentUntaxed: 35000, rent: 35000, deposit: 50000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路57巷2號。未稅 $35,000（扣繳 $3,500＋健保 $735 乙方自付）。每月1日現金交給趙浩鈞。" },
   "牛1-57巷8": { name: "欣上宜企業有限公司", taxId: "27688447", contactName: "", phone: "07-389-5119", leaseStart: "2023-11-01", leaseEnd: "2026-12-31", rentUntaxed: 36000, rent: 36000, deposit: 56000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路57巷8號。未稅 $36,000（扣繳 $3,600＋健保 $760 乙方自付）。每月1日現金交給趙苡真。" },
   "牛2-21": { name: "謝帛翰", taxId: "", contactName: "", idNo: "S125673827", phone: "0980-311-188", leaseStart: "2024-02-01", leaseEnd: "2027-02-28", rentUntaxed: 25000, rent: 25000, deposit: 50000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄21號。個人戶。未稅 $25,000（扣繳 $2,500＋健保 $528 乙方自付）。每月1日現金交給趙洪漳。" },
@@ -2254,7 +2255,7 @@ const FACTORY_TENANT_INFO = {
   "牛2-35": { name: "詠利實業有限公司", taxId: "24982018", contactName: "", phone: "07-740-8300", leaseStart: "2025-04-15", leaseEnd: "2027-04-14", rentUntaxed: 35156, rent: 40000, deposit: 70000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄35號。實付 $35,156＋所得稅 $4,000＋健保 $844＝$40,000。每月1日現金交給趙苡真。" },
   "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金潾", phone: "07-350-3337／0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 50000, rent: 54600, deposit: 104000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "鳳仁路97之61。未稅 $50,000，含稅 $54,600。每月1日匯聯邦高雄 統潔 01010-0035909。113/10/24 入押金 $104,000。裝修 113/10/1～10/31。" },
   "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之63。個人戶。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
-  "牛3-97-65A": { name: "羅美芳", taxId: "", contactName: "陳先生", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之65號（A）。個人戶。每月 $12,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
+  "牛3-97-65A": { name: "聖昌造船公司", taxId: "", contactName: "羅美芳", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", note: "鳳仁路97之65號（A）。聖昌造船公司（羅美芳）。個人戶。每月 $12,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。聯絡陳先生。" },
   "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月5日現金交給趙正賢。" },
   "牛5-97-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
   "牛5-97-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-67。含稅 $44,100。每月1日匯聯邦高雄 信潔 010100034775。115/8/1 起。" },
@@ -3290,7 +3291,7 @@ function roomNoFromBookNote(note) {
     [/大樹/, "大樹-18"],
     [/97-61|美博城/, "牛3-97-61"],
     [/97-63|鳳仁63|卓建忠/, "牛3-97-63"],
-    [/97-65A|65A|羅美芳/, "牛3-97-65A"],
+    [/97-65A|65A|羅美芳|聖昌/, "牛3-97-65A"],
     [/97-65B|65B|蔡聖鴻/, "牛3-97-65B"],
     [/97-66|旭瑞/, "牛5-97-66"],
     [/97-67|弘翔/, "牛5-97-67"],
@@ -3312,7 +3313,7 @@ function roomNoFromBookNote(note) {
     [/文35|弄35|文東35/, "牛2-35"],
     [/57巷2|57巷6|丞億/, "牛1-57巷2"],
     [/57巷8|欣上宜/, "牛1-57巷8"],
-    [/文東61|文61/, "牛1-61"],
+    [/文東61|文61|林志維|皇吉/, "牛1-61"],
     [/文59|文東59/, "牛1-59"]
   ];
   for (let i = 0; i < rules.length; i++) {
