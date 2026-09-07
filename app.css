@@ -1904,20 +1904,28 @@ input[type="file"] {
   visibility: visible;
   pointer-events: auto;
 }
+#work-card .work-scroll-clip {
+  overflow: hidden;
+}
 #work-card .work-scroll {
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
-  margin: 0 -4px;
-  padding: 0 4px;
+  margin: 0 -4px -28px;
+  padding: 0 4px 28px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-#work-card .work-scroll::-webkit-scrollbar {
-  display: none;
-  height: 0;
+#work-card .work-scroll::-webkit-scrollbar,
+#work-card .work-scroll::-webkit-scrollbar-thumb,
+#work-card .work-scroll::-webkit-scrollbar-track,
+#work-card .work-scroll::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 #work-card .work-scroller {
   width: max-content;
