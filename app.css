@@ -1996,29 +1996,22 @@ input[type="file"] {
 }
 .errand-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 8px 6px;
+  grid-template-columns: max-content 1fr max-content;
+  gap: 8px 8px;
   align-items: center;
   margin-top: 10px;
 }
 .errand-main.is-xfer {
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: max-content 1fr max-content;
 }
 .errand-acct {
   display: grid;
   gap: 6px;
+  width: 128px;
   min-width: 0;
 }
-.errand-side-lab {
-  display: none;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: .04em;
-}
-.errand-main.is-xfer .errand-side-lab { display: block; }
-#errand-right { min-width: 0; align-self: center; }
-#errand-right .errand-acct { width: 100%; }
+#errand-right { min-width: 0; align-self: center; width: 120px; }
+#errand-right .errand-acct { width: 128px; }
 .errand-acct select,
 #errand-amount {
   min-height: 34px;
@@ -2053,7 +2046,7 @@ input[type="file"] {
   justify-self: center;
   gap: 10px;
   padding: 4px 0;
-  margin-left: -6px;
+  margin: 0;
 }
 .errand-log {
   margin-top: 4px;
