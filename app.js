@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-40";
-const APP_EDIT_COUNT = 830;
+const APP_STAMP = "2026-09-08-00-44";
+const APP_EDIT_COUNT = 831;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0380";
+const FILE_VER = "0381";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房號返回往下移，避開頂部"] },
+  { ver: APP_VERSION, items: ["新客第一次繳費顯示2押1租總額"] },
+  { ver: "2026-09-08-00-40-830", items: ["選房號返回往下移，避開頂部"] },
   { ver: "2026-09-08-00-37-829", items: ["申請入住選房號會顯示月租金額"] },
   { ver: "2026-09-08-00-34-828", items: ["新客入住自動記2押1租轉帳、水費現金、電費儲值現金"] },
   { ver: "2026-09-08-00-29-827", items: ["入住押金、退租退押金會自動記入日曆；新客兆豐／聯邦，舊客農會"] },
@@ -7636,6 +7637,8 @@ function adminInvoice() {
 function statusLabel(s) { return { rented: "滿租", vacant: "空置", repair: "維修中", office: "辦公室" }[s] || s; }
 function payLabel(tenant, room) {
   if (!tenant) return { text: "—", cls: "paid" };
+  const first = firstStudioPayDue(tenant, room);
+  if (first) return { text: tenant.paid ? "首次已繳" : "首次未繳", cls: tenant.paid ? "paid" : "unpaid" };
   if (!leaseCoversYm(tenant, room, payYmNow())) return { text: "尚無需繳費", cls: "wait" };
   const stub = isStubMonthNow(tenant, room);
   if (tenant.paid) return { text: stub ? "不足月已繳" : "本月已繳", cls: "paid" };
@@ -9914,6 +9917,8 @@ function leaseCoversYm(t, r, ym) {
   return false;
 }
 function thisMonthRentCardHtml(t, r) {
+  const first = firstStudioPayDue(t, r);
+  if (first) return money(first.total);
   if (!leaseCoversYm(t, r, payYmNow())) return `<span class="remain-wait">尚無需繳費</span>`;
   const n = thisMonthRentOf(t, r);
   return n ? money(n) : "—";
@@ -9955,6 +9960,30 @@ function tenantRentForYm(t, r, ym, info) {
 }
 function thisMonthRentOf(t, r) {
   return tenantRentForYm(t, r, payYmNow());
+}
+function isNewStudioTenant(t, r) {
+  if (!t || (r && roomIsFactory(r))) return false;
+  if (t.incoming || t.prospect) return true;
+  const start = ymdOf(t.leaseStart || "");
+  if (start && start >= NEW_TENANT_SINCE) return true;
+  return tenantPayBankKey(t, r) === NEW_TENANT_PAY_BANK;
+}
+function firstStudioPayDue(t, r) {
+  if (!t || !r || roomIsFactory(r) || t.former || t.demo) return null;
+  if (!isNewStudioTenant(t, r)) return null;
+  const startYm = String(ymdOf(t.leaseStart || tenantOccupancyStart(t, r) || "") || "").slice(0, 7);
+  const nowYm = payYmNow();
+  if (t.paid && t.paidYm && startYm && t.paidYm >= startYm && nowYm > startYm) return null;
+  if (t.paid && (!startYm || startYm === nowYm || startYm > nowYm)) return null;
+  const monthly = studioContractRent(t, r) || Number(r.rent) || Number(t.rent) || 0;
+  const deposit = Number(t.deposit) || Number(r.deposit) || (monthly > 0 ? monthly * 2 : 0);
+  const rent = thisMonthRentOf(t, r) || monthly;
+  if (deposit <= 0 && rent <= 0) return null;
+  return { deposit, rent, total: deposit + rent, stub: isStubMonthNow(t, r), monthly };
+}
+function thisMonthDueOf(t, r) {
+  const first = firstStudioPayDue(t, r);
+  return first ? first.total : thisMonthRentOf(t, r);
 }
 function thisMonthRentPart(t, r) {
   return leasePartForYm(t, r, payYmNow());
@@ -15944,6 +15973,7 @@ function tenantNameHeadingHtml(name) {
 function homeView() {
   const t = me(); const r = myRoom();
   const pay = payLabel(t, r);
+  const firstPay = firstStudioPayDue(t, r);
   const dueNow = leaseCoversYm(t, r, payYmNow());
   const stubNow = dueNow && isStubMonthNow(t, r);
   const hasAnn = visibleAnnouncements().length > 0;
@@ -15974,9 +16004,9 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
-          <div class="stat"><div class="label">本月租金${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
+          <div class="stat"><div class="label">${firstPay ? "首次應繳（2押1租）" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
         </div>
-        ${stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : ""}
+        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費、電費儲值另付現金。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? (roomTakenByOther(t, r)
@@ -16044,7 +16074,8 @@ function linePayMessage() {
   const t = me(); const r = myRoom();
   const pack = tenantPayAccounts(t, r);
   const b = pack.primary || {};
-  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(thisMonthRentOf(t, r)) : ""}\n戶名：${b.holder || "統潔開發有限公司"}\n銀行：${[b.code, b.bank].filter(Boolean).join(" ")}\n帳號：${b.account || ""}`;
+  const first = firstStudioPayDue(t, r);
+  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} ${first ? "首次2押1租" : "已繳本月租金"} ${r ? money(thisMonthDueOf(t, r)) : ""}\n戶名：${b.holder || "統潔開發有限公司"}\n銀行：${[b.code, b.bank].filter(Boolean).join(" ")}\n帳號：${b.account || ""}`;
 }
 function payAccountCardHtml(b, title) {
   if (!b) return "";
@@ -16061,7 +16092,8 @@ function payView() {
   const paid = !!(t && t.paid);
   const pack = tenantPayAccounts(t, r);
   const co = companyInfo();
-  const stubNow = isStubMonthNow(t, r);
+  const firstPay = firstStudioPayDue(t, r);
+  const stubNow = !firstPay && isStubMonthNow(t, r);
   const pay = payLabel(t, r);
   const lineOk = !!(paid || tenantLineUnlocked(t, r));
   const proof = linePayProofOf(r && r.no);
@@ -16074,6 +16106,10 @@ function payView() {
         : (proof && proof.hasImage)
           ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到截圖，請再在 LINE 傳回報文字。</p>`
           : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
+  const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
+  const dueHint = firstPay
+    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費、電費儲值請付現金。</div>`
+    : (stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : "");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
       <div class="eyebrow">PAY</div><h1>繳費租金</h1>
@@ -16082,9 +16118,9 @@ function payView() {
       ${tenantNudgeNoteHtml(t)}
       ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
-        <div class="small">本月應繳${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
-        <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(thisMonthRentOf(t, r))}</div>
-        ${stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : ""}
+        <div class="small">${firstPay ? "首次應繳（2押1租）" : "本月應繳"}${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
+        <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(dueAmt)}</div>
+        ${dueHint}
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
