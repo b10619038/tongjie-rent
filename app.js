@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-23-51";
-const APP_EDIT_COUNT = 822;
+const APP_STAMP = "2026-09-07-23-53";
+const APP_EDIT_COUNT = 823;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0372";
+const FILE_VER = "0373";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電度紀錄改左邊日期、右邊度數"] },
+  { ver: APP_VERSION, items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
+  { ver: "2026-09-07-23-51-822", items: ["電度紀錄改左邊日期、右邊度數"] },
   { ver: "2026-09-07-23-44-821", items: ["本月工作上下間距收緊"] },
   { ver: "2026-09-07-23-40-820", items: ["本月工作橫拉桿改裁掉，長句仍可左右滑"] },
   { ver: "2026-09-07-23-38-819", items: ["本月工作長句可左右滑，不再顯示橫拉桿"] },
@@ -2484,16 +2485,19 @@ function meterBoxHtml(m) {
   return `<div class="meter-box">
     ${units.map(u => {
       const last = lastMeterLog(u.id);
-      const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 6);
+      const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
       return `<div class="meter-unit">
         <div class="row"><b>${escapeHtml(u.unit + "　" + u.name)}</b><span class="small">${u.kind === "water" ? "水錶" : "電錶"}</span></div>
-        <div class="meter-last">${last ? `<span>${escapeHtml(meterDay(last.date))}</span><span>${Number(last.reading).toLocaleString("zh-TW")}</span>` : `<span>尚無度數</span>`}</div>
+        <div class="meter-last">
+          <button type="button" class="meter-hist-btn${ui.meterHistOpen && ui.meterHistOpen[u.id] ? " on" : ""}" data-meter-hist="${u.id}">歷史紀錄</button>
+          ${last ? `<span>${escapeHtml(meterDay(last.date))}</span><span>${Number(last.reading).toLocaleString("zh-TW")}</span>` : `<span></span><span>尚無度數</span>`}
+        </div>
+        ${ui.meterHistOpen && ui.meterHistOpen[u.id] ? `<div class="meter-hist">${hist.length ? hist.map(h => `<div class="meter-hist-row"><span>${escapeHtml(meterDay(h.date))}</span><span>${Number(h.reading).toLocaleString("zh-TW")}${h.usage ? "　+" + Number(h.usage).toLocaleString("zh-TW") : ""}</span></div>`).join("") : `<div class="small">尚無紀錄</div>`}</div>` : ""}
         <div class="meter-row">
-          <input type="text" inputmode="numeric" data-meter-read="${u.id}" placeholder="本次度數" autocomplete="off" />
+          <input type="text" inputmode="numeric" data-meter-read="${u.id}" placeholder="本次度數" value="${escapeHtml((ui.meterDraft && ui.meterDraft[u.id]) || "")}" autocomplete="off" />
           <span class="small" data-meter-usage="${u.id}"></span>
         </div>
         <button type="button" class="ghost" data-meter-save="${u.id}">記入</button>
-        ${hist.length ? `<div class="meter-hist">${hist.map(h => `<div>${escapeHtml(meterDay(h.date))}　${Number(h.reading).toLocaleString("zh-TW")}${h.usage ? "　+" + Number(h.usage).toLocaleString("zh-TW") + " 度" : ""}</div>`).join("")}</div>` : ""}
       </div>`;
     }).join("")}
     ${shares.map(meterShareHtml).join("")}
@@ -2519,6 +2523,8 @@ function saveMeterReading(unitId, raw) {
   }
   persistMeterLogs(state);
   save();
+  if (!ui.meterDraft) ui.meterDraft = {};
+  ui.meterDraft[unitId] = String(n);
   toast(usage ? ("已記入　本期 " + usage.toLocaleString("zh-TW") + " 度") : "已記入度數");
   return true;
 }
@@ -5440,6 +5446,7 @@ async function pullCloud() {
       tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
       books: state.books, errands: state.errands, bankSlips: state.bankSlips,
+      meterLogs: state.meterLogs, meterBills: state.meterBills,
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
       lastBookImport: state.lastBookImport,
       bookVault: state.bookVault,
@@ -5493,6 +5500,10 @@ async function pullCloud() {
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
     mergeSharedInto(state, mineSnap);
+    state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
+    state.meterBills = unionById(state.meterBills, mineSnap.meterBills);
+    applyMeterLogs(state);
+    persistMeterLogs(state);
     if (mineSnap.lastBookImport && (!state.lastBookImport || String(mineSnap.lastBookImport.at || "") >= String(state.lastBookImport.at || ""))) {
       state.lastBookImport = mineSnap.lastBookImport;
     }
@@ -6024,6 +6035,8 @@ async function pushCloud() {
       books: dropGone(unionById(remote && remote.books, state.books), gone),
       errands: dropGone(unionById(remote && remote.errands, state.errands), gone),
       bankSlips: dropGone(unionById(remote && remote.bankSlips, state.bankSlips), gone),
+      meterLogs: unionById(remote && remote.meterLogs, state.meterLogs),
+      meterBills: unionById(remote && remote.meterBills, state.meterBills),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       accountOpenings: Object.assign({}, (remote && remote.accountOpenings) || {}, state.accountOpenings || {}),
       aiMemos: unionMemos((remote && remote.aiMemos) || [], (state.aiMemos || [])).filter(m => m && !isDevMemo(m)),
@@ -6061,6 +6074,9 @@ async function pushCloud() {
     state.books = payload.books;
     state.errands = payload.errands;
     state.bankSlips = payload.bankSlips;
+    if (payload.meterLogs) state.meterLogs = payload.meterLogs;
+    if (payload.meterBills) state.meterBills = payload.meterBills;
+    persistMeterLogs(state);
     if (payload.aiMemos) state.aiMemos = payload.aiMemos;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
@@ -23194,15 +23210,34 @@ function bindAdminAi() {
       render();
     };
   });
+  document.querySelectorAll("[data-meter-hist]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.meterHist;
+      if (!ui.meterHistOpen) ui.meterHistOpen = {};
+      ui.meterHistOpen[id] = !ui.meterHistOpen[id];
+      ui.keepScroll = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-meter-read]").forEach(inp => {
     inp.addEventListener("pointerdown", e => e.stopPropagation());
-    inp.oninput = () => {
-      const last = lastMeterLog(inp.dataset.meterRead);
+    const paintUsage = () => {
+      const last = lastMeterLog(inp.dataset.meterRead, todayYmd());
       const n = Number(String(inp.value || "").replace(/[^\d.]/g, ""));
       const box = document.querySelector("[data-meter-usage='" + inp.dataset.meterRead + "']");
       if (box) box.textContent = last && n >= Number(last.reading) ? ("+" + (n - Number(last.reading)).toLocaleString("zh-TW") + " 度") : "";
+    };
+    inp.oninput = () => {
+      if (!ui.meterDraft) ui.meterDraft = {};
+      ui.meterDraft[inp.dataset.meterRead] = inp.value;
+      paintUsage();
       METER_SHARES.forEach(s => paintMeterShare(s.id));
     };
+    paintUsage();
   });
   document.querySelectorAll("[data-meter-save]").forEach(btn => {
     bindIosPress(btn);
