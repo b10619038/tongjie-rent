@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-01";
-const APP_EDIT_COUNT = 809;
+const APP_STAMP = "2026-09-07-22-04";
+const APP_EDIT_COUNT = 810;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0359";
+const FILE_VER = "0360";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["轉帳改成左邊從、右邊到，金額寫在備註"] },
+  { ver: APP_VERSION, items: ["業務上傳紀錄改成線條列表，點擊編輯、右邊刪除"] },
+  { ver: "2026-09-07-22-01-809", items: ["轉帳改成左邊從、右邊到，金額寫在備註"] },
   { ver: "2026-09-07-21-53-808", items: ["業務上傳改成左邊帳戶、中間進出轉帳、右邊金額、下方備註"] },
   { ver: "2026-09-07-21-46-807", items: ["業務上傳轉帳會在日曆同時顯示出帳與進帳"] },
   { ver: "2026-09-07-21-43-806", items: ["7051 預設月租6000，不可申請租屋補助"] },
@@ -17198,25 +17199,46 @@ function errandFormInnerHtml() {
           <div class="small" id="errand-absorb">${escapeHtml(ui.errandAbsorb || "")}</div>
           <button class="btn-navy" type="button" id="errand-submit" style="margin-top:10px">登錄這筆</button>`;
 }
+function errandRecordKind(e) {
+  if (!e) return { cls: "led-in", text: "進帳" };
+  if (e.cashType === "xfer" || e.xfer) return { cls: "led-xfer", text: "轉帳" };
+  if (e.cashType === "out") return { cls: "led-out", text: "出帳" };
+  const blob = [e.title, e.note, e.summary].join(" ");
+  if (guessCashType(blob, "in") === "out") return { cls: "led-out", text: "出帳" };
+  return { cls: "led-in", text: "進帳" };
+}
 function errandRecordsHtml() {
+  const errands = (state.errands || []).filter(e => e && e.kind !== "doc").slice().reverse();
   const slips = (state.bankSlips || []).slice().reverse();
-  const errands = (state.errands || []).filter(e => e.kind !== "doc").slice().reverse();
-  return `${errands.length ? errands.map(e => `
-      <div class="card card-body">
-        <div class="row"><span class="k">銀行業務 · ${escapeHtml(e.title || "未填事項")}</span><span class="v">${escapeHtml(ymdOf(e.date) || e.date || "")}</span></div>
-        <div class="small">${escapeHtml([e.company, e.place, errandAmount(e) ? money(errandAmount(e)) : "", e.pendingBank ? "待入銀行" : (findLinkedBook(e) ? "已對帳" : ""), e.note, e.summary].filter(Boolean).join(" · "))}</div>
-        <div class="btn-row" style="margin-top:8px">
-          <button type="button" class="ghost" data-edit-errand="${e.id}">編輯</button>
-          <button type="button" class="ghost" data-del-errand="${e.id}">刪除</button>
-        </div>
-      </div>`).join("") : ""}
-    ${slips.length ? slips.map(s => `
-      <div class="card card-body">
-        <div class="row"><span class="k">銀行入帳 · ${escapeHtml(s.date || "")}</span><span class="v">${s.amount ? money(s.amount) : "—"}</span></div>
-        <div class="small">${escapeHtml([s.company || "統潔", s.note, s.summary].filter(Boolean).join(" · "))}</div>
-        <button type="button" class="ghost" data-del-slip="${s.id}" style="margin-top:8px">刪除</button>
-      </div>`).join("") : ""}
-    ${!errands.length && !slips.length ? `<div class="empty">還沒有銀行紀錄</div>` : ""}`;
+  if (!errands.length && !slips.length) return "";
+  const lines = errands.map(e => {
+    const k = errandRecordKind(e);
+    const amt = errandAmount(e);
+    const from = e.fromAccount ? (accountLabel(e.fromAccount) + (e.fromBank ? "·" + e.fromBank : "")) : "";
+    const to = accountLabel(e.company || "") + ((e.place || e.bank) ? "·" + (e.place || e.bank) : "");
+    const acct = (k.text === "轉帳" && from) ? (from + " → " + to) : (to || from || "—");
+    const note = String(e.note || e.title || "").replace(/\s+/g, " ").trim();
+    const day = String(ymdOf(e.date) || e.date || "").replace(/^\d{4}-/, "").replace("-", "/");
+    return `<div class="led-line clickable" data-edit-errand="${escapeHtml(e.id)}">
+      <div class="led-head">
+        <b><span class="${k.cls}">${k.text}</span> · ${escapeHtml(acct)}${amt ? " · " + money(amt) : ""}</b>
+        <button type="button" class="led-del" data-del-errand="${escapeHtml(e.id)}">刪除</button>
+      </div>
+      <span class="led-note">${escapeHtml([day, note].filter(Boolean).join("　"))}</span>
+    </div>`;
+  }).join("");
+  const slipLines = slips.map(s => {
+    const day = String(ymdOf(s.date) || s.date || "").replace(/^\d{4}-/, "").replace("-", "/");
+    const note = String(s.note || s.summary || "").replace(/\s+/g, " ").trim();
+    return `<div class="led-line clickable" data-del-slip="${escapeHtml(s.id)}">
+      <div class="led-head">
+        <b><span class="led-in">進帳</span> · ${escapeHtml(accountLabel(s.company || "統潔"))}${s.amount ? " · " + money(s.amount) : ""}</b>
+        <button type="button" class="led-del" data-del-slip="${escapeHtml(s.id)}">刪除</button>
+      </div>
+      <span class="led-note">${escapeHtml([day, note].filter(Boolean).join("　"))}</span>
+    </div>`;
+  }).join("");
+  return `<div class="errand-log">${lines}${slipLines}</div>`;
 }
 function errandBlockHtml() {
   if (errandMode() === "ball") return errandRecordsHtml();

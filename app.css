@@ -2041,6 +2041,13 @@ input[type="file"] {
 #errand-note-free {
   margin-top: 8px;
 }
+.errand-log {
+  margin-top: 4px;
+  padding: 0 2px 8px;
+}
+.errand-log .led-line {
+  padding: 10px 2px;
+}
 .errand-kinds button {
   -webkit-appearance: none;
   appearance: none;
