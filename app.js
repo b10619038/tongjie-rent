@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-23-44";
-const APP_EDIT_COUNT = 821;
+const APP_STAMP = "2026-09-07-23-51";
+const APP_EDIT_COUNT = 822;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0371";
+const FILE_VER = "0372";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作上下間距收緊"] },
+  { ver: APP_VERSION, items: ["電度紀錄改左邊日期、右邊度數"] },
+  { ver: "2026-09-07-23-44-821", items: ["本月工作上下間距收緊"] },
   { ver: "2026-09-07-23-40-820", items: ["本月工作橫拉桿改裁掉，長句仍可左右滑"] },
   { ver: "2026-09-07-23-38-819", items: ["本月工作長句可左右滑，不再顯示橫拉桿"] },
   { ver: "2026-09-07-22-42-818", items: ["廠房列表移除測試這一組"] },
@@ -2486,7 +2487,7 @@ function meterBoxHtml(m) {
       const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 6);
       return `<div class="meter-unit">
         <div class="row"><b>${escapeHtml(u.unit + "　" + u.name)}</b><span class="small">${u.kind === "water" ? "水錶" : "電錶"}</span></div>
-        <div class="small">${last ? "上次 " + Number(last.reading).toLocaleString("zh-TW") + "　" + meterDay(last.date) : "尚無上次度數"}</div>
+        <div class="meter-last">${last ? `<span>${escapeHtml(meterDay(last.date))}</span><span>${Number(last.reading).toLocaleString("zh-TW")}</span>` : `<span>尚無度數</span>`}</div>
         <div class="meter-row">
           <input type="text" inputmode="numeric" data-meter-read="${u.id}" placeholder="本次度數" autocomplete="off" />
           <span class="small" data-meter-usage="${u.id}"></span>

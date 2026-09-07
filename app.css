@@ -2110,6 +2110,14 @@ input[type="file"] {
   display: grid;
   gap: 6px;
 }
+#work-card .meter-last {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b7280;
+}
 #work-card .meter-row {
   display: grid;
   grid-template-columns: 1fr auto;
