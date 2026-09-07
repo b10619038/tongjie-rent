@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-42";
-const APP_EDIT_COUNT = 818;
+const APP_STAMP = "2026-09-07-23-38";
+const APP_EDIT_COUNT = 819;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0368";
+const FILE_VER = "0369";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房列表移除測試這一組"] },
+  { ver: APP_VERSION, items: ["本月工作長句可左右滑，不再顯示橫拉桿"] },
+  { ver: "2026-09-07-22-42-818", items: ["廠房列表移除測試這一組"] },
   { ver: "2026-09-07-22-37-817", items: ["業務上傳帳戶和金額圖塊左右縮窄"] },
   { ver: "2026-09-07-22-34-816", items: ["業務上傳帳戶和金額圖塊改矮一點"] },
   { ver: "2026-09-07-22-29-815", items: ["浮動球不會再飛出畫面，可改回圖塊"] },
