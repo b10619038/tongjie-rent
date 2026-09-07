@@ -6,6 +6,7 @@ const REPAIR_MEDIA_KEY = "tongjie_repair_media_v1";
 const REPAIR_STAT_KEY = "tongjie_repair_stat_v1";
 const AVATAR_KEY = "tongjie_tenant_avatars_v1";
 const PAID_KEY = "tongjie_paid_v1";
+const MEMO_DONE_KEY = "tongjie_memo_done_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
 const LINE_OA_URL = "https://lin.ee/QMWEJ6KI";
 const LINE_OA_ID = "@773zynao";
@@ -25,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-12-01";
-const APP_EDIT_COUNT = 804;
+const APP_STAMP = "2026-09-07-21-40";
+const APP_EDIT_COUNT = 805;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0354";
+const FILE_VER = "0355";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增一筆出帳下方加上轉帳"] },
+  { ver: APP_VERSION, items: ["本月工作點完成後，重開 App 不會再跳出來"] },
+  { ver: "2026-09-07-12-01-804", items: ["新增一筆出帳下方加上轉帳"] },
   { ver: "2026-09-07-11-53-803", items: ["備註金額用、隔開會自動相加，如45000、20660"] },
   { ver: "2026-09-07-11-47-802", items: ["9月2日記電錶加上93-1A南溢製鞋"] },
   { ver: "2026-09-07-11-20-801", items: ["點進帳出帳轉帳不再跳到本月工作"] },
@@ -2926,6 +2928,7 @@ function normalize(data) {
   ensureCycleJobs(data);
   try { restoreMissingSignAppoint(data); } catch {}
   try { ensureDevCycleJobs(data); } catch {}
+  try { applyMemoDone(data); } catch {}
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
   if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
@@ -5147,6 +5150,7 @@ async function pullCloud() {
     };
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
+    try { applyMemoDone(state); } catch {}
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
     applyAnnMedia(state);
@@ -5171,6 +5175,7 @@ async function pullCloud() {
       syncPaidRentBooks(state);
       dropFactoryRentAutos(state);
       persistLedger(state);
+      persistMemoDone(state);
       persistAnnMedia(state);
       persistRepairMedia(state); persistRepairStat(state);
       persistAvatars(state);
@@ -5204,6 +5209,7 @@ async function pullCloud() {
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
     mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
+    try { applyMemoDone(state); } catch {}
     if (mineCompany) {
       const la = Number(mineCompany.updatedAt) || 0;
       const ca = Number((state.company && state.company.updatedAt) || 0);
@@ -5217,6 +5223,7 @@ async function pullCloud() {
     stripDevLogsFromState();
     try { ensureCycleJobs(state); } catch {}
     try { ensureDevCycleJobs(state); } catch {}
+    try { applyMemoDone(state); } catch {}
     ensureStudioTenant(state, "7221");
     ensureStudioTenant(state, "6832");
     ensureDemoTenant(state);
@@ -5229,6 +5236,7 @@ async function pullCloud() {
     persistAvatars(state);
     syncPaidRentBooks(state);
     persistLedger(state);
+    persistMemoDone(state);
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
@@ -5422,15 +5430,16 @@ function saveMemoChange(m) {
     const hit = state.aiMemos.find(x => x.id === m.id);
     if (hit) Object.assign(hit, m);
     else state.aiMemos.push(m);
-    save();
-    return;
+  } else {
+    if (!Array.isArray(state.devMemos)) state.devMemos = [];
+    const i = state.devMemos.findIndex(x => x && x.id === m.id);
+    if (i >= 0) state.devMemos[i] = m;
+    else state.devMemos.push(m);
+    saveDevMemos(state.devMemos);
   }
-  if (!Array.isArray(state.devMemos)) state.devMemos = [];
-  const i = state.devMemos.findIndex(x => x && x.id === m.id);
-  if (i >= 0) state.devMemos[i] = m;
-  else state.devMemos.push(m);
-  saveDevMemos(state.devMemos);
+  try { persistMemoDone(state); } catch {}
   save();
+  try { pushCloud(); } catch {}
 }
 function removeMemo(id) {
   const m = (myMemos() || []).find(x => x.id === id) || ((state.aiMemos || []).find(x => x.id === id)) || ((state.devMemos || []).find(x => x.id === id));
@@ -5623,6 +5632,7 @@ async function pushPresence() {
     if (!state.presence) state.presence = {};
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
     persistLedger(state);
+    persistMemoDone(state);
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
@@ -5717,7 +5727,7 @@ async function pushCloud() {
       bankSlips: dropGone(unionById(remote && remote.bankSlips, state.bankSlips), gone),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       accountOpenings: Object.assign({}, (remote && remote.accountOpenings) || {}, state.accountOpenings || {}),
-      aiMemos: (state.aiMemos || []).filter(m => m && !isDevMemo(m)),
+      aiMemos: unionMemos((remote && remote.aiMemos) || [], (state.aiMemos || [])).filter(m => m && !isDevMemo(m)),
       devMemos: memoOwner() === "1240"
         ? unionMemos(remote && remote.devMemos, state.devMemos)
         : ((remote && remote.devMemos && remote.devMemos.length) ? remote.devMemos : (state.devMemos || [])),
@@ -5747,10 +5757,12 @@ async function pushCloud() {
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
+    persistMemoDone(payload);
     state.ledgerGone = payload.ledgerGone;
     state.books = payload.books;
     state.errands = payload.errands;
     state.bankSlips = payload.bankSlips;
+    if (payload.aiMemos) state.aiMemos = payload.aiMemos;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
     applyAvatars(state);
@@ -5862,6 +5874,7 @@ function stripCloudMedia(data) {
 }
 function save(force) {
   try { persistPaidMarks(state); } catch {}
+  try { persistMemoDone(state); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLiveCloud(); } catch {}
   cloudDirty = true;
@@ -5879,7 +5892,7 @@ function save(force) {
     const dump = Object.assign({}, state, { bookVault: vaultForStore(state.bookVault) });
     localStorage.setItem(KEY, JSON.stringify(dump));
   } catch {
-    try { persistLedger(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
+    try { persistLedger(state); persistMemoDone(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
   }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 120);
@@ -17446,9 +17459,54 @@ function memoOccurKey(m) {
   const d = nextCycleDate(m);
   return d ? d.slice(0, 7) : ymNow();
 }
+function loadMemoDone() {
+  try {
+    const o = JSON.parse(localStorage.getItem(MEMO_DONE_KEY) || "{}");
+    return o && typeof o === "object" ? o : {};
+  } catch { return {}; }
+}
+function persistMemoDone(data) {
+  const map = loadMemoDone();
+  const take = m => {
+    if (!m || !m.id) return;
+    const cur = map[m.id] || {};
+    map[m.id] = {
+      done: !!(m.done || cur.done),
+      doneAt: String(m.doneAt || "") > String(cur.doneAt || "") ? m.doneAt : (cur.doneAt || m.doneAt || ""),
+      doneMonths: [...new Set([].concat(cur.doneMonths || [], m.doneMonths || []))],
+      doneAtMonths: Object.assign({}, cur.doneAtMonths || {}, m.doneAtMonths || {})
+    };
+  };
+  ((data && data.aiMemos) || []).forEach(take);
+  ((data && data.devMemos) || []).forEach(take);
+  try { localStorage.setItem(MEMO_DONE_KEY, JSON.stringify(map)); } catch {}
+}
+function applyMemoDone(data) {
+  if (!data) return;
+  const map = loadMemoDone();
+  const apply = m => {
+    if (!m || !m.id) return;
+    const d = map[m.id];
+    if (!d) return;
+    if (d.done) m.done = true;
+    if (d.doneAt && (!m.doneAt || String(d.doneAt) >= String(m.doneAt))) m.doneAt = d.doneAt;
+    m.doneMonths = [...new Set([].concat(m.doneMonths || [], d.doneMonths || []))];
+    m.doneAtMonths = Object.assign({}, d.doneAtMonths || {}, m.doneAtMonths || {});
+  };
+  (data.aiMemos || []).forEach(apply);
+  (data.devMemos || []).forEach(apply);
+}
 function isMemoDone(m) {
   if (!m) return true;
-  if (m.monthDay || m.intervalMonths) return (m.doneMonths || []).indexOf(memoOccurKey(m)) >= 0;
+  if (m.monthDay || m.intervalMonths) {
+    const key = memoOccurKey(m);
+    const ym = ymNow();
+    const months = m.doneMonths || [];
+    if (months.indexOf(key) >= 0 || months.indexOf(ym) >= 0) return true;
+    const at = m.doneAtMonths || {};
+    if (at[key] || at[ym]) return true;
+    return false;
+  }
   return !!m.done;
 }
 function parseMonthDayAsk(text) {
