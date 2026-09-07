@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-11-47";
-const APP_EDIT_COUNT = 802;
+const APP_STAMP = "2026-09-07-11-53";
+const APP_EDIT_COUNT = 803;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0352";
+const FILE_VER = "0353";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9月2日記電錶加上93-1A南溢製鞋"] },
+  { ver: APP_VERSION, items: ["備註金額用、隔開會自動相加，如45000、20660"] },
+  { ver: "2026-09-07-11-47-802", items: ["9月2日記電錶加上93-1A南溢製鞋"] },
   { ver: "2026-09-07-11-20-801", items: ["點進帳出帳轉帳不再跳到本月工作"] },
   { ver: "2026-09-06-17-59-800", items: ["報修類型新增公共設施、地板"] },
   { ver: "2026-09-06-14-27-799", items: ["業務上傳244元這類金額會記入日曆出帳"] },
@@ -4994,7 +4995,23 @@ function syncErrandFromBook(b) {
   if (!e.linkedId) e.linkedId = b.id;
   if (!b.linkedId) b.linkedId = e.id;
 }
+function parseAmountList(s) {
+  const t = String(s || "").replace(/NT\$\s*/gi, "").replace(/,/g, "");
+  const m = t.match(/(\d{2,8}(?:\s*元)?(?:\s*[、]\s*\d{2,8}(?:\s*元)?){1,8})/);
+  if (!m) return [];
+  const parts = m[1].split(/[、]/).map(x => Number(String(x).replace(/元/g, "").trim()) || 0).filter(n => n >= 100);
+  if (parts.length < 2) return [];
+  if (parts.every(n => /^(68|70|72|76)\d{2}$/.test(String(n)))) return [];
+  return parts;
+}
+function noteAmountSum(s) {
+  const list = parseAmountList(s);
+  if (list.length < 2) return 0;
+  return list.reduce((a, b) => a + b, 0);
+}
 function parseAmountText(s) {
+  const summed = noteAmountSum(s);
+  if (summed) return summed;
   const t = String(s || "").replace(/,/g, "");
   const yuan = t.match(/(\d{2,8})\s*元/);
   if (yuan) return Number(yuan[1]) || 0;
@@ -5003,9 +5020,38 @@ function parseAmountText(s) {
   return 0;
 }
 function errandAmount(e) {
+  const blob = [e && e.note, e && e.title, e && e.summary].filter(Boolean).join(" ");
+  const summed = noteAmountSum(blob);
+  if (summed) return summed;
   const n = Number(e && e.amount) || 0;
   if (n) return n;
-  return parseAmountText([e && e.note, e && e.title, e && e.summary].filter(Boolean).join(" "));
+  return parseAmountText(blob);
+}
+function applySummedNoteAmounts() {
+  if (!state) return;
+  let changed = false;
+  (state.books || []).forEach(b => {
+    if (!b || b.demo || (typeof isRentAutoBook === "function" && isRentAutoBook(b)) || (typeof isSeedBook === "function" && isSeedBook(b))) return;
+    const sum = noteAmountSum(b.note || "");
+    if (sum && Number(b.amount) !== sum) {
+      b.amount = sum;
+      b.editedAt = Date.now();
+      changed = true;
+    }
+  });
+  (state.errands || []).forEach(e => {
+    if (!e || e.kind === "doc") return;
+    const sum = noteAmountSum([e.note, e.title, e.summary].filter(Boolean).join(" "));
+    if (sum && Number(e.amount) !== sum) {
+      e.amount = sum;
+      changed = true;
+    }
+  });
+  if (changed) {
+    try { markCloudDirty(); } catch {}
+    try { save(); } catch {}
+    try { pushCloud(); } catch {}
+  }
 }
 function errandCashType(e) {
   if (e && (e.cashType === "out" || e.cashType === "in" || e.cashType === "xfer")) return e.cashType === "xfer" ? "out" : e.cashType;
@@ -9549,9 +9595,10 @@ function ensureCalMonth() {
 }
 function collectLedger() {
   ensureErrandBooks();
+  applySummedNoteAmounts();
   const rows = [];
   (state.books || []).forEach(b => {
-    const amount = Number(b.amount) || 0;
+    const amount = noteAmountSum(b.note || "") || Number(b.amount) || 0;
     if (!amount) return;
     if (b.demo || b.roomNo === "0000" || b.roomNo === "DEMO") return;
     rows.push({
@@ -22262,7 +22309,8 @@ function submitErrandNow() {
   let nCash = 0, nOut = 0, nIn = 0, nLink = 0;
   list.forEach((g, idx) => {
     const date = ymdOf((g && g.date) || nowStamp());
-    const amount = Number(g && g.amount) || parseAmountText([g && g.note, g && g.title, g && g.fileName, ui.errandNote].join(" ")) || 0;
+    const blobAmt = [g && g.note, g && g.title, g && g.fileName, ui.errandNote].join(" ");
+    const amount = noteAmountSum(blobAmt) || Number(g && g.amount) || parseAmountText(blobAmt) || 0;
     const title = (g && g.title) || (amount ? "入帳" : "現場紀錄");
     const place = (g && g.place) || "";
     const note = (g && g.note) || "";
