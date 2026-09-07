@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-06-17-59";
-const APP_EDIT_COUNT = 800;
+const APP_STAMP = "2026-09-07-11-20";
+const APP_EDIT_COUNT = 801;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0350";
+const FILE_VER = "0351";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修類型新增公共設施、地板"] },
+  { ver: APP_VERSION, items: ["點進帳出帳轉帳不再跳到本月工作"] },
+  { ver: "2026-09-06-17-59-800", items: ["報修類型新增公共設施、地板"] },
   { ver: "2026-09-06-14-27-799", items: ["業務上傳244元這類金額會記入日曆出帳"] },
   { ver: "2026-09-06-14-18-798", items: ["驊勝食品發票備註改為鳳仁路93-61、93-62號"] },
   { ver: "2026-09-06-14-16-797", items: ["誠家食品發票備註改為鳳仁路93-55、56、57號"] },
@@ -12433,6 +12434,21 @@ function refreshErrandGuessBox() {
   if (tmp.firstElementChild) box.replaceWith(tmp.firstElementChild);
   bindErrandGuessPicks();
 }
+function paintErrandKindBtns() {
+  document.querySelectorAll("[data-errand-kind]").forEach(b => {
+    b.classList.toggle("on", ui.errandKind === b.dataset.errandKind);
+  });
+}
+function applyErrandKindClick(kind) {
+  ui.errandKind = ui.errandKind === kind ? "" : kind;
+  const list = errandGuessList();
+  if (ui.errandKind) list.forEach(x => applyErrandKind(x, ui.errandKind));
+  ui.errandGuesses = list;
+  ui.errandGuess = list[0] || null;
+  ui.errandOpen = true;
+  paintErrandKindBtns();
+  refreshErrandGuessBox();
+}
 function bindErrandGuessPicks() {
   document.querySelectorAll("[data-guess-co]").forEach(btn => {
     btn.onclick = e => {
@@ -12474,6 +12490,7 @@ function bindErrandGuessPicks() {
       ui.errandKind = btn.dataset.guessType;
       ui.errandGuesses = list;
       ui.errandGuess = list[0] || null;
+      paintErrandKindBtns();
       refreshErrandGuessBox();
     };
   });
@@ -14429,8 +14446,9 @@ function paintApp() {
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
         sc.scrollTop = Math.max(0, top);
         requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
-      } else if (!pageChanged) {
+      } else if (!pageChanged || ui.keepScroll) {
         sc.scrollTop = oldAdmin;
+        requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
       } else {
         sc.scrollTop = 0;
       }
@@ -22321,16 +22339,7 @@ function bindAdminAi() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const kind = btn.dataset.errandKind;
-      ui.errandKind = ui.errandKind === kind ? "" : kind;
-      const list = errandGuessList();
-      if (ui.errandKind) list.forEach(x => applyErrandKind(x, ui.errandKind));
-      ui.errandGuesses = list;
-      ui.errandGuess = list[0] || null;
-      ui.errandOpen = true;
-      ui.errandBallOpen = true;
-      ui.keepScroll = true;
-      setTimeout(() => render(), 80);
+      applyErrandKindClick(btn.dataset.errandKind);
     };
   });
   const openSheet = e => {
