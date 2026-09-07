@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-44";
-const APP_EDIT_COUNT = 831;
+const APP_STAMP = "2026-09-08-00-48";
+const APP_EDIT_COUNT = 832;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0381";
+const FILE_VER = "0382";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客第一次繳費顯示2押1租總額"] },
+  { ver: APP_VERSION, items: ["繳費頁註明水費請於簽約現場支付現金"] },
+  { ver: "2026-09-08-00-44-831", items: ["新客第一次繳費顯示2押1租總額"] },
   { ver: "2026-09-08-00-40-830", items: ["選房號返回往下移，避開頂部"] },
   { ver: "2026-09-08-00-37-829", items: ["申請入住選房號會顯示月租金額"] },
   { ver: "2026-09-08-00-34-828", items: ["新客入住自動記2押1租轉帳、水費現金、電費儲值現金"] },
@@ -16006,7 +16007,7 @@ function homeView() {
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat"><div class="label">${firstPay ? "首次應繳（2押1租）" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
         </div>
-        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費、電費儲值另付現金。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
+        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費請於簽約現場支付現金。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? (roomTakenByOther(t, r)
@@ -16108,7 +16109,7 @@ function payView() {
           : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
   const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
   const dueHint = firstPay
-    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費、電費儲值請付現金。</div>`
+    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費請於簽約現場支付現金。</div>`
     : (stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : "");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
