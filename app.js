@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-29";
-const APP_EDIT_COUNT = 827;
+const APP_STAMP = "2026-09-08-00-34";
+const APP_EDIT_COUNT = 828;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0377";
+const FILE_VER = "0378";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["入住押金、退租退押金會自動記入日曆；新客兆豐／聯邦，舊客農會"] },
+  { ver: APP_VERSION, items: ["新客入住自動記2押1租轉帳、水費現金、電費儲值現金"] },
+  { ver: "2026-09-08-00-29-827", items: ["入住押金、退租退押金會自動記入日曆；新客兆豐／聯邦，舊客農會"] },
   { ver: "2026-09-08-00-16-826", items: ["12月套房／廠房設算息可依押金自動計算並列印"] },
   { ver: "2026-09-08-00-07-825", items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
   { ver: "2026-09-08-00-01-824", items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
@@ -13737,7 +13738,7 @@ function promoteProspect(t, r) {
   delete r.incomingTenantId;
   r.edited = true;
   r.editedAt = Date.now();
-  try { postDepositBook("in", t, r, t.leaseStart || todayYmd()); } catch {}
+  try { postNewTenantMoveInBooks(t, r); } catch {}
   pruneDeadApplyNotices(state);
   if (ui.role === "tenant" && ui.tenantId === t.id) {
     ui.prospectPreview = false;
@@ -14096,7 +14097,7 @@ function completeHandover(oldT, r, co) {
       persistUi();
     }
     try { pushPhoneNotify("入住已確認", `${r.no || ""} ${neu.name || ""} 已成為正式租客`, r.no || "tenants"); } catch {}
-    try { postDepositBook("in", neu, r, neu.leaseStart || todayYmd()); } catch {}
+    try { postNewTenantMoveInBooks(neu, r); } catch {}
   } else {
     r.tenantId = null;
     if (r.status !== "repair") r.status = "vacant";
@@ -14131,6 +14132,61 @@ function hasDepositBook(kind, t, r) {
   const id = depositBookId(kind, t, r);
   const tag = "dep-" + kind + "-" + t.id;
   return (state.books || []).some(b => b && (b.id === id || b.importTag === tag));
+}
+function tenantHeadcount(t) {
+  const n = String((t && t.name) || "");
+  const parts = n.split(/[、,，與和\/]/).map(s => s.trim()).filter(Boolean);
+  return Math.max(1, parts.length);
+}
+function studioWaterYearFee(t, r) {
+  const note = String((t && t.note) || "") + " " + String((r && TENANT_INFO[r.no] || {}).note || "");
+  const m = note.match(/水費年\s*([\d,]+)/);
+  if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
+  return tenantHeadcount(t) * 1800;
+}
+function studioElecStoreFee(t, r) {
+  const note = String((t && t.note) || "") + " " + String((r && TENANT_INFO[r.no] || {}).note || "");
+  const m = note.match(/電儲值\s*([\d,]+)/);
+  if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
+  return 1000;
+}
+function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail) {
+  const amt = Math.round(Number(amount) || 0);
+  if (!t || amt <= 0) return false;
+  if (isDemoTenant(t) || (r && isDemoRoom(r))) return false;
+  const id = "bk-move-" + tag + "-" + t.id;
+  const importTag = "move-" + tag + "-" + t.id;
+  if ((state.books || []).some(b => b && (b.id === id || b.importTag === importTag))) return false;
+  if (!state.books) state.books = [];
+  const no = (r && r.no) || t.roomNo || "";
+  const site = (r && r.group) || "牛10";
+  state.books.push({
+    id,
+    type: "in",
+    date: ymdOf(date) || ymdOf(t.leaseStart) || todayYmd(),
+    amount: amt,
+    company: company || "統潔",
+    bank: bank || "",
+    roomNo: String(no),
+    note: site + "　" + String(no) + " " + (t.name || "") + "　" + noteTail,
+    importTag,
+    linkedTenantId: t.id,
+    createdAt: nowStamp(),
+    editedAt: Date.now()
+  });
+  try { persistLedger(state); } catch {}
+  return true;
+}
+function postNewTenantMoveInBooks(t, r) {
+  if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return;
+  const date = ymdOf(t.leaseStart) || todayYmd();
+  if (!Number(t.deposit) && r && Number(r.rent) > 0) t.deposit = Number(r.deposit) || Number(t.rent || r.rent) * 2;
+  postDepositBook("in", t, r, date);
+  if (!r || roomIsFactory(r) || r.status === "office") return;
+  const rent = Number(t.rent) || Number(r.rent) || 0;
+  if (rent > 0) postMoveInSideBook("rent", t, r, date, rent, "統潔", depositBankOf(t, r), "首月租金（2押1租）");
+  postMoveInSideBook("water", t, r, date, studioWaterYearFee(t, r), "現金(保險箱)", "現金", "水費（年）");
+  postMoveInSideBook("elec", t, r, date, studioElecStoreFee(t, r), "現金(保險箱)", "現金", "電費儲值");
 }
 function postDepositBook(kind, t, r, date, amount) {
   if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return false;
