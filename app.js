@@ -25,10 +25,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-11-53";
-const APP_EDIT_COUNT = 803;
+const APP_STAMP = "2026-09-07-12-01";
+const APP_EDIT_COUNT = 804;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0353";
+const FILE_VER = "0354";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -88,7 +88,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["備註金額用、隔開會自動相加，如45000、20660"] },
+  { ver: APP_VERSION, items: ["新增一筆出帳下方加上轉帳"] },
+  { ver: "2026-09-07-11-53-803", items: ["備註金額用、隔開會自動相加，如45000、20660"] },
   { ver: "2026-09-07-11-47-802", items: ["9月2日記電錶加上93-1A南溢製鞋"] },
   { ver: "2026-09-07-11-20-801", items: ["點進帳出帳轉帳不再跳到本月工作"] },
   { ver: "2026-09-06-17-59-800", items: ["報修類型新增公共設施、地板"] },
@@ -10766,10 +10767,11 @@ function monthCashHtml() {
     <form id="book-form" class="cal-form${!ed && (!ui.bookType || ui.bookType === "auto") ? " is-auto" : ""}">
       <h2 class="dash-h">${ed ? "編輯這筆" : "新增一筆"}</h2>
       <div class="cal-form-row">
-        <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : ((ui.bookType === "out") ? "out" : (ui.bookType === "in" ? "in" : "auto"))}">
+        <select name="type" class="book-type ${ed ? ((ed.type === "out") ? "out" : "in") : ((ui.bookType === "out") ? "out" : (ui.bookType === "xfer" ? "xfer" : (ui.bookType === "in" ? "in" : "auto")))}">
           ${ed ? "" : `<option value="auto" ${!ui.bookType || ui.bookType === "auto" ? "selected" : ""}>自動感應</option>`}
           <option value="in" ${(ed ? ed.type !== "out" : ui.bookType === "in") ? "selected" : ""}>進帳</option>
           <option value="out" ${(ed ? ed.type === "out" : ui.bookType === "out") ? "selected" : ""}>出帳</option>
+          <option value="xfer" ${!ed && ui.bookType === "xfer" ? "selected" : ""}>轉帳</option>
         </select>
         <input name="amount" type="text" placeholder="金額" value="${ed ? (ed.amount || "") : escapeHtml(ui.bookAmount || "")}" ${!ed && (!ui.bookType || ui.bookType === "auto") ? "hidden" : ""} />
       </div>
@@ -23042,9 +23044,10 @@ function bindCashCal() {
   };
   const paintBookType = () => {
     if (!form || !form.type) return;
-    form.type.classList.remove("in", "out", "auto");
-    const auto = form.type.value === "auto";
-    form.type.classList.add(form.type.value === "out" ? "out" : (auto ? "auto" : "in"));
+    form.type.classList.remove("in", "out", "auto", "xfer");
+    const v = form.type.value;
+    const auto = v === "auto";
+    form.type.classList.add(v === "out" ? "out" : (auto ? "auto" : (v === "xfer" ? "xfer" : "in")));
     form.classList.toggle("is-auto", auto && !ui.editBookId);
     if (form.amount && !ui.editBookId) form.amount.hidden = auto;
     const saveBtn = document.getElementById("book-save");
@@ -23152,12 +23155,13 @@ function bindCashCal() {
       if (!amount) { toast("請填金額"); return; }
       if (!date) { toast("請先在日曆點一個日期"); return; }
       const payload = {
-        type: form.type.value === "out" ? "out" : "in",
+        type: (form.type.value === "out" || form.type.value === "xfer") ? "out" : "in",
         date, amount,
         company: (form.company && form.company.value === "auto") ? "統潔" : normalizeBookCompany(form.company && form.company.value),
         bank: (form.bank && form.bank.value && form.bank.value !== "auto") ? form.bank.value : "",
         note: (form.note.value || "").trim()
       };
+      const isXfer = form.type.value === "xfer";
       if (ui.editBookId) {
         const b = (state.books || []).find(x => x.id === ui.editBookId);
         if (b) {
@@ -23229,18 +23233,32 @@ function bindCashCal() {
         return;
       }
       if (!state.books) state.books = [];
-      const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp(), editedAt: Date.now() }, payload);
-      state.books.push(row);
-      dropCoveredRentAuto(state, row);
+      if (isXfer) {
+        const from = "現金(保險箱)";
+        const dest = payload.company === "現金(保險箱)" ? "統潔" : payload.company;
+        const pair = "bk" + Date.now();
+        state.books.push({
+          id: pair + "-x", type: "out", date, amount, company: from, bank: "",
+          note: "轉帳　" + (payload.note || dest), linkedId: pair, editedAt: Date.now(), createdAt: nowStamp()
+        });
+        state.books.push({
+          id: pair + "-y", type: "in", date, amount, company: dest, bank: payload.bank,
+          note: "轉帳入　" + (payload.note || dest), linkedId: pair, editedAt: Date.now(), createdAt: nowStamp()
+        });
+      } else {
+        const row = Object.assign({ id: "bk" + Date.now(), roomNo: "", createdAt: nowStamp(), editedAt: Date.now() }, payload);
+        state.books.push(row);
+        dropCoveredRentAuto(state, row);
+      }
       ui.bookCompany = payload.company;
       ui.bookBank = payload.bank || "";
-      ui.bookType = payload.type;
+      ui.bookType = isXfer ? "xfer" : payload.type;
       ui.bookAmount = "";
       ui.bookNote = "";
       ui.calDay = Number(date.slice(8, 10));
       save();
       try { pushCloud(); } catch {}
-      toast("已記入日曆");
+      toast(isXfer ? "已記入轉帳（現金出、帳戶入）" : "已記入日曆");
       stay();
     };
     form.onsubmit = e => { e.preventDefault(); e.stopPropagation(); saveBook(); };
