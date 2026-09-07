@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-07";
-const APP_EDIT_COUNT = 825;
+const APP_STAMP = "2026-09-08-00-16";
+const APP_EDIT_COUNT = 826;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0375";
+const FILE_VER = "0376";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
+  { ver: APP_VERSION, items: ["12月套房／廠房設算息可依押金自動計算並列印"] },
+  { ver: "2026-09-08-00-07-825", items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
   { ver: "2026-09-08-00-01-824", items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
   { ver: "2026-09-07-23-53-823", items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
   { ver: "2026-09-07-23-51-822", items: ["電度紀錄改左邊日期、右邊度數"] },
@@ -2321,6 +2322,7 @@ const CYCLE_JOBS = [
   { id: "cycle-trash-driver", monthDay: 10, flexDays: 4, text: "收垃圾桶費　老司機", cycle: true, owner: "7651" },
   { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收垃圾桶費　莊記綠豆（97-71）", cycle: true, owner: "7651" },
   { id: "cycle-rent-yuwang", monthDay: 15, time: "14:00", text: "收租金　93-2B 禹旺企業 林永紝，並給電單（自繳電費）", cycle: true, owner: "7651" },
+  { id: "cycle-deposit-interest", monthDay: 1, onlyMonth: 12, text: "開立套房／廠房押金設算息發票", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
   { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　93-1B／93-58、60（台電電號 18-33-7421-01-4）", cycle: true, owner: "7651" },
   { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
@@ -9168,6 +9170,275 @@ function factoryInvoiceOverviewRows() {
   });
   return rows;
 }
+const POST_1Y_RATE = { 2024: 0.016, 2025: 0.01725, 2026: 0.01725, 2027: 0.01725 };
+function postDepositRate(year) {
+  const y = Number(year);
+  if (POST_1Y_RATE[y] != null) return POST_1Y_RATE[y];
+  return y >= 2025 ? 0.01725 : 0.016;
+}
+function occupiedMonthsInYear(start, end, year) {
+  const y = Number(year);
+  const yStart = y + "-01-01";
+  const yEnd = y + "-12-31";
+  const a = ymdOf(start) || "";
+  const b = ymdOf(end) || yEnd;
+  if (a && a > yEnd) return 0;
+  if (b && b < yStart) return 0;
+  const from = !a || a < yStart ? yStart : a;
+  const to = !b || b > yEnd ? yEnd : b;
+  let n = 0;
+  for (let m = 1; m <= 12; m++) {
+    const first = y + "-" + String(m).padStart(2, "0") + "-01";
+    const lastD = new Date(y, m, 0).getDate();
+    const last = y + "-" + String(m).padStart(2, "0") + "-" + String(lastD).padStart(2, "0");
+    if (from <= first && to >= last) n++;
+  }
+  return n;
+}
+function imputedBits(deposit, months, year) {
+  const dep = Math.round(Number(deposit) || 0);
+  const mo = Math.max(0, Math.min(12, Number(months) || 0));
+  const gross = Math.round(dep * postDepositRate(year) * mo / 12);
+  const net = Math.round(gross / 1.05);
+  return { deposit: dep, months: mo, gross, net, tax: gross - net, rate: postDepositRate(year) };
+}
+function imputedFactoryAddr(rooms, tenants, t) {
+  const g = FACTORY_GROUPS.find(x => x.group === (rooms[0] && rooms[0].group));
+  const city = (g && g.city) || "高雄市鳳山區";
+  const parts = [];
+  const seen = new Set();
+  (rooms || []).forEach(rr => {
+    const n = factoryInvoiceNote(rr, (tenants || []).find(x => x.roomId === rr.id) || t);
+    if (!n || seen.has(n)) return;
+    seen.add(n);
+    parts.push(String(n).replace(/(\d+)-(\d+)/g, "$1之$2"));
+  });
+  const door = parts.join("、");
+  if (/高雄/.test(door)) return door;
+  if (!door) return (rooms[0] && rooms[0].location) || city;
+  return city + door.replace(/^高雄市\S+[路街]/, "");
+}
+function depositImputedYear() {
+  try { return taipeiNow().getFullYear(); } catch { return new Date().getFullYear(); }
+}
+function depositImputedRows(kind, year) {
+  year = Number(year || depositImputedYear());
+  const rows = [];
+  if (kind === "factory") {
+    const keepChip = ui.tenantChip;
+    const keepVacant = ui.tenantVacant;
+    ui.tenantChip = "";
+    ui.tenantVacant = false;
+    const entries = tenantEntriesOfKind("factory");
+    ui.tenantChip = keepChip;
+    ui.tenantVacant = keepVacant;
+    entries.forEach(entry => {
+      const tenants = (entry.tenants || []).filter(t => t && !t.former && !t.demo && !t.incoming);
+      const rooms = (entry.rooms || []).filter(r => r && !isDemoRoom(r) && !isDemoFactoryRoom(r));
+      if (!tenants.length || !rooms.length) return;
+      const t = tenants[0];
+      const info = FACTORY_TENANT_INFO[rooms[0].no] || {};
+      const deposit = rooms.reduce((n, r) => {
+        const tt = tenants.find(x => x.roomId === r.id) || t;
+        const inf = FACTORY_TENANT_INFO[r.no] || {};
+        return n + (Number(tt && tt.deposit) || Number(r.deposit) || Number(inf.deposit) || 0);
+      }, 0);
+      if (deposit <= 0) return;
+      const start = t.leaseStart || info.leaseStart || "";
+      const end = t.leaseEnd || info.leaseEnd || "";
+      const months = occupiedMonthsInYear(start, end, year);
+      if (!months) return;
+      const bits = imputedBits(deposit, months, year);
+      rows.push(Object.assign({
+        name: t.invoiceBuyer || t.name || info.name || "",
+        addr: imputedFactoryAddr(rooms, tenants, t),
+        start: rocSlash(start),
+        end: rocSlash(end),
+        period: (rocSlash(start) && rocSlash(end)) ? (rocSlash(start) + "－" + rocSlash(end)) : ""
+      }, bits));
+    });
+  } else {
+    const seen = new Set();
+    const add = (no, room, t, info) => {
+      if (seen.has(String(no))) return;
+      if (studioMirrorHostNo(no)) return;
+      info = info || TENANT_INFO[no] || {};
+      if (!t && !info.name) return;
+      if (t && (t.former || t.demo || t.placeholder || t.incoming || t.prospect)) return;
+      if (room && (room.demo || room.status === "office")) return;
+      const deposit = Number((t && t.deposit) || (room && room.deposit) || info.deposit || 0);
+      if (deposit <= 0) return;
+      const start = (t && t.leaseStart) || info.leaseStart || "";
+      const end = (t && t.leaseEnd) || info.leaseEnd || "";
+      const months = occupiedMonthsInYear(start, end, year);
+      if (!months) return;
+      seen.add(String(no));
+      const bits = imputedBits(deposit, months, year);
+      rows.push(Object.assign({
+        name: (t && (t.invoiceBuyer || t.name)) || info.name || "",
+        addr: roomAddress(no),
+        start: rocSlash(start),
+        end: rocSlash(end),
+        period: (rocSlash(start) && rocSlash(end)) ? (rocSlash(start) + "－" + rocSlash(end)) : "",
+        room: String(no)
+      }, bits));
+    };
+    (state.tenants || []).forEach(t => {
+      if (!t) return;
+      const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+      if (!room || roomIsFactory(room)) return;
+      const no = String(room.no || "");
+      if (!/^\d{4}$/.test(no) || no === "0000") return;
+      add(no, room, t, TENANT_INFO[no]);
+    });
+    STUDIO_NOS.forEach(no => {
+      const room = (state.rooms || []).find(r => String(r.no) === String(no));
+      const live = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && String(x.name || "").trim());
+      add(no, room, live, TENANT_INFO[no]);
+    });
+  }
+  rows.sort((a, b) => String(a.addr || "").localeCompare(String(b.addr || ""), "zh-Hant") || String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant"));
+  return rows;
+}
+function drawDepositImputedCanvas(rows, kind, year) {
+  year = Number(year || depositImputedYear());
+  const W = 2480, H = 1754;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  const pad = 44;
+  const font = w => w + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  const rocY = year - 1911;
+  const totGross = rows.reduce((n, r) => n + (r.gross || 0), 0);
+  const totNet = rows.reduce((n, r) => n + (r.net || 0), 0);
+  const totTax = rows.reduce((n, r) => n + (r.tax || 0), 0);
+  ctx.fillStyle = "#1f3d2b";
+  ctx.font = font("700 40px");
+  ctx.textBaseline = "top";
+  ctx.fillText("統潔開發有限公司　" + rocY + "年" + (kind === "factory" ? "廠房" : "套房") + "押金設算息", pad, 24);
+  ctx.font = font("600 20px");
+  ctx.fillStyle = "#5b6b62";
+  ctx.fillText("利率 " + (postDepositRate(year) * 100).toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + "%　含稅＝押金×利率×月數÷12　未稅＝含稅÷1.05", pad, 72);
+  ctx.textAlign = "right";
+  ctx.fillText("合計含稅 " + totGross.toLocaleString("zh-TW") + "　未稅 " + totNet.toLocaleString("zh-TW") + "　稅額 " + totTax.toLocaleString("zh-TW"), W - pad, 28);
+  ctx.textAlign = "left";
+  const cols = [
+    { k: "name", h: "名稱", w: 0.20, big: true, left: true },
+    { k: "addr", h: "地址", w: 0.28, left: true },
+    { k: "period", h: "租賃期間", w: 0.18 },
+    { k: "deposit", h: "押金", w: 0.09, big: true },
+    { k: "months", h: "期間", w: 0.06 },
+    { k: "gross", h: "押金設算息", w: 0.09, big: true },
+    { k: "net", h: "未稅", w: 0.05 },
+    { k: "tax", h: "稅額", w: 0.05 }
+  ];
+  const tableTop = 104;
+  const headH = 52;
+  const tableW = W - pad * 2;
+  const n = Math.max((rows || []).length, 1);
+  const avail = H - tableTop - headH - 56;
+  const rowH = Math.min(46, Math.max(28, Math.floor(avail / Math.max(n, 8))));
+  let x = pad;
+  cols.forEach((c, i) => {
+    c.x = x;
+    c.pw = i === cols.length - 1 ? (pad + tableW - x) : Math.round(tableW * c.w);
+    x += c.pw;
+  });
+  ctx.fillStyle = "#e7eee8";
+  ctx.fillRect(pad, tableTop, tableW, headH);
+  ctx.strokeStyle = "#1f3d2b";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(pad, tableTop, tableW, headH);
+  cols.forEach(c => {
+    ctx.beginPath();
+    ctx.moveTo(c.x, tableTop);
+    ctx.lineTo(c.x, tableTop + headH);
+    ctx.stroke();
+    ctx.fillStyle = "#1f3d2b";
+    ctx.font = font("700 20px");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
+  });
+  rows.forEach((row, i) => {
+    const y = tableTop + headH + i * rowH;
+    ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
+    ctx.fillRect(pad, y, tableW, rowH);
+    ctx.strokeStyle = "#c5d0c6";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad, y, tableW, rowH);
+    cols.forEach(c => {
+      ctx.beginPath();
+      ctx.moveTo(c.x, y);
+      ctx.lineTo(c.x, y + rowH);
+      ctx.stroke();
+      let val = row[c.k];
+      if (c.k === "deposit" || c.k === "gross" || c.k === "net" || c.k === "tax") val = Number(val) ? Number(val).toLocaleString("zh-TW") : "";
+      ctx.fillStyle = "#24332a";
+      ctx.font = (c.big ? "700 " : "600 ") + Math.max(16, Math.round(rowH * 0.48)) + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      ctx.textAlign = c.left ? "left" : "center";
+      ctx.textBaseline = "middle";
+      const tx = c.left ? c.x + 10 : c.x + c.pw / 2;
+      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 16);
+    });
+  });
+  const bottom = tableTop + headH + rows.length * rowH;
+  ctx.strokeStyle = "#1f3d2b";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(pad, tableTop, tableW, Math.max(headH, bottom - tableTop));
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#5b6b62";
+  ctx.font = font("500 18px");
+  ctx.fillText("12 月開立" + (kind === "factory" ? "廠房" : "套房") + "設算息發票。不滿一個月不計。同約多戶押金已合併。　A4 橫式單面列印。", pad, Math.min(bottom + 12, H - 34));
+  return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
+}
+async function downloadDepositImputedPdf(page, kind, year) {
+  year = Number(year || depositImputedYear());
+  if (!page) {
+    const rows = depositImputedRows(kind, year);
+    if (!rows.length) { toast("目前沒有可計算設算息的" + (kind === "factory" ? "廠房" : "套房")); return; }
+    page = drawDepositImputedCanvas(rows, kind, year);
+  }
+  const tag = kind === "factory" ? "廠房" : "套房";
+  try {
+    await downloadJpegPagesPdf([page], `統潔-${year - 1911}年${tag}押金設算息.pdf`, true);
+    toast("已下載" + tag + "設算息");
+  } catch (err) {
+    try { console.error(err); } catch {}
+    toast("下載失敗，請再試一次");
+  }
+}
+function showDepositImputedPreview() {
+  const kind = ui.tenantKind === "factory" ? "factory" : "studio";
+  const year = depositImputedYear();
+  const rows = depositImputedRows(kind, year);
+  if (!rows.length) { toast("目前沒有可計算設算息的" + (kind === "factory" ? "廠房" : "套房")); return; }
+  const page = drawDepositImputedCanvas(rows, kind, year);
+  closeInvoicePreview();
+  const tot = rows.reduce((n, r) => n + (r.gross || 0), 0);
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox invoice-preview";
+  wrap.id = "invoice-preview-box";
+  wrap.innerHTML = `
+    <div class="lightbox-bar">
+      <button type="button" id="inv-prev-close">關閉</button>
+      <span>${year - 1911}年${kind === "factory" ? "廠房" : "套房"}押金設算息　含稅 ${tot.toLocaleString("zh-TW")}</span>
+      <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
+    </div>
+    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="押金設算息預覽"></div>`;
+  document.body.appendChild(wrap);
+  document.getElementById("inv-prev-close").onclick = closeInvoicePreview;
+  wrap.addEventListener("click", e => { if (e.target === wrap) closeInvoicePreview(); });
+  document.getElementById("inv-prev-pdf").onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    downloadDepositImputedPdf(page, kind, year);
+  };
+}
 function drawInvoiceOverviewCanvas(rows, kind) {
   const W = 2480, H = 1754;
   const canvas = document.createElement("canvas");
@@ -9357,18 +9628,28 @@ function showInvoiceOverviewPreview() {
 }
 function bindInvoiceOverviewBtn() {
   const btn = document.getElementById("invoice-overview-btn");
-  if (!btn) return;
-  btn.onpointerdown = () => {
-    btn.classList.add("is-press");
-    try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
-  };
-  btn.onpointerup = () => btn.classList.remove("is-press");
-  btn.onpointercancel = () => btn.classList.remove("is-press");
-  btn.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    showInvoiceOverviewPreview();
-  };
+  if (btn) {
+    btn.onpointerdown = () => {
+      btn.classList.add("is-press");
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+    };
+    btn.onpointerup = () => btn.classList.remove("is-press");
+    btn.onpointercancel = () => btn.classList.remove("is-press");
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      showInvoiceOverviewPreview();
+    };
+  }
+  const imb = document.getElementById("deposit-imputed-btn");
+  if (imb) {
+    bindIosPress(imb);
+    imb.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      showDepositImputedPreview();
+    };
+  }
 }
 async function downloadContractsPdf(images, filename) {
   if (!images || !images.length) { toast("尚無合約書圖檔可下載"); return; }
@@ -17923,6 +18204,7 @@ function cycleDateInMonth(m, y, mo) {
 }
 function nextCycleDate(m, from) {
   if (!m) return "";
+  if (Number(m.onlyMonth)) return workOccurYmd(m);
   if (m.intervalMonths && m.intervalMonths > 1) {
     const day = Math.max(1, Math.min(31, Number(m.monthDay) || 11));
     let d = new Date((m.anchor || "2026-10-11") + "T00:00:00");
@@ -17945,6 +18227,10 @@ function nextCycleDate(m, from) {
   return m.date || "";
 }
 function memoOccurKey(m) {
+  if (m && Number(m.onlyMonth)) {
+    const d = workOccurYmd(m);
+    return d ? d.slice(0, 7) : ymNow();
+  }
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) return ymNow();
   const d = nextCycleDate(m);
   return d ? d.slice(0, 7) : ymNow();
@@ -18157,6 +18443,20 @@ function signAppointMemos() {
   return out;
 }
 function workOccurYmd(m) {
+  if (m && Number(m.onlyMonth)) {
+    const n = typeof taipeiNow === "function" ? taipeiNow() : new Date();
+    const y = n.getFullYear();
+    const mo = Number(m.onlyMonth);
+    const dd = Math.min(Number(m.monthDay) || 1, new Date(y, mo, 0).getDate());
+    let ymd = y + "-" + String(mo).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+    const today = typeof ymdParts === "function" ? ymdParts(n) : "";
+    if (today && ymd < today && (n.getMonth() + 1) !== mo) {
+      const y2 = y + 1;
+      const d2 = Math.min(Number(m.monthDay) || 1, new Date(y2, mo, 0).getDate());
+      ymd = y2 + "-" + String(mo).padStart(2, "0") + "-" + String(d2).padStart(2, "0");
+    }
+    return ymd;
+  }
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) {
     const n = new Date();
     const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
@@ -20136,6 +20436,10 @@ function adminTenants() {
     <button type="button" class="card card-body clickable invoice-overview-btn" id="invoice-overview-btn">
       <span class="k">開立發票總覽</span>
       <span class="row-end"><span class="small">下載 PDF</span><span class="fold-caret go-right"></span></span>
+    </button>
+    <button type="button" class="card card-body clickable invoice-overview-btn" id="deposit-imputed-btn">
+      <span class="k">設算息發票</span>
+      <span class="row-end"><span class="small">12月套房／廠房</span><span class="fold-caret go-right"></span></span>
     </button>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>

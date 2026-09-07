@@ -28,6 +28,20 @@ function formatWorkMemo(m) {
   return m.text;
 }
 function workOccurYmd(m) {
+  if (m && Number(m.onlyMonth)) {
+    const n = typeof taipeiNow === "function" ? taipeiNow() : new Date();
+    const y = n.getFullYear();
+    const mo = Number(m.onlyMonth);
+    const dd = Math.min(Number(m.monthDay) || 1, new Date(y, mo, 0).getDate());
+    let ymd = y + "-" + String(mo).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+    const today = typeof ymdParts === "function" ? ymdParts(n) : "";
+    if (today && ymd < today && (n.getMonth() + 1) !== mo) {
+      const y2 = y + 1;
+      const d2 = Math.min(Number(m.monthDay) || 1, new Date(y2, mo, 0).getDate());
+      ymd = y2 + "-" + String(mo).padStart(2, "0") + "-" + String(d2).padStart(2, "0");
+    }
+    return ymd;
+  }
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) {
     const n = new Date();
     const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
@@ -37,6 +51,10 @@ function workOccurYmd(m) {
   return nextCycleDate(m) || (m && m.date) || "";
 }
 function memoOccurKey(m) {
+  if (m && Number(m.onlyMonth)) {
+    const d = workOccurYmd(m);
+    return d ? d.slice(0, 7) : ymNow();
+  }
   if (m && m.monthDay && !(Number(m.intervalMonths) > 1)) return ymNow();
   const d = nextCycleDate(m);
   return d ? d.slice(0, 7) : ymNow();
