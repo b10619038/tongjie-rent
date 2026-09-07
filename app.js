@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-21-40";
-const APP_EDIT_COUNT = 805;
+const APP_STAMP = "2026-09-07-21-43";
+const APP_EDIT_COUNT = 806;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0355";
+const FILE_VER = "0356";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作點完成後，重開 App 不會再跳出來"] },
+  { ver: APP_VERSION, items: ["7051 預設月租6000，不可申請租屋補助"] },
+  { ver: "2026-09-07-21-40-805", items: ["本月工作點完成後，重開 App 不會再跳出來"] },
   { ver: "2026-09-07-12-01-804", items: ["新增一筆出帳下方加上轉帳"] },
   { ver: "2026-09-07-11-53-803", items: ["備註金額用、隔開會自動相加，如45000、20660"] },
   { ver: "2026-09-07-11-47-802", items: ["9月2日記電錶加上93-1A南溢製鞋"] },
@@ -1838,7 +1839,7 @@ const STORE_NOS = ["6811", "7011", "7211", "7611"];
 function isStoreNo(no) { return STORE_NOS.includes(String(no)); }
 const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
-  "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 0,
+  "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 6000,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
   "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 5000
 };
@@ -1851,6 +1852,15 @@ function studioRentOf(no, fallback) {
 function studioDepositOf(rent) {
   const n = Number(rent) || 0;
   return n > 0 ? n * 2 : 0;
+}
+const NO_SUBSIDY_NOS = ["7051"];
+function roomNoSubsidy(r) {
+  const no = String((r && r.no) || r || "");
+  if (NO_SUBSIDY_NOS.includes(no)) return true;
+  return !!(r && (r.noSubsidy || r.subsidy === false));
+}
+function subsidyHint(r) {
+  return roomNoSubsidy(r) ? "不可申請租屋補助" : "";
 }
 const WATER_FEE_TEXT = "每人每月 NT$ 150，一年優惠 NT$ 1,800";
 const STUDIO_MONTH_PAY = {
@@ -2106,7 +2116,7 @@ const TENANT_INFO = {
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
   "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。" },
-  "7051": { note: "空房。楊旻憲已換至 7032。" },
+  "7051": { rent: 6000, deposit: 12000, note: "空房。月租 NT$ 6,000。不可申請租屋補助。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
@@ -2967,6 +2977,7 @@ function normalize(data) {
     if (!t.name && Object.prototype.hasOwnProperty.call(TENANT_BY_ROOM, room.no)) t.name = TENANT_BY_ROOM[room.no];
   });
   applyTenantRoster(data);
+  try { applyRoom7051(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
   migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
@@ -3002,6 +3013,7 @@ function normalize(data) {
   applyDueDayPolicy(data);
   applyOldTenantPayBank(data);
   applyTenantRoster(data);
+  try { applyRoom7051(data); } catch {}
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
@@ -3221,6 +3233,17 @@ function reviveStudioMirrorGuests(data) {
     });
     ensureStudioTenant(data, no);
   });
+}
+const ROOM_7051_VER = "7051-6k-nosub-v1";
+function applyRoom7051(data) {
+  if (!data || !Array.isArray(data.rooms)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7051");
+  if (!room) return;
+  room.rent = 6000;
+  room.noSubsidy = true;
+  if (!Number(room.deposit)) room.deposit = 12000;
+  room.note = "月租 NT$ 6,000。不可申請租屋補助。";
+  data.room7051Ver = ROOM_7051_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -3726,6 +3749,10 @@ function applyTenantRoster(data) {
         room.title = "店面";
       }
       room.rent = studioRentOf(no, room.rent);
+      if (info.rent != null) room.rent = info.rent;
+      if (info.deposit != null) room.deposit = info.deposit;
+      else if (Number(room.rent) > 0 && !Number(room.deposit)) room.deposit = studioDepositOf(room.rent);
+      if (roomNoSubsidy(no) || info.noSubsidy) room.noSubsidy = true;
       if (info.note) room.note = info.note;
       (data.tenants || []).forEach(x => {
         if (!x || x.roomId !== room.id || x.demo) return;
@@ -15429,6 +15456,7 @@ function roomDetailView(id) {
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
         ${r.note ? `<div class="row wrap"><span class="k">說明</span><span class="v">${escapeHtml(r.note)}</span></div>` : ""}
         <div class="row"><span class="k">租金</span><span class="v">${r.status === "office" ? "—" : money(r.rent)}</span></div>
+        ${roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : ""}
         <div class="row"><span class="k">狀態</span><span class="v"><span class="badge ${r.status}">${statusLabel(r.status)}</span></span></div>
       </div>
       ${roomExtrasHtml(r)}
@@ -15611,6 +15639,7 @@ function eContractDocHtml(t, r) {
     <p>房屋地址：${escapeHtml(r.location || roomAddress(r.no))}</p>
     <p>租期：${escapeHtml((t && t.leaseStart) || "—")} 起至 ${escapeHtml((t && t.leaseEnd) || "—")} 止</p>
     <p>每月租金：${money(studioContractRent(t, r))}　押金：${money(Number((r && r.deposit) || studioContractRent(t, r) * 2))}</p>
+    ${roomNoSubsidy(r) ? "<p>本房不可申請租屋補助。</p>" : ""}
     <p>繳費日：每月 ${escapeHtml(String(rentDueDay(t)))} 日前</p>
     <p>簽約／蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
     <h4>使用規範</h4>
@@ -18620,7 +18649,7 @@ function adminRoomListHtml(kind) {
       return `${head}<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl("images/studio-room.jpg?v=1713", r.no)}
         <div><strong>${r.no}　${r.title}${r.shop ? "：" + escapeHtml(r.shop) : ""}</strong>
-          <div class="small">${r.status === "office" ? ("員工使用" + (t && t.name ? " · 補助掛名 " + escapeHtml(t.name) : "")) : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}</div>
+          <div class="small">${r.status === "office" ? ("員工使用" + (t && t.name ? " · 補助掛名 " + escapeHtml(t.name) : "")) : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}${roomNoSubsidy(r) ? " · 不可申請租屋補助" : ""}</div>
         </div>
         <select class="select-mini" data-status="${r.id}">
           <option value="rented" ${r.status === "rented" ? "selected" : ""}>滿租</option>
@@ -18772,6 +18801,7 @@ function vacantSheetDetailsHtml(r) {
   const rent = Number(r.rent) || listed || 0;
   return `<div class="row wrap"><span class="k">房間</span><span class="v">${escapeHtml(studioListNo(r))}</span></div>
       <div class="row"><span class="k">租金</span><span class="v">${rent ? money(rent) : "未定"}</span></div>
+      ${roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : ""}
       ${former.map(f => `<div class="row wrap"><span class="k">前任</span><span class="v">${escapeHtml(f.name)}${f.leftOn ? "　至 " + escapeHtml(f.leftOn) : ""}</span></div>`).join("")}
       ${handoverBoxHtml(null, r)}
       ${incomingOf(r.id) ? `<button type="button" class="ghost" data-force-vacate="${escapeHtml(incomingOf(r.id).id)}" style="margin-top:8px">強制退租</button>` : ""}`;
@@ -18973,6 +19003,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${kind !== "factory" ? teField(isHandoverRoom(r, t) ? "舊客" : "現任", "name", t.id, r && r.id, t.name)
       + (!isHandoverRoom(r, t) && isStubMonthNow(t, r) ? `<div class="row wrap"><span class="k">未足月租金</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>` : "")
       + teField("租金", "rent", t.id, r && r.id, r && r.rent ? r.rent : "", "number", "0")
+      + (roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : "")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
           ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
@@ -19738,6 +19769,7 @@ function adminRoomEdit() {
       ${field("資產類型", "kind", r.kind || "studio", "select-kind")}
       ${field("房型", "title", r.title)}
       ${field("租金", "rent", r.rent, "text")}
+      ${roomNoSubsidy(r) ? `<div class="small" style="margin:-6px 0 10px">本房不可申請租屋補助</div>` : ""}
       ${field("押金", "deposit", r.deposit, "text")}
       ${field("狀態", "status", r.status, "select-status")}
       ${field(r.kind === "factory" ? "公司／租客" : "租客姓名", "name", t?.name || "")}
