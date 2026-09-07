@@ -4389,7 +4389,7 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 .move-pick-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 88px 1fr;
   gap: 8px 12px;
   align-items: center;
   padding: 12px 14px;
@@ -4401,6 +4401,21 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   cursor: pointer;
 }
 .move-pick-row.on { background: var(--ok-soft); }
+.move-pick-row .move-pick-no,
+.move-room-btn .move-pick-no {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.move-pick-rent {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3d5a45;
+  letter-spacing: 0;
+}
 .move-pick-row .move-pick-dates { font-size: 13px; }
 
 html[data-theme="void"] {

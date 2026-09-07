@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-34";
-const APP_EDIT_COUNT = 828;
+const APP_STAMP = "2026-09-08-00-37";
+const APP_EDIT_COUNT = 829;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0378";
+const FILE_VER = "0379";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客入住自動記2押1租轉帳、水費現金、電費儲值現金"] },
+  { ver: APP_VERSION, items: ["申請入住選房號會顯示月租金額"] },
+  { ver: "2026-09-08-00-34-828", items: ["新客入住自動記2押1租轉帳、水費現金、電費儲值現金"] },
   { ver: "2026-09-08-00-29-827", items: ["入住押金、退租退押金會自動記入日曆；新客兆豐／聯邦，舊客農會"] },
   { ver: "2026-09-08-00-16-826", items: ["12月套房／廠房設算息可依押金自動計算並列印"] },
   { ver: "2026-09-08-00-07-825", items: ["羅美芳為聖昌造船、林志維為皇吉企業行"] },
@@ -15481,11 +15482,14 @@ function moveRoomMeta(x, dummy) {
   const holder = roomSignedHolder(x, dummy && dummy.id);
   const start = roomSoonestStart(x, dummy || { incoming: true });
   const signed = !!(holder && holder.incoming && tenantContractStatus(holder, x) === "signed");
+  const rent = studioContractRent(dummy, x);
   return {
     vacant: !o && !signed,
     end: signed ? (tenantOccupancyEnd(holder, x) || holder.leaseEnd || "") : ((o && o.leaseEnd) || ""),
     start,
     no: x.no || "",
+    rent,
+    rentText: rent ? money(rent) : "",
     taken: signed,
     takenName: signed ? (holder.name || "") : ""
   };
@@ -15548,8 +15552,8 @@ function moveInView() {
     const m = moveRoomMeta(x, dummy);
     const on = d.roomId === x.id ? " on" : "";
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
-      <span class="move-pick-no">${escapeHtml(m.no)}</span>
-      <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空房" : "現約至 " + escapeHtml(m.end || "—"))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
+      <span class="move-pick-no">${escapeHtml(m.no)}${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
+      <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : "現約至 " + escapeHtml(m.end || "—"))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
   const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask${pickEnter ? " move-pick-enter" : ""}" id="move-pick-mask">
@@ -15575,7 +15579,7 @@ function moveInView() {
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
-            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
+            ? `<span class="move-pick-no">${escapeHtml(selMeta.no)}${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
       </div>
@@ -16577,7 +16581,7 @@ function leaseSignView() {
   const roomOpts = rooms.map(x => {
     const m = moveRoomMeta(x, t);
     const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ("現約至 " + (m.end || "—") + "　最快可入住 " + m.start));
-    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}　${hint}</option>`;
+    return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}${m.rentText ? "　" + m.rentText : ""}　${hint}</option>`;
   }).join("");
   return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
