@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-21-43";
-const APP_EDIT_COUNT = 806;
+const APP_STAMP = "2026-09-07-21-46";
+const APP_EDIT_COUNT = 807;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0356";
+const FILE_VER = "0357";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7051 預設月租6000，不可申請租屋補助"] },
+  { ver: APP_VERSION, items: ["業務上傳轉帳會在日曆同時顯示出帳與進帳"] },
+  { ver: "2026-09-07-21-43-806", items: ["7051 預設月租6000，不可申請租屋補助"] },
   { ver: "2026-09-07-21-40-805", items: ["本月工作點完成後，重開 App 不會再跳出來"] },
   { ver: "2026-09-07-12-01-804", items: ["新增一筆出帳下方加上轉帳"] },
   { ver: "2026-09-07-11-53-803", items: ["備註金額用、隔開會自動相加，如45000、20660"] },
@@ -5088,6 +5089,60 @@ function errandCashType(e) {
   if (e && (e.cashType === "out" || e.cashType === "in" || e.cashType === "xfer")) return e.cashType === "xfer" ? "out" : e.cashType;
   return guessCashType([e && e.title, e && e.place, e && e.note, e && e.company].join(" "), "out");
 }
+function isXferErrand(e) {
+  if (!e) return false;
+  if (e.cashType === "xfer" || e.xfer) return true;
+  return /轉帳/.test(String(e.title || "") + String(e.note || ""));
+}
+function ensureXferPair(e) {
+  if (!e || !isXferErrand(e)) return false;
+  const amount = errandAmount(e);
+  if (!amount) return false;
+  if (!state.books) state.books = [];
+  const date = ymdOf(e.date) || todayYmd();
+  const dest = normalizeBookCompany((e.company === "現金(保險箱)" ? "統潔" : (e.company || "統潔")));
+  const from = "現金(保險箱)";
+  const note = e.note || e.title || dest;
+  const linked = (state.books || []).filter(b => b && (b.linkedId === e.id || e.linkedId === b.id));
+  let outB = linked.find(b => b.type === "out");
+  let inB = linked.find(b => b.type === "in");
+  if (!outB) {
+    outB = (state.books || []).find(b => b && b.type === "out" && ymdOf(b.date) === date && Number(b.amount) === amount && b.company === from && /轉帳/.test(String(b.note || "")));
+  }
+  if (!inB) {
+    inB = (state.books || []).find(b => b && b.type === "in" && ymdOf(b.date) === date && Number(b.amount) === amount && /轉帳入/.test(String(b.note || "")));
+  }
+  let added = false;
+  if (!outB) {
+    outB = {
+      id: "bk-erx-" + String(e.id || Date.now()).replace(/[^\w-]/g, ""),
+      type: "out", date, amount, company: from, bank: "",
+      note: "轉帳　" + note, linkedId: e.id, editedAt: Date.now(), createdAt: nowStamp()
+    };
+    state.books.push(outB);
+    added = true;
+  } else {
+    outB.linkedId = e.id;
+    if (!outB.company) outB.company = from;
+  }
+  if (!inB) {
+    inB = {
+      id: "bk-ery-" + String(e.id || Date.now()).replace(/[^\w-]/g, ""),
+      type: "in", date, amount, company: dest, bank: e.place || e.bank || "",
+      note: "轉帳入　" + note, linkedId: e.id, editedAt: Date.now(), createdAt: nowStamp()
+    };
+    state.books.push(inB);
+    added = true;
+  } else {
+    inB.linkedId = e.id;
+    if (!inB.company || inB.company === from) inB.company = dest;
+    if (!inB.bank && (e.place || e.bank)) inB.bank = e.place || e.bank;
+  }
+  e.skipLedger = true;
+  e.cashType = "xfer";
+  if (!e.linkedId) e.linkedId = outB.id;
+  return added;
+}
 function ensureErrandBooks() {
   if (!state || !state.errands) return;
   if (!state.books) state.books = [];
@@ -5097,6 +5152,10 @@ function ensureErrandBooks() {
     const amount = errandAmount(e);
     if (!amount) return;
     if (Number(e.amount) !== amount) e.amount = amount;
+    if (isXferErrand(e)) {
+      if (ensureXferPair(e)) added = true;
+      return;
+    }
     if (findLinkedBook(e)) return;
     const type = errandCashType(e);
     const book = {
@@ -22431,11 +22490,11 @@ function submitErrandNow() {
       const toCo = company === "現金(保險箱)" ? "統潔" : company;
       state.books.push({
         id: "bk" + Date.now() + "-x" + idx, type: "out", date, amount, company: from,
-        bank: "", note: "轉帳　" + (note || title), linkedId: id, editedAt: Date.now()
+        bank: "", note: "轉帳　" + (note || title), linkedId: id, editedAt: Date.now(), createdAt: nowStamp()
       });
       state.books.push({
         id: "bk" + Date.now() + "-y" + idx, type: "in", date, amount, company: toCo,
-        bank: place, note: "轉帳入　" + (note || title), linkedId: id, editedAt: Date.now()
+        bank: place, note: "轉帳入　" + (note || title), linkedId: id, editedAt: Date.now(), createdAt: nowStamp()
       });
       nLink += 1;
     } else if (amount) {
@@ -22452,7 +22511,7 @@ function submitErrandNow() {
     state.errands.push({
       id, kind: "bank", date, title, place, amount, note, company,
       cashType, pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : id,
-      skipLedger: true, summary: g.fileName || "", createdAt: nowStamp()
+      skipLedger: true, xfer: cashType === "xfer", summary: g.fileName || "", createdAt: nowStamp()
     });
     const p = date.split("-");
     if (p.length === 3) {
@@ -22468,7 +22527,7 @@ function submitErrandNow() {
   ui.errandNote = "";
   ui.errandOpen = true;
   save();
-  toast("已登錄 " + (list.length || 1) + " 筆");
+  toast(nLink ? "轉帳已記入日曆：現金出帳、帳戶進帳" : ("已登錄 " + (list.length || 1) + " 筆"));
   ui.keepScroll = true;
   render();
   try { pushCloud(); } catch {}
