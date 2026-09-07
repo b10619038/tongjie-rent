@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-08";
-const APP_EDIT_COUNT = 811;
+const APP_STAMP = "2026-09-07-22-21";
+const APP_EDIT_COUNT = 812;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0361";
+const FILE_VER = "0362";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳標題中間空白也可以點開收合"] },
+  { ver: APP_VERSION, items: ["記電錶工作在編輯右邊加上電度紀錄"] },
+  { ver: "2026-09-07-22-08-811", items: ["業務上傳標題中間空白也可以點開收合"] },
   { ver: "2026-09-07-22-04-810", items: ["業務上傳紀錄改成線條列表，點擊編輯、右邊刪除"] },
   { ver: "2026-09-07-22-01-809", items: ["轉帳改成左邊從、右邊到，金額寫在備註"] },
   { ver: "2026-09-07-21-53-808", items: ["業務上傳改成左邊帳戶、中間進出轉帳、右邊金額、下方備註"] },
@@ -2314,6 +2315,92 @@ const CYCLE_JOBS = [
   { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" },
   { id: "cycle-labor-ins", monthDay: 5, text: "繳勞健保（9月級距 42,000 勞1,050／健651、35,000 勞812／健540；10月 35,000 勞870／健540）", cycle: true, owner: "7651" }
 ];
+const METER_UNITS = [
+  { id: "m-93-1b", roomNo: "拉皮-1B", unit: "93-1B", name: "鈺晟", kind: "elec" },
+  { id: "m-93-2a", roomNo: "拉皮-2A", unit: "93-2A", name: "咘然居", kind: "elec" },
+  { id: "m-93-1a", roomNo: "拉皮-1A", unit: "93-1A", name: "南溢製鞋", kind: "elec" },
+  { id: "m-97-69", roomNo: "牛5-97-69", unit: "97-69", name: "喜憨兒", kind: "water" },
+  { id: "m-97-71", roomNo: "牛5-97-71", unit: "97-71", name: "莊記綠豆", kind: "water" }
+];
+const SEED_METER_LOGS = [
+  { id: "ml-2a-20260702", unitId: "m-93-2a", date: "2026-07-02", reading: 53551, prev: 47453, usage: 6098 },
+  { id: "ml-2a-20260730", unitId: "m-93-2a", date: "2026-07-30", reading: 57858, prev: 53551, usage: 4307 }
+];
+const METER_KEY = "tongjie_meter_logs_v1";
+function persistMeterLogs(data) {
+  try { localStorage.setItem(METER_KEY, JSON.stringify((data && data.meterLogs) || [])); } catch {}
+}
+function applyMeterLogs(data) {
+  if (!data) return;
+  if (!Array.isArray(data.meterLogs)) data.meterLogs = [];
+  try {
+    const extra = JSON.parse(localStorage.getItem(METER_KEY) || "[]");
+    if (Array.isArray(extra) && extra.length) data.meterLogs = unionById(data.meterLogs, extra);
+  } catch {}
+  SEED_METER_LOGS.forEach(row => {
+    if (!data.meterLogs.some(x => x && x.id === row.id)) data.meterLogs.push(Object.assign({}, row));
+  });
+}
+function memoMeterUnits(m) {
+  const t = String((m && m.text) || "") + " " + String((m && m.id) || "");
+  if (/cycle-water-97-69|97-69|喜憨兒/.test(t) && /水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-69");
+  if (/cycle-water-97-71|97-71|莊記/.test(t) && /水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-71");
+  if (/cycle-yusheng-elec|收鈺晟電費/.test(t)) return METER_UNITS.filter(u => u.id === "m-93-1b");
+  if (/記電錶|cycle-meter-93/.test(t)) return METER_UNITS.filter(u => u.kind === "elec");
+  if (/電錶|水錶|度數/.test(t)) return METER_UNITS.slice();
+  return [];
+}
+function lastMeterLog(unitId, beforeYmd) {
+  const list = (state.meterLogs || []).filter(x => x && x.unitId === unitId && (!beforeYmd || String(ymdOf(x.date) || x.date) < beforeYmd));
+  list.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  return list[0] || null;
+}
+function meterDay(s) {
+  return String(ymdOf(s) || s || "").replace(/^\d{4}-/, "").replace("-", "/");
+}
+function meterBoxHtml(m) {
+  const units = memoMeterUnits(m);
+  if (!units.length) return "";
+  return `<div class="meter-box">
+    ${units.map(u => {
+      const last = lastMeterLog(u.id);
+      const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).slice(0, 6);
+      return `<div class="meter-unit">
+        <div class="row"><b>${escapeHtml(u.unit + "　" + u.name)}</b><span class="small">${u.kind === "water" ? "水錶" : "電錶"}</span></div>
+        <div class="small">${last ? "上次 " + Number(last.reading).toLocaleString("zh-TW") + "　" + meterDay(last.date) : "尚無上次度數"}</div>
+        <div class="meter-row">
+          <input type="text" inputmode="numeric" data-meter-read="${u.id}" placeholder="本次度數" autocomplete="off" />
+          <span class="small" data-meter-usage="${u.id}"></span>
+        </div>
+        <button type="button" class="ghost" data-meter-save="${u.id}">記入</button>
+        ${hist.length ? `<div class="meter-hist">${hist.map(h => `<div>${escapeHtml(meterDay(h.date))}　${Number(h.reading).toLocaleString("zh-TW")}${h.usage ? "　+" + Number(h.usage).toLocaleString("zh-TW") + " 度" : ""}</div>`).join("")}</div>` : ""}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+function saveMeterReading(unitId, raw) {
+  const n = Number(String(raw || "").replace(/[^\d.]/g, ""));
+  if (!n) { toast("請填本次度數"); return false; }
+  const ymd = todayYmd();
+  const last = lastMeterLog(unitId, ymd);
+  if (last && n < Number(last.reading)) { toast("本次度數比上次小，請確認"); return false; }
+  if (!state.meterLogs) state.meterLogs = [];
+  const id = "ml-" + unitId + "-" + ymd;
+  const usage = last ? n - Number(last.reading) : 0;
+  const hit = state.meterLogs.find(x => x && x.id === id);
+  if (hit) {
+    hit.reading = n;
+    hit.prev = last ? last.reading : 0;
+    hit.usage = usage;
+    hit.editedAt = Date.now();
+  } else {
+    state.meterLogs.push({ id, unitId, date: ymd, reading: n, prev: last ? last.reading : 0, usage, createdAt: nowStamp(), editedAt: Date.now() });
+  }
+  persistMeterLogs(state);
+  save();
+  toast(usage ? ("已記入　本期 " + usage.toLocaleString("zh-TW") + " 度") : "已記入度數");
+  return true;
+}
 const DEV_CYCLE_JOBS = [
   { id: "cycle-dev-salary", monthDay: 5, text: "開發者薪資 NT$ 20,000", cycle: true, owner: "1240" }
 ];
@@ -2937,6 +3024,7 @@ function normalize(data) {
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
   if (!Array.isArray(data.devMemos)) data.devMemos = [];
   if (!Array.isArray(data.devLogs)) data.devLogs = [];
+  applyMeterLogs(data);
   if (!data.eSigns || typeof data.eSigns !== "object") data.eSigns = {};
   applyESigns(data);
   migrateDevLocalInto(data);
@@ -5965,6 +6053,7 @@ function stripCloudMedia(data) {
 function save(force) {
   try { persistPaidMarks(state); } catch {}
   try { persistMemoDone(state); } catch {}
+  try { persistMeterLogs(state); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLiveCloud(); } catch {}
   cloudDirty = true;
@@ -5979,6 +6068,7 @@ function save(force) {
     persistAvatars(state);
     state.updatedAt = Date.now();
     persistLedger(state);
+    persistMeterLogs(state);
     const dump = Object.assign({}, state, { bookVault: vaultForStore(state.bookVault) });
     localStorage.setItem(KEY, JSON.stringify(dump));
   } catch {
@@ -17380,9 +17470,12 @@ function adminAi() {
         const editing = on && ui.workEditId === m.id && !locked;
         const dateVal = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : (typeof workOccurYmd === "function" ? workOccurYmd(m) : "");
         return `
+            <div class="work-item">
+            <div class="work-scroll"><div class="work-scroller">
             <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
               <span>${escapeHtml(formatWorkMemo(m))}</span>
             </div>
+            </div></div>
             ${editing ? `<form class="work-edit" data-work-save="${m.id}">
               <input name="text" type="text" value="${escapeHtml(m.text || "")}" placeholder="工作內容" autocomplete="off" />
               <input name="date" type="date" value="${escapeHtml(dateVal || "")}" />
@@ -17393,8 +17486,10 @@ function adminAi() {
             </form>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
+              ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
               <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
-            </div>` : ""}`;
+            </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}` : ""}
+            </div>`;
       }).join("");
       const sect = (title, arr) => arr.length ? `<div class="small" style="margin:12px 0 6px">${title}</div>` + memoRows(arr) : "";
       const workOpen = ui.workOpen !== false;
@@ -17409,15 +17504,11 @@ function adminAi() {
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">點一筆工作可加到日曆、編輯或完成。長字可左右滑查看。</p>
-          <div class="work-scroll">
-            <div class="work-scroller">
           ${g.all.length ? (sect("過期未完成", g.overdue) + sect("今天／3 天內", g.soon) + sect("本月其餘", g.later)) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
           <div class="small" style="margin:14px 0 6px">${escapeHtml(plan.monthLabel)}　本月狀況</div>
           ${plan.stats.map(s => s.go
             ? `<div class="mini clickable" data-work-go="${s.go}"><span>${escapeHtml(s.text)}</span></div>`
             : `<div class="mini"><span>${escapeHtml(s.text)}</span></div>`).join("")}
-            </div>
-          </div>
         </div>
       </div>
     </div>`;
@@ -22860,7 +22951,8 @@ function bindAdminAi() {
       e.stopPropagation();
       const id = el.dataset.workMemo;
       ui.workMemoId = ui.workMemoId === id ? "" : id;
-      if (ui.workMemoId !== id) ui.workEditId = "";
+      if (!ui.workMemoId) { ui.workEditId = ""; ui.meterMemoId = ""; }
+      else if (ui.workMemoId !== id) { ui.workEditId = ""; ui.meterMemoId = ""; }
       ui.workOpen = true;
       ui.keepScroll = true;
       render();
@@ -22932,6 +23024,43 @@ function bindAdminAi() {
     };
   });
   document.querySelectorAll("[data-work-edit-cancel], .work-memo-tools [type='submit']").forEach(btn => bindIosPress(btn));
+  document.querySelectorAll("[data-meter-open]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.meterOpen;
+      ui.workMemoId = id;
+      ui.meterMemoId = ui.meterMemoId === id ? "" : id;
+      ui.workOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-meter-read]").forEach(inp => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.oninput = () => {
+      const last = lastMeterLog(inp.dataset.meterRead);
+      const n = Number(String(inp.value || "").replace(/[^\d.]/g, ""));
+      const box = document.querySelector("[data-meter-usage='" + inp.dataset.meterRead + "']");
+      if (box) box.textContent = last && n >= Number(last.reading) ? ("+" + (n - Number(last.reading)).toLocaleString("zh-TW") + " 度") : "";
+    };
+  });
+  document.querySelectorAll("[data-meter-save]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.meterSave;
+      const inp = document.querySelector("[data-meter-read='" + id + "']");
+      if (saveMeterReading(id, inp && inp.value)) {
+        ui.keepScroll = true;
+        render();
+      }
+    };
+  });
   document.querySelectorAll("[data-gcal-memo]").forEach(btn => {
     bindIosPress(btn);
     btn.addEventListener("pointerdown", e => e.stopPropagation());

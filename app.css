@@ -2077,11 +2077,40 @@ input[type="file"] {
 #work-card .work-memo.open {
   background: var(--chip);
 }
-#work-card .work-memo-tools {
-  margin: 4px 0 10px;
-  position: relative;
-  z-index: 8;
-  pointer-events: auto !important;
+#work-card .work-item {
+  margin: 0 0 2px;
+}
+#work-card .work-item .work-scroll {
+  margin: 0 -4px;
+}
+#work-card .meter-box {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+#work-card .meter-unit {
+  display: grid;
+  gap: 6px;
+}
+#work-card .meter-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+#work-card .meter-row input {
+  min-height: 44px;
+  font-size: 16px;
+}
+#work-card .meter-hist {
+  display: grid;
+  gap: 2px;
+  color: #6b7280;
+  font-size: 12px;
 }
 #work-card .work-memo-tools .ghost {
   pointer-events: auto !important;
