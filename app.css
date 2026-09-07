@@ -4372,14 +4372,14 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   background: var(--paper);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(24px + var(--safe-b, 0px));
+  padding: calc(22px + env(safe-area-inset-top, 0px)) 10px calc(24px + var(--safe-b, 0px));
   box-shadow: none;
 }
 .move-pick-mask.move-pick-enter .move-pick-sheet {
   animation: moveSheetIn .34s cubic-bezier(.22,.82,.22,1) both;
 }
 .move-pick-sheet .back {
-  margin: 4px 14px 14px;
+  margin: 10px 14px 16px;
 }
 .move-pick-title {
   font-size: 22px;
