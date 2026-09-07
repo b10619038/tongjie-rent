@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-23-53";
-const APP_EDIT_COUNT = 823;
+const APP_STAMP = "2026-09-08-00-01";
+const APP_EDIT_COUNT = 824;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0373";
+const FILE_VER = "0374";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
+  { ver: APP_VERSION, items: ["共用電單公式左邊可看兩戶歷史電費總金額"] },
+  { ver: "2026-09-07-23-53-823", items: ["電度左邊可看歷史紀錄，更新不會歸零"] },
   { ver: "2026-09-07-23-51-822", items: ["電度紀錄改左邊日期、右邊度數"] },
   { ver: "2026-09-07-23-44-821", items: ["本月工作上下間距收緊"] },
   { ver: "2026-09-07-23-40-820", items: ["本月工作橫拉桿改裁掉，長句仍可左右滑"] },
@@ -2340,6 +2341,13 @@ const SEED_METER_LOGS = [
   { id: "ml-2a-20260702", unitId: "m-93-2a", date: "2026-07-02", reading: 53551, prev: 47453, usage: 6098 },
   { id: "ml-2a-20260730", unitId: "m-93-2a", date: "2026-07-30", reading: 57858, prev: 53551, usage: 4307 }
 ];
+const SEED_METER_BILLS = [
+  { id: "mb-share-93-1-20260716", shareId: "share-93-1", date: "2026-07-16", amount: 106479, billNo: "18-33-7421-01-4", note: "電費　93-1" },
+  { id: "mb-share-93-1-20260817", shareId: "share-93-1", date: "2026-08-17", amount: 97630, billNo: "18-33-7421-01-4", note: "115/7/2～7/29", parts: [
+    { id: "m-93-1b", usage: 16047, fee: 77073 },
+    { id: "m-93-2a", usage: 4307, fee: 20660 }
+  ] }
+];
 const METER_KEY = "tongjie_meter_logs_v1";
 const METER_BILL_KEY = "tongjie_meter_bills_v1";
 function persistMeterLogs(data) {
@@ -2360,6 +2368,9 @@ function applyMeterLogs(data) {
   } catch {}
   SEED_METER_LOGS.forEach(row => {
     if (!data.meterLogs.some(x => x && x.id === row.id)) data.meterLogs.push(Object.assign({}, row));
+  });
+  SEED_METER_BILLS.forEach(row => {
+    if (!data.meterBills.some(x => x && x.id === row.id)) data.meterBills.push(Object.assign({}, row));
   });
 }
 function memoMeterUnits(m) {
@@ -2407,7 +2418,8 @@ function splitShareFees(amount, rows) {
 function meterShareHtml(share) {
   if (!share) return "";
   const ymd = todayYmd();
-  const saved = (state.meterBills || []).filter(x => x && x.shareId === share.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0];
+  const bills = (state.meterBills || []).filter(x => x && x.shareId === share.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const saved = bills[0];
   const amount = saved && ymdOf(saved.date) === ymd ? Number(saved.amount) || 0 : 0;
   const rows = share.ids.map(id => {
     const u = meterUnitById(id);
@@ -2416,9 +2428,20 @@ function meterShareHtml(share) {
   const split = splitShareFees(amount, rows);
   const totalKwh = split.reduce((s, x) => s + x.usage, 0);
   const rate = split[0] ? split[0].rate : 0;
+  const histOpen = !!(ui.shareHistOpen && ui.shareHistOpen[share.id]);
   return `<div class="meter-share" data-meter-share="${share.id}">
     <div class="row"><b>${escapeHtml(share.title)}</b><span class="small">台電 ${escapeHtml(share.billNo)}</span></div>
-    <div class="small">公式：電單總金額 ÷ 兩戶總度數 × 各戶度數 ＝ 紅單</div>
+    <div class="meter-share-formula">
+      <button type="button" class="meter-hist-btn${histOpen ? " on" : ""}" data-share-hist="${share.id}">歷史紀錄</button>
+      <span>公式：電單總金額 ÷ 兩戶總度數 × 各戶度數 ＝ 紅單</span>
+    </div>
+    ${histOpen ? `<div class="meter-hist">${bills.length ? bills.map(b => {
+      const parts = (b.parts || []).map(p => {
+        const u = meterUnitById(p.id);
+        return (u ? u.name : p.id) + " " + money(p.fee || 0);
+      }).filter(Boolean).join("／");
+      return `<div class="meter-hist-row"><span>${escapeHtml(meterDay(b.date))}</span><span>${money(b.amount)}${parts ? "　" + parts : ""}</span></div>`;
+    }).join("") : `<div class="small">尚無電費總金額紀錄</div>`}</div>` : ""}
     <div class="meter-row">
       <input type="text" inputmode="numeric" data-share-amount="${share.id}" placeholder="電單總金額" value="${amount ? amount : ""}" autocomplete="off" />
       <span class="small" data-share-rate="${share.id}">${rate ? ("每度 " + rate.toFixed(2) + " 元") : ""}</span>
@@ -2471,6 +2494,8 @@ function saveMeterShare(shareId) {
   else state.meterBills.push(rec);
   persistMeterLogs(state);
   save();
+  if (!ui.shareHistOpen) ui.shareHistOpen = {};
+  ui.shareHistOpen[shareId] = true;
   const line = split.map((x, i) => {
     const u = meterUnitById(share.ids[i]);
     return (u ? u.name : x.id) + " " + money(x.fee);
@@ -23251,6 +23276,19 @@ function bindAdminAi() {
         ui.keepScroll = true;
         render();
       }
+    };
+  });
+  document.querySelectorAll("[data-share-hist]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.shareHist;
+      if (!ui.shareHistOpen) ui.shareHistOpen = {};
+      ui.shareHistOpen[id] = !ui.shareHistOpen[id];
+      ui.keepScroll = true;
+      render();
     };
   });
   document.querySelectorAll("[data-share-amount]").forEach(inp => {
