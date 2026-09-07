@@ -1913,8 +1913,8 @@ input[type="file"] {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
-  margin: 0 -4px -28px;
-  padding: 0 4px 28px;
+  margin: 0 -4px;
+  padding: 0 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -2085,14 +2085,14 @@ input[type="file"] {
 #work-card .work-memo {
   cursor: pointer;
   border-radius: 12px;
-  padding: 8px 8px;
+  padding: 3px 8px;
   margin: 0 -4px;
 }
 #work-card .work-memo.open {
   background: var(--chip);
 }
 #work-card .work-item {
-  margin: 0 0 2px;
+  margin: 0;
 }
 #work-card .work-item .work-scroll {
   margin: 0 -4px;
