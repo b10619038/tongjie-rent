@@ -2112,6 +2112,18 @@ input[type="file"] {
   color: #6b7280;
   font-size: 12px;
 }
+#work-card .meter-share {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+#work-card .meter-share-sum {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
 #work-card .work-memo-tools .ghost {
   pointer-events: auto !important;
   position: relative;
