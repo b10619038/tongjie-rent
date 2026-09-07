@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-07-22-04";
-const APP_EDIT_COUNT = 810;
+const APP_STAMP = "2026-09-07-22-08";
+const APP_EDIT_COUNT = 811;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0360";
+const FILE_VER = "0361";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["業務上傳紀錄改成線條列表，點擊編輯、右邊刪除"] },
+  { ver: APP_VERSION, items: ["業務上傳標題中間空白也可以點開收合"] },
+  { ver: "2026-09-07-22-04-810", items: ["業務上傳紀錄改成線條列表，點擊編輯、右邊刪除"] },
   { ver: "2026-09-07-22-01-809", items: ["轉帳改成左邊從、右邊到，金額寫在備註"] },
   { ver: "2026-09-07-21-53-808", items: ["業務上傳改成左邊帳戶、中間進出轉帳、右邊金額、下方備註"] },
   { ver: "2026-09-07-21-46-807", items: ["業務上傳轉帳會在日曆同時顯示出帳與進帳"] },
@@ -23060,6 +23061,16 @@ function bindAdminAi() {
     }
     const caret = document.getElementById("errand-caret");
     if (caret && fold) caret.onclick = e => { e.preventDefault(); e.stopPropagation(); fold.click(); };
+    const head = errand.querySelector(".tenant-slim-head");
+    if (head && fold) {
+      head.addEventListener("click", e => {
+        if (e.target.closest("#errand-to-ball, .ai-drag")) return;
+        if (e.target.closest("#errand-fold")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        fold.click();
+      });
+    }
     errand.onsubmit = e => {
     e.preventDefault();
     submitErrandNow();

@@ -1977,8 +1977,11 @@ input[type="file"] {
   gap: 8px;
 }
 #errand-form .fold-head {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   width: auto;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-start;
 }
 #errand-form .errand-kinds {
   flex: 0 0 auto;
