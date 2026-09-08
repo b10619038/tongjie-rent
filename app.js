@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-15-24";
-const APP_EDIT_COUNT = 835;
+const APP_STAMP = "2026-09-08-15-26";
+const APP_EDIT_COUNT = 836;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0385";
+const FILE_VER = "0386";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客第一次付款改簽約現場現金；套房電費每度5.5元"] },
+  { ver: APP_VERSION, items: ["新客面交簽約改到該房間現場，第一次現金"] },
+  { ver: "2026-09-08-15-24-835", items: ["新客第一次付款改簽約現場現金；套房電費每度5.5元"] },
   { ver: "2026-09-08-11-18-834", items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
   { ver: "2026-09-08-11-06-833", items: ["個人戶新增趙淑芬、許喻涵"] },
   { ver: "2026-09-08-00-48-832", items: ["繳費頁註明水費請於簽約現場支付現金"] },
@@ -1433,6 +1434,12 @@ const DEFAULT_COMPANY = {
   email: "jie59056503@gmail.com"
 };
 const STAMP_OFFICE = "高雄市鳳山區文龍東路76號5樓1號";
+function stampPlaceOf(r) {
+  const no = String((r && r.no) || "");
+  if (!no) return STAMP_OFFICE;
+  const addr = String((r && r.location) || roomAddress(no) || "").trim();
+  return no + " 房間現場" + (addr ? "（" + addr + "）" : "");
+}
 const COMPANY_BANKS = [
   { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦" },
   { company: "統潔", bank: "聯邦銀行支存", code: "803", account: "010300019225", holder: "統潔開發有限公司", key: "聯邦支存" },
@@ -1780,7 +1787,7 @@ function tenantHandoverNoteHtml(t, r) {
       : "";
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
-      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。以後換手機：房號＋任一人的姓名或手機號碼。蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
+      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。以後換手機：房號＋任一人的姓名或手機號碼。面交簽約地點：${escapeHtml(stampPlaceOf(r))}。第一次 2押1租、水費、電費儲值現場收現金。</p>
       ${waitLine}
     </div>`;
   }
@@ -14753,7 +14760,7 @@ function studioLeasePaperHtml(t, r, leasePart) {
       </div>
       <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
-      <p>簽約／蓋章地點：${escapeHtml(STAMP_OFFICE)}</p>
+      <p>簽約／蓋章地點：${escapeHtml(stampPlaceOf(r))}</p>
       <p class="term-hint">承租人藍字與簽名已套入。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       <div class="lease-pgno">8</div>
     </section>
@@ -15690,7 +15697,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
-      <p class="small" style="margin:0 0 8px">實體蓋章地址：${escapeHtml(STAMP_OFFICE)}。最快取現在以後、還沒被約走的時段。</p>
+      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款現場收現金。") : "請先選房號，簽約是到該房間現場面交付款。"}最快取現在以後、還沒被約走的時段。</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -16706,7 +16713,7 @@ function leaseSignView() {
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">簽約日期時間</div>
-        <p class="small" style="margin:0 0 8px">實體蓋章地址：${STAMP_OFFICE}。最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
+        <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款現場收現金。") : "請先選房號，簽約是到該房間現場面交付款。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
