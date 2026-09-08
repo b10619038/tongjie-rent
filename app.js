@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-20-50";
-const APP_EDIT_COUNT = 837;
+const APP_STAMP = "2026-09-08-20-56";
+const APP_EDIT_COUNT = 838;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0387";
+const FILE_VER = "0388";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["仲介簽約：現場現金為主、不夠轉兆豐、仲介費一個月租金；7231林安安已入帳"] },
+  { ver: APP_VERSION, items: ["拿掉9/8重複金流：手記7631的3000／5200與林安安重複"] },
+  { ver: "2026-09-08-20-50-837", items: ["仲介簽約：現場現金為主、不夠轉兆豐、仲介費一個月租金；7231林安安已入帳"] },
   { ver: "2026-09-08-15-26-836", items: ["新客面交簽約改到該房間現場，第一次現金"] },
   { ver: "2026-09-08-15-24-835", items: ["新客第一次付款改簽約現場現金；套房電費每度5.5元"] },
   { ver: "2026-09-08-11-18-834", items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
@@ -3661,6 +3662,10 @@ function applyLinanan7231(data) {
   room.rent = 9000;
   room.deposit = 18000;
   room.edited = true;
+  const dupIds = ["bk1788852889045-0", "bk1788853601472-0", "er1788852889045-0", "er1788853601471-0"];
+  data.ledgerGone = unionGone(data.ledgerGone, dupIds);
+  data.books = dropGone(data.books || [], data.ledgerGone);
+  data.errands = dropGone(data.errands || [], data.ledgerGone);
   if (data.linananVer === LINANAN_VER) return;
   const rows = [
     ["bk-7231-lin-cash", "in", 30000, "現金(保險箱)", "現金", "牛10　7231 林安安　簽約現場現金 30,000（應付 35,200）"],
