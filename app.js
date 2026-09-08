@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-21-05";
-const APP_EDIT_COUNT = 840;
+const APP_STAMP = "2026-09-08-21-10";
+const APP_EDIT_COUNT = 841;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0390";
+const FILE_VER = "0391";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["仲介文案拿掉仲介費含稅；租客一樣要登入App"] },
+  { ver: APP_VERSION, items: ["首次付款可選現金／轉帳／自訂金額；仲介預設現金、沒仲介預設轉帳"] },
+  { ver: "2026-09-08-21-05-840", items: ["仲介文案拿掉仲介費含稅；租客一樣要登入App"] },
   { ver: "2026-09-08-21-00-839", items: ["7231林安安不足月已繳清（9月日拆＋10月租金）"] },
   { ver: "2026-09-08-20-56-838", items: ["拿掉9/8重複金流：手記7631的3000／5200與林安安重複"] },
   { ver: "2026-09-08-20-50-837", items: ["仲介簽約：現場現金為主、不夠轉兆豐、仲介費一個月租金；7231林安安已入帳"] },
@@ -10135,7 +10136,31 @@ function firstPayHintHtml(bits) {
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
   if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
-  return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。仲介帶看以現場現金為主，不夠可轉兆豐。電費每度 NT$ 5.5。";
+  return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。電費每度 NT$ 5.5。";
+}
+function firstPayWayOf(t) {
+  const w = String((t && t.payWay) || "");
+  if (w === "xfer" || w === "cash" || w === "split") return w;
+  return (t && t.hasAgent) ? "cash" : "xfer";
+}
+function firstPaySplitOf(t, bits) {
+  const total = Math.round((bits && bits.total) || 0);
+  const way = firstPayWayOf(t);
+  if (way === "xfer") return { way, cash: 0, mega: total, total };
+  if (way === "split") {
+    let cash = Math.round(Number(t && t.payCash) || 0);
+    let mega = Math.round(Number(t && t.payMega) || 0);
+    if (cash > 0 && mega <= 0) mega = Math.max(0, total - cash);
+    else if (mega > 0 && cash <= 0) cash = Math.max(0, total - mega);
+    return { way, cash, mega, total };
+  }
+  return { way: "cash", cash: total, mega: 0, total };
+}
+function firstPayWayLabel(t, bits) {
+  const s = firstPaySplitOf(t, bits || firstStudioPayBits(t));
+  if (s.way === "xfer") return "轉帳兆豐";
+  if (s.way === "split") return "現金 " + money(s.cash) + " ＋ 兆豐 " + money(s.mega);
+  return "簽約現場現金";
 }
 function firstStudioPayDue(t, r) {
   if (!t || !r || roomIsFactory(r) || t.former || t.demo) return null;
@@ -13766,6 +13791,7 @@ function addIncomingTenant(roomId, fields) {
     signAppointAt: fields.signAppointAt || "",
     hasAgent: !!fields.hasAgent,
     agentFee: Number(fields.agentFee) || 0,
+    payWay: fields.payWay || (fields.hasAgent ? "cash" : "xfer"),
     payCash: Number(fields.payCash) || 0,
     payMega: Number(fields.payMega) || 0,
     agentPrints: fields.agentPrints !== false
@@ -14070,8 +14096,10 @@ function submitMoveIn() {
   t.signAppointAt = d.signAppointAt || "";
   t.signRoomId = room.id;
   t.hasAgent = !!d.hasAgent;
-  t.agentFee = d.hasAgent ? studioContractRent(null, room) : 0;
-  t.agentPrints = !!d.hasAgent;
+  t.payWay = d.payWay || (d.hasAgent ? "cash" : "xfer");
+  t.payCash = Number(d.payCash) || 0;
+  t.payMega = Number(d.payMega) || 0;
+  t.agentFee = Number(d.agentFee) || 0;
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
@@ -14443,13 +14471,12 @@ function postNewTenantMoveInBooks(t, r) {
     return;
   }
   const bits = firstStudioPayBits(t, r);
-  const cash = Math.round(Number(t.payCash) || 0);
-  const mega = Math.round(Number(t.payMega) || 0);
-  if (cash > 0 || mega > 0) {
-    const cashAmt = cash > 0 ? cash : Math.max(0, bits.total - mega);
-    const megaAmt = mega > 0 ? mega : Math.max(0, bits.total - cashAmt);
-    postMoveInSideBook("cash", t, r, date, cashAmt, "現金(保險箱)", "現金", "簽約現場現金（應付 " + bits.total.toLocaleString("zh-TW") + "）");
-    postMoveInSideBook("mega", t, r, date, megaAmt, "統潔", "兆豐", "簽約現場轉兆豐補足");
+  const split = firstPaySplitOf(t, bits);
+  if (split.way === "xfer") {
+    postMoveInSideBook("mega", t, r, date, bits.total, "統潔", "兆豐", "簽約轉兆豐（首次應繳 " + bits.total.toLocaleString("zh-TW") + "）");
+  } else if (split.way === "split" && (split.cash > 0 || split.mega > 0)) {
+    postMoveInSideBook("cash", t, r, date, split.cash, "現金(保險箱)", "現金", "簽約現場現金（應付 " + bits.total.toLocaleString("zh-TW") + "）");
+    postMoveInSideBook("mega", t, r, date, split.mega, "統潔", "兆豐", "簽約現場轉兆豐補足");
   } else {
     postMoveInSideBook("dep", t, r, date, bits.deposit, "現金(保險箱)", "現金", "押金（2押，現金）");
     if (bits.stubRent) postMoveInSideBook("stub", t, r, date, bits.stubRent, "現金(保險箱)", "現金", "不足月租金 " + rocSlash(bits.stubStart) + "～" + rocSlash(bits.stubEnd) + "（現金）");
@@ -14580,9 +14607,16 @@ function handoverBoxHtml(t, r) {
     <label class="field"><span>到期日</span><input data-hf="end" type="date" /></label>
     <label class="field"><span>租金</span><input data-hf="rent" type="number" inputmode="numeric" placeholder="${r.rent || ""}" /></label>
     <label class="field"><span>押金</span><input data-hf="deposit" type="number" inputmode="numeric" placeholder="空白＝兩個月" /></label>
-    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input data-hf="agent" type="checkbox" checked /><span>仲介帶看（現場現金為主）</span></label>
-    <label class="field"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" placeholder="空白＝全部現金" /></label>
-    <label class="field"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" placeholder="現金不夠再填" /></label>
+    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input data-hf="agent" type="checkbox" checked /><span>仲介帶看（建議全現金）</span></label>
+    <p class="small">第一次付款：有仲介建議現金，沒仲介建議轉兆豐。客戶要現金也可以。</p>
+    <div class="sign-slot-grid" style="margin:8px 0">
+      <button type="button" class="sign-slot on" data-hf-payway="cash">現金</button>
+      <button type="button" class="sign-slot" data-hf-payway="xfer">轉帳</button>
+      <button type="button" class="sign-slot" data-hf-payway="split">自訂</button>
+    </div>
+    <input type="hidden" data-hf="payway" value="cash" />
+    <label class="field hf-split" style="display:none"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" placeholder="0" /></label>
+    <label class="field hf-split" style="display:none"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" placeholder="0" /></label>
     <div class="unpaid-tools">
       <button type="button" class="btn-navy" data-handover-save="${r.id}">儲存新客</button>
       <button type="button" class="ghost" data-handover-close="${r.id}">取消</button>
@@ -15800,6 +15834,9 @@ function moveInView() {
   const rooms = moveInRooms();
   const r = rooms.find(x => x.id === d.roomId) || null;
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
+  const payBits = r ? firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || "", rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), hasAgent: !!d.hasAgent, payWay: d.payWay, payCash: d.payCash, payMega: d.payMega }, r) : null;
+  if (!d.payWay) d.payWay = d.hasAgent ? "cash" : "xfer";
+  const payWay = firstPayWayOf(d);
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
   const minStart = r ? roomSoonestStart(r, dummy) : todayYmd();
   const cont = r ? fullYearLeaseRange(minStart) : fullYearLeaseRange(todayYmd());
@@ -15870,7 +15907,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款現場收現金。") : "請先選房號，簽約是到該房間現場面交付款。"}最快取現在以後、還沒被約走的時段。</p>
+      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約是到該房間現場。"}最快取現在以後、還沒被約走的時段。</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -15881,15 +15918,25 @@ function moveInView() {
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）") + "。到期固定該月最後一天。入住不是 1 號時會開不足月＋一年兩份合約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
       ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
-      ${r ? `<div class="small" style="margin-top:10px">${escapeHtml(firstPayHintHtml(firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || minStart, rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)) }, r)))}</div>` : ""}
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
-      <div class="label">仲介</div>
+      <div class="label">仲介與第一次付款</div>
       <label class="field" style="flex-direction:row;align-items:center;gap:10px">
         <input id="move-agent" type="checkbox" ${d.hasAgent ? "checked" : ""} />
-        <span>仲介帶看（現場現金為主）</span>
+        <span>仲介帶看（建議全現金）</span>
       </label>
-      <p class="small" style="margin:8px 0 0">有仲介時第一次付款收現金；身上不夠可現場轉統潔兆豐。租客一樣要登入 App。</p>
+      <p class="small" style="margin:8px 0 10px">有仲介建議全現金；沒仲介建議轉兆豐。客戶要付現金也可以。租客一樣要登入 App。</p>
+      ${r ? `<div class="small" style="margin:0 0 8px">${escapeHtml(firstPayHintHtml(payBits))}</div>
+      <div class="sign-slot-grid">
+        <button type="button" class="sign-slot${payWay === "cash" ? " on" : ""}" data-move-pay="cash">現金</button>
+        <button type="button" class="sign-slot${payWay === "xfer" ? " on" : ""}" data-move-pay="xfer">轉帳</button>
+        <button type="button" class="sign-slot${payWay === "split" ? " on" : ""}" data-move-pay="split">自訂</button>
+      </div>
+      ${payWay === "split" ? `<div class="row wrap" style="margin-top:10px;gap:8px">
+        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" value="${d.payCash || ""}" placeholder="0" /></label>
+        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" value="${d.payMega || ""}" placeholder="0" /></label>
+      </div>
+      <p class="small" style="margin:6px 0 0">兩筆加總建議等於 ${money(payBits.total)}。像今天林安安：現金 30,000 ＋ 兆豐 5,200。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
@@ -16352,12 +16399,17 @@ function payView() {
   const firstPay = firstStudioPayDue(t, r);
   const stubNow = !firstPay && isStubMonthNow(t, r);
   const pay = payLabel(t, r);
-  const lineOk = !!(paid || tenantLineUnlocked(t, r) || firstPay);
+  const split = firstPay ? firstPaySplitOf(t, firstPay) : null;
+  const lineOk = !!(paid || tenantLineUnlocked(t, r) || (firstPay && split && split.way === "cash"));
   const proof = linePayProofOf(r && r.no);
   const proofHint = paid
     ? ""
-    : firstPay
-      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次在簽約現場收現金。仲介帶看時以現金為主，身上不夠可轉統潔兆豐。租客一樣要登入 App。</p>`
+    : firstPay && split && split.way === "cash"
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次在簽約現場收現金。租客一樣要登入 App。</p>`
+      : firstPay && split && split.way === "split"
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次：現金 ${money(split.cash)}，其餘轉統潔兆豐 ${money(split.mega)}。租客一樣要登入 App。</p>`
+      : firstPay
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次請轉統潔兆豐。轉完後在 LINE 回報並附截圖。</p>`
       : lineOk
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
       : (proof && proof.hasText)
@@ -16383,14 +16435,17 @@ function payView() {
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
-        <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? "簽約現場現金已收" : "簽約現場現金") : (ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳"))}</span></div>
+        <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? firstPayWayLabel(t, firstPay) + "已收" : firstPayWayLabel(t, firstPay)) : (ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳"))}</span></div>
       </div>
-      ${firstPay ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">現場現金為主</div><div class="small" style="margin-top:6px">仲介帶看時收現金；不夠再轉統潔兆豐。之後每月租金匯兆豐。電費每度 NT$ 5.5。</div></div>
-      ${payAccountCardHtml(pack.primary, "現金不夠時可轉　" + ((pack.primary && pack.primary.bank) || "兆豐銀行"))}` : `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${firstPay && split && split.way === "cash" ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">簽約現場現金 ${money(firstPay.total)}</div><div class="small" style="margin-top:6px">之後每月租金匯兆豐。電費每度 NT$ 5.5。</div></div>` : ""}
+      ${firstPay && split && split.way !== "cash" ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${payAccountCardHtml(pack.primary, split.way === "split" ? ("現金 " + money(split.cash) + "，其餘轉兆豐 " + money(split.mega)) : "第一次請匯兆豐銀行（統潔）")}
+      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}` : ""}
+      ${!firstPay ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
-      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}`}
+      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}` : ""}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
-      ${firstPay ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>`}
+      ${firstPay && split && split.way === "cash" ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>`}
       <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
       ${proofHint}
     </div>`;
@@ -16896,7 +16951,7 @@ function leaseSignView() {
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">簽約日期時間</div>
-        <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款現場收現金。") : "請先選房號，簽約是到該房間現場面交付款。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
+        <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約是到該房間現場。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -20380,6 +20435,29 @@ function bindTenantEdits() {
   }
 }
 function bindHandover() {
+  document.querySelectorAll("[data-hf-payway]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const box = btn.closest(".handover-box");
+      if (!box) return;
+      box.querySelectorAll("[data-hf-payway]").forEach(b => b.classList.toggle("on", b === btn));
+      const hid = box.querySelector('[data-hf="payway"]');
+      if (hid) hid.value = btn.dataset.hfPayway || "cash";
+      box.querySelectorAll(".hf-split").forEach(el => { el.style.display = (btn.dataset.hfPayway === "split") ? "" : "none"; });
+    };
+  });
+  document.querySelectorAll('[data-hf="agent"]').forEach(el => {
+    el.onchange = () => {
+      const box = el.closest(".handover-box");
+      if (!box) return;
+      const hid = box.querySelector('[data-hf="payway"]');
+      if (hid && hid.value === "split") return;
+      const way = el.checked ? "cash" : "xfer";
+      if (hid) hid.value = way;
+      box.querySelectorAll("[data-hf-payway]").forEach(b => b.classList.toggle("on", b.dataset.hfPayway === way));
+      box.querySelectorAll(".hf-split").forEach(x => { x.style.display = "none"; });
+    };
+  });
   document.querySelectorAll("[data-handover-open]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault(); e.stopPropagation();
@@ -20410,6 +20488,7 @@ function bindHandover() {
         rent: g("rent"), deposit: g("deposit"),
         idNo: g("idno"), emergencyName: g("emname"), emergencyPhone: g("emphone"),
         hasAgent: !!(box && box.querySelector('[data-hf="agent"]') && box.querySelector('[data-hf="agent"]').checked),
+        payWay: g("payway") || "cash",
         payCash: g("cash"), payMega: g("mega")
       });
       if (!t) { toast("登記失敗"); return; }
@@ -21789,6 +21868,8 @@ function captureMoveInDraft() {
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
   const agent = document.getElementById("move-agent");
   if (agent) d.hasAgent = !!agent.checked;
+  if (document.getElementById("move-pay-cash")) d.payCash = Number(val("move-pay-cash") || 0) || 0;
+  if (document.getElementById("move-pay-mega")) d.payMega = Number(val("move-pay-mega") || 0) || 0;
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
@@ -21821,7 +21902,29 @@ function bindMoveInForm() {
     };
   });
   const agentEl = document.getElementById("move-agent");
-  if (agentEl) agentEl.onchange = captureMoveInDraft;
+  if (agentEl) agentEl.onchange = () => {
+    captureMoveInDraft();
+    const d = ensureMoveIn();
+    d.hasAgent = !!agentEl.checked;
+    if (d.payWay !== "split") d.payWay = d.hasAgent ? "cash" : "xfer";
+    ui.keepScroll = true;
+    render();
+  };
+  document.querySelectorAll("[data-move-pay]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      captureMoveInDraft();
+      ensureMoveIn().payWay = btn.dataset.movePay || "cash";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  ["move-pay-cash", "move-pay-mega"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onchange = captureMoveInDraft;
+    el.onblur = captureMoveInDraft;
+  });
   ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
