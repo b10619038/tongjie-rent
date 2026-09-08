@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-21-20";
-const APP_EDIT_COUNT = 842;
+const APP_STAMP = "2026-09-08-21-45";
+const APP_EDIT_COUNT = 843;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0392";
+const FILE_VER = "0393";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["申請入住付款方式會帶到繳費頁；重送申請也會記住"] },
+  { ver: APP_VERSION, items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
+  { ver: "2026-09-08-21-20-842", items: ["申請入住付款方式會帶到繳費頁；重送申請也會記住"] },
   { ver: "2026-09-08-21-10-841", items: ["首次付款可選現金／轉帳／自訂金額；仲介預設現金、沒仲介預設轉帳"] },
   { ver: "2026-09-08-21-05-840", items: ["仲介文案拿掉仲介費含稅；租客一樣要登入App"] },
   { ver: "2026-09-08-21-00-839", items: ["7231林安安不足月已繳清（9月日拆＋10月租金）"] },
@@ -2305,14 +2306,14 @@ const FACTORY_TENANT_INFO = {
   "牛5-97-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 40000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-72。含稅 $42,000。每月1日匯入。限汽車保養廠使用。" },
   "牛5-97-73": { name: "映升企業社", taxId: "87647478", contactName: "陳彥宇、陳德輝", phone: "0933-338-190", leaseStart: "2025-01-01", leaseEnd: "2026-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", invoiceAddr: "830 高雄市鳳山區中山路19巷14號", note: "97-73。未稅 $40,000，含稅 $42,000。每月1日匯聯邦高雄 信潔 010100034775。每月寄發票。合約至 115/12/31。" },
   "牛5-97-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 44100, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", note: "97-75。含稅 $44,100。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
-  "牛5-97-76": { name: "陳雅琪", taxId: "", contactName: "陳雅琪", idNo: "S223579953", phone: "0925-693-553", leaseStart: "2025-01-01", leaseEnd: "2027-03-31", rentUntaxed: 36190, rent: 38000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-76。個人戶。含稅 $38,000。每月1日匯聯邦高雄 信潔 010100034775。114/8/11 入押金。" },
-  "牛6-55": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 155000, rent: 162750, deposit: 310000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-55／56／57 同約共三戶。未稅 $155,000＋稅 $7,750＝含稅 $162,750。每月1日匯聯邦高雄 信潔 010100034775。113/4/29 入 $220,000；114/5/16 入 $110,000。" },
+  "牛5-97-76": { name: "陳雅琪", taxId: "", contactName: "陳雅琪", idNo: "S223579953", phone: "0925-693-553", leaseStart: "2025-01-01", leaseEnd: "2027-03-31", rentUntaxed: 36190, rent: 38000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "97-76。個人戶。含稅 $38,000。每月1日匯聯邦高雄 信潔 010100034775。114/8/11 入押金。水費半年收。" },
+  "牛6-55": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 155000, rent: 162750, deposit: 310000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-55／56／57 同約共三戶。未稅 $155,000＋稅 $7,750＝含稅 $162,750。每月1日匯聯邦高雄 信潔 010100034775。113/4/29 入 $220,000；114/5/16 入 $110,000。水費半年收。" },
   "牛6-56": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
   "牛6-57": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
   "牛6-58": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 105000, rent: 110250, deposit: 220000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", rentSchedule: [
     { from: "2026-03-01", untaxed: 105000 },
     { from: "2028-03-01", untaxed: 110000 }
-  ], note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。" },
+  ], note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。水費半年收。" },
   "牛6-59": { name: "黃儒清", taxId: "", contactName: "黃儒清", idNo: "S122572725", phone: "0956-107-555", leaseStart: "2025-03-01", leaseEnd: "2030-02-28", rentUntaxed: 46000, rent: 46000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-59。個人戶。未稅 $46,000（年度調整如合約備註）。每月1日匯聯邦高雄 信潔 010100034775。" },
   "牛6-60": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-58 同約，租金列在 93-58" },
   "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 110000, rent: 110000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "93-61／62 同約共二戶。未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。押金 61戶 $76,000、62戶 $84,000。合約至 115/10/31。" },
@@ -2335,11 +2336,11 @@ const FACTORY_TENANT_INFO = {
   "牛8-77": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
     { from: "2022-07-01", untaxed: 40000 },
     { from: "2027-07-01", untaxed: 42000 }
-  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。" },
   "牛8-78": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
     { from: "2022-07-01", untaxed: 40000 },
     { from: "2027-07-01", untaxed: 42000 }
-  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。" },
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。" },
   "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2026-03-31", rentUntaxed: 0, rent: 0, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "租金約至 115/3/31，系統月租改 0（避免算進應收）。廠房主要改到 93-58／60。電費仍從鳳仁路93之1號電號 18-33-7421-01-4 分攤。" }
 };
 const CYCLE_JOBS = [
@@ -2355,8 +2356,12 @@ const CYCLE_JOBS = [
   { id: "cycle-deposit-interest", monthDay: 1, onlyMonth: 12, text: "開立套房／廠房押金設算息發票", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
   { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　93-1B／93-58、60（台電電號 18-33-7421-01-4）", cycle: true, owner: "7651" },
-  { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
-  { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "記水錶度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "抄表度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "抄表度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" },
+  { id: "cycle-water-jinfang", monthDay: 11, intervalMonths: 6, anchor: "2027-01-11", flexDays: 4, text: "抄表度數　97-77／78 錦芳（牛8）半年一次", cycle: true, owner: "7651" },
+  { id: "cycle-waterfee-chengjia", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　誠家食品 93-55／56／57　半年", cycle: true, owner: "7651" },
+  { id: "cycle-waterfee-yusheng", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　鈺晟 93-58／60、拉皮93-1B　半年", cycle: true, owner: "7651" },
+  { id: "cycle-waterfee-chen", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　陳雅琪 97-76　半年", cycle: true, owner: "7651" },
   { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" },
   { id: "cycle-labor-ins", monthDay: 5, text: "繳勞健保（9月級距 42,000 勞1,050／健651、35,000 勞812／健540；10月 35,000 勞870／健540）", cycle: true, owner: "7651" }
 ];
@@ -2365,7 +2370,8 @@ const METER_UNITS = [
   { id: "m-93-2a", roomNo: "拉皮-2A", unit: "93-2A", name: "咘然居", kind: "elec" },
   { id: "m-93-1a", roomNo: "拉皮-1A", unit: "93-1A", name: "南溢製鞋", kind: "elec" },
   { id: "m-97-69", roomNo: "牛5-97-69", unit: "97-69", name: "喜憨兒", kind: "water" },
-  { id: "m-97-71", roomNo: "牛5-97-71", unit: "97-71", name: "莊記綠豆", kind: "water" }
+  { id: "m-97-71", roomNo: "牛5-97-71", unit: "97-71", name: "莊記綠豆", kind: "water" },
+  { id: "m-97-77", roomNo: "牛8-77", unit: "97-77／78", name: "錦芳", kind: "water" }
 ];
 const METER_SHARES = [
   { id: "share-93-1", ids: ["m-93-1b", "m-93-2a"], billNo: "18-33-7421-01-4", title: "93-1B 鈺晟、93-2A 咘然居共用電單" }
@@ -2408,11 +2414,12 @@ function applyMeterLogs(data) {
 }
 function memoMeterUnits(m) {
   const t = String((m && m.text) || "") + " " + String((m && m.id) || "");
-  if (/cycle-water-97-69|97-69|喜憨兒/.test(t) && /水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-69");
-  if (/cycle-water-97-71|97-71|莊記/.test(t) && /水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-71");
+  if (/cycle-water-97-69|97-69|喜憨兒/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-69");
+  if (/cycle-water-97-71|97-71|莊記/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-71");
+  if (/cycle-water-jinfang|錦芳|97-77|97-78/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-77");
   if (/cycle-yusheng-elec|收鈺晟電費/.test(t)) return METER_UNITS.filter(u => u.id === "m-93-1b");
   if (/記電錶|cycle-meter-93/.test(t)) return METER_UNITS.filter(u => u.kind === "elec");
-  if (/電錶|水錶|度數/.test(t)) return METER_UNITS.slice();
+  if (/電錶|水錶|抄表|度數/.test(t)) return METER_UNITS.slice();
   return [];
 }
 function lastMeterLog(unitId, beforeYmd) {
