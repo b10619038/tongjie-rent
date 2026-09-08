@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-21-00";
-const APP_EDIT_COUNT = 839;
+const APP_STAMP = "2026-09-08-21-05";
+const APP_EDIT_COUNT = 840;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0389";
+const FILE_VER = "0390";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7231林安安不足月已繳清（9月日拆＋10月租金）"] },
+  { ver: APP_VERSION, items: ["仲介文案拿掉仲介費含稅；租客一樣要登入App"] },
+  { ver: "2026-09-08-21-00-839", items: ["7231林安安不足月已繳清（9月日拆＋10月租金）"] },
   { ver: "2026-09-08-20-56-838", items: ["拿掉9/8重複金流：手記7631的3000／5200與林安安重複"] },
   { ver: "2026-09-08-20-50-837", items: ["仲介簽約：現場現金為主、不夠轉兆豐、仲介費一個月租金；7231林安安已入帳"] },
   { ver: "2026-09-08-15-26-836", items: ["新客面交簽約改到該房間現場，第一次現金"] },
@@ -1790,7 +1791,7 @@ function tenantHandoverNoteHtml(t, r) {
       : "";
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
-      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。仲介可代印合約、現場蓋章，後台登記即可。面交簽約地點：${escapeHtml(stampPlaceOf(r))}。第一次付款現場現金為主，不夠轉兆豐。</p>
+      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客。面交簽約地點：${escapeHtml(stampPlaceOf(r))}。第一次付款現場現金為主，不夠轉兆豐。租客一樣要登入 App。</p>
       ${waitLine}
     </div>`;
   }
@@ -14535,7 +14536,7 @@ function incomingActionHtml(inc, r) {
     ? `這間已被 ${holder.name || "其他人"} 先簽約。此筆排在 ${inc.leaseStart || "該約到期後"} 起。`
     : signed
       ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
-      : (live ? "這間目前空房。確認後成為正式租客並記入簽約金流。仲介代印合約時不必等租客登入 App。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。");
+      : (live ? "這間目前空房。確認後成為正式租客並記入簽約金流。租客一樣要登入 App。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。");
   return `<div class="handover-box">
       <div class="label">${label}　${escapeHtml(inc.name || "")}${inc.hasAgent || agentFee ? "　仲介" : ""}</div>
       <p class="small">${escapeHtml(hint)}</p>
@@ -14569,7 +14570,7 @@ function handoverBoxHtml(t, r) {
   if (!open) return `<button type="button" class="ghost" data-handover-open="${r.id}" style="margin-top:8px">登記新客</button>`;
   return `<div class="handover-box">
     <div class="label">登記新客</div>
-    <div class="small">舊客還在也能先登記。仲介帶看以現場現金為主；租客可不登入 App。完成退租後自動接手。之後每月租金匯兆豐。</div>
+    <div class="small">舊客還在也能先登記。仲介帶看以現場現金為主。租客一樣要登入 App。完成退租後自動接手。之後每月租金匯兆豐。</div>
     <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
     <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
     <label class="field"><span>身分證</span><input data-hf="idno" type="text" /></label>
@@ -14579,7 +14580,7 @@ function handoverBoxHtml(t, r) {
     <label class="field"><span>到期日</span><input data-hf="end" type="date" /></label>
     <label class="field"><span>租金</span><input data-hf="rent" type="number" inputmode="numeric" placeholder="${r.rent || ""}" /></label>
     <label class="field"><span>押金</span><input data-hf="deposit" type="number" inputmode="numeric" placeholder="空白＝兩個月" /></label>
-    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input data-hf="agent" type="checkbox" checked /><span>仲介帶看（仲介費一個月租金含稅，現場現金）</span></label>
+    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input data-hf="agent" type="checkbox" checked /><span>仲介帶看（現場現金為主）</span></label>
     <label class="field"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" placeholder="空白＝全部現金" /></label>
     <label class="field"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" placeholder="現金不夠再填" /></label>
     <div class="unpaid-tools">
@@ -15848,7 +15849,7 @@ function moveInView() {
     <div class="move-head">
       <div class="logo">TONG JIE</div>
       <h1>申請入住</h1>
-      <p class="lead">選房號、填姓名電話。仲介可代印合約、現場蓋章，租客可不登入 App，後台登記即可入帳。</p>
+      <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽。租客一樣要登入 App。</p>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
@@ -15886,9 +15887,9 @@ function moveInView() {
       <div class="label">仲介</div>
       <label class="field" style="flex-direction:row;align-items:center;gap:10px">
         <input id="move-agent" type="checkbox" ${d.hasAgent ? "checked" : ""} />
-        <span>仲介帶看（現場現金為主，仲介費一個月租金含稅，現金結清）</span>
+        <span>仲介帶看（現場現金為主）</span>
       </label>
-      <p class="small" style="margin:8px 0 0">有仲介時第一次付款收現金；身上不夠可現場轉統潔兆豐。仲介代印、代蓋章時，租客不必登入 App。</p>
+      <p class="small" style="margin:8px 0 0">有仲介時第一次付款收現金；身上不夠可現場轉統潔兆豐。租客一樣要登入 App。</p>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
@@ -16356,7 +16357,7 @@ function payView() {
   const proofHint = paid
     ? ""
     : firstPay
-      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次在簽約現場收現金。仲介帶看時以現金為主，身上不夠可轉統潔兆豐。仲介代印合約時不必登入 App。</p>`
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次在簽約現場收現金。仲介帶看時以現金為主，身上不夠可轉統潔兆豐。租客一樣要登入 App。</p>`
       : lineOk
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
       : (proof && proof.hasText)
