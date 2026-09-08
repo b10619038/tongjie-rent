@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-11-06";
-const APP_EDIT_COUNT = 833;
+const APP_STAMP = "2026-09-08-11-18";
+const APP_EDIT_COUNT = 834;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0383";
+const FILE_VER = "0384";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["個人戶新增趙淑芬、許喻涵"] },
+  { ver: APP_VERSION, items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
+  { ver: "2026-09-08-11-06-833", items: ["個人戶新增趙淑芬、許喻涵"] },
   { ver: "2026-09-08-00-48-832", items: ["繳費頁註明水費請於簽約現場支付現金"] },
   { ver: "2026-09-08-00-44-831", items: ["新客第一次繳費顯示2押1租總額"] },
   { ver: "2026-09-08-00-40-830", items: ["選房號返回往下移，避開頂部"] },
@@ -5277,9 +5278,23 @@ function syncErrandFromBook(b) {
   if (!e || !b) return;
   e.date = b.date;
   e.amount = b.amount;
-  e.company = b.company;
-  if (b.bank) e.place = b.bank;
-  if (b.note) e.note = b.note;
+  if (isXferErrand(e) || /轉帳[至自]/.test(String(b.note || ""))) {
+    if (b.type === "in") {
+      e.company = b.company;
+      e.place = b.bank || "";
+      const dest = xferDestOf(b.note) || xferDestOf(e.note);
+      if (dest && dest !== e.fromAccount) e.company = dest;
+    } else if (b.type === "out") {
+      e.fromAccount = b.company;
+      e.fromBank = b.bank || "";
+      const dest = xferDestOf(b.note) || xferDestOf(e.note);
+      if (dest) e.company = dest;
+    }
+  } else {
+    e.company = b.company;
+    if (b.bank) e.place = b.bank;
+    if (b.note) e.note = b.note;
+  }
   if (!e.linkedId) e.linkedId = b.id;
   if (!b.linkedId) b.linkedId = e.id;
 }
@@ -5403,6 +5418,7 @@ function ensureErrandBooks() {
   if (!state || !state.errands) return;
   if (!state.books) state.books = [];
   let added = false;
+  try { if (repairXferDests()) added = true; } catch {}
   state.errands.forEach(e => {
     if (!e || e.kind === "doc") return;
     const amount = errandAmount(e);
@@ -10519,11 +10535,11 @@ function isCashAccount(name) {
 }
 function personalKey(name) { return "個人戶·" + name; }
 function isPersonalKey(c) {
-  const s = String(c || "");
+  const s = String(c || "").replace(/\s*·\s*/g, "·");
   return s === "個人戶" || s.startsWith("個人戶·") || PERSONAL_ACCOUNTS.includes(s) || PERSONAL_PEOPLE.includes(s);
 }
 function personOfAccount(c) {
-  const s = String(c || "").trim();
+  const s = String(c || "").trim().replace(/\s*·\s*/g, "·");
   if (s.startsWith("個人戶·")) return s.slice("個人戶·".length);
   if (PERSONAL_PEOPLE.includes(s)) return s;
   const hit = PERSONAL_PEOPLE.find(p => s === p || s.indexOf(p) >= 0);
@@ -10535,6 +10551,46 @@ function accountLabel(c) {
   const p = personOfAccount(c);
   if (p) return "個人戶 · " + p;
   return String(c || "統潔");
+}
+function xferDestOf(s) {
+  const t = String(s || "").replace(/[・･.]/g, "·");
+  const m = t.match(/轉帳至\s*([^，,；;\n]+)/);
+  let raw = m ? m[1] : "";
+  if (!raw) {
+    const p = t.match(/個人戶\s*[·]?\s*([^\s,，0-9]+(?:、[^\s,，0-9]+)?)/);
+    raw = p ? ("個人戶·" + p[1]) : "";
+  }
+  if (!raw) return "";
+  raw = raw.replace(/\s*\d{3,8}\s*$/, "").replace(/[·]\s*(聯邦|兆豐|農會|超商|現金)\s*$/, "").trim();
+  return normalizeBookCompany(raw);
+}
+function repairXferDests() {
+  if (!state) return;
+  let dirty = false;
+  (state.errands || []).forEach(e => {
+    if (!e || !isXferErrand(e)) return;
+    const dest = xferDestOf(e.note) || xferDestOf(e.title) || "";
+    if (!dest) return;
+    const from = normalizeBookCompany(e.fromAccount || "");
+    if (e.company !== dest && (e.company === from || !e.company || e.company === "統潔" || isPersonalKey(dest))) {
+      e.company = dest;
+      if (!banksOf(dest).length) e.place = "";
+      dirty = true;
+    }
+  });
+  (state.books || []).forEach(outB => {
+    if (!outB || outB.type !== "out") return;
+    const dest = xferDestOf(outB.note);
+    if (!dest) return;
+    const link = outB.linkedId || outB.id;
+    const inn = (state.books || []).find(x => x && x.type === "in" && (x.linkedId === link || x.id === link || x.linkedId === outB.id));
+    if (inn && inn.company !== dest && (inn.company === outB.company || inn.company === "統潔" || isPersonalKey(dest))) {
+      inn.company = dest;
+      if (!banksOf(dest).length) inn.bank = "";
+      dirty = true;
+    }
+  });
+  return dirty;
 }
 function rememberBookForm(form) {
   form = form || document.getElementById("book-form");
@@ -17932,7 +17988,9 @@ function errandRecordsHtml() {
     const k = errandRecordKind(e);
     const amt = errandAmount(e);
     const from = e.fromAccount ? (accountLabel(e.fromAccount) + (e.fromBank ? "·" + e.fromBank : "")) : "";
-    const to = accountLabel(e.company || "") + ((e.place || e.bank) ? "·" + (e.place || e.bank) : "");
+    const dest = (isXferErrand(e) && (xferDestOf(e.note) || xferDestOf(e.title))) || e.company || "";
+    const toBank = banksOf(normalizeBookCompany(dest)).length ? (e.place || e.bank || "") : "";
+    const to = accountLabel(dest) + (toBank ? "·" + toBank : "");
     const acct = (k.text === "轉帳" && from) ? (from + " → " + to) : (to || from || "—");
     const note = String(e.note || e.title || "").replace(/\s+/g, " ").trim();
     const day = String(ymdOf(e.date) || e.date || "").replace(/^\d{4}-/, "").replace("-", "/");
@@ -23311,10 +23369,15 @@ function bindAiBlockReorder() {
 }
 function readErrandForm() {
   const form = document.getElementById("errand-form");
-  const company = normalizeBookCompany((form && form.company && form.company.value) || ui.errandCompany || "統潔");
-  const bank = (form && form.bank && form.bank.value) || ui.errandBank || rememberedErrandBank(company);
-  const toCompany = normalizeBookCompany((form && form.toCompany && form.toCompany.value) || ui.errandToCompany || rememberedErrandToCompany());
-  const toBank = (form && form.toBank && form.toBank.value) || ui.errandToBank || rememberedErrandToBank(toCompany);
+  const companyEl = document.getElementById("errand-company") || (form && form.company);
+  const bankEl = document.getElementById("errand-bank") || (form && form.bank);
+  const toEl = document.getElementById("errand-to-company") || (form && form.toCompany);
+  const toBankEl = document.getElementById("errand-to-bank") || (form && form.toBank);
+  const company = normalizeBookCompany((companyEl && companyEl.value) || ui.errandCompany || "統潔");
+  const bank = (bankEl && bankEl.value) || ui.errandBank || rememberedErrandBank(company);
+  const toCompany = normalizeBookCompany((toEl && toEl.value) || ui.errandToCompany || rememberedErrandToCompany());
+  let toBank = (toBankEl && toBankEl.value) || ui.errandToBank || rememberedErrandToBank(toCompany);
+  if (!banksOf(toCompany).length) toBank = "";
   const amtEl = document.getElementById("errand-amount");
   const noteEl = document.getElementById("errand-note-free");
   const note = String((noteEl && noteEl.value) || ui.errandNote || "").trim();
@@ -23438,6 +23501,8 @@ function submitErrandNow() {
     const pendingBank = !!(g && g.pendingBank);
     const xfer = (g && g.cashType) === "xfer" || !!(g && g.xfer);
     const cashType = xfer ? "xfer" : ((g && g.cashType) === "out" ? "out" : "in");
+    let toCo = company;
+    let toBank = place;
     const bankLike = cashType !== "out" && !xfer && (/跑銀行|入帳|對帳|存摺|簿子|轉帳/.test(title) || /聯邦|兆豐|農會/.test(place));
     const cash = bankLike && amount ? findPendingCashBook(amount, date) : null;
     if (amount && cash) {
@@ -23456,8 +23521,12 @@ function submitErrandNow() {
     } else if (amount && xfer) {
       const from = normalizeBookCompany(g.fromAccount || formv.company || "現金(保險箱)");
       const fromBank = g.fromBank || formv.bank || "";
-      const toCo = company;
-      const toBank = place || formv.toBank || "";
+      toCo = company;
+      const parsed = xferDestOf(note) || xferDestOf(title);
+      if (parsed && (toCo === from || !toCo || toCo === "統潔")) toCo = parsed;
+      if (formv.toCompany && formv.toCompany !== from) toCo = formv.toCompany;
+      toBank = place || formv.toBank || "";
+      if (!banksOf(toCo).length) toBank = "";
       const fromLab = accountLabel(from) + (fromBank ? "·" + fromBank : "");
       const toLab = accountLabel(toCo) + (toBank ? "·" + toBank : "");
       state.books.push({
@@ -23481,7 +23550,7 @@ function submitErrandNow() {
       else nIn += 1;
     }
     state.errands.push({
-      id, kind: "bank", date, title, place, amount, note, company,
+      id, kind: "bank", date, title, place: xfer ? toBank : place, amount, note, company: xfer ? toCo : company,
       cashType, pendingBank: pendingBank && !cash, linkedId: cash ? cash.id : id,
       skipLedger: true, xfer: cashType === "xfer",
       fromAccount: xfer ? (g.fromAccount || formv.company) : "",
