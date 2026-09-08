@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-11-18";
-const APP_EDIT_COUNT = 834;
+const APP_STAMP = "2026-09-08-15-24";
+const APP_EDIT_COUNT = 835;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0384";
+const FILE_VER = "0385";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
+  { ver: APP_VERSION, items: ["新客第一次付款改簽約現場現金；套房電費每度5.5元"] },
+  { ver: "2026-09-08-11-18-834", items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
   { ver: "2026-09-08-11-06-833", items: ["個人戶新增趙淑芬、許喻涵"] },
   { ver: "2026-09-08-00-48-832", items: ["繳費頁註明水費請於簽約現場支付現金"] },
   { ver: "2026-09-08-00-44-831", items: ["新客第一次繳費顯示2押1租總額"] },
@@ -1850,7 +1851,7 @@ const DEFAULT_RULES = `1. 每月租金請於每月 1 日前完成，逾期將依
 3. 垃圾請分類並依規定時間放置，勿堆放在走廊或樓梯間。
 4. 房間內禁止抽菸、開伙（簡易加熱除外）。
 5. 冷氣、熱水器等設備請正常使用，損壞請從 App 報修，勿自行拆修。
-6. 電費請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
+6. 電費每度 NT$ 5.5，請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
 7. 訪客請由承租人陪同，勿將房間轉租或借給他人長期居住。
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
 function todayDate() {
@@ -1891,6 +1892,8 @@ function subsidyHint(r) {
   return roomNoSubsidy(r) ? "不可申請租屋補助" : "";
 }
 const WATER_FEE_TEXT = "每人每月 NT$ 150，一年優惠 NT$ 1,800";
+const STUDIO_ELEC_RATE = 5.5;
+const ELEC_FEE_TEXT = "每度 NT$ 5.5，請至 5 樓自助儲值機儲值";
 const STUDIO_MONTH_PAY = {
   "6821": { name: "黃宥宇", paidOn: "2026-08-10", amount: 7000 },
   "6822": { name: "吳孟書、黃莉晏", paidOn: "2026-08-01", amount: 7000 },
@@ -2871,7 +2874,7 @@ function buildSeed() {
       company: bld ? bld.company : "統潔",
       status: name ? "rented" : "vacant",
       tenantId: tid, photos: photosFor(no), amenities: AMENITIES,
-      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
+      utilities: { electric: ELEC_FEE_TEXT, water: WATER_FEE_TEXT },
       contractImages: [], location: roomAddress(no)
     });
     if (!name) return;
@@ -3149,7 +3152,7 @@ function normalize(data) {
     if (r.manager === "洪潭") r.manager = "洪漳";
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory" && r.status !== "office") {
-      if (!r.utilities.electric) r.utilities.electric = "5樓設有自助儲值機可以刷卡儲值";
+      if (!r.utilities.electric || /自助儲值機/.test(r.utilities.electric)) r.utilities.electric = ELEC_FEE_TEXT;
       if (!r.utilities.water || /每月定額|一年固定/.test(r.utilities.water)) r.utilities.water = WATER_FEE_TEXT;
       if (String(r.no) === "7652") {
         r.rent = 5000;
@@ -7964,7 +7967,7 @@ function ensureDemoTenant(data) {
       tenantId: "t-demo",
       amenities: AMENITIES.slice(),
       photos: ["images/living.jpg", "images/kitchen.jpg", "images/bedroom.jpg", "images/bath.jpg"],
-      utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
+      utilities: { electric: ELEC_FEE_TEXT, water: WATER_FEE_TEXT },
       contractImages: []
     };
     data.rooms.push(room);
@@ -8187,7 +8190,7 @@ function ensureDevPreview() {
     tenantId: "t-dev-preview",
     amenities: AMENITIES.slice(),
     photos: photos,
-    utilities: { electric: "5樓設有自助儲值機可以刷卡儲值", water: WATER_FEE_TEXT },
+    utilities: { electric: ELEC_FEE_TEXT, water: WATER_FEE_TEXT },
     contractImages: []
   };
   ui.devTenant = Object.assign({
@@ -14272,12 +14275,16 @@ function postNewTenantMoveInBooks(t, r) {
   if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return;
   const date = ymdOf(t.leaseStart) || todayYmd();
   if (!Number(t.deposit) && r && Number(r.rent) > 0) t.deposit = Number(r.deposit) || Number(t.rent || r.rent) * 2;
-  postDepositBook("in", t, r, date);
-  if (!r || roomIsFactory(r) || r.status === "office") return;
+  if (!r || roomIsFactory(r) || r.status === "office") {
+    postDepositBook("in", t, r, date);
+    return;
+  }
   const rent = Number(t.rent) || Number(r.rent) || 0;
-  if (rent > 0) postMoveInSideBook("rent", t, r, date, rent, "統潔", depositBankOf(t, r), "首月租金（2押1租）");
-  postMoveInSideBook("water", t, r, date, studioWaterYearFee(t, r), "現金(保險箱)", "現金", "水費（年）");
-  postMoveInSideBook("elec", t, r, date, studioElecStoreFee(t, r), "現金(保險箱)", "現金", "電費儲值");
+  const dep = Number(t.deposit) || Number(r.deposit) || rent * 2;
+  postMoveInSideBook("dep", t, r, date, dep, "現金(保險箱)", "現金", "押金（2押1租，現金）");
+  if (rent > 0) postMoveInSideBook("rent", t, r, date, rent, "現金(保險箱)", "現金", "首月租金（2押1租，現金）");
+  postMoveInSideBook("water", t, r, date, studioWaterYearFee(t, r), "現金(保險箱)", "現金", "水費（年，簽約現場現金）");
+  postMoveInSideBook("elec", t, r, date, studioElecStoreFee(t, r), "現金(保險箱)", "現金", "電費儲值（每度 " + STUDIO_ELEC_RATE + " 元，簽約現場現金）");
 }
 function postDepositBook(kind, t, r, date, amount) {
   if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return false;
@@ -14663,7 +14670,7 @@ function studioLeasePaperHtml(t, r, leasePart) {
       <div class="lease-pgno">3</div>
     </section>
     <section class="lease-pg">
-      <p>（三）電費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每度　　元整。</p>
+      <p>（三）電費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(true)}其他：每度 NT$ 5.5 元整。</p>
       <p>（四）瓦斯費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}其他：無。</p>
       <p>（五）網路費：${ck(true)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}其他：　　。</p>
       <p>（六）其他費用及其支付方式：　　。</p>
@@ -16066,7 +16073,7 @@ function homeView() {
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat"><div class="label">${firstPay ? "首次應繳（2押1租）" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
         </div>
-        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費請於簽約現場支付現金。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
+        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。請於簽約現場以現金支付。電費每度 NT$ 5.5。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? (roomTakenByOther(t, r)
@@ -16135,7 +16142,8 @@ function linePayMessage() {
   const pack = tenantPayAccounts(t, r);
   const b = pack.primary || {};
   const first = firstStudioPayDue(t, r);
-  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} ${first ? "首次2押1租" : "已繳本月租金"} ${r ? money(thisMonthDueOf(t, r)) : ""}\n戶名：${b.holder || "統潔開發有限公司"}\n銀行：${[b.code, b.bank].filter(Boolean).join(" ")}\n帳號：${b.account || ""}`;
+  if (first) return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 首次2押1租（簽約現場現金）${r ? money(thisMonthDueOf(t, r)) : ""}`;
+  return `【繳費通知】${r ? r.no : ""} ${t && t.name ? t.name : ""} 已繳本月租金 ${r ? money(thisMonthDueOf(t, r)) : ""}\n戶名：${b.holder || "統潔開發有限公司"}\n銀行：${[b.code, b.bank].filter(Boolean).join(" ")}\n帳號：${b.account || ""}`;
 }
 function payAccountCardHtml(b, title) {
   if (!b) return "";
@@ -16155,11 +16163,13 @@ function payView() {
   const firstPay = firstStudioPayDue(t, r);
   const stubNow = !firstPay && isStubMonthNow(t, r);
   const pay = payLabel(t, r);
-  const lineOk = !!(paid || tenantLineUnlocked(t, r));
+  const lineOk = !!(paid || tenantLineUnlocked(t, r) || firstPay);
   const proof = linePayProofOf(r && r.no);
   const proofHint = paid
     ? ""
-    : lineOk
+    : firstPay
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次 2押1租、水費、電費儲值都在簽約現場收現金，不必轉帳。</p>`
+      : lineOk
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
       : (proof && proof.hasText)
         ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到回報文字，請再在 LINE 傳轉帳截圖。</p>`
@@ -16168,7 +16178,7 @@ function payView() {
           : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
   const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
   const dueHint = firstPay
-    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。水費請於簽約現場支付現金。</div>`
+    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。請於簽約現場以現金支付。水費、電費儲值一併收現金（電費每度 NT$ 5.5）。</div>`
     : (stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : "");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
@@ -16184,13 +16194,13 @@ function payView() {
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
-        <div class="row" style="margin-top:10px"><span class="k">實際匯款日</span><span class="v">${ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")}</span></div>
+        <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? "簽約現場現金已收" : "簽約現場現金") : (ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳"))}</span></div>
       </div>
-      <div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${firstPay ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">簽約現場以現金支付</div><div class="small" style="margin-top:6px">2押1租、水費、電費儲值都收現金。之後每月租金再匯兆豐。電費每度 NT$ 5.5，5 樓儲值機可加值。</div></div>` : `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
-      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}
+      ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}`}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
-      <button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>
+      ${firstPay ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>`}
       <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
       ${proofHint}
     </div>`;
@@ -16325,7 +16335,7 @@ function roomExtrasHtml(r) {
         <div class="row clickable" data-open-topup role="button">
           <span class="k">電費</span>
           <span class="v linkish">${(function (t) {
-            const s = String(t || "5樓設有自助儲值機可以刷卡儲值");
+            const s = String(t || ELEC_FEE_TEXT);
             const i = s.indexOf("儲值機");
             if (i < 0) return `<span class="topup-origin">${escapeHtml(s)}</span>`;
             return escapeHtml(s.slice(0, i)) + `<span class="topup-origin">儲值機</span>` + escapeHtml(s.slice(i + 3));
