@@ -24,12 +24,12 @@ const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
-const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏"];
+const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-00-48";
-const APP_EDIT_COUNT = 832;
+const APP_STAMP = "2026-09-08-11-06";
+const APP_EDIT_COUNT = 833;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0382";
+const FILE_VER = "0383";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費頁註明水費請於簽約現場支付現金"] },
+  { ver: APP_VERSION, items: ["個人戶新增趙淑芬、許喻涵"] },
+  { ver: "2026-09-08-00-48-832", items: ["繳費頁註明水費請於簽約現場支付現金"] },
   { ver: "2026-09-08-00-44-831", items: ["新客第一次繳費顯示2押1租總額"] },
   { ver: "2026-09-08-00-40-830", items: ["選房號返回往下移，避開頂部"] },
   { ver: "2026-09-08-00-37-829", items: ["申請入住選房號會顯示月租金額"] },
@@ -2952,6 +2953,8 @@ const JULY115_OPENINGS = {
   "個人戶·趙海成、趙正賢": 431362,
   "個人戶·江秀霞": 177805,
   "個人戶·黃思敏": 247304,
+  "個人戶·趙淑芬": 0,
+  "個人戶·許喻涵": 0,
   "統潔·聯邦": 535285,
   "統潔·農會": 859828,
   "統潔·兆豐": 28829,
@@ -10556,7 +10559,7 @@ function rememberedBookBank(company) {
   if (ui.bookBank && allowed.includes(ui.bookBank)) return ui.bookBank;
   return allowed[0] || "";
 }
-const ERRAND_PEOPLE = ["趙文榮", "趙文彬", "趙苡真", "趙洪漳", "趙浩鈞", "趙貴美", "江秀霞", "黃思敏", "趙海成、趙正賢"];
+const ERRAND_PEOPLE = ["趙文榮", "趙文彬", "趙苡真", "趙洪漳", "趙浩鈞", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵", "趙海成、趙正賢"];
 function errandAccountOptions(selected) {
   const sel = normalizeBookCompany(selected || "統潔");
   const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
