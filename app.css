@@ -2097,7 +2097,8 @@ input[type="file"] {
 #work-card .work-item .work-scroll {
   margin: 0 -4px;
 }
-#work-card .meter-box {
+#work-card .meter-box,
+#meter-card .meter-box {
   display: grid;
   gap: 12px;
   margin: 0 0 12px;
@@ -2106,11 +2107,13 @@ input[type="file"] {
   border-radius: 16px;
   background: #fff;
 }
-#work-card .meter-unit {
+#work-card .meter-unit,
+#meter-card .meter-unit {
   display: grid;
   gap: 6px;
 }
-#work-card .meter-last {
+#work-card .meter-last,
+#meter-card .meter-last {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: baseline;
@@ -2118,7 +2121,8 @@ input[type="file"] {
   font-size: 13px;
   color: #6b7280;
 }
-#work-card .meter-hist-btn {
+#work-card .meter-hist-btn,
+#meter-card .meter-hist-btn {
   border: 0;
   background: none;
   padding: 0;
@@ -2129,35 +2133,42 @@ input[type="file"] {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-#work-card .meter-hist-btn.on { text-decoration: underline; }
-#work-card .meter-hist-row {
+#work-card .meter-hist-btn.on,
+#meter-card .meter-hist-btn.on { text-decoration: underline; }
+#work-card .meter-hist-row,
+#meter-card .meter-hist-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
 }
-#work-card .meter-row {
+#work-card .meter-row,
+#meter-card .meter-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
 }
-#work-card .meter-row input {
+#work-card .meter-row input,
+#meter-card .meter-row input {
   min-height: 44px;
   font-size: 16px;
 }
-#work-card .meter-hist {
+#work-card .meter-hist,
+#meter-card .meter-hist {
   display: grid;
   gap: 2px;
   color: #6b7280;
   font-size: 12px;
 }
-#work-card .meter-share {
+#work-card .meter-share,
+#meter-card .meter-share {
   display: grid;
   gap: 8px;
   padding-top: 10px;
   border-top: 1px dashed var(--line);
 }
-#work-card .meter-share-formula {
+#work-card .meter-share-formula,
+#meter-card .meter-share-formula {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 10px;
@@ -2166,7 +2177,8 @@ input[type="file"] {
   color: #6b7280;
   line-height: 1.45;
 }
-#work-card .meter-share-sum {
+#work-card .meter-share-sum,
+#meter-card .meter-share-sum {
   display: grid;
   gap: 4px;
   font-size: 13px;

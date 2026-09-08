@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-21-45";
-const APP_EDIT_COUNT = 843;
+const APP_STAMP = "2026-09-08-21-48";
+const APP_EDIT_COUNT = 844;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0393";
+const FILE_VER = "0394";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
+  { ver: APP_VERSION, items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
+  { ver: "2026-09-08-21-45-843", items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
   { ver: "2026-09-08-21-20-842", items: ["申請入住付款方式會帶到繳費頁；重送申請也會記住"] },
   { ver: "2026-09-08-21-10-841", items: ["首次付款可選現金／轉帳／自訂金額；仲介預設現金、沒仲介預設轉帳"] },
   { ver: "2026-09-08-21-05-840", items: ["仲介文案拿掉仲介費含稅；租客一樣要登入App"] },
@@ -2430,8 +2431,15 @@ function lastMeterLog(unitId, beforeYmd) {
 function meterDay(s) {
   return String(ymdOf(s) || s || "").replace(/^\d{4}-/, "").replace("-", "/");
 }
+function extraMeters() {
+  return Array.isArray(state && state.extraMeters) ? state.extraMeters.filter(u => u && u.id) : [];
+}
+function allMeterUnits() {
+  const ids = new Set(METER_UNITS.map(u => u.id));
+  return METER_UNITS.concat(extraMeters().filter(u => !ids.has(u.id)));
+}
 function meterUnitById(id) {
-  return METER_UNITS.find(u => u.id === id) || null;
+  return allMeterUnits().find(u => u.id === id) || null;
 }
 function meterUsageNow(unitId) {
   const inp = document.querySelector("[data-meter-read='" + unitId + "']");
@@ -2543,15 +2551,11 @@ function saveMeterShare(shareId) {
   toast("已記入紅單　" + line);
   return true;
 }
-function meterBoxHtml(m) {
-  const units = memoMeterUnits(m);
-  if (!units.length) return "";
-  const shares = METER_SHARES.filter(s => s.ids.some(id => units.some(u => u.id === id)));
-  return `<div class="meter-box">
-    ${units.map(u => {
-      const last = lastMeterLog(u.id);
-      const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-      return `<div class="meter-unit">
+function meterUnitHtml(u) {
+  if (!u) return "";
+  const last = lastMeterLog(u.id);
+  const hist = (state.meterLogs || []).filter(x => x && x.unitId === u.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  return `<div class="meter-unit">
         <div class="row"><b>${escapeHtml(u.unit + "　" + u.name)}</b><span class="small">${u.kind === "water" ? "水錶" : "電錶"}</span></div>
         <div class="meter-last">
           <button type="button" class="meter-hist-btn${ui.meterHistOpen && ui.meterHistOpen[u.id] ? " on" : ""}" data-meter-hist="${u.id}">歷史紀錄</button>
@@ -2564,9 +2568,46 @@ function meterBoxHtml(m) {
         </div>
         <button type="button" class="ghost" data-meter-save="${u.id}">記入</button>
       </div>`;
-    }).join("")}
+}
+function meterBoxHtml(m) {
+  const units = memoMeterUnits(m);
+  if (!units.length) return "";
+  const shares = METER_SHARES.filter(s => s.ids.some(id => units.some(u => u.id === id)));
+  return `<div class="meter-box">
+    ${units.map(meterUnitHtml).join("")}
     ${shares.map(meterShareHtml).join("")}
   </div>`;
+}
+function meterKindPanelHtml() {
+  const kind = ui.meterKind === "water" ? "water" : "elec";
+  const units = allMeterUnits().filter(u => u.kind === kind);
+  const shares = kind === "elec" ? METER_SHARES : [];
+  return `<div class="meter-box">
+    <div class="sign-slot-grid" style="margin:0 0 10px">
+      <button type="button" class="sign-slot${kind === "elec" ? " on" : ""}" data-meter-kind="elec">電表</button>
+      <button type="button" class="sign-slot${kind === "water" ? " on" : ""}" data-meter-kind="water">水表</button>
+    </div>
+    ${units.length ? units.map(meterUnitHtml).join("") : `<div class="small">還沒有${kind === "water" ? "水表" : "電表"}。下面可新增。</div>`}
+    ${shares.map(meterShareHtml).join("")}
+    <form id="meter-add" class="work-edit" style="margin-top:8px" data-meter-add="${kind}">
+      <div class="small">新增${kind === "water" ? "水表" : "電表"}</div>
+      <input name="name" type="text" placeholder="戶名，例如 誠家" autocomplete="off" />
+      <input name="unit" type="text" placeholder="門牌，例如 93-55" autocomplete="off" />
+      <div class="unpaid-tools work-memo-tools"><button type="submit" class="ghost">加入</button></div>
+    </form>
+  </div>`;
+}
+function addExtraMeter(kind, name, unit) {
+  const n = String(name || "").trim();
+  const u = String(unit || "").trim();
+  if (!n || !u) { toast("請填戶名和門牌"); return false; }
+  if (!state.extraMeters) state.extraMeters = [];
+  const id = "m-x-" + Date.now();
+  state.extraMeters.push({ id, roomNo: u, unit: u, name: n, kind: kind === "water" ? "water" : "elec" });
+  save();
+  try { pushCloud(); } catch {}
+  toast("已加入" + (kind === "water" ? "水表" : "電表") + "　" + u + " " + n);
+  return true;
 }
 function saveMeterReading(unitId, raw) {
   const n = Number(String(raw || "").replace(/[^\d.]/g, ""));
@@ -5613,7 +5654,7 @@ async function pullCloud() {
       tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
       books: state.books, errands: state.errands, bankSlips: state.bankSlips,
-      meterLogs: state.meterLogs, meterBills: state.meterBills,
+      meterLogs: state.meterLogs, meterBills: state.meterBills, extraMeters: state.extraMeters,
       ledgerGone: state.ledgerGone, accountOpenings: state.accountOpenings,
       lastBookImport: state.lastBookImport,
       bookVault: state.bookVault,
@@ -5669,6 +5710,7 @@ async function pullCloud() {
     state = normalize(data);
     mergeSharedInto(state, mineSnap);
     state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
+    state.extraMeters = unionById(state.extraMeters, mineSnap.extraMeters);
     state.meterBills = unionById(state.meterBills, mineSnap.meterBills);
     applyMeterLogs(state);
     persistMeterLogs(state);
@@ -6206,6 +6248,7 @@ async function pushCloud() {
       bankSlips: dropGone(unionById(remote && remote.bankSlips, state.bankSlips), gone),
       meterLogs: unionById(remote && remote.meterLogs, state.meterLogs),
       meterBills: unionById(remote && remote.meterBills, state.meterBills),
+      extraMeters: unionById(remote && remote.extraMeters, state.extraMeters),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       accountOpenings: Object.assign({}, (remote && remote.accountOpenings) || {}, state.accountOpenings || {}),
       aiMemos: unionMemos((remote && remote.aiMemos) || [], (state.aiMemos || [])).filter(m => m && !isDevMemo(m)),
@@ -6244,6 +6287,7 @@ async function pushCloud() {
     state.errands = payload.errands;
     state.bankSlips = payload.bankSlips;
     if (payload.meterLogs) state.meterLogs = payload.meterLogs;
+    if (payload.extraMeters) state.extraMeters = payload.extraMeters;
     if (payload.meterBills) state.meterBills = payload.meterBills;
     persistMeterLogs(state);
     if (payload.aiMemos) state.aiMemos = payload.aiMemos;
@@ -18170,7 +18214,7 @@ function bindHowtoFold() {
     };
   });
 }
-const AI_BLOCKS = ["work", "errand", "ai"];
+const AI_BLOCKS = ["work", "meter", "errand", "ai"];
 const AI_BLOCK_KEY = "tongjie_ai_blocks";
 function loadAiBlockOrder() {
   try {
@@ -18477,6 +18521,25 @@ function adminAi() {
           ${plan.stats.map(s => s.go
             ? `<div class="mini clickable" data-work-go="${s.go}"><span>${escapeHtml(s.text)}</span></div>`
             : `<div class="mini"><span>${escapeHtml(s.text)}</span></div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+    })(),
+    meter: (() => {
+      const open = ui.meterOpen !== false;
+      const kind = ui.meterKind === "water" ? "water" : "elec";
+      return `<div class="card card-body tenant-slim${open ? " open" : ""}" id="meter-card">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="meter-fold">
+          <span class="work-title"><span class="k">抄表</span><span class="led-trip">${kind === "water" ? "水表" : "電表"}</span></span>
+          <span class="row-end"><span class="fold-caret"></span></span>
+        </button>
+        ${aiDragBtn()}
+      </div>
+      <div class="tenant-slim-body">
+        <div class="tenant-slim-inner">
+          <p class="small" style="margin-top:10px">選電表或水表，填本次度數後點記入。歷史不會歸零。新錶可在下面新增。</p>
+          ${meterKindPanelHtml()}
         </div>
       </div>
     </div>`;
@@ -24004,6 +24067,41 @@ function bindAdminAi() {
     e.stopPropagation();
     ui.workOpen = !workCard.classList.contains("open");
     workCard.classList.toggle("open", ui.workOpen);
+    };
+  }
+  const meterFold = document.getElementById("meter-fold");
+  const meterCard = document.getElementById("meter-card");
+  if (meterFold && meterCard) {
+    bindIosPress(meterFold);
+    meterFold.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.meterOpen = !meterCard.classList.contains("open");
+      meterCard.classList.toggle("open", ui.meterOpen);
+    };
+  }
+  document.querySelectorAll("[data-meter-kind]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.meterKind = btn.dataset.meterKind === "water" ? "water" : "elec";
+      ui.meterOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const meterAdd = document.getElementById("meter-add");
+  if (meterAdd) {
+    meterAdd.onsubmit = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fd = new FormData(meterAdd);
+      if (addExtraMeter(meterAdd.dataset.meterAdd, fd.get("name"), fd.get("unit"))) {
+        ui.meterOpen = true;
+        ui.keepScroll = true;
+        render();
+      }
     };
   }
   document.querySelectorAll("[data-work-memo]").forEach(el => {
