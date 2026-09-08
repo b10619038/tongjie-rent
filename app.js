@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-15-26";
-const APP_EDIT_COUNT = 836;
+const APP_STAMP = "2026-09-08-20-50";
+const APP_EDIT_COUNT = 837;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0386";
+const FILE_VER = "0387";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客面交簽約改到該房間現場，第一次現金"] },
+  { ver: APP_VERSION, items: ["仲介簽約：現場現金為主、不夠轉兆豐、仲介費一個月租金；7231林安安已入帳"] },
+  { ver: "2026-09-08-15-26-836", items: ["新客面交簽約改到該房間現場，第一次現金"] },
   { ver: "2026-09-08-15-24-835", items: ["新客第一次付款改簽約現場現金；套房電費每度5.5元"] },
   { ver: "2026-09-08-11-18-834", items: ["轉帳到個人戶不再顯示成統潔聯邦轉統潔聯邦"] },
   { ver: "2026-09-08-11-06-833", items: ["個人戶新增趙淑芬、許喻涵"] },
@@ -1787,7 +1788,7 @@ function tenantHandoverNoteHtml(t, r) {
       : "";
     return `<div class="handover-note prospect-note">
       <div class="label">看房預覽</div>
-      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。後台確認或空房簽完名，這支手機會直接變成這間的租客，不用登出。以後換手機：房號＋任一人的姓名或手機號碼。面交簽約地點：${escapeHtml(stampPlaceOf(r))}。第一次 2押1租、水費、電費儲值現場收現金。</p>
+      <p>還沒正式入住。可看畫面、簽合約，繳費與報修不會入帳。仲介可代印合約、現場蓋章，後台登記即可。面交簽約地點：${escapeHtml(stampPlaceOf(r))}。第一次付款現場現金為主，不夠轉兆豐。</p>
       ${waitLine}
     </div>`;
   }
@@ -2094,6 +2095,12 @@ function applyMonthlyUnpaid(data) {
     const room = data.rooms.find(r => r && r.id === t.roomId);
     if (!room || room.demo || room.kind === "factory" || room.status === "office") return;
     if (paidThisMonth(t)) return;
+    if ((t.prepaidYm || []).indexOf(ym) >= 0) {
+      t.paid = true;
+      t.paidYm = ym;
+      t.paidTouched = true;
+      return;
+    }
     const mark = data.paidMarks && data.paidMarks[t.id];
     if (mark && mark.paidYm === ym && mark.paid) return;
     t.paid = false;
@@ -2158,7 +2165,7 @@ const TENANT_INFO = {
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
-  "7231": { note: "空房" },
+  "7231": { name: "林安安", leaseStart: "2026-09-13", leaseEnd: "2027-09-30", deposit: 18000, rent: 9000, payBank: "兆豐", hasAgent: true, agentFee: 9000, payCash: 30000, payMega: 5200, note: "仲介。115/9/8 房間現場簽約。2押1租 27,000＋不足月 9/13–9/30 5,400＋水費年 1,800＋電儲值 1,000＝35,200（現金 30,000＋兆豐 5,200）。仲介費 9,000 現金含稅。仲介代印合約蓋章，租客未登入 App。" },
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, payBank: "農會", note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
@@ -3278,6 +3285,7 @@ function normalize(data) {
   scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
   applyYushengElec(data);
+  applyLinanan7231(data);
   applyDueDayPolicy(data);
   applyOldTenantPayBank(data);
   applyTenantRoster(data);
@@ -3597,6 +3605,78 @@ function applyYushengElec(data) {
     importTag: "yusheng76900",
     createdAt: "2026-08-31 14:00"
   });
+}
+const LINANAN_VER = "linanan-7231-v1";
+function applyLinanan7231(data) {
+  if (!data) return;
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  if (!Array.isArray(data.books)) data.books = [];
+  const no = "7231";
+  const room = data.rooms.find(r => r && String(r.no) === no);
+  if (!room) return;
+  (data.tenants || []).forEach(x => {
+    if (!x || x.demo) return;
+    if (x.roomId !== room.id && x.id !== "t7231") return;
+    if (sameTenantName(x.name, "林安安")) return;
+    if (!x.former) {
+      x.former = true;
+      x.incoming = false;
+      x.leftOn = x.leftOn || "2026-09-08";
+      x.edited = true;
+    }
+  });
+  let t = data.tenants.find(x => x && sameTenantName(x.name, "林安安") && (x.roomId === room.id || x.id === "t7231"));
+  if (!t) {
+    t = { id: "t7231", roomId: room.id };
+    data.tenants.push(t);
+  }
+  t.name = "林安安";
+  t.roomId = room.id;
+  t.incoming = false;
+  t.former = false;
+  t.prospect = false;
+  t.placeholder = false;
+  t.leaseStart = "2026-09-13";
+  t.leaseEnd = "2027-09-30";
+  t.rent = 9000;
+  t.deposit = 18000;
+  t.payBank = "兆豐";
+  t.hasAgent = true;
+  t.agentFee = 9000;
+  t.payCash = 30000;
+  t.payMega = 5200;
+  t.agentPrints = true;
+  t.dueDay = 1;
+  t.paid = true;
+  t.paidYm = "2026-10";
+  t.prepaidYm = ["2026-09", "2026-10"];
+  t.paidTouched = true;
+  t.remitOn = "2026-09-08";
+  t.signAppointAt = "2026-09-08T15:00";
+  t.note = (TENANT_INFO[no] && TENANT_INFO[no].note) || t.note || "";
+  try { applyStudioLeasePack(t, room, t.leaseStart); } catch {}
+  room.tenantId = t.id;
+  room.status = "rented";
+  room.rent = 9000;
+  room.deposit = 18000;
+  room.edited = true;
+  if (data.linananVer === LINANAN_VER) return;
+  const rows = [
+    ["bk-7231-lin-cash", "in", 30000, "現金(保險箱)", "現金", "牛10　7231 林安安　簽約現場現金 30,000（應付 35,200）"],
+    ["bk-7231-lin-mega", "in", 5200, "統潔", "兆豐", "牛10　7231 林安安　簽約現場轉兆豐補足 5,200"],
+    ["bk-7231-lin-agent", "out", 9000, "現金(保險箱)", "現金", "仲介費　7231 林安安　含稅發票 9,000"]
+  ];
+  rows.forEach(row => {
+    if ((data.ledgerGone || []).indexOf(row[0]) >= 0) return;
+    if ((data.books || []).some(b => b && (b.id === row[0] || b.importTag === row[0]))) return;
+    data.books.push({
+      id: row[0], type: row[1], date: "2026-09-08", amount: row[2],
+      company: row[3], bank: row[4], note: row[5], roomNo: no,
+      importTag: row[0], linkedTenantId: t.id, createdAt: "2026-09-08 15:00", editedAt: Date.now()
+    });
+  });
+  data.linananVer = LINANAN_VER;
 }
 function ensureCheckout6832(data) {
   if (!data) return;
@@ -5533,6 +5613,7 @@ async function pullCloud() {
       applyJuly115Books(state);
       applyAug31Docs(state);
       applyYushengElec(state);
+      applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
       ensureStudioTenant(state, "6832");
       ensureDemoTenant(state);
@@ -5599,6 +5680,7 @@ async function pullCloud() {
     try { applyMemoDone(state); } catch {}
     ensureStudioTenant(state, "7221");
     ensureStudioTenant(state, "6832");
+    applyLinanan7231(state);
     ensureDemoTenant(state);
     applyFactoryRoster(state);
     state.factoryRosterVer = FACTORY_ROSTER_VER;
@@ -7686,7 +7768,9 @@ function monthDueYmd() {
   return payYmNow() + "-01";
 }
 function paidThisMonth(t) {
-  return !!(t && t.paid && t.paidTouched && t.paidYm === payYmNow() && !t.former && !t.incoming);
+  if (!t || t.former || t.incoming) return false;
+  if (tenantPaidYmSet(t).has(payYmNow())) return true;
+  return !!(t.paid && t.paidTouched && t.paidYm === payYmNow());
 }
 function tenantPaidOnValue(t) {
   const ymd = ymdOf(t && t.paidAt);
@@ -9998,18 +10082,57 @@ function isNewStudioTenant(t, r) {
   if (start && start >= NEW_TENANT_SINCE) return true;
   return tenantPayBankKey(t, r) === NEW_TENANT_PAY_BANK;
 }
+function firstStudioPayBits(t, r) {
+  const monthly = studioContractRent(t, r) || Number(r && r.rent) || Number(t && t.rent) || 0;
+  const deposit = Number(t && t.deposit) || Number(r && r.deposit) || (monthly > 0 ? monthly * 2 : 0);
+  const start = ymdOf((t && t.leaseStart) || tenantOccupancyStart(t, r) || "") || "";
+  const pack = studioLeasePack(start, monthly);
+  const stub = (pack.parts || []).find(p => p && p.kind === "stub");
+  const year = (pack.parts || []).find(p => p && p.kind === "year") || (pack.parts || [])[0];
+  const stubRent = stub ? (Number(stub.rent) || 0) : 0;
+  const firstMonth = year ? (Number(year.rent) || monthly) : monthly;
+  const water = studioWaterYearFee(t, r);
+  const elec = studioElecStoreFee(t, r);
+  const rent = stubRent + firstMonth;
+  return {
+    monthly, deposit, stubRent, firstMonth, water, elec, rent,
+    total: deposit + rent + water + elec,
+    stub: !!stub,
+    stubDays: stub ? (Number(stub.days) || 0) : 0,
+    stubStart: stub ? stub.start : "",
+    stubEnd: stub ? stub.end : "",
+    yearStart: year ? year.start : start,
+    yearEnd: year ? year.end : pack.occupancyEnd
+  };
+}
+function tenantPaidYmSet(t) {
+  const set = new Set();
+  (t && t.prepaidYm || []).forEach(y => { if (y) set.add(String(y).slice(0, 7)); });
+  if (t && t.paidYm) set.add(String(t.paidYm).slice(0, 7));
+  return set;
+}
+function firstPayHintHtml(bits) {
+  if (!bits) return "";
+  const lines = [`押金 ${money(bits.deposit)}`];
+  if (bits.stub && bits.stubRent) {
+    lines.push((bits.stubStart ? rocSlash(bits.stubStart) + "～" + rocSlash(bits.stubEnd) + " " : "") + "不足月 " + money(bits.stubRent));
+  }
+  lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
+  if (bits.water) lines.push("年水費 " + money(bits.water));
+  if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
+  return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。仲介帶看以現場現金為主，不夠可轉兆豐。電費每度 NT$ 5.5。";
+}
 function firstStudioPayDue(t, r) {
   if (!t || !r || roomIsFactory(r) || t.former || t.demo) return null;
   if (!isNewStudioTenant(t, r)) return null;
+  const bits = firstStudioPayBits(t, r);
   const startYm = String(ymdOf(t.leaseStart || tenantOccupancyStart(t, r) || "") || "").slice(0, 7);
-  const nowYm = payYmNow();
-  if (t.paid && t.paidYm && startYm && t.paidYm >= startYm && nowYm > startYm) return null;
-  if (t.paid && (!startYm || startYm === nowYm || startYm > nowYm)) return null;
-  const monthly = studioContractRent(t, r) || Number(r.rent) || Number(t.rent) || 0;
-  const deposit = Number(t.deposit) || Number(r.deposit) || (monthly > 0 ? monthly * 2 : 0);
-  const rent = thisMonthRentOf(t, r) || monthly;
-  if (deposit <= 0 && rent <= 0) return null;
-  return { deposit, rent, total: deposit + rent, stub: isStubMonthNow(t, r), monthly };
+  const yearYm = String(bits.yearStart || "").slice(0, 7);
+  const paidSet = tenantPaidYmSet(t);
+  if (startYm && paidSet.has(startYm) && (!bits.stub || !yearYm || paidSet.has(yearYm))) return null;
+  if (t.paid && t.paidYm && startYm && t.paidYm >= startYm && payYmNow() > startYm && (!bits.stub || paidSet.has(yearYm))) return null;
+  if (bits.total <= 0) return null;
+  return bits;
 }
 function thisMonthDueOf(t, r) {
   const first = firstStudioPayDue(t, r);
@@ -13625,7 +13748,12 @@ function addIncomingTenant(roomId, fields) {
     invoiceBuyer: name,
     rent: rent || undefined,
     deposit: deposit || undefined,
-    signAppointAt: fields.signAppointAt || ""
+    signAppointAt: fields.signAppointAt || "",
+    hasAgent: !!fields.hasAgent,
+    agentFee: Number(fields.agentFee) || 0,
+    payCash: Number(fields.payCash) || 0,
+    payMega: Number(fields.payMega) || 0,
+    agentPrints: fields.agentPrints !== false
   };
   applyStudioLeasePack(t, r, t.leaseStart);
   if (!state.tenants) state.tenants = [];
@@ -13926,6 +14054,9 @@ function submitMoveIn() {
   t.applyAt = nowStamp();
   t.signAppointAt = d.signAppointAt || "";
   t.signRoomId = room.id;
+  t.hasAgent = !!d.hasAgent;
+  t.agentFee = d.hasAgent ? studioContractRent(null, room) : 0;
+  t.agentPrints = !!d.hasAgent;
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
@@ -14251,7 +14382,17 @@ function studioElecStoreFee(t, r) {
   if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
   return 1000;
 }
-function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail) {
+function studioAgentFee(t, r) {
+  if (t && t.hasAgent === false) return 0;
+  if (t && Number(t.agentFee) > 0) return Math.round(Number(t.agentFee));
+  const note = String((t && t.note) || "") + " " + String((r && TENANT_INFO[r && r.no] || {}).note || "");
+  if (/無仲介/.test(note)) return 0;
+  const m = note.match(/仲介費?\s*([\d,]+)/);
+  if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
+  if ((t && t.hasAgent) || /仲介/.test(note)) return studioContractRent(t, r) || Number(r && r.rent) || 0;
+  return 0;
+}
+function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail, type) {
   const amt = Math.round(Number(amount) || 0);
   if (!t || amt <= 0) return false;
   if (isDemoTenant(t) || (r && isDemoRoom(r))) return false;
@@ -14263,8 +14404,8 @@ function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail) {
   const site = (r && r.group) || "牛10";
   state.books.push({
     id,
-    type: "in",
-    date: ymdOf(date) || ymdOf(t.leaseStart) || todayYmd(),
+    type: type === "out" ? "out" : "in",
+    date: ymdOf(date) || ymdOf(t.signAppointAt) || ymdOf(t.leaseStart) || todayYmd(),
     amount: amt,
     company: company || "統潔",
     bank: bank || "",
@@ -14280,18 +14421,29 @@ function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail) {
 }
 function postNewTenantMoveInBooks(t, r) {
   if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return;
-  const date = ymdOf(t.leaseStart) || todayYmd();
+  const date = ymdOf(t.signAppointAt) || ymdOf(t.signOn) || todayYmd();
   if (!Number(t.deposit) && r && Number(r.rent) > 0) t.deposit = Number(r.deposit) || Number(t.rent || r.rent) * 2;
   if (!r || roomIsFactory(r) || r.status === "office") {
     postDepositBook("in", t, r, date);
     return;
   }
-  const rent = Number(t.rent) || Number(r.rent) || 0;
-  const dep = Number(t.deposit) || Number(r.deposit) || rent * 2;
-  postMoveInSideBook("dep", t, r, date, dep, "現金(保險箱)", "現金", "押金（2押1租，現金）");
-  if (rent > 0) postMoveInSideBook("rent", t, r, date, rent, "現金(保險箱)", "現金", "首月租金（2押1租，現金）");
-  postMoveInSideBook("water", t, r, date, studioWaterYearFee(t, r), "現金(保險箱)", "現金", "水費（年，簽約現場現金）");
-  postMoveInSideBook("elec", t, r, date, studioElecStoreFee(t, r), "現金(保險箱)", "現金", "電費儲值（每度 " + STUDIO_ELEC_RATE + " 元，簽約現場現金）");
+  const bits = firstStudioPayBits(t, r);
+  const cash = Math.round(Number(t.payCash) || 0);
+  const mega = Math.round(Number(t.payMega) || 0);
+  if (cash > 0 || mega > 0) {
+    const cashAmt = cash > 0 ? cash : Math.max(0, bits.total - mega);
+    const megaAmt = mega > 0 ? mega : Math.max(0, bits.total - cashAmt);
+    postMoveInSideBook("cash", t, r, date, cashAmt, "現金(保險箱)", "現金", "簽約現場現金（應付 " + bits.total.toLocaleString("zh-TW") + "）");
+    postMoveInSideBook("mega", t, r, date, megaAmt, "統潔", "兆豐", "簽約現場轉兆豐補足");
+  } else {
+    postMoveInSideBook("dep", t, r, date, bits.deposit, "現金(保險箱)", "現金", "押金（2押，現金）");
+    if (bits.stubRent) postMoveInSideBook("stub", t, r, date, bits.stubRent, "現金(保險箱)", "現金", "不足月租金 " + rocSlash(bits.stubStart) + "～" + rocSlash(bits.stubEnd) + "（現金）");
+    if (bits.firstMonth) postMoveInSideBook("rent", t, r, date, bits.firstMonth, "現金(保險箱)", "現金", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金" : "首月租金") + "（現金）");
+    postMoveInSideBook("water", t, r, date, bits.water, "現金(保險箱)", "現金", "水費（年，簽約現場現金）");
+    postMoveInSideBook("elec", t, r, date, bits.elec, "現金(保險箱)", "現金", "電費儲值（每度 " + STUDIO_ELEC_RATE + " 元，簽約現場現金）");
+  }
+  const agentFee = studioAgentFee(t, r);
+  if (agentFee) postMoveInSideBook("agent", t, r, date, agentFee, "現金(保險箱)", "現金", "仲介費　含稅發票", "out");
 }
 function postDepositBook(kind, t, r, date, amount) {
   if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return false;
@@ -14363,14 +14515,17 @@ function incomingActionHtml(inc, r) {
   const holder = roomSignedHolder(r, inc.id);
   const queued = !signed && holder && tenantContractStatus(holder, r) === "signed";
   const label = signed ? "已簽約待確認" : queued ? "排隊（該約到期後）" : (inc.applyPending ? "入住申請" : "交接中");
+  const bits = firstStudioPayBits(inc, r);
+  const agentFee = studioAgentFee(inc, r);
   const hint = queued
     ? `這間已被 ${holder.name || "其他人"} 先簽約。此筆排在 ${inc.leaseStart || "該約到期後"} 起。`
     : signed
       ? (live ? "租客已線上簽名。按確認後才轉正式租客，對方看房預覽才會關掉。" : "租客已線上簽名。舊客還在，確認後改為交接中，等舊客退租才轉正式。")
-      : (live ? "這間目前空房。確認後成為正式租客，對方看房預覽會關掉。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。");
+      : (live ? "這間目前空房。確認後成為正式租客並記入簽約金流。仲介代印合約時不必等租客登入 App。" : "舊客還在。確認後改為交接中，等舊客退租才轉正式。");
   return `<div class="handover-box">
-      <div class="label">${label}　${escapeHtml(inc.name || "")}</div>
+      <div class="label">${label}　${escapeHtml(inc.name || "")}${inc.hasAgent || agentFee ? "　仲介" : ""}</div>
       <p class="small">${escapeHtml(hint)}</p>
+      <p class="small">${escapeHtml(firstPayHintHtml(bits))}${agentFee ? " 仲介費 " + money(agentFee) + " 現金含稅。" : ""}</p>
       ${queued ? "" : `<button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認可以入住" : "確認交接中"}</button>`}
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
     </div>`;
@@ -14400,7 +14555,7 @@ function handoverBoxHtml(t, r) {
   if (!open) return `<button type="button" class="ghost" data-handover-open="${r.id}" style="margin-top:8px">登記新客</button>`;
   return `<div class="handover-box">
     <div class="label">登記新客</div>
-    <div class="small">舊客還在也能先登記。完成退租後自動接手。新客匯款改兆豐銀行。</div>
+    <div class="small">舊客還在也能先登記。仲介帶看以現場現金為主；租客可不登入 App。完成退租後自動接手。之後每月租金匯兆豐。</div>
     <label class="field"><span>姓名</span><input data-hf="name" type="text" placeholder="新客姓名" /></label>
     <label class="field"><span>電話</span><input data-hf="phone" type="tel" /></label>
     <label class="field"><span>身分證</span><input data-hf="idno" type="text" /></label>
@@ -14410,6 +14565,9 @@ function handoverBoxHtml(t, r) {
     <label class="field"><span>到期日</span><input data-hf="end" type="date" /></label>
     <label class="field"><span>租金</span><input data-hf="rent" type="number" inputmode="numeric" placeholder="${r.rent || ""}" /></label>
     <label class="field"><span>押金</span><input data-hf="deposit" type="number" inputmode="numeric" placeholder="空白＝兩個月" /></label>
+    <label class="field" style="flex-direction:row;align-items:center;gap:10px"><input data-hf="agent" type="checkbox" checked /><span>仲介帶看（仲介費一個月租金含稅，現場現金）</span></label>
+    <label class="field"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" placeholder="空白＝全部現金" /></label>
+    <label class="field"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" placeholder="現金不夠再填" /></label>
     <div class="unpaid-tools">
       <button type="button" class="btn-navy" data-handover-save="${r.id}">儲存新客</button>
       <button type="button" class="ghost" data-handover-close="${r.id}">取消</button>
@@ -15676,7 +15834,7 @@ function moveInView() {
     <div class="move-head">
       <div class="logo">TONG JIE</div>
       <h1>申請入住</h1>
-      <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽，後台會出現這間的新客。</p>
+      <p class="lead">選房號、填姓名電話。仲介可代印合約、現場蓋章，租客可不登入 App，後台登記即可入帳。</p>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
@@ -15708,6 +15866,15 @@ function moveInView() {
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）") + "。到期固定該月最後一天。入住不是 1 號時會開不足月＋一年兩份合約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
       ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
+      ${r ? `<div class="small" style="margin-top:10px">${escapeHtml(firstPayHintHtml(firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || minStart, rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)) }, r)))}</div>` : ""}
+    </div>
+    <div class="card card-body move-card" style="margin-top:12px;text-align:left">
+      <div class="label">仲介</div>
+      <label class="field" style="flex-direction:row;align-items:center;gap:10px">
+        <input id="move-agent" type="checkbox" ${d.hasAgent ? "checked" : ""} />
+        <span>仲介帶看（現場現金為主，仲介費一個月租金含稅，現金結清）</span>
+      </label>
+      <p class="small" style="margin:8px 0 0">有仲介時第一次付款收現金；身上不夠可現場轉統潔兆豐。仲介代印、代蓋章時，租客不必登入 App。</p>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
@@ -16078,9 +16245,9 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
-          <div class="stat"><div class="label">${firstPay ? "首次應繳（2押1租）" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
+          <div class="stat"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
         </div>
-        ${firstPay ? `<div class="small" style="margin-top:8px">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。請於簽約現場以現金支付。電費每度 NT$ 5.5。</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
+        ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? (roomTakenByOther(t, r)
@@ -16175,7 +16342,7 @@ function payView() {
   const proofHint = paid
     ? ""
     : firstPay
-      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次 2押1租、水費、電費儲值都在簽約現場收現金，不必轉帳。</p>`
+      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次在簽約現場收現金。仲介帶看時以現金為主，身上不夠可轉統潔兆豐。仲介代印合約時不必登入 App。</p>`
       : lineOk
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
       : (proof && proof.hasText)
@@ -16185,7 +16352,7 @@ function payView() {
           : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
   const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
   const dueHint = firstPay
-    ? `<div class="small">押金 ${money(firstPay.deposit)} ＋ ${firstPay.stub ? "不足月租金" : "首月租金"} ${money(firstPay.rent)}。請於簽約現場以現金支付。水費、電費儲值一併收現金（電費每度 NT$ 5.5）。</div>`
+    ? `<div class="small">${escapeHtml(firstPayHintHtml(firstPay))}</div>`
     : (stubNow && studioContractRent(t, r) ? `<div class="small">下個月起每月 ${money(studioContractRent(t, r))}　到期日：請馬上繳費</div>` : "");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
@@ -16195,7 +16362,7 @@ function payView() {
       ${tenantNudgeNoteHtml(t)}
       ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
-        <div class="small">${firstPay ? "首次應繳（2押1租）" : "本月應繳"}${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
+        <div class="small">${firstPay ? "首次應繳（2押1租＋不足月＋水電）" : "本月應繳"}${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
         <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(dueAmt)}</div>
         ${dueHint}
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
@@ -16203,7 +16370,8 @@ function payView() {
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
         <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? "簽約現場現金已收" : "簽約現場現金") : (ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳"))}</span></div>
       </div>
-      ${firstPay ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">簽約現場以現金支付</div><div class="small" style="margin-top:6px">2押1租、水費、電費儲值都收現金。之後每月租金再匯兆豐。電費每度 NT$ 5.5，5 樓儲值機可加值。</div></div>` : `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${firstPay ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">現場現金為主</div><div class="small" style="margin-top:6px">仲介帶看時收現金；不夠再轉統潔兆豐。之後每月租金匯兆豐。電費每度 NT$ 5.5。</div></div>
+      ${payAccountCardHtml(pack.primary, "現金不夠時可轉　" + ((pack.primary && pack.primary.bank) || "兆豐銀行"))}` : `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, pack.key === "兆豐" ? "新客　請匯兆豐銀行（統潔）" : pack.key === "農會" ? "舊客　請匯統潔　鳳山區農會" : "請匯" + (pack.primary && pack.primary.bank || ""))}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}`}
       ${co.phone ? `<p class="small" style="margin:8px 6px 0">客服 ${escapeHtml(co.phone)}</p>` : ""}
@@ -20225,9 +20393,15 @@ function bindHandover() {
       const t = addIncomingTenant(btn.dataset.handoverSave, {
         name: g("name"), phone: g("phone"), leaseStart: g("start"), leaseEnd: g("end"),
         rent: g("rent"), deposit: g("deposit"),
-        idNo: g("idno"), emergencyName: g("emname"), emergencyPhone: g("emphone")
+        idNo: g("idno"), emergencyName: g("emname"), emergencyPhone: g("emphone"),
+        hasAgent: !!(box && box.querySelector('[data-hf="agent"]') && box.querySelector('[data-hf="agent"]').checked),
+        payCash: g("cash"), payMega: g("mega")
       });
       if (!t) { toast("登記失敗"); return; }
+      if (t.hasAgent && !t.agentFee) {
+        const room = (state.rooms || []).find(x => x && x.id === t.roomId);
+        t.agentFee = Number(t.rent) || Number(room && room.rent) || 0;
+      }
       const room = (state.rooms || []).find(x => x.id === btn.dataset.handoverSave);
       if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverSave] = false;
       if (room && room.status === "vacant") {
@@ -21598,6 +21772,8 @@ function captureMoveInDraft() {
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
+  const agent = document.getElementById("move-agent");
+  if (agent) d.hasAgent = !!agent.checked;
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
@@ -21629,6 +21805,8 @@ function bindMoveInForm() {
       applyMoveRoom(btn.dataset.moveRoom || "");
     };
   });
+  const agentEl = document.getElementById("move-agent");
+  if (agentEl) agentEl.onchange = captureMoveInDraft;
   ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
