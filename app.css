@@ -4787,9 +4787,30 @@ html[data-theme="void"] .site-chip {
 }
 .site-plan-inner {
   position: relative;
-  width: 640px;
-  min-width: 100%;
-  height: 860px;
+  width: 100%;
+  min-width: 340px;
+  height: 980px;
+}
+.site-north {
+  position: absolute;
+  left: 5%;
+  top: 1.6%;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3f4d46;
+  letter-spacing: .2em;
+  pointer-events: none;
+}
+.site-island {
+  position: absolute;
+  left: 74.4%;
+  top: 46.8%;
+  width: 22.6%;
+  height: 25.2%;
+  border: 1.5px dashed #8a958c;
+  border-radius: 10px;
+  background: rgba(255,255,255,.22);
+  pointer-events: none;
 }
 .site-road {
   position: absolute;
@@ -4845,8 +4866,8 @@ html[data-theme="void"] .site-chip {
 }
 .site-off {
   position: absolute;
-  left: 78.5%;
-  top: 52%;
+  left: 75.2%;
+  top: 71.2%;
   font-size: 10px;
   color: #6a756e;
   pointer-events: none;
