@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-22-10";
-const APP_EDIT_COUNT = 865;
+const APP_STAMP = "2026-09-09-22-15";
+const APP_EDIT_COUNT = 866;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0416";
+const FILE_VER = "0417";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房平面改以 Google 地圖為底疊門牌"] },
+  { ver: APP_VERSION, items: ["廠房平面先拿掉，等手繪再放"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2424,63 +2424,6 @@ const FACTORY_GROUPS = [
     { no: "大樹-屋頂", unit: "廠房屋頂", manager: "" }
   ]}
 ];
-const SITE_PLAN = {
-  img: "images/site-fengshan.png",
-  lots: [
-    { no: "牛10-76", label: "76", l: 20.5, t: 19.8, w: 5.8, h: 3.6, prefix: "76" },
-    { no: "牛10-72", label: "72", l: 27.0, t: 19.4, w: 5.8, h: 3.6, prefix: "72" },
-    { no: "牛10-70", label: "70", l: 33.5, t: 19.2, w: 5.8, h: 3.6, prefix: "70" },
-    { no: "牛10-68", label: "68", l: 40.0, t: 19.0, w: 5.8, h: 3.6, prefix: "68" },
-    { no: "牛1-59", label: "59", l: 56.5, t: 25.6, w: 5.6, h: 3.8 },
-    { no: "牛1-61", label: "61", l: 62.4, t: 25.2, w: 5.6, h: 3.8 },
-    { no: "牛1-57巷2", label: "巷2", l: 65.8, t: 30.2, w: 6.4, h: 4.2, rot: 10 },
-    { no: "牛1-57巷6", label: "巷6", l: 67.6, t: 36.0, w: 6.4, h: 4.2, rot: 10 },
-    { no: "牛1-57巷8", label: "巷8", l: 69.4, t: 41.8, w: 6.4, h: 4.2, rot: 10 },
-    { no: "牛2-21", label: "21", l: 73.8, t: 28.0, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-23", label: "23", l: 75.6, t: 33.2, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-25", label: "25", l: 77.4, t: 38.4, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-27", label: "27", l: 79.2, t: 43.6, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-29", label: "29", l: 81.0, t: 48.8, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-31", label: "31", l: 82.8, t: 54.0, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-33", label: "33", l: 84.6, t: 59.2, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛2-35", label: "35", l: 86.4, t: 64.4, w: 8.4, h: 4.0, rot: 14 },
-    { no: "牛3-97-61", label: "61", l: 23.5, t: 35.5, w: 8.8, h: 4.6, rot: -32 },
-    { no: "牛3-97-63", label: "63", l: 27.8, t: 41.0, w: 8.8, h: 4.6, rot: -32 },
-    { no: "牛3-97-65A", label: "65A", l: 18.8, t: 40.2, w: 8.8, h: 4.6, rot: -32 },
-    { no: "牛3-97-65B", label: "65B", l: 23.0, t: 45.6, w: 8.8, h: 4.6, rot: -32 },
-    { no: "牛5-97-66", label: "66", l: 22.0, t: 51.5, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-67", label: "67", l: 24.0, t: 54.4, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-68", label: "68", l: 26.0, t: 57.3, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-69", label: "69", l: 28.0, t: 60.2, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-70", label: "70", l: 30.0, t: 63.1, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-71", label: "71", l: 20.0, t: 58.0, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-72", label: "72", l: 22.0, t: 60.9, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-73", label: "73", l: 24.0, t: 63.8, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-75", label: "75", l: 26.0, t: 66.7, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛5-97-76", label: "76", l: 28.0, t: 69.6, w: 4.0, h: 6.8, rot: -32 },
-    { no: "牛8-77", label: "77", l: 14.5, t: 68.5, w: 7.2, h: 5.4, rot: -32 },
-    { no: "牛8-78", label: "78", l: 17.8, t: 73.2, w: 7.2, h: 5.4, rot: -32 },
-    { no: "牛6-55", label: "55", l: 43.5, t: 47.8, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-56", label: "56", l: 50.2, t: 49.6, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-57", label: "57", l: 56.9, t: 51.4, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-58", label: "58", l: 63.6, t: 53.2, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-59", label: "59", l: 41.8, t: 54.2, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-60", label: "60", l: 48.5, t: 56.0, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-61", label: "61", l: 55.2, t: 57.8, w: 6.2, h: 5.6, rot: -18 },
-    { no: "牛6-62", label: "62", l: 61.9, t: 59.6, w: 6.2, h: 5.6, rot: -18 },
-    { no: "拉皮-1A", label: "1A", l: 47.0, t: 66.8, w: 6.8, h: 4.4, rot: -12 },
-    { no: "拉皮-1B", label: "1B", l: 54.4, t: 68.4, w: 6.8, h: 4.4, rot: -12 },
-    { no: "拉皮-2A", label: "2A", l: 45.8, t: 72.0, w: 6.8, h: 4.4, rot: -12 },
-    { no: "拉皮-2B", label: "2B", l: 53.2, t: 73.6, w: 6.8, h: 4.4, rot: -12 },
-    { no: "牛7-1F", label: "1F", l: 62.0, t: 66.5, w: 4.8, h: 7.2, rot: -10 },
-    { no: "牛7-2F", label: "2F", l: 67.2, t: 67.8, w: 4.8, h: 7.2, rot: -10 },
-    { no: "牛7-3F", label: "3F", l: 72.4, t: 69.1, w: 4.8, h: 7.2, rot: -10 }
-  ],
-  extras: [
-    { no: "大樹-18", label: "大樹 18號" },
-    { no: "大樹-屋頂", label: "大樹 屋頂" }
-  ]
-};
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
   "牛1-61": { name: "皇吉企業行", taxId: "", contactName: "林志維", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 50450, deposit: 64000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路61號。皇吉企業行（林志維）。個人戶。未稅 $45,000，含扣繳＋健保 $50,450。每月1日現金或匯入趙洪漳。" },
@@ -20392,125 +20335,6 @@ function roomMatchesQ(r, q) {
 function assetSearchPlaceholder(kind) {
   return kind === "factory" ? "搜尋房號、人名、公司、牛案場" : "搜尋房號、姓名、店名";
 }
-function siteRoomOf(no) {
-  return (state.rooms || []).find(r => r && r.no === no);
-}
-function siteFirmOf(item, room) {
-  if (item && item.prefix) return "統潔";
-  return (room && room.company) || "";
-}
-function siteLotClass(it) {
-  const room = siteRoomOf(it.no);
-  const vacant = it.prefix ? false : (!room || isVacantRoom(room));
-  const firm = siteFirmOf(it, room);
-  return [
-    "site-lot",
-    it.prefix ? "is-studio" : (firm === "統潔" ? "is-tongjie" : "is-xinjie"),
-    vacant ? "is-vacant" : "",
-    ui.sitePopNo === it.no ? "on" : ""
-  ].filter(Boolean).join(" ");
-}
-function siteMapHtml() {
-  const plan = SITE_PLAN;
-  const lots = (plan.lots || []).map(it => {
-    const room = siteRoomOf(it.no);
-    const vacant = it.prefix ? false : (!room || isVacantRoom(room));
-    const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming);
-    const title = (it.label || "") + " " + (t && t.name ? t.name : (vacant ? "空" : ""));
-    const rot = it.rot ? `transform:rotate(${it.rot}deg)` : "";
-    return `<button type="button" class="${siteLotClass(it)}" style="left:${it.l}%;top:${it.t}%;width:${it.w}%;height:${it.h}%;${rot}" data-site-no="${escapeHtml(it.no)}" data-site-prefix="${escapeHtml(it.prefix || "")}" title="${escapeHtml(title)}">${escapeHtml(it.label)}</button>`;
-  }).join("");
-  const extras = (plan.extras || []).map(it =>
-    `<button type="button" class="${siteLotClass(it)} is-extra" data-site-no="${escapeHtml(it.no)}">${escapeHtml(it.label)}</button>`
-  ).join("");
-  return `<div class="card card-body site-map" id="site-map">
-    <div class="row wrap" style="margin-bottom:8px">
-      <span class="k">案場平面</span>
-      <span class="small">Google 地圖底　點色塊看租客</span>
-    </div>
-    <div class="site-legend">
-      <span><i class="lg is-xinjie"></i>信潔</span>
-      <span><i class="lg is-tongjie"></i>統潔</span>
-      <span><i class="lg is-studio"></i>牛10套房</span>
-      <span><i class="lg is-vacant"></i>空</span>
-    </div>
-    <div class="site-plan">
-      <div class="site-plan-inner">
-        <img src="${plan.img}?v=${FILE_VER}" alt="鳳山廠房地圖">
-        ${lots}
-      </div>
-    </div>
-    ${extras ? `<div class="site-extras">${extras}</div>` : ""}
-    <div class="site-pop" id="site-pop"${ui.sitePopNo ? "" : " hidden"}>${sitePopInner(ui.sitePopNo)}</div>
-  </div>`;
-}
-function sitePopInner(no) {
-  if (!no) return "";
-  if (/^牛10-/.test(no)) {
-    const prefix = no.replace(/^牛10-/, "");
-    const b = (STUDIO_BUILDINGS || []).find(x => x.prefix === prefix);
-    const rooms = (state.rooms || []).filter(r => r && studioPrefix(r.no) === prefix && !roomIsFactory(r));
-    const live = rooms.filter(r => r.status === "rented" || roomHasLiveTenant(r)).length;
-    return `<div class="site-pop-h">${escapeHtml(b && b.street || no)}</div>
-      <div class="small">統潔　套房 ${live}／${rooms.length} 間使用中</div>
-      <button type="button" class="ghost" data-site-open-studio="${escapeHtml(prefix)}">打開牛10-${escapeHtml(prefix)}</button>`;
-  }
-  const room = siteRoomOf(no);
-  if (!room) return `<div class="small">找不到 ${escapeHtml(no)}</div>`;
-  const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming);
-  const vacant = isVacantRoom(room);
-  const rent = Number(room.rent) || Number(t && t.rent) || 0;
-  const bits = [
-    room.company || "",
-    room.manager ? "管 " + room.manager : "",
-    vacant ? "空置" : (rent ? money(rent) + "／月" : ""),
-    t && t.payBank ? t.payBank : ""
-  ].filter(Boolean);
-  return `<div class="site-pop-h">${escapeHtml(room.no)}${t && t.name ? "　" + escapeHtml(t.name) : (vacant ? "　空置" : "")}</div>
-    <div class="small">${escapeHtml((room.location || "") + (bits.length ? "　" + bits.join(" · ") : ""))}</div>
-    ${t && t.note ? `<div class="small">${escapeHtml(String(t.note).slice(0, 80))}</div>` : ""}
-    <button type="button" class="ghost" data-admin-room="${escapeHtml(room.id)}">打開這戶</button>`;
-}
-function openSiteStudio(prefix) {
-  ui.assetKind = "studio";
-  ui.studioFold = ui.studioFold || {};
-  ui.studioFold[prefix] = false;
-  ui.sitePopNo = "";
-  ui.page = "rooms";
-  render();
-}
-function bindSiteMap() {
-  const map = document.getElementById("site-map");
-  if (!map || map.dataset.bound) return;
-  map.dataset.bound = "1";
-  map.addEventListener("click", e => {
-    const studio = e.target.closest("[data-site-open-studio]");
-    if (studio) {
-      e.preventDefault();
-      e.stopPropagation();
-      openSiteStudio(studio.dataset.siteOpenStudio);
-      return;
-    }
-    const cell = e.target.closest("[data-site-no]");
-    if (!cell) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const no = cell.dataset.siteNo;
-    const prefix = cell.dataset.sitePrefix;
-    if (prefix && ui.sitePopNo === no) {
-      openSiteStudio(prefix);
-      return;
-    }
-    ui.sitePopNo = ui.sitePopNo === no ? "" : no;
-    map.querySelectorAll(".site-lot").forEach(b => b.classList.toggle("on", b.dataset.siteNo === ui.sitePopNo));
-    const pop = document.getElementById("site-pop");
-    if (!pop) return;
-    if (!ui.sitePopNo) { pop.hidden = true; pop.innerHTML = ""; return; }
-    pop.hidden = false;
-    pop.innerHTML = sitePopInner(ui.sitePopNo);
-    try { pop.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
-  });
-}
 function adminRoomListHtml(kind) {
   const q = normSearch(ui.assetQ);
   if (kind === "factory") {
@@ -20534,7 +20358,7 @@ function adminRoomListHtml(kind) {
       <span class="small">點綠色小標可收合分組</span>
       <button type="button" class="ghost" id="factory-all">${allClosed ? "全部展開" : "全部收合"}</button>
     </div>`;
-    return siteMapHtml() + bar + groups.map(g => {
+    return bar + groups.map(g => {
       const closed = q ? false : (ui.factoryFold[g.group] !== false);
       const cards = g.rooms.map(r => {
         const t = state.tenants.find(x => x.id === r.tenantId);
@@ -23155,7 +22979,6 @@ function bindAdminRoomItems() {
       render();
     }, true);
   }
-  bindSiteMap();
   document.querySelectorAll("[data-status]").forEach(sel => {
     sel.onclick = e => e.stopPropagation();
     sel.onchange = () => {
