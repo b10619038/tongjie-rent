@@ -4780,97 +4780,69 @@ html[data-theme="void"] .site-chip {
   position: relative;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: 72vh;
+  max-height: 78vh;
   border-radius: 16px;
   background: #d7e0d2;
   border: 1px solid var(--line);
 }
-.site-plan-inner {
-  position: relative;
-  width: 100%;
-  min-width: 340px;
-  height: 980px;
+.site-svg {
+  display: block;
+  width: 920px;
+  min-width: 100%;
+  height: auto;
 }
-.site-north {
-  position: absolute;
-  left: 5%;
-  top: 1.6%;
-  font-size: 13px;
+.site-svg-road { fill: #c4c8c2; }
+.site-svg-yard { fill: #e7eee3; }
+.site-svg-island {
+  fill: rgba(255,255,255,.2);
+  stroke: #8a958c;
+  stroke-width: 2;
+  stroke-dasharray: 7 5;
+}
+.site-svg-road-name {
+  fill: #4e5852;
+  font-size: 18px;
+  letter-spacing: 8px;
+  pointer-events: none;
+}
+.site-svg-mark {
+  fill: #3f4d46;
+  font-size: 16px;
   font-weight: 700;
-  color: #3f4d46;
-  letter-spacing: .2em;
   pointer-events: none;
 }
-.site-island {
-  position: absolute;
-  left: 74.4%;
-  top: 46.8%;
-  width: 22.6%;
-  height: 25.2%;
-  border: 1.5px dashed #8a958c;
-  border-radius: 10px;
-  background: rgba(255,255,255,.22);
-  pointer-events: none;
-}
-.site-road {
-  position: absolute;
-  background: repeating-linear-gradient(90deg, #c4c8c2 0 18px, #bbbfb9 18px 22px);
-  color: #4e5852;
-  font-size: 11px;
-  letter-spacing: .28em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
-}
-.site-road.is-v {
-  background: repeating-linear-gradient(180deg, #c4c8c2 0 18px, #bbbfb9 18px 22px);
-  writing-mode: vertical-rl;
-  letter-spacing: .18em;
-}
-.site-mark {
-  position: absolute;
-  font-size: 11px;
+.site-svg-n {
+  fill: #3f4d46;
+  font-size: 16px;
   font-weight: 700;
-  color: #3f4d46;
   pointer-events: none;
-  letter-spacing: .04em;
-  z-index: 1;
 }
-.site-lot {
-  position: absolute;
-  z-index: 2;
-  margin: 0;
-  padding: 0;
-  border-radius: 5px;
-  border: 1px solid rgba(40,50,44,.28);
-  font-size: 11px;
+.site-svg-off {
+  fill: #6a756e;
+  font-size: 12px;
+  pointer-events: none;
+}
+.site-lot { cursor: pointer; }
+.site-lot rect {
+  stroke: rgba(40,50,44,.3);
+  stroke-width: 1.4;
+}
+.site-lot text {
+  font-size: 16px;
   font-weight: 700;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  transform-origin: center center;
-  transition: transform .16s cubic-bezier(.22, 1, .36, 1);
-  box-shadow: 0 1px 0 rgba(255,255,255,.5) inset;
-}
-.site-lot:active, .site-lot.is-press { transform: scale(.92); transition-duration: .08s; }
-.site-lot.on {
-  outline: 2px solid #2f4a3d;
-  outline-offset: 1px;
-  z-index: 3;
-}
-.site-off {
-  position: absolute;
-  left: 75.2%;
-  top: 71.2%;
-  font-size: 10px;
-  color: #6a756e;
+  fill: var(--ink, #17211f);
   pointer-events: none;
+}
+.site-lot.is-xinjie rect { fill: #e6ede3; }
+.site-lot.is-tongjie rect { fill: #f8e7c8; }
+.site-lot.is-studio rect { fill: #dceaf8; }
+.site-lot.is-vacant rect {
+  fill: #f3f3f3;
+  stroke-dasharray: 5 4;
+}
+.site-lot.on rect {
+  stroke: #2f4a3d;
+  stroke-width: 3.5;
 }
 .site-pop {
   margin-top: 10px;
