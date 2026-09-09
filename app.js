@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-14-20";
-const APP_EDIT_COUNT = 850;
+const APP_STAMP = "2026-09-09-14-28";
+const APP_EDIT_COUNT = 851;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0401";
+const FILE_VER = "0402";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -41,7 +41,7 @@ const AUG31_BOOKS = [
   ["2026-08-25", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
   ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
-const NONGHUI_0909_VER = "nonghui-0909-v1";
+const NONGHUI_0909_VER = "nonghui-0909-v2";
 const NONGHUI_0909_BOOKS = [
   ["2026-07-26", "in", 14000, "統潔", "牛10　7232 林紜亦", "農會", "7232"],
   ["2026-07-31", "in", 9000, "統潔", "牛10　7041 劉恩彤", "農會", "7041"],
@@ -96,11 +96,9 @@ const NONGHUI_0909_BOOKS = [
   ["2026-09-05", "in", 5000, "統潔", "牛10　7651 吳慧青", "農會", "7651"],
   ["2026-09-09", "in", 8000, "統潔", "牛10　7241 陳逸仁　現金", "農會", "7241"],
   ["2026-09-09", "out", 4644, "統潔", "牛10　水費　文龍東路68號1,510＋70號1,045＋72號743＋76號1,346＝4,644　115年9月（6/12–8/11）現金繳", "農會"],
-  ["2026-09-09", "out", 21846, "信潔", "水費　聯邦信潔（白紙）", "聯邦"],
   ["2026-09-09", "out", 15703, "統潔", "水費　統潔（白紙，非本本農會簿）", "聯邦"],
   ["2026-09-09", "out", 8558, "個人戶·趙文榮", "水費（白紙）", ""],
-  ["2026-09-09", "out", 1500, "現金(保險箱)", "仲介費（白紙）", "現金"],
-  ["2026-09-09", "out", 16736, "現金(保險箱)", "繳農會櫃台（白紙；與農會簿水費4,644分開）", "農會"]
+  ["2026-09-09", "out", 1500, "現金(保險箱)", "仲介費（白紙）", "現金"]
 ];
 const NONGHUI_SEP_PAID = {
   "6821": ["2026-09-02", 7000],
@@ -119,6 +117,35 @@ const NONGHUI_SEP_PAID = {
   "7642": ["2026-09-04", 14000],
   "7651": ["2026-09-05", 5000]
 };
+const XINJIE_0909_VER = "xinjie-0909-v1";
+const XINJIE_0909_BOOKS = [
+  ["2026-08-01", "in", 44100, "信潔", "牛5　97-72 萬事盈", "聯邦", "牛5-97-72"],
+  ["2026-08-03", "in", 42000, "信潔", "牛5　97-69 喜憨兒　票號0865440", "聯邦", "牛5-97-69"],
+  ["2026-08-03", "in", 42000, "信潔", "牛5　97-70 第一肉品　票號7988618", "聯邦", "牛5-97-70"],
+  ["2026-08-06", "in", 42000, "信潔", "牛5　97-66 旭瑞食品　票號1979472", "聯邦", "牛5-97-66"],
+  ["2026-08-10", "out", 23951, "信潔", "放款繳息", "聯邦"],
+  ["2026-08-10", "in", 50400, "信潔", "牛6　93-59 黃儒清", "聯邦", "牛6-59"],
+  ["2026-08-11", "in", 105000, "信潔", "牛6　93-61／62 驊勝食品", "聯邦", "牛6-61"],
+  ["2026-08-13", "out", 14063, "信潔", "聯廣合企業　跨行匯出", "聯邦"],
+  ["2026-08-14", "in", 38000, "信潔", "牛5　97-76 陳雅琪", "聯邦", "牛5-97-76"],
+  ["2026-08-14", "in", 44100, "信潔", "牛5　97-75 力胤精密", "聯邦", "牛5-97-75"],
+  ["2026-08-17", "in", 42000, "信潔", "牛5　97-73 映升企業社", "聯邦", "牛5-97-73"],
+  ["2026-08-20", "out", 327494, "信潔", "電費　台灣電力　大樹　跨行匯款", "聯邦"],
+  ["2026-08-21", "in", 42000, "信潔", "牛5　97-71 莊記綠豆", "聯邦", "牛5-97-71"],
+  ["2026-08-22", "in", 44100, "信潔", "牛5　97-67 弘翔音響", "聯邦", "牛5-97-67"],
+  ["2026-08-28", "in", 44100, "信潔", "牛5　97-68 樂芯　票號3872686", "聯邦", "牛5-97-68"],
+  ["2026-09-01", "in", 42000, "信潔", "牛5　97-69 喜憨兒　票號0865441", "聯邦", "牛5-97-69"],
+  ["2026-09-01", "in", 42000, "信潔", "牛5　97-70 第一肉品　票號7988619", "聯邦", "牛5-97-70"],
+  ["2026-09-01", "in", 44100, "信潔", "牛5　97-72 萬事盈", "聯邦", "牛5-97-72"],
+  ["2026-09-02", "in", 110250, "信潔", "牛6　93-58／60 鈺晟實業", "聯邦", "牛6-58"],
+  ["2026-09-03", "in", 325500, "信潔", "牛6　93-55／56／57 誠家食品　8、9月", "聯邦", "牛6-55"],
+  ["2026-09-07", "in", 42000, "信潔", "牛5　97-66 旭瑞食品　票號1979473", "聯邦", "牛5-97-66"],
+  ["2026-09-08", "in", 50400, "信潔", "牛6　93-59 黃儒清", "聯邦", "牛6-59"],
+  ["2026-09-08", "out", 23951, "信潔", "放款繳息", "聯邦"],
+  ["2026-09-09", "out", 21946, "信潔", "水費　鳳仁路93-56號 8,115＋93-60號 13,831＝21,946　115年9月　聯邦三民代收", "聯邦"],
+  ["2026-09-09", "out", 16766, "信潔", "聯廣合企業有限公司　華南屏東 800-10-018417-7　匯16,736＋手續費30", "聯邦"]
+];
+const XINJIE_SEP_PAID = ["牛5-97-69", "牛5-97-70", "牛5-97-72", "牛6-58", "牛6-55", "牛5-97-66", "牛6-59"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -167,7 +194,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["吸收9/9農會：白紙、水費單、存摺2–5頁寫入總攬"] },
+  { ver: APP_VERSION, items: ["吸收9/9信潔聯邦：水費21,946、匯聯廣合16,736，並更正白紙誤記"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -3428,6 +3455,8 @@ function normalize(data) {
   applyAug31Docs(data);
   applyNonghui0909(data);
   applyNonghuiSepPaid(data);
+  applyXinjie0909(data);
+  applyXinjieSepPaid(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -3773,6 +3802,55 @@ function applyNonghuiSepPaid(data) {
     t.paid = true;
     t.paidAt = on + " 10:00";
     t.paidVia = t.paidVia || "nonghui";
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
+}
+function applyXinjie0909(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (data.xinjie0909Ver === XINJIE_0909_VER && (data.books || []).some(b => b && b.importTag === "xinjie0909")) return;
+  data.books = (data.books || []).filter(b => b && b.importTag !== "xinjie0909");
+  XINJIE_0909_BOOKS.forEach((row, i) => {
+    const id = "bk-xj09-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "xinjie0909") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      if (String(b.bank || "") !== String(bank || "")) return false;
+      const sameRoom = roomNo && (String(b.roomNo || "") === String(roomNo) || String(b.note || "").indexOf(String(roomNo)) >= 0);
+      const sameNote = String(b.note || "").slice(0, 10) === String(note || "").slice(0, 10);
+      return sameRoom || sameNote;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "xinjie0909",
+      createdAt: "2026-09-09 14:28"
+    });
+  });
+  data.xinjie0909Ver = XINJIE_0909_VER;
+}
+function applyXinjieSepPaid(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (XINJIE_SEP_PAID || []).forEach(no => {
+    const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    t.paid = true;
+    t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-09-01 10:00";
+    t.paidVia = t.paidVia || "xinjie";
     t.paidYm = "2026-09";
     t.paidTouched = true;
     if (!t.editedAt) t.editedAt = Date.now();
@@ -5834,6 +5912,8 @@ async function pullCloud() {
       applyAug31Docs(state);
       applyNonghui0909(state);
       applyNonghuiSepPaid(state);
+      applyXinjie0909(state);
+      applyXinjieSepPaid(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -5883,6 +5963,8 @@ async function pullCloud() {
     applyAug31Docs(state);
     applyNonghui0909(state);
     applyNonghuiSepPaid(state);
+    applyXinjie0909(state);
+    applyXinjieSepPaid(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
