@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-21-00";
-const APP_EDIT_COUNT = 859;
+const APP_STAMP = "2026-09-09-21-05";
+const APP_EDIT_COUNT = 860;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0410";
+const FILE_VER = "0411";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作移除繳勞健保"] },
+  { ver: APP_VERSION, items: ["繳勞健保改為每月30日"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2520,7 +2520,8 @@ const CYCLE_JOBS = [
   { id: "cycle-waterfee-chengjia", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　誠家食品 93-55／56／57　半年", cycle: true, owner: "7651" },
   { id: "cycle-waterfee-yusheng", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　鈺晟 93-58／60、拉皮93-1B　半年", cycle: true, owner: "7651" },
   { id: "cycle-waterfee-chen", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　陳雅琪 97-76　半年", cycle: true, owner: "7651" },
-  { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" }
+  { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" },
+  { id: "cycle-labor-ins", monthDay: 30, text: "繳勞健保", cycle: true, owner: "7651" }
 ];
 const METER_UNITS = [
   { id: "m-93-1b", roomNo: "拉皮-1B", unit: "93-1B", name: "鈺晟", kind: "elec" },
@@ -2795,7 +2796,6 @@ const DEV_CYCLE_JOBS = [
 ];
 function ensureCycleJobs(data) {
   if (!data || !Array.isArray(data.aiMemos)) return;
-  data.aiMemos = data.aiMemos.filter(m => m && m.id !== "cycle-labor-ins");
   CYCLE_JOBS.forEach(job => {
     const hit = data.aiMemos.find(m => m && m.id === job.id);
     if (hit) {
