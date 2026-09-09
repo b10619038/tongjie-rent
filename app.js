@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-13-50";
+const APP_STAMP = "2026-09-09-13-53";
 const APP_EDIT_COUNT = 849;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0399";
+const FILE_VER = "0400";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點已繳或未繳會跳出對應房號"] },
+  { ver: APP_VERSION, items: ["已繳／未繳會篩出對應房號，不再被搜尋建議打斷"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -20080,51 +20080,42 @@ function tenantMatchesQ(t, r, q, kind) {
 function tenantSuggestItems(kind) {
   const raw = String(ui.tenantQ || "").trim();
   const q = normSearch(raw);
-  const chip = tenantChipOn();
-  if (!q && !chip) return [];
+  if (!q) return [];
   const items = [];
   const seen = new Set();
-  const pushItem = (fold, roomId, label, score) => {
-    if (!fold || seen.has(fold)) return;
+  tenantEntriesOfKind(kind).forEach(e => {
+    const t = (e.tenants || [])[0];
+    const r = (e.rooms || [])[0];
+    if (!t || !r || isDemoTenant(t) || isDemoRoom(r)) return;
+    const no = kind === "factory" ? displayRoomNo(r) : studioListNo(r);
+    const label = (no || "") + "　" + (t.name || "");
+    const fold = kind === "factory" ? "fg-" + (e.key || t.id) : t.id;
+    if (seen.has(fold)) return;
     seen.add(fold);
-    items.push({ fold, roomId: roomId || "", label, score: score || 3 });
-  };
-  if (chip !== "vacant") {
-    tenantEntriesOfKind(kind).forEach(e => {
-      const t = (e.tenants || [])[0];
-      const r = (e.rooms || [])[0];
-      if (!t || !r || isDemoTenant(t) || isDemoRoom(r)) return;
-      const nos = kind === "factory"
-        ? (e.rooms || []).map(x => displayRoomNo(x)).filter(Boolean).join("、")
-        : studioListNo(r);
-      const label = (nos || "") + "　" + (t.name || "");
-      const fold = kind === "factory" ? "fg-" + (e.key || t.id) : t.id;
-      const hay = normSearch(label);
-      const score = q && hay.startsWith(q) ? 0 : (q && normSearch(t.name || "").startsWith(q) ? 1 : 2);
-      pushItem(fold, r.id, label, score);
+    const hay = normSearch(label);
+    items.push({
+      fold, roomId: r.id, label,
+      score: hay.startsWith(q) ? 0 : (normSearch(t.name || "").startsWith(q) ? 1 : 2)
     });
-  }
-  if (chip === "vacant" || q) {
+  });
+  if (tenantChipOn() !== "paid" && tenantChipOn() !== "unpaid") {
     vacantRoomsOfKind(kind).forEach(r => {
-      if (!r) return;
+      if (!r || seen.has("vac-" + r.id)) return;
       const no = kind === "factory" ? displayRoomNo(r) : studioListNo(r);
       const label = (no || "") + "　" + (kind === "factory" ? "空廠房" : "空套房");
-      pushItem("vac-" + r.id, r.id, label, 4);
+      seen.add("vac-" + r.id);
+      items.push({ fold: "vac-" + r.id, roomId: r.id, label, score: 4 });
     });
   }
   items.sort((a, b) => a.score - b.score || String(a.label).localeCompare(String(b.label), "zh-Hant"));
-  return items.slice(0, chip && !q ? 80 : 8);
+  return items.slice(0, 8);
 }
 function tenantSuggestHtml(kind) {
   const items = tenantSuggestItems(kind);
   if (!items.length) return "";
-  const q = normSearch(ui.tenantQ);
-  const chip = tenantChipOn();
-  const rooms = !!(chip && !q);
-  return `<div class="tenant-suggest${rooms ? " tenant-suggest-rooms" : ""}" id="tenant-suggest">${items.map(x => {
-    const text = rooms ? String(x.label || "").split("　")[0] : x.label;
-    return `<button type="button" class="tenant-suggest-item" data-tenant-suggest="${escapeHtml(x.fold)}" data-suggest-room="${escapeHtml(x.roomId || "")}">${escapeHtml(text)}</button>`;
-  }).join("")}</div>`;
+  return `<div class="tenant-suggest" id="tenant-suggest">${items.map(x =>
+    `<button type="button" class="tenant-suggest-item" data-tenant-suggest="${escapeHtml(x.fold)}" data-suggest-room="${escapeHtml(x.roomId || "")}">${escapeHtml(x.label)}</button>`
+  ).join("")}</div>`;
 }
 function tenantSearchPlaceholder(kind) {
   return "搜尋";
@@ -20133,10 +20124,20 @@ function tenantChipOn() {
   if (ui.tenantChip === "paid" || ui.tenantChip === "unpaid" || ui.tenantChip === "vacant") return ui.tenantChip;
   return ui.tenantVacant ? "vacant" : "";
 }
+function tenantPayChipMatch(t, r, chip) {
+  if (!chip || chip === "vacant") return true;
+  if (!t || t.former || t.incoming) return false;
+  const cls = (payLabel(t, r) || {}).cls;
+  if (chip === "paid") return cls === "paid";
+  if (chip === "unpaid") return cls === "unpaid";
+  return true;
+}
 function setTenantChip(v) {
   const next = tenantChipOn() === v ? "" : v;
   ui.tenantChip = next;
   ui.tenantVacant = next === "vacant";
+  ui.tenantOrderKey = "";
+  ui.tenantOrder = [];
 }
 function roomHasLiveTenant(r) {
   if (!r) return false;
@@ -20261,9 +20262,7 @@ function tenantListOfKind(kind, opts) {
     if (isDemoRoom(r) || isDemoFactoryRoom(r)) return false;
     if (all) return true;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
-    const chip = tenantChipOn();
-    if (chip === "paid" && !paidThisMonth(t)) return false;
-    if (chip === "unpaid" && paidThisMonth(t)) return false;
+    if (!tenantPayChipMatch(t, r, tenantChipOn())) return false;
     return true;
   }).sort((a, b) => {
     const aa = tenantApplyRank(a);
@@ -20352,17 +20351,19 @@ function tenantListInnerHtml(kind) {
     !(e.rooms || []).some(r => isDemoRoom(r) || isDemoFactoryRoom(r) || r.no === "F0000" || r.no === "0000")
   );
   const q = normSearch(ui.tenantQ);
-  const vacantHits = (q && tenantChipOn() !== "vacant")
+  const chip = tenantChipOn();
+  const hideVacant = chip === "paid" || chip === "unpaid";
+  const vacantHits = (q && !hideVacant && chip !== "vacant")
     ? vacantRoomsOfKind(kind).filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
     : [];
-  const applyVacant = tenantChipOn() === "vacant" ? [] : vacantRoomsOfKind(kind).filter(r => {
+  const applyVacant = (chip === "vacant" || hideVacant) ? [] : vacantRoomsOfKind(kind).filter(r => {
     const inc = incomingOf(r.id);
     if (!inc) return false;
     if (entries.some(e => e.rooms.some(x => x && x.id === r.id))) return false;
     if (q && vacantHits.some(x => x.id === r.id)) return false;
     return true;
   });
-  const formerVacant = tenantChipOn() === "vacant" ? [] : vacantRoomsOfKind(kind).filter(r => {
+  const formerVacant = (chip === "vacant" || hideVacant) ? [] : vacantRoomsOfKind(kind).filter(r => {
     if (incomingOf(r.id)) return false;
     if (entries.some(e => e.rooms.some(x => x && x.id === r.id))) return false;
     if (vacantHits.some(x => x.id === r.id)) return false;
