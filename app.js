@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-08-28";
-const APP_EDIT_COUNT = 846;
+const APP_STAMP = "2026-09-09-08-36";
+const APP_EDIT_COUNT = 847;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0396";
+const FILE_VER = "0397";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["自訂付款填一格，另一格自動算出剩餘"] },
+  { ver: APP_VERSION, items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
+  { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
   { ver: "2026-09-09-08-26-845", items: ["申請入住自訂付款拿掉林安安範例"] },
   { ver: "2026-09-08-21-48-844", items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
   { ver: "2026-09-08-21-45-843", items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
@@ -2655,6 +2656,12 @@ function ensureCycleJobs(data) {
       return;
     }
     data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
+  });
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.placeholder) return;
+    if (!t.hasAgent && !Number(t.agentFee)) return;
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    try { ensureAgentFeeWork(t, r, data); } catch {}
   });
 }
 function ensureDevCycleJobs(data) {
@@ -14063,6 +14070,7 @@ function promoteProspect(t, r) {
   r.edited = true;
   r.editedAt = Date.now();
   try { postNewTenantMoveInBooks(t, r); } catch {}
+  try { ensureAgentFeeWork(t, r); } catch {}
   pruneDeadApplyNotices(state);
   if (ui.role === "tenant" && ui.tenantId === t.id) {
     ui.prospectPreview = false;
@@ -14123,7 +14131,11 @@ function submitMoveIn() {
     existSame.payWay = d.payWay || (d.hasAgent ? "cash" : "xfer");
     existSame.payCash = Number(d.payCash) || 0;
     existSame.payMega = Number(d.payMega) || 0;
+    if (existSame.hasAgent && !existSame.agentFee) existSame.agentFee = studioContractRent(null, room);
     existSame.applyUnread = true;
+    existSame.loginPass = phonePassOf(phone) || existSame.loginPass;
+    existSame.editedAt = Date.now();
+    try { ensureAgentFeeWork(existSame, room); } catch {}
     existSame.loginPass = phonePassOf(phone) || existSame.loginPass;
     existSame.editedAt = Date.now();
     save();
@@ -14157,18 +14169,26 @@ function submitMoveIn() {
   t.payWay = d.payWay || (d.hasAgent ? "cash" : "xfer");
   t.payCash = Number(d.payCash) || 0;
   t.payMega = Number(d.payMega) || 0;
-  t.agentFee = Number(d.agentFee) || 0;
+  t.agentFee = Number(d.agentFee) || (d.hasAgent ? studioContractRent(null, room) : 0);
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
+  try { ensureAgentFeeWork(t, room); } catch {}
   state.applyPing = { at: Date.now(), roomNo: room.no, name };
   markApplyPingSeen(state.applyPing);
   if (!state.notices) state.notices = [];
   state.notices.push({ id: "n" + Date.now(), type: "apply", roomNo: room.no, text: `${room.no} ${name} 申請入住`, createdAt: t.applyAt, read: false });
+  if (t.hasAgent) {
+    const fee = studioAgentFee(t, room);
+    state.notices.push({ id: "n-agent-" + t.id, type: "agent", roomNo: room.no, text: `${room.no} ${name} 仲介帶看，請付仲介服務費 ${money(fee)} 現金（一個月租金含稅）`, createdAt: t.applyAt, read: false });
+  }
   save();
   try { pushCloud(); } catch {}
   try { pushPhoneNotify("入住申請", `${room.no} ${name} 想要入住`, "admin"); } catch {}
+  if (t.hasAgent) {
+    try { pushPhoneNotify("仲介服務費", `${room.no} ${name}　請付 ${studioAgentFee(t, room).toLocaleString("zh-TW")} 現金`, "admin"); } catch {}
+  }
   toast("已送出，進入看房預覽");
   enterProspect(t, room);
 }
@@ -14493,6 +14513,27 @@ function studioAgentFee(t, r) {
   if ((t && t.hasAgent) || /仲介/.test(note)) return studioContractRent(t, r) || Number(r && r.rent) || 0;
   return 0;
 }
+function ensureAgentFeeWork(t, r, data) {
+  const st = data || (typeof state !== "undefined" ? state : null);
+  if (!st || !t || !(t.hasAgent || Number(t.agentFee) > 0)) return;
+  const fee = studioAgentFee(t, r);
+  if (!fee) return;
+  if (!t.agentFee) t.agentFee = fee;
+  const date = ymdOf(t.signAppointAt) || ymdOf(t.signOn) || ymdOf(t.leaseStart) || todayYmd();
+  const no = (r && r.no) || t.roomNo || "";
+  const id = "agentfee-" + t.id;
+  const text = "付仲介服務費　" + no + " " + (t.name || "") + "　一個月租金含稅 " + fee.toLocaleString("zh-TW") + "　現場現金";
+  if (!st.aiMemos) st.aiMemos = [];
+  const hit = st.aiMemos.find(m => m && m.id === id);
+  if (hit) {
+    if (!hit.edited) {
+      hit.text = text;
+      hit.date = date;
+    }
+    return;
+  }
+  st.aiMemos.push({ id, date, text, owner: "7651", createdAt: nowStamp(), linkedTenantId: t.id });
+}
 function postMoveInSideBook(tag, t, r, date, amount, company, bank, noteTail, type) {
   const amt = Math.round(Number(amount) || 0);
   if (!t || amt <= 0) return false;
@@ -14625,7 +14666,7 @@ function incomingActionHtml(inc, r) {
   return `<div class="handover-box">
       <div class="label">${label}　${escapeHtml(inc.name || "")}${inc.hasAgent || agentFee ? "　仲介" : ""}</div>
       <p class="small">${escapeHtml(hint)}</p>
-      <p class="small">${escapeHtml(firstPayHintHtml(bits))}${agentFee ? " 仲介費 " + money(agentFee) + " 現金含稅。" : ""}</p>
+      <p class="small">${escapeHtml(firstPayHintHtml(bits))}${agentFee ? " 請付仲介服務費 " + money(agentFee) + "（一個月租金含稅，現場現金）。確認入住後會自動出帳。" : ""}</p>
       ${queued ? "" : `<button type="button" class="btn-navy" data-apply-confirm="${inc.id}">${live ? "確認可以入住" : "確認交接中"}</button>`}
       <button type="button" class="ghost" data-handover-cancel="${inc.id}">取消新客</button>
     </div>`;
@@ -20586,10 +20627,11 @@ function bindHandover() {
       });
       if (!t) { toast("登記失敗"); return; }
       if (t.hasAgent && !t.agentFee) {
-        const room = (state.rooms || []).find(x => x && x.id === t.roomId);
-        t.agentFee = Number(t.rent) || Number(room && room.rent) || 0;
+        const roomFee = (state.rooms || []).find(x => x && x.id === t.roomId);
+        t.agentFee = Number(t.rent) || Number(roomFee && roomFee.rent) || 0;
       }
       const room = (state.rooms || []).find(x => x.id === btn.dataset.handoverSave);
+      try { ensureAgentFeeWork(t, room); } catch {}
       if (ui.handoverAdd) ui.handoverAdd[btn.dataset.handoverSave] = false;
       if (room && room.status === "vacant") {
         completeHandover(null, room);
