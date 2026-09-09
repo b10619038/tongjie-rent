@@ -748,6 +748,22 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .tenant-suggest-item:last-child { border-bottom: 0; }
 .tenant-suggest-item:active,
 .tenant-suggest-item.is-press { background: #f3f6f3; }
+.tenant-suggest-rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  overflow: visible;
+}
+.tenant-suggest-rooms .tenant-suggest-item {
+  width: auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--line);
+}
 .invoice-overview-btn {
   display: flex;
   align-items: center;
