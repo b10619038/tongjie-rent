@@ -723,6 +723,31 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   min-width: 0;
 }
 .tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
+.tenant-suggest {
+  display: grid;
+  margin: 0 0 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.tenant-suggest-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+.tenant-suggest-item:last-child { border-bottom: 0; }
+.tenant-suggest-item:active,
+.tenant-suggest-item.is-press { background: #f3f6f3; }
 .invoice-overview-btn {
   display: flex;
   align-items: center;

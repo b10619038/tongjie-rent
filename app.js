@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-08-36";
-const APP_EDIT_COUNT = 847;
+const APP_STAMP = "2026-09-09-11-22";
+const APP_EDIT_COUNT = 848;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0397";
+const FILE_VER = "0398";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
+  { ver: APP_VERSION, items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
+  { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
   { ver: "2026-09-09-08-26-845", items: ["申請入住自訂付款拿掉林安安範例"] },
   { ver: "2026-09-08-21-48-844", items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
@@ -20056,18 +20057,68 @@ function roomIsFactory(r) {
 function normSearch(s) {
   return String(s || "").toLowerCase().replace(/[\s、\-－()]/g, "");
 }
-function tenantMatchesQ(t, r, q, kind) {
-  if (kind === "factory") {
-    const parts = [t.name, t.contactName, r && r.group, r && r.no];
-    return parts.some(x => normSearch(x).includes(q));
+function tenantSearchHay(t, r, kind) {
+  const bits = [
+    t && t.name, t && t.contactName, t && t.phone, t && t.taxId, t && t.invoiceBuyer, t && t.idNo,
+    r && r.no, r && r.group, r && r.unit, r && r.street, r && r.location, r && r.title
+  ];
+  if (kind === "factory") bits.push(typeof factoryAddress === "function" ? factoryAddress(r) : "");
+  else {
+    const pay = r && typeof studioMonthPay === "function" ? studioMonthPay(r.no) : null;
+    if (pay && pay.name) bits.push(pay.name);
+    if (r) formerTenantsOf(r.id).forEach(f => bits.push(f && f.name));
+    const inc = r && incomingOf(r.id);
+    if (inc) bits.push(inc.name, inc.phone);
   }
-  const parts = [t.name, t.phone, t.contactName, t.id, r && r.no, r && r.id];
-  const pay = r && studioMonthPay(r.no);
-  if (pay && pay.name) parts.push(pay.name);
-  formerTenantsOf(r && r.id).forEach(f => parts.push(f.name));
-  const inc = r && incomingOf(r.id);
-  if (inc) parts.push(inc.name, inc.phone);
-  return parts.some(x => normSearch(x).includes(q));
+  return bits.filter(Boolean).join(" ");
+}
+function tenantMatchesQ(t, r, q, kind) {
+  if (!q) return true;
+  return normSearch(tenantSearchHay(t, r, kind)).includes(q);
+}
+function tenantSuggestItems(kind) {
+  const raw = String(ui.tenantQ || "").trim();
+  const q = normSearch(raw);
+  if (!q) return [];
+  const items = [];
+  const seen = new Set();
+  tenantEntriesOfKind(kind, { all: true }).forEach(e => {
+    const t = (e.tenants || [])[0];
+    const r = (e.rooms || [])[0];
+    if (!t || !r || isDemoTenant(t) || isDemoRoom(r)) return;
+    if (!tenantMatchesQ(t, r, q, kind)) return;
+    const no = kind === "factory" ? displayRoomNo(r) : studioListNo(r);
+    const label = (no || "") + "　" + (t.name || "");
+    const fold = kind === "factory" ? "fg-" + (e.key || t.id) : t.id;
+    if (seen.has(fold)) return;
+    seen.add(fold);
+    const hay = normSearch(label);
+    items.push({
+      id: t.id, roomId: r.id, fold, label, vacant: false,
+      score: hay.startsWith(q) ? 0 : (normSearch(t.name || "").startsWith(q) ? 1 : (normSearch(String(r.no || "")).includes(q) ? 2 : 3))
+    });
+  });
+  vacantRoomsOfKind(kind).forEach(r => {
+    if (!r || seen.has("vac-" + r.id)) return;
+    const no = kind === "factory" ? displayRoomNo(r) : studioListNo(r);
+    const label = (no || "") + "　" + (kind === "factory" ? "空廠房" : "空套房");
+    seen.add("vac-" + r.id);
+    const hay = normSearch(label + " " + vacantRoomHay(r));
+    if (!hay.includes(q)) return;
+    items.push({
+      id: "vac-" + r.id, roomId: r.id, fold: "vac-" + r.id, label, vacant: true,
+      score: hay.startsWith(q) ? 0 : 4
+    });
+  });
+  items.sort((a, b) => a.score - b.score || String(a.label).localeCompare(String(b.label), "zh-Hant"));
+  return items.slice(0, 8);
+}
+function tenantSuggestHtml(kind) {
+  const items = tenantSuggestItems(kind);
+  if (!items.length) return "";
+  return `<div class="tenant-suggest" id="tenant-suggest">${items.map(x =>
+    `<button type="button" class="tenant-suggest-item" data-tenant-suggest="${escapeHtml(x.fold)}" data-suggest-room="${escapeHtml(x.roomId || "")}">${escapeHtml(x.label)}</button>`
+  ).join("")}</div>`;
 }
 function tenantSearchPlaceholder(kind) {
   return "搜尋";
@@ -20772,6 +20823,8 @@ function applyTenantKind(kind) {
       bindTenantFold();
       bindHandover();
       bindTenantEdits();
+      const sug = document.getElementById("tenant-suggest-wrap");
+      if (sug) sug.innerHTML = tenantSuggestHtml(next);
     }));
   }
 }
@@ -20782,19 +20835,43 @@ function bindTenantSearch() {
   inp.readOnly = false;
   inp.disabled = false;
   inp.tabIndex = 0;
+  const kindNow = () => ui.tenantKind === "factory" ? "factory" : "studio";
+  const paintSuggest = () => {
+    const wrap = document.getElementById("tenant-suggest-wrap");
+    if (!wrap) return;
+    wrap.innerHTML = tenantSuggestHtml(kindNow());
+    wrap.querySelectorAll("[data-tenant-suggest]").forEach(btn => {
+      bindIosPress(btn);
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const fold = btn.dataset.tenantSuggest || "";
+        if (!ui.tenantOpen) ui.tenantOpen = {};
+        ui.tenantOpen[fold] = true;
+        ui.keepScroll = true;
+        apply();
+        requestAnimationFrame(() => {
+          const el = document.querySelector('[data-fold-tenant="' + fold + '"]');
+          if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+      };
+    });
+  };
   const apply = () => {
     ui.tenantQ = String(inp.value || "");
     const box = document.getElementById("tenant-list");
-    if (!box) return;
-    const kind = ui.tenantKind === "factory" ? "factory" : "studio";
-    box.innerHTML = tenantListInnerHtml(kind);
-    bindAdminRoomItems();
-    bindLineSwipe();
-    bindTenantListTools();
-    bindTenantFold();
-    bindHandover();
-    bindTenantEdits();
+    if (box) {
+      box.innerHTML = tenantListInnerHtml(kindNow());
+      bindAdminRoomItems();
+      bindLineSwipe();
+      bindTenantListTools();
+      bindTenantFold();
+      bindHandover();
+      bindTenantEdits();
+    }
+    paintSuggest();
   };
+  let composing = false;
   inp.addEventListener("pointerdown", e => {
     e.stopPropagation();
     setTimeout(() => inp.focus(), 0);
@@ -20804,9 +20881,12 @@ function bindTenantSearch() {
     inp.focus();
   });
   inp.addEventListener("keydown", e => e.stopPropagation());
-  inp.addEventListener("keyup", apply);
-  inp.addEventListener("input", apply);
-  inp.oninput = apply;
+  inp.addEventListener("compositionstart", () => { composing = true; });
+  inp.addEventListener("compositionend", () => { composing = false; apply(); });
+  inp.addEventListener("keyup", () => { if (!composing) apply(); });
+  inp.addEventListener("input", () => { if (!composing) apply(); });
+  inp.oninput = () => { if (!composing) apply(); };
+  paintSuggest();
   document.querySelectorAll("[data-tenant-chip]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -21077,6 +21157,7 @@ function adminTenants() {
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>
     </div>
+    <div id="tenant-suggest-wrap">${tenantSuggestHtml(kind)}</div>
     <button type="button" class="card card-body clickable invoice-overview-btn" id="invoice-overview-btn">
       <span class="k">開立發票總覽</span>
       <span class="row-end"><span class="small">下載 PDF</span><span class="fold-caret go-right"></span></span>
