@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-14-55";
-const APP_EDIT_COUNT = 855;
+const APP_STAMP = "2026-09-09-20-40";
+const APP_EDIT_COUNT = 856;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0406";
+const FILE_VER = "0407";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -41,7 +41,7 @@ const AUG31_BOOKS = [
   ["2026-09-07", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
   ["2026-09-07", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
-const NONGHUI_0909_VER = "nonghui-0909-v5";
+const NONGHUI_0909_VER = "nonghui-0909-v6";
 const NONGHUI_0909_BOOKS = [
   ["2026-07-26", "in", 14000, "統潔", "牛10　7232 林紜亦", "農會", "7232"],
   ["2026-07-31", "in", 9000, "統潔", "牛10　7041 劉恩彤", "農會", "7041"],
@@ -69,7 +69,7 @@ const NONGHUI_0909_BOOKS = [
   ["2026-08-13", "out", 7750, "統潔", "牛10　鳳信", "農會"],
   ["2026-08-13", "out", 23289, "統潔", "燦坤", "農會"],
   ["2026-08-13", "out", 5289, "統潔", "公司機", "農會"],
-  ["2026-08-13", "out", 6300, "統潔", "牛10　合吉", "農會"],
+  ["2026-08-13", "out", 6300, "統潔", "垃圾清運　合吉　牛10 1桶　算桶", "農會"],
   ["2026-08-14", "in", 9000, "統潔", "牛10　7641 洪子軒", "農會", "7641"],
   ["2026-08-15", "in", 9000, "統潔", "牛10　7631 蔡文銘", "農會", "7631"],
   ["2026-08-20", "out", 32153, "統潔", "牛10　電費", "農會"],
@@ -86,7 +86,7 @@ const NONGHUI_0909_BOOKS = [
   ["2026-09-04", "in", 10000, "統潔", "牛10　6823 顏家蓁　現金", "農會", "6823"],
   ["2026-09-04", "in", 14000, "統潔", "牛10　7642 陳智泓　現金", "農會", "7642"],
   ["2026-09-04", "out", 100000, "統潔", "牛10　76號　退押金　現金", "農會", "7611"],
-  ["2026-09-04", "out", 6300, "統潔", "牛10　合吉", "農會"],
+  ["2026-09-04", "out", 6300, "統潔", "垃圾清運　合吉　牛10 1桶　算桶", "農會"],
   ["2026-09-04", "out", 7750, "統潔", "牛10　鳳信", "農會"],
   ["2026-09-04", "in", 7000, "統潔", "牛10　7621 王俊典曾郁庭", "農會", "7621"],
   ["2026-09-04", "in", 10000, "統潔", "牛10　7023 謝雯鶯", "農會", "7023"],
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["聯廣合備註改為垃圾清運，方便對帳"] },
+  { ver: APP_VERSION, items: ["吸收聯廣合按公斤4桶、合吉牛10算桶"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -1640,7 +1640,19 @@ const RELATED_ACCOUNTS = [
   { label: "趙海成", bank: "聯邦銀行", account: "010508131129" },
   { label: "趙正賢", bank: "聯邦銀行", account: "010508131187" },
   { label: "趙國助", bank: "鳳山區農會", account: "61908P7-21-0663080" },
-  { label: "聯廣合企業有限公司（垃圾清運）", bank: "華南銀行屏東分行", account: "800-10-018417-7", note: "匯款後通知蔡小姐 07-6520781 或傳真 07-6518603" }
+  { label: "聯廣合企業有限公司（垃圾清運）", bank: "華南銀行屏東分行", account: "800-10-018417-7", note: "按公斤計費，開信潔發票。4桶：老司機、莊記、大姑、文21阿仁陳逸仁（阿仁幫忙收4桶錢）。匯款後通知蔡小姐 07-6520781 或傳真 07-6518603" },
+  { label: "合吉（垃圾清運）", bank: "鳳山區農會／統潔", account: "", note: "算桶計費。牛10 1桶。用統潔農會付款（信件到再繳，近月約 6,300）" }
+];
+const TRASH_VENDORS = [
+  { id: "lian", name: "聯廣合", billBy: "公斤", invoice: "信潔", payCompany: "信潔", payBank: "聯邦", bins: [
+    { name: "老司機" },
+    { name: "莊記", roomNo: "牛5-97-71" },
+    { name: "大姑" },
+    { name: "文21 阿仁", person: "陳逸仁", roomNo: "7241", collect: true }
+  ] },
+  { id: "heji", name: "合吉", billBy: "桶", invoice: "統潔", payCompany: "統潔", payBank: "農會", bins: [
+    { name: "牛10", roomNo: "牛10", qty: 1 }
+  ] }
 ];
 const MAIL_INVOICES = [
   { name: "映升企業社", addr: "830 高雄市鳳山區中山路19巷14號", phone: "0988-027-025" },
@@ -2315,7 +2327,7 @@ const TENANT_INFO = {
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
   "7231": { name: "林安安", leaseStart: "2026-09-13", leaseEnd: "2027-09-30", deposit: 18000, rent: 9000, payBank: "兆豐", hasAgent: true, agentFee: 9000, payCash: 30000, payMega: 5200, note: "仲介。115/9/8 房間現場簽約。2押1租 27,000＋不足月 9/13–9/30 5,400＋水費年 1,800＋電儲值 1,000＝35,200（現金 30,000＋兆豐 5,200）。仲介費 9,000 現金含稅。仲介代印合約蓋章，租客未登入 App。" },
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, payBank: "農會", note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
-  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000。文21；幫忙收聯廣合4桶垃圾桶錢（老司機、莊記、大姑、自己）" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
   "7251": { name: "呂佳芸", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際住在 7251。本人無法申請租屋補助，租約與繳費跟 7651 吳慧青同步；補助掛吳慧青 7651。金流以 7651 入帳，不重複計。" },
   "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "兆豐", shop: "波波奇夏威夷拌飯", note: "店面。新客匯兆豐。聯絡曾郁翔。" },
@@ -2491,9 +2503,11 @@ const CYCLE_JOBS = [
   { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" },
   { id: "cycle-mail-invoices", monthDay: 10, flexDays: 4, text: "寄發票：映升（鳳山中山路19巷14號）、南溢（苓雅永泰路115號）、造得科技（大寮內坑路158之9）", cycle: true, owner: "7651" },
   { id: "cycle-pay-fengxin", monthDay: 10, flexDays: 4, text: "繳費鳳信網路（信件到再繳）", cycle: true, owner: "7651" },
-  { id: "cycle-pay-heji", monthDay: 10, flexDays: 4, text: "繳費合吉（信件到再繳）", cycle: true, owner: "7651" },
-  { id: "cycle-trash-driver", monthDay: 10, flexDays: 4, text: "收垃圾桶費　老司機", cycle: true, owner: "7651" },
-  { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收垃圾桶費　莊記綠豆（97-71）", cycle: true, owner: "7651" },
+  { id: "cycle-pay-heji", monthDay: 10, flexDays: 4, text: "繳合吉垃圾清運　牛10 1桶　算桶　統潔農會（信件到再繳）", cycle: true, owner: "7651" },
+  { id: "cycle-trash-driver", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　老司機（按公斤、開信潔發票）", cycle: true, owner: "7651" },
+  { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　莊記綠豆 97-71（按公斤、開信潔發票）", cycle: true, owner: "7651" },
+  { id: "cycle-trash-gugu", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　大姑（按公斤、開信潔發票）", cycle: true, owner: "7651" },
+  { id: "cycle-trash-aren", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　文21 阿仁陳逸仁（幫忙收4桶錢、開信潔發票）", cycle: true, owner: "7651" },
   { id: "cycle-rent-yuwang", monthDay: 15, time: "14:00", text: "收租金　93-2B 禹旺企業 林永紝，並給電單（自繳電費）", cycle: true, owner: "7651" },
   { id: "cycle-deposit-interest", monthDay: 1, onlyMonth: 12, text: "開立套房／廠房押金設算息發票", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
@@ -3246,7 +3260,7 @@ const JULY115_BOOKS = [
   ["2026-07-06", "in", 10000, "統潔", "牛10　7023 謝雯鶯", "農會"],
   ["2026-07-09", "in", 7000, "統潔", "牛10　6821 黃宥宇", "農會"],
   ["2026-07-09", "in", 14000, "統潔", "牛10　7642 陳智泓", "農會"],
-  ["2026-07-09", "out", 6300, "統潔", "牛10　合吉", "農會"],
+  ["2026-07-09", "out", 6300, "統潔", "垃圾清運　合吉　牛10 1桶　算桶", "農會"],
   ["2026-07-10", "in", 14000, "統潔", "牛10　6842 蘇冠達吳汶修", "農會"],
   ["2026-07-10", "in", 7000, "統潔", "牛10　7622 邱育琳", "農會"],
   ["2026-07-14", "in", 8000, "統潔", "牛10　7241 陳逸仁", "農會"],
@@ -3485,6 +3499,7 @@ function normalize(data) {
   scrubJulyPersonalDupes(data);
   applyAug31Docs(data);
   applyNonghui0909(data);
+  repairTrashNotes(data);
   applyNonghuiSepPaid(data);
   applyXinjie0909(data);
   applyXinjieSepPaid(data);
@@ -3821,6 +3836,14 @@ function applyNonghui0909(data) {
     });
   });
   data.nonghui0909Ver = NONGHUI_0909_VER;
+}
+function repairTrashNotes(data) {
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    if (Number(b.amount) === 6300 && /合吉/.test(String(b.note || "")) && !/算桶/.test(String(b.note || ""))) {
+      b.note = "垃圾清運　合吉　牛10 1桶　算桶";
+    }
+  });
 }
 function applyNonghuiSepPaid(data) {
   if (!data || payYmNow() !== "2026-09") return;
@@ -6003,6 +6026,7 @@ async function pullCloud() {
       applyJuly115Books(state);
       applyAug31Docs(state);
       applyNonghui0909(state);
+      repairTrashNotes(state);
       applyNonghuiSepPaid(state);
       applyXinjie0909(state);
       applyXinjieSepPaid(state);
@@ -6056,6 +6080,7 @@ async function pullCloud() {
     applyJuly115Books(state);
     applyAug31Docs(state);
     applyNonghui0909(state);
+    repairTrashNotes(state);
     applyNonghuiSepPaid(state);
     applyXinjie0909(state);
     applyXinjieSepPaid(state);
