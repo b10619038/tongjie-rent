@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-08-26";
-const APP_EDIT_COUNT = 845;
+const APP_STAMP = "2026-09-09-08-28";
+const APP_EDIT_COUNT = 846;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0395";
+const FILE_VER = "0396";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["申請入住自訂付款拿掉林安安範例"] },
+  { ver: APP_VERSION, items: ["自訂付款填一格，另一格自動算出剩餘"] },
+  { ver: "2026-09-09-08-26-845", items: ["申請入住自訂付款拿掉林安安範例"] },
   { ver: "2026-09-08-21-48-844", items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
   { ver: "2026-09-08-21-45-843", items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
   { ver: "2026-09-08-21-20-842", items: ["申請入住付款方式會帶到繳費頁；重送申請也會記住"] },
@@ -14672,8 +14673,8 @@ function handoverBoxHtml(t, r) {
       <button type="button" class="sign-slot" data-hf-payway="split">自訂</button>
     </div>
     <input type="hidden" data-hf="payway" value="cash" />
-    <label class="field hf-split" style="display:none"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" placeholder="0" /></label>
-    <label class="field hf-split" style="display:none"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" placeholder="0" /></label>
+    <label class="field hf-split" style="display:none"><span>現場現金</span><input data-hf="cash" type="number" inputmode="numeric" min="0" step="1" placeholder="填這格" data-pay-total="${firstStudioPayBits({ rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), leaseStart: todayYmd() }, r).total}" /></label>
+    <label class="field hf-split" style="display:none"><span>兆豐補足</span><input data-hf="mega" type="number" inputmode="numeric" min="0" step="1" placeholder="填這格" /></label>
     <div class="unpaid-tools">
       <button type="button" class="btn-navy" data-handover-save="${r.id}">儲存新客</button>
       <button type="button" class="ghost" data-handover-close="${r.id}">取消</button>
@@ -15877,6 +15878,19 @@ function applyMoveRoom(id) {
   ui.signCalMonth = 0;
   closeMoveRoomPick();
 }
+function bindPayRemainPair(cashEl, megaEl, total) {
+  if (!cashEl || !megaEl) return;
+  const sum = Math.round(Number(total) || Number(cashEl.dataset.payTotal) || 0);
+  if (!(sum > 0)) return;
+  const num = el => Math.round(Number(String(el.value || "").replace(/[^\d.]/g, "")) || 0);
+  const fill = src => {
+    const left = Math.max(0, sum - num(src));
+    const other = src === cashEl ? megaEl : cashEl;
+    other.value = String(left);
+  };
+  cashEl.addEventListener("input", () => fill(cashEl));
+  megaEl.addEventListener("input", () => fill(megaEl));
+}
 function closeMoveRoomPick() {
   if (!ui.moveRoomPick) {
     render();
@@ -15990,10 +16004,10 @@ function moveInView() {
         <button type="button" class="sign-slot${payWay === "split" ? " on" : ""}" data-move-pay="split">自訂</button>
       </div>
       ${payWay === "split" ? `<div class="row wrap" style="margin-top:10px;gap:8px">
-        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" value="${d.payCash || ""}" placeholder="0" /></label>
-        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" value="${d.payMega || ""}" placeholder="0" /></label>
+        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
+        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
       </div>
-      <p class="small" style="margin:6px 0 0">兩筆加總建議等於 ${money(payBits.total)}。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
+      <p class="small" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
@@ -20522,6 +20536,9 @@ function bindHandover() {
       box.querySelectorAll(".hf-split").forEach(el => { el.style.display = (btn.dataset.hfPayway === "split") ? "" : "none"; });
     };
   });
+  document.querySelectorAll(".handover-box").forEach(box => {
+    bindPayRemainPair(box.querySelector('[data-hf="cash"]'), box.querySelector('[data-hf="mega"]'));
+  });
   document.querySelectorAll('[data-hf="agent"]').forEach(el => {
     el.onchange = () => {
       const box = el.closest(".handover-box");
@@ -22001,6 +22018,7 @@ function bindMoveInForm() {
     el.onchange = captureMoveInDraft;
     el.onblur = captureMoveInDraft;
   });
+  bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
   ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
