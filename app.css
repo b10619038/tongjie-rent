@@ -4782,67 +4782,63 @@ html[data-theme="void"] .site-chip {
   -webkit-overflow-scrolling: touch;
   max-height: 78vh;
   border-radius: 16px;
-  background: #d7e0d2;
+  background: #e8eae8;
   border: 1px solid var(--line);
 }
-.site-svg {
-  display: block;
+.site-plan-inner {
+  position: relative;
   width: 920px;
   min-width: 100%;
-  height: auto;
 }
-.site-svg-road { fill: #c4c8c2; }
-.site-svg-yard { fill: #e7eee3; }
-.site-svg-island {
-  fill: rgba(255,255,255,.2);
-  stroke: #8a958c;
-  stroke-width: 2;
-  stroke-dasharray: 7 5;
+.site-plan-inner img {
+  width: 100%;
+  display: block;
+  vertical-align: top;
 }
-.site-svg-road-name {
-  fill: #4e5852;
-  font-size: 18px;
-  letter-spacing: 8px;
-  pointer-events: none;
-}
-.site-svg-mark {
-  fill: #3f4d46;
-  font-size: 16px;
+.site-lot {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1.5px solid rgba(40,50,44,.45);
+  font-size: 11px;
   font-weight: 700;
-  pointer-events: none;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12);
 }
-.site-svg-n {
-  fill: #3f4d46;
-  font-size: 16px;
-  font-weight: 700;
-  pointer-events: none;
+.site-lot.is-xinjie { background: rgba(230, 237, 227, .82); }
+.site-lot.is-tongjie { background: rgba(248, 231, 200, .84); }
+.site-lot.is-studio { background: rgba(220, 234, 248, .84); }
+.site-lot.is-vacant {
+  background: rgba(255,255,255,.55);
+  border-style: dashed;
+  color: #7a7a7a;
 }
-.site-svg-off {
-  fill: #6a756e;
-  font-size: 12px;
-  pointer-events: none;
+.site-lot.on {
+  outline: 2px solid #2f4a3d;
+  outline-offset: 1px;
+  z-index: 3;
 }
-.site-lot { cursor: pointer; }
-.site-lot rect {
-  stroke: rgba(40,50,44,.3);
-  stroke-width: 1.4;
+.site-extras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
-.site-lot text {
-  font-size: 16px;
-  font-weight: 700;
-  fill: var(--ink, #17211f);
-  pointer-events: none;
-}
-.site-lot.is-xinjie rect { fill: #e6ede3; }
-.site-lot.is-tongjie rect { fill: #f8e7c8; }
-.site-lot.is-studio rect { fill: #dceaf8; }
-.site-lot.is-vacant rect {
-  fill: #f3f3f3;
-  stroke-dasharray: 5 4;
-}
-.site-lot.on rect {
-  stroke: #2f4a3d;
-  stroke-width: 3.5;
+.site-lot.is-extra {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
 }
 .site-pop {
   margin-top: 10px;

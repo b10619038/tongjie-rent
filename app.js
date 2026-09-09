@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-21-55";
-const APP_EDIT_COUNT = 864;
+const APP_STAMP = "2026-09-09-22-10";
+const APP_EDIT_COUNT = 865;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0415";
+const FILE_VER = "0416";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房平面完全依手繪總圖街廓重畫"] },
+  { ver: APP_VERSION, items: ["廠房平面改以 Google 地圖為底疊門牌"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2425,80 +2425,60 @@ const FACTORY_GROUPS = [
   ]}
 ];
 const SITE_PLAN = {
-  vb: "0 0 1100 720",
-  roads: [
-    { d: "M 36 52 H 1070 V 92 H 36 Z", name: "文龍東路", tx: 430, ty: 78 },
-    { d: "M 490 92 H 524 V 248 L 500 268 L 466 248 Z" },
-    { d: "M 524 198 H 990 V 226 H 524 Z" },
-    { d: "M 990 92 H 1020 V 575 H 990 Z" },
-    { d: "M 72 262 L 490 232 L 508 262 L 90 292 Z", name: "鳳仁路", tx: 220, ty: 268 },
-    { d: "M 72 262 L 36 618 L 68 632 L 104 276 Z" },
-    { d: "M 36 618 L 640 548 L 652 578 L 48 648 Z" },
-    { d: "M 490 232 L 640 548 L 608 562 L 468 252 Z" }
-  ],
-  yard: "M 90 292 L 468 252 L 608 562 L 48 648 Z",
-  marks: [
-    { x: 548, y: 118, text: "牛①" },
-    { x: 1030, y: 118, text: "牛②" },
-    { x: 58, y: 250, text: "牛③" },
-    { x: 200, y: 520, text: "牛⑤", rot: -16 },
-    { x: 430, y: 268, text: "牛⑥" },
-    { x: 620, y: 500, text: "牛⑦" },
-    { x: 20, y: 640, text: "牛⑧ 錦芳", rot: -16 },
-    { x: 60, y: 28, text: "牛10" },
-    { x: 820, y: 500, text: "大樹18號" }
-  ],
+  img: "images/site-fengshan.png",
   lots: [
-    { no: "牛10-68", label: "68", x: 120, y: 10, w: 72, h: 36, prefix: "68" },
-    { no: "牛10-70", label: "70", x: 196, y: 10, w: 72, h: 36, prefix: "70" },
-    { no: "牛10-72", label: "72", x: 272, y: 10, w: 72, h: 36, prefix: "72" },
-    { no: "牛10-76", label: "76", x: 348, y: 10, w: 72, h: 36, prefix: "76" },
-    { no: "牛1-59", label: "59", x: 548, y: 100, w: 70, h: 42 },
-    { no: "牛1-61", label: "61", x: 622, y: 100, w: 70, h: 42 },
-    { no: "牛1-57巷2", label: "巷2", x: 696, y: 100, w: 70, h: 42 },
-    { no: "牛1-57巷6", label: "巷6", x: 696, y: 146, w: 70, h: 38 },
-    { no: "牛1-57巷8", label: "巷8", x: 696, y: 188, w: 70, h: 38 },
-    { no: "牛2-21", label: "21", x: 1028, y: 100, w: 62, h: 52 },
-    { no: "牛2-23", label: "23", x: 1028, y: 156, w: 62, h: 52 },
-    { no: "牛2-25", label: "25", x: 1028, y: 212, w: 62, h: 52 },
-    { no: "牛2-27", label: "27", x: 1028, y: 268, w: 62, h: 52 },
-    { no: "牛2-29", label: "29", x: 1028, y: 324, w: 62, h: 52 },
-    { no: "牛2-31", label: "31", x: 1028, y: 380, w: 62, h: 52 },
-    { no: "牛2-33", label: "33", x: 1028, y: 436, w: 62, h: 52 },
-    { no: "牛2-35", label: "35", x: 1028, y: 492, w: 62, h: 52 },
-    { no: "牛3-97-61", label: "61", x: 86, y: 278, w: 108, h: 40, rot: 10 },
-    { no: "牛3-97-63", label: "63", x: 78, y: 324, w: 108, h: 40, rot: 10 },
-    { no: "牛3-97-65A", label: "65A", x: 198, y: 318, w: 100, h: 40, rot: 10 },
-    { no: "牛3-97-65B", label: "65B", x: 190, y: 364, w: 100, h: 40, rot: 10 },
-    { no: "牛8-77", label: "77", x: 42, y: 598, w: 40, h: 78, rot: -16 },
-    { no: "牛8-78", label: "78", x: 86, y: 586, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-66", label: "66", x: 130, y: 574, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-67", label: "67", x: 174, y: 562, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-68", label: "68", x: 218, y: 550, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-69", label: "69", x: 262, y: 538, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-70", label: "70", x: 306, y: 526, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-71", label: "71", x: 350, y: 514, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-72", label: "72", x: 394, y: 502, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-73", label: "73", x: 438, y: 490, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-75", label: "75", x: 482, y: 478, w: 40, h: 78, rot: -16 },
-    { no: "牛5-97-76", label: "76", x: 526, y: 466, w: 40, h: 78, rot: -16 },
-    { no: "牛6-55", label: "55", x: 400, y: 278, w: 58, h: 58 },
-    { no: "牛6-56", label: "56", x: 462, y: 278, w: 58, h: 58 },
-    { no: "牛6-57", label: "57", x: 400, y: 340, w: 58, h: 58 },
-    { no: "牛6-58", label: "58", x: 462, y: 340, w: 58, h: 58 },
-    { no: "牛6-59", label: "59", x: 524, y: 278, w: 58, h: 58 },
-    { no: "牛6-60", label: "60", x: 586, y: 278, w: 58, h: 58 },
-    { no: "牛6-61", label: "61", x: 524, y: 340, w: 58, h: 58 },
-    { no: "牛6-62", label: "62", x: 586, y: 340, w: 58, h: 58 },
-    { no: "拉皮-1A", label: "1A", x: 430, y: 418, w: 70, h: 36 },
-    { no: "拉皮-1B", label: "1B", x: 504, y: 418, w: 70, h: 36 },
-    { no: "拉皮-2A", label: "2A", x: 430, y: 458, w: 70, h: 36 },
-    { no: "拉皮-2B", label: "2B", x: 504, y: 458, w: 70, h: 36 },
-    { no: "牛7-1F", label: "1F", x: 590, y: 418, w: 44, h: 76 },
-    { no: "牛7-2F", label: "2F", x: 638, y: 418, w: 44, h: 76 },
-    { no: "牛7-3F", label: "3F", x: 686, y: 418, w: 44, h: 76 },
-    { no: "大樹-18", label: "18號", x: 780, y: 530, w: 150, h: 80 },
-    { no: "大樹-屋頂", label: "屋頂", x: 780, y: 614, w: 150, h: 50 }
+    { no: "牛10-76", label: "76", l: 20.5, t: 19.8, w: 5.8, h: 3.6, prefix: "76" },
+    { no: "牛10-72", label: "72", l: 27.0, t: 19.4, w: 5.8, h: 3.6, prefix: "72" },
+    { no: "牛10-70", label: "70", l: 33.5, t: 19.2, w: 5.8, h: 3.6, prefix: "70" },
+    { no: "牛10-68", label: "68", l: 40.0, t: 19.0, w: 5.8, h: 3.6, prefix: "68" },
+    { no: "牛1-59", label: "59", l: 56.5, t: 25.6, w: 5.6, h: 3.8 },
+    { no: "牛1-61", label: "61", l: 62.4, t: 25.2, w: 5.6, h: 3.8 },
+    { no: "牛1-57巷2", label: "巷2", l: 65.8, t: 30.2, w: 6.4, h: 4.2, rot: 10 },
+    { no: "牛1-57巷6", label: "巷6", l: 67.6, t: 36.0, w: 6.4, h: 4.2, rot: 10 },
+    { no: "牛1-57巷8", label: "巷8", l: 69.4, t: 41.8, w: 6.4, h: 4.2, rot: 10 },
+    { no: "牛2-21", label: "21", l: 73.8, t: 28.0, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-23", label: "23", l: 75.6, t: 33.2, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-25", label: "25", l: 77.4, t: 38.4, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-27", label: "27", l: 79.2, t: 43.6, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-29", label: "29", l: 81.0, t: 48.8, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-31", label: "31", l: 82.8, t: 54.0, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-33", label: "33", l: 84.6, t: 59.2, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛2-35", label: "35", l: 86.4, t: 64.4, w: 8.4, h: 4.0, rot: 14 },
+    { no: "牛3-97-61", label: "61", l: 23.5, t: 35.5, w: 8.8, h: 4.6, rot: -32 },
+    { no: "牛3-97-63", label: "63", l: 27.8, t: 41.0, w: 8.8, h: 4.6, rot: -32 },
+    { no: "牛3-97-65A", label: "65A", l: 18.8, t: 40.2, w: 8.8, h: 4.6, rot: -32 },
+    { no: "牛3-97-65B", label: "65B", l: 23.0, t: 45.6, w: 8.8, h: 4.6, rot: -32 },
+    { no: "牛5-97-66", label: "66", l: 22.0, t: 51.5, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-67", label: "67", l: 24.0, t: 54.4, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-68", label: "68", l: 26.0, t: 57.3, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-69", label: "69", l: 28.0, t: 60.2, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-70", label: "70", l: 30.0, t: 63.1, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-71", label: "71", l: 20.0, t: 58.0, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-72", label: "72", l: 22.0, t: 60.9, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-73", label: "73", l: 24.0, t: 63.8, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-75", label: "75", l: 26.0, t: 66.7, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛5-97-76", label: "76", l: 28.0, t: 69.6, w: 4.0, h: 6.8, rot: -32 },
+    { no: "牛8-77", label: "77", l: 14.5, t: 68.5, w: 7.2, h: 5.4, rot: -32 },
+    { no: "牛8-78", label: "78", l: 17.8, t: 73.2, w: 7.2, h: 5.4, rot: -32 },
+    { no: "牛6-55", label: "55", l: 43.5, t: 47.8, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-56", label: "56", l: 50.2, t: 49.6, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-57", label: "57", l: 56.9, t: 51.4, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-58", label: "58", l: 63.6, t: 53.2, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-59", label: "59", l: 41.8, t: 54.2, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-60", label: "60", l: 48.5, t: 56.0, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-61", label: "61", l: 55.2, t: 57.8, w: 6.2, h: 5.6, rot: -18 },
+    { no: "牛6-62", label: "62", l: 61.9, t: 59.6, w: 6.2, h: 5.6, rot: -18 },
+    { no: "拉皮-1A", label: "1A", l: 47.0, t: 66.8, w: 6.8, h: 4.4, rot: -12 },
+    { no: "拉皮-1B", label: "1B", l: 54.4, t: 68.4, w: 6.8, h: 4.4, rot: -12 },
+    { no: "拉皮-2A", label: "2A", l: 45.8, t: 72.0, w: 6.8, h: 4.4, rot: -12 },
+    { no: "拉皮-2B", label: "2B", l: 53.2, t: 73.6, w: 6.8, h: 4.4, rot: -12 },
+    { no: "牛7-1F", label: "1F", l: 62.0, t: 66.5, w: 4.8, h: 7.2, rot: -10 },
+    { no: "牛7-2F", label: "2F", l: 67.2, t: 67.8, w: 4.8, h: 7.2, rot: -10 },
+    { no: "牛7-3F", label: "3F", l: 72.4, t: 69.1, w: 4.8, h: 7.2, rot: -10 }
+  ],
+  extras: [
+    { no: "大樹-18", label: "大樹 18號" },
+    { no: "大樹-屋頂", label: "大樹 屋頂" }
   ]
 };
 const FACTORY_TENANT_INFO = {
@@ -20432,30 +20412,21 @@ function siteLotClass(it) {
 }
 function siteMapHtml() {
   const plan = SITE_PLAN;
-  const roads = (plan.roads || []).map(rd =>
-    `<path class="site-svg-road" d="${rd.d}"/>` + (rd.name
-      ? `<text class="site-svg-road-name" x="${rd.tx}" y="${rd.ty}">${escapeHtml(rd.name)}</text>`
-      : "")
-  ).join("");
-  const marks = (plan.marks || []).map(m =>
-    `<text class="site-svg-mark" x="${m.x}" y="${m.y}"${m.rot ? ` transform="rotate(${m.rot} ${m.x} ${m.y})"` : ""}>${escapeHtml(m.text)}</text>`
-  ).join("");
   const lots = (plan.lots || []).map(it => {
     const room = siteRoomOf(it.no);
     const vacant = it.prefix ? false : (!room || isVacantRoom(room));
     const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming);
     const title = (it.label || "") + " " + (t && t.name ? t.name : (vacant ? "空" : ""));
-    const rot = it.rot || 0;
-    return `<g class="${siteLotClass(it)}" transform="translate(${it.x} ${it.y}) rotate(${rot})" data-site-no="${escapeHtml(it.no)}" data-site-prefix="${escapeHtml(it.prefix || "")}">
-      <title>${escapeHtml(title)}</title>
-      <rect x="0" y="0" width="${it.w}" height="${it.h}" rx="5"/>
-      <text x="${(it.w / 2).toFixed(1)}" y="${(it.h / 2 + 5).toFixed(1)}" text-anchor="middle">${escapeHtml(it.label)}</text>
-    </g>`;
+    const rot = it.rot ? `transform:rotate(${it.rot}deg)` : "";
+    return `<button type="button" class="${siteLotClass(it)}" style="left:${it.l}%;top:${it.t}%;width:${it.w}%;height:${it.h}%;${rot}" data-site-no="${escapeHtml(it.no)}" data-site-prefix="${escapeHtml(it.prefix || "")}" title="${escapeHtml(title)}">${escapeHtml(it.label)}</button>`;
   }).join("");
+  const extras = (plan.extras || []).map(it =>
+    `<button type="button" class="${siteLotClass(it)} is-extra" data-site-no="${escapeHtml(it.no)}">${escapeHtml(it.label)}</button>`
+  ).join("");
   return `<div class="card card-body site-map" id="site-map">
     <div class="row wrap" style="margin-bottom:8px">
       <span class="k">案場平面</span>
-      <span class="small">依手繪總圖　可左右滑　點地塊</span>
+      <span class="small">Google 地圖底　點色塊看租客</span>
     </div>
     <div class="site-legend">
       <span><i class="lg is-xinjie"></i>信潔</span>
@@ -20464,14 +20435,12 @@ function siteMapHtml() {
       <span><i class="lg is-vacant"></i>空</span>
     </div>
     <div class="site-plan">
-      <svg class="site-svg" viewBox="${plan.vb}" xmlns="http://www.w3.org/2000/svg">
-        <text class="site-svg-n" x="48" y="40">北 ↑</text>
-        <path class="site-svg-yard" d="${plan.yard}"/>
-        <rect class="site-svg-island" x="768" y="512" width="174" height="164" rx="10"/>
-        ${roads}${marks}${lots}
-        <text class="site-svg-off" x="790" y="700">九曲路（不在本街）</text>
-      </svg>
+      <div class="site-plan-inner">
+        <img src="${plan.img}?v=${FILE_VER}" alt="鳳山廠房地圖">
+        ${lots}
+      </div>
     </div>
+    ${extras ? `<div class="site-extras">${extras}</div>` : ""}
     <div class="site-pop" id="site-pop"${ui.sitePopNo ? "" : " hidden"}>${sitePopInner(ui.sitePopNo)}</div>
   </div>`;
 }
