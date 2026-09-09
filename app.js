@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-20-40";
-const APP_EDIT_COUNT = 856;
+const APP_STAMP = "2026-09-09-20-50";
+const APP_EDIT_COUNT = 857;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0407";
+const FILE_VER = "0408";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -146,7 +146,7 @@ const XINJIE_0909_BOOKS = [
   ["2026-09-09", "out", 16766, "信潔", "垃圾清運　聯廣合　華南屏東 800-10-018417-7　匯16,736＋手續費30", "聯邦"]
 ];
 const XINJIE_SEP_PAID = ["牛5-97-69", "牛5-97-70", "牛5-97-72", "牛6-58", "牛6-55", "牛5-97-66", "牛6-59"];
-const TONGJIE_FED_0909_VER = "tongjie-fed-0909-v1";
+const TONGJIE_FED_0909_VER = "tongjie-fed-0909-v2";
 const TONGJIE_FED_0909_BOOKS = [
   ["2026-08-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢", "聯邦", "拉皮-1A"],
   ["2026-08-04", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
@@ -173,10 +173,10 @@ const TONGJIE_FED_0909_BOOKS = [
   ["2026-09-06", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
   ["2026-09-07", "out", 156886, "統潔", "薪資", "聯邦"],
   ["2026-09-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳", "聯邦", "牛8-77"],
-  ["2026-09-08", "in", 7644, "統潔", "造得科技", "聯邦"],
+  ["2026-09-08", "in", 7644, "統潔", "租金收入　造得科技　大樹廠房屋頂　兩個月", "聯邦", "大樹-屋頂"],
   ["2026-09-09", "out", 15703, "統潔", "水費　93-2號 9,240＋93-63號 110＋93-63號3樓 6,353＝15,703　115年9月　聯邦三民代收", "聯邦"]
 ];
-const TONGJIE_FED_SEP_PAID = ["拉皮-1A", "拉皮-1B", "牛7-2F", "牛8-77", "大樹-18", "牛3-97-61"];
+const TONGJIE_FED_SEP_PAID = ["拉皮-1A", "拉皮-1B", "牛7-2F", "牛8-77", "大樹-18", "牛3-97-61", "大樹-屋頂"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["吸收聯廣合按公斤4桶、合吉牛10算桶"] },
+  { ver: APP_VERSION, items: ["造得科技：統潔三聯租金收入、兩個月一次，9/9已開"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -1657,7 +1657,7 @@ const TRASH_VENDORS = [
 const MAIL_INVOICES = [
   { name: "映升企業社", addr: "830 高雄市鳳山區中山路19巷14號", phone: "0988-027-025" },
   { name: "南溢製鞋股份有限公司", addr: "802 高雄市苓雅區永泰路115號", phone: "" },
-  { name: "造得科技有限公司", addr: "831 高雄市大寮區內坑路158之9號", phone: "" }
+  { name: "造得科技有限公司", addr: "831 高雄市大寮區內坑路158之9號", phone: "", everyMonths: 2, company: "統潔", item: "租金收入", form: "三聯式", note: "大樹廠房屋頂；兩個月開一次。115/9/9 已開" }
 ];
 const VENDOR_CONTACTS = [
   { name: "致辰工程有限公司", addr: "高雄市鳳山區頂興街180號" },
@@ -2420,7 +2420,8 @@ const FACTORY_GROUPS = [
     { no: "拉皮-2B", unit: "93-2B號", manager: "" }
   ]},
   { group: "大樹", street: "九曲路", company: "統潔", city: "高雄市大樹區九曲路", items: [
-    { no: "大樹-18", unit: "5巷32弄18號", manager: "" }
+    { no: "大樹-18", unit: "5巷32弄18號", manager: "" },
+    { no: "大樹-屋頂", unit: "廠房屋頂", manager: "" }
   ]}
 ];
 const FACTORY_TENANT_INFO = {
@@ -2480,6 +2481,7 @@ const FACTORY_TENANT_INFO = {
   "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "93-2B。每月15日收租並給電單（自繳電費）。" },
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "93-63 2F。此次合約未附，先沿用租金表。115/7 未繳 $63,000" },
+  "大樹-屋頂": { name: "造得科技有限公司", taxId: "", contactName: "", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 7280, rent: 7644, deposit: 0, dueDay: 8, payBank: "聯邦", payCompany: "統潔", invoiceEveryMonths: 2, invoiceItem: "租金收入", invoiceOn: "2026-09-09", invoiceAddr: "831 高雄市大寮區內坑路158之9號", note: "大樹廠房屋頂。付租金給我們。統潔三聯式，品名租金收入，兩個月開一次，寄大寮內坑路158之9。115/9/8 入帳 7,644，115/9/9 已開發票。" },
   "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
     { from: "2026-09-01", untaxed: 46000 },
     { from: "2027-09-01", untaxed: 47000 },
@@ -2501,7 +2503,7 @@ const CYCLE_JOBS = [
   { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 咘然居 孫小姐（拉皮）", cycle: true, owner: "7651" },
   { id: "cycle-rent-97-65b", monthDay: 5, time: "", text: "收租金　97-65B 蔡聖鴻（現金）", cycle: true, owner: "7651" },
   { id: "cycle-nonghui-mingliu", monthDay: 5, time: "", text: "到農會領取名流放款單", cycle: true, owner: "7651" },
-  { id: "cycle-mail-invoices", monthDay: 10, flexDays: 4, text: "寄發票：映升（鳳山中山路19巷14號）、南溢（苓雅永泰路115號）、造得科技（大寮內坑路158之9）", cycle: true, owner: "7651" },
+  { id: "cycle-mail-zaode", monthDay: 9, intervalMonths: 2, anchor: "2026-09-09", flexDays: 4, text: "開統潔三聯式發票寄造得科技（大樹廠房屋頂／租金收入，兩個月一次；寄大寮內坑路158之9）", cycle: true, owner: "7651" },
   { id: "cycle-pay-fengxin", monthDay: 10, flexDays: 4, text: "繳費鳳信網路（信件到再繳）", cycle: true, owner: "7651" },
   { id: "cycle-pay-heji", monthDay: 10, flexDays: 4, text: "繳合吉垃圾清運　牛10 1桶　算桶　統潔農會（信件到再繳）", cycle: true, owner: "7651" },
   { id: "cycle-trash-driver", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　老司機（按公斤、開信潔發票）", cycle: true, owner: "7651" },
@@ -3226,7 +3228,7 @@ const JULY115_BOOKS = [
   ["2026-07-10", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝　匯款", "聯邦", "牛7-1F"],
   ["2026-07-16", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦", "拉皮-2B"],
   ["2026-07-31", "in", 42000, "統潔", "租金收入　拉皮 93-1B 鈺晟　七月份　匯款", "聯邦", "拉皮-1B"],
-  ["2026-07-31", "in", 3524, "統潔", "造得科技", "聯邦"],
+  ["2026-07-09", "in", 3524, "統潔", "租金收入　造得科技　大樹廠房屋頂", "聯邦", "大樹-屋頂"],
   ["2026-07-03", "out", 63030, "統潔", "屏東　康莊工程", "聯邦"],
   ["2026-07-03", "out", 124222, "統潔", "薪資", "聯邦"],
   ["2026-07-09", "out", 10500, "統潔", "電子鎖安裝　牛10", "聯邦"],
@@ -3968,6 +3970,12 @@ function applyTongjieFedSepPaid(data) {
     t.paidVia = t.paidVia || "tongjie-fed";
     t.paidYm = "2026-09";
     t.paidTouched = true;
+    if (no === "大樹-屋頂") {
+      t.paidAt = "2026-09-08 10:00";
+      t.remitOn = "2026-09-08";
+      t.invoiceOn = "2026-09-09";
+      t.paidVia = "tongjie-fed";
+    }
     if (!t.editedAt) t.editedAt = Date.now();
   });
 }
@@ -4293,6 +4301,10 @@ function applyFactoryRoster(data) {
     if (info.payCompany) t.payCompany = info.payCompany;
     if (info.deposit != null) t.deposit = info.deposit;
     if (info.rentSchedule) t.rentSchedule = info.rentSchedule;
+    if (info.invoiceEveryMonths) t.invoiceEveryMonths = info.invoiceEveryMonths;
+    if (info.invoiceItem) t.invoiceItem = info.invoiceItem;
+    if (info.invoiceOn) t.invoiceOn = info.invoiceOn;
+    if (info.invoiceAddr) t.invoiceAddr = info.invoiceAddr;
     if (!t.paidTouched) t.paid = false;
     if (t.name !== info.name || Number(room.rent) !== Number(info.rent || 0)) t.editedAt = Date.now();
     room.tenantId = t.id;
@@ -8034,7 +8046,7 @@ function invoiceTaxBreakdown(r, t, overrideTotal) {
   return { sales, tax, total: sales + tax };
 }
 function invoiceAddr(r, t) {
-  const raw = (t && t.address) || r.location || (r.kind === "factory" ? "" : roomAddress(r.no)) || "";
+  const raw = (t && (t.invoiceAddr || t.address)) || r.location || (r.kind === "factory" ? "" : roomAddress(r.no)) || "";
   const m = String(raw).match(/^(.*?[市縣])\s*(.*?[區鄉鎮市])\s*(.*?)(\d+)\s*號(?:(\d+)\s*樓)?(?:-(\d+)\s*室)?/);
   if (!m) return { city: "", dist: "", road: raw, no: "", floor: "", room: "", lane: "", alley: "" };
   return { city: m[1] || "", dist: m[2] || "", road: (m[3] || "").trim(), no: m[4] || "", floor: m[5] || "", room: m[6] || "", lane: "", alley: "" };
@@ -8084,7 +8096,9 @@ function invoiceCopyHtml(r, t, copyName) {
     ? ui.invoiceBuyer
     : invoiceBuyer(r, t);
   const num = ui.invoiceNum || "";
-  const itemDefault = factory ? (p.m + "月份廠房租金收入") : (p.m + "月份租金收入");
+  const itemDefault = (t && t.invoiceItem)
+    ? (p.m + "月份" + t.invoiceItem)
+    : (factory ? (p.m + "月份廠房租金收入") : (p.m + "月份租金收入"));
   const item = (ui.invoiceItem && !/^\d+月(份)?(廠房)?租金(收入)?$/.test(ui.invoiceItem)) ? ui.invoiceItem : itemDefault;
   const qty = (ui.invoiceQty && ui.invoiceQty !== "1") ? ui.invoiceQty : "一式";
   const editedAmt = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "";
@@ -9569,7 +9583,9 @@ function openInvoiceForRoom(roomId, from) {
   ui.page = "invoice";
   render();
 }
-function invoiceYmdFromRemit(remitYmd, billYm) {
+function invoiceYmdFromRemit(remitYmd, billYm, invoiceOn) {
+  const forced = ymdOf(invoiceOn);
+  if (forced) return forced;
   const ym = String(billYm || payYmNow() || "").slice(0, 7);
   const start = ym ? ym + "-01" : "";
   const remit = ymdOf(remitYmd);
@@ -9581,7 +9597,7 @@ function invoicePrintYmd(t) {
   const paid = paidThisMonth(t);
   const remit = paid ? (ymdOf(t && t.remitOn) || ymdOf(t && t.paidAt) || "") : "";
   const billYm = (paid && t && t.paidYm) || payYmNow();
-  return invoiceYmdFromRemit(remit, billYm) || (String(billYm || payYmNow()).slice(0, 7) + "-01");
+  return invoiceYmdFromRemit(remit, billYm, t && t.invoiceOn) || (String(billYm || payYmNow()).slice(0, 7) + "-01");
 }
 function dateFromYmd(ymd) {
   const m = String(ymd || "").match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -9679,8 +9695,15 @@ function factoryInvoiceOverviewRows() {
     const paid = !!paidT;
     const src = paidT || t;
     if (src && src.leaseStart && String(src.leaseStart).slice(0, 7) > payYmNow()) return;
+    const every = Number(src.invoiceEveryMonths) || 1;
+    if (every > 1) {
+      const billYm = String((invoiceRentYmd() || todayYmd()).slice(0, 7) || payYmNow());
+      const m = Number(billYm.slice(5, 7));
+      const anchor = Number(String(src.invoiceOn || "2026-09-09").slice(5, 7)) || 9;
+      if (((m - anchor) % every + every) % every !== 0) return;
+    }
     const remitYmd = paid ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "";
-    const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, src.paidYm || payYmNow()) : "";
+    const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, src.paidYm || payYmNow(), src.invoiceOn) : "";
     const room = rooms[0];
     const bankKey = tenantPayBankKey(src, room);
     const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
@@ -17857,7 +17880,7 @@ function adminFirm() {
     </div>
     <div class="card card-body">
       <div class="label">每月寄發票</div>
-      ${MAIL_INVOICES.map((x, i) => `<div class="row wrap"><span class="k">${i + 1}　${escapeHtml(x.name)}</span><span class="v">${escapeHtml(x.addr)}${x.phone ? "　" + x.phone : ""}</span></div>`).join("")}
+      ${MAIL_INVOICES.map((x, i) => `<div class="row wrap"><span class="k">${i + 1}　${escapeHtml(x.name)}</span><span class="v">${escapeHtml(x.addr)}${x.phone ? "　" + x.phone : ""}</span></div>${x.note || x.everyMonths ? `<div class="small">${escapeHtml([x.form, x.company ? x.company + "發票" : "", x.item, x.everyMonths ? "每" + x.everyMonths + "個月一次" : "", x.note].filter(Boolean).join("　"))}</div>` : ""}`).join("")}
       <div class="small" style="margin-top:8px">相關廠商（不是租客，沒有寫進廠房名冊）</div>
       ${VENDOR_CONTACTS.map(x => `<div class="row wrap"><span class="k">${escapeHtml(x.name)}</span><span class="v">${escapeHtml(x.addr)}${x.contact ? "　" + x.contact : ""}${x.phone ? "　" + x.phone : ""}</span></div>`).join("")}
     </div>
