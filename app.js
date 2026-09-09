@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-14-28";
-const APP_EDIT_COUNT = 851;
+const APP_STAMP = "2026-09-09-14-36";
+const APP_EDIT_COUNT = 852;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0402";
+const FILE_VER = "0403";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -38,10 +38,10 @@ const YUSHENG_ELEC_ID = "bk-yusheng-76900-20260831";
 const AUG31_BOOKS = [
   ["2026-08-17", "out", 97630, "統潔", "電費　93-1　115/7/2～7/29　台電 18-33-7421-01-4（鈺晟約 16,047 度 77,073／93-2A 4,307 度 20,660）義大世界超商繳", "超商"],
   ["2026-09-02", "out", 19200, "統潔", "牛10　6832 高逸安翁玟倫　退租（押金13,500＋8月租金5,670＝19,170＋匯費30）匯翁玟倫中信西台南 222540083019", "農會"],
-  ["2026-08-25", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
-  ["2026-08-25", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
+  ["2026-09-07", "out", 48300, "統潔", "仲介費　大樹九曲路5巷32弄18號　即時通房屋仲介　發票 CA02874356", "聯邦"],
+  ["2026-09-07", "in", 48300, "統潔", "租金收入　大樹　廣永隆　9月含稅", "聯邦"]
 ];
-const NONGHUI_0909_VER = "nonghui-0909-v2";
+const NONGHUI_0909_VER = "nonghui-0909-v3";
 const NONGHUI_0909_BOOKS = [
   ["2026-07-26", "in", 14000, "統潔", "牛10　7232 林紜亦", "農會", "7232"],
   ["2026-07-31", "in", 9000, "統潔", "牛10　7041 劉恩彤", "農會", "7041"],
@@ -96,7 +96,6 @@ const NONGHUI_0909_BOOKS = [
   ["2026-09-05", "in", 5000, "統潔", "牛10　7651 吳慧青", "農會", "7651"],
   ["2026-09-09", "in", 8000, "統潔", "牛10　7241 陳逸仁　現金", "農會", "7241"],
   ["2026-09-09", "out", 4644, "統潔", "牛10　水費　文龍東路68號1,510＋70號1,045＋72號743＋76號1,346＝4,644　115年9月（6/12–8/11）現金繳", "農會"],
-  ["2026-09-09", "out", 15703, "統潔", "水費　統潔（白紙，非本本農會簿）", "聯邦"],
   ["2026-09-09", "out", 8558, "個人戶·趙文榮", "水費（白紙）", ""],
   ["2026-09-09", "out", 1500, "現金(保險箱)", "仲介費（白紙）", "現金"]
 ];
@@ -146,6 +145,37 @@ const XINJIE_0909_BOOKS = [
   ["2026-09-09", "out", 16766, "信潔", "聯廣合企業有限公司　華南屏東 800-10-018417-7　匯16,736＋手續費30", "聯邦"]
 ];
 const XINJIE_SEP_PAID = ["牛5-97-69", "牛5-97-70", "牛5-97-72", "牛6-58", "牛6-55", "牛5-97-66", "牛6-59"];
+const TONGJIE_FED_0909_VER = "tongjie-fed-0909-v1";
+const TONGJIE_FED_0909_BOOKS = [
+  ["2026-08-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢", "聯邦", "拉皮-1A"],
+  ["2026-08-04", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
+  ["2026-08-05", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳", "聯邦", "牛8-77"],
+  ["2026-08-05", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　存現", "聯邦", "牛7-2F"],
+  ["2026-08-05", "out", 124222, "統潔", "薪資", "聯邦"],
+  ["2026-08-11", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝", "聯邦", "牛7-1F"],
+  ["2026-08-17", "in", 92000, "統潔", "大樹　廣永隆　押金2押未稅 46,000×2　存現", "聯邦", "大樹-18"],
+  ["2026-08-17", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦", "拉皮-2B"],
+  ["2026-08-17", "out", 111582, "統潔", "電費　93-1", "聯邦"],
+  ["2026-08-17", "out", 147030, "統潔", "明達", "聯邦"],
+  ["2026-08-20", "out", 364196, "統潔", "電費　台灣電力　太陽能　跨行匯款", "聯邦"],
+  ["2026-08-25", "out", 52920, "統潔", "其它　甲長　支存", "聯邦"],
+  ["2026-08-25", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　存現", "聯邦", "牛7-2F"],
+  ["2026-08-25", "out", 295, "統潔", "電話費", "聯邦"],
+  ["2026-08-25", "out", 11077, "統潔", "電費　楠梓", "聯邦"],
+  ["2026-08-28", "in", 8300, "統潔", "待確認　ATMF 8,300（帳號406-8-5-3500）", "聯邦"],
+  ["2026-08-28", "out", 7860, "統潔", "勞退金", "聯邦"],
+  ["2026-08-28", "out", 14979, "統潔", "勞保費", "聯邦"],
+  ["2026-08-28", "out", 8840, "統潔", "健保費", "聯邦"],
+  ["2026-08-28", "out", 31450, "統潔", "台電　屏東　領現（簿註保證金3,000）", "聯邦"],
+  ["2026-09-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢", "聯邦", "拉皮-1A"],
+  ["2026-09-02", "in", 42000, "統潔", "租金收入　拉皮 93-1B 鈺晟　八月份", "聯邦", "拉皮-1B"],
+  ["2026-09-06", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
+  ["2026-09-07", "out", 156886, "統潔", "薪資", "聯邦"],
+  ["2026-09-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳", "聯邦", "牛8-77"],
+  ["2026-09-08", "in", 7644, "統潔", "造得科技", "聯邦"],
+  ["2026-09-09", "out", 15703, "統潔", "水費　93-2號 9,240＋93-63號 110＋93-63號3樓 6,353＝15,703　115年9月　聯邦三民代收", "聯邦"]
+];
+const TONGJIE_FED_SEP_PAID = ["拉皮-1A", "拉皮-1B", "牛7-2F", "牛8-77", "大樹-18", "牛3-97-61"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -194,7 +224,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["吸收9/9信潔聯邦：水費21,946、匯聯廣合16,736，並更正白紙誤記"] },
+  { ver: APP_VERSION, items: ["吸收9/9統潔聯邦：水費15,703與存摺8–9月寫入總攬"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -3457,6 +3487,8 @@ function normalize(data) {
   applyNonghuiSepPaid(data);
   applyXinjie0909(data);
   applyXinjieSepPaid(data);
+  applyTongjieFed0909(data);
+  applyTongjieFedSepPaid(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -3851,6 +3883,65 @@ function applyXinjieSepPaid(data) {
     t.paid = true;
     t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-09-01 10:00";
     t.paidVia = t.paidVia || "xinjie";
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
+}
+function repairTongjieFedDates(data) {
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    const note = String(b.note || "");
+    if (Number(b.amount) === 3524 && /造得/.test(note) && ymdOf(b.date) === "2026-07-31") b.date = "2026-07-09";
+    if (Number(b.amount) === 48300 && b.type === "out" && /即時通/.test(note) && ymdOf(b.date) === "2026-08-25") b.date = "2026-09-07";
+    if (Number(b.amount) === 48300 && b.type === "in" && /廣永隆/.test(note) && ymdOf(b.date) === "2026-08-25") b.date = "2026-09-07";
+  });
+}
+function applyTongjieFed0909(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  repairTongjieFedDates(data);
+  if (data.tongjieFed0909Ver === TONGJIE_FED_0909_VER && (data.books || []).some(b => b && b.importTag === "tongjieFed0909")) return;
+  data.books = (data.books || []).filter(b => b && b.importTag !== "tongjieFed0909");
+  TONGJIE_FED_0909_BOOKS.forEach((row, i) => {
+    const id = "bk-tf09-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "tongjieFed0909") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      if (String(b.bank || "") !== String(bank || "")) return false;
+      const sameRoom = roomNo && (String(b.roomNo || "") === String(roomNo) || String(b.note || "").indexOf(String(roomNo)) >= 0);
+      const sameNote = String(b.note || "").slice(0, 8) === String(note || "").slice(0, 8);
+      return sameRoom || sameNote;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "tongjieFed0909",
+      createdAt: "2026-09-09 14:36"
+    });
+  });
+  data.tongjieFed0909Ver = TONGJIE_FED_0909_VER;
+}
+function applyTongjieFedSepPaid(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (TONGJIE_FED_SEP_PAID || []).forEach(no => {
+    const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    t.paid = true;
+    t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-09-01 10:00";
+    t.paidVia = t.paidVia || "tongjie-fed";
     t.paidYm = "2026-09";
     t.paidTouched = true;
     if (!t.editedAt) t.editedAt = Date.now();
@@ -5914,6 +6005,8 @@ async function pullCloud() {
       applyNonghuiSepPaid(state);
       applyXinjie0909(state);
       applyXinjieSepPaid(state);
+      applyTongjieFed0909(state);
+      applyTongjieFedSepPaid(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -5965,6 +6058,8 @@ async function pullCloud() {
     applyNonghuiSepPaid(state);
     applyXinjie0909(state);
     applyXinjieSepPaid(state);
+    applyTongjieFed0909(state);
+    applyTongjieFedSepPaid(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
