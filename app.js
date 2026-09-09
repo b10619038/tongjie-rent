@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-08-21-48";
-const APP_EDIT_COUNT = 844;
+const APP_STAMP = "2026-09-09-08-26";
+const APP_EDIT_COUNT = 845;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0394";
+const FILE_VER = "0395";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -89,7 +89,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
+  { ver: APP_VERSION, items: ["申請入住自訂付款拿掉林安安範例"] },
+  { ver: "2026-09-08-21-48-844", items: ["工作助手新增抄表圖卡，電表／水表可直接記度數"] },
   { ver: "2026-09-08-21-45-843", items: ["本月工作：莊記／喜憨兒抄表、錦芳半年抄表、誠家鈺晟陳雅琪水費半年收"] },
   { ver: "2026-09-08-21-20-842", items: ["申請入住付款方式會帶到繳費頁；重送申請也會記住"] },
   { ver: "2026-09-08-21-10-841", items: ["首次付款可選現金／轉帳／自訂金額；仲介預設現金、沒仲介預設轉帳"] },
@@ -15992,7 +15993,7 @@ function moveInView() {
         <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" value="${d.payCash || ""}" placeholder="0" /></label>
         <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" value="${d.payMega || ""}" placeholder="0" /></label>
       </div>
-      <p class="small" style="margin:6px 0 0">兩筆加總建議等於 ${money(payBits.total)}。像今天林安安：現金 30,000 ＋ 兆豐 5,200。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
+      <p class="small" style="margin:6px 0 0">兩筆加總建議等於 ${money(payBits.total)}。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
