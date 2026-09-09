@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-21-05";
-const APP_EDIT_COUNT = 860;
+const APP_STAMP = "2026-09-09-21-15";
+const APP_EDIT_COUNT = 861;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0411";
+const FILE_VER = "0412";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳勞健保改為每月30日"] },
+  { ver: APP_VERSION, items: ["所有資產廠房頁可點平面圖看租客"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2423,6 +2423,52 @@ const FACTORY_GROUPS = [
     { no: "大樹-18", unit: "5巷32弄18號", manager: "" },
     { no: "大樹-屋頂", unit: "廠房屋頂", manager: "" }
   ]}
+];
+const SITE_MAP = [
+  { street: "文龍東路", packs: [
+    { group: "牛1", items: [
+      { no: "牛1-59", label: "59" }, { no: "牛1-61", label: "61" },
+      { no: "牛1-57巷2", label: "巷2" }, { no: "牛1-57巷6", label: "巷6" }, { no: "牛1-57巷8", label: "巷8" }
+    ] },
+    { group: "牛10", studio: true, items: [
+      { no: "牛10-68", label: "68", prefix: "68" }, { no: "牛10-70", label: "70", prefix: "70" },
+      { no: "牛10-72", label: "72", prefix: "72" }, { no: "牛10-76", label: "76", prefix: "76" }
+    ] },
+    { group: "牛2", hint: "57巷1弄", items: [
+      { no: "牛2-21", label: "21" }, { no: "牛2-23", label: "23" }, { no: "牛2-25", label: "25" }, { no: "牛2-27", label: "27" },
+      { no: "牛2-29", label: "29" }, { no: "牛2-31", label: "31" }, { no: "牛2-33", label: "33" }, { no: "牛2-35", label: "35" }
+    ] }
+  ] },
+  { street: "鳳仁路", packs: [
+    { group: "牛3", items: [
+      { no: "牛3-97-61", label: "61" }, { no: "牛3-97-63", label: "63" },
+      { no: "牛3-97-65A", label: "65A" }, { no: "牛3-97-65B", label: "65B" }
+    ] },
+    { group: "牛5", items: [
+      { no: "牛5-97-66", label: "66" }, { no: "牛5-97-67", label: "67" }, { no: "牛5-97-68", label: "68" },
+      { no: "牛5-97-69", label: "69" }, { no: "牛5-97-70", label: "70" }, { no: "牛5-97-71", label: "71" },
+      { no: "牛5-97-72", label: "72" }, { no: "牛5-97-73", label: "73" }, { no: "牛5-97-75", label: "75" }, { no: "牛5-97-76", label: "76" }
+    ] },
+    { group: "牛6", hint: "93-", items: [
+      { no: "牛6-55", label: "55" }, { no: "牛6-56", label: "56" }, { no: "牛6-57", label: "57" }, { no: "牛6-58", label: "58" },
+      { no: "牛6-59", label: "59" }, { no: "牛6-60", label: "60" }, { no: "牛6-61", label: "61" }, { no: "牛6-62", label: "62" }
+    ] },
+    { group: "拉皮", items: [
+      { no: "拉皮-1A", label: "1A" }, { no: "拉皮-1B", label: "1B" },
+      { no: "拉皮-2A", label: "2A" }, { no: "拉皮-2B", label: "2B" }
+    ] },
+    { group: "牛7", hint: "93-63", items: [
+      { no: "牛7-1F", label: "1F" }, { no: "牛7-2F", label: "2F" }, { no: "牛7-3F", label: "3F" }
+    ] },
+    { group: "牛8", hint: "錦芳", items: [
+      { no: "牛8-77", label: "77" }, { no: "牛8-78", label: "78" }
+    ] }
+  ] },
+  { street: "九曲路　大樹", packs: [
+    { group: "大樹", items: [
+      { no: "大樹-18", label: "18號" }, { no: "大樹-屋頂", label: "屋頂" }
+    ] }
+  ] }
 ];
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
@@ -20335,6 +20381,119 @@ function roomMatchesQ(r, q) {
 function assetSearchPlaceholder(kind) {
   return kind === "factory" ? "搜尋房號、人名、公司、牛案場" : "搜尋房號、姓名、店名";
 }
+function siteRoomOf(no) {
+  return (state.rooms || []).find(r => r && r.no === no);
+}
+function siteFirmOf(item, room) {
+  if (item && item.studio) return "統潔";
+  return (room && room.company) || (item && item.company) || "";
+}
+function siteMapHtml() {
+  const streets = SITE_MAP.map(st => {
+    const packs = (st.packs || []).map(pk => {
+      const cells = (pk.items || []).map(it => {
+        const room = siteRoomOf(it.no);
+        const vacant = it.prefix ? false : (!room || isVacantRoom(room));
+        const firm = siteFirmOf(pk, room);
+        const cls = [
+          "site-cell",
+          it.prefix ? "is-studio" : (firm === "統潔" ? "is-tongjie" : "is-xinjie"),
+          vacant ? "is-vacant" : "",
+          ui.sitePopNo === it.no ? "on" : ""
+        ].filter(Boolean).join(" ");
+        const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming);
+        const title = (it.label || "") + " " + (t && t.name ? t.name : (vacant ? "空" : ""));
+        return `<button type="button" class="${cls}" data-site-no="${escapeHtml(it.no)}" data-site-prefix="${escapeHtml(it.prefix || "")}" title="${escapeHtml(title)}">${escapeHtml(it.label)}</button>`;
+      }).join("");
+      return `<div class="site-pack">
+        <div class="site-pack-h">${escapeHtml(pk.group)}${pk.hint ? `<span>${escapeHtml(pk.hint)}</span>` : ""}</div>
+        <div class="site-cells">${cells}</div>
+      </div>`;
+    }).join("");
+    return `<div class="site-street"><div class="site-street-h">${escapeHtml(st.street)}</div>${packs}</div>`;
+  }).join("");
+  return `<div class="card card-body site-map" id="site-map">
+    <div class="row wrap" style="margin-bottom:8px">
+      <span class="k">案場平面</span>
+      <span class="small">點區塊看租客</span>
+    </div>
+    <div class="site-legend">
+      <span><i class="lg is-xinjie"></i>信潔</span>
+      <span><i class="lg is-tongjie"></i>統潔</span>
+      <span><i class="lg is-studio"></i>牛10套房</span>
+      <span><i class="lg is-vacant"></i>空</span>
+    </div>
+    ${streets}
+    <div class="site-pop" id="site-pop"${ui.sitePopNo ? "" : " hidden"}>${sitePopInner(ui.sitePopNo)}</div>
+  </div>`;
+}
+function sitePopInner(no) {
+  if (!no) return "";
+  if (/^牛10-/.test(no)) {
+    const prefix = no.replace(/^牛10-/, "");
+    const b = (STUDIO_BUILDINGS || []).find(x => x.prefix === prefix);
+    const rooms = (state.rooms || []).filter(r => r && studioPrefix(r.no) === prefix && !roomIsFactory(r));
+    const live = rooms.filter(r => r.status === "rented" || roomHasLiveTenant(r)).length;
+    return `<div class="site-pop-h">${escapeHtml(b && b.street || no)}</div>
+      <div class="small">統潔　套房 ${live}／${rooms.length} 間使用中</div>
+      <button type="button" class="ghost" data-site-open-studio="${escapeHtml(prefix)}">打開牛10-${escapeHtml(prefix)}</button>`;
+  }
+  const room = siteRoomOf(no);
+  if (!room) return `<div class="small">找不到 ${escapeHtml(no)}</div>`;
+  const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming);
+  const vacant = isVacantRoom(room);
+  const rent = Number(room.rent) || Number(t && t.rent) || 0;
+  const bits = [
+    room.company || "",
+    room.manager ? "管 " + room.manager : "",
+    vacant ? "空置" : (rent ? money(rent) + "／月" : ""),
+    t && t.payBank ? t.payBank : ""
+  ].filter(Boolean);
+  return `<div class="site-pop-h">${escapeHtml(room.no)}${t && t.name ? "　" + escapeHtml(t.name) : (vacant ? "　空置" : "")}</div>
+    <div class="small">${escapeHtml((room.location || "") + (bits.length ? "　" + bits.join(" · ") : ""))}</div>
+    ${t && t.note ? `<div class="small">${escapeHtml(String(t.note).slice(0, 80))}</div>` : ""}
+    <button type="button" class="ghost" data-admin-room="${escapeHtml(room.id)}">打開這戶</button>`;
+}
+function openSiteStudio(prefix) {
+  ui.assetKind = "studio";
+  ui.studioFold = ui.studioFold || {};
+  ui.studioFold[prefix] = false;
+  ui.sitePopNo = "";
+  ui.page = "rooms";
+  render();
+}
+function bindSiteMap() {
+  const map = document.getElementById("site-map");
+  if (!map || map.dataset.bound) return;
+  map.dataset.bound = "1";
+  map.addEventListener("click", e => {
+    const studio = e.target.closest("[data-site-open-studio]");
+    if (studio) {
+      e.preventDefault();
+      e.stopPropagation();
+      openSiteStudio(studio.dataset.siteOpenStudio);
+      return;
+    }
+    const cell = e.target.closest("[data-site-no]");
+    if (!cell) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const no = cell.dataset.siteNo;
+    const prefix = cell.dataset.sitePrefix;
+    if (prefix && ui.sitePopNo === no) {
+      openSiteStudio(prefix);
+      return;
+    }
+    ui.sitePopNo = ui.sitePopNo === no ? "" : no;
+    map.querySelectorAll(".site-cell").forEach(b => b.classList.toggle("on", b.dataset.siteNo === ui.sitePopNo));
+    const pop = document.getElementById("site-pop");
+    if (!pop) return;
+    if (!ui.sitePopNo) { pop.hidden = true; pop.innerHTML = ""; return; }
+    pop.hidden = false;
+    pop.innerHTML = sitePopInner(ui.sitePopNo);
+    try { pop.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch {}
+  });
+}
 function adminRoomListHtml(kind) {
   const q = normSearch(ui.assetQ);
   if (kind === "factory") {
@@ -20358,7 +20517,7 @@ function adminRoomListHtml(kind) {
       <span class="small">點綠色小標可收合分組</span>
       <button type="button" class="ghost" id="factory-all">${allClosed ? "全部展開" : "全部收合"}</button>
     </div>`;
-    return bar + groups.map(g => {
+    return siteMapHtml() + bar + groups.map(g => {
       const closed = q ? false : (ui.factoryFold[g.group] !== false);
       const cards = g.rooms.map(r => {
         const t = state.tenants.find(x => x.id === r.tenantId);
@@ -22979,6 +23138,7 @@ function bindAdminRoomItems() {
       render();
     }, true);
   }
+  bindSiteMap();
   document.querySelectorAll("[data-status]").forEach(sel => {
     sel.onclick = e => e.stopPropagation();
     sel.onchange = () => {
