@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-20-50";
-const APP_EDIT_COUNT = 857;
+const APP_STAMP = "2026-09-09-20-55";
+const APP_EDIT_COUNT = 858;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0408";
+const FILE_VER = "0409";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -225,7 +225,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["造得科技：統潔三聯租金收入、兩個月一次，9/9已開"] },
+  { ver: APP_VERSION, items: ["本月工作：每月21日收錦芳工程款14,000現金"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2492,11 +2492,11 @@ const FACTORY_TENANT_INFO = {
   "牛8-77": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
     { from: "2022-07-01", untaxed: 40000 },
     { from: "2027-07-01", untaxed: 42000 }
-  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。" },
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。每月21日收工程款 $14,000 現金，至合約結束。" },
   "牛8-78": { name: "錦芳食品有限公司", taxId: "24518498", contactName: "邱程塘", phone: "0935-455-938", leaseStart: "2022-07-01", leaseEnd: "2030-06-30", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", rentSchedule: [
     { from: "2022-07-01", untaxed: 40000 },
     { from: "2027-07-01", untaxed: 42000 }
-  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。" },
+  ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。每月21日收工程款 $14,000 現金，至合約結束。" },
   "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2026-03-31", rentUntaxed: 0, rent: 0, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "租金約至 115/3/31，系統月租改 0（避免算進應收）。廠房主要改到 93-58／60。電費仍從鳳仁路93之1號電號 18-33-7421-01-4 分攤。" }
 };
 const CYCLE_JOBS = [
@@ -2510,7 +2510,7 @@ const CYCLE_JOBS = [
   { id: "cycle-trash-zhuang", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　莊記綠豆 97-71（按公斤、開信潔發票）", cycle: true, owner: "7651" },
   { id: "cycle-trash-gugu", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　大姑（按公斤、開信潔發票）", cycle: true, owner: "7651" },
   { id: "cycle-trash-aren", monthDay: 10, flexDays: 4, text: "收聯廣合垃圾桶費　文21 阿仁陳逸仁（幫忙收4桶錢、開信潔發票）", cycle: true, owner: "7651" },
-  { id: "cycle-rent-yuwang", monthDay: 15, time: "14:00", text: "收租金　93-2B 禹旺企業 林永紝，並給電單（自繳電費）", cycle: true, owner: "7651" },
+  { id: "cycle-jinfang-eng", monthDay: 21, untilYmd: "2030-06-30", text: "收錦芳工程款 14,000元現金（牛8 97-77／78，收到合約結束 119/6/30）", cycle: true, owner: "7651" },
   { id: "cycle-deposit-interest", monthDay: 1, onlyMonth: 12, text: "開立套房／廠房押金設算息發票", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
   { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　93-1B／93-58、60（台電電號 18-33-7421-01-4）", cycle: true, owner: "7651" },
@@ -2805,6 +2805,7 @@ function ensureCycleJobs(data) {
       hit.flexDays = job.flexDays || 0;
       hit.intervalMonths = job.intervalMonths || 0;
       hit.anchor = job.anchor || "";
+      hit.untilYmd = job.untilYmd || "";
       hit.cycle = true;
       hit.owner = "7651";
       return;
@@ -19183,7 +19184,9 @@ function cycleDateInMonth(m, y, mo) {
   }
   if (m.monthDay) {
     const last = new Date(y, mo, 0).getDate();
-    return ym + "-" + String(Math.min(Number(m.monthDay) || 1, last)).padStart(2, "0");
+    const ymd = ym + "-" + String(Math.min(Number(m.monthDay) || 1, last)).padStart(2, "0");
+    if (m.untilYmd && ymd > String(m.untilYmd).slice(0, 10)) return "";
+    return ymd;
   }
   const date = ymdOf(m.date);
   return date && date.slice(0, 7) === ym ? date : "";
@@ -19447,7 +19450,9 @@ function workOccurYmd(m) {
     const n = new Date();
     const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
     const dd = Math.min(Number(m.monthDay) || 1, last);
-    return ymNow() + "-" + String(dd).padStart(2, "0");
+    const ymd = ymNow() + "-" + String(dd).padStart(2, "0");
+    if (m.untilYmd && ymd > String(m.untilYmd).slice(0, 10)) return "";
+    return ymd;
   }
   return nextCycleDate(m) || (m && m.date) || "";
 }
