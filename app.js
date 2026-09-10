@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-01-15";
-const APP_EDIT_COUNT = 897;
+const APP_STAMP = "2026-09-11-01-22";
+const APP_EDIT_COUNT = 898;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0448";
+const FILE_VER = "0449";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["滿租 vs 實收可切月份"] },
+  { ver: APP_VERSION, items: ["點擊滿租差額可看原因"] },
+  { ver: "2026-09-11-01-15-897", items: ["滿租 vs 實收可切月份"] },
   { ver: "2026-09-11-01-05-896", items: ["總覽出租率下方可看滿租應收和實收"] },
   { ver: "2026-09-11-00-50-895", items: ["整體報表總餘額下方可看跟上期的收支差異"] },
   { ver: "2026-09-11-00-40-894", items: ["手機總覽不再卡到邊"] },
@@ -21375,6 +21376,8 @@ function rentVsPack(rooms, label) {
       else if (gotAmt > 0 && gotAmt < monthDue) why = "只收到部分";
       else if (stubNow) why = "不足月尚未入帳";
       lines.push({ no: r.no, name: who, why, listed, due: monthDue, got: gotAmt, miss: listed - gotAmt });
+    } else if (gotAmt > listed) {
+      lines.push({ no: r.no, name: who, why: "實收高於月租", listed, due: monthDue, got: gotAmt, miss: listed - gotAmt });
     }
   });
   lines.sort((a, b) => b.miss - a.miss);
@@ -21382,7 +21385,6 @@ function rentVsPack(rooms, label) {
 }
 function rentVsHtml() {
   ensureRentVsMonth();
-  const ym = rentVsYm();
   const y = ui.rentVsYear, m = ui.rentVsMonth;
   const label = y + " 年 " + m + " 月";
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
@@ -21393,27 +21395,32 @@ function rentVsHtml() {
     rentVsPack(factories, "廠房"),
     rentVsPack(stores, "店面")
   ];
-  const open = !!ui.rentVsOpen;
+  const open = String(ui.rentVsOpen || "");
   const rows = packs.map(p => {
     const cls = p.miss > 0 ? "led-out" : (p.miss < 0 ? "led-in" : "");
     const word = p.miss > 0 ? "少收 " + money(p.miss) : (p.miss < 0 ? "多收 " + money(-p.miss) : "滿收");
+    const on = open === p.label;
+    const items = (p.lines || []).map(x => {
+      const extra = x.miss < 0;
+      return `<div class="rent-vs-item">
+        <div class="rent-vs-h">
+          <span>${escapeHtml(String(x.no))}${x.name ? "　" + escapeHtml(x.name) : ""}</span>
+          <strong class="${extra ? "led-in" : "led-out"}">${extra ? "多收 " + money(-x.miss) : "少收 " + money(x.miss)}</strong>
+        </div>
+        <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
+      </div>`;
+    }).join("");
+    const empty = `<div class="small">${p.label}這個月滿收，沒有差額房間。</div>`;
     return `<div class="rent-vs-row">
       <div class="rent-vs-h">
         <span class="k">${p.label}</span>
-        <strong class="${cls}">${word}</strong>
+        <button type="button" class="rent-vs-amt ${cls}${on ? " on" : ""}" data-rent-vs-open="${escapeHtml(p.label)}">${word}</button>
       </div>
       <div class="small">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>
       <div class="small">空置 ${money(p.vacant)}　尚未入帳 ${money(p.unpaid)}${p.stub ? "　不足月 " + money(p.stub) : ""}</div>
+      ${on ? `<div class="rent-vs-list">${items || empty}</div>` : ""}
     </div>`;
   }).join("");
-  const details = packs.flatMap(p => p.lines.slice(0, 8).map(x => `
-    <div class="rent-vs-item">
-      <div class="rent-vs-h">
-        <span>${escapeHtml(p.label)}　${escapeHtml(String(x.no))}${x.name ? "　" + escapeHtml(x.name) : ""}</span>
-        <strong class="led-out">少收 ${money(x.miss)}</strong>
-      </div>
-      <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
-    </div>`)).join("");
   return `<div class="card card-body rent-vs">
     <div class="k">租金　滿租 vs 實收</div>
     <div class="cal-nav">
@@ -21421,10 +21428,8 @@ function rentVsHtml() {
       <strong>${escapeHtml(label)}</strong>
       <button type="button" class="ghost" data-rent-vs-nav="1">下一月</button>
     </div>
-    <div class="small">不含押金、水電、售電。廠房還沒匯進來會算尚未入帳。</div>
+    <div class="small">不含押金、水電、售電。點右邊數字可看原因。</div>
     ${rows}
-    <button type="button" class="ghost rent-vs-toggle" id="rent-vs-toggle">${open ? "收合差異" : "差異在哪"}</button>
-    ${open ? `<div class="rent-vs-list">${details || `<div class="small">${escapeHtml(ym.slice(5))} 月滿收，沒有少收。</div>`}</div>` : ""}
   </div>`;
 }
 function adminSolar() {
@@ -24715,17 +24720,17 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll(".solar-card").forEach(bindIosPress);
-  const rentVsBtn = document.getElementById("rent-vs-toggle");
-  if (rentVsBtn) {
-    bindIosPress(rentVsBtn);
-    rentVsBtn.onclick = e => {
+  document.querySelectorAll("[data-rent-vs-open]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.rentVsOpen = !ui.rentVsOpen;
+      const name = btn.dataset.rentVsOpen || "";
+      ui.rentVsOpen = ui.rentVsOpen === name ? "" : name;
       ui.keepScroll = true;
       render();
     };
-  }
+  });
   document.querySelectorAll("[data-rent-vs-nav]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {

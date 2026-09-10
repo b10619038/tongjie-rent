@@ -3116,7 +3116,15 @@ body.rev-zooming { overflow: hidden; }
   gap: 8px;
 }
 .rent-vs-h span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.rent-vs-toggle { width: auto; margin-top: 12px; padding: 8px 14px; }
+.rent-vs-amt {
+  margin: 0; padding: 4px 2px 4px 8px; border: 0; background: transparent;
+  font: inherit; font-size: 16px; font-weight: 800; color: inherit;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transform-origin: center right;
+  transition: transform .34s cubic-bezier(.22,1.2,.36,1);
+}
+.rent-vs-amt.is-press { transform: scale(0.92); transition-duration: .08s; }
+.rent-vs-amt.on { text-decoration: underline; text-underline-offset: 3px; }
 .rent-vs-list { margin-top: 10px; display: grid; gap: 10px; }
 .rent-vs-item { min-width: 0; }
 .report-diff {
