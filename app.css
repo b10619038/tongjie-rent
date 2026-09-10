@@ -3557,8 +3557,8 @@ img.avatar { object-fit: cover; display: block; }
     background-color: var(--press);
   }
   .issue-opt.selected:hover { background-color: #e4e4e4; color: var(--ink); }
-  .tab:hover { background-color: transparent; color: var(--ink); }
-  .tab.on:hover { background-color: transparent; color: var(--on-teal); }
+  .tab:hover { background-color: transparent; color: var(--ink-soft); }
+  .tab.on:hover { background-color: var(--teal); color: var(--on-teal, #fff); }
 }
 .err { color: var(--rose); font-size: 13px; margin-top: 6px; }
 
