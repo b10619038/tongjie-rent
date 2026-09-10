@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-40";
-const APP_EDIT_COUNT = 879;
+const APP_STAMP = "2026-09-10-22-50";
+const APP_EDIT_COUNT = 880;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0430";
+const FILE_VER = "0431";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["小許8月現金套入總攬，拿掉重複的超商電費"] },
+  { ver: APP_VERSION, items: ["點太陽能覆蓋率可看獨立售電收益"] },
+  { ver: "2026-09-10-22-40-879", items: ["小許8月現金套入總攬，拿掉重複的超商電費"] },
   { ver: "2026-09-10-22-30-878", items: ["黃思敏個人戶簿子記入總攬"] },
   { ver: "2026-09-10-22-25-877", items: ["信潔聯邦簿子對完：大樹太陽能售電改進帳"] },
   { ver: "2026-09-10-22-20-876", items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
@@ -3115,7 +3116,7 @@ function siteOfRoomNo(no) {
 function isSiteRentIncome(row) {
   if (!row || row.type !== "in") return false;
   const s = String(row.note || "");
-  if (/水費|電費|增建|垃圾桶|清潔費|欠租|其他收入|退稅|薪資|造得/.test(s)) return false;
+  if (/水費|電費|增建|垃圾桶|清潔費|欠租|其他收入|退稅|薪資|造得|售電|太陽能/.test(s)) return false;
   return true;
 }
 function siteOfLedgerRow(row) {
@@ -3136,6 +3137,42 @@ function siteOfLedgerRow(row) {
   return "";
 }
 const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
+const SOLAR_PERIODS = [
+  {
+    label: "115/5/28～115/7/29",
+    paidOn: "2026-08-20",
+    tongjieBank: 364196,
+    xinjieBank: 327494,
+    tongjieSites: [
+      ["文57巷2號", 5666], ["文57巷6號", 11574], ["文57巷8號", 9455],
+      ["文東59號", 13764], ["文東61號", 22408],
+      ["57巷1弄21號", 24215], ["57巷1弄23號", 30443], ["57巷1弄25號", 19704],
+      ["57巷1弄33號", 20992], ["57巷1弄35號", 22588],
+      ["鳳仁路97-61號", 21886], ["鳳仁路97-63號", 11464], ["鳳仁路97-65號", 17976],
+      ["鳳仁路93-1號", 7758], ["鳳仁路93-2號", 6682], ["鳳仁路93-63 3F", 22648],
+      ["鳳仁路97-77／78號", 53140], ["文龍東路（牛10）", 41863]
+    ],
+    xinjieSites: [
+      ["鳳仁路97-66號", 18946], ["鳳仁路97-67號", 18866], ["鳳仁路97-68號", 18430],
+      ["鳳仁路97-69號", 18256], ["鳳仁路97-70號", 18187], ["鳳仁路97-71號", 14650],
+      ["鳳仁路97-72號", 17824], ["鳳仁路97-73號", 17746], ["鳳仁路97-75號", 17587],
+      ["鳳仁路97-76號", 18157], ["鳳仁路93-56號", 38478], ["鳳仁路93-59號", 59519],
+      ["鳳仁路93-62號", 50878]
+    ]
+  }
+];
+function isSolarIncome(b) {
+  if (!b || b.type !== "in") return false;
+  const s = String(b.note || "");
+  if (/太陽能險/.test(s)) return false;
+  return /售電|太陽能/.test(s);
+}
+function solarLedgerRows() {
+  return collectLedger().filter(isSolarIncome).sort((a, b) => String(b.date).localeCompare(String(a.date)) || Number(b.amount) - Number(a.amount));
+}
+function solarIncomeBetween(start, end) {
+  return solarLedgerRows().filter(x => x.date >= start && x.date <= end).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+}
 const PHOTO_SET = [
   ["images/studio-room.jpg?v=1713", "images/kitchen.jpg"],
   ["images/studio-room.jpg?v=1713", "images/bath.jpg"],
@@ -7651,6 +7688,7 @@ function navDepth() {
     "lease-sign": 15,
     "repair-done": 12,
     "room-edit": 20,
+    solar: 15,
     invoice: 20,
     "tenant-sheet": 20
   };
@@ -16856,7 +16894,7 @@ function paintApp() {
     if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         t.classList.toggle("on", on);
         t.classList.remove("land");
         t.style.transform = "";
@@ -18305,7 +18343,7 @@ function adminView() {
       <div class="tab-bg"></div>
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
-        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
@@ -18541,6 +18579,7 @@ function adminBody() {
     if (page === "firm") return adminFirm();
     if (page === "food") return adminFood();
     if (page === "howto") return adminHowto();
+    if (page === "solar") return adminSolar();
     return adminDash();
   } catch (err) {
     try { console.error(err); } catch {}
@@ -20954,6 +20993,63 @@ function occBits(rooms) {
   const occ = rooms.length ? Math.round(rented / rooms.length * 100) : 0;
   return { rented, vacant, repairing, occ, total: rooms.length };
 }
+function adminSolar() {
+  const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
+  const solarFactory = factories.filter(r => SOLAR_FACTORY_NOS.includes(r.no));
+  const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
+  const solarTotal = factories.length + STUDIO_BUILDINGS.length;
+  const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
+  const rows = solarLedgerRows();
+  const tongjie = rows.filter(x => /統潔/.test(String(x.company || "")));
+  const xinjie = rows.filter(x => /信潔/.test(String(x.company || "")));
+  const sumOf = list => list.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totT = sumOf(tongjie);
+  const totX = sumOf(xinjie);
+  const tot = totT + totX;
+  const batch = SOLAR_PERIODS[0];
+  const siteBlock = (title, color, sites, bank) => {
+    const detail = sites.reduce((s, x) => s + x[1], 0);
+    return `<div class="card card-body">
+      <h2 class="dash-h">${title}</h2>
+      <div class="acct-row"><span>明細合計</span><strong class="led-in">${money(detail)}</strong></div>
+      <div class="acct-row"><span>銀行實收</span><strong class="led-in">${money(bank)}</strong></div>
+      <div class="small" style="margin:6px 0 8px">差 ${money(detail - bank)}（手續費）</div>
+      ${sites.map(([addr, amt]) => `<div class="acct-row solar-site-row"><span>${escapeHtml(addr)}</span><strong>${money(amt)}</strong></div>`).join("")}
+    </div>`;
+  };
+  const bookLines = rows.length
+    ? rows.map(x => `<div class="acct-row solar-site-row"><span>${escapeHtml(x.date)}　${escapeHtml(accountLabel(x.company || ""))}</span><strong class="led-in">${money(x.amount)}</strong></div>`).join("")
+    : `<div class="empty">還沒有售電入帳</div>`;
+  return `<div class="admin-grid list solar-page">
+    <div class="card card-body">
+      <button class="back" type="button" data-admin="dash">← 返回</button>
+      <div class="solar-hero">
+        <div class="ring-wrap"><div class="ring sun" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
+        <div>
+          <h2 class="dash-h" style="margin:0">太陽能覆蓋率</h2>
+          <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
+          <div class="small">套房 4 棟　廠房牛1 五戶</div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-body">
+      <h2 class="dash-h">售電收益（獨立）</h2>
+      <p class="small">不計入租金。統潔、信潔銀行入帳分開看。</p>
+      <div class="acct-row"><span>統潔</span><strong class="led-in">${money(totT)}</strong></div>
+      <div class="acct-row"><span>信潔</span><strong class="led-in">${money(totX)}</strong></div>
+      <div class="acct-row"><span>合計</span><strong class="led-in">${money(tot)}</strong></div>
+    </div>
+    <div class="solar-split">
+      ${siteBlock("統潔　分址", "#3FA89A", batch.tongjieSites, batch.tongjieBank)}
+      ${siteBlock("信潔　分址", "#5B8EE8", batch.xinjieSites, batch.xinjieBank)}
+    </div>
+    <div class="card card-body">
+      <h2 class="dash-h">銀行入帳</h2>
+      <div class="small" style="margin-bottom:8px">最新一期 ${escapeHtml(batch.label)}，8/20 入帳</div>
+      ${bookLines}
+    </div>
+  </div>`;
+}
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
@@ -20996,12 +21092,12 @@ function adminDash() {
         <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s2"}" src="images/occ-factory.jpg?v=0224" alt="廠房"></div>
         <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s3"}" src="images/occ-store.jpg?v=0227" alt="店面"></div>
       </div>
-      <div class="card ring-card solar-card">
+      <div class="card ring-card solar-card" data-page="solar" role="button" tabindex="0">
         <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
         <div>
           <div class="k">太陽能覆蓋率</div>
           <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
-          <div class="small">套房 4 棟　廠房牛1 五戶</div>
+          <div class="small">售電 ${money(solarLedgerRows().reduce((s, x) => s + (Number(x.amount) || 0), 0))}　點進去看</div>
         </div>
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
@@ -24120,6 +24216,7 @@ function bindAdmin() {
       render();
     };
   });
+  document.querySelectorAll(".solar-card").forEach(bindIosPress);
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
