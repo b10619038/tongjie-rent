@@ -3107,6 +3107,18 @@ body.rev-zooming { overflow: hidden; }
 }
 .rev-caption { font-size: 13px; font-weight: 800; margin: 14px 0 8px; }
 .rev-balance { font-size: 18px; font-weight: 800; margin: 12px 0 4px; }
+.rent-vs { min-width: 0; max-width: 100%; }
+.rent-vs-row { margin-top: 12px; }
+.rent-vs-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.rent-vs-h span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rent-vs-toggle { width: auto; margin-top: 12px; padding: 8px 14px; }
+.rent-vs-list { margin-top: 10px; display: grid; gap: 10px; }
+.rent-vs-item { min-width: 0; }
 .report-diff {
   margin-top: 12px;
   padding-top: 12px;

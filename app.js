@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-00-50";
-const APP_EDIT_COUNT = 895;
+const APP_STAMP = "2026-09-11-01-05";
+const APP_EDIT_COUNT = 896;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0446";
+const FILE_VER = "0447";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["整體報表總餘額下方可看跟上期的收支差異"] },
+  { ver: APP_VERSION, items: ["總覽出租率下方可看滿租應收和實收"] },
+  { ver: "2026-09-11-00-50-895", items: ["整體報表總餘額下方可看跟上期的收支差異"] },
   { ver: "2026-09-11-00-40-894", items: ["手機總覽不再卡到邊"] },
   { ver: "2026-09-11-00-35-893", items: ["上方分頁縮放更明顯、回彈更順"] },
   { ver: "2026-09-11-00-32-892", items: ["上方分頁滑鼠移過去不再反白"] },
@@ -21271,6 +21272,109 @@ function occBits(rooms) {
   const occ = rooms.length ? Math.round(rented / rooms.length * 100) : 0;
   return { rented, vacant, repairing, occ, total: rooms.length };
 }
+function listedRentOf(r) {
+  if (!r || isDemoRoom(r) || r.status === "office") return 0;
+  const no = String(r.no || "");
+  if (r.kind === "factory") {
+    const info = FACTORY_TENANT_INFO[no] || {};
+    return Number(r.rent) || Number(info.rent) || 0;
+  }
+  const listed = studioRentOf(no);
+  if (listed != null) return Number(listed) || 0;
+  return Number(r.rent) || 0;
+}
+function roomRentGot(r, t, ym) {
+  const due = t && leaseCoversYm(t, r, ym) ? (thisMonthRentOf(t, r) || 0) : 0;
+  if (t && paidThisMonth(t) && due) return due;
+  const no = String(r && r.no || "");
+  if (!no) return 0;
+  const name = String((t && t.name) || "");
+  const rows = collectLedger().filter(x => {
+    if (!x || x.type !== "in") return false;
+    if (String(x.date || "").slice(0, 7) !== ym) return false;
+    if (!isSiteRentIncome(x)) return false;
+    if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return false;
+    if (String(x.roomNo || "") === no) return true;
+    const blob = String(x.note || "");
+    if (blob.indexOf(no) >= 0) return true;
+    if (name && blob.indexOf(name) >= 0) return true;
+    return false;
+  });
+  const sum = rows.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  return sum;
+}
+function rentVsPack(rooms, label) {
+  const ym = payYmNow();
+  const lines = [];
+  let full = 0, due = 0, got = 0, vacant = 0, unpaid = 0, stub = 0;
+  (rooms || []).forEach(r => {
+    const listed = listedRentOf(r);
+    if (!listed) return;
+    full += listed;
+    const t = roomCurrentTenant(r);
+    const covers = !!(t && isDashTenant(t) && leaseCoversYm(t, r, ym));
+    const monthDue = covers ? (thisMonthRentOf(t, r) || 0) : 0;
+    due += monthDue;
+    const gotAmt = covers ? roomRentGot(r, t, ym) : 0;
+    got += gotAmt;
+    const who = (t && t.name) || "";
+    if (!covers) {
+      vacant += listed;
+      const why = r.status === "repair" ? "維修" : "空置";
+      lines.push({ no: r.no, name: who, why, listed, due: 0, got: 0, miss: listed });
+      return;
+    }
+    if (monthDue < listed) stub += listed - monthDue;
+    if (gotAmt < monthDue) unpaid += monthDue - Math.min(gotAmt, monthDue);
+    if (gotAmt < listed) {
+      let why = "尚未入帳";
+      if (gotAmt >= monthDue && monthDue < listed) why = "不足月";
+      else if (gotAmt > 0 && gotAmt < monthDue) why = "只收到部分";
+      else if (isStubMonthNow(t, r)) why = "不足月尚未入帳";
+      lines.push({ no: r.no, name: who, why, listed, due: monthDue, got: gotAmt, miss: listed - gotAmt });
+    }
+  });
+  lines.sort((a, b) => b.miss - a.miss);
+  return { label, full, due, got, vacant, unpaid, stub, miss: full - got, lines };
+}
+function rentVsHtml() {
+  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
+  const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
+  const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
+  const packs = [
+    rentVsPack(studios, "套房"),
+    rentVsPack(factories, "廠房"),
+    rentVsPack(stores, "店面")
+  ];
+  const open = !!ui.rentVsOpen;
+  const rows = packs.map(p => {
+    const cls = p.miss > 0 ? "led-out" : (p.miss < 0 ? "led-in" : "");
+    const word = p.miss > 0 ? "少收 " + money(p.miss) : (p.miss < 0 ? "多收 " + money(-p.miss) : "滿收");
+    return `<div class="rent-vs-row">
+      <div class="rent-vs-h">
+        <span class="k">${p.label}</span>
+        <strong class="${cls}">${word}</strong>
+      </div>
+      <div class="small">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>
+      <div class="small">空置／維修 ${money(p.vacant)}　尚未入帳 ${money(p.unpaid)}${p.stub ? "　不足月 " + money(p.stub) : ""}</div>
+    </div>`;
+  }).join("");
+  const details = packs.flatMap(p => p.lines.slice(0, 8).map(x => `
+    <div class="rent-vs-item">
+      <div class="rent-vs-h">
+        <span>${escapeHtml(p.label)}　${escapeHtml(String(x.no))}${x.name ? "　" + escapeHtml(x.name) : ""}</span>
+        <strong class="led-out">少收 ${money(x.miss)}</strong>
+      </div>
+      <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
+    </div>`)).join("");
+  return `<div class="card card-body rent-vs">
+    <div class="k">本月租金　滿租 vs 實收</div>
+    <div class="small">不含押金、水電、售電。廠房還沒匯進來會算尚未入帳。</div>
+    ${rows}
+    <button type="button" class="ghost rent-vs-toggle" id="rent-vs-toggle">${open ? "收合差異" : "差異在哪"}</button>
+    ${open ? `<div class="rent-vs-list">${details || `<div class="small">這個月滿收，沒有少收。</div>`}</div>` : ""}
+  </div>`;
+}
 function adminSolar() {
   const cov = solarCoverageBits();
   const solarSites = cov.solarSites;
@@ -21401,6 +21505,7 @@ function adminDash() {
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
     </div>
+    ${rentVsHtml()}
     ${overallReportHtml()}
     ${monthCashHtml()}
     ${cashPairHtml()}
@@ -24558,6 +24663,17 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll(".solar-card").forEach(bindIosPress);
+  const rentVsBtn = document.getElementById("rent-vs-toggle");
+  if (rentVsBtn) {
+    bindIosPress(rentVsBtn);
+    rentVsBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.rentVsOpen = !ui.rentVsOpen;
+      ui.keepScroll = true;
+      render();
+    };
+  }
   document.querySelectorAll("[data-solar-period]").forEach(el => {
     bindIosPress(el);
     el.onclick = e => {
