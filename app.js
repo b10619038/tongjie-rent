@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-20";
-const APP_EDIT_COUNT = 883;
+const APP_STAMP = "2026-09-10-23-25";
+const APP_EDIT_COUNT = 884;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0434";
+const FILE_VER = "0435";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["太陽能頁從右邊滑入"] },
+  { ver: APP_VERSION, items: ["太陽能頁拿掉依小許分址"] },
+  { ver: "2026-09-10-23-20-883", items: ["太陽能頁從右邊滑入"] },
   { ver: "2026-09-10-23-10-882", items: ["太陽能覆蓋率改依小許分址計算已裝未裝"] },
   { ver: "2026-09-10-23-00-881", items: ["太陽能分址右邊加上租客／公司名"] },
   { ver: "2026-09-10-22-50-880", items: ["點太陽能覆蓋率可看獨立售電收益"] },
@@ -21080,7 +21081,7 @@ function adminSolar() {
         <div>
           <h2 class="dash-h" style="margin:0">太陽能覆蓋率</h2>
           <div class="small">已裝 ${solarSites} · 未裝 ${cov.miss}</div>
-          <div class="small">依小許分址　廠房 ${cov.installedF} 戶　套房 ${cov.bld} 棟</div>
+          <div class="small">廠房 ${cov.installedF} 戶　套房 ${cov.bld} 棟</div>
           ${cov.miss ? `<div class="small">未裝：${escapeHtml(missNames)}</div>` : ""}
         </div>
       </div>
