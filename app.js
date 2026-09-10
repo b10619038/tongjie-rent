@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-01-22";
-const APP_EDIT_COUNT = 898;
+const APP_STAMP = "2026-09-11-01-28";
+const APP_EDIT_COUNT = 899;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0449";
+const FILE_VER = "0450";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點擊滿租差額可看原因"] },
+  { ver: APP_VERSION, items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
+  { ver: "2026-09-11-01-22-898", items: ["點擊滿租差額可看原因"] },
   { ver: "2026-09-11-01-15-897", items: ["滿租 vs 實收可切月份"] },
   { ver: "2026-09-11-01-05-896", items: ["總覽出租率下方可看滿租應收和實收"] },
   { ver: "2026-09-11-00-50-895", items: ["整體報表總餘額下方可看跟上期的收支差異"] },
@@ -21328,24 +21329,57 @@ function roomTenantForYm(room, ym) {
   } catch {}
   return null;
 }
+function prevYmOf(ym) {
+  let y = Number(String(ym || "").slice(0, 4));
+  let m = Number(String(ym || "").slice(5, 7)) - 1;
+  if (!y || !m) return "";
+  if (m < 1) { m = 12; y -= 1; }
+  return y + "-" + String(m).padStart(2, "0");
+}
+function lastYmdsOfYm(ym, n) {
+  const y = Number(String(ym || "").slice(0, 4));
+  const m = Number(String(ym || "").slice(5, 7));
+  if (!y || !m) return [];
+  const last = new Date(y, m, 0).getDate();
+  const out = [];
+  for (let d = last; d > last - (n || 3) && d > 0; d--) out.push(ym + "-" + String(d).padStart(2, "0"));
+  return out;
+}
+function roomRentLedgerSum(no, names, ymds) {
+  const nos = [].concat(no || []).filter(Boolean).map(String);
+  const who = [].concat(names || []).filter(Boolean).map(String);
+  const days = new Set([].concat(ymds || []).filter(Boolean));
+  if (!nos.length || !days.size) return 0;
+  return collectLedger().reduce((s, x) => {
+    if (!x || x.type !== "in") return s;
+    if (!days.has(String(x.date || ""))) return s;
+    if (!isSiteRentIncome(x)) return s;
+    if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return s;
+    const blob = String(x.note || "") + " " + String(x.roomNo || "");
+    if (nos.some(n => String(x.roomNo || "") === n || blob.indexOf(n) >= 0)) return s + (Number(x.amount) || 0);
+    if (who.some(n => n && blob.indexOf(n) >= 0)) return s + (Number(x.amount) || 0);
+    return s;
+  }, 0);
+}
 function roomRentGot(r, t, ym) {
+  const guestNo = String(r && r.no || "");
+  const hostNo = studioMirrorHostNo(guestNo);
+  const lookNo = hostNo || guestNo;
+  const lookRoom = hostNo ? ((state.rooms || []).find(x => String(x.no) === hostNo) || r) : r;
+  const lookT = hostNo ? (roomTenantForYm(lookRoom, ym) || t) : t;
   const due = t && leaseCoversYm(t, r, ym) ? (tenantRentForYm(t, r, ym) || 0) : 0;
-  if (t && paidForYm(t, ym) && due) return due;
-  const no = String(r && r.no || "");
-  if (!no) return 0;
-  const name = String((t && t.name) || "");
-  const rows = collectLedger().filter(x => {
-    if (!x || x.type !== "in") return false;
-    if (String(x.date || "").slice(0, 7) !== ym) return false;
-    if (!isSiteRentIncome(x)) return false;
-    if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return false;
-    if (String(x.roomNo || "") === no) return true;
-    const blob = String(x.note || "");
-    if (blob.indexOf(no) >= 0) return true;
-    if (name && blob.indexOf(name) >= 0) return true;
-    return false;
-  });
-  return rows.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return due || listedRentOf(r);
+  const names = [t && t.name, lookT && lookT.name].filter(Boolean);
+  const nos = hostNo ? [guestNo, hostNo] : [lookNo];
+  const monthDays = [];
+  const y = Number(String(ym).slice(0, 4));
+  const m = Number(String(ym).slice(5, 7));
+  const last = new Date(y, m, 0).getDate();
+  for (let d = 1; d <= last; d++) monthDays.push(ym + "-" + String(d).padStart(2, "0"));
+  let sum = roomRentLedgerSum(nos, names, monthDays);
+  if (sum) return sum;
+  sum = roomRentLedgerSum(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
+  return sum;
 }
 function rentVsPack(rooms, label) {
   const ym = rentVsYm();
