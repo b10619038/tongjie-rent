@@ -3107,6 +3107,29 @@ body.rev-zooming { overflow: hidden; }
 }
 .rev-caption { font-size: 13px; font-weight: 800; margin: 14px 0 8px; }
 .rev-balance { font-size: 18px; font-weight: 800; margin: 12px 0 4px; }
+.report-diff {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  min-width: 0;
+}
+.report-diff .acct-row { margin-top: 8px; }
+.report-diff-toggle {
+  width: auto;
+  margin-top: 10px;
+  padding: 8px 14px;
+}
+.report-diff-list { margin-top: 10px; display: grid; gap: 10px; }
+.report-diff-item { min-width: 0; }
+.report-diff-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  font-weight: 700;
+}
+.report-diff-top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rev-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px; }
 .rev-table th, .rev-table td {
   border: 1px solid var(--line); padding: 8px 10px; text-align: right; white-space: nowrap;

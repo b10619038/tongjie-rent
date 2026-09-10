@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-00-40";
-const APP_EDIT_COUNT = 894;
+const APP_STAMP = "2026-09-11-00-50";
+const APP_EDIT_COUNT = 895;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0445";
+const FILE_VER = "0446";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["手機總覽不再卡到邊"] },
+  { ver: APP_VERSION, items: ["整體報表總餘額下方可看跟上期的收支差異"] },
+  { ver: "2026-09-11-00-40-894", items: ["手機總覽不再卡到邊"] },
   { ver: "2026-09-11-00-35-893", items: ["上方分頁縮放更明顯、回彈更順"] },
   { ver: "2026-09-11-00-32-892", items: ["上方分頁滑鼠移過去不再反白"] },
   { ver: "2026-09-11-00-30-891", items: ["上方分頁按壓更明顯順暢"] },
@@ -12325,6 +12326,22 @@ function reportBounds() {
     unit: "月", prev: "上一月", next: "下一月"
   };
 }
+function prevReportBounds() {
+  ensureReportPeriod();
+  if (ui.reportMode === "year") {
+    const y = ui.reportYear - 1;
+    return { start: y + "-01-01", end: y + "-12-31", label: y + " 年" };
+  }
+  let y = ui.reportYear, m = ui.reportMonth - 1;
+  if (m < 1) { m = 12; y -= 1; }
+  const last = new Date(y, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  return {
+    start: y + "-" + mm + "-01",
+    end: y + "-" + mm + "-" + String(last).padStart(2, "0"),
+    label: y + " 年 " + m + " 月"
+  };
+}
 function accountOpening(name) {
   const map = state.accountOpenings || {};
   const raw = Number(map[name]) || 0;
@@ -12608,6 +12625,24 @@ function swapReportPeriod(dir) {
   }
 }
 function bindReportBody() {
+  const diffBtn = document.getElementById("report-diff-toggle");
+  if (diffBtn) {
+    bindIosPress(diffBtn);
+    diffBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.reportDiffOpen = !ui.reportDiffOpen;
+      ui.keepScroll = true;
+      const body = document.getElementById("report-body");
+      if (body) {
+        const siteOn = ui.reportView === "site";
+        body.innerHTML = siteOn ? siteReportBodyHtml() : overallReportBodyHtml();
+        bindReportBody();
+      } else {
+        render();
+      }
+    };
+  }
   document.querySelectorAll("[data-report-nav]").forEach(btn => {
     btn.onpointerdown = () => {
       btn.classList.add("is-press");
@@ -20604,6 +20639,137 @@ function reportAccountBundle() {
     }
   };
 }
+function prevPeriodLedger(start, end, siteOn) {
+  return collectLedger().filter(x => {
+    if (!x || x.type === "memo") return false;
+    if (!x.date || x.date < start || x.date > end) return false;
+    if (siteOn) {
+      const s = siteOfLedgerRow(x);
+      if (!SITE_ORDER.includes(s)) return false;
+    } else if (x.company && rowAccount(x) === "聯名戶") {
+      return false;
+    }
+    return true;
+  });
+}
+function diffItemKey(x) {
+  const type = x.type === "out" ? "out" : "in";
+  if (x.roomNo) return type + "|r|" + String(x.roomNo);
+  let n = String(x.note || "").replace(/\s+/g, " ");
+  n = n.replace(/\d{4}[./-]\d{1,2}[./-]\d{1,2}/g, "");
+  n = n.replace(/\d{1,2}\s*月/g, "");
+  n = n.replace(/NT\$?\s*[\d,]+/gi, "");
+  n = n.replace(/[\d,]+元?/g, "");
+  n = n.replace(/[·・]/g, " ").replace(/\s+/g, " ").trim();
+  return type + "|n|" + (rowAccount(x) || "") + "|" + n.slice(0, 28);
+}
+function diffItemLabel(x) {
+  const who = rowAccount(x) || "";
+  const note = String(x.note || "").replace(/\s+/g, " ").trim();
+  const room = x.roomNo ? String(x.roomNo) : "";
+  const core = (room ? room + "　" : "") + (note || (x.type === "out" ? "出帳" : "進帳"));
+  const tag = /轉帳/.test(note) ? "轉帳　" : "";
+  return (tag + (who ? who + "　" : "") + core).slice(0, 42);
+}
+function reportCompareBits(siteOn) {
+  const curB = reportBounds();
+  const prevB = prevReportBounds();
+  if (siteOn) {
+    const cur = siteStatsMap(curB.start, curB.end);
+    const prev = siteStatsMap(prevB.start, prevB.end);
+    const sum = (map, k) => SITE_ORDER.reduce((s, n) => s + (Number(map[n] && map[n][k]) || 0), 0);
+    return {
+      prevLabel: prevB.label,
+      inn: sum(cur, "inn"), out: sum(cur, "out"),
+      pInn: sum(prev, "inn"), pOut: sum(prev, "out"),
+      curB, prevB
+    };
+  }
+  const names = REPORT_ACCOUNTS;
+  const curS = names.map(n => accountStats(n, curB.start, curB.end));
+  const prevS = names.map(n => accountStats(n, prevB.start, prevB.end));
+  const add = (arr, k) => arr.reduce((s, x) => s + (Number(x[k]) || 0), 0);
+  return {
+    prevLabel: prevB.label,
+    inn: add(curS, "inn"), out: add(curS, "out"),
+    pInn: add(prevS, "inn"), pOut: add(prevS, "out"),
+    curB, prevB
+  };
+}
+function reportDiffLines(siteOn) {
+  const curB = reportBounds();
+  const prevB = prevReportBounds();
+  const curRows = prevPeriodLedger(curB.start, curB.end, siteOn);
+  const prevRows = prevPeriodLedger(prevB.start, prevB.end, siteOn);
+  const pack = (rows) => {
+    const map = Object.create(null);
+    rows.forEach(x => {
+      if (siteOn && x.type === "in" && !isSiteRentIncome(x)) return;
+      const k = diffItemKey(x);
+      if (!map[k]) map[k] = { key: k, type: x.type === "out" ? "out" : "in", label: diffItemLabel(x), amt: 0 };
+      map[k].amt += Number(x.amount) || 0;
+    });
+    return map;
+  };
+  const a = pack(curRows);
+  const b = pack(prevRows);
+  const keys = Array.from(new Set(Object.keys(a).concat(Object.keys(b))));
+  return keys.map(k => {
+    const c = a[k] ? a[k].amt : 0;
+    const p = b[k] ? b[k].amt : 0;
+    const dlt = c - p;
+    const meta = a[k] || b[k];
+    let why = "";
+    if (c && !p) why = "這期新增";
+    else if (!c && p) why = "上期有、這期尚未入帳";
+    else why = "金額不同";
+    return { type: meta.type, label: meta.label, cur: c, prev: p, dlt, why };
+  }).filter(x => x.dlt).sort((x, y) => Math.abs(y.dlt) - Math.abs(x.dlt)).slice(0, 10);
+}
+function reportDeltaText(kind, dlt) {
+  if (!dlt) return "持平";
+  if (kind === "in") return (dlt > 0 ? "多收 " : "少收 ") + money(Math.abs(dlt));
+  if (kind === "out") return (dlt > 0 ? "多花 " : "少花 ") + money(Math.abs(dlt));
+  return (dlt > 0 ? "多賺 " : "少賺 ") + money(Math.abs(dlt));
+}
+function reportDeltaClass(kind, dlt) {
+  if (!dlt) return "";
+  if (kind === "out") return dlt > 0 ? "led-out" : "led-in";
+  return dlt > 0 ? "led-in" : "led-out";
+}
+function reportDiffHtml(siteOn) {
+  const b = reportCompareBits(!!siteOn);
+  const dIn = b.inn - b.pInn;
+  const dOut = b.out - b.pOut;
+  const net = b.inn - b.out;
+  const pNet = b.pInn - b.pOut;
+  const dNet = net - pNet;
+  const open = !!ui.reportDiffOpen;
+  const lines = open ? reportDiffLines(!!siteOn) : [];
+  const list = lines.length
+    ? lines.map(x => {
+        const kind = x.type === "out" ? "out" : "in";
+        return `<div class="report-diff-item">
+          <div class="report-diff-top">
+            <span>${escapeHtml(x.label)}</span>
+            <strong class="${reportDeltaClass(kind, x.dlt)}">${escapeHtml(reportDeltaText(kind, x.dlt))}</strong>
+          </div>
+          <div class="small">本期 ${money(x.cur)}　上期 ${money(x.prev)}　${escapeHtml(x.why)}</div>
+        </div>`;
+      }).join("")
+    : `<div class="small">跟上期相同，沒有明顯差異。</div>`;
+  return `<div class="report-diff">
+    <div class="small">跟上期 ${escapeHtml(b.prevLabel)} 比</div>
+    <div class="acct-row"><span class="led-in">收入</span><strong class="${reportDeltaClass("in", dIn)}">${reportDeltaText("in", dIn)}</strong></div>
+    <div class="small">本期 ${money(b.inn)}　上期 ${money(b.pInn)}</div>
+    <div class="acct-row"><span class="led-out">支出</span><strong class="${reportDeltaClass("out", dOut)}">${reportDeltaText("out", dOut)}</strong></div>
+    <div class="small">本期 ${money(b.out)}　上期 ${money(b.pOut)}</div>
+    <div class="acct-row"><span>盈餘</span><strong class="${reportDeltaClass("net", dNet)}">${reportDeltaText("net", dNet)}</strong></div>
+    <div class="small">本期 ${money(net)}　上期 ${money(pNet)}</div>
+    <button type="button" class="ghost report-diff-toggle" id="report-diff-toggle">${open ? "收合差異" : "差異在哪"}</button>
+    ${open ? `<div class="report-diff-list">${list}</div>` : ""}
+  </div>`;
+}
 function revenueTableHtml() {
   const d = reportAccountBundle();
   const td = v => `<td class="${v < 0 ? "led-out" : ""}">${money(v)}</td>`;
@@ -20631,6 +20797,7 @@ function revenueTableHtml() {
     </table>
     </div>
     <div class="rev-balance">總餘額　${money(d.totals.bal)}</div>
+    ${reportDiffHtml(false)}
   </div>`;
 }
 function reportSiteBundle() {
@@ -20682,6 +20849,7 @@ function siteRevenueTableHtml() {
     </table>
     </div>
     <div class="rev-balance">總盈餘　${money(ui.reportMode === "year" ? d.totals.yNet : d.totals.mNet)}</div>
+    ${reportDiffHtml(true)}
   </div>`;
 }
 function closeRevZoom() {
