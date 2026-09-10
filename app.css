@@ -1840,6 +1840,20 @@ input[type="file"] {
   from { transform: translateX(100%); }
   to { transform: none; }
 }
+.solar-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  margin-top: 16px;
+}
+.solar-hero-copy { flex: 1; min-width: 0; }
+.solar-hero-copy .small { margin-top: 4px; line-height: 1.45; }
+.solar-hero .ring-wrap {
+  margin-left: auto;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+}
 .solar-split { display: grid; gap: 12px; }
 .solar-site-row { margin-top: 2px; padding: 5px 0; border-bottom: 1px solid #eee8e2; }
 .solar-site-row span { color: var(--muted, #6b6b6b); min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
