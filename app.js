@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-01-28";
-const APP_EDIT_COUNT = 899;
+const APP_STAMP = "2026-09-11-01-35";
+const APP_EDIT_COUNT = 900;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0450";
+const FILE_VER = "0451";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
+  { ver: APP_VERSION, items: ["滿租實收改放到各出租率圓環下方"] },
+  { ver: "2026-09-11-01-28-899", items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
   { ver: "2026-09-11-01-22-898", items: ["點擊滿租差額可看原因"] },
   { ver: "2026-09-11-01-15-897", items: ["滿租 vs 實收可切月份"] },
   { ver: "2026-09-11-01-05-896", items: ["總覽出租率下方可看滿租應收和實收"] },
@@ -21417,53 +21418,51 @@ function rentVsPack(rooms, label) {
   lines.sort((a, b) => b.miss - a.miss);
   return { label, full, due, got, vacant, unpaid, stub, miss: full - got, lines };
 }
-function rentVsHtml() {
-  ensureRentVsMonth();
-  const y = ui.rentVsYear, m = ui.rentVsMonth;
-  const label = y + " 年 " + m + " 月";
-  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
-  const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
-  const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
-  const packs = [
-    rentVsPack(studios, "套房"),
-    rentVsPack(factories, "廠房"),
-    rentVsPack(stores, "店面")
-  ];
-  const open = String(ui.rentVsOpen || "");
-  const rows = packs.map(p => {
-    const cls = p.miss > 0 ? "led-out" : (p.miss < 0 ? "led-in" : "");
-    const word = p.miss > 0 ? "少收 " + money(p.miss) : (p.miss < 0 ? "多收 " + money(-p.miss) : "滿收");
-    const on = open === p.label;
-    const items = (p.lines || []).map(x => {
-      const extra = x.miss < 0;
-      return `<div class="rent-vs-item">
-        <div class="rent-vs-h">
-          <span>${escapeHtml(String(x.no))}${x.name ? "　" + escapeHtml(x.name) : ""}</span>
-          <strong class="${extra ? "led-in" : "led-out"}">${extra ? "多收 " + money(-x.miss) : "少收 " + money(x.miss)}</strong>
-        </div>
-        <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
-      </div>`;
-    }).join("");
-    const empty = `<div class="small">${p.label}這個月滿收，沒有差額房間。</div>`;
-    return `<div class="rent-vs-row">
+function rentVsWord(p) {
+  if (!p) return { cls: "", word: "滿收" };
+  if (p.miss > 0) return { cls: "led-out", word: "少收 " + money(p.miss) };
+  if (p.miss < 0) return { cls: "led-in", word: "多收 " + money(-p.miss) };
+  return { cls: "", word: "滿收" };
+}
+function rentVsDetailHtml(p) {
+  const items = (p.lines || []).map(x => {
+    const extra = x.miss < 0;
+    return `<div class="rent-vs-item">
       <div class="rent-vs-h">
-        <span class="k">${p.label}</span>
-        <button type="button" class="rent-vs-amt ${cls}${on ? " on" : ""}" data-rent-vs-open="${escapeHtml(p.label)}">${word}</button>
+        <span>${escapeHtml(String(x.no))}${x.name ? "　" + escapeHtml(x.name) : ""}</span>
+        <strong class="${extra ? "led-in" : "led-out"}">${extra ? "多收 " + money(-x.miss) : "少收 " + money(x.miss)}</strong>
       </div>
-      <div class="small">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>
-      <div class="small">空置 ${money(p.vacant)}　尚未入帳 ${money(p.unpaid)}${p.stub ? "　不足月 " + money(p.stub) : ""}</div>
-      ${on ? `<div class="rent-vs-list">${items || empty}</div>` : ""}
+      <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
     </div>`;
   }).join("");
-  return `<div class="card card-body rent-vs">
-    <div class="k">租金　滿租 vs 實收</div>
-    <div class="cal-nav">
-      <button type="button" class="ghost" data-rent-vs-nav="-1">上一月</button>
-      <strong>${escapeHtml(label)}</strong>
-      <button type="button" class="ghost" data-rent-vs-nav="1">下一月</button>
+  return items || `<div class="small">${escapeHtml(p.label)}這個月滿收，沒有差額房間。</div>`;
+}
+function occRentUnderHtml(p) {
+  const w = rentVsWord(p);
+  const on = String(ui.rentVsOpen || "") === p.label;
+  return `<div class="small occ-rent-line">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>
+    <button type="button" class="rent-vs-amt ${w.cls}${on ? " on" : ""}" data-rent-vs-open="${escapeHtml(p.label)}">${w.word}</button>`;
+}
+function occRingBlock(occ, pack, ringCls, img, imgCls) {
+  const on = String(ui.rentVsOpen || "") === pack.label;
+  return `<div class="ring-row">
+      <div class="ring-wrap"><div class="ring ${ringCls} ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${occ.occ}"></div><b>${occ.occ}%</b></div>
+      <div>
+        <div class="k">${pack.label}出租率</div>
+        <div class="small">滿租 ${occ.rented} · 空置 ${occ.vacant} · 維修 ${occ.repairing}</div>
+        ${occRentUnderHtml(pack)}
+      </div>
+      <img class="occ-shot${ui.keepScroll ? "" : " shot-in"}${imgCls ? " " + imgCls : ""}" src="${img}" alt="${escapeHtml(pack.label)}">
     </div>
-    <div class="small">不含押金、水電、售電。點右邊數字可看原因。</div>
-    ${rows}
+    ${on ? `<div class="rent-vs-list occ-rent-detail">${rentVsDetailHtml(pack)}</div>` : ""}`;
+}
+function rentVsNavHtml() {
+  ensureRentVsMonth();
+  const label = ui.rentVsYear + " 年 " + ui.rentVsMonth + " 月";
+  return `<div class="cal-nav occ-rent-nav">
+    <button type="button" class="ghost" data-rent-vs-nav="-1">上一月</button>
+    <strong>${escapeHtml(label)}</strong>
+    <button type="button" class="ghost" data-rent-vs-nav="1">下一月</button>
   </div>`;
 }
 function adminSolar() {
@@ -21576,15 +21575,19 @@ function adminDash() {
     return { fl, total, full, pct: total ? Math.round(full / total * 100) : 0 };
   });
   const avgRent = studioOcc.rented ? Math.round(studios.filter(r => r.status === "rented").reduce((s, r) => s + r.rent, 0) / studioOcc.rented) : 0;
+  const studioVs = rentVsPack(studios, "套房");
+  const factoryVs = rentVsPack(factories, "廠房");
+  const storeVs = rentVsPack(stores, "店面");
   return `<div class="dash">
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
       <div class="card ring-card ring-stack">
-        <div class="ring-row"><div class="ring-wrap"><div class="ring sky ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${studioOcc.occ}"></div><b>${studioOcc.occ}%</b></div><div><div class="k">套房出租率</div><div class="small">滿租 ${studioOcc.rented} · 空置 ${studioOcc.vacant} · 維修 ${studioOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in"}" src="images/occ-studio.jpg?v=0222" alt="套房"></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring leaf ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${factoryOcc.occ}"></div><b>${factoryOcc.occ}%</b></div><div><div class="k">廠房出租率</div><div class="small">滿租 ${factoryOcc.rented} · 空置 ${factoryOcc.vacant} · 維修 ${factoryOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s2"}" src="images/occ-factory.jpg?v=0224" alt="廠房"></div>
-        <div class="ring-row"><div class="ring-wrap"><div class="ring clay ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${storeOcc.occ}"></div><b>${storeOcc.occ}%</b></div><div><div class="k">店面出租率</div><div class="small">滿租 ${storeOcc.rented} · 空置 ${storeOcc.vacant} · 維修 ${storeOcc.repairing}</div></div><img class="occ-shot${ui.keepScroll ? "" : " shot-in s3"}" src="images/occ-store.jpg?v=0227" alt="店面"></div>
+        ${rentVsNavHtml()}
+        ${occRingBlock(studioOcc, studioVs, "sky", "images/occ-studio.jpg?v=0222", "")}
+        ${occRingBlock(factoryOcc, factoryVs, "leaf", "images/occ-factory.jpg?v=0224", "s2")}
+        ${occRingBlock(storeOcc, storeVs, "clay", "images/occ-store.jpg?v=0227", "s3")}
       </div>
       <div class="card ring-card solar-card" data-page="solar" role="button" tabindex="0">
         <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
@@ -21596,7 +21599,6 @@ function adminDash() {
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
     </div>
-    ${rentVsHtml()}
     ${overallReportHtml()}
     ${monthCashHtml()}
     ${cashPairHtml()}
