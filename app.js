@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-30";
-const APP_EDIT_COUNT = 878;
+const APP_STAMP = "2026-09-10-22-40";
+const APP_EDIT_COUNT = 879;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0429";
+const FILE_VER = "0430";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -365,6 +365,41 @@ const SIMMIN_FED_BOOKS = [
   ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
   ["2026-08-28", "out", 10000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"]
 ];
+const XUXU_AUG_CASH_VER = "xuxu-aug-cash-v1";
+const XUXU_AUG_CASH_BOOKS = [
+  ["2026-08-03", "in", 2000, "現金(保險箱)", "電費收入　牛7　93-63 2F　公共設施", "現金", "牛7-2F"],
+  ["2026-08-03", "in", 46000, "現金(保險箱)", "租金收入　牛2　文東21　謝帛翰", "現金", "牛2-21"],
+  ["2026-08-04", "in", 55000, "現金(保險箱)", "租金收入　牛2　文東23　洪耀鴻", "現金", "牛2-23"],
+  ["2026-08-05", "out", 5455, "現金(保險箱)", "清潔費　皇吉　文東61　租賃10% 4,500＋保費950＋手續費5", "現金", "牛1-61"],
+  ["2026-08-05", "in", 22000, "現金(保險箱)", "租金收入　牛3　97-65B　蔡聖鴻", "現金", "牛3-97-65B"],
+  ["2026-08-05", "out", 20000, "現金(保險箱)", "薪資支出　趙洪漳", "現金"],
+  ["2026-08-05", "out", 20000, "現金(保險箱)", "薪資支出　趙文榮", "現金"],
+  ["2026-08-05", "out", 200000, "現金(保險箱)", "個人支出　趙海成存聯邦", "現金"],
+  ["2026-08-05", "out", 200000, "現金(保險箱)", "個人支出　趙正賢存聯邦", "現金"],
+  ["2026-08-06", "in", 45000, "現金(保險箱)", "租金收入　拉皮　93-2A　孫梅芳", "現金", "拉皮-2A"],
+  ["2026-08-06", "in", 25275, "現金(保險箱)", "水費收入　拉皮　93-2A　115/1/1～6/30", "現金", "拉皮-2A"],
+  ["2026-08-06", "in", 26715, "現金(保險箱)", "電費收入　拉皮　93-2A　115/5/28～7/1", "現金", "拉皮-2A"],
+  ["2026-08-10", "in", 24315, "現金(保險箱)", "水費收入　97-76 陳雅琪 3,645＋93-56 誠家 12,240＋97-77／78 錦芳 8,430", "現金"],
+  ["2026-08-12", "out", 1000, "現金(保險箱)", "清潔費　成500、賢500　垃圾桶", "現金"],
+  ["2026-08-12", "in", 13365, "現金(保險箱)", "清潔費收入　開信潔發票　信潔轉出收現金", "現金"],
+  ["2026-08-12", "out", 6000, "現金(保險箱)", "清潔費　牛10　7/23、7/27、8/10", "現金"],
+  ["2026-08-14", "out", 139, "現金(保險箱)", "其他支出　文東59　存證信函", "現金", "牛1-59"],
+  ["2026-08-14", "in", 46000, "現金(保險箱)", "租金收入　大樹　52巷32弄18　洪子棋", "現金", "大樹-18"],
+  ["2026-08-17", "in", 200000, "現金(保險箱)", "其他收入　江秀霞薪資入公款", "現金"],
+  ["2026-08-18", "in", 14000, "現金(保險箱)", "增建收入　錦芳　牛8", "現金", "牛8-77"],
+  ["2026-08-19", "out", 1373, "現金(保險箱)", "其他支出　清潔用品277＋衛生紙755＋星巴克341", "現金"],
+  ["2026-08-19", "out", 1082, "現金(保險箱)", "終止契約　翁玟倫高逸安　退水費900＋電費182", "現金", "6832"],
+  ["2026-08-21", "in", 2000, "現金(保險箱)", "電費收入　牛7　93-63 2F　公共設施", "現金", "牛7-2F"],
+  ["2026-08-25", "out", 5060, "現金(保險箱)", "自來水申辦　拉皮4戶", "現金"],
+  ["2026-08-28", "out", 23200, "現金(保險箱)", "電費支出　1116地號 3,962＋578-1 1,520＋1109-3 16,027＋57巷1弄25 1,691", "現金"],
+  ["2026-08-25", "in", 26000, "現金(保險箱)", "電費收入　牛10", "現金"],
+  ["2026-08-26", "out", 3600, "現金(保險箱)", "自來水申辦　鳳93-1　拉皮4戶", "現金"],
+  ["2026-08-28", "out", 2300, "現金(保險箱)", "大樹　仲介費補稅金", "現金", "大樹-18"],
+  ["2026-08-28", "out", 100, "現金(保險箱)", "其他支出　牛10　文具　美工刀", "現金"],
+  ["2026-08-28", "in", 100000, "現金(保險箱)", "其他收入　黃思敏薪資入公款", "現金"],
+  ["2026-08-28", "in", 4040, "現金(保險箱)", "水費收入　文東76號　波波奇", "現金", "7611"],
+  ["2026-08-31", "in", 76900, "現金(保險箱)", "電費收入　鈺晟　拉皮93-1B　115/7/2～7/29", "現金", "拉皮-1B"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -413,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["黃思敏個人戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["小許8月現金套入總攬，拿掉重複的超商電費"] },
+  { ver: "2026-09-10-22-30-878", items: ["黃思敏個人戶簿子記入總攬"] },
   { ver: "2026-09-10-22-25-877", items: ["信潔聯邦簿子對完：大樹太陽能售電改進帳"] },
   { ver: "2026-09-10-22-20-876", items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
   { ver: "2026-09-10-22-15-875", items: ["統潔農會簿子對完：9/2是7021、9/5的12,000是7032"] },
@@ -3717,6 +3753,7 @@ function normalize(data) {
   applyHaichengFed(data);
   applyHaichengSepPaid(data);
   applySimminFed(data);
+  applyXuxuAugCash(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   try { persistPaidMarks(data); } catch {}
@@ -3988,10 +4025,12 @@ function applyAug31Docs(data) {
   if (!Array.isArray(data.books)) data.books = [];
   if (!Array.isArray(data.bookVault)) data.bookVault = [];
   if (!Array.isArray(data.bookVaultGone)) data.bookVaultGone = [];
+  data.books = data.books.filter(b => !(b && Number(b.amount) === 97630 && String(b.company || "") === "統潔" && /義大|超商/.test(String(b.bank || "") + String(b.note || ""))));
   const hasDocs = data.books.some(b => b && b.importTag === "aug31docs");
   if (data.docsImportVer === DOCS_IMPORT_VER && hasDocs) return;
   data.books = data.books.filter(b => b && b.importTag !== "aug31docs");
   AUG31_BOOKS.forEach((row, i) => {
+    if (Number(row[2]) === 97630) return;
     data.books.push({
       id: "bk-a31-" + i,
       type: row[1],
@@ -4573,6 +4612,37 @@ function applySimminFed(data) {
   });
   data.accountOpenings["個人戶·黃思敏"] = SIMMIN_FED_OPENING;
   data.simminFedVer = SIMMIN_FED_VER;
+}
+function applyXuxuAugCash(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (data.xuxuAugCashVer === XUXU_AUG_CASH_VER && (data.books || []).some(b => b && b.importTag === "xuxuAugCash")) return;
+  data.books = (data.books || []).filter(b => b && b.importTag !== "xuxuAugCash");
+  XUXU_AUG_CASH_BOOKS.forEach((row, i) => {
+    const id = "bk-xuxu-aug-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "現金";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "xuxuAugCash") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "xuxuAugCash",
+      createdAt: "2026-09-10 22:40"
+    });
+  });
+  data.xuxuAugCashVer = XUXU_AUG_CASH_VER;
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -6704,6 +6774,7 @@ async function pullCloud() {
       applyHaichengFed(state);
       applyHaichengSepPaid(state);
       applySimminFed(state);
+      applyXuxuAugCash(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyYushengElec(state);
@@ -6770,6 +6841,7 @@ async function pullCloud() {
     applyHaichengFed(state);
     applyHaichengSepPaid(state);
     applySimminFed(state);
+    applyXuxuAugCash(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyYushengElec(state);
