@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-15";
-const APP_EDIT_COUNT = 875;
+const APP_STAMP = "2026-09-10-22-20";
+const APP_EDIT_COUNT = 876;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0426";
+const FILE_VER = "0427";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -316,6 +316,31 @@ const TONGJIE_MEGA_BOOKS = [
   ["2026-09-07", "out", 14000, "統潔", "牛10　6832 仲介費　租竣資產", "兆豐", "6832"]
 ];
 const TONGJIE_MEGA_SEP_PAID = ["6832"];
+const HAICHENG_FED_VER = "haicheng-fed-v1";
+const HAICHENG_FED_OPENING = 251674;
+const HAICHENG_FED_BOOKS = [
+  ["2026-02-27", "in", 11700, "個人戶·趙海成、趙正賢", "押金3,000＋2／3～5月 8,700", "聯邦"],
+  ["2026-03-02", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　2月　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-03-02", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-03-03", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　2月", "聯邦", "牛3-97-65A"],
+  ["2026-03-24", "in", 2800, "個人戶·趙海成、趙正賢", "ATMF轉入 2,800", "聯邦"],
+  ["2026-03-30", "in", 2800, "個人戶·趙海成、趙正賢", "李美津 2,800", "聯邦"],
+  ["2026-04-02", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-04-08", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　3月", "聯邦", "牛3-97-65A"],
+  ["2026-05-04", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　4月", "聯邦", "牛3-97-65A"],
+  ["2026-05-06", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-05-27", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　6月　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-06-02", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　5月", "聯邦", "牛3-97-65A"],
+  ["2026-06-05", "out", 102030, "個人戶·趙海成、趙正賢", "林事霞　兆豐代書", "聯邦"],
+  ["2026-06-18", "in", 11200, "個人戶·趙海成、趙正賢", "ATMF轉入 11,200", "聯邦"],
+  ["2026-06-21", "in", 1218, "個人戶·趙海成、趙正賢", "利息", "聯邦"],
+  ["2026-08-03", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-08-03", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　7月", "聯邦", "牛3-97-65A"],
+  ["2026-08-05", "in", 4876, "個人戶·趙海成、趙正賢", "電費　鳳仁97-1A　1～6月", "聯邦"],
+  ["2026-08-31", "in", 40800, "個人戶·趙海成、趙正賢", "租金　鳳仁63　卓建忠　9月　40,000＋貨櫃800", "聯邦", "牛3-97-63"],
+  ["2026-09-02", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　8月", "聯邦", "牛3-97-65A"]
+];
+const HAICHENG_SEP_PAID = ["牛3-97-63"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -364,7 +389,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["統潔農會簿子對完：9/2是7021、9/5的12,000是7032"] },
+  { ver: APP_VERSION, items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
+  { ver: "2026-09-10-22-15-875", items: ["統潔農會簿子對完：9/2是7021、9/5的12,000是7032"] },
   { ver: "2026-09-10-22-10-874", items: ["統潔聯邦簿子對完：太陽能售電改進帳、補6/29健保費"] },
   { ver: "2026-09-10-22-05-873", items: ["統潔兆豐簿子記入總攬"] },
   { ver: "2026-09-10-21-58-872", items: ["江秀霞聯邦個人戶簿子記入總攬"] },
@@ -3662,6 +3688,8 @@ function normalize(data) {
   applyYizhenFed(data);
   applyWenrongFed(data);
   applyXiuxiaFed(data);
+  applyHaichengFed(data);
+  applyHaichengSepPaid(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   try { persistPaidMarks(data); } catch {}
@@ -4416,6 +4444,62 @@ function applyXiuxiaFed(data) {
   });
   data.accountOpenings["個人戶·江秀霞"] = XIUXIA_FED_OPENING;
   data.xiuxiaFedVer = XIUXIA_FED_VER;
+}
+function applyHaichengFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·趙海成、趙正賢") return;
+    if (!b.bank) b.bank = "聯邦";
+  });
+  if (data.haichengFedVer === HAICHENG_FED_VER && (data.books || []).some(b => b && b.importTag === "haichengFed")) {
+    data.accountOpenings["個人戶·趙海成、趙正賢"] = HAICHENG_FED_OPENING;
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "haichengFed");
+  HAICHENG_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-hc-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "haichengFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "趙海成、趙正賢" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "haichengFed",
+      createdAt: "2026-09-10 22:20"
+    });
+  });
+  data.accountOpenings["個人戶·趙海成、趙正賢"] = HAICHENG_FED_OPENING;
+  data.haichengFedVer = HAICHENG_FED_VER;
+}
+function applyHaichengSepPaid(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (HAICHENG_SEP_PAID || []).forEach(no => {
+    const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    t.paid = true;
+    t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-08-31 10:00";
+    t.paidVia = t.paidVia || "haicheng-fed";
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    t.remitOn = t.remitOn || "2026-08-31";
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -6544,6 +6628,8 @@ async function pullCloud() {
       applyYizhenFed(state);
       applyWenrongFed(state);
       applyXiuxiaFed(state);
+      applyHaichengFed(state);
+      applyHaichengSepPaid(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyYushengElec(state);
@@ -6607,6 +6693,8 @@ async function pullCloud() {
     applyYizhenFed(state);
     applyWenrongFed(state);
     applyXiuxiaFed(state);
+    applyHaichengFed(state);
+    applyHaichengSepPaid(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyYushengElec(state);
