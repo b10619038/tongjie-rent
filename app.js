@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-00";
-const APP_EDIT_COUNT = 881;
+const APP_STAMP = "2026-09-10-23-10";
+const APP_EDIT_COUNT = 882;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0432";
+const FILE_VER = "0433";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["太陽能分址右邊加上租客／公司名"] },
+  { ver: APP_VERSION, items: ["太陽能覆蓋率改依小許分址計算已裝未裝"] },
+  { ver: "2026-09-10-23-00-881", items: ["太陽能分址右邊加上租客／公司名"] },
   { ver: "2026-09-10-22-50-880", items: ["點太陽能覆蓋率可看獨立售電收益"] },
   { ver: "2026-09-10-22-40-879", items: ["小許8月現金套入總攬，拿掉重複的超商電費"] },
   { ver: "2026-09-10-22-30-878", items: ["黃思敏個人戶簿子記入總攬"] },
@@ -3137,7 +3138,35 @@ function siteOfLedgerRow(row) {
   }
   return "";
 }
-const SOLAR_FACTORY_NOS = ["牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8"];
+const SOLAR_ROOM_NOS = [
+  "牛1-59", "牛1-61", "牛1-57巷2", "牛1-57巷6", "牛1-57巷8",
+  "牛2-21", "牛2-23", "牛2-25", "牛2-33", "牛2-35",
+  "牛3-97-61", "牛3-97-63", "牛3-97-65A", "牛3-97-65B",
+  "牛5-97-66", "牛5-97-67", "牛5-97-68", "牛5-97-69", "牛5-97-70",
+  "牛5-97-71", "牛5-97-72", "牛5-97-73", "牛5-97-75", "牛5-97-76",
+  "牛6-55", "牛6-56", "牛6-57", "牛6-59", "牛6-61", "牛6-62",
+  "牛7-3F",
+  "牛8-77", "牛8-78",
+  "拉皮-1A", "拉皮-1B", "拉皮-2A", "拉皮-2B"
+];
+function solarCoverageBits() {
+  const factories = (state.rooms || []).filter(r => r && r.kind === "factory" && !isDemoRoom(r));
+  const set = new Set(SOLAR_ROOM_NOS);
+  const installedF = factories.filter(r => set.has(String(r.no))).length;
+  const missRooms = factories.filter(r => !set.has(String(r.no)));
+  const bld = STUDIO_BUILDINGS.length;
+  const solarSites = installedF + bld;
+  const solarTotal = factories.length + bld;
+  return {
+    installedF,
+    bld,
+    solarSites,
+    solarTotal,
+    miss: Math.max(solarTotal - solarSites, 0),
+    missRooms,
+    solarPct: solarTotal ? Math.round(solarSites / solarTotal * 100) : 0
+  };
+}
 const SOLAR_PERIODS = [
   {
     label: "115/5/28～115/7/29",
@@ -21014,11 +21043,11 @@ function occBits(rooms) {
   return { rented, vacant, repairing, occ, total: rooms.length };
 }
 function adminSolar() {
-  const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
-  const solarFactory = factories.filter(r => SOLAR_FACTORY_NOS.includes(r.no));
-  const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
-  const solarTotal = factories.length + STUDIO_BUILDINGS.length;
-  const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
+  const cov = solarCoverageBits();
+  const solarSites = cov.solarSites;
+  const solarTotal = cov.solarTotal;
+  const solarPct = cov.solarPct;
+  const missNames = cov.missRooms.map(r => String(r.no)).join("、");
   const rows = solarLedgerRows();
   const tongjie = rows.filter(x => /統潔/.test(String(x.company || "")));
   const xinjie = rows.filter(x => /信潔/.test(String(x.company || "")));
@@ -21047,8 +21076,9 @@ function adminSolar() {
         <div class="ring-wrap"><div class="ring sun" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
         <div>
           <h2 class="dash-h" style="margin:0">太陽能覆蓋率</h2>
-          <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
-          <div class="small">套房 4 棟　廠房牛1 五戶</div>
+          <div class="small">已裝 ${solarSites} · 未裝 ${cov.miss}</div>
+          <div class="small">依小許分址　廠房 ${cov.installedF} 戶　套房 ${cov.bld} 棟</div>
+          ${cov.miss ? `<div class="small">未裝：${escapeHtml(missNames)}</div>` : ""}
         </div>
       </div>
     </div>
@@ -21080,10 +21110,10 @@ function adminDash() {
   const rented = studioOcc.rented;
   const vacant = studioOcc.vacant;
   const repairing = studioOcc.repairing;
-  const solarFactory = factories.filter(r => SOLAR_FACTORY_NOS.includes(r.no));
-  const solarSites = solarFactory.length + STUDIO_BUILDINGS.length;
-  const solarTotal = factories.length + STUDIO_BUILDINGS.length;
-  const solarPct = solarTotal ? Math.round(solarSites / solarTotal * 100) : 0;
+  const cov = solarCoverageBits();
+  const solarSites = cov.solarSites;
+  const solarTotal = cov.solarTotal;
+  const solarPct = cov.solarPct;
   const unpaidTenants = state.tenants.filter(t => isDashTenant(t) && !t.paid);
   const expiring = state.tenants.filter(isDashTenant).map(t => ({ t, days: daysLeft(t.leaseEnd) })).filter(x => x.days != null && x.days <= 90).sort((a, b) => a.days - b.days);
   const soon = expiring.filter(x => x.days <= 60).length;
