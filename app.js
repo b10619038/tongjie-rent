@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-21-55";
-const APP_EDIT_COUNT = 871;
+const APP_STAMP = "2026-09-10-21-58";
+const APP_EDIT_COUNT = 872;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0422";
+const FILE_VER = "0423";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -269,6 +269,34 @@ const WENRONG_FED_VER = "wenrong-fed-v1";
 const WENRONG_FED_BOOKS = [
   ["2026-08-05", "in", 28302, "個人戶·趙文榮", "代發薪資　07511轉入", "聯邦"]
 ];
+const XIUXIA_FED_VER = "xiuxia-fed-v1";
+const XIUXIA_FED_OPENING = 532901;
+const XIUXIA_FED_BOOKS = [
+  ["2025-03-03", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-04-07", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-05-07", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-06-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-06-21", "in", 2154, "個人戶·江秀霞", "利息", "聯邦"],
+  ["2025-07-08", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-08-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-08-07", "out", 400000, "個人戶·江秀霞", "還貸兆豐　還貸款文榮", "聯邦"],
+  ["2025-09-04", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-10-03", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-11-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-12-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2025-12-21", "in", 1709, "個人戶·江秀霞", "利息", "聯邦"],
+  ["2026-01-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-01-29", "out", 450000, "個人戶·江秀霞", "聯行收付　金款", "聯邦"],
+  ["2026-02-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-02-12", "in", 30000, "個人戶·江秀霞", "統潔開發轉入", "聯邦"],
+  ["2026-03-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-04-09", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-05-06", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-06-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-06-21", "in", 689, "個人戶·江秀霞", "利息", "聯邦"],
+  ["2026-08-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
+  ["2026-08-17", "out", 200000, "個人戶·江秀霞", "聯行收付　入金款", "聯邦"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -317,7 +345,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙文榮聯邦個人戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["江秀霞聯邦個人戶簿子記入總攬"] },
+  { ver: "2026-09-10-21-55-871", items: ["趙文榮聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-52-870", items: ["趙苡真聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-50-869", items: ["趙浩鈞聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-45-868", items: ["趙文彬聯邦個人戶簿子記入總攬"] },
@@ -3610,6 +3639,7 @@ function normalize(data) {
   applyHaokunFed(data);
   applyYizhenFed(data);
   applyWenrongFed(data);
+  applyXiuxiaFed(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -4293,6 +4323,45 @@ function applyWenrongFed(data) {
     });
   });
   data.wenrongFedVer = WENRONG_FED_VER;
+}
+function applyXiuxiaFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·江秀霞") return;
+    if (!b.bank) b.bank = "聯邦";
+  });
+  if (data.xiuxiaFedVer === XIUXIA_FED_VER && (data.books || []).some(b => b && b.importTag === "xiuxiaFed")) {
+    data.accountOpenings["個人戶·江秀霞"] = XIUXIA_FED_OPENING;
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "xiuxiaFed");
+  XIUXIA_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-xx-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "xiuxiaFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "江秀霞" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: "",
+      importTag: "xiuxiaFed",
+      createdAt: "2026-09-10 21:58"
+    });
+  });
+  data.accountOpenings["個人戶·江秀霞"] = XIUXIA_FED_OPENING;
+  data.xiuxiaFedVer = XIUXIA_FED_VER;
 }
 function applyDueDayPolicy(data) {
   if (!data) return;
@@ -6365,6 +6434,7 @@ async function pullCloud() {
       applyHaokunFed(state);
       applyYizhenFed(state);
       applyWenrongFed(state);
+      applyXiuxiaFed(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6425,6 +6495,7 @@ async function pullCloud() {
     applyHaokunFed(state);
     applyYizhenFed(state);
     applyWenrongFed(state);
+    applyXiuxiaFed(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
