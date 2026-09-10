@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-09-22-15";
-const APP_EDIT_COUNT = 866;
+const APP_STAMP = "2026-09-10-21-40";
+const APP_EDIT_COUNT = 867;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0417";
+const FILE_VER = "0418";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -177,6 +177,32 @@ const TONGJIE_FED_0909_BOOKS = [
   ["2026-09-09", "out", 15703, "統潔", "水費　93-2號 9,240＋93-63號 110＋93-63號3樓 6,353＝15,703　115年9月　聯邦三民代收", "聯邦"]
 ];
 const TONGJIE_FED_SEP_PAID = ["拉皮-1A", "拉皮-1B", "牛7-2F", "牛8-77", "大樹-18", "牛3-97-61", "大樹-屋頂"];
+const HONGZHANG_FED_VER = "hongzhang-fed-v1";
+const HONGZHANG_FED_OPENING = 314991;
+const HONGZHANG_FED_BOOKS = [
+  ["2025-09-01", "in", 36000, "個人戶·趙洪漳", "租金　文東61　舊約 ATMF", "聯邦", "牛1-61"],
+  ["2025-10-01", "in", 36000, "個人戶·趙洪漳", "租金　文東61　舊約 ATMF", "聯邦", "牛1-61"],
+  ["2025-11-01", "in", 36000, "個人戶·趙洪漳", "租金　文東61　舊約 ATMF", "聯邦", "牛1-61"],
+  ["2025-12-01", "in", 36000, "個人戶·趙洪漳", "租金　文東61　舊約 ATMF", "聯邦", "牛1-61"],
+  ["2025-12-21", "in", 1242, "個人戶·趙洪漳", "利息", "聯邦"],
+  ["2026-01-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-01-30", "in", 200000, "個人戶·趙洪漳", "聯行存現　會收入", "聯邦"],
+  ["2026-02-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-02-02", "out", 700030, "個人戶·趙洪漳", "轉帳至兆豐　趙洪漳　01014", "聯邦"],
+  ["2026-03-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-04-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-05-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-05-21", "in", 116000, "個人戶·趙洪漳", "押金　57巷1弄25　劉德惠　文榮存現07507", "聯邦", "牛2-25"],
+  ["2026-05-21", "out", 88977, "個人戶·趙洪漳", "房屋稅　約3個月　07507轉出", "聯邦"],
+  ["2026-06-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-06-02", "in", 305000, "個人戶·趙洪漳", "黃忠傑　生之美　114/5～115/4 租金375,000－押金70,000", "聯邦", "牛2-25"],
+  ["2026-06-21", "in", 902, "個人戶·趙洪漳", "利息", "聯邦"],
+  ["2026-08-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-08-03", "in", 58000, "個人戶·趙洪漳", "租金　57巷1弄25　劉德惠 ATMF", "聯邦", "牛2-25"],
+  ["2026-09-01", "in", 45000, "個人戶·趙洪漳", "租金　文東61　林志維／皇吉 ATMF", "聯邦", "牛1-61"],
+  ["2026-09-01", "in", 58015, "個人戶·趙洪漳", "租金　57巷1弄25　劉德惠 ATMF 347", "聯邦", "牛2-25"]
+];
+const HONGZHANG_SEP_PAID = ["牛1-61", "牛2-25"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -225,7 +251,7 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房平面先拿掉，等手繪再放"] },
+  { ver: APP_VERSION, items: ["趙洪漳聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -2431,7 +2457,7 @@ const FACTORY_TENANT_INFO = {
   "牛1-57巷8": { name: "欣上宜企業有限公司", taxId: "27688447", contactName: "", phone: "07-389-5119", leaseStart: "2023-11-01", leaseEnd: "2026-12-31", rentUntaxed: 36000, rent: 36000, deposit: 56000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "文龍東路57巷8號。未稅 $36,000（扣繳 $3,600＋健保 $760 乙方自付）。每月1日現金交給趙苡真。" },
   "牛2-21": { name: "謝帛翰", taxId: "", contactName: "", idNo: "S125673827", phone: "0980-311-188", leaseStart: "2024-02-01", leaseEnd: "2027-02-28", rentUntaxed: 25000, rent: 25000, deposit: 50000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄21號。個人戶。未稅 $25,000（扣繳 $2,500＋健保 $528 乙方自付）。每月1日現金交給趙洪漳。" },
   "牛2-23": { name: "洪耀鴻", taxId: "", contactName: "", idNo: "E123170064", phone: "0966-333-8937／0929-920-515", leaseStart: "2024-03-01", leaseEnd: "2027-02-28", rentUntaxed: 55000, rent: 55000, deposit: 110000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "57巷1弄23號。個人戶。未稅 $55,000。每月1日現金交給趙文榮。113/3/1 入押金 $105,000。" },
-  "牛2-25": { name: "劉德惠", taxId: "", contactName: "黃聖泓", idNo: "H221401794", phone: "0966-716-232／0921-998-369", leaseStart: "2026-09-01", leaseEnd: "2027-06-30", rentUntaxed: 58000, rent: 58000, deposit: 116000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", note: "57巷1弄25號。個人戶。未稅 $58,000，所得稅10%及二代健保2.11%乙方支付。每月1日匯聯邦北高雄 趙洪漳 074-50-8531492。115/5/1 入押金。" },
+  "牛2-25": { name: "劉德惠", taxId: "", contactName: "黃聖泓", idNo: "H221401794", phone: "0966-716-232／0921-998-369", leaseStart: "2026-09-01", leaseEnd: "2027-06-30", rentUntaxed: 58000, rent: 58000, deposit: 116000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", note: "57巷1弄25號。個人戶。未稅 $58,000，所得稅10%及二代健保2.11%乙方支付。每月1日匯聯邦北高雄 趙洪漳 074-50-8531492。115/5/21 趙文榮存現入押金 $116,000。" },
   "牛2-27": { name: "汕廚美食有限公司", taxId: "28290607", contactName: "張可言", phone: "07-862-5888#666／0960-222-888", leaseStart: "2026-05-15", leaseEnd: "2029-05-14", rentUntaxed: 45000, rent: 45000, deposit: 80000, dueDay: 15, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄27號。未稅 $45,000（扣繳 $4,500＋健保 $950 乙方自付）。每月15日匯農會本會 趙貴美 00015210574481。" },
   "牛2-29": { name: "吉加環保企業社", taxId: "41301634", contactName: "楊森帆", phone: "0985-107-793", leaseStart: "2023-04-01", leaseEnd: "2026-03-31", rentUntaxed: 20000, rent: 20000, deposit: 35000, dueDay: 10, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄29號。未稅 $20,000。每月10日匯農會 趙貴美 00015210574481。合約寫至 115/3/31，若已續約請改日期。" },
   "牛2-31": { name: "來得生物科技有限公司", taxId: "42792378", contactName: "黃秀會", idNo: "F201234945", phone: "07-251-2423／0980-850-787", leaseStart: "2025-12-01", leaseEnd: "2028-11-30", rentUntaxed: 38000, rent: 38000, deposit: 0, dueDay: 10, payBank: "農會", payCompany: "個人戶·趙貴美", rentSchedule: [
@@ -3508,6 +3534,8 @@ function normalize(data) {
   applyXinjieSepPaid(data);
   applyTongjieFed0909(data);
   applyTongjieFedSepPaid(data);
+  applyHongzhangFed(data);
+  applyHongzhangSepPaid(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -3568,7 +3596,8 @@ function roomNoFromBookNote(note) {
     [/文35|弄35|文東35/, "牛2-35"],
     [/57巷2|57巷6|丞億/, "牛1-57巷2"],
     [/57巷8|欣上宜/, "牛1-57巷8"],
-    [/文東61|文61|林志維|皇吉/, "牛1-61"],
+    [/弄25|1弄25|劉德惠|黃忠傑|生之美/, "牛2-25"],
+    [/文東61|文61|林志維|林志雄|皇吉/, "牛1-61"],
     [/文59|文東59/, "牛1-59"]
   ];
   for (let i = 0; i < rules.length; i++) {
@@ -3977,6 +4006,63 @@ function applyTongjieFedSepPaid(data) {
       t.invoiceOn = "2026-09-09";
       t.paidVia = "tongjie-fed";
     }
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
+}
+function applyHongzhangFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·趙洪漳") return;
+    if (!b.bank) b.bank = "聯邦";
+    if (/林志雄/.test(String(b.note || ""))) b.note = String(b.note).replace(/林志雄/g, "林志維");
+  });
+  if (data.hongzhangFedVer === HONGZHANG_FED_VER && (data.books || []).some(b => b && b.importTag === "hongzhangFed")) {
+    data.accountOpenings["個人戶·趙洪漳"] = HONGZHANG_FED_OPENING;
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "hongzhangFed");
+  HONGZHANG_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-hz-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "hongzhangFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "趙洪漳" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "hongzhangFed",
+      createdAt: "2026-09-10 21:40"
+    });
+  });
+  data.accountOpenings["個人戶·趙洪漳"] = HONGZHANG_FED_OPENING;
+  data.hongzhangFedVer = HONGZHANG_FED_VER;
+}
+function applyHongzhangSepPaid(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (HONGZHANG_SEP_PAID || []).forEach(no => {
+    const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    t.paid = true;
+    t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-09-01 10:00";
+    t.paidVia = t.paidVia || "hongzhang-fed";
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    t.remitOn = t.remitOn || "2026-09-01";
     if (!t.editedAt) t.editedAt = Date.now();
   });
 }
@@ -6045,6 +6131,8 @@ async function pullCloud() {
       applyXinjieSepPaid(state);
       applyTongjieFed0909(state);
       applyTongjieFedSepPaid(state);
+      applyHongzhangFed(state);
+      applyHongzhangSepPaid(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6099,6 +6187,8 @@ async function pullCloud() {
     applyXinjieSepPaid(state);
     applyTongjieFed0909(state);
     applyTongjieFedSepPaid(state);
+    applyHongzhangFed(state);
+    applyHongzhangSepPaid(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
