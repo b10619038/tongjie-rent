@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-00-32";
-const APP_EDIT_COUNT = 892;
+const APP_STAMP = "2026-09-11-00-35";
+const APP_EDIT_COUNT = 893;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0443";
+const FILE_VER = "0444";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["上方分頁滑鼠移過去不再反白"] },
+  { ver: APP_VERSION, items: ["上方分頁縮放更明顯、回彈更順"] },
+  { ver: "2026-09-11-00-32-892", items: ["上方分頁滑鼠移過去不再反白"] },
   { ver: "2026-09-11-00-30-891", items: ["上方分頁按壓更明顯順暢"] },
   { ver: "2026-09-11-00-25-890", items: ["總覽圓餅與出租率不再卡到邊"] },
   { ver: "2026-09-11-00-20-889", items: ["上方分頁改成輕點回饋，拿掉滑過去"] },
@@ -24110,6 +24111,35 @@ function bindIosPress(el) {
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
 }
+function bindTabPress(el) {
+  if (!el || el.dataset.tabPress === "1") return;
+  el.dataset.tabPress = "1";
+  let x0 = 0, y0 = 0, t0 = 0, timer = 0;
+  const on = e => {
+    const p = e.touches ? e.touches[0] : e;
+    x0 = p.clientX; y0 = p.clientY; t0 = performance.now();
+    clearTimeout(timer);
+    el.classList.add("is-press");
+  };
+  const move = e => {
+    const p = e.touches ? e.touches[0] : e;
+    if (!p || !el.classList.contains("is-press")) return;
+    if (Math.abs(p.clientX - x0) > 10 || Math.abs(p.clientY - y0) > 10) {
+      clearTimeout(timer);
+      el.classList.remove("is-press");
+    }
+  };
+  const off = () => {
+    const wait = Math.max(0, 110 - (performance.now() - t0));
+    clearTimeout(timer);
+    timer = setTimeout(() => el.classList.remove("is-press"), wait);
+  };
+  el.addEventListener("pointerdown", on);
+  el.addEventListener("pointermove", move, { passive: true });
+  el.addEventListener("pointerup", off);
+  el.addEventListener("pointercancel", off);
+  el.addEventListener("lostpointercapture", off);
+}
 function bindGhostPress() {
   document.querySelectorAll(".ghost, .btn-navy, .issue-opt").forEach(bindIosPress);
 }
@@ -24402,7 +24432,7 @@ function bindAdmin() {
   });
   bindTabReorder();
   bindTabPill();
-  document.querySelectorAll(".tabs .tab").forEach(bindIosPress);
+  document.querySelectorAll(".tabs .tab").forEach(bindTabPress);
   bindAdminPageSwipe();
   bindSegPills();
   document.querySelectorAll("[data-asset-kind]").forEach(btn => {
