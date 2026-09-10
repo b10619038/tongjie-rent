@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-20";
-const APP_EDIT_COUNT = 876;
+const APP_STAMP = "2026-09-10-22-25";
+const APP_EDIT_COUNT = 877;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0427";
+const FILE_VER = "0428";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -118,7 +118,7 @@ const NONGHUI_SEP_PAID = {
   "7642": ["2026-09-04", 14000],
   "7651": ["2026-09-05", 5000]
 };
-const XINJIE_0909_VER = "xinjie-0909-v2";
+const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
   ["2026-08-01", "in", 44100, "信潔", "牛5　97-72 萬事盈", "聯邦", "牛5-97-72"],
   ["2026-08-03", "in", 42000, "信潔", "牛5　97-69 喜憨兒　票號0865440", "聯邦", "牛5-97-69"],
@@ -131,7 +131,7 @@ const XINJIE_0909_BOOKS = [
   ["2026-08-14", "in", 38000, "信潔", "牛5　97-76 陳雅琪", "聯邦", "牛5-97-76"],
   ["2026-08-14", "in", 44100, "信潔", "牛5　97-75 力胤精密", "聯邦", "牛5-97-75"],
   ["2026-08-17", "in", 42000, "信潔", "牛5　97-73 映升企業社", "聯邦", "牛5-97-73"],
-  ["2026-08-20", "out", 327494, "信潔", "電費　台灣電力　大樹　跨行匯款", "聯邦"],
+  ["2026-08-20", "in", 327494, "信潔", "售電收入　台灣電力　大樹　太陽能", "聯邦"],
   ["2026-08-21", "in", 42000, "信潔", "牛5　97-71 莊記綠豆", "聯邦", "牛5-97-71"],
   ["2026-08-22", "in", 44100, "信潔", "牛5　97-67 弘翔音響", "聯邦", "牛5-97-67"],
   ["2026-08-28", "in", 44100, "信潔", "牛5　97-68 樂芯　票號3872686", "聯邦", "牛5-97-68"],
@@ -389,7 +389,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["信潔聯邦簿子對完：大樹太陽能售電改進帳"] },
+  { ver: "2026-09-10-22-20-876", items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
   { ver: "2026-09-10-22-15-875", items: ["統潔農會簿子對完：9/2是7021、9/5的12,000是7032"] },
   { ver: "2026-09-10-22-10-874", items: ["統潔聯邦簿子對完：太陽能售電改進帳、補6/29健保費"] },
   { ver: "2026-09-10-22-05-873", items: ["統潔兆豐簿子記入總攬"] },
@@ -4065,6 +4066,13 @@ function applyNonghuiSepPaid(data) {
 function applyXinjie0909(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    if (Number(b.amount) === 327494 && /台灣電力|太陽能|大樹/.test(String(b.note || ""))) {
+      b.type = "in";
+      if (/電費/.test(String(b.note || ""))) b.note = "售電收入　台灣電力　大樹　太陽能";
+    }
+  });
   if (data.xinjie0909Ver === XINJIE_0909_VER && (data.books || []).some(b => b && b.importTag === "xinjie0909")) return;
   data.books = (data.books || []).filter(b => b && b.importTag !== "xinjie0909");
   XINJIE_0909_BOOKS.forEach((row, i) => {
