@@ -192,6 +192,8 @@ input, textarea, select {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
+  contain: layout;
+  transform: translateZ(0);
 }
 .admin-scroll { padding: 8px 0 calc(72px + var(--safe-b)); }
 .tenant-scroll { padding-bottom: calc(88px + var(--safe-b)); }
@@ -308,8 +310,12 @@ input, textarea, select {
   background: linear-gradient(transparent, rgba(80,110,128,.85));
   border-radius: 2px;
   animation: dropFall linear infinite;
+  animation-duration: calc(0.85s + (var(--i, 0) * 0.04s));
+  animation-delay: calc(var(--i, 0) * -0.08s);
   opacity: .8;
 }
+.sky-fx.paused,
+.sky-fx.paused * { animation-play-state: paused !important; }
 .weather-hero[data-sky="storm"] .sky-fx .drop {
   width: 2.5px;
   background: linear-gradient(transparent, rgba(50,70,90,.95));
@@ -620,6 +626,9 @@ button.pay-toggle.is-pop { transform: scale(1.14); }
 button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+.admin-scroll .tenant-slim,
+.admin-scroll .swipe-wrap,
+.admin-scroll .room-row { content-visibility: auto; contain-intrinsic-size: 96px; }
 .card-body { padding: 16px; }
 .card-body > .label { margin: 0 0 12px; }
 .tenant-search {

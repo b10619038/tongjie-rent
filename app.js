@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-55";
-const APP_EDIT_COUNT = 887;
+const APP_STAMP = "2026-09-11-00-10";
+const APP_EDIT_COUNT = 888;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0438";
+const FILE_VER = "0439";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房已繳依簿子匯款日勾選，發票日期跟著走"] },
+  { ver: APP_VERSION, items: ["滑動效能優化，特效不變"] },
+  { ver: "2026-09-10-23-55-887", items: ["廠房已繳依簿子匯款日勾選，發票日期跟著走"] },
   { ver: "2026-09-10-23-40-886", items: ["太陽能加分期比較與全盛推估"] },
   { ver: "2026-09-10-23-30-885", items: ["太陽能圓餅圖改到右邊"] },
   { ver: "2026-09-10-23-25-884", items: ["太陽能頁拿掉依小許分址"] },
@@ -1168,13 +1169,16 @@ function applyFont(n) {
 }
 function syncAppHeight() {
   try {
-    const probe = document.createElement("div");
-    probe.style.cssText = "position:fixed;left:0;bottom:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)";
-    document.documentElement.appendChild(probe);
-    const inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
-    probe.remove();
-    if (inset < 12) {
-      document.documentElement.style.setProperty("--safe-b", "24px");
+    if (!syncAppHeight._safe) {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;left:0;bottom:0;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)";
+      document.documentElement.appendChild(probe);
+      const inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+      probe.remove();
+      syncAppHeight._safe = inset < 12 ? "pad" : "ok";
+      if (syncAppHeight._safe === "pad") document.documentElement.style.setProperty("--safe-b", "24px");
+    }
+    if (syncAppHeight._safe === "pad") {
       const vv = window.visualViewport;
       const h = Math.round((vv && vv.height) || window.innerHeight || 0);
       if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
@@ -1187,7 +1191,6 @@ syncAppHeight();
 window.addEventListener("resize", syncAppHeight);
 if (window.visualViewport) {
   visualViewport.addEventListener("resize", syncAppHeight);
-  visualViewport.addEventListener("scroll", syncAppHeight);
 }
 function autoFontScale() {
   const w = Math.round((window.visualViewport && visualViewport.width) || window.innerWidth || 390);
@@ -8495,7 +8498,7 @@ function skyFxHtml(sky) {
   const n = s === "storm" ? 40 : 30;
   const drops = Array.from({ length: n }, (_, i) => {
     const left = (i * 37) % 100;
-    return `<span class="drop" style="left:${left}%;height:${12 + (i % 7) * 2}px"></span>`;
+    return `<span class="drop" style="left:${left}%;height:${12 + (i % 7) * 2}px;--i:${i}"></span>`;
   }).join("");
   return drops + (s === "storm" ? `<span class="flash"></span><span class="bolt"></span>` : "");
 }
@@ -8524,40 +8527,16 @@ function attachSkyLive() {
   if (skyKind !== sky) {
     skyKind = sky;
     el.innerHTML = skyFxHtml(sky);
-    skyT0 = performance.now();
   }
-  if (!skyRaf) skyRaf = requestAnimationFrame(tickSky);
-}
-function tickSky(now) {
-  skyRaf = requestAnimationFrame(tickSky);
-  if (!skyLive || skyLive.style.display === "none") return;
-  const t = (now - (skyT0 || now)) / 1000;
-  const h = skyLive.clientHeight || 118;
-  const kids = skyLive.children;
-  for (let i = 0; i < kids.length; i++) {
-    const n = kids[i];
-    if (n.classList.contains("drop")) {
-      const spd = (skyKind === "storm" ? 180 : 110) + (i % 7) * 18;
-      n.style.transform = "translateY(" + (((t * spd) + i * 17) % (h + 40) - 24) + "px) rotate(14deg)";
-    } else if (n.classList.contains("cld")) {
-      n.style.transform = "translateX(" + (((t * (8 + i * 3)) + i * 40) % 160 - 40) + "%)";
-    } else if (n.classList.contains("sun-rays")) {
-      n.style.transform = "rotate(" + (t * 24) + "deg)";
-    } else if (n.classList.contains("sun-ball")) {
-      n.style.transform = "scale(" + (1 + Math.sin(t * 2.2) * 0.08) + ")";
-    } else if (n.classList.contains("spark")) {
-      const p = (t * 0.7 + i * 0.18) % 1;
-      n.style.opacity = p < 0.7 ? String(1 - p) : "0";
-      n.style.transform = "translate(" + (-46 * p) + "px," + (-36 * p) + "px) scale(" + (0.3 + p) + ")";
-    } else if (n.classList.contains("flash")) {
-      const cycle = t % 3.6;
-      n.style.background = (cycle > 3.1 && cycle < 3.25) ? "rgba(255,255,255,.55)" : "transparent";
-    } else if (n.classList.contains("bolt")) {
-      const cycle = t % 3.6;
-      n.style.opacity = (cycle > 3.1 && cycle < 3.22) ? "1" : "0";
-    }
+  if (skyRaf) {
+    cancelAnimationFrame(skyRaf);
+    skyRaf = 0;
   }
 }
+function tickSky() {}
+document.addEventListener("visibilitychange", () => {
+  if (skyLive) skyLive.classList.toggle("paused", document.hidden);
+});
 function applySkyDom() {
   attachSkyLive();
 }
@@ -11809,7 +11788,9 @@ function ensureCalMonth() {
   ui.calMonth = n.getMonth() + 1;
   ui.calDay = n.getDate();
 }
+let _ledgerCache = null;
 function collectLedger() {
+  if (_ledgerCache) return _ledgerCache;
   ensureErrandBooks();
   applySummedNoteAmounts();
   const rows = [];
@@ -11888,7 +11869,7 @@ function collectLedger() {
       source: "rent", canDel: false, canEdit: false
     });
   });
-  return attachMemoRows(dedupeLedger(rows));
+  return (_ledgerCache = attachMemoRows(dedupeLedger(rows)));
 }
 function attachMemoRows(rows) {
   try { ensureCycleJobs(state); } catch {}
@@ -16939,6 +16920,7 @@ function appointBlock(rep) {
 let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
+  _ledgerCache = null;
   try {
     paintApp();
   } catch (err) {
@@ -22313,7 +22295,11 @@ function bindTenantFold() {
     sc.dataset.tenantGuard = "1";
     sc.addEventListener("scroll", () => {
       ui.tenantDrag = true;
-      document.querySelectorAll(".is-press").forEach(x => x.classList.remove("is-press"));
+      if (sc._pressRaf) return;
+      sc._pressRaf = requestAnimationFrame(() => {
+        sc._pressRaf = 0;
+        document.querySelectorAll(".is-press").forEach(x => x.classList.remove("is-press"));
+      });
     }, { passive: true });
   }
   document.querySelectorAll("[data-fold-tenant]").forEach(el => {
@@ -22328,7 +22314,6 @@ function bindTenantFold() {
       top0 = sc ? sc.scrollTop : 0;
       if (target.dataset) target.dataset.scrolled = "0";
       target.classList.add("is-press");
-      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
     };
     const track = e => {
       const p = e.touches ? e.touches[0] : e;
@@ -24111,12 +24096,21 @@ function setFactoryPack(pack, close) {
 function bindIosPress(el) {
   if (!el || el.dataset.iosPress === "1") return;
   el.dataset.iosPress = "1";
-  const on = () => {
+  let x0 = 0, y0 = 0;
+  const on = e => {
+    const p = e.touches ? e.touches[0] : e;
+    x0 = p.clientX; y0 = p.clientY;
     el.classList.add("is-press");
     try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
   };
+  const move = e => {
+    const p = e.touches ? e.touches[0] : e;
+    if (!p || !el.classList.contains("is-press")) return;
+    if (Math.abs(p.clientX - x0) > 8 || Math.abs(p.clientY - y0) > 8) el.classList.remove("is-press");
+  };
   const off = () => el.classList.remove("is-press");
   el.addEventListener("pointerdown", on);
+  el.addEventListener("pointermove", move, { passive: true });
   el.addEventListener("pointerup", off);
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
