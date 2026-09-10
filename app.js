@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-21-52";
-const APP_EDIT_COUNT = 870;
+const APP_STAMP = "2026-09-10-21-55";
+const APP_EDIT_COUNT = 871;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0421";
+const FILE_VER = "0422";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -265,6 +265,10 @@ const YIZHEN_FED_BOOKS = [
   ["2026-06-21", "in", 1352, "個人戶·趙苡真", "利息", "聯邦"],
   ["2026-08-10", "in", 36000, "個人戶·趙苡真", "租金　57巷8　欣上宜　本埠票據　8月", "聯邦", "牛1-57巷8"]
 ];
+const WENRONG_FED_VER = "wenrong-fed-v1";
+const WENRONG_FED_BOOKS = [
+  ["2026-08-05", "in", 28302, "個人戶·趙文榮", "代發薪資　07511轉入", "聯邦"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -313,7 +317,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙苡真聯邦個人戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["趙文榮聯邦個人戶簿子記入總攬"] },
+  { ver: "2026-09-10-21-52-870", items: ["趙苡真聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-50-869", items: ["趙浩鈞聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-45-868", items: ["趙文彬聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-40-867", items: ["趙洪漳聯邦個人戶簿子記入總攬"] },
@@ -3604,6 +3609,7 @@ function normalize(data) {
   applyWenbinFed(data);
   applyHaokunFed(data);
   applyYizhenFed(data);
+  applyWenrongFed(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -4253,6 +4259,40 @@ function applyYizhenFed(data) {
   });
   data.accountOpenings["個人戶·趙苡真"] = YIZHEN_FED_OPENING;
   data.yizhenFedVer = YIZHEN_FED_VER;
+}
+function applyWenrongFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·趙文榮") return;
+    if (!b.bank) b.bank = "聯邦";
+  });
+  if (data.wenrongFedVer === WENRONG_FED_VER && (data.books || []).some(b => b && b.importTag === "wenrongFed")) return;
+  data.books = (data.books || []).filter(b => b && b.importTag !== "wenrongFed");
+  WENRONG_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-wr-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "wenrongFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "趙文榮" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: "",
+      importTag: "wenrongFed",
+      createdAt: "2026-09-10 21:55"
+    });
+  });
+  data.wenrongFedVer = WENRONG_FED_VER;
 }
 function applyDueDayPolicy(data) {
   if (!data) return;
@@ -6324,6 +6364,7 @@ async function pullCloud() {
       applyWenbinFed(state);
       applyHaokunFed(state);
       applyYizhenFed(state);
+      applyWenrongFed(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6383,6 +6424,7 @@ async function pullCloud() {
     applyWenbinFed(state);
     applyHaokunFed(state);
     applyYizhenFed(state);
+    applyWenrongFed(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
