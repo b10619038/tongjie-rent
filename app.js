@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-21-58";
-const APP_EDIT_COUNT = 872;
+const APP_STAMP = "2026-09-10-22-05";
+const APP_EDIT_COUNT = 873;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0423";
+const FILE_VER = "0424";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -297,6 +297,23 @@ const XIUXIA_FED_BOOKS = [
   ["2026-08-05", "in", 28772, "個人戶·江秀霞", "代發薪資", "聯邦"],
   ["2026-08-17", "out", 200000, "個人戶·江秀霞", "聯行收付　入金款", "聯邦"]
 ];
+const TONGJIE_MEGA_VER = "tongjie-mega-v1";
+const TONGJIE_MEGA_BOOKS = [
+  ["2026-06-10", "in", 640, "統潔", "現金開戶存現", "兆豐"],
+  ["2026-06-24", "in", 20000, "統潔", "牛10　7223 許芸慈　押金（簿子寫7233）", "兆豐", "7223"],
+  ["2026-06-25", "in", 2796, "統潔", "牛10　7042 周佳瑩　6/5–6/30", "兆豐", "7042"],
+  ["2026-06-25", "in", 3728, "統潔", "牛10　7042 周佳瑩　6/3–6/30", "兆豐", "7042"],
+  ["2026-06-25", "in", 1665, "統潔", "牛10　7223 許芸慈　6/6–6/30", "兆豐", "7223"],
+  ["2026-07-28", "in", 14000, "統潔", "牛10　7242 張育慈周聖傑", "兆豐", "7242"],
+  ["2026-07-31", "in", 10000, "統潔", "牛10　7223 許芸慈", "兆豐", "7223"],
+  ["2026-08-07", "in", 14000, "統潔", "牛10　7042 周佳瑩", "兆豐", "7042"],
+  ["2026-08-29", "in", 14000, "統潔", "牛10　7242 張育慈周聖傑", "兆豐", "7242"],
+  ["2026-08-31", "in", 10000, "統潔", "牛10　7223 許芸慈", "兆豐", "7223"],
+  ["2026-09-07", "in", 80000, "統潔", "牛10　7611 波波奇79號　押金", "兆豐", "7611"],
+  ["2026-09-07", "in", 42000, "統潔", "牛10　6832 周婕妤許軒偉　押2租1", "兆豐", "6832"],
+  ["2026-09-07", "out", 14000, "統潔", "牛10　6832 仲介費　租竣資產", "兆豐", "6832"]
+];
+const TONGJIE_MEGA_SEP_PAID = ["6832"];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -345,7 +362,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["江秀霞聯邦個人戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["統潔兆豐簿子記入總攬"] },
+  { ver: "2026-09-10-21-58-872", items: ["江秀霞聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-55-871", items: ["趙文榮聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-52-870", items: ["趙苡真聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-50-869", items: ["趙浩鈞聯邦個人戶簿子記入總攬"] },
@@ -3640,6 +3658,8 @@ function normalize(data) {
   applyYizhenFed(data);
   applyWenrongFed(data);
   applyXiuxiaFed(data);
+  applyTongjieMega(data);
+  applyTongjieMegaSepPaid(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -4362,6 +4382,65 @@ function applyXiuxiaFed(data) {
   });
   data.accountOpenings["個人戶·江秀霞"] = XIUXIA_FED_OPENING;
   data.xiuxiaFedVer = XIUXIA_FED_VER;
+}
+function applyTongjieMega(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  if (data.tongjieMegaVer === TONGJIE_MEGA_VER && (data.books || []).some(b => b && b.importTag === "tongjieMega")) {
+    if (Number(data.accountOpenings["統潔·兆豐"]) === 28829) {
+      data.accountOpenings["統潔·兆豐"] = 0;
+      if (Number(data.accountOpenings["統潔"]) === 1423942) data.accountOpenings["統潔"] = 1395113;
+    }
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "tongjieMega");
+  TONGJIE_MEGA_BOOKS.forEach((row, i) => {
+    const id = "bk-tj-mega-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "兆豐";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "tongjieMega") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== company) return false;
+      if (String(b.bank || "") !== bank) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "tongjieMega",
+      createdAt: "2026-09-10 22:05"
+    });
+  });
+  if (Number(data.accountOpenings["統潔·兆豐"]) === 28829) {
+    data.accountOpenings["統潔·兆豐"] = 0;
+    if (Number(data.accountOpenings["統潔"]) === 1423942) data.accountOpenings["統潔"] = 1395113;
+  }
+  data.tongjieMegaVer = TONGJIE_MEGA_VER;
+}
+function applyTongjieMegaSepPaid(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (TONGJIE_MEGA_SEP_PAID || []).forEach(no => {
+    const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    t.paid = true;
+    t.paidAt = t.paidAt && String(t.paidAt).slice(0, 7) === "2026-09" ? t.paidAt : "2026-09-07 10:00";
+    t.paidVia = t.paidVia || "tongjie-mega";
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    t.remitOn = t.remitOn || "2026-09-07";
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
 }
 function applyDueDayPolicy(data) {
   if (!data) return;
@@ -6435,6 +6514,8 @@ async function pullCloud() {
       applyYizhenFed(state);
       applyWenrongFed(state);
       applyXiuxiaFed(state);
+      applyTongjieMega(state);
+      applyTongjieMegaSepPaid(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6496,6 +6577,8 @@ async function pullCloud() {
     applyYizhenFed(state);
     applyWenrongFed(state);
     applyXiuxiaFed(state);
+    applyTongjieMega(state);
+    applyTongjieMegaSepPaid(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
