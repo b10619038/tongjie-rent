@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-05";
-const APP_EDIT_COUNT = 873;
+const APP_STAMP = "2026-09-10-22-10";
+const APP_EDIT_COUNT = 874;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0424";
+const FILE_VER = "0425";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -146,24 +146,24 @@ const XINJIE_0909_BOOKS = [
   ["2026-09-09", "out", 16766, "信潔", "垃圾清運　聯廣合　華南屏東 800-10-018417-7　匯16,736＋手續費30", "聯邦"]
 ];
 const XINJIE_SEP_PAID = ["牛5-97-69", "牛5-97-70", "牛5-97-72", "牛6-58", "牛6-55", "牛5-97-66", "牛6-59"];
-const TONGJIE_FED_0909_VER = "tongjie-fed-0909-v2";
+const TONGJIE_FED_0909_VER = "tongjie-fed-0909-v3";
 const TONGJIE_FED_0909_BOOKS = [
   ["2026-08-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢", "聯邦", "拉皮-1A"],
   ["2026-08-04", "in", 54600, "統潔", "租金收入　牛3（97-61）美博城　公司戶含稅", "聯邦"],
   ["2026-08-05", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳", "聯邦", "牛8-77"],
-  ["2026-08-05", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　存現", "聯邦", "牛7-2F"],
+  ["2026-08-05", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　存現　7月", "聯邦", "牛7-2F"],
   ["2026-08-05", "out", 124222, "統潔", "薪資", "聯邦"],
   ["2026-08-11", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝", "聯邦", "牛7-1F"],
   ["2026-08-17", "in", 92000, "統潔", "大樹　廣永隆　押金2押未稅 46,000×2　存現", "聯邦", "大樹-18"],
   ["2026-08-17", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦", "拉皮-2B"],
   ["2026-08-17", "out", 111582, "統潔", "電費　93-1", "聯邦"],
-  ["2026-08-17", "out", 147030, "統潔", "明達", "聯邦"],
-  ["2026-08-20", "out", 364196, "統潔", "電費　台灣電力　太陽能　跨行匯款", "聯邦"],
-  ["2026-08-25", "out", 52920, "統潔", "其它　甲長　支存", "聯邦"],
+  ["2026-08-17", "out", 147030, "統潔", "明達　屏東水電設計", "聯邦"],
+  ["2026-08-20", "in", 364196, "統潔", "售電收入　台灣電力　太陽能", "聯邦"],
+  ["2026-08-25", "out", 52920, "統潔", "其它　甲存", "聯邦"],
   ["2026-08-25", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　存現", "聯邦", "牛7-2F"],
   ["2026-08-25", "out", 295, "統潔", "電話費", "聯邦"],
   ["2026-08-25", "out", 11077, "統潔", "電費　楠梓", "聯邦"],
-  ["2026-08-28", "in", 8300, "統潔", "待確認　ATMF 8,300（帳號406-8-5-3500）", "聯邦"],
+  ["2026-08-28", "in", 8300, "統潔", "退費　ATMF 8,300", "聯邦"],
   ["2026-08-28", "out", 7860, "統潔", "勞退金", "聯邦"],
   ["2026-08-28", "out", 14979, "統潔", "勞保費", "聯邦"],
   ["2026-08-28", "out", 8840, "統潔", "健保費", "聯邦"],
@@ -174,7 +174,8 @@ const TONGJIE_FED_0909_BOOKS = [
   ["2026-09-07", "out", 156886, "統潔", "薪資", "聯邦"],
   ["2026-09-07", "in", 84000, "統潔", "租金收入　牛8 97-77／78 錦芳", "聯邦", "牛8-77"],
   ["2026-09-08", "in", 7644, "統潔", "租金收入　造得科技　大樹廠房屋頂　兩個月", "聯邦", "大樹-屋頂"],
-  ["2026-09-09", "out", 15703, "統潔", "水費　93-2號 9,240＋93-63號 110＋93-63號3樓 6,353＝15,703　115年9月　聯邦三民代收", "聯邦"]
+  ["2026-09-09", "out", 15703, "統潔", "水費　93-2號 9,240＋93-63號 110＋93-63號3樓 6,353＝15,703　115年9月　聯邦三民代收", "聯邦"],
+  ["2026-06-29", "out", 8840, "統潔", "健保費", "聯邦"]
 ];
 const TONGJIE_FED_SEP_PAID = ["拉皮-1A", "拉皮-1B", "牛7-2F", "牛8-77", "大樹-18", "牛3-97-61", "大樹-屋頂"];
 const HONGZHANG_FED_VER = "hongzhang-fed-v1";
@@ -362,7 +363,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["統潔兆豐簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["統潔聯邦簿子對完：太陽能售電改進帳、補6/29健保費"] },
+  { ver: "2026-09-10-22-05-873", items: ["統潔兆豐簿子記入總攬"] },
   { ver: "2026-09-10-21-58-872", items: ["江秀霞聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-55-871", items: ["趙文榮聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-10-21-52-870", items: ["趙苡真聯邦個人戶簿子記入總攬"] },
@@ -4075,13 +4077,29 @@ function repairTongjieFedDates(data) {
     if (Number(b.amount) === 3524 && /造得/.test(note) && ymdOf(b.date) === "2026-07-31") b.date = "2026-07-09";
     if (Number(b.amount) === 48300 && b.type === "out" && /即時通/.test(note) && ymdOf(b.date) === "2026-08-25") b.date = "2026-09-07";
     if (Number(b.amount) === 48300 && b.type === "in" && /廣永隆/.test(note) && ymdOf(b.date) === "2026-08-25") b.date = "2026-09-07";
+    if (Number(b.amount) === 364196 && /太陽能|台灣電力/.test(note)) {
+      b.type = "in";
+      if (/電費/.test(note)) b.note = "售電收入　台灣電力　太陽能";
+    }
   });
+}
+function syncTongjieOpenings(data) {
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  const fed = Number(data.accountOpenings["統潔·聯邦"]) || 0;
+  const nh = Number(data.accountOpenings["統潔·農會"]) || 0;
+  const mega = Number(data.accountOpenings["統潔·兆豐"]) || 0;
+  data.accountOpenings["統潔"] = fed + nh + mega;
 }
 function applyTongjieFed0909(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   repairTongjieFedDates(data);
-  if (data.tongjieFed0909Ver === TONGJIE_FED_0909_VER && (data.books || []).some(b => b && b.importTag === "tongjieFed0909")) return;
+  if (data.tongjieFed0909Ver === TONGJIE_FED_0909_VER && (data.books || []).some(b => b && b.importTag === "tongjieFed0909")) {
+    data.accountOpenings["統潔·聯邦"] = 544125;
+    syncTongjieOpenings(data);
+    return;
+  }
   data.books = (data.books || []).filter(b => b && b.importTag !== "tongjieFed0909");
   TONGJIE_FED_0909_BOOKS.forEach((row, i) => {
     const id = "bk-tf09-" + i;
@@ -4111,6 +4129,9 @@ function applyTongjieFed0909(data) {
     });
   });
   data.tongjieFed0909Ver = TONGJIE_FED_0909_VER;
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  data.accountOpenings["統潔·聯邦"] = 544125;
+  syncTongjieOpenings(data);
 }
 function applyTongjieFedSepPaid(data) {
   if (!data || payYmNow() !== "2026-09") return;
@@ -4388,10 +4409,8 @@ function applyTongjieMega(data) {
   if (!Array.isArray(data.books)) data.books = [];
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   if (data.tongjieMegaVer === TONGJIE_MEGA_VER && (data.books || []).some(b => b && b.importTag === "tongjieMega")) {
-    if (Number(data.accountOpenings["統潔·兆豐"]) === 28829) {
-      data.accountOpenings["統潔·兆豐"] = 0;
-      if (Number(data.accountOpenings["統潔"]) === 1423942) data.accountOpenings["統潔"] = 1395113;
-    }
+    data.accountOpenings["統潔·兆豐"] = 0;
+    syncTongjieOpenings(data);
     return;
   }
   data.books = (data.books || []).filter(b => b && b.importTag !== "tongjieMega");
@@ -4420,10 +4439,8 @@ function applyTongjieMega(data) {
       createdAt: "2026-09-10 22:05"
     });
   });
-  if (Number(data.accountOpenings["統潔·兆豐"]) === 28829) {
-    data.accountOpenings["統潔·兆豐"] = 0;
-    if (Number(data.accountOpenings["統潔"]) === 1423942) data.accountOpenings["統潔"] = 1395113;
-  }
+  data.accountOpenings["統潔·兆豐"] = 0;
+  syncTongjieOpenings(data);
   data.tongjieMegaVer = TONGJIE_MEGA_VER;
 }
 function applyTongjieMegaSepPaid(data) {
