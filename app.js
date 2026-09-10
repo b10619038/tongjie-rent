@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-21-40";
-const APP_EDIT_COUNT = 867;
+const APP_STAMP = "2026-09-10-21-45";
+const APP_EDIT_COUNT = 868;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0418";
+const FILE_VER = "0419";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -203,6 +203,28 @@ const HONGZHANG_FED_BOOKS = [
   ["2026-09-01", "in", 58015, "個人戶·趙洪漳", "租金　57巷1弄25　劉德惠 ATMF 347", "聯邦", "牛2-25"]
 ];
 const HONGZHANG_SEP_PAID = ["牛1-61", "牛2-25"];
+const WENBIN_FED_VER = "wenbin-fed-v1";
+const WENBIN_FED_OPENING = 150484;
+const WENBIN_FED_BOOKS = [
+  ["2025-03-10", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　3、4月", "聯邦", "牛1-57巷2"],
+  ["2025-05-12", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　5、6月", "聯邦", "牛1-57巷2"],
+  ["2025-05-12", "out", 16080, "個人戶·趙文彬", "房屋稅　1件　02809", "聯邦"],
+  ["2025-06-21", "in", 1999, "個人戶·趙文彬", "利息", "聯邦"],
+  ["2025-07-10", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　7、8月", "聯邦", "牛1-57巷2"],
+  ["2025-07-31", "in", 23749, "個人戶·趙文彬", "退綜所稅　高市國稅", "聯邦"],
+  ["2025-09-10", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　9、10月", "聯邦", "牛1-57巷2"],
+  ["2025-10-15", "out", 198030, "個人戶·趙文彬", "跨行匯出　河西路　雙不房貸", "聯邦"],
+  ["2025-10-15", "out", 47030, "個人戶·趙文彬", "跨行匯出　河西路　法科", "聯邦"],
+  ["2025-11-24", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　聯行次交　11、12月", "聯邦", "牛1-57巷2"],
+  ["2025-12-21", "in", 1104, "個人戶·趙文彬", "利息", "聯邦"],
+  ["2025-12-30", "out", 100000, "個人戶·趙文彬", "文彬股權　轉賢會收訖", "聯邦"],
+  ["2026-01-12", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　1、2月", "聯邦", "牛1-57巷2"],
+  ["2026-02-02", "out", 200000, "個人戶·趙文彬", "轉帳至兆豐　趙文彬　01014", "聯邦"],
+  ["2026-03-10", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　3、4月", "聯邦", "牛1-57巷2"],
+  ["2026-05-11", "in", 70000, "個人戶·趙文彬", "租金　57巷2／6　丞億　本埠票據　5、6月", "聯邦", "牛1-57巷2"],
+  ["2026-05-21", "out", 15897, "個人戶·趙文彬", "房屋稅　1件　07507轉出", "聯邦"],
+  ["2026-06-21", "in", 459, "個人戶·趙文彬", "利息", "聯邦"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -251,7 +273,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙洪漳聯邦個人戶簿子記入總攬"] },
+  { ver: APP_VERSION, items: ["趙文彬聯邦個人戶簿子記入總攬"] },
+  { ver: "2026-09-10-21-40-867", items: ["趙洪漳聯邦個人戶簿子記入總攬"] },
   { ver: "2026-09-09-11-22-848", items: ["套房租客／廠房租客搜尋打一個字就跳出可能項目"] },
   { ver: "2026-09-09-08-36-847", items: ["仲介帶看會提醒後台付仲介服務費，確認入住後自動出帳"] },
   { ver: "2026-09-09-08-28-846", items: ["自訂付款填一格，另一格自動算出剩餘"] },
@@ -3536,6 +3559,7 @@ function normalize(data) {
   applyTongjieFedSepPaid(data);
   applyHongzhangFed(data);
   applyHongzhangSepPaid(data);
+  applyWenbinFed(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -4065,6 +4089,46 @@ function applyHongzhangSepPaid(data) {
     t.remitOn = t.remitOn || "2026-09-01";
     if (!t.editedAt) t.editedAt = Date.now();
   });
+}
+function applyWenbinFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·趙文彬") return;
+    if (!b.bank) b.bank = "聯邦";
+  });
+  if (data.wenbinFedVer === WENBIN_FED_VER && (data.books || []).some(b => b && b.importTag === "wenbinFed")) {
+    data.accountOpenings["個人戶·趙文彬"] = WENBIN_FED_OPENING;
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "wenbinFed");
+  WENBIN_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-wb-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "wenbinFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "趙文彬" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "wenbinFed",
+      createdAt: "2026-09-10 21:45"
+    });
+  });
+  data.accountOpenings["個人戶·趙文彬"] = WENBIN_FED_OPENING;
+  data.wenbinFedVer = WENBIN_FED_VER;
 }
 function applyDueDayPolicy(data) {
   if (!data) return;
@@ -6133,6 +6197,7 @@ async function pullCloud() {
       applyTongjieFedSepPaid(state);
       applyHongzhangFed(state);
       applyHongzhangSepPaid(state);
+      applyWenbinFed(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6189,6 +6254,7 @@ async function pullCloud() {
     applyTongjieFedSepPaid(state);
     applyHongzhangFed(state);
     applyHongzhangSepPaid(state);
+    applyWenbinFed(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
