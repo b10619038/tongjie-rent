@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-30";
-const APP_EDIT_COUNT = 885;
+const APP_STAMP = "2026-09-10-23-40";
+const APP_EDIT_COUNT = 886;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0436";
+const FILE_VER = "0437";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["太陽能圓餅圖改到右邊"] },
+  { ver: APP_VERSION, items: ["太陽能加分期比較與全盛推估"] },
+  { ver: "2026-09-10-23-30-885", items: ["太陽能圓餅圖改到右邊"] },
   { ver: "2026-09-10-23-25-884", items: ["太陽能頁拿掉依小許分址"] },
   { ver: "2026-09-10-23-20-883", items: ["太陽能頁從右邊滑入"] },
   { ver: "2026-09-10-23-10-882", items: ["太陽能覆蓋率改依小許分址計算已裝未裝"] },
@@ -3213,6 +3214,24 @@ const SOLAR_PERIODS = [
     ]
   }
 ];
+function solarPeriodBank(p) {
+  if (!p) return 0;
+  return (Number(p.tongjieBank) || 0) + (Number(p.xinjieBank) || 0);
+}
+function solarIdealOf(p, cov) {
+  const got = solarPeriodBank(p);
+  const sites = Number(cov && cov.solarSites) || 0;
+  const total = Number(cov && cov.solarTotal) || 0;
+  if (!got || !sites || !total) return 0;
+  return Math.round(got * total / sites);
+}
+function solarPeriodPick() {
+  const list = SOLAR_PERIODS;
+  let idx = Number(ui.solarPeriodIdx);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) idx = 0;
+  ui.solarPeriodIdx = idx;
+  return { list, idx, cur: list[idx] || null, prev: list[idx + 1] || null };
+}
 function isSolarIncome(b) {
   if (!b || b.type !== "in") return false;
   const s = String(b.note || "");
@@ -21052,23 +21071,36 @@ function adminSolar() {
   const solarPct = cov.solarPct;
   const missNames = cov.missRooms.map(r => String(r.no)).join("、");
   const rows = solarLedgerRows();
-  const tongjie = rows.filter(x => /統潔/.test(String(x.company || "")));
-  const xinjie = rows.filter(x => /信潔/.test(String(x.company || "")));
-  const sumOf = list => list.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totT = sumOf(tongjie);
-  const totX = sumOf(xinjie);
+  const pick = solarPeriodPick();
+  const batch = pick.cur || SOLAR_PERIODS[0];
+  const totT = Number(batch && batch.tongjieBank) || 0;
+  const totX = Number(batch && batch.xinjieBank) || 0;
   const tot = totT + totX;
-  const batch = SOLAR_PERIODS[0];
-  const siteBlock = (title, color, sites, bank) => {
-    const detail = sites.reduce((s, x) => s + x[1], 0);
+  const prevAmt = solarPeriodBank(pick.prev);
+  const diff = pick.prev ? tot - prevAmt : 0;
+  const ideal = solarIdealOf(batch, cov);
+  const gap = Math.max(ideal - tot, 0);
+  const siteBlock = (title, sites, bank) => {
+    const detail = (sites || []).reduce((s, x) => s + x[1], 0);
     return `<div class="card card-body">
       <h2 class="dash-h">${title}</h2>
       <div class="acct-row"><span>明細合計</span><strong class="led-in">${money(detail)}</strong></div>
       <div class="acct-row"><span>銀行實收</span><strong class="led-in">${money(bank)}</strong></div>
       <div class="small" style="margin:6px 0 8px">差 ${money(detail - bank)}（手續費）</div>
-      ${sites.map(([addr, amt, who]) => `<div class="acct-row solar-site-row"><span>${escapeHtml(addr)}${who ? `<em class="solar-site-name">${escapeHtml(who)}</em>` : ""}</span><strong>${money(amt)}</strong></div>`).join("")}
+      ${(sites || []).map(([addr, amt, who]) => `<div class="acct-row solar-site-row"><span>${escapeHtml(addr)}${who ? `<em class="solar-site-name">${escapeHtml(who)}</em>` : ""}</span><strong>${money(amt)}</strong></div>`).join("")}
     </div>`;
   };
+  const chips = pick.list.map((p, i) => {
+    const tag = i === 0 ? "這一期" : (i === 1 ? "上一期" : "更早");
+    return `<button type="button" class="solar-period-chip${i === pick.idx ? " on" : ""}" data-solar-period="${i}">${tag}　${escapeHtml(p.label)}</button>`;
+  }).join("");
+  let cmpHtml = `<div class="acct-row"><span>比上一期</span><strong>尚無上一期</strong></div>`;
+  if (pick.prev) {
+    const cls = diff > 0 ? "led-in" : (diff < 0 ? "led-out" : "");
+    const word = diff > 0 ? "多賺" : (diff < 0 ? "少賺" : "持平");
+    cmpHtml = `<div class="acct-row"><span>上一期</span><strong>${money(prevAmt)}</strong></div>
+      <div class="acct-row"><span>比上一期</span><strong class="${cls}">${word} ${money(Math.abs(diff))}</strong></div>`;
+  }
   const bookLines = rows.length
     ? rows.map(x => `<div class="acct-row solar-site-row"><span>${escapeHtml(x.date)}　${escapeHtml(accountLabel(x.company || ""))}</span><strong class="led-in">${money(x.amount)}</strong></div>`).join("")
     : `<div class="empty">還沒有售電入帳</div>`;
@@ -21089,18 +21121,23 @@ function adminSolar() {
     </div>
     <div class="card card-body">
       <h2 class="dash-h">售電收益（獨立）</h2>
-      <p class="small">不計入租金。統潔、信潔銀行入帳分開看。</p>
+      <p class="small">不計入租金。點期別，下方分址會跟著換。</p>
+      <div class="solar-period-row">${chips}</div>
       <div class="acct-row"><span>統潔</span><strong class="led-in">${money(totT)}</strong></div>
       <div class="acct-row"><span>信潔</span><strong class="led-in">${money(totX)}</strong></div>
-      <div class="acct-row"><span>合計</span><strong class="led-in">${money(tot)}</strong></div>
+      <div class="acct-row"><span>本期合計</span><strong class="led-in">${money(tot)}</strong></div>
+      ${cmpHtml}
+      <div class="acct-row"><span>全盛推估（覆蓋 100%）</span><strong>${money(ideal)}</strong></div>
+      <div class="acct-row"><span>距離全盛還差</span><strong class="led-out">${money(gap)}</strong></div>
+      <div class="small" style="margin-top:8px">全盛＝本期實收 ÷ 覆蓋率。未裝戶先用已裝平均產能估算。</div>
     </div>
     <div class="solar-split">
-      ${siteBlock("統潔　分址", "#3FA89A", batch.tongjieSites, batch.tongjieBank)}
-      ${siteBlock("信潔　分址", "#5B8EE8", batch.xinjieSites, batch.xinjieBank)}
+      ${siteBlock("統潔　分址", batch.tongjieSites, batch.tongjieBank)}
+      ${siteBlock("信潔　分址", batch.xinjieSites, batch.xinjieBank)}
     </div>
     <div class="card card-body">
       <h2 class="dash-h">銀行入帳</h2>
-      <div class="small" style="margin-bottom:8px">最新一期 ${escapeHtml(batch.label)}，8/20 入帳</div>
+      <div class="small" style="margin-bottom:8px">${escapeHtml(batch.label)}，入帳 ${escapeHtml(batch.paidOn || "")}</div>
       ${bookLines}
     </div>
   </div>`;
@@ -24273,6 +24310,15 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll(".solar-card").forEach(bindIosPress);
+  document.querySelectorAll("[data-solar-period]").forEach(el => {
+    bindIosPress(el);
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.solarPeriodIdx = Number(el.dataset.solarPeriod) || 0;
+      render();
+    };
+  });
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   const previewBtn = document.getElementById("preview-tenant");
