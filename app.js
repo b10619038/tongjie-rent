@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-40";
-const APP_EDIT_COUNT = 886;
+const APP_STAMP = "2026-09-10-23-55";
+const APP_EDIT_COUNT = 887;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0437";
+const FILE_VER = "0438";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -341,6 +341,28 @@ const HAICHENG_FED_BOOKS = [
   ["2026-09-02", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　8月", "聯邦", "牛3-97-65A"]
 ];
 const HAICHENG_SEP_PAID = ["牛3-97-63"];
+const FACTORY_SEP_PAID = {
+  "牛5-97-69": "2026-09-01",
+  "牛5-97-70": "2026-09-01",
+  "牛5-97-72": "2026-09-01",
+  "牛6-58": "2026-09-02",
+  "牛6-60": "2026-09-02",
+  "牛6-55": "2026-09-03",
+  "牛6-56": "2026-09-03",
+  "牛6-57": "2026-09-03",
+  "牛5-97-66": "2026-09-07",
+  "牛6-59": "2026-09-08",
+  "拉皮-1A": "2026-09-01",
+  "牛8-77": "2026-09-07",
+  "牛8-78": "2026-09-07",
+  "大樹-18": "2026-09-07",
+  "牛3-97-61": "2026-09-06",
+  "大樹-屋頂": "2026-09-08",
+  "牛1-61": "2026-09-01",
+  "牛2-25": "2026-09-01",
+  "牛3-97-63": "2026-08-31"
+};
+const FACTORY_SEP_UNPAID = ["拉皮-1B", "牛7-2F"];
 const SIMMIN_FED_VER = "simmin-fed-v1";
 const SIMMIN_FED_OPENING = 0;
 const SIMMIN_FED_BOOKS = [
@@ -448,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["太陽能加分期比較與全盛推估"] },
+  { ver: APP_VERSION, items: ["廠房已繳依簿子匯款日勾選，發票日期跟著走"] },
+  { ver: "2026-09-10-23-40-886", items: ["太陽能加分期比較與全盛推估"] },
   { ver: "2026-09-10-23-30-885", items: ["太陽能圓餅圖改到右邊"] },
   { ver: "2026-09-10-23-25-884", items: ["太陽能頁拿掉依小許分址"] },
   { ver: "2026-09-10-23-20-883", items: ["太陽能頁從右邊滑入"] },
@@ -3864,6 +3887,7 @@ function normalize(data) {
   applyXuxuAugCash(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
+  applyFactorySepPaidFromBooks(data);
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
@@ -4277,6 +4301,39 @@ function applyXinjie0909(data) {
   });
   data.xinjie0909Ver = XINJIE_0909_VER;
 }
+function factoryTenantByNo(data, no) {
+  const room = (data.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room) return null;
+  return (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim()) || null;
+}
+function applyFactorySepPaidFromBooks(data) {
+  if (!data || payYmNow() !== "2026-09") return;
+  (FACTORY_SEP_UNPAID || []).forEach(no => {
+    const t = factoryTenantByNo(data, no);
+    if (!t) return;
+    t.paid = false;
+    t.paidAt = "";
+    t.paidYm = "2026-09";
+    t.paidVia = "";
+    t.paidTouched = true;
+    t.remitOn = "";
+  });
+  Object.keys(FACTORY_SEP_PAID || {}).forEach(no => {
+    const t = factoryTenantByNo(data, no);
+    if (!t) return;
+    const on = FACTORY_SEP_PAID[no];
+    if (!on) return;
+    t.paid = true;
+    t.paidAt = on + " 10:00";
+    t.remitOn = on;
+    t.paidYm = "2026-09";
+    t.paidTouched = true;
+    t.paidVia = t.paidVia || "book";
+    if (no === "大樹-屋頂") t.invoiceOn = t.invoiceOn || "2026-09-09";
+    if (!t.editedAt) t.editedAt = Date.now();
+  });
+  try { persistPaidMarks(data); } catch {}
+}
 function applyXinjieSepPaid(data) {
   if (!data || payYmNow() !== "2026-09") return;
   (XINJIE_SEP_PAID || []).forEach(no => {
@@ -4303,6 +4360,7 @@ function repairTongjieFedDates(data) {
       b.type = "in";
       if (/電費/.test(note)) b.note = "售電收入　台灣電力　太陽能";
     }
+    if (Number(b.amount) === 54600 && /美博城/.test(note)) b.roomNo = b.roomNo || "牛3-97-61";
   });
 }
 function syncTongjieOpenings(data) {
@@ -6885,6 +6943,7 @@ async function pullCloud() {
       applyXuxuAugCash(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
+      applyFactorySepPaidFromBooks(state);
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
@@ -6952,6 +7011,7 @@ async function pullCloud() {
     applyXuxuAugCash(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
+    applyFactorySepPaidFromBooks(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
     mergePresenceInto(state, { presence: mine });
