@@ -1835,7 +1835,8 @@ input[type="file"] {
 .solar-hero { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
 .solar-split { display: grid; gap: 12px; }
 .solar-site-row { margin-top: 2px; padding: 5px 0; border-bottom: 1px solid #eee8e2; }
-.solar-site-row span { color: var(--muted, #6b6b6b); }
+.solar-site-row span { color: var(--muted, #6b6b6b); min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.solar-site-name { color: #3a3a3a; font-style: normal; font-weight: 600; }
 @media (min-width: 860px) {
   .solar-split { grid-template-columns: 1fr 1fr; }
 }
