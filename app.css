@@ -1832,7 +1832,14 @@ input[type="file"] {
 .ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; overflow: hidden; min-width: 0; }
 .solar-card { min-width: 0; cursor: pointer; transition: transform .12s cubic-bezier(.2,.9,.2,1); -webkit-tap-highlight-color: transparent; }
 .solar-card.is-press { transform: scale(0.97); }
-.solar-hero { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.solar-page.solar-enter {
+  animation: solarSheetIn .38s cubic-bezier(.22,.82,.22,1) both;
+  pointer-events: none;
+}
+@keyframes solarSheetIn {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
 .solar-split { display: grid; gap: 12px; }
 .solar-site-row { margin-top: 2px; padding: 5px 0; border-bottom: 1px solid #eee8e2; }
 .solar-site-row span { color: var(--muted, #6b6b6b); min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }

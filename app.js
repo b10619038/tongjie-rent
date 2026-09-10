@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-23-10";
-const APP_EDIT_COUNT = 882;
+const APP_STAMP = "2026-09-10-23-20";
+const APP_EDIT_COUNT = 883;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0433";
+const FILE_VER = "0434";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,7 +448,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["太陽能覆蓋率改依小許分址計算已裝未裝"] },
+  { ver: APP_VERSION, items: ["太陽能頁從右邊滑入"] },
+  { ver: "2026-09-10-23-10-882", items: ["太陽能覆蓋率改依小許分址計算已裝未裝"] },
   { ver: "2026-09-10-23-00-881", items: ["太陽能分址右邊加上租客／公司名"] },
   { ver: "2026-09-10-22-50-880", items: ["點太陽能覆蓋率可看獨立售電收益"] },
   { ver: "2026-09-10-22-40-879", items: ["小許8月現金套入總攬，拿掉重複的超商電費"] },
@@ -21069,7 +21070,9 @@ function adminSolar() {
   const bookLines = rows.length
     ? rows.map(x => `<div class="acct-row solar-site-row"><span>${escapeHtml(x.date)}　${escapeHtml(accountLabel(x.company || ""))}</span><strong class="led-in">${money(x.amount)}</strong></div>`).join("")
     : `<div class="empty">還沒有售電入帳</div>`;
-  return `<div class="admin-grid list solar-page">
+  const enter = ui.solarEnter ? " solar-enter" : "";
+  ui.solarEnter = false;
+  return `<div class="admin-grid list solar-page${enter}">
     <div class="card card-body">
       <button class="back" type="button" data-admin="dash">← 返回</button>
       <div class="solar-hero">
@@ -24262,6 +24265,7 @@ function bindAdmin() {
       const next = el.dataset.page;
       if (!next || next === ui.page) return;
       if (ui.sheetGuard && Date.now() < ui.sheetGuard && ui.page === "tenant-sheet") return;
+      if (next === "solar") ui.solarEnter = true;
       ui.page = next;
       render();
     };
