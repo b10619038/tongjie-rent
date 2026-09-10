@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-10-22-25";
-const APP_EDIT_COUNT = 877;
+const APP_STAMP = "2026-09-10-22-30";
+const APP_EDIT_COUNT = 878;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0428";
+const FILE_VER = "0429";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -341,6 +341,30 @@ const HAICHENG_FED_BOOKS = [
   ["2026-09-02", "in", 12000, "個人戶·趙海成、趙正賢", "租金　鳳仁65A　羅美芳／聖昌　8月", "聯邦", "牛3-97-65A"]
 ];
 const HAICHENG_SEP_PAID = ["牛3-97-63"];
+const SIMMIN_FED_VER = "simmin-fed-v1";
+const SIMMIN_FED_OPENING = 0;
+const SIMMIN_FED_BOOKS = [
+  ["2025-08-05", "in", 28772, "個人戶·黃思敏", "代發薪資　新開戶", "聯邦"],
+  ["2025-09-04", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2025-10-03", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2025-11-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2025-12-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2025-12-21", "in", 212, "個人戶·黃思敏", "利息", "聯邦"],
+  ["2026-01-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-01-29", "out", 100000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
+  ["2026-02-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-02-12", "in", 30000, "個人戶·黃思敏", "統潔開發轉入", "聯邦"],
+  ["2026-03-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-04-09", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-05-06", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-06-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-06-21", "in", 600, "個人戶·黃思敏", "利息", "聯邦"],
+  ["2026-08-05", "in", 28772, "個人戶·黃思敏", "代發薪資", "聯邦"],
+  ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
+  ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
+  ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
+  ["2026-08-28", "out", 10000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"]
+];
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
@@ -389,7 +413,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["信潔聯邦簿子對完：大樹太陽能售電改進帳"] },
+  { ver: APP_VERSION, items: ["黃思敏個人戶簿子記入總攬"] },
+  { ver: "2026-09-10-22-25-877", items: ["信潔聯邦簿子對完：大樹太陽能售電改進帳"] },
   { ver: "2026-09-10-22-20-876", items: ["趙正賢趙海成聯邦聯名戶簿子記入總攬"] },
   { ver: "2026-09-10-22-15-875", items: ["統潔農會簿子對完：9/2是7021、9/5的12,000是7032"] },
   { ver: "2026-09-10-22-10-874", items: ["統潔聯邦簿子對完：太陽能售電改進帳、補6/29健保費"] },
@@ -3691,6 +3716,7 @@ function normalize(data) {
   applyXiuxiaFed(data);
   applyHaichengFed(data);
   applyHaichengSepPaid(data);
+  applySimminFed(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   try { persistPaidMarks(data); } catch {}
@@ -4508,6 +4534,45 @@ function applyHaichengSepPaid(data) {
     t.remitOn = t.remitOn || "2026-08-31";
     if (!t.editedAt) t.editedAt = Date.now();
   });
+}
+function applySimminFed(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
+  (data.books || []).forEach(b => {
+    if (!b || b.company !== "個人戶·黃思敏") return;
+    if (!b.bank) b.bank = "聯邦";
+  });
+  if (data.simminFedVer === SIMMIN_FED_VER && (data.books || []).some(b => b && b.importTag === "simminFed")) {
+    data.accountOpenings["個人戶·黃思敏"] = SIMMIN_FED_OPENING;
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "simminFed");
+  SIMMIN_FED_BOOKS.forEach((row, i) => {
+    const id = "bk-sm-fed-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "聯邦";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "simminFed") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (personOfAccount(b.company) !== "黃思敏" && String(b.company || "") !== company) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: "",
+      importTag: "simminFed",
+      createdAt: "2026-09-10 22:30"
+    });
+  });
+  data.accountOpenings["個人戶·黃思敏"] = SIMMIN_FED_OPENING;
+  data.simminFedVer = SIMMIN_FED_VER;
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -6638,6 +6703,7 @@ async function pullCloud() {
       applyXiuxiaFed(state);
       applyHaichengFed(state);
       applyHaichengSepPaid(state);
+      applySimminFed(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyYushengElec(state);
@@ -6703,6 +6769,7 @@ async function pullCloud() {
     applyXiuxiaFed(state);
     applyHaichengFed(state);
     applyHaichengSepPaid(state);
+    applySimminFed(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyYushengElec(state);
