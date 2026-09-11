@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-11-05";
-const APP_EDIT_COUNT = 908;
+const APP_STAMP = "2026-09-11-13-28";
+const APP_EDIT_COUNT = 909;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0459";
+const FILE_VER = "0460";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
+  { ver: APP_VERSION, items: ["共用電單記入後會用本期度數計算紅單"] },
+  { ver: "2026-09-11-11-05-908", items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
   { ver: "2026-09-11-09-40-907", items: ["廠房租客依簿子填入實際匯款日"] },
   { ver: "2026-09-11-09-32-906", items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
   { ver: "2026-09-11-09-25-905", items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
@@ -2885,16 +2886,22 @@ function allMeterUnits() {
 function meterUnitById(id) {
   return allMeterUnits().find(u => u.id === id) || null;
 }
+function meterNum(v) {
+  return Number(String(v == null ? "" : v).replace(/[^\d.]/g, "")) || 0;
+}
 function meterUsageNow(unitId) {
-  const inp = document.querySelector("[data-meter-read='" + unitId + "']");
-  const n = Number(String(inp && inp.value || "").replace(/[^\d.]/g, "")) || 0;
-  const last = lastMeterLog(unitId);
-  if (n && last) return Math.max(0, n - Number(last.reading) || 0);
-  if (n && !last) return 0;
   const ymd = todayYmd();
+  const inp = document.querySelector("[data-meter-read='" + unitId + "']");
+  const n = meterNum(inp && inp.value);
+  const prev = lastMeterLog(unitId, ymd);
   const today = (state.meterLogs || []).find(x => x && x.unitId === unitId && ymdOf(x.date) === ymd);
-  if (today && today.usage) return Number(today.usage) || 0;
-  return last ? Number(last.usage) || 0 : 0;
+  const reading = n || (today ? meterNum(today.reading) : 0);
+  if (reading && prev) {
+    const u = reading - meterNum(prev.reading);
+    return u > 0 ? Math.round(u * 100) / 100 : 0;
+  }
+  if (today && meterNum(today.usage) > 0) return meterNum(today.usage);
+  return 0;
 }
 function splitShareFees(amount, rows) {
   const totalKwh = rows.reduce((s, x) => s + (Number(x.usage) || 0), 0);
@@ -2912,7 +2919,8 @@ function meterShareHtml(share) {
   const ymd = todayYmd();
   const bills = (state.meterBills || []).filter(x => x && x.shareId === share.id).sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const saved = bills[0];
-  const amount = saved && ymdOf(saved.date) === ymd ? Number(saved.amount) || 0 : 0;
+  const draft = ui.shareDraft && ui.shareDraft[share.id];
+  const amount = meterNum(draft) || (saved && ymdOf(saved.date) === ymd ? meterNum(saved.amount) : 0);
   const rows = share.ids.map(id => {
     const u = meterUnitById(id);
     return { id, usage: meterUsageNow(id), name: u ? (u.unit + "　" + u.name) : id };
@@ -2951,7 +2959,7 @@ function paintMeterShare(shareId) {
   const share = METER_SHARES.find(s => s.id === shareId);
   if (!share) return;
   const amtEl = box.querySelector("[data-share-amount]");
-  const amount = Number(String(amtEl && amtEl.value || "").replace(/[^\d.]/g, "")) || 0;
+  const amount = meterNum(amtEl && amtEl.value);
   const rows = share.ids.map(id => ({ id, usage: meterUsageNow(id) }));
   const split = splitShareFees(amount, rows);
   const totalKwh = split.reduce((s, x) => s + x.usage, 0);
@@ -2972,7 +2980,7 @@ function saveMeterShare(shareId) {
   const share = METER_SHARES.find(s => s.id === shareId);
   if (!share) return false;
   const amtEl = document.querySelector("[data-share-amount='" + shareId + "']");
-  const amount = Number(String(amtEl && amtEl.value || "").replace(/[^\d.]/g, "")) || 0;
+  const amount = meterNum(amtEl && amtEl.value);
   if (!amount) { toast("請填電單總金額"); return false; }
   const rows = share.ids.map(id => ({ id, usage: meterUsageNow(id) }));
   if (!rows.every(x => x.usage > 0)) { toast("請先記入兩戶本次度數"); return false; }
@@ -3054,14 +3062,14 @@ function addExtraMeter(kind, name, unit) {
   return true;
 }
 function saveMeterReading(unitId, raw) {
-  const n = Number(String(raw || "").replace(/[^\d.]/g, ""));
+  const n = meterNum(raw);
   if (!n) { toast("請填本次度數"); return false; }
   const ymd = todayYmd();
   const last = lastMeterLog(unitId, ymd);
-  if (last && n < Number(last.reading)) { toast("本次度數比上次小，請確認"); return false; }
+  if (last && n < meterNum(last.reading)) { toast("本次度數比上次小，請確認"); return false; }
   if (!state.meterLogs) state.meterLogs = [];
   const id = "ml-" + unitId + "-" + ymd;
-  const usage = last ? n - Number(last.reading) : 0;
+  const usage = last ? Math.round((n - meterNum(last.reading)) * 100) / 100 : 0;
   const hit = state.meterLogs.find(x => x && x.id === id);
   if (hit) {
     hit.reading = n;
@@ -26281,10 +26289,9 @@ function bindAdminAi() {
   document.querySelectorAll("[data-meter-read]").forEach(inp => {
     inp.addEventListener("pointerdown", e => e.stopPropagation());
     const paintUsage = () => {
-      const last = lastMeterLog(inp.dataset.meterRead, todayYmd());
-      const n = Number(String(inp.value || "").replace(/[^\d.]/g, ""));
       const box = document.querySelector("[data-meter-usage='" + inp.dataset.meterRead + "']");
-      if (box) box.textContent = last && n >= Number(last.reading) ? ("+" + (n - Number(last.reading)).toLocaleString("zh-TW") + " 度") : "";
+      const usage = meterUsageNow(inp.dataset.meterRead);
+      if (box) box.textContent = usage ? ("+" + usage.toLocaleString("zh-TW") + " 度") : "";
     };
     inp.oninput = () => {
       if (!ui.meterDraft) ui.meterDraft = {};
@@ -26323,7 +26330,11 @@ function bindAdminAi() {
   });
   document.querySelectorAll("[data-share-amount]").forEach(inp => {
     inp.addEventListener("pointerdown", e => e.stopPropagation());
-    inp.oninput = () => paintMeterShare(inp.dataset.shareAmount);
+    inp.oninput = () => {
+      if (!ui.shareDraft) ui.shareDraft = {};
+      ui.shareDraft[inp.dataset.shareAmount] = inp.value;
+      paintMeterShare(inp.dataset.shareAmount);
+    };
   });
   document.querySelectorAll("[data-share-save]").forEach(btn => {
     bindIosPress(btn);
