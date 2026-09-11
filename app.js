@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-01-35";
-const APP_EDIT_COUNT = 900;
+const APP_STAMP = "2026-09-11-09-10";
+const APP_EDIT_COUNT = 901;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0451";
+const FILE_VER = "0452";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["滿租實收改放到各出租率圓環下方"] },
+  { ver: APP_VERSION, items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
+  { ver: "2026-09-11-01-35-900", items: ["滿租實收改放到各出租率圓環下方"] },
   { ver: "2026-09-11-01-28-899", items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
   { ver: "2026-09-11-01-22-898", items: ["點擊滿租差額可看原因"] },
   { ver: "2026-09-11-01-15-897", items: ["滿租 vs 實收可切月份"] },
@@ -9129,6 +9130,18 @@ function tenantPaidOnValue(t) {
 }
 function isPracticeStudioNo(no) {
   return String(no || "") === "7652";
+}
+function skipRentVsRoom(r) {
+  if (!r) return true;
+  if (isDemoRoom(r) || isPracticeStudioNo(r.no)) return true;
+  if (r.status === "office") return true;
+  return false;
+}
+function skipRentVsTenant(t) {
+  if (!t) return true;
+  if (t.practiceStay || isDemoTenant(t) || t.placeholder || t.incoming) return true;
+  if (sameTenantName(t.name, "小芬")) return true;
+  return false;
 }
 function bookBelongsRoomNo(b, no) {
   if (!b || !no) return false;
@@ -21317,18 +21330,40 @@ function paidForYm(t, ym) {
   return false;
 }
 function roomTenantForYm(room, ym) {
-  if (!room) return null;
-  const all = state.tenants || [];
-  const ok = t => t && !t.placeholder && !t.incoming && !t.practiceStay && !isDemoTenant(t) && leaseCoversYm(t, room, ym);
+  if (!room || skipRentVsRoom(room)) return null;
+  const y = String(ym || payYmNow()).slice(0, 7);
   const cur = roomCurrentTenant(room);
-  if (ok(cur)) return cur;
-  const same = all.find(t => t && String(t.roomId) === String(room.id) && ok(t));
-  if (same) return same;
-  try {
-    const last = latestFormerOf(room.id);
-    if (ok(last)) return last;
-  } catch {}
+  if (cur && !skipRentVsTenant(cur)) {
+    if (rentVsCovers(cur, room, y)) return cur;
+    if (room.status === "rented" && y === payYmNow()) return cur;
+  }
+  const hit = (state.tenants || []).find(t => t && String(t.roomId) === String(room.id) && !skipRentVsTenant(t) && rentVsCovers(t, room, y));
+  if (hit) return hit;
   return null;
+}
+function rentVsCovers(t, r, ym) {
+  if (!t || !r) return false;
+  const y = String(ym || payYmNow()).slice(0, 7);
+  if (roomIsFactory(r) || r.kind === "factory" || r.kind === "store" || isStoreNo(r.no)) {
+    const start = ymdOf(t.leaseStart);
+    const end = ymdOf(t.leaseEnd);
+    if (start && String(start).slice(0, 7) > y) return false;
+    if (end && String(end).slice(0, 7) < y) return false;
+    return !!(start || end || room.status === "rented");
+  }
+  return leaseCoversYm(t, r, y);
+}
+function roomNoKeys(no) {
+  const s = String(no || "");
+  if (!s) return [];
+  const keys = [s];
+  const tail = s.replace(/^牛\d+-/, "").replace(/^拉皮-/, "");
+  if (tail && tail !== s) keys.push(tail);
+  if (s.indexOf("-") >= 0) {
+    keys.push(s.replace("-", "　"));
+    keys.push(s.replace("-", " "));
+  }
+  return keys;
 }
 function prevYmOf(ym) {
   let y = Number(String(ym || "").slice(0, 4));
@@ -21347,8 +21382,8 @@ function lastYmdsOfYm(ym, n) {
   return out;
 }
 function roomRentLedgerSum(no, names, ymds) {
-  const nos = [].concat(no || []).filter(Boolean).map(String);
-  const who = [].concat(names || []).filter(Boolean).map(String);
+  const nos = [].concat(no || []).filter(Boolean).flatMap(n => roomNoKeys(n));
+  const who = [].concat(names || []).filter(Boolean).map(String).filter(n => !sameTenantName(n, "小芬"));
   const days = new Set([].concat(ymds || []).filter(Boolean));
   if (!nos.length || !days.size) return 0;
   return collectLedger().reduce((s, x) => {
@@ -21357,20 +21392,23 @@ function roomRentLedgerSum(no, names, ymds) {
     if (!isSiteRentIncome(x)) return s;
     if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return s;
     const blob = String(x.note || "") + " " + String(x.roomNo || "");
-    if (nos.some(n => String(x.roomNo || "") === n || blob.indexOf(n) >= 0)) return s + (Number(x.amount) || 0);
+    if (/7652|小芬/.test(blob) || isPracticeStudioNo(x.roomNo)) return s;
+    if (nos.some(n => n && (String(x.roomNo || "") === n || blob.indexOf(n) >= 0))) return s + (Number(x.amount) || 0);
     if (who.some(n => n && blob.indexOf(n) >= 0)) return s + (Number(x.amount) || 0);
     return s;
   }, 0);
 }
 function roomRentGot(r, t, ym) {
+  if (skipRentVsRoom(r)) return 0;
   const guestNo = String(r && r.no || "");
   const hostNo = studioMirrorHostNo(guestNo);
   const lookNo = hostNo || guestNo;
   const lookRoom = hostNo ? ((state.rooms || []).find(x => String(x.no) === hostNo) || r) : r;
   const lookT = hostNo ? (roomTenantForYm(lookRoom, ym) || t) : t;
-  const due = t && leaseCoversYm(t, r, ym) ? (tenantRentForYm(t, r, ym) || 0) : 0;
-  if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return due || listedRentOf(r);
-  const names = [t && t.name, lookT && lookT.name].filter(Boolean);
+  const due = roomIsFactory(r) || (r && r.kind === "store")
+    ? listedRentOf(r)
+    : ((t && tenantRentForYm(t, r, ym)) || listedRentOf(r) || 0);
+  const names = [t && t.name, lookT && lookT.name].filter(n => n && !sameTenantName(n, "小芬"));
   const nos = hostNo ? [guestNo, hostNo] : [lookNo];
   const monthDays = [];
   const y = Number(String(ym).slice(0, 4));
@@ -21380,19 +21418,24 @@ function roomRentGot(r, t, ym) {
   let sum = roomRentLedgerSum(nos, names, monthDays);
   if (sum) return sum;
   sum = roomRentLedgerSum(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
-  return sum;
+  if (sum) return sum;
+  if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return due;
+  return 0;
 }
 function rentVsPack(rooms, label) {
   const ym = rentVsYm();
   const lines = [];
   let full = 0, due = 0, got = 0, vacant = 0, unpaid = 0, stub = 0;
   (rooms || []).forEach(r => {
+    if (skipRentVsRoom(r)) return;
     const listed = listedRentOf(r);
     if (!listed) return;
     full += listed;
     const t = roomTenantForYm(r, ym);
-    const covers = !!(t && leaseCoversYm(t, r, ym));
-    const monthDue = covers ? (tenantRentForYm(t, r, ym) || 0) : 0;
+    const covers = !!(t && !skipRentVsTenant(t) && rentVsCovers(t, r, ym)) || !!(t && !skipRentVsTenant(t) && r.status === "rented" && ym === payYmNow());
+    const monthDue = covers
+      ? ((roomIsFactory(r) || r.kind === "store" || isStoreNo(r.no)) ? listed : (tenantRentForYm(t, r, ym) || listed))
+      : 0;
     due += monthDue;
     const gotAmt = covers ? roomRentGot(r, t, ym) : 0;
     got += gotAmt;
@@ -21544,7 +21587,7 @@ function adminSolar() {
   </div>`;
 }
 function adminDash() {
-  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r));
+  const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
   const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
   const studioOcc = occBits(studios);
@@ -21566,8 +21609,8 @@ function adminDash() {
     done: state.repairs.filter(x => x.status === "done" && !isDemoRepair(x)).length
   };
   const floors = [1, 2, 3, 4, 5].map(fl => {
-    const fromState = state.rooms.filter(r => r && r.status !== "office" && r.kind !== "factory" && !isDemoRoom(r) && floorNo(r.no) === fl);
-    const seedNos = STUDIO_NOS.filter(no => floorNo(no) === fl);
+    const fromState = state.rooms.filter(r => r && r.status !== "office" && r.kind !== "factory" && !isDemoRoom(r) && !isPracticeStudioNo(r.no) && floorNo(r.no) === fl);
+    const seedNos = STUDIO_NOS.filter(no => floorNo(no) === fl && !isPracticeStudioNo(no));
     const seen = new Set(fromState.map(r => String(r.no)));
     const missing = seedNos.filter(no => !seen.has(String(no))).length;
     const total = fromState.length + missing;
