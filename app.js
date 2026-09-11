@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-14-00";
-const APP_EDIT_COUNT = 912;
+const APP_STAMP = "2026-09-11-14-06";
+const APP_EDIT_COUNT = 913;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0463";
+const FILE_VER = "0464";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["鈺晟 7/30 底度依 9/7 錶與 8 月單 16,047 度回推"] },
+  { ver: APP_VERSION, items: ["9月電費紅單記入：鈺晟 94,642／咘然居 17,672"] },
+  { ver: "2026-09-11-14-00-912", items: ["鈺晟 7/30 底度依 9/7 錶與 8 月單 16,047 度回推"] },
   { ver: "2026-09-11-13-36-911", items: ["93-1 9月電單依 9/7 度數拆紅單：鈺晟 94,642／咘然居 17,672"] },
   { ver: "2026-09-11-13-32-910", items: ["93-1 台電 9月電單 112,314 記入共用電單，等兩戶度數拆紅單"] },
   { ver: "2026-09-11-13-28-909", items: ["共用電單記入後會用本期度數計算紅單"] },
@@ -2839,7 +2840,7 @@ const SEED_METER_BILLS = [
     { id: "m-93-1b", usage: 16047, fee: 77073 },
     { id: "m-93-2a", usage: 4307, fee: 20660 }
   ] },
-  { id: "mb-share-93-1-20260911", shareId: "share-93-1", date: "2026-09-11", amount: 112314, billNo: "18-33-7421-01-4", note: "115/7/30～9/1　應繳 112,314　台電 24,960 度　期限 9/21", parts: [
+  { id: "mb-share-93-1-20260911", shareId: "share-93-1", date: "2026-09-11", amount: 112314, billNo: "18-33-7421-01-4", note: "115/7/30～9/7　112,314÷24,960＝4.50　鈺晟 21,032.85×4.50＝94,642／咘然居 3,927.15×4.50＝17,672", parts: [
     { id: "m-93-1b", usage: 21032.85, fee: 94642 },
     { id: "m-93-2a", usage: 3927.15, fee: 17672 }
   ] }
@@ -2879,6 +2880,17 @@ function applyMeterLogs(data) {
       if (row.note) hit.note = row.note;
     } else data.meterBills.push(Object.assign({}, row));
   });
+  persistMeterLogs(data);
+  if (data && Array.isArray(data.aiMemos) && !data.aiMemos.some(m => m && m.id === "memo-elec-red-202609")) {
+    data.aiMemos.push({
+      id: "memo-elec-red-202609",
+      monthDay: 28,
+      text: "收電費紅單　9月　鈺晟 94,642／咘然居 17,672（7/30～9/7，每度 4.50）",
+      cycle: false,
+      owner: "7651",
+      createdAt: nowStamp()
+    });
+  }
 }
 function memoMeterUnits(m) {
   const t = String((m && m.text) || "") + " " + String((m && m.id) || "");
@@ -2958,11 +2970,15 @@ function meterShareHtml(share) {
       <span>公式：電單總金額 ÷ 兩戶總度數 × 各戶度數 ＝ 紅單</span>
     </div>
     ${histOpen ? `<div class="meter-hist">${bills.length ? bills.map(b => {
+      const kwh = (b.parts || []).reduce((s, p) => s + (Number(p.usage) || 0), 0);
+      const rate = b.amount && kwh ? Number(b.amount) / kwh : 0;
       const parts = (b.parts || []).map(p => {
         const u = meterUnitById(p.id);
-        return (u ? u.name : p.id) + " " + money(p.fee || 0);
+        const name = u ? u.name : p.id;
+        const deg = p.usage ? Number(p.usage).toLocaleString("zh-TW") + "度" : "";
+        return name + (deg ? " " + deg : "") + " " + money(p.fee || 0);
       }).filter(Boolean).join("／");
-      return `<div class="meter-hist-row"><span>${escapeHtml(meterDay(b.date))}</span><span>${money(b.amount)}${parts ? "　" + parts : ""}</span></div>`;
+      return `<div class="meter-hist-row"><span>${escapeHtml(meterDay(b.date))}</span><span>${money(b.amount)}${rate ? "　每度 " + rate.toFixed(3) : ""}${parts ? "　" + parts : ""}</span></div>`;
     }).join("") : `<div class="small">尚無電費總金額紀錄</div>`}</div>` : ""}
     <div class="meter-row">
       <input type="text" inputmode="numeric" data-share-amount="${share.id}" placeholder="電單總金額" value="${amount ? amount : ""}" autocomplete="off" />
