@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-25";
-const APP_EDIT_COUNT = 905;
+const APP_STAMP = "2026-09-11-09-32";
+const APP_EDIT_COUNT = 906;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0456";
+const FILE_VER = "0457";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -115,8 +115,7 @@ const NONGHUI_SEP_PAID = {
   "7611": ["2026-09-05", 42000],
   "7621": ["2026-09-04", 7000],
   "7623": ["2026-09-05", 10000],
-  "7642": ["2026-09-04", 14000],
-  "7651": ["2026-09-05", 5000]
+  "7642": ["2026-09-04", 14000]
 };
 const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
@@ -470,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
+  { ver: APP_VERSION, items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
+  { ver: "2026-09-11-09-25-905", items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
   { ver: "2026-09-11-09-22-904", items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
   { ver: "2026-09-11-09-18-903", items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
   { ver: "2026-09-11-09-12-902", items: ["修正總覽載入失敗"] },
@@ -3921,6 +3921,7 @@ function normalize(data) {
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
   try { ensureStudioLeasePacks(data); } catch {}
+  try { applyLuWuSepUnpaid(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -4069,7 +4070,10 @@ function studioMirrorGuestNos(hostNo) {
 function liveByRoomNo(data, no) {
   const room = ((data && data.rooms) || []).find(r => r && String(r.no) === String(no || ""));
   if (!room) return { room: null, tenant: null };
-  const tenant = ((data && data.tenants) || []).find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming && String(x.name || "").trim());
+  const list = (data && data.tenants) || [];
+  let tenant = list.find(x => x && x.roomId === room.id && !x.former && !x.demo && !x.incoming && String(x.name || "").trim());
+  if (!tenant) tenant = list.find(x => x && x.id === "t" + no);
+  if (!tenant) tenant = list.find(x => x && x.roomId === room.id && !x.demo && String(x.name || "").trim());
   return { room, tenant };
 }
 function syncStudioLeaseMirrors(data) {
@@ -4088,10 +4092,11 @@ function syncStudioLeaseMirrors(data) {
     guest.tenant.mirrorOf = hostNo;
     guest.tenant.paid = !!host.tenant.paid;
     guest.tenant.paidTouched = !!host.tenant.paidTouched;
-    guest.tenant.paidYm = host.tenant.paidYm;
-    guest.tenant.paidAt = host.tenant.paidAt;
-    guest.tenant.remitOn = host.tenant.remitOn;
-    guest.tenant.paidVia = host.tenant.paidVia;
+    guest.tenant.paidYm = host.tenant.paidYm || "";
+    guest.tenant.paidAt = host.tenant.paidAt || "";
+    guest.tenant.remitOn = host.tenant.remitOn || "";
+    guest.tenant.paidVia = host.tenant.paidVia || "";
+    guest.tenant.prepaidYm = Array.isArray(host.tenant.prepaidYm) ? host.tenant.prepaidYm.slice() : [];
     guest.tenant.editedAt = Math.max(Number(guest.tenant.editedAt) || 0, Number(host.tenant.editedAt) || 0, Date.now());
   });
 }
@@ -4103,16 +4108,18 @@ function mirrorPaidFromTenant(data, t) {
   const hostNo = studioMirrorHostNo(no) || (studioMirrorGuestNos(no).length ? no : "");
   if (!hostNo) return;
   const host = liveByRoomNo(data, hostNo).tenant;
-  if (!host) return;
-  if (no !== hostNo) {
-    host.paid = t.paid;
-    host.paidTouched = t.paidTouched;
-    host.paidYm = t.paidYm;
-    host.paidAt = t.paidAt;
-    host.remitOn = t.remitOn;
-    host.paidVia = t.paidVia;
-    host.editedAt = Date.now();
-  }
+  const guests = studioMirrorGuestNos(hostNo).map(n => liveByRoomNo(data, n).tenant).filter(Boolean);
+  const pair = [host].concat(guests).filter(x => x && x.id !== t.id);
+  pair.forEach(x => {
+    x.paid = !!t.paid;
+    x.paidTouched = true;
+    x.paidYm = t.paidYm || "";
+    x.paidAt = t.paidAt || "";
+    x.remitOn = t.remitOn || "";
+    x.paidVia = t.paidVia || "";
+    x.prepaidYm = Array.isArray(t.prepaidYm) ? t.prepaidYm.slice() : [];
+    x.editedAt = Date.now();
+  });
   syncStudioLeaseMirrors(data);
 }
 function reviveStudioMirrorGuests(data) {
@@ -4173,6 +4180,23 @@ function applyRoom7611(data) {
   t.payBank = t.payBank || "農會";
   room.tenantId = t.id;
   data.room7611Ver = ROOM_7611_VER;
+}
+const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v1";
+function applyLuWuSepUnpaid(data) {
+  if (!data || data.luwuSepUnpaidVer === LUWU_SEP_UNPAID_VER) return;
+  ["7251", "7651"].forEach(no => {
+    const hit = liveByRoomNo(data, no);
+    const t = hit && hit.tenant;
+    if (!t) return;
+    t.paid = false;
+    t.paidTouched = true;
+    t.paidYm = "";
+    t.paidAt = "";
+    t.paidVia = "";
+    t.lineNotified = false;
+    t.prepaidYm = (t.prepaidYm || []).filter(y => String(y).slice(0, 7) !== "2026-09");
+  });
+  data.luwuSepUnpaidVer = LUWU_SEP_UNPAID_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -9132,10 +9156,11 @@ function statusLabel(s) { return { rented: "滿租", vacant: "空置", repair: "
 function payLabel(tenant, room) {
   if (!tenant) return { text: "—", cls: "paid" };
   const first = firstStudioPayDue(tenant, room);
-  if (first) return { text: tenant.paid ? "首次已繳" : "首次未繳", cls: tenant.paid ? "paid" : "unpaid" };
+  const paid = paidThisMonth(tenant);
+  if (first) return { text: paid ? "首次已繳" : "首次未繳", cls: paid ? "paid" : "unpaid" };
   if (!leaseCoversYm(tenant, room, payYmNow())) return { text: "尚無需繳費", cls: "wait" };
   const stub = isStubMonthNow(tenant, room);
-  if (tenant.paid) return { text: stub ? "不足月已繳" : "本月已繳", cls: "paid" };
+  if (paid) return { text: stub ? "不足月已繳" : "本月已繳", cls: "paid" };
   return { text: stub ? "不足月未繳" : "本月未繳", cls: "unpaid" };
 }
 function payChip(t, r, unpaid) {
@@ -22198,7 +22223,7 @@ function tenantEntryDetailsHtml(kind, entry) {
   if (!t) return "";
   const foldId = kind === "factory" ? "fg-" + entry.key : t.id;
   const open = !!(ui.tenantOpen && ui.tenantOpen[foldId]);
-  const unpaid = tenants.some(x => !x.paid);
+  const unpaid = tenants.some(x => !paidThisMonth(x));
   const pay = payChip(t, r, unpaid);
   const nos = rooms.map(x => x.no).filter(Boolean).join("、") || (r ? r.no : "—");
   const sites = [...new Set(rooms.map(x => x.group).filter(Boolean))].join("、");
@@ -22301,7 +22326,7 @@ function tenantEntryCardHtml(kind, entry) {
   if (!t) return "";
   if (isDemoTenant(t) || isDemoRoom(r) || isDemoFactoryRoom(r) || /開發者測試/.test(String(t.name || ""))) return "";
   const foldId = t.id;
-  const unpaid = tenants.some(x => !x.paid);
+  const unpaid = tenants.some(x => !paidThisMonth(x));
   const pay = payChip(t, r, unpaid);
   const inc = r && incomingOf(r.id);
   const unread = !!(inc && (inc.applyUnread || inc.applyPending));
@@ -22870,7 +22895,7 @@ function tenantSheetView() {
   ui.tenantSheetKind = kindNow;
   const t = entry.tenants[0];
   const r = (entry.rooms && entry.rooms[0]) || (state.rooms || []).find(x => x.id === t.roomId);
-  const unpaid = entry.tenants.some(x => !x.paid);
+  const unpaid = entry.tenants.some(x => !paidThisMonth(x));
   const pay = payChip(t, r, unpaid);
   const enter = ui.sheetEnter ? " tenant-sheet-enter" : "";
   ui.sheetEnter = false;
