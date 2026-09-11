@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-22";
-const APP_EDIT_COUNT = 904;
+const APP_STAMP = "2026-09-11-09-25";
+const APP_EDIT_COUNT = 905;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0455";
+const FILE_VER = "0456";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
+  { ver: APP_VERSION, items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
+  { ver: "2026-09-11-09-22-904", items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
   { ver: "2026-09-11-09-18-903", items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
   { ver: "2026-09-11-09-12-902", items: ["修正總覽載入失敗"] },
   { ver: "2026-09-11-09-10-901", items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
@@ -2614,7 +2615,7 @@ const TENANT_INFO = {
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000。文21；幫忙收聯廣合4桶垃圾桶錢（老司機、莊記、大姑、自己）" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
   "7251": { name: "呂佳芸", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際住在 7251。本人無法申請租屋補助，租約與繳費跟 7651 吳慧青同步；補助掛吳慧青 7651。金流以 7651 入帳，不重複計。" },
-  "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "兆豐", shop: "波波奇夏威夷拌飯", note: "店面。新客匯兆豐。聯絡曾郁翔。" },
+  "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-07-01", leaseEnd: "2031-12-31", payBank: "農會", shop: "波波奇夏威夷拌飯", note: "店面。7、8月農會已收 50,000；9/1 起月租 42,000，9/5 農會 42,000。9/7 兆豐押金 80,000。聯絡曾郁翔。" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, payBank: "農會", note: "押金 14,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", payBank: "農會", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000" },
   "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 20000, payBank: "農會", note: "2押1租 30,000；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
@@ -3855,6 +3856,7 @@ function normalize(data) {
   });
   applyTenantRoster(data);
   try { applyRoom7051(data); } catch {}
+  try { applyRoom7611(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
   migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
@@ -3914,6 +3916,7 @@ function normalize(data) {
   applyOldTenantPayBank(data);
   applyTenantRoster(data);
   try { applyRoom7051(data); } catch {}
+  try { applyRoom7611(data); } catch {}
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
@@ -4145,6 +4148,31 @@ function applyRoom7051(data) {
   if (!Number(room.deposit)) room.deposit = 12000;
   room.note = "月租 NT$ 6,000。不可申請租屋補助。";
   data.room7051Ver = ROOM_7051_VER;
+}
+const ROOM_7611_VER = "7611-aug-book-v1";
+function applyRoom7611(data) {
+  if (!data || !Array.isArray(data.rooms)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7611");
+  if (!room) return;
+  room.kind = "store";
+  room.rent = 42000;
+  room.shop = room.shop || "波波奇夏威夷拌飯";
+  if (room.status !== "repair") room.status = "rented";
+  let t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) {
+    t = { id: "t7611", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
+    data.tenants.push(t);
+  }
+  if (!t.name || sameTenantName(t.name, "曾郁翔")) t.name = "波波奇";
+  t.contactName = t.contactName || "曾郁翔";
+  t.leaseStart = "2026-07-01";
+  t.leaseEnd = t.leaseEnd || "2031-12-31";
+  t.former = false;
+  t.incoming = false;
+  t.placeholder = false;
+  t.payBank = t.payBank || "農會";
+  room.tenantId = t.id;
+  data.room7611Ver = ROOM_7611_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
