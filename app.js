@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-32";
-const APP_EDIT_COUNT = 906;
+const APP_STAMP = "2026-09-11-09-40";
+const APP_EDIT_COUNT = 907;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0457";
+const FILE_VER = "0458";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -341,25 +341,25 @@ const HAICHENG_FED_BOOKS = [
 ];
 const HAICHENG_SEP_PAID = ["牛3-97-63"];
 const FACTORY_SEP_PAID = {
+  "牛1-61": "2026-09-01",
+  "牛2-25": "2026-09-01",
+  "牛3-97-61": "2026-09-06",
+  "牛3-97-63": "2026-08-31",
+  "牛5-97-66": "2026-09-07",
   "牛5-97-69": "2026-09-01",
   "牛5-97-70": "2026-09-01",
   "牛5-97-72": "2026-09-01",
-  "牛6-58": "2026-09-02",
-  "牛6-60": "2026-09-02",
   "牛6-55": "2026-09-03",
   "牛6-56": "2026-09-03",
   "牛6-57": "2026-09-03",
-  "牛5-97-66": "2026-09-07",
+  "牛6-58": "2026-09-02",
+  "牛6-60": "2026-09-02",
   "牛6-59": "2026-09-08",
-  "拉皮-1A": "2026-09-01",
   "牛8-77": "2026-09-07",
   "牛8-78": "2026-09-07",
+  "拉皮-1A": "2026-09-01",
   "大樹-18": "2026-09-07",
-  "牛3-97-61": "2026-09-06",
-  "大樹-屋頂": "2026-09-08",
-  "牛1-61": "2026-09-01",
-  "牛2-25": "2026-09-01",
-  "牛3-97-63": "2026-08-31"
+  "大樹-屋頂": "2026-09-08"
 };
 const FACTORY_SEP_UNPAID = ["拉皮-1B", "牛7-2F"];
 const SIMMIN_FED_VER = "simmin-fed-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
+  { ver: APP_VERSION, items: ["廠房租客依簿子填入實際匯款日"] },
+  { ver: "2026-09-11-09-32-906", items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
   { ver: "2026-09-11-09-25-905", items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
   { ver: "2026-09-11-09-22-904", items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
   { ver: "2026-09-11-09-18-903", items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
@@ -4379,29 +4380,34 @@ function factoryTenantByNo(data, no) {
 }
 function applyFactorySepPaidFromBooks(data) {
   if (!data || payYmNow() !== "2026-09") return;
-  (FACTORY_SEP_UNPAID || []).forEach(no => {
-    const t = factoryTenantByNo(data, no);
+  const stamp = (t, on, paid) => {
     if (!t) return;
-    t.paid = false;
-    t.paidAt = "";
-    t.paidYm = "2026-09";
-    t.paidVia = "";
-    t.paidTouched = true;
-    t.remitOn = "";
-  });
+    const group = factoryGroupTenants(t, data);
+    (group.length ? group : [t]).forEach(x => {
+      if (paid && on) {
+        x.paid = true;
+        x.paidAt = on + " 10:00";
+        x.remitOn = on;
+        x.paidYm = "2026-09";
+        x.paidTouched = true;
+        x.paidVia = x.paidVia || "book";
+      } else {
+        x.paid = false;
+        x.paidAt = "";
+        x.paidYm = "2026-09";
+        x.paidVia = "";
+        x.paidTouched = true;
+        x.remitOn = "";
+      }
+    });
+  };
+  (FACTORY_SEP_UNPAID || []).forEach(no => stamp(factoryTenantByNo(data, no), "", false));
   Object.keys(FACTORY_SEP_PAID || {}).forEach(no => {
-    const t = factoryTenantByNo(data, no);
-    if (!t) return;
     const on = FACTORY_SEP_PAID[no];
     if (!on) return;
-    t.paid = true;
-    t.paidAt = on + " 10:00";
-    t.remitOn = on;
-    t.paidYm = "2026-09";
-    t.paidTouched = true;
-    t.paidVia = t.paidVia || "book";
-    if (no === "大樹-屋頂") t.invoiceOn = t.invoiceOn || "2026-09-09";
-    if (!t.editedAt) t.editedAt = Date.now();
+    const t = factoryTenantByNo(data, no);
+    stamp(t, on, true);
+    if (no === "大樹-屋頂" && t) t.invoiceOn = t.invoiceOn || "2026-09-09";
   });
   try { persistPaidMarks(data); } catch {}
 }
@@ -22245,7 +22251,9 @@ function tenantEntryDetailsHtml(kind, entry) {
         const addrs = [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))];
         return `<div class="row wrap"><span class="k">地址</span><span class="v">${addrs.map(a => escapeHtml(a)).join("<br>")}</span></div>`;
       })()}
-      ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name) : ""}
+      ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name)
+      + teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date")
+      + teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
       ${t.demo || (r && r.demo) ? `<div class="small">${kind === "factory" ? "開發者測試廠房 F0000。金流不計入。可按重製反覆開票／已繳。" : "開發者測試房 0000，密碼 0000。金流不計入。可按重製反覆簽約／退租。"}</div>${demoResetBarHtml(kind)}` : ""}
       ${r && r.status === "office" ? `<div class="small">補助掛名。實際對應 7251 呂佳芸居住，租約與繳費同步。7651 登入走管理員。</div>` : ""}
       ${r && studioMirrorHostNo(r.no) ? `<div class="small">實際居住。租約與繳費跟 ${escapeHtml(studioMirrorHostNo(r.no))} 吳慧青同步（補助掛那間）。金流不重複計。</div>` : ""}
