@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-13-36";
-const APP_EDIT_COUNT = 911;
+const APP_STAMP = "2026-09-11-14-00";
+const APP_EDIT_COUNT = 912;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0462";
+const FILE_VER = "0463";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["93-1 9月電單依 9/7 度數拆紅單：鈺晟 94,642／咘然居 17,672"] },
+  { ver: APP_VERSION, items: ["鈺晟 7/30 底度依 9/7 錶與 8 月單 16,047 度回推"] },
+  { ver: "2026-09-11-13-36-911", items: ["93-1 9月電單依 9/7 度數拆紅單：鈺晟 94,642／咘然居 17,672"] },
   { ver: "2026-09-11-13-32-910", items: ["93-1 台電 9月電單 112,314 記入共用電單，等兩戶度數拆紅單"] },
   { ver: "2026-09-11-13-28-909", items: ["共用電單記入後會用本期度數計算紅單"] },
   { ver: "2026-09-11-11-05-908", items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
@@ -2828,7 +2829,8 @@ const SEED_METER_LOGS = [
   { id: "ml-2a-20260702", unitId: "m-93-2a", date: "2026-07-02", reading: 53551, prev: 47453, usage: 6098 },
   { id: "ml-2a-20260730", unitId: "m-93-2a", date: "2026-07-30", reading: 57858, prev: 53551, usage: 4307 },
   { id: "ml-2a-20260907", unitId: "m-93-2a", date: "2026-09-07", reading: 61785.15, prev: 57858, usage: 3927.15 },
-  { id: "ml-1b-20260730", unitId: "m-93-1b", date: "2026-07-30", reading: 63382.93, note: "依台電 24,960 度－咘然居 3,927.15 反推底度" },
+  { id: "ml-1b-20260702", unitId: "m-93-1b", date: "2026-07-02", reading: 47335.93, note: "依 7/30 回推底度－8月單 16,047 度" },
+  { id: "ml-1b-20260730", unitId: "m-93-1b", date: "2026-07-30", reading: 63382.93, prev: 47335.93, usage: 16047, note: "依 9/7 錶 84,415.78－本期 21,032.85 回推" },
   { id: "ml-1b-20260907", unitId: "m-93-1b", date: "2026-09-07", reading: 84415.78, prev: 63382.93, usage: 21032.85 }
 ];
 const SEED_METER_BILLS = [
