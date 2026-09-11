@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-10";
-const APP_EDIT_COUNT = 901;
+const APP_STAMP = "2026-09-11-09-12";
+const APP_EDIT_COUNT = 902;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0452";
+const FILE_VER = "0453";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
+  { ver: APP_VERSION, items: ["修正總覽載入失敗"] },
+  { ver: "2026-09-11-09-10-901", items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
   { ver: "2026-09-11-01-35-900", items: ["滿租實收改放到各出租率圓環下方"] },
   { ver: "2026-09-11-01-28-899", items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
   { ver: "2026-09-11-01-22-898", items: ["點擊滿租差額可看原因"] },
@@ -21349,7 +21350,7 @@ function rentVsCovers(t, r, ym) {
     const end = ymdOf(t.leaseEnd);
     if (start && String(start).slice(0, 7) > y) return false;
     if (end && String(end).slice(0, 7) < y) return false;
-    return !!(start || end || room.status === "rented");
+    return !!(start || end || r.status === "rented");
   }
   return leaseCoversYm(t, r, y);
 }
