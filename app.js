@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-13-32";
-const APP_EDIT_COUNT = 910;
+const APP_STAMP = "2026-09-11-13-36";
+const APP_EDIT_COUNT = 911;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0461";
+const FILE_VER = "0462";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["93-1 台電 9月電單 112,314 記入共用電單，等兩戶度數拆紅單"] },
+  { ver: APP_VERSION, items: ["93-1 9月電單依 9/7 度數拆紅單：鈺晟 94,642／咘然居 17,672"] },
+  { ver: "2026-09-11-13-32-910", items: ["93-1 台電 9月電單 112,314 記入共用電單，等兩戶度數拆紅單"] },
   { ver: "2026-09-11-13-28-909", items: ["共用電單記入後會用本期度數計算紅單"] },
   { ver: "2026-09-11-11-05-908", items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
   { ver: "2026-09-11-09-40-907", items: ["廠房租客依簿子填入實際匯款日"] },
@@ -2766,7 +2767,7 @@ const FACTORY_TENANT_INFO = {
     { from: "2025-12-01", untaxed: 37000 },
     { from: "2027-12-01", untaxed: 39000 }
   ], note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000。每月寄發票。" },
-  "拉皮-2A": { name: "咘然居", taxId: "", contactName: "孫小姐", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 0, rent: 45000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "紙本統潔租金表沒有這戶，依收租與電錶保留。每月5日下午2:00收租。電錶 115/7/2：47453→53551（6,098 度）；7/30：57858（再 4,307 度）。9/2 待記。" },
+  "拉皮-2A": { name: "咘然居", taxId: "", contactName: "孫小姐", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 0, rent: 45000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", note: "紙本統潔租金表沒有這戶，依收租與電錶保留。每月5日下午2:00收租。電錶 115/7/2：47453→53551（6,098 度）；7/30：57858（再 4,307 度）；9/7：61785.15（本期 3,927.15 度，紅單 17,672）。" },
   "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", note: "93-2B。每月15日收租並給電單（自繳電費）。" },
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", note: "93-63 2F。此次合約未附，先沿用租金表。115/7 未繳 $63,000" },
@@ -2825,7 +2826,10 @@ const METER_SHARES = [
 ];
 const SEED_METER_LOGS = [
   { id: "ml-2a-20260702", unitId: "m-93-2a", date: "2026-07-02", reading: 53551, prev: 47453, usage: 6098 },
-  { id: "ml-2a-20260730", unitId: "m-93-2a", date: "2026-07-30", reading: 57858, prev: 53551, usage: 4307 }
+  { id: "ml-2a-20260730", unitId: "m-93-2a", date: "2026-07-30", reading: 57858, prev: 53551, usage: 4307 },
+  { id: "ml-2a-20260907", unitId: "m-93-2a", date: "2026-09-07", reading: 61785.15, prev: 57858, usage: 3927.15 },
+  { id: "ml-1b-20260730", unitId: "m-93-1b", date: "2026-07-30", reading: 63382.93, note: "依台電 24,960 度－咘然居 3,927.15 反推底度" },
+  { id: "ml-1b-20260907", unitId: "m-93-1b", date: "2026-09-07", reading: 84415.78, prev: 63382.93, usage: 21032.85 }
 ];
 const SEED_METER_BILLS = [
   { id: "mb-share-93-1-20260716", shareId: "share-93-1", date: "2026-07-16", amount: 106479, billNo: "18-33-7421-01-4", note: "電費　93-1" },
@@ -2833,7 +2837,10 @@ const SEED_METER_BILLS = [
     { id: "m-93-1b", usage: 16047, fee: 77073 },
     { id: "m-93-2a", usage: 4307, fee: 20660 }
   ] },
-  { id: "mb-share-93-1-20260911", shareId: "share-93-1", date: "2026-09-11", amount: 112314, billNo: "18-33-7421-01-4", note: "115/7/30～9/1　應繳 112,314　台電 24,960 度　期限 9/21" }
+  { id: "mb-share-93-1-20260911", shareId: "share-93-1", date: "2026-09-11", amount: 112314, billNo: "18-33-7421-01-4", note: "115/7/30～9/1　應繳 112,314　台電 24,960 度　期限 9/21", parts: [
+    { id: "m-93-1b", usage: 21032.85, fee: 94642 },
+    { id: "m-93-2a", usage: 3927.15, fee: 17672 }
+  ] }
 ];
 const METER_KEY = "tongjie_meter_logs_v1";
 const METER_BILL_KEY = "tongjie_meter_bills_v1";
@@ -2854,10 +2861,21 @@ function applyMeterLogs(data) {
     if (Array.isArray(extra) && extra.length) data.meterBills = unionById(data.meterBills, extra);
   } catch {}
   SEED_METER_LOGS.forEach(row => {
-    if (!data.meterLogs.some(x => x && x.id === row.id)) data.meterLogs.push(Object.assign({}, row));
+    const hit = (data.meterLogs || []).find(x => x && x.id === row.id);
+    if (hit) {
+      if (row.reading != null) hit.reading = row.reading;
+      if (row.prev != null) hit.prev = row.prev;
+      if (row.usage != null) hit.usage = row.usage;
+      if (row.note) hit.note = row.note;
+    } else data.meterLogs.push(Object.assign({}, row));
   });
   SEED_METER_BILLS.forEach(row => {
-    if (!data.meterBills.some(x => x && x.id === row.id)) data.meterBills.push(Object.assign({}, row));
+    const hit = (data.meterBills || []).find(x => x && x.id === row.id);
+    if (hit) {
+      if (row.parts) hit.parts = row.parts;
+      if (row.amount) hit.amount = row.amount;
+      if (row.note) hit.note = row.note;
+    } else data.meterBills.push(Object.assign({}, row));
   });
 }
 function memoMeterUnits(m) {
