@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-12";
-const APP_EDIT_COUNT = 902;
+const APP_STAMP = "2026-09-11-09-18";
+const APP_EDIT_COUNT = 903;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0453";
+const FILE_VER = "0454";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["修正總覽載入失敗"] },
+  { ver: APP_VERSION, items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
+  { ver: "2026-09-11-09-12-902", items: ["修正總覽載入失敗"] },
   { ver: "2026-09-11-09-10-901", items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
   { ver: "2026-09-11-01-35-900", items: ["滿租實收改放到各出租率圓環下方"] },
   { ver: "2026-09-11-01-28-899", items: ["7251 呂佳芸改跟 7651 掛名入帳，不另算少收"] },
@@ -11879,6 +11880,7 @@ function collectLedger() {
     const room = state.rooms.find(r => r.id === t.roomId);
     if (!room || room.status === "office" || room.demo) return;
     if (roomIsFactory(room)) return;
+    if (studioMirrorHostNo(room.no)) return;
     const date = ymdOf(t.paidAt) || tenantPaidOnValue(t);
     if (!date) return;
     const no = room ? String(room.no) : "";
@@ -21409,17 +21411,18 @@ function roomRentGot(r, t, ym) {
   const due = roomIsFactory(r) || (r && r.kind === "store")
     ? listedRentOf(r)
     : ((t && tenantRentForYm(t, r, ym)) || listedRentOf(r) || 0);
-  const names = [t && t.name, lookT && lookT.name].filter(n => n && !sameTenantName(n, "小芬"));
-  const nos = hostNo ? [guestNo, hostNo] : [lookNo];
+  const names = hostNo
+    ? [lookT && lookT.name].filter(n => n && !sameTenantName(n, "小芬"))
+    : [t && t.name, lookT && lookT.name].filter(n => n && !sameTenantName(n, "小芬"));
+  const nos = hostNo ? [hostNo] : [lookNo];
   const monthDays = [];
   const y = Number(String(ym).slice(0, 4));
   const m = Number(String(ym).slice(5, 7));
   const last = new Date(y, m, 0).getDate();
   for (let d = 1; d <= last; d++) monthDays.push(ym + "-" + String(d).padStart(2, "0"));
   let sum = roomRentLedgerSum(nos, names, monthDays);
-  if (sum) return sum;
-  sum = roomRentLedgerSum(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
-  if (sum) return sum;
+  if (!sum) sum = roomRentLedgerSum(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
+  if (sum) return hostNo && due ? Math.min(sum, due) : sum;
   if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return due;
   return 0;
 }
