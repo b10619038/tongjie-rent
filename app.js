@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-13-28";
-const APP_EDIT_COUNT = 909;
+const APP_STAMP = "2026-09-11-13-32";
+const APP_EDIT_COUNT = 910;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0460";
+const FILE_VER = "0461";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["共用電單記入後會用本期度數計算紅單"] },
+  { ver: APP_VERSION, items: ["93-1 台電 9月電單 112,314 記入共用電單，等兩戶度數拆紅單"] },
+  { ver: "2026-09-11-13-28-909", items: ["共用電單記入後會用本期度數計算紅單"] },
   { ver: "2026-09-11-11-05-908", items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
   { ver: "2026-09-11-09-40-907", items: ["廠房租客依簿子填入實際匯款日"] },
   { ver: "2026-09-11-09-32-906", items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
@@ -2831,7 +2832,8 @@ const SEED_METER_BILLS = [
   { id: "mb-share-93-1-20260817", shareId: "share-93-1", date: "2026-08-17", amount: 97630, billNo: "18-33-7421-01-4", note: "115/7/2～7/29", parts: [
     { id: "m-93-1b", usage: 16047, fee: 77073 },
     { id: "m-93-2a", usage: 4307, fee: 20660 }
-  ] }
+  ] },
+  { id: "mb-share-93-1-20260911", shareId: "share-93-1", date: "2026-09-11", amount: 112314, billNo: "18-33-7421-01-4", note: "115/7/30～9/1　應繳 112,314　台電 24,960 度　期限 9/21" }
 ];
 const METER_KEY = "tongjie_meter_logs_v1";
 const METER_BILL_KEY = "tongjie_meter_bills_v1";
