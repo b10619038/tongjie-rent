@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-18";
-const APP_EDIT_COUNT = 903;
+const APP_STAMP = "2026-09-11-09-22";
+const APP_EDIT_COUNT = 904;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0454";
+const FILE_VER = "0455";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -470,7 +470,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
+  { ver: APP_VERSION, items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
+  { ver: "2026-09-11-09-18-903", items: ["7251 呂佳芸只認 7651 吳慧青掛名入帳，不再顯示多收"] },
   { ver: "2026-09-11-09-12-902", items: ["修正總覽載入失敗"] },
   { ver: "2026-09-11-09-10-901", items: ["滿租實收排除 7652 小芬測試房，廠房改跟合約和簿子對"] },
   { ver: "2026-09-11-01-35-900", items: ["滿租實收改放到各出租率圓環下方"] },
@@ -21436,18 +21437,20 @@ function rentVsPack(rooms, label) {
     if (!listed) return;
     full += listed;
     const t = roomTenantForYm(r, ym);
-    const covers = !!(t && !skipRentVsTenant(t) && rentVsCovers(t, r, ym)) || !!(t && !skipRentVsTenant(t) && r.status === "rented" && ym === payYmNow());
+    const gotAmt = roomRentGot(r, t, ym);
+    let covers = !!(t && !skipRentVsTenant(t) && (rentVsCovers(t, r, ym) || (r.status === "rented" && ym === payYmNow())));
+    if (!covers && r.status === "rented" && ym === payYmNow()) covers = true;
+    if (!covers && gotAmt) covers = true;
+    const who = (t && t.name) || (r.shop || "");
     const monthDue = covers
-      ? ((roomIsFactory(r) || r.kind === "store" || isStoreNo(r.no)) ? listed : (tenantRentForYm(t, r, ym) || listed))
+      ? ((roomIsFactory(r) || r.kind === "store" || isStoreNo(r.no)) ? listed : ((t && tenantRentForYm(t, r, ym)) || listed))
       : 0;
     due += monthDue;
-    const gotAmt = covers ? roomRentGot(r, t, ym) : 0;
     got += gotAmt;
-    const who = (t && t.name) || "";
-    const stubNow = !!(covers && leasePartForYm(t, r, ym) && leasePartForYm(t, r, ym).kind === "stub");
+    const stubNow = !!(covers && t && leasePartForYm(t, r, ym) && leasePartForYm(t, r, ym).kind === "stub");
     if (!covers) {
       vacant += listed;
-      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: 0, miss: listed });
+      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: gotAmt, miss: listed });
       return;
     }
     if (monthDue < listed) stub += listed - monthDue;
