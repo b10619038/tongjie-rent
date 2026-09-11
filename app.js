@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-09-40";
-const APP_EDIT_COUNT = 907;
+const APP_STAMP = "2026-09-11-11-05";
+const APP_EDIT_COUNT = 908;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0458";
+const FILE_VER = "0459";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房租客依簿子填入實際匯款日"] },
+  { ver: APP_VERSION, items: ["滿租實收改以簿子現金為準，避免和自動金流重複"] },
+  { ver: "2026-09-11-09-40-907", items: ["廠房租客依簿子填入實際匯款日"] },
   { ver: "2026-09-11-09-32-906", items: ["7251 呂佳芸與 7651 吳慧青繳費狀態同步，9月先標未繳"] },
   { ver: "2026-09-11-09-25-905", items: ["7611 八月農會 50,000 已入帳，不再顯示少收空置"] },
   { ver: "2026-09-11-09-22-904", items: ["7611 波波奇改認農會 9/5 租金 42,000，不再顯示少收"] },
@@ -21444,22 +21445,37 @@ function lastYmdsOfYm(ym, n) {
   for (let d = last; d > last - (n || 3) && d > 0; d--) out.push(ym + "-" + String(d).padStart(2, "0"));
   return out;
 }
+function isRentVsAutoRow(x) {
+  if (!x) return true;
+  const id = String(x.id || "");
+  const tag = String(x.importTag || "");
+  if (x.source === "rent") return true;
+  if (tag.indexOf("rent-auto-") === 0) return true;
+  if (id.indexOf("bk-rent-") === 0 || id.indexOf("rent-") === 0) return true;
+  if (typeof isRentAutoBook === "function" && isRentAutoBook(x)) return true;
+  return false;
+}
 function roomRentLedgerSum(no, names, ymds) {
   const nos = [].concat(no || []).filter(Boolean).flatMap(n => roomNoKeys(n));
   const who = [].concat(names || []).filter(Boolean).map(String).filter(n => !sameTenantName(n, "小芬"));
   const days = new Set([].concat(ymds || []).filter(Boolean));
   if (!nos.length || !days.size) return 0;
-  return collectLedger().reduce((s, x) => {
-    if (!x || x.type !== "in") return s;
-    if (!days.has(String(x.date || ""))) return s;
-    if (!isSiteRentIncome(x)) return s;
-    if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return s;
+  let real = 0, auto = 0;
+  collectLedger().forEach(x => {
+    if (!x || x.type !== "in") return;
+    if (!days.has(String(x.date || ""))) return;
+    if (!isSiteRentIncome(x)) return;
+    if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return;
     const blob = String(x.note || "") + " " + String(x.roomNo || "");
-    if (/7652|小芬/.test(blob) || isPracticeStudioNo(x.roomNo)) return s;
-    if (nos.some(n => n && (String(x.roomNo || "") === n || blob.indexOf(n) >= 0))) return s + (Number(x.amount) || 0);
-    if (who.some(n => n && blob.indexOf(n) >= 0)) return s + (Number(x.amount) || 0);
-    return s;
-  }, 0);
+    if (/7652|小芬/.test(blob) || isPracticeStudioNo(x.roomNo)) return;
+    const hit = nos.some(n => n && (String(x.roomNo || "") === n || blob.indexOf(n) >= 0))
+      || who.some(n => n && blob.indexOf(n) >= 0);
+    if (!hit) return;
+    const amt = Number(x.amount) || 0;
+    if (isRentVsAutoRow(x)) auto += amt;
+    else real += amt;
+  });
+  return real || auto;
 }
 function roomRentGot(r, t, ym) {
   if (skipRentVsRoom(r)) return 0;
