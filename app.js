@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-15-21-05";
-const APP_EDIT_COUNT = 920;
+const APP_STAMP = "2026-09-15-21-16";
+const APP_EDIT_COUNT = 921;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0471";
+const FILE_VER = "0472";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -472,11 +472,12 @@ function isDemoRepair(r) {
   return false;
 }
 const TENANT_ROSTER_VER = "20260902-1455";
-const FACTORY_ROSTER_VER = "20260915-xuxu1";
+const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房依小許表更新應收與付／水／電，禹旺存現改 39,900"] },
+  { ver: APP_VERSION, items: ["廠房月租改回 APP 原金額，避免動到發票含稅；付／水／電標籤留下"] },
+  { ver: "2026-09-15-21-05-920", items: ["廠房依小許表更新應收與付／水／電，禹旺存現改 39,900"] },
   { ver: "2026-09-15-20-45-919", items: ["9/15 進帳改為拉皮 93-2B 禹旺存現"] },
   { ver: "2026-09-15-20-42-918", items: ["9/15 跑銀行白紙記入：信潔超商太陽能／火險、統潔禹旺／電費"] },
   { ver: "2026-09-15-20-40-917", items: ["6841 劉冠德 10/31 到期換約改掛女友 賴欣怡"] },
@@ -2732,11 +2733,11 @@ const FACTORY_GROUPS = [
 ];
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
-  "牛1-61": { name: "皇吉企業行", taxId: "", contactName: "林志維", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 45000, deposit: 64000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", payWay: "匯款　每月1號", note: "文龍東路61號。皇吉企業行（林志維）。個人戶。小許應收 $45,000。每月1日匯入趙洪漳。" },
-  "牛1-57巷2": { name: "丞億科技有限公司", taxId: "28280642", contactName: "", phone: "", leaseStart: "2023-11-01", leaseEnd: "2027-10-31", rentUntaxed: 70000, rent: 70000, deposit: 50000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙浩鈞", payWay: "支票　雙月入", waterNote: "每年一次", elecNote: "自繳欠", note: "文龍東路57巷2／6號。小許每月應收 $70,000（巷2趙浩鈞支票雙月入＋巷6趙文彬）。" },
-  "牛1-57巷6": { name: "丞億科技有限公司", taxId: "28280642", contactName: "", phone: "", leaseStart: "2023-11-01", leaseEnd: "2027-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙文彬", payWay: "單月入", note: "文龍東路57巷6號。與巷2同約丞億，租金列在巷2 $70,000。戶名趙文彬。" },
+  "牛1-61": { name: "皇吉企業行", taxId: "", contactName: "林志維", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 50450, deposit: 64000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", payWay: "匯款　每月1號", note: "文龍東路61號。皇吉企業行（林志維）。個人戶。未稅 $45,000，含扣繳＋健保 $50,450。每月1日匯入趙洪漳。" },
+  "牛1-57巷2": { name: "丞億科技有限公司", taxId: "28280642", contactName: "", phone: "", leaseStart: "2023-11-01", leaseEnd: "2027-10-31", rentUntaxed: 35000, rent: 35000, deposit: 50000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙浩鈞", payWay: "支票　雙月入", waterNote: "每年一次", elecNote: "自繳欠", note: "文龍東路57巷2／6號。未稅 $35,000。支票雙月入趙浩鈞；巷6戶名趙文彬。小許表寫每月應收 70,000 是兩戶合計／雙月票面。" },
+  "牛1-57巷6": { name: "丞億科技有限公司", taxId: "28280642", contactName: "", phone: "", leaseStart: "2023-11-01", leaseEnd: "2027-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙文彬", payWay: "單月入", note: "文龍東路57巷6號。與巷2同約丞億，月租列在巷2，避免發票重複。" },
   "牛1-57巷8": { name: "欣上宜企業有限公司", taxId: "27688447", contactName: "", phone: "07-389-5119", leaseStart: "2023-11-01", leaseEnd: "2026-12-31", rentUntaxed: 36000, rent: 36000, deposit: 56000, dueDay: 10, payBank: "聯邦", payCompany: "個人戶·趙苡真", payWay: "支票　每月10號", elecNote: "雙月給電單", note: "文龍東路57巷8號。未稅 $36,000。每月10日支票交給趙苡真。" },
-  "牛2-21": { name: "謝帛翰", taxId: "", contactName: "", idNo: "S125673827", phone: "0980-311-188", leaseStart: "2024-02-01", leaseEnd: "2027-02-28", rentUntaxed: 46000, rent: 46000, deposit: 50000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "57巷1弄21號。個人戶。小許應收 $46,000。現金交給趙洪漳。" },
+  "牛2-21": { name: "謝帛翰", taxId: "", contactName: "", idNo: "S125673827", phone: "0980-311-188", leaseStart: "2024-02-01", leaseEnd: "2027-02-28", rentUntaxed: 25000, rent: 25000, deposit: 50000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "57巷1弄21號。個人戶。未稅 $25,000（扣繳 $2,500＋健保 $528 乙方自付）。現金交給趙洪漳。小許表寫 46,000，金額先跟合約／APP。" },
   "牛2-23": { name: "洪耀鴻", taxId: "", contactName: "", idNo: "E123170064", phone: "0966-333-8937／0929-920-515", leaseStart: "2024-03-01", leaseEnd: "2027-02-28", rentUntaxed: 55000, rent: 55000, deposit: 110000, dueDay: 1, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "57巷1弄23號。個人戶。未稅 $55,000。每月1日現金交給趙文榮。113/3/1 入押金 $105,000。" },
   "牛2-25": { name: "劉德惠", taxId: "", contactName: "黃聖泓", idNo: "H221401794", phone: "0966-716-232／0921-998-369", leaseStart: "2026-09-01", leaseEnd: "2027-06-30", rentUntaxed: 58000, rent: 58000, deposit: 116000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", payWay: "匯款　每月1號", elecNote: "雙月給電單", note: "57巷1弄25號。個人戶。未稅 $58,000。每月1日匯聯邦北高雄 趙洪漳 074-50-8531492。115/5/21 趙文榮存現入押金 $116,000。" },
   "牛2-27": { name: "汕廚美食有限公司", taxId: "28290607", contactName: "張可言", phone: "07-862-5888#666／0960-222-888", leaseStart: "2026-05-15", leaseEnd: "2029-05-14", rentUntaxed: 45000, rent: 45000, deposit: 80000, dueDay: 15, payBank: "農會", payCompany: "個人戶·趙貴美", note: "57巷1弄27號。未稅 $45,000（扣繳 $4,500＋健保 $950 乙方自付）。每月15日匯農會本會 趙貴美 00015210574481。" },
@@ -2746,14 +2747,14 @@ const FACTORY_TENANT_INFO = {
     { from: "2027-12-01", untaxed: 42000 }
   ], note: "57巷1弄31號。114/12/1～116/11/30 未稅 $38,000；116/12/1～117/11/30 未稅 $42,000。每月10日匯入。所得稅10%及二代健保2.11%乙方負擔。發票依合約期間自動帶入未稅。" },
   "牛2-33": { name: "謝淑伃", taxId: "", contactName: "", idNo: "E222202083", phone: "0973-788-733", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rentUntaxed: 35500, rent: 35500, deposit: 70000, dueDay: 31, payBank: "聯邦", payCompany: "個人戶·趙浩鈞", payWay: "匯款　月底", waterNote: "每年", elecNote: "自繳欠", note: "57巷1弄33號。個人戶。未稅 $35,500。月底匯入趙浩鈞。" },
-  "牛2-35": { name: "詠利實業有限公司", taxId: "24982018", contactName: "", phone: "07-740-8300", leaseStart: "2025-04-15", leaseEnd: "2027-04-14", rentUntaxed: 35156, rent: 35156, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙苡真", payWay: "支票　兩個月一張", waterNote: "每年", elecNote: "自繳欠", note: "57巷1弄35號。小許應收 $35,156。支票兩個月一張交給趙苡真。" },
+  "牛2-35": { name: "詠利實業有限公司", taxId: "24982018", contactName: "", phone: "07-740-8300", leaseStart: "2025-04-15", leaseEnd: "2027-04-14", rentUntaxed: 35156, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙苡真", payWay: "支票　兩個月一張", waterNote: "每年", elecNote: "自繳欠", note: "57巷1弄35號。實付 $35,156＋所得稅 $4,000＋健保 $844＝$40,000。支票兩個月一張交給趙苡真。" },
   "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金潾", phone: "07-350-3337／0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 50000, rent: 54600, deposit: 104000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "鳳仁路97之61。未稅 $50,000，含稅 $54,600。每月1日匯聯邦高雄 統潔 01010-0035909。113/10/24 入押金 $104,000。裝修 113/10/1～10/31。" },
-  "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40800, rent: 40800, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "每年", elecNote: "每月給電單（K瓦）", note: "鳳仁路97之63。個人戶。小許應收 $40,800。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
+  "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "每年", elecNote: "每月給電單（K瓦）", note: "鳳仁路97之63。個人戶。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
   "牛3-97-65A": { name: "聖昌造船公司", taxId: "", contactName: "羅美芳", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "無", elecNote: "無", extraNote: "租廠養", note: "鳳仁路97之65號（A）。聖昌造船公司（羅美芳）。個人戶。每月 $12,000。水電無。聯絡陳先生。" },
   "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金　每月5號去收", waterNote: "每年", elecNote: "雙月給電單", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月5日現金交給趙正賢。" },
-  "牛5-97-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "自繳欠", note: "97-66。小許應收 $42,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
-  "牛5-97-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "雙月給電單", note: "97-67。小許應收 $42,000。每月1日匯／支票入信潔聯邦。" },
-  "牛5-97-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 42000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "自繳欠", extraNote: "發票開三個月", note: "97-68。小許應收 $42,000。發票開三個月。每月1日入信潔聯邦。" },
+  "牛5-97-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "自繳欠", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
+  "牛5-97-67": { name: "弘翔音響工作室", taxId: "81849574", contactName: "才勝戎", phone: "0963-156-854", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "雙月給電單", note: "97-67。含稅 $44,100。每月1日匯／支票入信潔聯邦。" },
+  "牛5-97-68": { name: "樂芯國際食品有限公司", taxId: "59332080", contactName: "許安佑", phone: "0983-577-480", leaseStart: "2026-08-01", leaseEnd: "2028-07-31", rentUntaxed: 42000, rent: 44100, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "自繳欠", extraNote: "發票開三個月", note: "97-68。含 5% 稅金 $44,100。發票開三個月。每月1日入信潔聯邦。" },
   "牛5-97-69": { name: "財團法人喜憨兒社會福利基金會", taxId: "92070381", contactName: "蕭淑珍", idNo: "S201070693", phone: "07-726-6096／07-726-6096#51／0953-579-753", leaseStart: "2024-10-01", leaseEnd: "2027-09-30", rentUntaxed: 40000, rent: 42000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "水單93-60　兩個月抄一次", elecNote: "自繳欠", extraNote: "另收錢付水單", note: "97-69。含稅 $42,000。一年支票 12 張。水單掛 93-60，兩個月抄表另收。蔡佳容 0953-579-753。" },
   "牛5-97-70": { name: "第一肉品有限公司", taxId: "54776985", contactName: "曾志賢", phone: "0981-239-833", leaseStart: "2022-07-01", leaseEnd: "2027-06-30", rentUntaxed: 40000, rent: 42000, deposit: 80000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票　開三個月", waterNote: "每年", elecNote: "雙月給電單", extraNote: "支票開三個月", note: "97-70。含稅 $42,000。支票開三個月。111/6/6 入押金。" },
   "牛5-97-71": { name: "莊記綠豆鑽食品有限公司", taxId: "59241856", contactName: "莊俊一", phone: "07-550-9181／0953-252-333", leaseStart: "2025-10-01", leaseEnd: "2032-09-30", rentUntaxed: 40000, rent: 42000, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "兩個月抄一次表收錢", elecNote: "自繳欠", rentSchedule: [
@@ -2765,9 +2766,9 @@ const FACTORY_TENANT_INFO = {
     { from: "2030-10-01", untaxed: 48000 },
     { from: "2031-10-01", untaxed: 50000 }
   ], note: "97-71。未稅依合約每年10/1調整：114/10/1 $40,000；115/10/1 $41,500；116/10/1 $43,000；117/10/1 $44,500；118/10/1 $46,000；119/10/1 $48,000；120/10/1 $50,000。發票自動帶入當期未稅＋5%。隔兩個月記水錶；收垃圾桶費。" },
-  "牛5-97-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 42000, rent: 44100, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "97-72。小許應收 $44,100。每月1日匯入。限汽車保養廠使用。" },
+  "牛5-97-72": { name: "萬事盈顧問有限公司", taxId: "50928905", contactName: "林志明", phone: "0982-172-221", leaseStart: "2023-09-01", leaseEnd: "2028-08-31", rentUntaxed: 40000, rent: 42000, deposit: 72000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "97-72。含稅 $42,000。每月1日匯入。限汽車保養廠使用。" },
   "牛5-97-73": { name: "映升企業社", taxId: "87647478", contactName: "陳彥宇、陳德輝", phone: "0933-338-190", leaseStart: "2025-01-01", leaseEnd: "2026-12-31", rentUntaxed: 40000, rent: 42000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", invoiceAddr: "830 高雄市鳳山區中山路19巷14號", note: "97-73。未稅 $40,000，含稅 $42,000。每月1日匯聯邦高雄 信潔 010100034775。每月寄發票。合約至 115/12/31。" },
-  "牛5-97-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 42000, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "97-75。小許應收 $42,000。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
+  "牛5-97-75": { name: "力胤精密有限公司", taxId: "83708419", contactName: "陳冠邑", phone: "07-746-0321／0928-767-726", leaseStart: "2026-08-01", leaseEnd: "2031-07-31", rentUntaxed: 42000, rent: 44100, deposit: 76000, dueDay: 15, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "97-75。含稅 $44,100。每月15日匯聯邦高雄 信潔 010-10-0034775。115/8/1～120/7/31。" },
   "牛5-97-76": { name: "陳雅琪", taxId: "", contactName: "陳雅琪", idNo: "S223579953", phone: "0925-693-553", leaseStart: "2025-01-01", leaseEnd: "2027-03-31", rentUntaxed: 36190, rent: 38000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "半年抄表一次收錢", elecNote: "自繳欠", note: "97-76。個人戶。含稅 $38,000。每月1日匯聯邦高雄 信潔 010100034775。水費半年收。" },
   "牛6-55": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 155000, rent: 162750, deposit: 310000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "水單56號我們繳　半年抄表收錢", elecNote: "自繳欠", note: "93-55／56／57 同約共三戶。未稅 $155,000＋稅 $7,750＝含稅 $162,750。每月1日匯聯邦高雄 信潔 010100034775。水費半年收。" },
   "牛6-56": { name: "誠家食品有限公司", taxId: "83297886", contactName: "張祐誠", phone: "0955-227-933", leaseStart: "2025-05-01", leaseEnd: "2028-04-30", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-55 同約，租金列在 93-55" },
@@ -2776,9 +2777,9 @@ const FACTORY_TENANT_INFO = {
     { from: "2026-03-01", untaxed: 105000 },
     { from: "2028-03-01", untaxed: 110000 }
   ], note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。水費半年收。" },
-  "牛6-59": { name: "黃儒清", taxId: "", contactName: "黃儒清", idNo: "S122572725", phone: "0956-107-555", leaseStart: "2025-03-01", leaseEnd: "2030-02-28", rentUntaxed: 50700, rent: 50700, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "單月給單", elecNote: "每月給電單（K瓦）", note: "93-59。個人戶。小許應收 $50,700。每月1日匯聯邦高雄 信潔 010100034775。" },
+  "牛6-59": { name: "黃儒清", taxId: "", contactName: "黃儒清", idNo: "S122572725", phone: "0956-107-555", leaseStart: "2025-03-01", leaseEnd: "2030-02-28", rentUntaxed: 46000, rent: 46000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "單月給單", elecNote: "每月給電單（K瓦）", note: "93-59。個人戶。未稅 $46,000。每月1日匯聯邦高雄 信潔 010100034775。" },
   "牛6-60": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-58 同約，租金列在 93-58" },
-  "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 105000, rent: 105000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", note: "93-61／62 同約共二戶。小許應收 $105,000。每月1日匯聯邦高雄 信潔 010100034775。押金 61戶 $76,000、62戶 $84,000。合約至 115/10/31。" },
+  "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 110000, rent: 110000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", note: "93-61／62 同約共二戶。未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。押金 61戶 $76,000、62戶 $84,000。合約至 115/10/31。" },
   "牛6-62": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-61 同約，租金列在 93-61" },
   "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "每年一次", elecNote: "每月抄表　半年收（K瓦）", invoiceAddr: "802 高雄市苓雅區永泰路115號", rentSchedule: [
     { from: "2025-12-01", untaxed: 37000 },
@@ -2804,7 +2805,7 @@ const FACTORY_TENANT_INFO = {
     { from: "2022-07-01", untaxed: 40000 },
     { from: "2027-07-01", untaxed: 42000 }
   ], note: "111/7/1～116/6/30 未稅 $40,000；116/7/1～119/6/30 未稅 $42,000。此次合約未附，先沿用租金表。抄表半年一次。每月21日收工程款 $14,000 現金，至合約結束。" },
-  "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2030-02-28", rentUntaxed: 40000, rent: 42000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "半年一次", elecNote: "每月30號收（K瓦）", note: "小許表仍列月租 $42,000。與 93-58／60 分開計。電費從鳳仁路93之1號電號 18-33-7421-01-4 分攤。" }
+  "拉皮-1B": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "0927-982-900", leaseStart: "2025-01-01", leaseEnd: "2026-03-31", rentUntaxed: 0, rent: 0, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "半年一次", elecNote: "每月30號收（K瓦）", note: "租金約至 115/3/31，月租 0（發票／應收不重複算，廠房主要在 93-58／60）。電費仍從鳳仁路93之1號電號 18-33-7421-01-4 分攤。小許表另列 42,000，金額先跟 APP。" }
 };
 const CYCLE_JOBS = [
   { id: "cycle-rent-93-2a", monthDay: 5, time: "14:00", text: "收租金　93-2A 咘然居 孫小姐（拉皮）", cycle: true, owner: "7651" },
