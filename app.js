@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-15-15-20";
-const APP_EDIT_COUNT = 915;
+const APP_STAMP = "2026-09-15-16-08";
+const APP_EDIT_COUNT = 916;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0466";
+const FILE_VER = "0467";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
+  { ver: APP_VERSION, items: ["後台填實際匯款日即自動改為本月已繳"] },
+  { ver: "2026-09-15-15-20-915", items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
   { ver: "2026-09-11-14-10-914", items: ["9月紅單備註補上新手抄減舊手抄過程"] },
   { ver: "2026-09-11-14-06-913", items: ["9月電費紅單記入：鈺晟 94,642／咘然居 17,672"] },
   { ver: "2026-09-11-14-00-912", items: ["鈺晟 7/30 底度依 9/7 錶與 8 月單 16,047 度回推"] },
@@ -3977,6 +3978,7 @@ function normalize(data) {
   reviveStudioMirrorGuests(data);
   try { ensureStudioLeasePacks(data); } catch {}
   try { applyLuWuSepUnpaid(data); } catch {}
+  try { applyRemitMarksPaid(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -4236,7 +4238,7 @@ function applyRoom7611(data) {
   room.tenantId = t.id;
   data.room7611Ver = ROOM_7611_VER;
 }
-const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v1";
+const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v2";
 function applyLuWuSepUnpaid(data) {
   if (!data || data.luwuSepUnpaidVer === LUWU_SEP_UNPAID_VER) return;
   ["7251", "7651"].forEach(no => {
@@ -4248,6 +4250,7 @@ function applyLuWuSepUnpaid(data) {
     t.paidYm = "";
     t.paidAt = "";
     t.paidVia = "";
+    t.remitOn = "";
     t.lineNotified = false;
     t.prepaidYm = (t.prepaidYm || []).filter(y => String(y).slice(0, 7) !== "2026-09");
   });
@@ -9238,7 +9241,48 @@ function paidThisMonth(t) {
   if (!t || t.former || t.incoming) return false;
   const ym = payYmNow();
   if ((t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym)) return true;
-  return !!(t.paid && String(t.paidYm || "").slice(0, 7) === ym);
+  if (t.paid && String(t.paidYm || "").slice(0, 7) === ym) return true;
+  if (remitCoversPayYm(t, ym)) return true;
+  return false;
+}
+function remitCoversPayYm(t, ym) {
+  const on = ymdOf(t && t.remitOn);
+  if (!on) return false;
+  const y = String(ym || payYmNow()).slice(0, 7);
+  if (on.slice(0, 7) === y) return true;
+  const prev = prevYmOf(y);
+  return !!(prev && on.slice(0, 7) === prev && Number(on.slice(8, 10)) >= 28);
+}
+function markPaidFromRemit(data, t, onRaw) {
+  if (!data || !t) return;
+  const on = ymdOf(onRaw || t.remitOn);
+  if (!on) return;
+  const ym = payYmNow();
+  const first = ym + "-01";
+  const paidAt = (on < first ? first : on) + " 10:00";
+  const group = (typeof factoryGroupTenants === "function" ? factoryGroupTenants(t, data) : null) || [t];
+  (group.length ? group : [t]).forEach(x => {
+    if (!x) return;
+    x.remitOn = on;
+    x.paid = true;
+    x.paidTouched = true;
+    x.paidYm = ym;
+    x.paidAt = paidAt;
+    if (!x.paidVia) x.paidVia = "remit";
+    try { stampPaidMark(data, x); } catch {}
+    try { upsertRentAutoBookOn(data, x); } catch {}
+  });
+  try { mirrorPaidFromTenant(data, t); } catch {}
+}
+function applyRemitMarksPaid(data) {
+  if (!data) return;
+  const ym = payYmNow();
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.incoming || t.demo) return;
+    if (!remitCoversPayYm(t, ym)) return;
+    if (t.paid && t.paidYm === ym) return;
+    markPaidFromRemit(data, t, t.remitOn);
+  });
 }
 function tenantPaidOnValue(t) {
   const ymd = ymdOf(t && t.paidAt);
@@ -22474,6 +22518,7 @@ function applyLiveTenantEdit(el) {
   }
   else if (key === "remitOn" && t) {
     t.remitOn = val || "";
+    if (val) markPaidFromRemit(state, t, val);
   } else if (key === "paidOn" && t) {
     t.paidAt = val ? (val + " 10:00") : "";
     t.paid = !!val;
