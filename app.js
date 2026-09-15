@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-15-20-42";
-const APP_EDIT_COUNT = 918;
+const APP_STAMP = "2026-09-15-20-45";
+const APP_EDIT_COUNT = 919;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0469";
+const FILE_VER = "0470";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -386,11 +386,11 @@ const SIMMIN_FED_BOOKS = [
   ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
   ["2026-08-28", "out", 10000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"]
 ];
-const SLIP_0915_VER = "slip-0915-v1";
+const SLIP_0915_VER = "slip-0915-v2";
 const SLIP_0915_BOOKS = [
   ["2026-09-15", "out", 14000, "信潔", "太陽能險　超商繳", "超商"],
   ["2026-09-15", "out", 25456, "信潔", "火險　超商繳", "超商"],
-  ["2026-09-15", "in", 38900, "統潔", "萬旺　存入", "兆豐"],
+  ["2026-09-15", "in", 38900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "兆豐", "拉皮-2B"],
   ["2026-09-15", "out", 10094, "統潔", "電費", "兆豐"]
 ];
 const XUXU_AUG_CASH_VER = "xuxu-aug-cash-v1";
@@ -476,7 +476,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9/15 跑銀行白紙記入：信潔超商太陽能／火險、統潔萬旺／電費"] },
+  { ver: APP_VERSION, items: ["9/15 進帳 38,900 改為拉皮 93-2B 禹旺存現"] },
+  { ver: "2026-09-15-20-42-918", items: ["9/15 跑銀行白紙記入：信潔超商太陽能／火險、統潔禹旺／電費"] },
   { ver: "2026-09-15-20-40-917", items: ["6841 劉冠德 10/31 到期換約改掛女友 賴欣怡"] },
   { ver: "2026-09-15-16-08-916", items: ["後台填實際匯款日即自動改為本月已繳"] },
   { ver: "2026-09-15-15-20-915", items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
@@ -5013,6 +5014,7 @@ function applySlip0915(data) {
     const company = row[3];
     const note = row[4];
     const bank = row[5] || "";
+    const roomNo = row[6] || "";
     const dup = (data.books || []).some(b => {
       if (!b || b.importTag === "slip0915") return false;
       if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
@@ -5022,6 +5024,7 @@ function applySlip0915(data) {
     if (dup) return;
     data.books.push({
       id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
       importTag: "slip0915",
       createdAt: "2026-09-15 20:40"
     });
