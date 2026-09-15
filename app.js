@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-15-16-08";
-const APP_EDIT_COUNT = 916;
+const APP_STAMP = "2026-09-15-20-40";
+const APP_EDIT_COUNT = 917;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0467";
+const FILE_VER = "0468";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台填實際匯款日即自動改為本月已繳"] },
+  { ver: APP_VERSION, items: ["6841 劉冠德 10/31 到期換約改掛女友 賴欣怡"] },
+  { ver: "2026-09-15-16-08-916", items: ["後台填實際匯款日即自動改為本月已繳"] },
   { ver: "2026-09-15-15-20-915", items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
   { ver: "2026-09-11-14-10-914", items: ["9月紅單備註補上新手抄減舊手抄過程"] },
   { ver: "2026-09-11-14-06-913", items: ["9月電費紅單記入：鈺晟 94,642／咘然居 17,672"] },
@@ -2607,7 +2608,7 @@ const TENANT_INFO = {
   "6823": { name: "顏家蓁", phone: "0972-103-874", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "6831": { name: "吳昱瑋", phone: "0903-905-609", leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會" },
   "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0963-701-012", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
-  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會" },
+  "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會", renewName: "賴欣怡", note: "115/10/31 到期換約改掛女友 賴欣怡。現任仍是劉冠德。" },
   "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
@@ -2816,7 +2817,8 @@ const CYCLE_JOBS = [
   { id: "cycle-waterfee-yusheng", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　鈺晟 93-58／60、拉皮93-1B　半年", cycle: true, owner: "7651" },
   { id: "cycle-waterfee-chen", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　陳雅琪 97-76　半年", cycle: true, owner: "7651" },
   { id: "cycle-meter-93", monthDay: 2, text: "記電錶　拉皮 93-1B鈺晟、93-2A 咘然居、93-1A南溢製鞋", cycle: true, owner: "7651" },
-  { id: "cycle-labor-ins", monthDay: 30, text: "繳勞健保", cycle: true, owner: "7651" }
+  { id: "cycle-labor-ins", monthDay: 30, text: "繳勞健保", cycle: true, owner: "7651" },
+  { id: "cycle-6841-renew-lai", monthDay: 31, onlyMonth: 10, untilYmd: "2026-11-01", text: "6841 劉冠德合約到期換約　改掛女友 賴欣怡（11/1 起）", cycle: true, owner: "7651" }
 ];
 const METER_UNITS = [
   { id: "m-93-1b", roomNo: "拉皮-1B", unit: "93-1B", name: "鈺晟", kind: "elec" },
@@ -3979,6 +3981,7 @@ function normalize(data) {
   try { ensureStudioLeasePacks(data); } catch {}
   try { applyLuWuSepUnpaid(data); } catch {}
   try { applyRemitMarksPaid(data); } catch {}
+  try { apply6841RenewLai(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   ensureDemoTenant(data);
@@ -4255,6 +4258,46 @@ function applyLuWuSepUnpaid(data) {
     t.prepaidYm = (t.prepaidYm || []).filter(y => String(y).slice(0, 7) !== "2026-09");
   });
   data.luwuSepUnpaidVer = LUWU_SEP_UNPAID_VER;
+}
+const ROOM_6841_RENEW_VER = "6841-lai-20261101";
+function apply6841RenewLai(data) {
+  if (!data) return;
+  const today = (typeof todayYmd === "function" ? todayYmd() : "") || "";
+  if (!today || today < "2026-11-01") return;
+  if (data.room6841RenewVer === ROOM_6841_RENEW_VER) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "6841");
+  if (!room) return;
+  const live = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (live && sameTenantName(live.name, "賴欣怡")) {
+    data.room6841RenewVer = ROOM_6841_RENEW_VER;
+    return;
+  }
+  if (live && /劉冠德/.test(String(live.name || ""))) {
+    live.former = true;
+    live.leftOn = "2026-10-31";
+    live.loginRevoked = true;
+    live.sessionEnded = true;
+  }
+  let neu = (data.tenants || []).find(x => x && x.roomId === room.id && sameTenantName(x.name, "賴欣怡"));
+  if (!neu) {
+    neu = { id: "t6841-lai", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
+    data.tenants.push(neu);
+  }
+  neu.former = false;
+  neu.incoming = false;
+  neu.placeholder = false;
+  neu.loginRevoked = false;
+  neu.sessionEnded = false;
+  neu.name = "賴欣怡";
+  neu.phone = (live && live.phone) || "0985-049-080";
+  neu.leaseStart = "2026-11-01";
+  neu.leaseEnd = "2027-10-31";
+  neu.payBank = (live && live.payBank) || "農會";
+  neu.bankLast5 = (live && live.bankLast5) || "98847";
+  neu.note = "劉冠德到期換約改掛女友 賴欣怡。前任劉冠德 114/11/1～115/10/31。";
+  room.tenantId = neu.id;
+  if (room.status !== "repair") room.status = "rented";
+  data.room6841RenewVer = ROOM_6841_RENEW_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
