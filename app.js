@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-11-14-10";
-const APP_EDIT_COUNT = 914;
+const APP_STAMP = "2026-09-15-15-20";
+const APP_EDIT_COUNT = 915;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0465";
+const FILE_VER = "0466";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -469,7 +469,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9月紅單備註補上新手抄減舊手抄過程"] },
+  { ver: APP_VERSION, items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
+  { ver: "2026-09-11-14-10-914", items: ["9月紅單備註補上新手抄減舊手抄過程"] },
   { ver: "2026-09-11-14-06-913", items: ["9月電費紅單記入：鈺晟 94,642／咘然居 17,672"] },
   { ver: "2026-09-11-14-00-912", items: ["鈺晟 7/30 底度依 9/7 錶與 8 月單 16,047 度回推"] },
   { ver: "2026-09-11-13-36-911", items: ["93-1 9月電單依 9/7 度數拆紅單：鈺晟 94,642／咘然居 17,672"] },
@@ -9235,8 +9236,9 @@ function monthDueYmd() {
 }
 function paidThisMonth(t) {
   if (!t || t.former || t.incoming) return false;
-  if (tenantPaidYmSet(t).has(payYmNow())) return true;
-  return !!(t.paid && t.paidTouched && t.paidYm === payYmNow());
+  const ym = payYmNow();
+  if ((t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym)) return true;
+  return !!(t.paid && String(t.paidYm || "").slice(0, 7) === ym);
 }
 function tenantPaidOnValue(t) {
   const ymd = ymdOf(t && t.paidAt);
@@ -11595,7 +11597,7 @@ function firstStudioPayBits(t, r) {
 function tenantPaidYmSet(t) {
   const set = new Set();
   (t && t.prepaidYm || []).forEach(y => { if (y) set.add(String(y).slice(0, 7)); });
-  if (t && t.paidYm) set.add(String(t.paidYm).slice(0, 7));
+  if (t && t.paid && t.paidYm) set.add(String(t.paidYm).slice(0, 7));
   return set;
 }
 function firstPayHintHtml(bits) {
@@ -22021,9 +22023,12 @@ function tenantChipOn() {
 function tenantPayChipMatch(t, r, chip) {
   if (!chip || chip === "vacant") return true;
   if (!t || t.former || t.incoming) return false;
-  const cls = (payLabel(t, r) || {}).cls;
-  if (chip === "paid") return cls === "paid";
-  if (chip === "unpaid") return cls === "unpaid";
+  if (chip === "paid") return paidThisMonth(t);
+  if (chip === "unpaid") {
+    if (paidThisMonth(t)) return false;
+    if (firstStudioPayDue(t, r)) return true;
+    return leaseCoversYm(t, r, payYmNow());
+  }
   return true;
 }
 function setTenantChip(v) {
