@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-15-20-40";
-const APP_EDIT_COUNT = 917;
+const APP_STAMP = "2026-09-15-20-42";
+const APP_EDIT_COUNT = 918;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0468";
+const FILE_VER = "0469";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -386,6 +386,13 @@ const SIMMIN_FED_BOOKS = [
   ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
   ["2026-08-28", "out", 10000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"]
 ];
+const SLIP_0915_VER = "slip-0915-v1";
+const SLIP_0915_BOOKS = [
+  ["2026-09-15", "out", 14000, "信潔", "太陽能險　超商繳", "超商"],
+  ["2026-09-15", "out", 25456, "信潔", "火險　超商繳", "超商"],
+  ["2026-09-15", "in", 38900, "統潔", "萬旺　存入", "兆豐"],
+  ["2026-09-15", "out", 10094, "統潔", "電費", "兆豐"]
+];
 const XUXU_AUG_CASH_VER = "xuxu-aug-cash-v1";
 const XUXU_AUG_CASH_BOOKS = [
   ["2026-08-03", "in", 2000, "現金(保險箱)", "電費收入　牛7　93-63 2F　公共設施", "現金", "牛7-2F"],
@@ -469,7 +476,8 @@ const FACTORY_ROSTER_VER = "20260902-1920";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6841 劉冠德 10/31 到期換約改掛女友 賴欣怡"] },
+  { ver: APP_VERSION, items: ["9/15 跑銀行白紙記入：信潔超商太陽能／火險、統潔萬旺／電費"] },
+  { ver: "2026-09-15-20-40-917", items: ["6841 劉冠德 10/31 到期換約改掛女友 賴欣怡"] },
   { ver: "2026-09-15-16-08-916", items: ["後台填實際匯款日即自動改為本月已繳"] },
   { ver: "2026-09-15-15-20-915", items: ["未繳篩選改看本月是否真的已繳，不再被月結的 paidYm 誤判"] },
   { ver: "2026-09-11-14-10-914", items: ["9月紅單備註補上新手抄減舊手抄過程"] },
@@ -3964,6 +3972,7 @@ function normalize(data) {
   applyHaichengSepPaid(data);
   applySimminFed(data);
   applyXuxuAugCash(data);
+  applySlip0915(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   applyFactorySepPaidFromBooks(data);
@@ -4986,6 +4995,51 @@ function applyXuxuAugCash(data) {
     });
   });
   data.xuxuAugCashVer = XUXU_AUG_CASH_VER;
+}
+function applySlip0915(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  if (data.slip0915Ver === SLIP_0915_VER && (data.books || []).some(b => b && b.importTag === "slip0915")) {
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "slip0915");
+  SLIP_0915_BOOKS.forEach((row, i) => {
+    const id = "bk-slip0915-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "slip0915") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      importTag: "slip0915",
+      createdAt: "2026-09-15 20:40"
+    });
+  });
+  const memoId = "memo-mega-passbook-0915";
+  if (!data.aiMemos.some(m => m && m.id === memoId)) {
+    data.aiMemos.push({
+      id: memoId,
+      date: "2026-09-15",
+      text: "兆豐整理存摺",
+      cycle: false,
+      done: true,
+      doneAt: "2026-09-15",
+      owner: "7651",
+      createdAt: nowStamp()
+    });
+  }
+  data.slip0915Ver = SLIP_0915_VER;
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -7118,6 +7172,7 @@ async function pullCloud() {
       applyHaichengSepPaid(state);
       applySimminFed(state);
       applyXuxuAugCash(state);
+      applySlip0915(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyFactorySepPaidFromBooks(state);
@@ -7186,6 +7241,7 @@ async function pullCloud() {
     applyHaichengSepPaid(state);
     applySimminFed(state);
     applyXuxuAugCash(state);
+    applySlip0915(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyFactorySepPaidFromBooks(state);
