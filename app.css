@@ -703,6 +703,21 @@ button.pay-pill[data-open-renew].is-press {
   from { opacity: 0; transform: translateY(-14px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.sheet-drop.sheet-drop-out {
+  animation: sheetDropClose .2s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+.sheet-drop.sheet-drop-out .pay-alert,
+.sheet-drop.sheet-drop-out .renew-alert {
+  animation: sheetDropFadeOut .18s cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes sheetDropClose {
+  from { grid-template-rows: 1fr; }
+  to { grid-template-rows: 0fr; }
+}
+@keyframes sheetDropFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-14px); }
+}
 .tenant-slim.pay-hit {
   background: var(--rose-soft);
 }
