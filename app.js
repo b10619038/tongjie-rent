@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-22-04";
-const APP_EDIT_COUNT = 939;
+const APP_STAMP = "2026-09-21-22-10";
+const APP_EDIT_COUNT = 940;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0490";
+const FILE_VER = "0491";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖色塊改成跟著建物斜角對齊"] },
+  { ver: APP_VERSION, items: ["平面圖補上梯形建物和拉皮右邊那棟"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2864,6 +2864,7 @@ const SITE_MAP_SPOTS = [
   { cx:61.63, cy:8.95, w:2.39, h:1.64, rot:80.5, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
   { cx:63.16, cy:8.6, w:2.41, h:1.67, rot:80.7, kind:"studio", prefix:"76", label:"牛10 文龍東路76號" },
   { cx:59.76, cy:22.31, w:4.55, h:2.29, rot:55.9, kind:"factory", nos:["拉皮-1A"], label:"拉皮 93-1A" },
+  { cx:61.53, cy:21.04, w:4.0, h:2.14, rot:55.2, kind:"factory", nos:["拉皮-1B"], label:"拉皮 93-1B" },
   { cx:62.32, cy:26.82, w:3.96, h:2.92, rot:142.6, kind:"factory", nos:["拉皮-1B"], label:"拉皮 93-1B" },
   { cx:63.79, cy:29.81, w:3.96, h:3.13, rot:141.9, kind:"factory", nos:["拉皮-2A"], label:"拉皮 93-2A" },
   { cx:65.23, cy:32.75, w:3.93, h:2.83, rot:142.1, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" },
@@ -2878,6 +2879,7 @@ const SITE_MAP_SPOTS = [
   { cx:9.22, cy:57.75, w:5.35, h:2.23, rot:51.7, kind:"factory", nos:["牛1-59"], label:"牛1 59號" },
   { cx:13.0, cy:64.55, w:5.25, h:2.14, rot:51.7, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
   { cx:19.18, cy:75.67, w:5.18, h:1.94, rot:51.3, kind:"factory", nos:["牛1-57巷2","牛1-57巷6","牛1-57巷8"], label:"牛1 57巷2／6／8" },
+  { cx:25.18, cy:73.36, w:3.03, h:2.57, rot:134.4, kind:"factory", nos:["牛7-1F","牛7-2F","牛7-3F"], label:"牛7 93-63" },
   { cx:35.95, cy:82.3, w:2.87, h:2.49, rot:62.5, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
   { cx:37.98, cy:80.87, w:2.85, h:2.5, rot:63.3, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
   { cx:40.03, cy:79.38, w:2.91, h:2.67, rot:64.0, kind:"factory", nos:["牛6-57"], label:"牛6 93-57" },
