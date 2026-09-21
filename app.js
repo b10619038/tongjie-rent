@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-22-10";
-const APP_EDIT_COUNT = 940;
+const APP_STAMP = "2026-09-21-22-14";
+const APP_EDIT_COUNT = 941;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0491";
+const FILE_VER = "0492";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖補上梯形建物和拉皮右邊那棟"] },
+  { ver: APP_VERSION, items: ["平面圖可用雙指開合放大"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2962,7 +2962,7 @@ function assetMapHtml() {
         <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
       </span>
     </div>
-    <div class="small" style="margin-bottom:8px">可左右滑、放大。點灰色建物看出租與繳費。大樹不在這張圖。</div>
+    <div class="small" style="margin-bottom:8px">雙指開合放大，單指拖移。點灰色建物看出租與繳費。大樹不在這張圖。</div>
     <div class="map-legend"><span class="map-dot paid"></span>已繳　<span class="map-dot unpaid"></span>未繳　<span class="map-dot vacant"></span>空置</div>
     <div class="asset-map-wrap" id="asset-map-wrap">
       <div class="asset-map" id="asset-map" style="width:${Math.round(z * 100)}%">
@@ -2975,10 +2975,25 @@ function assetMapHtml() {
 }
 function bindAssetMap() {
   const wrap = document.getElementById("asset-map-wrap");
+  const map = document.getElementById("asset-map");
   const pop = document.getElementById("asset-map-pop");
+  const applyZoomAt = (z, clientX, clientY) => {
+    if (!wrap || !map) return;
+    z = Math.max(1, Math.min(3, z));
+    const rect = wrap.getBoundingClientRect();
+    const x = clientX == null ? rect.left + rect.width / 2 : clientX;
+    const y = clientY == null ? rect.top + rect.height / 2 : clientY;
+    const mx = (x - rect.left + wrap.scrollLeft) / Math.max(1, map.offsetWidth);
+    const my = (y - rect.top + wrap.scrollTop) / Math.max(1, map.offsetHeight);
+    ui.assetMapZoom = z;
+    map.style.width = (z * 100) + "%";
+    wrap.scrollLeft = mx * map.offsetWidth - (x - rect.left);
+    wrap.scrollTop = my * map.offsetHeight - (y - rect.top);
+  };
   document.querySelectorAll("[data-map-spot]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
+      if (ui.mapSkipClick) { e.preventDefault(); e.stopPropagation(); return; }
       e.preventDefault();
       e.stopPropagation();
       const i = Number(btn.dataset.mapSpot);
@@ -2991,15 +3006,62 @@ function bindAssetMap() {
       }
     };
   });
-  const setZ = next => {
-    ui.assetMapZoom = Math.max(1, Math.min(2.4, next));
-    const map = document.getElementById("asset-map");
-    if (map) map.style.width = Math.round(ui.assetMapZoom * 100) + "%";
-  };
+  const setZ = next => applyZoomAt(next);
   const zin = document.getElementById("map-zoom-in");
   const zout = document.getElementById("map-zoom-out");
   if (zin) { bindIosPress(zin); zin.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) + 0.35); }; }
   if (zout) { bindIosPress(zout); zout.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) - 0.35); }; }
+  if (!wrap || !map || wrap.dataset.mapPinch === "1") return;
+  wrap.dataset.mapPinch = "1";
+  let startDist = 0, startZ = 1, pinching = false, panning = false, panX = 0, panY = 0, sl = 0, st = 0;
+  const distOf = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  const midOf = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+  const skipClick = () => {
+    ui.mapSkipClick = true;
+    clearTimeout(ui.mapSkipTimer);
+    ui.mapSkipTimer = setTimeout(() => { ui.mapSkipClick = false; }, 350);
+  };
+  wrap.addEventListener("touchstart", e => {
+    if (e.touches.length >= 2) {
+      pinching = true;
+      panning = false;
+      startDist = distOf(e.touches[0], e.touches[1]) || 1;
+      startZ = ui.assetMapZoom || 1;
+      skipClick();
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      panning = true;
+      panX = e.touches[0].clientX;
+      panY = e.touches[0].clientY;
+      sl = wrap.scrollLeft;
+      st = wrap.scrollTop;
+    }
+  }, { passive: false });
+  wrap.addEventListener("touchmove", e => {
+    if (pinching && e.touches.length >= 2) {
+      e.preventDefault();
+      const d = distOf(e.touches[0], e.touches[1]) || 1;
+      const m = midOf(e.touches[0], e.touches[1]);
+      applyZoomAt(startZ * (d / startDist), m.x, m.y);
+      skipClick();
+    } else if (!pinching && panning && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - panX;
+      const dy = e.touches[0].clientY - panY;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) skipClick();
+      wrap.scrollLeft = sl - dx;
+      wrap.scrollTop = st - dy;
+      e.preventDefault();
+    }
+  }, { passive: false });
+  wrap.addEventListener("touchend", e => {
+    if (e.touches.length < 2) pinching = false;
+    if (e.touches.length === 0) panning = false;
+  });
+  wrap.addEventListener("wheel", e => {
+    e.preventDefault();
+    const z = ui.assetMapZoom || 1;
+    applyZoomAt(z * (e.deltaY > 0 ? 0.9 : 1.12), e.clientX, e.clientY);
+  }, { passive: false });
 }
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
