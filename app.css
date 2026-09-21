@@ -654,9 +654,20 @@ button.pay-pill.hand {
   background: #f4f7f1;
   margin-top: 8px;
 }
-.pay-pill.hand.on {
-  background: #8a5a22;
-  color: #fff;
+button.pay-pill.paid {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pay-pill.paid.on {
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 .tenant-renew-block { margin: 0 0 10px; }
 .tenant-slim.renew-hit {
