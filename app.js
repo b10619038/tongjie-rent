@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-23-48";
-const APP_EDIT_COUNT = 967;
+const APP_STAMP = "2026-09-22-00-08";
+const APP_EDIT_COUNT = 968;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0518";
+const FILE_VER = "0519";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請縮放改成和空套房／已繳／未繳同一手感"] },
+  { ver: APP_VERSION, items: ["點本月已繳／未繳先展開圖塊，再確認匯款日、銀行、金額"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10091,13 +10091,13 @@ function upsertRentAutoBookOn(data, t) {
     dropRentAutoBookOn(data, t);
     return;
   }
-  const amount = thisMonthRentOf(t, room) || 0;
+  const amount = Number(t.paidAmt) > 0 ? Number(t.paidAmt) : (thisMonthRentOf(t, room) || 0);
   if (!amount) {
     dropRentAutoBookOn(data, t);
     return;
   }
   const ym = payYmNow();
-  let date = ymdOf(t.paidAt) || monthDueYmd();
+  let date = ymdOf(t.remitOn) || ymdOf(t.paidAt) || monthDueYmd();
   if (date.slice(0, 7) !== ym) {
     date = monthDueYmd();
     t.paidAt = date + " 10:00";
@@ -10111,12 +10111,13 @@ function upsertRentAutoBookOn(data, t) {
   }
   const id = rentAutoBookId(t, ym);
   const bankKey = tenantPayBankKey(t, room);
+  const bankName = bankKey === "現金" ? "現金(保險箱)" : (bankKey || "農會");
   const site = room.group || (room.kind === "factory" ? "" : "牛10");
   const stub = isStubMonthNow(t, room);
   const row = {
     id, type: "in", date, amount,
     company: roomCompany(room) || "統潔",
-    bank: bankKey || "農會",
+    bank: bankName,
     roomNo: String(room.no || ""),
     note: (site ? site + "　" : "") + String(room.no || "") + " " + (t.name || "") + (stub ? " 不足月租金" : " 租金"),
     importTag: "rent-auto-" + ym,
@@ -10169,28 +10170,35 @@ function dropCoveredRentAuto(data, book) {
     if (r && String(r.no) === String(no)) dropRentAutoBookOn(data, t);
   });
 }
-function toggleTenantPaid(id) {
+function setTenantPaidMeta(id, paid, opts) {
   const sid = String(id || "");
   let t = (state.tenants || []).find(x => x && String(x.id) === sid);
   if (!t) {
     const room = (state.rooms || []).find(r => r && (String(r.id) === sid || String(r.no) === sid));
     if (room) t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
   }
-  if (!t) return false;
+  if (!t) return null;
   const group = factoryGroupTenants(t, state);
   const targets = group.length ? group : [t];
-  const nextPaid = !targets.every(x => x.paid);
   const ym = payYmNow();
+  const date = ymdOf((opts && opts.date) || t.remitOn || nowStamp()) || todayYmd();
+  const bank = String((opts && opts.bank) || tenantPayBankKey(t, (state.rooms || []).find(r => r && r.id === t.roomId)) || "農會");
+  const amount = Number(opts && opts.amount) || 0;
   targets.forEach(x => {
-    x.paid = nextPaid;
+    x.paid = !!paid;
     x.paidTouched = true;
     x.edited = true;
     x.editedAt = Date.now();
     x.paidYm = ym;
-    if (nextPaid) {
-      if (!x.paidAt || ymdOf(x.paidAt).slice(0, 7) !== ym) x.paidAt = nowStamp();
-      if (!x.remitOn) x.remitOn = ymdOf(nowStamp());
-      if (!x.paidVia) x.paidVia = "app";
+    if (paid) {
+      x.remitOn = date;
+      x.paidAt = date + " 10:00";
+      if (bank === "現金") x.paidVia = "cash";
+      else {
+        x.payBank = bank;
+        x.paidVia = "app";
+      }
+      if (amount > 0) x.paidAmt = amount;
       stampPaidMark(state, x);
       upsertRentAutoBookOn(state, x);
     } else {
@@ -10198,6 +10206,7 @@ function toggleTenantPaid(id) {
       x.lineNotified = false;
       x.lineProofYm = "";
       x.paidAt = "";
+      x.paidAmt = 0;
       stampPaidMark(state, x);
       dropRentAutoBookOn(state, x);
     }
@@ -10210,6 +10219,16 @@ function toggleTenantPaid(id) {
   try { pushCloud(); } catch {}
   return t;
 }
+function toggleTenantPaid(id) {
+  const sid = String(id || "");
+  let t = (state.tenants || []).find(x => x && String(x.id) === sid);
+  if (!t) {
+    const room = (state.rooms || []).find(r => r && (String(r.id) === sid || String(r.no) === sid));
+    if (room) t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  }
+  if (!t) return false;
+  return setTenantPaidMeta(id, !paidThisMonth(t), {});
+}
 let __payToggleAt = 0;
 let __payDownId = "";
 function onTogglePayEvent(e) {
@@ -10221,18 +10240,21 @@ function onTogglePayEvent(e) {
   const id = String(btn.getAttribute("data-toggle-pay") || btn.dataset.togglePay || "");
   if (!id) return;
   if (__payDownId && __payDownId !== id) return;
+  const fromHead = !!(btn.closest && btn.closest(".tenant-slim-head"));
+  if (fromHead) {
+    btn.classList.add("is-press");
+    setTimeout(() => toggleTenantPay(id), 100);
+    return;
+  }
   const now = Date.now();
   if (now - __payToggleAt < 700) return;
   __payToggleAt = now;
   const t = toggleTenantPaid(id);
   if (!t) { toast("找不到這位租客"); return; }
-  const fromHead = !!(btn.closest && btn.closest(".tenant-slim-head"));
-  if (!fromHead) {
-    if (!ui.tenantOpen) ui.tenantOpen = {};
-    ui.tenantOpen[t.id] = true;
-    const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
-    if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
-  }
+  if (!ui.tenantOpen) ui.tenantOpen = {};
+  ui.tenantOpen[t.id] = true;
+  const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
+  if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
   const room = (state.rooms || []).find(r => r && r.id === t.roomId);
   const pay = payLabel(t, room);
   btn.textContent = pay.text;
@@ -10243,7 +10265,6 @@ function onTogglePayEvent(e) {
   ui.keepScroll = true;
   toast(t.paid ? ("已標為" + pay.text) : ("已標為" + pay.text));
   if (t.paid && !isDemoTenant(t)) {
-    const room = (state.rooms || []).find(r => r && r.id === t.roomId);
     const stub = isStubMonthNow(t, room);
     try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
   }
@@ -23144,10 +23165,7 @@ function renewalAdminCardHtml(x) {
 function tenantRenewOpen(id) {
   return !!(id && ui.renewOpen && ui.renewOpen[id]);
 }
-function toggleTenantRenew(id) {
-  if (!id) return;
-  if (!ui.renewOpen) ui.renewOpen = {};
-  ui.renewOpen[id] = !ui.renewOpen[id];
+function refreshTenantList() {
   ui.keepScroll = true;
   const box = document.getElementById("tenant-list");
   if (box) {
@@ -23156,7 +23174,77 @@ function toggleTenantRenew(id) {
     try { bindLineSwipe(); } catch {}
     try { bindTenantListTools(); } catch {}
     try { bindTenantFold(); } catch {}
+    try { bindHandover(); } catch {}
+    try { bindTenantEdits(); } catch {}
   } else render();
+}
+function toggleTenantRenew(id) {
+  if (!id) return;
+  if (!ui.renewOpen) ui.renewOpen = {};
+  ui.renewOpen[id] = !ui.renewOpen[id];
+  refreshTenantList();
+}
+function tenantPayOpen(id) {
+  return !!(id && ui.payOpen && ui.payOpen[id]);
+}
+function toggleTenantPay(id) {
+  if (!id) return;
+  if (!ui.payOpen) ui.payOpen = {};
+  const next = !ui.payOpen[id];
+  ui.payOpen = {};
+  if (next) ui.payOpen[id] = true;
+  refreshTenantList();
+}
+function payPanelAmount(t, r) {
+  if (!t) return 0;
+  if (typeof firstStudioPayDue === "function" && firstStudioPayDue(t, r) && typeof firstStudioPayBits === "function") {
+    const bits = firstStudioPayBits(t, r);
+    if (bits && Number(bits.total) > 0) return Number(bits.total);
+  }
+  if (roomIsFactory(r)) {
+    const group = factoryGroupTenants(t, state);
+    const sum = (group.length ? group : [t]).reduce((n, x) => {
+      const rr = (state.rooms || []).find(z => z && z.id === x.roomId);
+      return n + (Number(x.rentUntaxed) || Number(x.rent) || (typeof thisMonthRentOf === "function" ? thisMonthRentOf(x, rr) : 0) || 0);
+    }, 0);
+    return sum || Number(t.rentUntaxed) || Number(t.rent) || 0;
+  }
+  return (typeof thisMonthRentOf === "function" ? thisMonthRentOf(t, r) : 0) || Number(r && r.rent) || Number(t.rent) || 0;
+}
+function payAdminCardHtml(t, r) {
+  if (!t) return "";
+  const unpaid = !paidThisMonth(t);
+  const bankNow = tenantPayBankKey(t, r) || "農會";
+  const banks = ["農會", "聯邦", "兆豐", "現金"];
+  const amt = Number(t.paidAmt) > 0 ? Number(t.paidAmt) : payPanelAmount(t, r);
+  const date = ymdOf(t.remitOn) || (unpaid ? todayYmd() : ymdOf(t.paidAt)) || todayYmd();
+  const group = factoryGroupTenants(t, state);
+  const extra = group.length > 1 ? "　同約 " + group.length + " 戶一次記" : "";
+  if (unpaid) {
+    return `<div class="card card-body pay-alert" data-pay-card="${escapeHtml(t.id)}">
+      <h2 class="dash-h">本月入帳</h2>
+      <div class="small" style="margin-bottom:8px">${escapeHtml((r && r.no) || "")}　${escapeHtml(t.name || "")}${extra}</div>
+      <label class="field"><span>匯款日</span>
+        <input type="date" data-pay-date="${escapeHtml(t.id)}" value="${escapeHtml(date)}" />
+      </label>
+      <div class="small" style="margin:4px 0 8px">銀行</div>
+      <div class="pay-banks">${banks.map(b => `<button type="button" class="ghost${b === bankNow ? " on" : ""}" data-pay-bank="${b}" data-pay-for="${escapeHtml(t.id)}">${b}</button>`).join("")}</div>
+      <label class="field" style="margin-top:8px"><span>金額</span>
+        <input type="number" inputmode="numeric" data-pay-amt="${escapeHtml(t.id)}" value="${amt ? String(amt) : ""}" placeholder="月租" />
+      </label>
+      <button type="button" class="btn-navy" data-pay-confirm="${escapeHtml(t.id)}" style="margin-top:10px">確認本月已繳</button>
+      ${roomIsFactory(r) ? "" : `<button type="button" class="ghost" data-nudge-pay="${escapeHtml(t.id)}" style="margin-top:8px">催繳</button>`}
+    </div>`;
+  }
+  return `<div class="card card-body pay-alert paid" data-pay-card="${escapeHtml(t.id)}">
+    <h2 class="dash-h">本月已入帳</h2>
+    <div class="small" style="margin-bottom:8px">${escapeHtml((r && r.no) || "")}　${escapeHtml(t.name || "")}${extra}</div>
+    <div class="row"><span class="k">匯款日</span><span class="v">${escapeHtml(date)}</span></div>
+    <div class="row"><span class="k">銀行</span><span class="v">${escapeHtml(t.paidVia === "cash" ? "現金" : (t.payBank || bankNow))}</span></div>
+    <div class="row"><span class="k">金額</span><span class="v">${amt ? money(amt) : "—"}</span></div>
+    <button type="button" class="btn-navy" data-pay-unpay="${escapeHtml(t.id)}" style="margin-top:10px">改回未繳</button>
+    <button type="button" class="ghost" data-invoice="${escapeHtml(t.roomId || (r && r.id) || "")}" style="margin-top:8px">產出發票</button>
+  </div>`;
 }
 function tenantListInnerHtml(kind) {
   if (tenantChipOn() === "vacant") {
@@ -23350,14 +23438,16 @@ function tenantEntryCardHtml(kind, entry) {
   const renewOpen = !!(renew && tenantRenewOpen(renew.id));
   const renewLabel = renew && renew.status === "done" ? "續約完成" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
+  const payOpen = tenantPayOpen(t.id);
   return `<div class="tenant-renew-block">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
-      <div class="card card-body clickable swipe-front tenant-slim${renew ? " renew-hit" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
+      <div class="card card-body clickable swipe-front tenant-slim${renew ? " renew-hit" : ""}${payOpen ? " pay-hit" : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
+    ${payOpen ? payAdminCardHtml(t, r) : ""}
     ${renewOpen ? renewalAdminCardHtml(renew) : ""}
     </div>`;
 }
@@ -23811,6 +23901,69 @@ function bindTenantFold() {
       if (!id) return;
       btn.classList.add("is-press");
       setTimeout(() => toggleTenantRenew(id), 100);
+    };
+  });
+  document.querySelectorAll("[data-pay-bank]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const wrap = btn.closest(".pay-banks");
+      if (wrap) wrap.querySelectorAll("[data-pay-bank]").forEach(b => b.classList.toggle("on", b === btn));
+    };
+  });
+  document.querySelectorAll("[data-pay-confirm]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.payConfirm;
+      const card = btn.closest("[data-pay-card]");
+      const dateEl = card && card.querySelector("[data-pay-date]");
+      const amtEl = card && card.querySelector("[data-pay-amt]");
+      const bankBtn = card && card.querySelector("[data-pay-bank].on");
+      const t = setTenantPaidMeta(id, true, {
+        date: dateEl ? dateEl.value : todayYmd(),
+        bank: bankBtn ? bankBtn.dataset.payBank : "",
+        amount: amtEl ? Number(amtEl.value) : 0
+      });
+      if (!t) { toast("找不到這位租客"); return; }
+      if (ui.payOpen) ui.payOpen[id] = false;
+      const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+      toast("已標為" + payLabel(t, room).text);
+      if (!isDemoTenant(t)) {
+        const stub = isStubMonthNow(t, room);
+        try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
+      }
+      refreshTenantList();
+    };
+  });
+  document.querySelectorAll("[data-pay-unpay]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.payUnpay;
+      const t = setTenantPaidMeta(id, false, {});
+      if (!t) { toast("找不到這位租客"); return; }
+      if (ui.payOpen) ui.payOpen[id] = false;
+      toast("已標為" + payLabel(t, (state.rooms || []).find(r => r && r.id === t.roomId)).text);
+      refreshTenantList();
+    };
+  });
+  document.querySelectorAll("[data-pay-date],[data-pay-amt]").forEach(inp => {
+    inp.onclick = e => e.stopPropagation();
+  });
+  document.querySelectorAll("[data-pay-card] [data-nudge-pay]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x.id === btn.dataset.nudgePay);
+      if (!t) return;
+      if (!canNudgePay(t) && t.lastNudgeAt) { toast("這戶六小時內已催過"); return; }
+      const r = nudgePayOne(t);
+      if (r.ok) { save(); try { pushCloud(); } catch {} toast(r.bound ? "已催繳（App＋LINE）" : "已催繳，租客首頁會出現屋主提示"); }
     };
   });
   document.querySelectorAll("[data-fold-tenant]").forEach(el => {

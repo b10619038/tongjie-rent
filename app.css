@@ -681,6 +681,34 @@ button.pay-pill[data-open-renew].is-press {
   color: var(--ok);
 }
 .tenant-renew-block { margin: 0 0 10px; }
+.tenant-slim.pay-hit {
+  background: #eef6f1;
+}
+.pay-alert {
+  border: 2px solid #6a8f73;
+  background: #f4f8f5;
+  margin-top: 8px;
+}
+.pay-alert.paid { border-color: #8fbf9a; }
+.pay-alert .dash-h { color: #3f5a3a; }
+.pay-banks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pay-banks .ghost {
+  width: auto;
+  min-width: 64px;
+  padding: 6px 12px;
+}
+.pay-banks .ghost.on {
+  background: #62765b;
+  color: #fff;
+  border-color: #62765b;
+}
+button.pay-toggle.on {
+  box-shadow: 0 0 0 2px #c5d6c8;
+}
 .tenant-slim.renew-hit {
   background: #eef3ea;
 }
