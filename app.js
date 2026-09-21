@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-21-33";
-const APP_EDIT_COUNT = 937;
+const APP_STAMP = "2026-09-21-21-55";
+const APP_EDIT_COUNT = 938;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0488";
+const FILE_VER = "0489";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽不再放續約申請圖卡"] },
+  { ver: APP_VERSION, items: ["所有資產可點平面圖查看租客與繳費"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2858,6 +2858,145 @@ const FACTORY_GROUPS = [
     { no: "大樹-屋頂", unit: "廠房屋頂", manager: "" }
   ]}
 ];
+const SITE_MAP_SPOTS = [
+  { l:57.12, t:6.55, w:3.21, h:6.18, kind:"studio", prefix:"68", label:"牛10 文龍東路68號" },
+  { l:58.54, t:6.18, w:3.21, h:6.36, kind:"studio", prefix:"70", label:"牛10 文龍東路70號" },
+  { l:60.08, t:5.82, w:3.21, h:6.36, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
+  { l:61.49, t:5.45, w:3.34, h:6.36, kind:"studio", prefix:"76", label:"牛10 文龍東路76號" },
+  { l:57.0, t:17.82, w:5.52, h:9.27, kind:"factory", nos:["拉皮-1A"], label:"拉皮 93-1A" },
+  { l:59.31, t:22.73, w:6.03, h:8.18, kind:"factory", nos:["拉皮-1B"], label:"拉皮 93-1B" },
+  { l:60.72, t:25.64, w:6.16, h:8.36, kind:"factory", nos:["拉皮-2A"], label:"拉皮 93-2A" },
+  { l:62.26, t:28.73, w:6.03, h:8.0, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" },
+  { l:77.92, t:21.09, w:5.39, h:7.82, kind:"factory", nos:["牛2-21"], label:"牛2 21號" },
+  { l:79.08, t:25.09, w:5.52, h:7.27, kind:"factory", nos:["牛2-23"], label:"牛2 23號" },
+  { l:80.36, t:28.55, w:5.52, h:7.27, kind:"factory", nos:["牛2-25"], label:"牛2 25號" },
+  { l:81.77, t:32.18, w:5.26, h:7.27, kind:"factory", nos:["牛2-27"], label:"牛2 27號" },
+  { l:82.93, t:35.82, w:5.39, h:6.91, kind:"factory", nos:["牛2-29"], label:"牛2 29號" },
+  { l:84.21, t:39.09, w:5.26, h:7.09, kind:"factory", nos:["牛2-31"], label:"牛2 31號" },
+  { l:85.49, t:42.55, w:5.26, h:7.27, kind:"factory", nos:["牛2-33"], label:"牛2 33號" },
+  { l:86.78, t:46.18, w:5.39, h:7.09, kind:"factory", nos:["牛2-35"], label:"牛2 35號" },
+  { l:6.03, t:52.73, w:6.55, h:10.18, kind:"factory", nos:["牛1-59"], label:"牛1 59號" },
+  { l:9.76, t:59.64, w:6.55, h:10.0, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
+  { l:16.05, t:70.73, w:6.29, h:10.0, kind:"factory", nos:["牛1-57巷2","牛1-57巷6","牛1-57巷8"], label:"牛1 57巷2／6／8" },
+  { l:33.76, t:78.73, w:4.49, h:7.27, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
+  { l:35.69, t:77.27, w:4.62, h:7.27, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
+  { l:37.74, t:75.82, w:4.62, h:7.27, kind:"factory", nos:["牛6-57"], label:"牛6 93-57" },
+  { l:39.79, t:74.36, w:4.75, h:7.27, kind:"factory", nos:["牛6-58"], label:"牛6 93-58" },
+  { l:41.98, t:72.91, w:4.62, h:7.27, kind:"factory", nos:["牛6-59"], label:"牛6 93-59" },
+  { l:44.03, t:71.45, w:4.49, h:7.09, kind:"factory", nos:["牛6-60"], label:"牛6 93-60" },
+  { l:46.08, t:68.55, w:5.52, h:6.91, kind:"factory", nos:["牛6-61"], label:"牛6 93-61" },
+  { l:46.98, t:71.45, w:5.52, h:6.36, kind:"factory", nos:["牛6-62"], label:"牛6 93-62" },
+  { l:39.02, t:81.64, w:8.22, h:10.91, kind:"factory", nos:["牛7-1F","牛7-2F","牛7-3F"], label:"牛7 93-63" },
+  { l:11.94, t:88.91, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-66"], label:"牛5 97-66" },
+  { l:13.48, t:87.82, w:4.11, h:7.09, kind:"factory", nos:["牛5-97-67"], label:"牛5 97-67" },
+  { l:14.89, t:86.73, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-68"], label:"牛5 97-68" },
+  { l:16.43, t:85.64, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-69"], label:"牛5 97-69" },
+  { l:18.1, t:84.55, w:4.11, h:7.09, kind:"factory", nos:["牛5-97-70"], label:"牛5 97-70" },
+  { l:19.26, t:82.36, w:4.75, h:8.18, kind:"factory", nos:["牛5-97-71"], label:"牛5 97-71" },
+  { l:21.18, t:81.09, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-72"], label:"牛5 97-72" },
+  { l:22.98, t:79.82, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-73"], label:"牛5 97-73" },
+  { l:24.78, t:78.55, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-75"], label:"牛5 97-75" },
+  { l:26.7, t:77.27, w:4.75, h:7.82, kind:"factory", nos:["牛5-97-76"], label:"牛5 97-76" },
+  { l:6.42, t:90.18, w:5.13, h:6.91, kind:"factory", nos:["牛8-77"], label:"牛8 97-77" },
+  { l:7.45, t:92.91, w:5.26, h:6.73, kind:"factory", nos:["牛8-78"], label:"牛8 97-78" },
+  { l:31.07, t:80.36, w:4.11, h:4.73, kind:"factory", nos:["牛3-97-61"], label:"牛3 97-61" },
+  { l:31.71, t:82.0, w:4.11, h:4.91, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63" },
+  { l:32.35, t:83.82, w:4.11, h:4.73, kind:"factory", nos:["牛3-97-65A"], label:"牛3 97-65A" },
+  { l:36.97, t:86.55, w:4.11, h:6.18, kind:"factory", nos:["牛3-97-65B"], label:"牛3 97-65B" }
+];
+function findRoomByAssetNo(no) {
+  const want = String(no || "");
+  const alt = want.replace(/^牛5-97-/, "牛5-").replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+  return (state.rooms || []).find(r => r && (r.no === want || r.no === alt));
+}
+function assetMapRooms(spot) {
+  if (!spot) return [];
+  if (spot.kind === "studio") {
+    return (state.rooms || []).filter(r => r && (r.kind || "studio") !== "factory" && !isDemoRoom(r) && studioPrefix(r.no) === spot.prefix);
+  }
+  return (spot.nos || []).map(findRoomByAssetNo).filter(Boolean);
+}
+function assetMapSpotTone(spot) {
+  const rooms = assetMapRooms(spot);
+  if (!rooms.length) return "vacant";
+  const live = rooms.filter(r => r.status === "rented" || r.status === "office");
+  if (!live.length) return "vacant";
+  const unpaid = live.some(r => {
+    const t = (state.tenants || []).find(x => x && x.id === r.tenantId && !x.former);
+    return t && !paidThisMonth(t) && leaseCoversYm(t, r, payYmNow());
+  });
+  return unpaid ? "unpaid" : "paid";
+}
+function assetMapPopHtml(spot) {
+  if (!spot) return "";
+  const rooms = assetMapRooms(spot);
+  if (!rooms.length) {
+    return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div><div class="small">這格還沒對到房間資料</div></div>`;
+  }
+  const rows = rooms.map(r => {
+    const t = (state.tenants || []).find(x => x && x.id === r.tenantId && !x.former);
+    const pay = t ? payLabel(t, r) : { text: r.status === "vacant" ? "空置" : "尚無租客", cls: "wait" };
+    const rent = r.kind === "factory"
+      ? (t && t.rentUntaxed ? "未稅 " + money(t.rentUntaxed) : (r.rent ? money(r.rent) + "／月" : ""))
+      : (r.rent ? money(r.rent) + "／月" : "");
+    const who = t && t.name ? t.name : (r.status === "office" ? "辦公室" : "空");
+    return `<button type="button" class="map-pop-row" data-admin-room="${escapeHtml(r.id)}">
+      <span class="map-pop-who"><b>${escapeHtml(r.no)}</b>　${escapeHtml(who)}</span>
+      <span class="pay-pill ${pay.cls}">${pay.text}</span>
+      <span class="small">${escapeHtml(rent)}</span>
+    </button>`;
+  }).join("");
+  return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div>${rows}</div>`;
+}
+function assetMapHtml() {
+  const z = Number(ui.assetMapZoom) > 0 ? Number(ui.assetMapZoom) : 1;
+  const open = SITE_MAP_SPOTS[ui.assetMapSpot];
+  return `<div class="card card-body asset-map-card">
+    <div class="row"><h2 class="dash-h">資產平面圖</h2>
+      <span class="row-end">
+        <button type="button" class="ghost" id="map-zoom-out" style="width:auto">－</button>
+        <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
+      </span>
+    </div>
+    <div class="small" style="margin-bottom:8px">可左右滑、放大。點灰色建物看出租與繳費。大樹不在這張圖。</div>
+    <div class="map-legend"><span class="map-dot paid"></span>已繳　<span class="map-dot unpaid"></span>未繳　<span class="map-dot vacant"></span>空置</div>
+    <div class="asset-map-wrap" id="asset-map-wrap">
+      <div class="asset-map" id="asset-map" style="width:${Math.round(z * 100)}%">
+        <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
+        ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.l}%;top:${s.t}%;width:${s.w}%;height:${s.h}%" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
+      </div>
+    </div>
+    <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>
+  </div>`;
+}
+function bindAssetMap() {
+  const wrap = document.getElementById("asset-map-wrap");
+  const pop = document.getElementById("asset-map-pop");
+  document.querySelectorAll("[data-map-spot]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const i = Number(btn.dataset.mapSpot);
+      ui.assetMapSpot = ui.assetMapSpot === i ? -1 : i;
+      document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === ui.assetMapSpot));
+      if (pop) pop.innerHTML = ui.assetMapSpot >= 0 ? assetMapPopHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
+      if (pop && ui.assetMapSpot >= 0) {
+        try { pop.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
+        try { bindAdminRoomItems(); } catch {}
+      }
+    };
+  });
+  const setZ = next => {
+    ui.assetMapZoom = Math.max(1, Math.min(2.4, next));
+    const map = document.getElementById("asset-map");
+    if (map) map.style.width = Math.round(ui.assetMapZoom * 100) + "%";
+  };
+  const zin = document.getElementById("map-zoom-in");
+  const zout = document.getElementById("map-zoom-out");
+  if (zin) { bindIosPress(zin); zin.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) + 0.35); }; }
+  if (zout) { bindIosPress(zout); zout.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) - 0.35); }; }
+}
 const FACTORY_TENANT_INFO = {
   "牛1-59": { name: "張哲嘉", taxId: "", contactName: "", idNo: "E123465906", phone: "07-719-8095／0922-374-155／0987-399-378", leaseStart: "2023-11-01", leaseEnd: "2026-10-31", rentUntaxed: 60000, rent: 60000, deposit: 120000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金", waterNote: "每年一次", elecNote: "自繳欠", note: "文龍東路59號。個人戶。每月15日現金交給趙文榮。未稅 $60,000（扣繳 $6,000＋健保 $1,260 乙方自付）。合約至 115/10/31。" },
   "牛1-61": { name: "皇吉企業行", taxId: "", contactName: "林志維", idNo: "T122511465", phone: "0916-270-168", leaseStart: "2026-01-01", leaseEnd: "2028-12-31", rentUntaxed: 45000, rent: 50450, deposit: 64000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙洪漳", payWay: "匯款　每月1號", note: "文龍東路61號。皇吉企業行（林志維）。個人戶。未稅 $45,000，含扣繳＋健保 $50,450。每月1日匯入趙洪漳。" },
@@ -22598,6 +22737,7 @@ function adminRoomListHtml(kind) {
 function adminRooms() {
   const kind = ui.assetKind === "factory" ? "factory" : "studio";
   return `<div class="admin-grid list">
+    ${assetMapHtml()}
     <div class="card card-body">
       <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="asset-kind-seg">
         <i class="seg-bg"></i>
@@ -25776,6 +25916,7 @@ function bindAdmin() {
   const onTab = document.querySelector(".tab.on");
   if (onTab && onTab.scrollIntoView) onTab.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "auto" });
   bindAdminRoomItems();
+  bindAssetMap();
   bindStudioFold();
   bindFactoryFold();
   bindLineSwipe();
