@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-20-08";
-const APP_EDIT_COUNT = 925;
+const APP_STAMP = "2026-09-21-20-32";
+const APP_EDIT_COUNT = 926;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0476";
+const FILE_VER = "0477";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
+  { ver: APP_VERSION, items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
+  { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
   { ver: "2026-09-21-19-42-923", items: ["舊客續約可預約簽約日、選一年約；後台當天可列印；到期前30天禮貌提醒"] },
   { ver: "2026-09-15-21-16-921", items: ["廠房月租改回 APP 原金額，避免動到發票含稅；付／水／電標籤留下"] },
@@ -2253,6 +2254,7 @@ function renewAskCardHtml(t, r, opts) {
     return `<div class="handover-note renew-note">
       <div class="label">續約申請已送出</div>
       <p>新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(cur.start || "")} ～ ${escapeHtml(cur.end || "")}${cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。"}</p>
+      <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。</p>
       ${cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，現場蓋章即可。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
@@ -2282,6 +2284,7 @@ function renewAskCardHtml(t, r, opts) {
       </span>
     </div>
     <div class="small" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ～ ${escapeHtml(range.end)}　月租 ${money(studioContractRent(t, r))}</div>
+    <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。</div>
     <label class="field"><span>預約實際簽約日期</span>
       <input id="renew-appoint" type="datetime-local" value="${escapeHtml(ui.renewAppoint || "")}" min="${minAt}" max="${maxDay}T18:00" />
     </label>
@@ -2317,14 +2320,19 @@ function submitTenantRenewal() {
   if (!at) { toast("請先預約實際簽約日期"); return; }
   const years = Number(ui.renewYears) === 0.5 ? 0.5 : 1;
   const range = renewLeaseRange(t, years);
+  const water = renewWaterCashFee(t, r);
   const row = {
     id: "rn" + Date.now(),
     roomId: r.id,
     tenantId: t.id,
+    roomNo: r.no,
+    name: t.name || "",
     status: "open",
     years,
     start: range.start,
     end: range.end,
+    waterFee: water,
+    waterCash: true,
     appointAt: at.replace(" ", "T"),
     createdAt: nowStamp()
   };
@@ -2343,7 +2351,7 @@ function submitTenantRenewal() {
   t.edited = true;
   save();
   try { pushCloud(); } catch {}
-  pushPhoneNotify("續約申請", `${r.no} ${t.name || ""}　${years === 0.5 ? "半年" : "1年"}　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
+  pushPhoneNotify("續約申請", `${r.no} ${t.name || ""}　${years === 0.5 ? "半年" : "1年"}　年水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
   toast("已送出續約申請");
   ui.keepScroll = true;
   render();
@@ -4098,6 +4106,7 @@ function normalize(data) {
   applyXuxuAugCash(data);
   applySlip0915(data);
   applyJinfangEng0921(data);
+  applyRenewal7221(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   applyFactorySepPaidFromBooks(data);
@@ -5217,6 +5226,91 @@ function stampJinfangEngDone(data) {
   m.doneAtMonths[ym] = "2026-09-21";
   m.doneAt = m.doneAt || "2026-09-21";
   try { persistMemoDone(data); } catch {}
+}
+const RENEW_7221_VER = "renew-7221-v1";
+function applyRenewal7221(data) {
+  if (!data) return;
+  if (!Array.isArray(data.renewals)) data.renewals = [];
+  try { ensureStudioTenant(data, "7221"); } catch {}
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7221");
+  const t = (data.tenants || []).find(x => x && !x.former && !x.incoming && !x.demo && (
+    x.id === "t7221" || (room && x.roomId === room.id && /張智傑/.test(String(x.name || "")))
+  ));
+  if (!t || !room) return;
+  const existed = (data.renewals || []).some(x => x && (x.id === "rn-7221-2026" || (x.tenantId === t.id && x.status !== "done")));
+  if (data.renew7221Ver === RENEW_7221_VER && existed) return;
+  if (!existed) {
+    const years = 1;
+    const range = renewLeaseRange(t, years);
+    const water = renewWaterCashFee(t, room);
+    data.renewals.push({
+      id: "rn-7221-2026",
+      roomId: room.id,
+      tenantId: t.id,
+      roomNo: room.no,
+      name: t.name || "張智傑",
+      status: "open",
+      years,
+      start: range.start,
+      end: range.end,
+      waterFee: water,
+      waterCash: true,
+      createdAt: nowStamp(),
+      importTag: "renew7221"
+    });
+    if (data.renew7221Ver !== RENEW_7221_VER) {
+      setTimeout(() => {
+        try { pushPhoneNotify("續約申請", `7221 ${t.name || "張智傑"}　1年　年水費 ${money(water)} 現場現金`, "admin"); } catch {}
+      }, 900);
+    }
+  }
+  data.renew7221Ver = RENEW_7221_VER;
+}
+function completeRenewal(item) {
+  if (!item || item.status === "done") return false;
+  const t = (state.tenants || []).find(x => x && x.id === item.tenantId);
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  if (t && r && item.start) {
+    const clone = tenantForRenewPrint(t, r, item);
+    t.leaseStart = clone.leaseStart;
+    t.leaseEnd = clone.leaseEnd;
+    t.leases = clone.leases;
+    t.edited = true;
+    t.editedAt = Date.now();
+    if (r.kind !== "factory") {
+      try { applyStudioLeasePack(t, r, item.start); } catch {}
+      if (item.end && Number(item.years) === 0.5) {
+        t.leaseEnd = item.end;
+        t.leases = clone.leases;
+      }
+    }
+  }
+  const water = renewWaterCashFee(t, r, item);
+  if (item.waterCash !== false && water > 0) {
+    if (!Array.isArray(state.books)) state.books = [];
+    const id = "bk-renew-water-" + item.id;
+    const gone = (state.ledgerGone || []).indexOf(id) >= 0;
+    const dup = (state.books || []).some(b => b && (b.id === id || (ymdOf(b.date) === todayYmd() && b.type === "in" && Number(b.amount) === water && /水費/.test(String(b.note || "")) && String(b.roomNo || "") === String((r && r.no) || ""))));
+    if (!gone && !dup) {
+      state.books.push({
+        id,
+        type: "in",
+        date: todayYmd(),
+        amount: water,
+        company: "現金(保險箱)",
+        bank: "現金",
+        note: "水費收入　續約　" + ((r && r.no) || "") + " " + ((t && t.name) || "") + "　現場現金",
+        roomNo: (r && r.no) || "",
+        createdAt: nowStamp()
+      });
+    }
+  }
+  item.status = "done";
+  item.doneAt = nowStamp();
+  save();
+  try { pushCloud(); } catch {}
+  toast("已完成續約" + (water ? "，請收年水費 " + money(water) + " 現金" : ""));
+  return true;
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -7355,6 +7449,7 @@ async function pullCloud() {
       applyXuxuAugCash(state);
       applySlip0915(state);
       applyJinfangEng0921(state);
+      applyRenewal7221(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyFactorySepPaidFromBooks(state);
@@ -7425,6 +7520,7 @@ async function pullCloud() {
     applyXuxuAugCash(state);
     applySlip0915(state);
     applyJinfangEng0921(state);
+    applyRenewal7221(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyFactorySepPaidFromBooks(state);
@@ -10578,7 +10674,10 @@ function notifyCloudChanges(before) {
       showOsBanner("新報修", (r.roomNo || "") + " " + (r.type || ""), "repair-" + r.id);
     });
     (state.renewals || []).filter(x => !(before.renewIds || []).includes(x.id)).forEach(x => {
-      showOsBanner("續約申請", (x.roomNo || "") + " " + (x.name || ""), "renew-" + x.id);
+      const room = (state.rooms || []).find(r => r && r.id === x.roomId);
+      const tenant = (state.tenants || []).find(t => t && t.id === x.tenantId);
+      const who = (x.roomNo || (room && room.no) || "") + " " + (x.name || (tenant && tenant.name) || "");
+      showOsBanner("續約申請", who.trim() + "　申請續約　" + renewWaterLine(tenant, room, x), "renew-" + x.id);
     });
   }
   if (ui.role === "tenant") {
@@ -12151,6 +12250,15 @@ function openRenewalOf(t) {
 }
 function renewYearsOf(item) {
   return Number(item && item.years) === 0.5 ? 0.5 : 1;
+}
+function renewWaterCashFee(t, r, item) {
+  const fromItem = Number(item && item.waterFee);
+  if (fromItem > 0) return fromItem;
+  const n = typeof studioWaterYearFee === "function" ? studioWaterYearFee(t, r) : 0;
+  return n > 0 ? n : 1800;
+}
+function renewWaterLine(t, r, item) {
+  return "年水費 " + money(renewWaterCashFee(t, r, item)) + " 現場現金";
 }
 function renewLeaseRange(t, years) {
   const end = ymdOf(t && t.leaseEnd);
@@ -22192,8 +22300,8 @@ function adminDash() {
               const room = state.rooms.find(r => r.id === x.roomId);
               const tenant = state.tenants.find(t => t.id === x.tenantId);
               const years = renewYearsOf(x);
-              return `<div class="mini clickable" data-admin-room="${x.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")} · ${years === 0.5 ? "半年" : "1年"}</b><span>${x.appointAt ? formatDateTime12(String(x.appointAt).replace("T", " ")) : "待約簽約日"}</span></div>
-                <div class="small" style="margin:-4px 0 10px">${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}${isRenewSignDay(x) ? "　今天簽約，可列印新約" : ""}</div>`;
+              return `<div class="mini clickable renew-hit" data-admin-room="${x.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")} · ${years === 0.5 ? "半年" : "1年"}</b><span>${x.appointAt ? formatDateTime12(String(x.appointAt).replace("T", " ")) : "待約簽約日"}</span></div>
+                <div class="small" style="margin:-4px 0 10px">${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${isRenewSignDay(x) ? "　今天簽約，可列印新約" : ""}</div>`;
             }).join("")
           : `<div class="empty">目前沒有續約申請</div>`}
       </div>
@@ -22674,15 +22782,16 @@ function tenantListInnerHtml(kind) {
       const tenant = state.tenants.find(t => t.id === x.tenantId);
       const years = renewYearsOf(x);
       const todaySign = isRenewSignDay(x);
-      return `<div class="mini"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")}</b>
+      return `<div class="mini renew-hit"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")}</b>
         <button type="button" class="ghost" data-renew-done="${x.id}" style="width:auto">完成簽約</button></div>
-        <div class="small" style="margin-bottom:6px">${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}${todaySign ? "　今天簽約" : ""}</div>
+        <div class="small" style="margin-bottom:6px">${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign ? "　今天簽約" : ""}</div>
         <div class="appoint-box">
           <label class="field"><span>簽約時間</span>
             <input type="datetime-local" data-renew-appoint="${x.id}" value="${x.appointAt || ""}" />
           </label>
           <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
         </div>
+        <div class="small" style="margin:6px 0 4px">簽約現場收年水費，只收現金。</div>
         ${tenant && room && room.kind !== "factory" ? `<button type="button" class="btn-navy${todaySign ? "" : " ghost"}" data-print-renew="${x.id}" style="margin-top:8px">${todaySign ? "列印今天續約合約" : "列印續約合約"}</button>` : ""}`;
     }).join("")}</div>` : ""}
     ${entries.length || vacantHits.length || applyVacant.length || formerVacant.length
@@ -23446,18 +23555,16 @@ function bindTenantListTools() {
     btn.onclick = e => {
       e.stopPropagation();
       const item = (state.renewals || []).find(x => x.id === btn.dataset.renewDone);
-      if (item) {
-        item.status = "done";
-        save();
-        const box = document.getElementById("tenant-list");
-        if (box) {
-          box.innerHTML = tenantListInnerHtml(ui.tenantKind === "factory" ? "factory" : "studio");
-          bindAdminRoomItems();
-          bindLineSwipe();
-          bindTenantListTools();
-          bindTenantFold();
-        } else render();
-      }
+      if (!item) return;
+      completeRenewal(item);
+      const box = document.getElementById("tenant-list");
+      if (box) {
+        box.innerHTML = tenantListInnerHtml(ui.tenantKind === "factory" ? "factory" : "studio");
+        bindAdminRoomItems();
+        bindLineSwipe();
+        bindTenantListTools();
+        bindTenantFold();
+      } else render();
     };
   });
   document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
@@ -25635,28 +25742,7 @@ function bindAdmin() {
       e.stopPropagation();
       const item = (state.renewals || []).find(x => x.id === btn.dataset.renewDone);
       if (!item) return;
-      const t = (state.tenants || []).find(x => x.id === item.tenantId);
-      const r = t && (state.rooms || []).find(x => x.id === t.roomId);
-      if (t && r && item.start) {
-        const clone = tenantForRenewPrint(t, r, item);
-        t.leaseStart = clone.leaseStart;
-        t.leaseEnd = clone.leaseEnd;
-        t.leases = clone.leases;
-        t.edited = true;
-        t.editedAt = Date.now();
-        if (r.kind !== "factory") {
-          try { applyStudioLeasePack(t, r, item.start); } catch {}
-          if (item.end && Number(item.years) === 0.5) {
-            t.leaseEnd = item.end;
-            t.leases = clone.leases;
-          }
-        }
-      }
-      item.status = "done";
-      item.doneAt = nowStamp();
-      save();
-      try { pushCloud(); } catch {}
-      toast("已完成續約，新約日期已更新");
+      completeRenewal(item);
       render();
     };
   });

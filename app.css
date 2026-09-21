@@ -638,6 +638,12 @@ html[data-theme="void"] .stat b { color: #ffffff; }
   color: #fff;
   border-color: #62765b;
 }
+.renew-hit {
+  background: #eef3ea;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 0 0 4px;
+}
 .pay-pill[data-page] { cursor: pointer; }
 button.pay-toggle {
   cursor: pointer;
