@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-21-55";
-const APP_EDIT_COUNT = 938;
+const APP_STAMP = "2026-09-21-22-04";
+const APP_EDIT_COUNT = 939;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0489";
+const FILE_VER = "0490";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["所有資產可點平面圖查看租客與繳費"] },
+  { ver: APP_VERSION, items: ["平面圖色塊改成跟著建物斜角對齊"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2859,50 +2859,52 @@ const FACTORY_GROUPS = [
   ]}
 ];
 const SITE_MAP_SPOTS = [
-  { l:57.12, t:6.55, w:3.21, h:6.18, kind:"studio", prefix:"68", label:"牛10 文龍東路68號" },
-  { l:58.54, t:6.18, w:3.21, h:6.36, kind:"studio", prefix:"70", label:"牛10 文龍東路70號" },
-  { l:60.08, t:5.82, w:3.21, h:6.36, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
-  { l:61.49, t:5.45, w:3.34, h:6.36, kind:"studio", prefix:"76", label:"牛10 文龍東路76號" },
-  { l:57.0, t:17.82, w:5.52, h:9.27, kind:"factory", nos:["拉皮-1A"], label:"拉皮 93-1A" },
-  { l:59.31, t:22.73, w:6.03, h:8.18, kind:"factory", nos:["拉皮-1B"], label:"拉皮 93-1B" },
-  { l:60.72, t:25.64, w:6.16, h:8.36, kind:"factory", nos:["拉皮-2A"], label:"拉皮 93-2A" },
-  { l:62.26, t:28.73, w:6.03, h:8.0, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" },
-  { l:77.92, t:21.09, w:5.39, h:7.82, kind:"factory", nos:["牛2-21"], label:"牛2 21號" },
-  { l:79.08, t:25.09, w:5.52, h:7.27, kind:"factory", nos:["牛2-23"], label:"牛2 23號" },
-  { l:80.36, t:28.55, w:5.52, h:7.27, kind:"factory", nos:["牛2-25"], label:"牛2 25號" },
-  { l:81.77, t:32.18, w:5.26, h:7.27, kind:"factory", nos:["牛2-27"], label:"牛2 27號" },
-  { l:82.93, t:35.82, w:5.39, h:6.91, kind:"factory", nos:["牛2-29"], label:"牛2 29號" },
-  { l:84.21, t:39.09, w:5.26, h:7.09, kind:"factory", nos:["牛2-31"], label:"牛2 31號" },
-  { l:85.49, t:42.55, w:5.26, h:7.27, kind:"factory", nos:["牛2-33"], label:"牛2 33號" },
-  { l:86.78, t:46.18, w:5.39, h:7.09, kind:"factory", nos:["牛2-35"], label:"牛2 35號" },
-  { l:6.03, t:52.73, w:6.55, h:10.18, kind:"factory", nos:["牛1-59"], label:"牛1 59號" },
-  { l:9.76, t:59.64, w:6.55, h:10.0, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
-  { l:16.05, t:70.73, w:6.29, h:10.0, kind:"factory", nos:["牛1-57巷2","牛1-57巷6","牛1-57巷8"], label:"牛1 57巷2／6／8" },
-  { l:33.76, t:78.73, w:4.49, h:7.27, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
-  { l:35.69, t:77.27, w:4.62, h:7.27, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
-  { l:37.74, t:75.82, w:4.62, h:7.27, kind:"factory", nos:["牛6-57"], label:"牛6 93-57" },
-  { l:39.79, t:74.36, w:4.75, h:7.27, kind:"factory", nos:["牛6-58"], label:"牛6 93-58" },
-  { l:41.98, t:72.91, w:4.62, h:7.27, kind:"factory", nos:["牛6-59"], label:"牛6 93-59" },
-  { l:44.03, t:71.45, w:4.49, h:7.09, kind:"factory", nos:["牛6-60"], label:"牛6 93-60" },
-  { l:46.08, t:68.55, w:5.52, h:6.91, kind:"factory", nos:["牛6-61"], label:"牛6 93-61" },
-  { l:46.98, t:71.45, w:5.52, h:6.36, kind:"factory", nos:["牛6-62"], label:"牛6 93-62" },
-  { l:39.02, t:81.64, w:8.22, h:10.91, kind:"factory", nos:["牛7-1F","牛7-2F","牛7-3F"], label:"牛7 93-63" },
-  { l:11.94, t:88.91, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-66"], label:"牛5 97-66" },
-  { l:13.48, t:87.82, w:4.11, h:7.09, kind:"factory", nos:["牛5-97-67"], label:"牛5 97-67" },
-  { l:14.89, t:86.73, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-68"], label:"牛5 97-68" },
-  { l:16.43, t:85.64, w:4.24, h:7.27, kind:"factory", nos:["牛5-97-69"], label:"牛5 97-69" },
-  { l:18.1, t:84.55, w:4.11, h:7.09, kind:"factory", nos:["牛5-97-70"], label:"牛5 97-70" },
-  { l:19.26, t:82.36, w:4.75, h:8.18, kind:"factory", nos:["牛5-97-71"], label:"牛5 97-71" },
-  { l:21.18, t:81.09, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-72"], label:"牛5 97-72" },
-  { l:22.98, t:79.82, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-73"], label:"牛5 97-73" },
-  { l:24.78, t:78.55, w:4.75, h:8.0, kind:"factory", nos:["牛5-97-75"], label:"牛5 97-75" },
-  { l:26.7, t:77.27, w:4.75, h:7.82, kind:"factory", nos:["牛5-97-76"], label:"牛5 97-76" },
-  { l:6.42, t:90.18, w:5.13, h:6.91, kind:"factory", nos:["牛8-77"], label:"牛8 97-77" },
-  { l:7.45, t:92.91, w:5.26, h:6.73, kind:"factory", nos:["牛8-78"], label:"牛8 97-78" },
-  { l:31.07, t:80.36, w:4.11, h:4.73, kind:"factory", nos:["牛3-97-61"], label:"牛3 97-61" },
-  { l:31.71, t:82.0, w:4.11, h:4.91, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63" },
-  { l:32.35, t:83.82, w:4.11, h:4.73, kind:"factory", nos:["牛3-97-65A"], label:"牛3 97-65A" },
-  { l:36.97, t:86.55, w:4.11, h:6.18, kind:"factory", nos:["牛3-97-65B"], label:"牛3 97-65B" }
+  { cx:58.69, cy:9.62, w:2.41, h:1.5, rot:81.1, kind:"studio", prefix:"68", label:"牛10 文龍東路68號" },
+  { cx:60.13, cy:9.28, w:2.41, h:1.6, rot:80.4, kind:"studio", prefix:"70", label:"牛10 文龍東路70號" },
+  { cx:61.63, cy:8.95, w:2.39, h:1.64, rot:80.5, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
+  { cx:63.16, cy:8.6, w:2.41, h:1.67, rot:80.7, kind:"studio", prefix:"76", label:"牛10 文龍東路76號" },
+  { cx:59.76, cy:22.31, w:4.55, h:2.29, rot:55.9, kind:"factory", nos:["拉皮-1A"], label:"拉皮 93-1A" },
+  { cx:62.32, cy:26.82, w:3.96, h:2.92, rot:142.6, kind:"factory", nos:["拉皮-1B"], label:"拉皮 93-1B" },
+  { cx:63.79, cy:29.81, w:3.96, h:3.13, rot:141.9, kind:"factory", nos:["拉皮-2A"], label:"拉皮 93-2A" },
+  { cx:65.23, cy:32.75, w:3.93, h:2.83, rot:142.1, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" },
+  { cx:80.58, cy:25.11, w:3.4, h:3.73, rot:139.8, kind:"factory", nos:["牛2-21"], label:"牛2 21號" },
+  { cx:81.79, cy:28.67, w:2.99, h:3.14, rot:151.6, kind:"factory", nos:["牛2-23"], label:"牛2 23號" },
+  { cx:83.08, cy:32.17, w:3.07, h:3.44, rot:149.8, kind:"factory", nos:["牛2-25"], label:"牛2 25號" },
+  { cx:84.37, cy:35.75, w:2.98, h:3.31, rot:150.8, kind:"factory", nos:["牛2-27"], label:"牛2 27號" },
+  { cx:85.6, cy:39.19, w:2.94, h:3.11, rot:151.5, kind:"factory", nos:["牛2-29"], label:"牛2 29號" },
+  { cx:86.83, cy:42.61, w:2.93, h:3.26, rot:150.5, kind:"factory", nos:["牛2-31"], label:"牛2 31號" },
+  { cx:88.11, cy:46.14, w:2.91, h:3.42, rot:150.1, kind:"factory", nos:["牛2-33"], label:"牛2 33號" },
+  { cx:89.42, cy:49.74, w:2.89, h:3.4, rot:156.5, kind:"factory", nos:["牛2-35"], label:"牛2 35號" },
+  { cx:9.22, cy:57.75, w:5.35, h:2.23, rot:51.7, kind:"factory", nos:["牛1-59"], label:"牛1 59號" },
+  { cx:13.0, cy:64.55, w:5.25, h:2.14, rot:51.7, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
+  { cx:19.18, cy:75.67, w:5.18, h:1.94, rot:51.3, kind:"factory", nos:["牛1-57巷2","牛1-57巷6","牛1-57巷8"], label:"牛1 57巷2／6／8" },
+  { cx:35.95, cy:82.3, w:2.87, h:2.49, rot:62.5, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
+  { cx:37.98, cy:80.87, w:2.85, h:2.5, rot:63.3, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
+  { cx:40.03, cy:79.38, w:2.91, h:2.67, rot:64.0, kind:"factory", nos:["牛6-57"], label:"牛6 93-57" },
+  { cx:42.13, cy:77.89, w:2.91, h:2.67, rot:64.0, kind:"factory", nos:["牛6-58"], label:"牛6 93-58" },
+  { cx:44.21, cy:76.42, w:2.91, h:2.59, rot:63.9, kind:"factory", nos:["牛6-59"], label:"牛6 93-59" },
+  { cx:46.26, cy:74.95, w:2.89, h:2.57, rot:63.5, kind:"factory", nos:["牛6-60"], label:"牛6 93-60" },
+  { cx:48.82, cy:72.0, w:3.51, h:2.47, rot:151.3, kind:"factory", nos:["牛6-61"], label:"牛6 93-61" },
+  { cx:49.71, cy:74.57, w:3.49, h:2.1, rot:151.7, kind:"factory", nos:["牛6-62"], label:"牛6 93-62" },
+  { cx:45.27, cy:84.79, w:2.48, h:2.86, rot:68.9, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" },
+  { cx:43.21, cy:86.37, w:2.5, h:2.86, rot:70.5, kind:"factory", nos:["牛7-2F"], label:"牛7 93-63 2F" },
+  { cx:41.08, cy:87.96, w:2.58, h:3.08, rot:72.3, kind:"factory", nos:["牛7-3F"], label:"牛7 93-63 3F" },
+  { cx:13.99, cy:92.54, w:3.08, h:1.98, rot:65.0, kind:"factory", nos:["牛5-97-66"], label:"牛5 97-66" },
+  { cx:15.51, cy:91.4, w:3.1, h:1.76, rot:63.4, kind:"factory", nos:["牛5-97-67"], label:"牛5 97-67" },
+  { cx:16.98, cy:90.29, w:3.06, h:1.78, rot:63.2, kind:"factory", nos:["牛5-97-68"], label:"牛5 97-68" },
+  { cx:18.54, cy:89.2, w:3.06, h:2.0, rot:62.6, kind:"factory", nos:["牛5-97-69"], label:"牛5 97-69" },
+  { cx:20.08, cy:88.05, w:3.03, h:1.8, rot:61.7, kind:"factory", nos:["牛5-97-70"], label:"牛5 97-70" },
+  { cx:21.64, cy:86.43, w:3.58, h:2.43, rot:63.0, kind:"factory", nos:["牛5-97-71"], label:"牛5 97-71" },
+  { cx:23.49, cy:85.09, w:3.51, h:2.19, rot:63.4, kind:"factory", nos:["牛5-97-72"], label:"牛5 97-72" },
+  { cx:25.31, cy:83.8, w:3.51, h:2.27, rot:63.4, kind:"factory", nos:["牛5-97-73"], label:"牛5 97-73" },
+  { cx:27.15, cy:82.44, w:3.52, h:2.27, rot:63.5, kind:"factory", nos:["牛5-97-75"], label:"牛5 97-75" },
+  { cx:28.97, cy:81.16, w:3.55, h:2.31, rot:62.0, kind:"factory", nos:["牛5-97-76"], label:"牛5 97-76" },
+  { cx:8.92, cy:93.58, w:3.17, h:2.45, rot:146.3, kind:"factory", nos:["牛8-77"], label:"牛8 97-77" },
+  { cx:10.04, cy:96.22, w:3.23, h:2.5, rot:147.9, kind:"factory", nos:["牛8-78"], label:"牛8 97-78" },
+  { cx:33.07, cy:82.69, w:2.55, h:1.38, rot:151.9, kind:"factory", nos:["牛3-97-61"], label:"牛3 97-61" },
+  { cx:33.72, cy:84.42, w:2.61, h:1.53, rot:151.8, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63" },
+  { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛3-97-65A"], label:"牛3 97-65A" },
+  { cx:38.97, cy:89.57, w:2.51, h:2.77, rot:68.4, kind:"factory", nos:["牛3-97-65B"], label:"牛3 97-65B" }
 ];
 function findRoomByAssetNo(no) {
   const want = String(no || "");
@@ -2963,7 +2965,7 @@ function assetMapHtml() {
     <div class="asset-map-wrap" id="asset-map-wrap">
       <div class="asset-map" id="asset-map" style="width:${Math.round(z * 100)}%">
         <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
-        ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.l}%;top:${s.t}%;width:${s.w}%;height:${s.h}%" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
+        ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
       </div>
     </div>
     <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>

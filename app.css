@@ -4977,20 +4977,27 @@ html[data-theme="void"] .site-chip {
 }
 .map-hot {
   position: absolute;
+  left: 0;
+  top: 0;
   border: 0;
   padding: 0;
   margin: 0;
-  border-radius: 4px;
+  border-radius: 3px;
   background: rgba(120,120,120,.16);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  transform-origin: center center;
 }
 .map-hot.paid { background: rgba(98,118,91,.32); }
 .map-hot.unpaid { background: rgba(176,70,60,.34); }
 .map-hot.vacant { background: rgba(140,140,140,.22); }
-.map-hot.on, .map-hot.is-press {
+.map-hot.on {
   outline: 2px solid #62765b;
   background: rgba(98,118,91,.48);
+}
+.map-hot.is-press {
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(0.94);
 }
 .map-legend {
   font-size: 12px;
