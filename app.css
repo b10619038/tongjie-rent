@@ -767,7 +767,7 @@ button.pay-toggle {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-button.pay-toggle.is-press { transform: scale(.84); transition-duration: .08s; }
+button.pay-toggle.is-press { transform: scale(.94); transition-duration: .08s; }
 button.pay-toggle.is-pop { transform: scale(1.14); }
 
 .section-title {
