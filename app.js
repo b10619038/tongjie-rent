@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-01-18";
-const APP_EDIT_COUNT = 980;
+const APP_STAMP = "2026-09-22-01-32";
+const APP_EDIT_COUNT = 981;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0531";
+const FILE_VER = "0532";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客列表不再自動往上滑"] },
+  { ver: APP_VERSION, items: ["續約申請展開不再重複抖動"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -7291,6 +7291,7 @@ function ingestPaidCloud(raw) {
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
     if (composingNow()) return;
+    if (typeof sheetLocked === "function" && sheetLocked()) return;
     if (tenantViewSig() === viewBefore && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
     ui.keepScroll = true;
     try { render(); } catch {}
@@ -18181,6 +18182,7 @@ function paintApp() {
   persistUi();
   enforceTenantSession();
   maybeAuditBrowse();
+  if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
@@ -23316,30 +23318,15 @@ function sheetAttrSel(attr, id) {
 }
 function playSheetOpen(wrap) {
   if (!wrap) return;
-  const inner = wrap.querySelector(".sheet-drop-inner") || wrap.firstElementChild;
-  wrap.style.overflow = "hidden";
-  wrap.style.height = "0px";
-  const h = inner ? inner.scrollHeight : 0;
-  requestAnimationFrame(() => {
-    wrap.style.transition = "height .2s cubic-bezier(0.22, 1, 0.36, 1)";
-    wrap.style.height = h + "px";
-  });
-  const done = () => {
-    wrap.style.height = "auto";
-    wrap.style.overflow = "visible";
-    wrap.style.transition = "";
-    wrap.classList.add("sheet-drop-ready");
-  };
-  wrap.addEventListener("transitionend", done, { once: true });
-  setTimeout(done, 240);
+  wrap.classList.add("sheet-drop-in");
+  const done = () => wrap.classList.add("sheet-drop-ready");
+  wrap.addEventListener("animationend", done, { once: true });
+  setTimeout(done, 220);
 }
 function playSheetClose(wrap, done) {
   if (!wrap) { if (done) done(); return; }
-  const h = wrap.getBoundingClientRect().height;
-  wrap.style.overflow = "hidden";
-  wrap.style.height = (h > 0 ? h : wrap.scrollHeight) + "px";
-  wrap.style.transition = "height .2s cubic-bezier(0.4, 0, 1, 1)";
-  requestAnimationFrame(() => { wrap.style.height = "0px"; });
+  wrap.classList.remove("sheet-drop-ready", "sheet-drop-in");
+  wrap.classList.add("sheet-drop-out");
   let once = false;
   const go = () => {
     if (once) return;
@@ -23347,24 +23334,36 @@ function playSheetClose(wrap, done) {
     wrap.remove();
     if (done) done();
   };
-  wrap.addEventListener("transitionend", go, { once: true });
-  setTimeout(go, 240);
+  wrap.addEventListener("animationend", go, { once: true });
+  setTimeout(go, 220);
 }
 function closeSheetThen(wrap, done) {
   playSheetClose(wrap, done);
 }
+function bindNewSheet(wrap) {
+  if (!wrap) return;
+  try { bindTenantFold(); } catch {}
+}
 function insertTenantSheet(block, html) {
   if (!block) return null;
+  if (block.querySelector(".sheet-drop")) return block.querySelector(".sheet-drop");
   const wrap = document.createElement("div");
-  wrap.className = "sheet-drop";
+  wrap.className = "sheet-drop sheet-drop-in";
   wrap.innerHTML = '<div class="sheet-drop-inner">' + html + "</div>";
   block.appendChild(wrap);
   playSheetOpen(wrap);
-  try { bindTenantFold(); } catch {}
+  setTimeout(() => { try { bindNewSheet(wrap); } catch {} }, 50);
   return wrap;
 }
+function sheetLocked() {
+  return Date.now() < (Number(ui.sheetLockUntil) || 0);
+}
+function lockSheet(ms) {
+  ui.sheetLockUntil = Date.now() + (ms || 380);
+}
 function toggleTenantRenew(id) {
-  if (!id) return;
+  if (!id || sheetLocked()) return;
+  lockSheet(380);
   if (!ui.renewOpen) ui.renewOpen = {};
   document.querySelectorAll("[data-open-renew].is-press").forEach(b => b.classList.remove("is-press"));
   const openNow = !!ui.renewOpen[id];
@@ -23389,7 +23388,8 @@ function tenantPayOpen(id) {
   return !!(id && ui.payOpen && ui.payOpen[id]);
 }
 function toggleTenantPay(id) {
-  if (!id) return;
+  if (!id || sheetLocked()) return;
+  lockSheet(380);
   if (!ui.payOpen) ui.payOpen = {};
   const openNow = !!ui.payOpen[id];
   const btnOf = tid => document.querySelector("#tenant-list " + sheetAttrSel("data-toggle-pay", tid));
@@ -23686,8 +23686,8 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="row tenant-slim-head"><span class="who-mini">${avatarHtml(t, "sm")}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
-    ${payOpen ? `<div class="sheet-drop"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
-    ${renewOpen ? `<div class="sheet-drop"><div class="sheet-drop-inner">${renewalAdminCardHtml(renew)}</div></div>` : ""}
+    ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
+    ${renewOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${renewalAdminCardHtml(renew)}</div></div>` : ""}
     </div>`;
 }
 function teField(label, key, tid, rid, value, type, ph) {
