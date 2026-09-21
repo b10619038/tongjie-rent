@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-19-42";
-const APP_EDIT_COUNT = 923;
+const APP_STAMP = "2026-09-21-19-58";
+const APP_EDIT_COUNT = 924;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0474";
+const FILE_VER = "0475";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -386,7 +386,10 @@ const SIMMIN_FED_BOOKS = [
   ["2026-08-28", "out", 30000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"],
   ["2026-08-28", "out", 10000, "個人戶·黃思敏", "自行提款　入紙", "聯邦"]
 ];
-const SLIP_0915_VER = "slip-0915-v3";
+const JINFANG_ENG_0921_VER = "jinfang-eng-0921-v1";
+const JINFANG_ENG_0921_BOOKS = [
+  ["2026-09-21", "in", 14000, "現金(保險箱)", "增建收入　錦芳　牛8 9月工程款", "現金", "牛8-77"]
+];
 const SLIP_0915_BOOKS = [
   ["2026-09-15", "out", 14000, "信潔", "太陽能險　超商繳", "超商"],
   ["2026-09-15", "out", 25456, "信潔", "火險　超商繳", "超商"],
@@ -476,7 +479,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["舊客續約可預約簽約日、選一年約；後台當天可列印；到期前30天禮貌提醒"] },
+  { ver: APP_VERSION, items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
+  { ver: "2026-09-21-19-42-923", items: ["舊客續約可預約簽約日、選一年約；後台當天可列印；到期前30天禮貌提醒"] },
   { ver: "2026-09-15-21-16-921", items: ["廠房月租改回 APP 原金額，避免動到發票含稅；付／水／電標籤留下"] },
   { ver: "2026-09-15-21-05-920", items: ["廠房依小許表更新應收與付／水／電，禹旺存現改 39,900"] },
   { ver: "2026-09-15-20-45-919", items: ["9/15 進帳改為拉皮 93-2B 禹旺存現"] },
@@ -4091,6 +4095,7 @@ function normalize(data) {
   applySimminFed(data);
   applyXuxuAugCash(data);
   applySlip0915(data);
+  applyJinfangEng0921(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   applyFactorySepPaidFromBooks(data);
@@ -5161,6 +5166,55 @@ function applySlip0915(data) {
     });
   }
   data.slip0915Ver = SLIP_0915_VER;
+}
+function applyJinfangEng0921(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  if (data.jinfangEng0921Ver === JINFANG_ENG_0921_VER && (data.books || []).some(b => b && b.importTag === "jinfangEng0921")) {
+    stampJinfangEngDone(data);
+    return;
+  }
+  data.books = (data.books || []).filter(b => b && b.importTag !== "jinfangEng0921");
+  JINFANG_ENG_0921_BOOKS.forEach((row, i) => {
+    const id = "bk-jinfang-eng-0921-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "jinfangEng0921") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      return /錦芳/.test(String(b.note || ""));
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "jinfangEng0921",
+      createdAt: "2026-09-21 19:55"
+    });
+  });
+  stampJinfangEngDone(data);
+  data.jinfangEng0921Ver = JINFANG_ENG_0921_VER;
+}
+function stampJinfangEngDone(data) {
+  if (!data) return;
+  if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
+  const m = data.aiMemos.find(x => x && x.id === "cycle-jinfang-eng");
+  if (!m) return;
+  const ym = "2026-09";
+  m.doneMonths = m.doneMonths || [];
+  if (m.doneMonths.indexOf(ym) < 0) m.doneMonths.push(ym);
+  m.doneAtMonths = Object.assign({}, m.doneAtMonths || {});
+  m.doneAtMonths[ym] = "2026-09-21";
+  m.doneAt = m.doneAt || "2026-09-21";
+  try { persistMemoDone(data); } catch {}
 }
 function applyTongjieMega(data) {
   if (!data) return;
@@ -7298,6 +7352,7 @@ async function pullCloud() {
       applySimminFed(state);
       applyXuxuAugCash(state);
       applySlip0915(state);
+      applyJinfangEng0921(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
       applyFactorySepPaidFromBooks(state);
@@ -7367,6 +7422,7 @@ async function pullCloud() {
     applySimminFed(state);
     applyXuxuAugCash(state);
     applySlip0915(state);
+    applyJinfangEng0921(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
     applyFactorySepPaidFromBooks(state);
