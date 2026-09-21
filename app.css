@@ -676,6 +676,10 @@ button.pay-pill[data-open-renew].is-press {
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
+button.pay-pill[data-open-renew].on,
+button.pay-pill[data-open-renew].on.is-press {
+  transform: none;
+}
 .pay-pill.paid.on {
   background: var(--ok-soft);
   color: var(--ok);
