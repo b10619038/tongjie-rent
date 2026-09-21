@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-01-32";
-const APP_EDIT_COUNT = 981;
+const APP_STAMP = "2026-09-22-01-38";
+const APP_EDIT_COUNT = 982;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0532";
+const FILE_VER = "0533";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請展開不再重複抖動"] },
+  { ver: APP_VERSION, items: ["新合約匯款改兆豐：續約列印與新約生效後繳費帳戶同步"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1926,6 +1926,7 @@ function tenantPayBankKey(t, r) {
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
   const start = ymdOf((t && t.leaseStart) || "");
   if (start && start >= NEW_TENANT_SINCE) return (t && t.payBank) || NEW_TENANT_PAY_BANK;
+  if (t && t.payBank === "兆豐") return "兆豐";
   if (t && t.payBank && t.payBank !== "聯邦") return t.payBank;
   return "農會";
 }
@@ -2305,7 +2306,7 @@ function renewAskCardHtml(t, r, opts) {
     return `<div class="handover-note renew-note">
       <div class="label">${signed ? "續約完成" : "續約申請已送出"}</div>
       <p>${signed ? "現場已簽約。目前合約仍至 " + escapeHtml(t.leaseEnd || cur.oldEnd || "") + "。" : ""}新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(cur.start || "")} ～ ${escapeHtml(cur.end || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
-      <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
+      <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，現場蓋章即可。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
@@ -2345,7 +2346,7 @@ function renewAskCardHtml(t, r, opts) {
     </div>
     ${mode === "move" ? renewMovePickHtml(t, r) : ""}
     <div class="small" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ～ ${escapeHtml(range.end)}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
-    <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。換房不重收 2 押 1 租，押金差額現場處理。</div>
+    <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
     <label class="field"><span>預約實際簽約日期</span>
       <input id="renew-appoint" type="datetime-local" value="${escapeHtml(ui.renewAppoint || "")}" min="${minAt}" max="${maxDay}T18:00" />
     </label>
@@ -12753,6 +12754,7 @@ function applySignedRenewalLease(t, r, item) {
     }
   }
   if (!/已續約/.test(String(t.note || ""))) t.note = (t.note ? String(t.note).trim() + "　" : "") + "已續約";
+  t.payBank = NEW_TENANT_PAY_BANK;
   t.edited = true;
   t.editedAt = Date.now();
   const clone = tenantForRenewPrint(t, r, item);
@@ -12817,7 +12819,8 @@ function tenantForRenewPrint(t, r, item) {
   return Object.assign({}, t, {
     leaseStart: range.start,
     leaseEnd: range.end,
-    leases: parts
+    leases: parts,
+    payBank: NEW_TENANT_PAY_BANK
   });
 }
 function isRenewSignDay(item) {
@@ -23292,7 +23295,7 @@ function renewalAdminCardHtml(x) {
       </label>
       <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
     </div>
-    <div class="small" style="margin:6px 0 4px">${signed ? "年水費已於簽約現場收取，只收現金。" : "簽約現場收年水費，只收現金。"}</div>
+    <div class="small" style="margin:6px 0 4px">${signed ? "年水費已於簽約現場收取，只收現金。新約租金改匯兆豐。" : "簽約現場收年水費，只收現金。新約匯款改兆豐（統潔 04009039686）。"}</div>
     ${tenant && room && room.kind !== "factory" ? `<button type="button" class="btn-navy${todaySign || signed ? "" : " ghost"}" data-print-renew="${x.id}" style="margin-top:8px">${todaySign && !signed ? "列印今天續約合約" : "列印續約合約"}</button>` : ""}
   </div>`;
 }
