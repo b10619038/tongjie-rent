@@ -569,7 +569,18 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 .pay-pill.paid { background: var(--ok-soft); color: var(--ok); }
 .pay-pill.unpaid { background: var(--rose-soft); color: var(--rose); }
 .pay-pill.wait { background: #ececec; color: #6a6a6a; }
-.pay-pill.hand { background: #f3e4cf; color: #8a5a22; }
+.pay-pill.hand { background: #f3e4cf; color: #8a5a22; border: 0; }
+button.pay-pill.hand {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
 .ops-row {
   display: flex;
   flex-wrap: wrap;
