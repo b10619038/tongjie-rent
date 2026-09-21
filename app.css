@@ -580,7 +580,13 @@ button.pay-pill.hand {
   box-shadow: none;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform: scale(1);
+  transform-origin: center center;
+  transition: transform .2s cubic-bezier(.2, 1.6, .3, 1), background-color .18s ease, color .18s ease;
 }
+button.pay-pill.hand.is-press { transform: scale(.84); transition-duration: .08s; }
+button.pay-pill.hand.is-pop { transform: scale(1.14); }
 .ops-row {
   display: flex;
   flex-wrap: wrap;
@@ -665,6 +671,14 @@ button.pay-pill.paid {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
+button.pay-pill[data-open-renew] {
+  touch-action: manipulation;
+  transform: scale(1);
+  transform-origin: center center;
+  transition: transform .2s cubic-bezier(.2, 1.6, .3, 1), background-color .18s ease, color .18s ease;
+}
+button.pay-pill[data-open-renew].is-press { transform: scale(.84); transition-duration: .08s; }
+button.pay-pill[data-open-renew].is-pop { transform: scale(1.14); }
 .pay-pill.paid.on {
   background: var(--ok-soft);
   color: var(--ok);
