@@ -962,7 +962,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .invoice-overview-btn:active,
 .invoice-overview-btn.is-press {
-  transform: scale(0.97);
+  transform: scale(0.94);
   background: var(--chip);
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
