@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-20-32";
-const APP_EDIT_COUNT = 926;
+const APP_STAMP = "2026-09-21-20-44";
+const APP_EDIT_COUNT = 927;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0477";
+const FILE_VER = "0478";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
+  { ver: APP_VERSION, items: ["7221 續約申請改到後台最上面，並跳出通知"] },
+  { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
   { ver: "2026-09-21-19-42-923", items: ["舊客續約可預約簽約日、選一年約；後台當天可列印；到期前30天禮貌提醒"] },
@@ -2346,11 +2347,13 @@ function submitTenantRenewal() {
   }
   if (!state.renewals) state.renewals = [];
   state.renewals.push(row);
+  state.renewPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, years, waterFee: water };
   const tag = "renew-ask-" + String(t.leaseEnd || "") + "-" + t.id;
   if (Array.isArray(t.inbox)) t.inbox.forEach(n => { if (n && n.id === tag) n.read = true; });
   t.edited = true;
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   pushPhoneNotify("續約申請", `${r.no} ${t.name || ""}　${years === 0.5 ? "半年" : "1年"}　年水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
   toast("已送出續約申請");
   ui.keepScroll = true;
@@ -5227,44 +5230,118 @@ function stampJinfangEngDone(data) {
   m.doneAt = m.doneAt || "2026-09-21";
   try { persistMemoDone(data); } catch {}
 }
-const RENEW_7221_VER = "renew-7221-v1";
+const RENEW_7221_VER = "renew-7221-v2";
+function studioOccupantOfNo(data, no) {
+  const room = (data && data.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room) return { room: null, tenant: null };
+  const t = (data.tenants || []).find(x => x && !x.former && !x.demo && (
+    x.id === room.tenantId || x.roomId === room.id || x.id === "t" + no
+  ));
+  return { room, tenant: t || null };
+}
 function applyRenewal7221(data) {
   if (!data) return;
   if (!Array.isArray(data.renewals)) data.renewals = [];
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
   try { ensureStudioTenant(data, "7221"); } catch {}
-  const room = (data.rooms || []).find(r => r && String(r.no) === "7221");
-  const t = (data.tenants || []).find(x => x && !x.former && !x.incoming && !x.demo && (
-    x.id === "t7221" || (room && x.roomId === room.id && /張智傑/.test(String(x.name || "")))
-  ));
-  if (!t || !room) return;
-  const existed = (data.renewals || []).some(x => x && (x.id === "rn-7221-2026" || (x.tenantId === t.id && x.status !== "done")));
-  if (data.renew7221Ver === RENEW_7221_VER && existed) return;
-  if (!existed) {
-    const years = 1;
-    const range = renewLeaseRange(t, years);
-    const water = renewWaterCashFee(t, room);
-    data.renewals.push({
-      id: "rn-7221-2026",
-      roomId: room.id,
-      tenantId: t.id,
-      roomNo: room.no,
-      name: t.name || "張智傑",
-      status: "open",
-      years,
-      start: range.start,
-      end: range.end,
-      waterFee: water,
-      waterCash: true,
-      createdAt: nowStamp(),
-      importTag: "renew7221"
-    });
-    if (data.renew7221Ver !== RENEW_7221_VER) {
-      setTimeout(() => {
-        try { pushPhoneNotify("續約申請", `7221 ${t.name || "張智傑"}　1年　年水費 ${money(water)} 現場現金`, "admin"); } catch {}
-      }, 900);
-    }
+  let { room, tenant: t } = studioOccupantOfNo(data, "7221");
+  if (!room) {
+    room = { id: "r7221", no: "7221", title: "套房", kind: "studio", status: "rented", rent: 7000, deposit: 14000, tenantId: "t7221" };
+    data.rooms.push(room);
+    try { ensureStudioTenant(data, "7221"); } catch {}
+    const again = studioOccupantOfNo(data, "7221");
+    room = again.room || room;
+    t = again.tenant || t;
   }
+  if (!t) {
+    t = {
+      id: "t7221",
+      roomId: room.id,
+      name: "張智傑",
+      phone: "0988-631-820",
+      leaseStart: "2025-11-01",
+      leaseEnd: "2026-10-31",
+      dueDay: 1,
+      paid: true,
+      payBank: "農會",
+      note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000"
+    };
+    data.tenants.push(t);
+    room.tenantId = t.id;
+    room.status = "rented";
+  }
+  const existed = (data.renewals || []).find(x => x && (x.id === "rn-7221-2026" || (x.tenantId === t.id && x.status !== "done")));
+  if (existed) {
+    if (!existed.roomNo) existed.roomNo = room.no;
+    if (!existed.name) existed.name = t.name || "張智傑";
+    if (existed.waterFee == null) existed.waterFee = renewWaterCashFee(t, room, existed);
+    existed.waterCash = true;
+    data.renewPing = data.renewPing || { at: Date.now(), roomNo: room.no, name: t.name || "張智傑", id: existed.id };
+    data.renew7221Ver = RENEW_7221_VER;
+    return;
+  }
+  const years = 1;
+  const range = renewLeaseRange(t, years);
+  const water = renewWaterCashFee(t, room);
+  const row = {
+    id: "rn-7221-2026",
+    roomId: room.id,
+    tenantId: t.id,
+    roomNo: room.no,
+    name: t.name || "張智傑",
+    status: "open",
+    years,
+    start: range.start,
+    end: range.end,
+    waterFee: water,
+    waterCash: true,
+    createdAt: nowStamp(),
+    importTag: "renew7221"
+  };
+  data.renewals.push(row);
+  data.renewPing = { at: Date.now(), roomNo: room.no, name: t.name || "張智傑", id: row.id, years, waterFee: water };
   data.renew7221Ver = RENEW_7221_VER;
+  if (typeof ui !== "undefined" && ui.role === "admin") {
+    setTimeout(() => {
+      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
+      try { flashRenewNotice(data.renewPing); } catch {}
+    }, 500);
+  }
+}
+function renewPingKey(p) {
+  if (!p) return "";
+  return [p.id || "", p.roomNo || "", p.name || ""].join("|");
+}
+function renewPingAlreadySeen(p) {
+  const k = renewPingKey(p);
+  if (!k) return true;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-renew-seen") || "[]");
+    return raw.indexOf(k) >= 0;
+  } catch { return false; }
+}
+function markRenewPingSeen(p) {
+  const k = renewPingKey(p);
+  if (!k) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-renew-seen") || "[]");
+    if (raw.indexOf(k) < 0) raw.push(k);
+    localStorage.setItem("tj-renew-seen", JSON.stringify(raw.slice(-60)));
+  } catch {}
+}
+function flashRenewNotice(ping) {
+  if (ui.role !== "admin") return;
+  const p = ping || state.renewPing || (state.renewals || []).filter(x => x && x.status !== "done").slice(-1)[0];
+  if (!p) return;
+  const room = (state.rooms || []).find(r => r && (r.id === p.roomId || String(r.no) === String(p.roomNo || "7221")));
+  const t = (state.tenants || []).find(x => x && x.id === p.tenantId);
+  const who = `${p.roomNo || (room && room.no) || "7221"} ${p.name || (t && t.name) || "張智傑"}`.trim();
+  const line = who + " 申請續約";
+  if (renewPingAlreadySeen({ id: p.id || p.roomNo, roomNo: p.roomNo || (room && room.no), name: p.name || (t && t.name) })) return;
+  markRenewPingSeen({ id: p.id || "rn-7221-2026", roomNo: p.roomNo || (room && room.no) || "7221", name: p.name || (t && t.name) || "張智傑" });
+  try { showOsBanner("續約申請", line + "　年水費 $1,800 現場現金", "renew-" + (p.id || "7221")); } catch {}
+  try { showToastBanner("續約申請　" + line); } catch {}
 }
 function completeRenewal(item) {
   if (!item || item.status === "done") return false;
@@ -6857,6 +6934,19 @@ function ingestPaidCloud(raw) {
       }
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
+    const renewAt = Number(o.renewPing && o.renewPing.at) || 0;
+    if (renewAt && renewAt > (ingestPaidCloud.renewPing || 0)) {
+      ingestPaidCloud.renewPing = renewAt;
+      const ping = o.renewPing;
+      if (ping) state.renewPing = ping;
+      if (ui.role === "admin" && ping && ping.name && !renewPingAlreadySeen(ping)) {
+        markRenewPingSeen(ping);
+        const line = `${ping.roomNo || ""} ${ping.name} 申請續約`.trim();
+        try { showOsBanner("續約申請", line + "　年水費 $1,800 現場現金", "tongjie-renew-" + renewAt); } catch {}
+        toast("續約申請　" + line);
+      }
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+    }
     const signAt = Number(o.eSignPing && o.eSignPing.at) || 0;
     if (signAt && signAt > (ingestPaidCloud.eSignPing || 0)) {
       ingestPaidCloud.eSignPing = signAt;
@@ -6921,6 +7011,7 @@ function moneyCloudBlob() {
     ledgerGone: state.ledgerGone || [],
     repairPing: Number(state.repairPing) || 0,
     applyPing: state.applyPing || null,
+    renewPing: state.renewPing || null,
     eSignPing: state.eSignPing || null
   });
 }
@@ -7104,6 +7195,10 @@ function mergeSharedInto(target, other) {
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
+  target.renewals = unionById(target.renewals, other.renewals);
+  if (Number(other.renewPing && other.renewPing.at) > Number(target.renewPing && target.renewPing.at)) {
+    target.renewPing = other.renewPing;
+  }
   target.noticeGone = unionGone(target.noticeGone, other.noticeGone);
   if (target.noticeGone && target.noticeGone.length) {
     const g = new Set(target.noticeGone);
@@ -8072,7 +8167,9 @@ async function pushCloud() {
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
-      applyPing: state.applyPing || null,
+      applyPing: state.applyPing || (remote && remote.applyPing) || null,
+      renewPing: (Number(state.renewPing && state.renewPing.at) >= Number(remote && remote.renewPing && remote.renewPing.at) ? state.renewPing : (remote && remote.renewPing)) || null,
+      renewals: unionById(remote && remote.renewals, state.renewals),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
@@ -22220,6 +22317,22 @@ function adminSolar() {
     </div>
   </div>`;
 }
+function adminRenewalsBannerHtml() {
+  const list = (state.renewals || []).filter(x => x && x.status !== "done").slice().reverse();
+  if (!list.length) return "";
+  return `<div class="card card-body renew-alert">
+    <h2 class="dash-h">續約申請</h2>
+    ${list.map(x => {
+      const room = state.rooms.find(r => r && r.id === x.roomId);
+      const tenant = state.tenants.find(t => t && t.id === x.tenantId);
+      const years = renewYearsOf(x);
+      const who = x.roomNo || (room && room.no) || "";
+      const name = x.name || (tenant && tenant.name) || "";
+      return `<div class="mini clickable renew-hit" data-admin-room="${x.roomId || (room && room.id) || ""}"><b>${escapeHtml(who)} ·${escapeHtml(name)} · ${years === 0.5 ? "半年" : "1年"}</b><span>${x.appointAt ? formatDateTime12(String(x.appointAt).replace("T", " ")) : "待約簽約日"}</span></div>
+        <div class="small" style="margin:-4px 0 10px">${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${isRenewSignDay(x) ? "　今天簽約，可列印新約" : ""}</div>`;
+    }).join("")}
+  </div>`;
+}
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
@@ -22256,6 +22369,7 @@ function adminDash() {
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
   return `<div class="dash">
+    ${adminRenewalsBannerHtml()}
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
@@ -22294,7 +22408,7 @@ function adminDash() {
       </div>
     </div>
     <div class="dash-two">
-      <div class="card card-body"><h2 class="dash-h">續約申請</h2>
+      <div class="card card-body renew-alert"><h2 class="dash-h">續約申請</h2>
         ${(state.renewals || []).filter(x => x.status !== "done").length
           ? (state.renewals || []).filter(x => x.status !== "done").slice().reverse().map(x => {
               const room = state.rooms.find(r => r.id === x.roomId);
@@ -25435,6 +25549,7 @@ function bindRepairFold() {
   });
 }
 function bindAdmin() {
+  try { setTimeout(() => flashRenewNotice(), 400); } catch {}
   bindHistoryBack();
   bindMediaViewers();
   bindRepairFold();
