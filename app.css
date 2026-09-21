@@ -641,10 +641,13 @@ html[data-theme="void"] .stat b { color: #ffffff; }
 .renew-alert {
   border: 2px solid #62765b;
   background: #f4f7f1;
-  position: sticky;
-  top: 0;
-  z-index: 6;
+  margin-top: 8px;
 }
+.pay-pill.hand.on {
+  background: #8a5a22;
+  color: #fff;
+}
+.tenant-renew-block { margin: 0 0 10px; }
 .tenant-slim.renew-hit {
   background: #eef3ea;
 }
