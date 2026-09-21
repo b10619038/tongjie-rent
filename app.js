@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-00-18";
-const APP_EDIT_COUNT = 972;
+const APP_STAMP = "2026-09-22-00-28";
+const APP_EDIT_COUNT = 973;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0523";
+const FILE_VER = "0524";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請租客圖卡改和其他人一樣，只留左上紅點"] },
+  { ver: APP_VERSION, items: ["續約／繳費圖塊展開收起改在原位滑動，避免手機跳針"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -6954,8 +6954,6 @@ function ingestLiveCloud(raw) {
         if (!composingNow()) try { render(); } catch {}
       } else {
         try { enforceTenantSession(); } catch {}
-        ui.keepScroll = true;
-        if (!composingNow()) try { render(); } catch {}
       }
     }, 60);
   } catch {}
@@ -23182,17 +23180,54 @@ function sheetAttrSel(attr, id) {
   const safe = (window.CSS && CSS.escape) ? CSS.escape(String(id || "")) : String(id || "").replace(/"/g, "");
   return "[" + attr + "=\"" + safe + "\"]";
 }
-function closeSheetThen(wrap, done) {
+function playSheetOpen(wrap) {
+  if (!wrap) return;
+  const inner = wrap.querySelector(".sheet-drop-inner") || wrap.firstElementChild;
+  wrap.style.overflow = "hidden";
+  wrap.style.height = "0px";
+  const h = inner ? inner.scrollHeight : 0;
+  requestAnimationFrame(() => {
+    wrap.style.transition = "height .2s cubic-bezier(0.22, 1, 0.36, 1)";
+    wrap.style.height = h + "px";
+  });
+  const done = () => {
+    wrap.style.height = "auto";
+    wrap.style.overflow = "visible";
+    wrap.style.transition = "";
+    wrap.classList.add("sheet-drop-ready");
+  };
+  wrap.addEventListener("transitionend", done, { once: true });
+  setTimeout(done, 240);
+}
+function playSheetClose(wrap, done) {
   if (!wrap) { if (done) done(); return; }
-  wrap.classList.add("sheet-drop-out");
+  const h = wrap.getBoundingClientRect().height;
+  wrap.style.overflow = "hidden";
+  wrap.style.height = (h > 0 ? h : wrap.scrollHeight) + "px";
+  wrap.style.transition = "height .2s cubic-bezier(0.4, 0, 1, 1)";
+  requestAnimationFrame(() => { wrap.style.height = "0px"; });
   let once = false;
   const go = () => {
     if (once) return;
     once = true;
+    wrap.remove();
     if (done) done();
   };
-  wrap.addEventListener("animationend", go, { once: true });
-  setTimeout(go, 220);
+  wrap.addEventListener("transitionend", go, { once: true });
+  setTimeout(go, 240);
+}
+function closeSheetThen(wrap, done) {
+  playSheetClose(wrap, done);
+}
+function insertTenantSheet(block, html) {
+  if (!block) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "sheet-drop";
+  wrap.innerHTML = '<div class="sheet-drop-inner">' + html + "</div>";
+  block.appendChild(wrap);
+  playSheetOpen(wrap);
+  try { bindTenantFold(); } catch {}
+  return wrap;
 }
 function toggleTenantRenew(id) {
   if (!id) return;
@@ -23200,12 +23235,20 @@ function toggleTenantRenew(id) {
   const openNow = !!ui.renewOpen[id];
   if (openNow) {
     ui.renewOpen[id] = false;
-    const wrap = document.querySelector(sheetAttrSel("data-renew-card", id));
-    closeSheetThen(wrap && wrap.closest(".sheet-drop"), refreshTenantList);
+    const card = document.querySelector(sheetAttrSel("data-renew-card", id));
+    const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
+    if (btn) btn.classList.remove("on");
+    playSheetClose(card && card.closest(".sheet-drop"));
     return;
   }
   ui.renewOpen[id] = true;
-  refreshTenantList();
+  const renew = (state.renewals || []).find(x => x && x.id === id);
+  const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
+  const block = btn && btn.closest(".tenant-renew-block");
+  if (!renew || !block) { refreshTenantList(); return; }
+  if (block.querySelector("[data-renew-card]")) return;
+  btn.classList.add("on");
+  insertTenantSheet(block, renewalAdminCardHtml(renew));
 }
 function tenantPayOpen(id) {
   return !!(id && ui.payOpen && ui.payOpen[id]);
@@ -23214,21 +23257,46 @@ function toggleTenantPay(id) {
   if (!id) return;
   if (!ui.payOpen) ui.payOpen = {};
   const openNow = !!ui.payOpen[id];
+  const btnOf = tid => document.querySelector("#tenant-list " + sheetAttrSel("data-toggle-pay", tid));
   if (openNow) {
     ui.payOpen[id] = false;
-    const wrap = document.querySelector(sheetAttrSel("data-pay-card", id));
-    closeSheetThen(wrap && wrap.closest(".sheet-drop"), refreshTenantList);
+    const card = document.querySelector(sheetAttrSel("data-pay-card", id));
+    const btn = btnOf(id);
+    if (btn) btn.classList.remove("on");
+    const slim = btn && btn.closest(".tenant-slim");
+    if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
+    playSheetClose(card && card.closest(".sheet-drop"));
     return;
   }
   const prev = Object.keys(ui.payOpen).find(k => ui.payOpen[k]);
   ui.payOpen = {};
   ui.payOpen[id] = true;
+  const openNew = () => {
+    const t = (state.tenants || []).find(x => x && x.id === id);
+    const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+    const btn = btnOf(id);
+    const block = btn && btn.closest(".tenant-renew-block");
+    if (!t || !block) { refreshTenantList(); return; }
+    btn.classList.add("on");
+    const slim = btn.closest(".tenant-slim");
+    if (slim) {
+      const unpaid = !paidThisMonth(t);
+      slim.classList.add("pay-hit");
+      slim.classList.toggle("unpaid", unpaid);
+      slim.classList.toggle("paid", !unpaid);
+    }
+    insertTenantSheet(block, payAdminCardHtml(t, r));
+  };
   if (prev) {
-    const wrap = document.querySelector(sheetAttrSel("data-pay-card", prev));
-    closeSheetThen(wrap && wrap.closest(".sheet-drop"), refreshTenantList);
+    const card = document.querySelector(sheetAttrSel("data-pay-card", prev));
+    const prevBtn = btnOf(prev);
+    if (prevBtn) prevBtn.classList.remove("on");
+    const slim = prevBtn && prevBtn.closest(".tenant-slim");
+    if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
+    playSheetClose(card && card.closest(".sheet-drop"), openNew);
     return;
   }
-  refreshTenantList();
+  openNew();
 }
 function payPanelAmount(t, r) {
   if (!t) return 0;
