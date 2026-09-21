@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-22-52";
-const APP_EDIT_COUNT = 952;
+const APP_STAMP = "2026-09-21-22-54";
+const APP_EDIT_COUNT = 953;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0503";
+const FILE_VER = "0504";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["文龍東路下方第五格改為牛1 57巷8號"] },
+  { ver: APP_VERSION, items: ["牛2標籤改成57巷1弄門牌"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2868,14 +2868,14 @@ const SITE_MAP_SPOTS = [
   { cx:62.32, cy:26.82, w:3.96, h:2.92, rot:142.6, kind:"factory", nos:["牛1-57巷2"], label:"牛1 57巷2號" },
   { cx:63.79, cy:29.81, w:3.96, h:3.13, rot:141.9, kind:"factory", nos:["牛1-57巷6"], label:"牛1 57巷6號" },
   { cx:65.23, cy:32.75, w:3.93, h:2.83, rot:142.1, kind:"factory", nos:["牛1-57巷8"], label:"牛1 57巷8號" },
-  { cx:80.58, cy:25.11, w:3.4, h:3.73, rot:139.8, kind:"factory", nos:["牛2-21"], label:"牛2 21號" },
-  { cx:81.79, cy:28.67, w:2.99, h:3.14, rot:151.6, kind:"factory", nos:["牛2-23"], label:"牛2 23號" },
-  { cx:83.08, cy:32.17, w:3.07, h:3.44, rot:149.8, kind:"factory", nos:["牛2-25"], label:"牛2 25號" },
-  { cx:84.37, cy:35.75, w:2.98, h:3.31, rot:150.8, kind:"factory", nos:["牛2-27"], label:"牛2 27號" },
-  { cx:85.6, cy:39.19, w:2.94, h:3.11, rot:151.5, kind:"factory", nos:["牛2-29"], label:"牛2 29號" },
-  { cx:86.83, cy:42.61, w:2.93, h:3.26, rot:150.5, kind:"factory", nos:["牛2-31"], label:"牛2 31號" },
-  { cx:88.11, cy:46.14, w:2.91, h:3.42, rot:150.1, kind:"factory", nos:["牛2-33"], label:"牛2 33號" },
-  { cx:89.42, cy:49.74, w:2.89, h:3.4, rot:156.5, kind:"factory", nos:["牛2-35"], label:"牛2 35號" },
+  { cx:80.58, cy:25.11, w:3.4, h:3.73, rot:139.8, kind:"factory", nos:["牛2-21"], label:"牛2 57巷1弄21號" },
+  { cx:81.79, cy:28.67, w:2.99, h:3.14, rot:151.6, kind:"factory", nos:["牛2-23"], label:"牛2 57巷1弄23號" },
+  { cx:83.08, cy:32.17, w:3.07, h:3.44, rot:149.8, kind:"factory", nos:["牛2-25"], label:"牛2 57巷1弄25號" },
+  { cx:84.37, cy:35.75, w:2.98, h:3.31, rot:150.8, kind:"factory", nos:["牛2-27"], label:"牛2 57巷1弄27號" },
+  { cx:85.6, cy:39.19, w:2.94, h:3.11, rot:151.5, kind:"factory", nos:["牛2-29"], label:"牛2 57巷1弄29號" },
+  { cx:86.83, cy:42.61, w:2.93, h:3.26, rot:150.5, kind:"factory", nos:["牛2-31"], label:"牛2 57巷1弄31號" },
+  { cx:88.11, cy:46.14, w:2.91, h:3.42, rot:150.1, kind:"factory", nos:["牛2-33"], label:"牛2 57巷1弄33號" },
+  { cx:89.42, cy:49.74, w:2.89, h:3.4, rot:156.5, kind:"factory", nos:["牛2-35"], label:"牛2 57巷1弄35號" },
   { cx:9.22, cy:57.75, w:5.35, h:2.23, rot:51.7, kind:"factory", nos:["牛3-97-61"], label:"牛3 97-61 美博城" },
   { cx:13.0, cy:64.55, w:5.25, h:2.14, rot:51.7, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63 利品" },
   { cx:19.18, cy:75.67, w:5.18, h:1.94, rot:51.3, kind:"factory", nos:[], label:"待確認" },
