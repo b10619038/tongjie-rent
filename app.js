@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-23-10";
-const APP_EDIT_COUNT = 957;
+const APP_STAMP = "2026-09-21-23-14";
+const APP_EDIT_COUNT = 958;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0508";
+const FILE_VER = "0509";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["文龍東路最上倒數第二格改為70XX"] },
+  { ver: APP_VERSION, items: ["7611 掛回波波波奇"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2926,7 +2926,7 @@ function assetMapSpotTone(spot) {
   const live = rooms.filter(r => r.status === "rented" || r.status === "office");
   if (!live.length) return "vacant";
   const unpaid = live.some(r => {
-    const t = (state.tenants || []).find(x => x && x.id === r.tenantId && !x.former);
+    const t = (state.tenants || []).find(x => x && !x.former && !x.incoming && (x.id === r.tenantId || x.roomId === r.id));
     return t && !paidThisMonth(t) && leaseCoversYm(t, r, payYmNow());
   });
   return unpaid ? "unpaid" : "paid";
@@ -2938,7 +2938,7 @@ function assetMapPopHtml(spot) {
     return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div><div class="small">這格還沒對到房間資料</div></div>`;
   }
   const rows = rooms.map(r => {
-    const t = (state.tenants || []).find(x => x && x.id === r.tenantId && !x.former);
+    const t = (state.tenants || []).find(x => x && !x.former && !x.incoming && (x.id === r.tenantId || x.roomId === r.id));
     const pay = t ? payLabel(t, r) : { text: r.status === "vacant" ? "空置" : "尚無租客", cls: "wait" };
     const rent = r.kind === "factory"
       ? (t && t.rentUntaxed ? "未稅 " + money(t.rentUntaxed) : (r.rent ? money(r.rent) + "／月" : ""))
@@ -4572,28 +4572,32 @@ function applyRoom7051(data) {
   room.note = "月租 NT$ 6,000。不可申請租屋補助。";
   data.room7051Ver = ROOM_7051_VER;
 }
-const ROOM_7611_VER = "7611-aug-book-v1";
+const ROOM_7611_VER = "7611-bopoke-v2";
 function applyRoom7611(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7611");
   if (!room) return;
   room.kind = "store";
   room.rent = 42000;
-  room.shop = room.shop || "波波奇夏威夷拌飯";
-  if (room.status !== "repair") room.status = "rented";
-  let t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  room.shop = "波波奇夏威夷拌飯";
+  room.status = "rented";
+  let t = (data.tenants || []).find(x => x && (x.id === room.tenantId || x.roomId === room.id || x.id === "t7611") && !x.incoming && !x.demo);
+  if (t && t.former) t.former = false;
   if (!t) {
     t = { id: "t7611", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
+    if (!data.tenants) data.tenants = [];
     data.tenants.push(t);
   }
-  if (!t.name || sameTenantName(t.name, "曾郁翔")) t.name = "波波奇";
+  t.name = "波波波奇";
   t.contactName = t.contactName || "曾郁翔";
-  t.leaseStart = "2026-07-01";
+  t.phone = t.phone || "0938-550-265";
+  t.leaseStart = t.leaseStart || "2026-07-01";
   t.leaseEnd = t.leaseEnd || "2031-12-31";
   t.former = false;
   t.incoming = false;
   t.placeholder = false;
   t.payBank = t.payBank || "農會";
+  t.roomId = room.id;
   room.tenantId = t.id;
   data.room7611Ver = ROOM_7611_VER;
 }
