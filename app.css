@@ -649,6 +649,27 @@ button.pay-pill.hand {
   color: #fff;
   border-color: #62765b;
 }
+.renew-move-box { margin: 4px 0 8px; }
+.renew-move-list {
+  display: grid;
+  gap: 6px;
+}
+.renew-move-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 12px;
+}
+.renew-move-item b { font-size: 13px; }
+.renew-move-item span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.renew-move-item.off,
+.renew-move-item:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 .renew-alert {
   border: 2px solid #62765b;
   background: #f4f7f1;
