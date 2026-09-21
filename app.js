@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-23-08";
-const APP_EDIT_COUNT = 956;
+const APP_STAMP = "2026-09-21-23-10";
+const APP_EDIT_COUNT = 957;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0507";
+const FILE_VER = "0508";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["文龍東路最上右邊改為68XX"] },
+  { ver: APP_VERSION, items: ["文龍東路最上倒數第二格改為70XX"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2860,8 +2860,8 @@ const FACTORY_GROUPS = [
 ];
 const SITE_MAP_SPOTS = [
   { cx:58.69, cy:9.62, w:2.41, h:1.5, rot:81.1, kind:"studio", prefix:"76", label:"牛10 文龍東路76號" },
-  { cx:60.13, cy:9.28, w:2.41, h:1.6, rot:80.4, kind:"studio", prefix:"70", label:"牛10 文龍東路70號" },
-  { cx:61.63, cy:8.95, w:2.39, h:1.64, rot:80.5, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
+  { cx:60.13, cy:9.28, w:2.41, h:1.6, rot:80.4, kind:"studio", prefix:"72", label:"牛10 文龍東路72號" },
+  { cx:61.63, cy:8.95, w:2.39, h:1.64, rot:80.5, kind:"studio", prefix:"70", label:"牛10 文龍東路70號" },
   { cx:63.16, cy:8.6, w:2.41, h:1.67, rot:80.7, kind:"studio", prefix:"68", label:"牛10 文龍東路68號" },
   { cx:59.76, cy:22.31, w:4.55, h:2.29, rot:55.9, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
   { cx:61.53, cy:21.04, w:4.0, h:2.14, rot:55.2, kind:"factory", nos:["牛1-59"], label:"牛1 59號 張哲嘉" },
