@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-22-26";
-const APP_EDIT_COUNT = 944;
+const APP_STAMP = "2026-09-21-22-29";
+const APP_EDIT_COUNT = 945;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0495";
+const FILE_VER = "0496";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["左上長棟改為美博城 97-61"] },
+  { ver: APP_VERSION, items: ["左排第二棟改為利品 97-63"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2877,7 +2877,7 @@ const SITE_MAP_SPOTS = [
   { cx:88.11, cy:46.14, w:2.91, h:3.42, rot:150.1, kind:"factory", nos:["牛2-33"], label:"牛2 33號" },
   { cx:89.42, cy:49.74, w:2.89, h:3.4, rot:156.5, kind:"factory", nos:["牛2-35"], label:"牛2 35號" },
   { cx:9.22, cy:57.75, w:5.35, h:2.23, rot:51.7, kind:"factory", nos:["牛3-97-61"], label:"牛3 97-61 美博城" },
-  { cx:13.0, cy:64.55, w:5.25, h:2.14, rot:51.7, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
+  { cx:13.0, cy:64.55, w:5.25, h:2.14, rot:51.7, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63 利品" },
   { cx:19.18, cy:75.67, w:5.18, h:1.94, rot:51.3, kind:"factory", nos:["牛1-57巷2","牛1-57巷6","牛1-57巷8"], label:"牛1 57巷2／6／8" },
   { cx:25.18, cy:73.36, w:3.03, h:2.57, rot:134.4, kind:"factory", nos:["牛3-97-65B"], label:"牛3 97-65B" },
   { cx:35.95, cy:82.3, w:2.87, h:2.49, rot:62.5, kind:"factory", nos:["牛6-62"], label:"牛6 93-62" },
@@ -2905,7 +2905,7 @@ const SITE_MAP_SPOTS = [
   { cx:10.04, cy:96.22, w:3.23, h:2.5, rot:147.9, kind:"factory", nos:["牛8-77"], label:"牛8 97-77" },
   { cx:33.07, cy:82.69, w:2.55, h:1.38, rot:151.9, kind:"factory", nos:["牛3-97-65A"], label:"牛3 97-65A" },
   { cx:33.72, cy:84.42, w:2.61, h:1.53, rot:151.8, kind:"factory", nos:["牛3-97-65A"], label:"牛3 97-65A" },
-  { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛3-97-63"], label:"牛3 97-63" },
+  { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛1-61"], label:"牛1 61號" },
   { cx:38.97, cy:89.57, w:2.51, h:2.77, rot:68.4, kind:"factory", nos:["牛1-59"], label:"牛1 59號" }
 ];
 function findRoomByAssetNo(no) {
@@ -2943,7 +2943,9 @@ function assetMapPopHtml(spot) {
     const rent = r.kind === "factory"
       ? (t && t.rentUntaxed ? "未稅 " + money(t.rentUntaxed) : (r.rent ? money(r.rent) + "／月" : ""))
       : (r.rent ? money(r.rent) + "／月" : "");
-    const who = t && t.name ? t.name : (r.status === "office" ? "辦公室" : "空");
+    const who0 = t && t.name ? t.name : (r.status === "office" ? "辦公室" : "空");
+    const nick = String(spot.label || "").replace(/^牛\S+\s+\S+\s*/, "").trim();
+    const who = nick && who0 && who0.indexOf(nick) < 0 ? nick + "　" + who0 : (who0 || nick);
     return `<button type="button" class="map-pop-row" data-admin-room="${escapeHtml(r.id)}">
       <span class="map-pop-who"><b>${escapeHtml(r.no)}</b>　${escapeHtml(who)}</span>
       <span class="pay-pill ${pay.cls}">${pay.text}</span>
@@ -3081,7 +3083,7 @@ const FACTORY_TENANT_INFO = {
   "牛2-33": { name: "謝淑伃", taxId: "", contactName: "", idNo: "E222202083", phone: "0973-788-733", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", rentUntaxed: 35500, rent: 35500, deposit: 70000, dueDay: 31, payBank: "聯邦", payCompany: "個人戶·趙浩鈞", payWay: "匯款　月底", waterNote: "每年", elecNote: "自繳欠", note: "57巷1弄33號。個人戶。未稅 $35,500。月底匯入趙浩鈞。" },
   "牛2-35": { name: "詠利實業有限公司", taxId: "24982018", contactName: "", phone: "07-740-8300", leaseStart: "2025-04-15", leaseEnd: "2027-04-14", rentUntaxed: 35156, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙苡真", payWay: "支票　兩個月一張", waterNote: "每年", elecNote: "自繳欠", note: "57巷1弄35號。實付 $35,156＋所得稅 $4,000＋健保 $844＝$40,000。支票兩個月一張交給趙苡真。" },
   "牛3-97-61": { name: "台灣美博城國際股份有限公司", taxId: "24667829", contactName: "江金潾", phone: "07-350-3337／0967-198-413", leaseStart: "2024-11-01", leaseEnd: "2029-10-31", rentUntaxed: 50000, rent: 54600, deposit: 104000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "每年", elecNote: "自繳欠", note: "鳳仁路97之61。未稅 $50,000，含稅 $54,600。每月1日匯聯邦高雄 統潔 01010-0035909。113/10/24 入押金 $104,000。裝修 113/10/1～10/31。" },
-  "牛3-97-63": { name: "卓建忠", taxId: "", contactName: "", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "每年", elecNote: "每月給電單（K瓦）", note: "鳳仁路97之63。個人戶。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
+  "牛3-97-63": { name: "利品（卓建忠）", taxId: "", contactName: "卓建忠", idNo: "F124826360", phone: "0939-535-681", leaseStart: "2024-04-01", leaseEnd: "2027-03-31", rentUntaxed: 40000, rent: 40000, deposit: 70000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "每年", elecNote: "每月給電單（K瓦）", note: "鳳仁路97之63。利品。個人戶卓建忠。每月 $40,000。每月1日匯聯邦高雄 趙正賢／趙海成 010500208636。" },
   "牛3-97-65A": { name: "聖昌造船公司", taxId: "", contactName: "羅美芳", idNo: "N223175273", phone: "0976-677-888", leaseStart: "2025-02-01", leaseEnd: "2027-01-31", rentUntaxed: 12000, rent: 12000, deposit: 24000, dueDay: 1, payBank: "聯邦", payCompany: "個人戶·趙海成、趙正賢", payWay: "匯款", waterNote: "無", elecNote: "無", extraNote: "租廠養", note: "鳳仁路97之65號（A）。聖昌造船公司（羅美芳）。個人戶。每月 $12,000。水電無。聯絡陳先生。" },
   "牛3-97-65B": { name: "蔡聖鴻", taxId: "", contactName: "", idNo: "S122316012", phone: "0919-106-207", leaseStart: "2025-10-01", leaseEnd: "2027-09-30", rentUntaxed: 22000, rent: 22000, deposit: 30000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金　每月5號去收", waterNote: "每年", elecNote: "雙月給電單", note: "鳳仁路97-65號 B棟。個人戶。未稅 $22,000。每月5日現金交給趙正賢。" },
   "牛5-97-66": { name: "旭瑞食品有限公司", taxId: "83290244", contactName: "李少寶", idNo: "T121805388", phone: "0989-501-263／0932-834-516", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 40000, rent: 40000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "支票", waterNote: "每年", elecNote: "自繳欠", note: "97-66。未稅 $40,000。一年支票 12 張，每月1日兌現。聯絡邱小姐 0989-501-263。" },
@@ -4362,7 +4364,7 @@ function roomNoFromBookNote(note) {
     [/93-2B|拉皮-2B|禹旺/, "拉皮-2B"],
     [/大樹/, "大樹-18"],
     [/97-61|美博城/, "牛3-97-61"],
-    [/97-63|鳳仁63|卓建忠/, "牛3-97-63"],
+    [/97-63|鳳仁63|卓建忠|利品/, "牛3-97-63"],
     [/97-65A|65A|羅美芳|聖昌/, "牛3-97-65A"],
     [/97-65B|65B|蔡聖鴻/, "牛3-97-65B"],
     [/97-66|旭瑞/, "牛5-97-66"],
