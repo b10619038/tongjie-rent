@@ -193,6 +193,7 @@ input, textarea, select {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  overflow-anchor: none;
   touch-action: pan-y;
 }
 .admin-scroll { padding: 8px 0 calc(72px + var(--safe-b)); }
@@ -806,8 +807,6 @@ button.pay-toggle.is-pop { transform: scale(1.14); }
 button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; min-width: 0; max-width: 100%; box-sizing: border-box; }
-.admin-scroll .tenant-slim,
-.admin-scroll .swipe-wrap,
 .admin-scroll .room-row { content-visibility: auto; contain-intrinsic-size: 96px; }
 .card-body { padding: 16px; }
 .card-body > .label { margin: 0 0 12px; }

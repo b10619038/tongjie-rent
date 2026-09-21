@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-01-02";
-const APP_EDIT_COUNT = 979;
+const APP_STAMP = "2026-09-22-01-18";
+const APP_EDIT_COUNT = 980;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0530";
+const FILE_VER = "0531";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約／換房新約生效後，發票房號、月租、合約期間一併更新"] },
+  { ver: APP_VERSION, items: ["租客列表不再自動往上滑"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -7139,11 +7139,20 @@ function mqttParsePublish(buf) {
   const payload = new TextDecoder().decode(u.slice(i));
   return { type, topic, payload };
 }
+function tenantViewSig() {
+  const ts = (state.tenants || []).map(t => [
+    t && t.id, t && t.roomId, t && t.paid ? 1 : 0, t && (t.paidYm || ""), t && (t.remitOn || ""), t && (t.paidAt || ""),
+    t && (t.name || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0
+  ].join(":")).join("|");
+  const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
+  return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
+}
 function ingestPaidCloud(raw) {
   try {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || typeof o !== "object") return;
     if (o.ym && o.ym !== payYmNow()) return;
+    const viewBefore = tenantViewSig();
     const before = JSON.stringify(state.paidMarks || {});
     if (o.marks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, mergePaidMarkMaps(loadPaidMarks(), o.marks));
     if (o.paidMarks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, o.paidMarks);
@@ -7282,6 +7291,7 @@ function ingestPaidCloud(raw) {
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
     if (composingNow()) return;
+    if (tenantViewSig() === viewBefore && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
     ui.keepScroll = true;
     try { render(); } catch {}
   } catch {}
@@ -26245,7 +26255,10 @@ function bindRepairFold() {
   });
 }
 function bindAdmin() {
-  try { setTimeout(() => flashRenewNotice(), 400); } catch {}
+  try {
+    const p = state.renewPing || (state.renewals || []).filter(x => x && x.status !== "done" && x.status !== "applied").slice(-1)[0];
+    if (p && !renewPingAlreadySeen({ id: p.id || p.roomNo, roomNo: p.roomNo, name: p.name })) setTimeout(() => flashRenewNotice(), 400);
+  } catch {}
   bindHistoryBack();
   bindMediaViewers();
   bindRepairFold();
