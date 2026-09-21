@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-23-14";
-const APP_EDIT_COUNT = 958;
+const APP_STAMP = "2026-09-21-23-18";
+const APP_EDIT_COUNT = 959;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0509";
+const FILE_VER = "0510";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 掛回波波波奇"] },
+  { ver: APP_VERSION, items: ["牛6最右那格改為93-55"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2886,8 +2886,8 @@ const SITE_MAP_SPOTS = [
   { cx:42.13, cy:77.89, w:2.91, h:2.67, rot:64.0, kind:"factory", nos:["牛6-59"], label:"牛6 93-59" },
   { cx:44.21, cy:76.42, w:2.91, h:2.59, rot:63.9, kind:"factory", nos:["牛6-58"], label:"牛6 93-58" },
   { cx:46.26, cy:74.95, w:2.89, h:2.57, rot:63.5, kind:"factory", nos:["牛6-57"], label:"牛6 93-57" },
-  { cx:48.82, cy:72.0, w:3.51, h:2.47, rot:151.3, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
-  { cx:49.71, cy:74.57, w:3.49, h:2.1, rot:151.7, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
+  { cx:48.82, cy:72.0, w:3.51, h:2.47, rot:151.3, kind:"factory", nos:["牛6-56"], label:"牛6 93-56" },
+  { cx:49.71, cy:74.57, w:3.49, h:2.1, rot:151.7, kind:"factory", nos:["牛6-55"], label:"牛6 93-55" },
   { cx:45.27, cy:84.79, w:2.48, h:2.86, rot:68.9, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" },
   { cx:43.21, cy:86.37, w:2.5, h:2.86, rot:70.5, kind:"factory", nos:["牛7-2F"], label:"牛7 93-63 2F" },
   { cx:41.08, cy:87.96, w:2.58, h:3.08, rot:72.3, kind:"factory", nos:["牛7-3F"], label:"牛7 93-63 3F" },
