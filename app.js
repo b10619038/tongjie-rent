@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-00-55";
-const APP_EDIT_COUNT = 978;
+const APP_STAMP = "2026-09-22-01-02";
+const APP_EDIT_COUNT = 979;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0529";
+const FILE_VER = "0530";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請可選想換房；空房可選，已續約顯示原住戶已續約"] },
+  { ver: APP_VERSION, items: ["續約／換房新約生效後，發票房號、月租、合約期間一併更新"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -12736,8 +12736,14 @@ function applySignedRenewalLease(t, r, item) {
       r = dest;
       item.roomId = dest.id;
       item.roomNo = dest.no;
+      const rent = Number(dest.rent) || studioContractRent(t, dest) || 0;
+      if (rent) t.rent = rent;
+      if (dest.deposit != null && dest.deposit !== "") t.deposit = Number(dest.deposit) || t.deposit;
     }
   }
+  if (!/已續約/.test(String(t.note || ""))) t.note = (t.note ? String(t.note).trim() + "　" : "") + "已續約";
+  t.edited = true;
+  t.editedAt = Date.now();
   const clone = tenantForRenewPrint(t, r, item);
   t.leaseStart = clone.leaseStart;
   t.leaseEnd = clone.leaseEnd;
@@ -23259,7 +23265,7 @@ function renewalAdminCardHtml(x) {
   const name = x.name || (tenant && tenant.name) || "";
   const oldEnd = x.oldEnd || (tenant && tenant.leaseEnd) || "";
   const moveLine = x.wantMove && x.moveRoomNo
-    ? `<div class="small" style="margin-bottom:6px">換房　${escapeHtml(who)} → ${escapeHtml(x.moveRoomNo)}。新約第一天才搬過去，此前仍住原房。押金差額現場處理。</div>`
+    ? `<div class="small" style="margin-bottom:6px">換房　${escapeHtml(who)} → ${escapeHtml(x.moveRoomNo)}。新約第一天才搬過去，此前仍住原房。押金差額現場處理。新約生效後發票改開 ${escapeHtml(x.moveRoomNo)}、月租與合約期間一併更新。</div>`
     : "";
   return `<div class="card card-body renew-alert" data-renew-card="${escapeHtml(x.id)}">
     <h2 class="dash-h">${signed ? "續約完成" : (x.wantMove ? "換房續約" : "續約申請")}</h2>
