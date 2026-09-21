@@ -619,6 +619,25 @@ html[data-theme="void"] .stat b { color: #ffffff; }
   top: 8px;
   right: 8px;
 }
+.renew-note {
+  background: #eef3ea;
+  border: 1px solid #cfd9c6;
+}
+.renew-note .label { color: #3f5a3a; }
+.renew-years {
+  display: inline-flex;
+  gap: 6px;
+}
+.renew-years .ghost {
+  width: auto;
+  min-width: 64px;
+  padding: 6px 12px;
+}
+.renew-years .ghost.on {
+  background: #62765b;
+  color: #fff;
+  border-color: #62765b;
+}
 .pay-pill[data-page] { cursor: pointer; }
 button.pay-toggle {
   cursor: pointer;
