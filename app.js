@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-21-21-32";
-const APP_EDIT_COUNT = 936;
+const APP_STAMP = "2026-09-21-21-33";
+const APP_EDIT_COUNT = 937;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0487";
+const FILE_VER = "0488";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -22468,17 +22468,6 @@ function adminDash() {
       </div>
     </div>
     <div class="dash-two">
-      <div class="card card-body renew-alert"><h2 class="dash-h">續約申請</h2>
-        ${(state.renewals || []).filter(x => x.status !== "done").length
-          ? (state.renewals || []).filter(x => x.status !== "done").slice().reverse().map(x => {
-              const room = state.rooms.find(r => r.id === x.roomId);
-              const tenant = state.tenants.find(t => t.id === x.tenantId);
-              const years = renewYearsOf(x);
-              return `<div class="mini clickable renew-hit" data-admin-room="${x.roomId}"><b>${room ? room.no : ""} ·${escapeHtml(tenant ? tenant.name : "")} · ${years === 0.5 ? "半年" : "1年"}</b><span>${x.appointAt ? formatDateTime12(String(x.appointAt).replace("T", " ")) : "待約簽約日"}</span></div>
-                <div class="small" style="margin:-4px 0 10px">${escapeHtml(x.start || "")} ～ ${escapeHtml(x.end || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${isRenewSignDay(x) ? "　今天簽約，可列印新約" : ""}</div>`;
-            }).join("")
-          : `<div class="empty">目前沒有續約申請</div>`}
-      </div>
       <div class="card card-body"><h2 class="dash-h">未繳租客</h2>
         ${unpaidTenants.length ? `<div class="unpaid-tools"><button type="button" class="btn-navy" id="nudge-all-pay">一鍵催繳</button><span class="small">${unpaidTenants.length} 戶未繳</span></div>` : ""}
         ${unpaidTenants.length ? unpaidTenants.map(t => {
