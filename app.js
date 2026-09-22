@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-22-07";
-const APP_EDIT_COUNT = 1094;
+const APP_STAMP = "2026-09-22-22-45";
+const APP_EDIT_COUNT = 1095;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0644";
+const FILE_VER = "0645";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台首頁移除邀請加入與開發者對話圖卡"] },
+  { ver: APP_VERSION, items: ["租客首頁窗台植物：可取名、看天氣澆水、準時繳會長"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -7716,7 +7716,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "plant"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -7762,6 +7762,23 @@ function pickNewerEntity(a, b, keys) {
   }
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
+  }
+  if (keys && keys.indexOf("plant") >= 0) {
+    const pa = a && a.plant, pb = b && b.plant;
+    const ta = Number(pa && pa.at) || 0;
+    const tb = Number(pb && pb.at) || 0;
+    const src = tb >= ta ? pb : pa;
+    const other = tb >= ta ? pa : pb;
+    if (src || other) {
+      out.plant = Object.assign({}, other || {}, src || {});
+      const wa = String((pa && pa.wateredOn) || "");
+      const wb = String((pb && pb.wateredOn) || "");
+      out.plant.wateredOn = wa >= wb ? wa : wb;
+      const na = String((pa && pa.name) || "").trim();
+      const nb = String((pb && pb.name) || "").trim();
+      out.plant.name = (tb >= ta ? (nb || na) : (na || nb)).slice(0, 8);
+      out.plant.at = Math.max(ta, tb);
+    }
   }
   if (keys && keys.indexOf("avatar") >= 0) {
     const aAv = a && a.avatar && String(a.avatar).length > 40 ? a.avatar : "";
@@ -10493,6 +10510,151 @@ function skyPrefOn() {
 function setSkyPref(on) {
   try { localStorage.setItem("tongjie_sky_on", on ? "1" : "0"); } catch {}
 }
+function plantPrefOn() {
+  try {
+    const v = localStorage.getItem("tongjie_plant_on");
+    if (v === "0" || v === "off" || v === "false") return false;
+  } catch {}
+  return true;
+}
+function setPlantPref(on) {
+  try { localStorage.setItem("tongjie_plant_on", on ? "1" : "0"); } catch {}
+}
+function plantOf(t) {
+  const p = (t && t.plant) || {};
+  return {
+    name: String(p.name || "").trim().slice(0, 8),
+    wateredOn: String(p.wateredOn || ""),
+    at: Number(p.at) || 0
+  };
+}
+function plantNeedWater() {
+  const sky = ui.sky || "cloud";
+  const hum = Number(ui.humidity);
+  const temp = Number(ui.temp);
+  if (sky === "rain" || sky === "storm") return false;
+  if (isFinite(hum) && hum >= 75) return false;
+  if (sky === "sun") return true;
+  if (isFinite(hum) && hum < 60) return true;
+  if (isFinite(temp) && temp >= 31 && !(isFinite(hum) && hum >= 70)) return true;
+  return false;
+}
+function plantStageOf(t, r) {
+  const due = !!(typeof leaseCoversYm === "function" && leaseCoversYm(t, r, payYmNow()) && thisMonthRentOf(t, r));
+  const paid = typeof paidThisMonth === "function" && paidThisMonth(t);
+  if (due && !paid) return "wilt";
+  const p = plantOf(t);
+  const watered = p.wateredOn === todayYmd();
+  if (paid && watered) return "bloom";
+  if (paid) return "leaf";
+  return "sprout";
+}
+function plantWxLine() {
+  const bits = [];
+  if (isFinite(Number(ui.temp))) bits.push(Math.round(ui.temp) + "°");
+  if (isFinite(Number(ui.humidity))) bits.push("濕度 " + Math.round(ui.humidity) + "%");
+  const sky = skyLabel(ui.sky);
+  if (sky) bits.push(sky);
+  return bits.join("　");
+}
+function plantStatusLine(t, r) {
+  const stage = plantStageOf(t, r);
+  const need = plantNeedWater();
+  const p = plantOf(t);
+  const watered = p.wateredOn === todayYmd();
+  if (stage === "wilt") return "這個月還沒入帳，葉子有點沒精神。";
+  if (need && !watered) return "今天偏乾，該澆一點水。";
+  if (ui.sky === "rain" || ui.sky === "storm") return "今天下雨，不用澆。";
+  if (isFinite(Number(ui.humidity)) && ui.humidity >= 75) return "空氣夠濕，今天不用澆。";
+  if (stage === "bloom") return "這個月有準時繳，還澆過水，開了一點花。";
+  if (stage === "leaf") return "這個月有準時繳，葉子長出來了。";
+  return "新搬來的小苗，準時繳租就會長。";
+}
+function plantArtHtml(stage, dry) {
+  return `<div class="plant-art ${stage}${dry ? " dry" : ""}" aria-hidden="true">
+    <svg viewBox="0 0 80 100">
+      <ellipse class="soil" cx="40" cy="78" rx="22" ry="6"/>
+      <path class="pot" d="M20 76l5 18h30l5-18z"/>
+      <path class="pot-rim" d="M17 74h46v5H17z"/>
+      <g class="stem-g">
+        <path class="stem" d="M40 74C39 56 41 44 40 32"/>
+        <ellipse class="leaf l1" cx="27" cy="54" rx="13" ry="6" transform="rotate(-28 27 54)"/>
+        <ellipse class="leaf l2" cx="53" cy="48" rx="14" ry="6" transform="rotate(24 53 48)"/>
+        <ellipse class="leaf l3" cx="29" cy="38" rx="11" ry="5" transform="rotate(-18 29 38)"/>
+        <ellipse class="leaf l4" cx="51" cy="34" rx="12" ry="5" transform="rotate(16 51 34)"/>
+        <circle class="bloom" cx="40" cy="22" r="7"/>
+        <circle class="bloom-core" cx="40" cy="22" r="2.6"/>
+      </g>
+    </svg>
+  </div>`;
+}
+function plantCardHtml(t, r) {
+  if (!plantPrefOn() || !t || !t.id) return "";
+  const p = plantOf(t);
+  const stage = plantStageOf(t, r);
+  const need = plantNeedWater();
+  const watered = p.wateredOn === todayYmd();
+  const dry = need && !watered && stage !== "wilt";
+  const named = p.name || "";
+  const wx = plantWxLine();
+  const canWater = need && !watered && stage !== "wilt";
+  const nameBtn = ui.plantEdit
+    ? `<input id="plant-name-in" class="plant-name-in" maxlength="8" value="${escapeHtml(named)}" placeholder="幫它取名" autocomplete="off">`
+    : `<button type="button" class="plant-name" id="plant-name">${named ? escapeHtml(named) : "幫它取名"}</button>`;
+  return `<div class="card card-body plant-card slide-left">
+    ${plantArtHtml(stage, dry)}
+    <div class="plant-copy">
+      <div class="label">窗台植物</div>
+      ${nameBtn}
+      <p class="small">${escapeHtml(plantStatusLine(t, r))}</p>
+      ${wx ? `<p class="small plant-wx">${escapeHtml(wx)}</p>` : ""}
+      ${canWater ? `<button type="button" class="ghost plant-water" id="plant-water">澆水</button>` : ""}
+    </div>
+  </div>`;
+}
+function savePlant(patch) {
+  const t = me();
+  if (!t) return;
+  const cur = plantOf(t);
+  t.plant = Object.assign({}, cur, patch, { at: Date.now() });
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+}
+function bindPlantCard() {
+  const nameBtn = document.getElementById("plant-name");
+  if (nameBtn) nameBtn.onclick = e => {
+    e.preventDefault();
+    ui.plantEdit = true;
+    ui.keepScroll = true;
+    render();
+  };
+  const inp = document.getElementById("plant-name-in");
+  if (inp) {
+    const commit = () => {
+      const n = String(inp.value || "").trim().slice(0, 8);
+      ui.plantEdit = false;
+      savePlant({ name: n });
+      toast(n ? "已幫它取名" : "名字已清空");
+      ui.keepScroll = true;
+      render();
+    };
+    setTimeout(() => { try { inp.focus(); inp.select(); } catch {} }, 40);
+    inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); commit(); } };
+    inp.onblur = () => commit();
+  }
+  const water = document.getElementById("plant-water");
+  if (water) water.onclick = e => {
+    e.preventDefault();
+    if (!plantNeedWater()) { toast("今天不用澆"); return; }
+    if (plantOf(me()).wateredOn === todayYmd()) { toast("今天澆過了"); return; }
+    savePlant({ wateredOn: todayYmd() });
+    toast("澆好了");
+    ui.keepScroll = true;
+    render();
+  };
+}
 function ensureSkyLive() {
   if (skyLive) return skyLive;
   skyLive = document.createElement("div");
@@ -10550,9 +10712,12 @@ async function refreshSky(force) {
   try {
     const lat = (locFix && isFinite(locFix.lat)) ? locFix.lat : 22.6438;
     const lon = (locFix && isFinite(locFix.lng)) ? locFix.lng : 120.3732;
-    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=weather_code&timezone=Asia%2FTaipei");
-    const code = data && data.current && data.current.weather_code;
+    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=weather_code,temperature_2m,relative_humidity_2m&timezone=Asia%2FTaipei");
+    const cur = data && data.current;
+    const code = cur && cur.weather_code;
     ui.sky = skyFromCode(code);
+    ui.temp = isFinite(Number(cur && cur.temperature_2m)) ? Number(cur.temperature_2m) : ui.temp;
+    ui.humidity = isFinite(Number(cur && cur.relative_humidity_2m)) ? Number(cur.relative_humidity_2m) : ui.humidity;
     ui.skyAt = now;
   } catch {
     if (!ui.sky) ui.sky = "cloud";
@@ -20519,6 +20684,7 @@ function homeView() {
           : ((t.incoming || t.prospect || t.applyPending) && tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta${ui.stampChop ? " anim" : ""}" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : "")}
       </div>
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
+      ${plantCardHtml(t, r)}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
         <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "尚無需繳費"}</span></div>
@@ -26804,6 +26970,7 @@ function bindTenant() {
   flushTenantInbox();
   bindHowtoFold();
   bindDevChat();
+  bindPlantCard();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isTenantLook()) { exitTenantLook(); return; }
@@ -28785,6 +28952,14 @@ function tenantSettings() {
         </div>
         <p class="small">問候區後面的晴天、飄雲與落雨。關掉後畫面較單純，這台手機會記住。</p>
       </div>
+      <div class="card card-body">
+        <div class="label">窗台植物</div>
+        <div class="pref-switch">
+          <span>${plantPrefOn() ? "顯示在首頁" : "已關閉"}</span>
+          <button type="button" class="pref-knob${plantPrefOn() ? " on" : ""}" id="plant-toggle" aria-pressed="${plantPrefOn() ? "true" : "false"}"></button>
+        </div>
+        <p class="small">房間圖卡下方的小盆栽。可取名、看天氣澆水。關掉後這台手機會記住。</p>
+      </div>
       ${lookSettingsHtml()}
       <div class="card card-body">
         <button type="button" class="ghost" id="logout-set">${ui.devPreview || isTenantLook() ? "返回後台" : isProspectPreview() ? "離開預覽" : "登出"}</button>
@@ -28807,6 +28982,19 @@ function bindLookSettings() {
       ui.keepScroll = true;
       render();
       try { applySkyDom(); } catch {}
+    };
+  }
+  const plantBtn = document.getElementById("plant-toggle");
+  if (plantBtn) {
+    bindIosPress(plantBtn);
+    plantBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = !plantPrefOn();
+      setPlantPref(next);
+      toast(next ? "已打開窗台植物" : "已關閉窗台植物");
+      ui.keepScroll = true;
+      render();
     };
   }
   document.querySelectorAll("#app [data-theme]").forEach(btn => {

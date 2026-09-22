@@ -536,6 +536,64 @@ input, textarea, select {
 }
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
+.plant-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 0;
+}
+.plant-art {
+  width: 86px;
+  height: 108px;
+  flex: 0 0 86px;
+}
+.plant-art svg { width: 100%; height: 100%; display: block; }
+.plant-art .pot { fill: #c17b5c; }
+.plant-art .pot-rim { fill: #b06c50; }
+.plant-art .soil { fill: #6b5344; }
+.plant-art .stem { fill: none; stroke: #4e6a48; stroke-width: 3; stroke-linecap: round; }
+.plant-art .leaf { fill: #6f8f66; }
+.plant-art .bloom { fill: #e3c27a; }
+.plant-art .bloom-core { fill: #d08a4a; }
+.plant-art.sprout .l3,
+.plant-art.sprout .l4,
+.plant-art.sprout .bloom,
+.plant-art.sprout .bloom-core { opacity: 0; }
+.plant-art.sprout .l1,
+.plant-art.sprout .l2 { transform-box: fill-box; transform-origin: center; }
+.plant-art.leaf .bloom,
+.plant-art.leaf .bloom-core { opacity: 0; }
+.plant-art.wilt { filter: grayscale(.45) saturate(.6); }
+.plant-art.wilt .stem-g { transform: rotate(9deg); transform-origin: 40px 74px; }
+.plant-art.wilt .leaf { fill: #8a8a6a; }
+.plant-art.dry .leaf { fill: #9aaa72; }
+.plant-copy { min-width: 0; flex: 1; }
+.plant-copy .label { margin-bottom: 4px; }
+.plant-name {
+  display: block;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: left;
+  color: inherit;
+}
+.plant-name-in {
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+.plant-wx { opacity: .85; }
+.plant-water { width: auto; margin-top: 8px; padding: 6px 14px; }
 .hero-card {
   background: #ececec;
   color: #17211f;
