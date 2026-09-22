@@ -1845,6 +1845,23 @@ input[type="file"] {
   font-weight: 700;
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
 }
+button.avatar-look {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border-radius: 50%;
+  line-height: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button.avatar-look .avatar,
+button.avatar-look img.avatar { pointer-events: none; cursor: pointer; }
+button.avatar-look.is-press { transform: scale(.94); }
 .tabs {
   display: block; padding: 10px 16px 16px;
   overflow-x: auto; overflow-y: hidden;
