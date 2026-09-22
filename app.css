@@ -4525,7 +4525,14 @@ html.preview-zoom body {
   -webkit-overflow-scrolling: touch;
   padding: 12px 12px calc(24px + var(--safe-b, 0px));
 }
-.install-sheet.checkout-sheet {
+.install-sheet.checkout-pick-sheet {
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgba(0,0,0,.18);
+}
+#checkout-pick-mask {
+  background: rgba(20, 22, 21, .52);
+}
   width: min(720px, 100%);
   max-height: none;
   margin: 8px auto 28px;
