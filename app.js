@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-53";
-const APP_EDIT_COUNT = 1050;
+const APP_STAMP = "2026-09-22-18-57";
+const APP_EDIT_COUNT = 1051;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0600";
+const FILE_VER = "0601";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["強制移除 7652 測試房與趙文榮租客卡片"] },
+  { ver: APP_VERSION, items: ["空套房 7652 前任趙文榮一併移除"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -7764,6 +7764,11 @@ function mergeSharedInto(target, other) {
     target.tenants = (target.tenants || []).filter(x => x && !g.has(x.id));
   }
   target.rooms = mergeRooms(target.rooms, other.rooms);
+  target.roomGone = unionGone(target.roomGone, other.roomGone);
+  if (target.roomGone && target.roomGone.length) {
+    const g = new Set(target.roomGone.map(String));
+    target.rooms = (target.rooms || []).filter(x => x && !g.has(String(x.id)) && String(x.no || "").replace(/\D/g, "") !== "7652");
+  }
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
@@ -10473,53 +10478,42 @@ function tenantPaidOnValue(t) {
   return monthDueYmd();
 }
 function isPracticeStudioNo(no) {
-  return String(no || "") === "7652";
+  return String(no || "").replace(/\D/g, "") === "7652";
 }
 function purgeDroppedStudios(data) {
   if (!data) return false;
   const nos = ["7652"];
-  const isDrop = v => nos.indexOf(String(v || "").replace(/\D/g, "")) >= 0 || nos.indexOf(String(v || "")) >= 0;
+  const isDrop = v => String(v || "").replace(/\D/g, "") === "7652";
   if (!Array.isArray(data.rooms)) data.rooms = [];
   if (!Array.isArray(data.tenants)) data.tenants = [];
   const rooms = data.rooms.filter(r => r && isDrop(r.no));
-  const roomIds = new Set(rooms.map(r => r.id).concat(nos.map(n => "r" + n), ["r7652"]));
+  const roomIds = new Set(rooms.map(r => String(r.id)).concat(["r7652", "r-7652"]));
   const tenantIds = new Set();
   const takeTenant = t => {
     if (!t) return;
     const r = data.rooms.find(x => x && x.id === t.roomId);
     const factory = typeof roomIsFactory === "function" && roomIsFactory(r);
-    if (roomIds.has(t.roomId) || isDrop(t.roomNo) || isDrop(r && r.no)) { tenantIds.add(t.id); return; }
+    if (roomIds.has(String(t.roomId || "")) || isDrop(t.roomNo) || isDrop(r && r.no)) { tenantIds.add(t.id); return; }
     if (!factory && String((r && r.no) || "") !== "7651" && typeof sameTenantName === "function" && sameTenantName(t.name, "趙文榮")) tenantIds.add(t.id);
   };
   data.tenants.forEach(takeTenant);
-  (data.goneTenants || []).forEach(takeTenant);
-  const before = data.rooms.length + data.tenants.length + ((data.books || []).length);
-  data.rooms = data.rooms.filter(r => r && !isDrop(r.no) && !roomIds.has(r.id));
-  data.tenants = data.tenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
-  if (Array.isArray(data.goneTenants)) data.goneTenants = data.goneTenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
-  if (Array.isArray(data.renewals)) data.renewals = data.renewals.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
-  if (Array.isArray(data.repairs)) data.repairs = data.repairs.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
+  const before = data.rooms.length + data.tenants.length;
+  data.rooms = data.rooms.filter(r => r && !isDrop(r.no) && !roomIds.has(String(r.id)));
+  data.tenants = data.tenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(String(t.roomId || "")) && !isDrop(t.roomNo));
+  data.roomGone = [...new Set([].concat(data.roomGone || [], [...roomIds], ["r7652"]))];
+  data.goneTenants = [...new Set([].concat(data.goneTenants || [], [...tenantIds]).map(String))];
+  if (Array.isArray(data.renewals)) data.renewals = data.renewals.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(String(x.roomId || "")) && !tenantIds.has(x.tenantId));
+  if (Array.isArray(data.repairs)) data.repairs = data.repairs.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(String(x.roomId || "")) && !tenantIds.has(x.tenantId));
   if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && !isDrop(n.roomNo));
   if (data.eSigns && typeof data.eSigns === "object") {
     tenantIds.forEach(id => { try { delete data.eSigns[id]; } catch {} });
   }
   nos.forEach(no => {
     try { purgePracticeRoomLedger(data, no); } catch {}
-    try {
-      if (typeof ui !== "undefined" && ui && ui.lineBinds) {
-        if (ui.lineBinds.byRoom) delete ui.lineBinds.byRoom[no];
-        if (ui.lineBinds.byUser) {
-          Object.keys(ui.lineBinds.byUser).forEach(uid => {
-            const v = ui.lineBinds.byUser[uid];
-            if (v === no || (v && (v.room === no || v.roomNo === no))) delete ui.lineBinds.byUser[uid];
-          });
-        }
-      }
-    } catch {}
   });
-  const after = data.rooms.length + data.tenants.length + ((data.books || []).length);
-  const dirty = after !== before || tenantIds.size > 0 || rooms.length > 0 || data.droppedStudioVer !== "20260922-drop-7652-b";
-  data.droppedStudioVer = "20260922-drop-7652-b";
+  const after = data.rooms.length + data.tenants.length;
+  const dirty = after !== before || tenantIds.size > 0 || rooms.length > 0 || data.droppedStudioVer !== "20260922-drop-7652-c";
+  data.droppedStudioVer = "20260922-drop-7652-c";
   return dirty;
 }
 function skipRentVsRoom(r) {
@@ -10816,7 +10810,7 @@ function floorNo(no) {
   return Number(s.charAt(s.length - 2));
 }
 function roomsByFloor() {
-  return [...state.rooms].sort((a, b) => floorNo(a.no) - floorNo(b.no) || a.no.localeCompare(b.no, "zh-Hant"));
+  return [...state.rooms].filter(r => r && !isPracticeStudioNo(r.no)).sort((a, b) => floorNo(a.no) - floorNo(b.no) || a.no.localeCompare(b.no, "zh-Hant"));
 }
 function ensureDemoTenant(data) {
   if (!data) return;
@@ -23971,6 +23965,7 @@ function roomHasLiveTenant(r) {
 }
 function isVacantRoom(r) {
   if (!r || r.demo || r.status === "office" || r.status === "repair") return false;
+  if (isPracticeStudioNo(r.no)) return false;
   if (studioMirrorHostNo(r.no)) return false;
   if (r.status === "vacant") return true;
   return !roomHasLiveTenant(r);
@@ -23999,6 +23994,7 @@ function vacantStudioRooms() {
   const q = normSearch(ui.tenantQ);
   return (state.rooms || []).filter(r => {
     if (!r || r.demo || r.status === "office" || roomIsFactory(r)) return false;
+    if (isPracticeStudioNo(r.no)) return false;
     if (!isVacantRoom(r)) return false;
     if (q && !normSearch(vacantRoomHay(r)).includes(q)) return false;
     return true;
@@ -24034,7 +24030,7 @@ function tenantCardWhoHtml(t, r, inc) {
   return escapeHtml(neu || live || (t && t.name) || "");
 }
 function vacantRoomCardHtml(r) {
-  if (!r) return "";
+  if (!r || isPracticeStudioNo(r.no)) return "";
   const foldId = "vac-" + r.id;
   const list = incomingsOf(r.id);
   const inc = incomingOf(r.id);
