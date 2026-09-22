@@ -551,8 +551,10 @@ input, textarea, select {
 .plant-art.mini { width: 72px; height: 90px; flex-basis: 72px; margin: 0 auto; }
 .plant-art svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .plant-art .stem { fill: none; stroke: #4f7a48; stroke-width: 3; stroke-linecap: round; }
-.plant-art.leafy .heart { fill: #63a56c; }
-.plant-art.leafy .l3, .plant-art.leafy .l4 { fill: #7bb575; }
+.plant-art .leafy .heart path { fill: #5fa86a; }
+.plant-art .leafy .l2 path { fill: #78c084; }
+.plant-art .leafy .l3 path,
+.plant-art .leafy .l4 path { fill: #6db575; }
 .plant-art.succulent .leaf { fill: #86b48c; }
 .plant-art.succulent .l1, .plant-art.succulent .l6 { fill: #9cc7a0; }
 .plant-art.flower .leaf { fill: #5f8f5a; }
@@ -569,9 +571,9 @@ input, textarea, select {
 }
 .plant-art.wilt { filter: grayscale(.42) saturate(.7); }
 .plant-art.wilt .stem-g { animation: none; transform: rotate(8deg); }
-.plant-art.wilt .heart,
+.plant-art.wilt .heart path,
 .plant-art.wilt .leaf { fill: #8c8a68; }
-.plant-art.dry .heart,
+.plant-art.dry .heart path,
 .plant-art.dry .leaf { fill: #a3b36a; }
 .plant-copy { min-width: 0; flex: 1; }
 .plant-copy.wide { flex: 1 1 100%; }

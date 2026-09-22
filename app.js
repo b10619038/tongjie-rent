@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-22-54";
-const APP_EDIT_COUNT = 1096;
+const APP_STAMP = "2026-09-22-23-00";
+const APP_EDIT_COUNT = 1097;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0646";
+const FILE_VER = "0647";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["窗台植物可換種子，花盆與樣子改得更可愛"] },
+  { ver: APP_VERSION, items: ["綠葉改成心形葉子，修好黑色醜圖"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10648,16 +10648,16 @@ function plantFoliageSvg(kind, stage) {
     ).join("")}${bloom ? `<circle class="bloom" cx="50" cy="28" r="2.4"/><circle class="bloom" cx="44" cy="36" r="2"/><circle class="bloom" cx="56" cy="36" r="2"/>` : ""}</g>`;
   }
   return `<g class="stem-g leafy">
-      <path class="heart l1" d="M38 58C30 50 24 54 28 64C32 70 38 74 40 76C42 74 38 66 38 58z"/>
-      <path class="heart l2" d="M62 56C70 48 76 52 72 62C68 68 62 72 60 74C58 72 62 64 62 56z"/>
-      ${grown ? `<path class="heart l3" d="M34 44C26 36 20 40 24 50C28 56 34 60 36 62C38 60 34 52 34 44z"/>
-      <path class="heart l4" d="M66 42C74 34 80 38 76 48C72 54 66 58 64 60C62 58 66 50 66 42z"/>` : ""}
-      <path class="stem" d="M50 72C49 60 51 50 50 ${grown ? 36 : 56}"/>
+      <path class="stem" d="M50 72C49.5 62 50.5 54 50 ${grown ? 40 : 56}"/>
+      <g class="heart l1" transform="translate(34 56) rotate(-48)"><path d="M0 12C0 12-15-3-15-13C-15-20-10-23-6-23C-3-23-1-21 0-18C1-21 3-23 6-23C10-23 15-20 15-13C15-3 0 12 0 12z"/></g>
+      <g class="heart l2" transform="translate(66 54) rotate(44)"><path d="M0 13C0 13-16-3-16-14C-16-21-10-24-6-24C-3-24-1-22 0-19C1-22 3-24 6-24C10-24 16-21 16-14C16-3 0 13 0 13z"/></g>
+      ${grown ? `<g class="heart l3" transform="translate(30 40) rotate(-22)"><path d="M0 10C0 10-12-2-12-11C-12-17-8-19-5-19C-2.5-19-1-17 0-15C1-17 2.5-19 5-19C8-19 12-17 12-11C12-2 0 10 0 10z"/></g>
+      <g class="heart l4" transform="translate(70 38) rotate(18)"><path d="M0 10C0 10-12-2-12-11C-12-17-8-19-5-19C-2.5-19-1-17 0-15C1-17 2.5-19 5-19C8-19 12-17 12-11C12-2 0 10 0 10z"/></g>` : ""}
       ${bloom ? `<g class="bloom-g">
-        <circle class="petal" cx="50" cy="24" r="4.4"/>
-        <circle class="petal" cx="43.5" cy="27.5" r="4"/>
-        <circle class="petal" cx="56.5" cy="27.5" r="4"/>
-        <circle class="bloom-core" cx="50" cy="27" r="2.2"/>
+        <circle class="petal" cx="50" cy="26" r="4.4"/>
+        <circle class="petal" cx="43.5" cy="29.5" r="4"/>
+        <circle class="petal" cx="56.5" cy="29.5" r="4"/>
+        <circle class="bloom-core" cx="50" cy="29" r="2.2"/>
       </g>` : ""}
     </g>`;
 }
