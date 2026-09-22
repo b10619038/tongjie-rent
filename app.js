@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-23-24";
-const APP_EDIT_COUNT = 1101;
+const APP_STAMP = "2026-09-22-23-26";
+const APP_EDIT_COUNT = 1102;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0651";
+const FILE_VER = "0652";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["花盆可選十種形狀與十種顏色"] },
+  { ver: APP_VERSION, items: ["花盆形狀與顏色選擇已取消，回到原本畫面"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10523,50 +10523,14 @@ function setPlantPref(on) {
 function plantOf(t) {
   const p = (t && t.plant) || {};
   const kind = PLANT_KINDS.some(k => k.id === p.kind) ? p.kind : "";
-  const potShape = PLANT_POTS.some(x => x.id === p.potShape) ? p.potShape : "round";
-  const potColor = PLANT_POT_COLORS.some(x => x.id === p.potColor) ? p.potColor : "cream";
   return {
     kind,
     name: String(p.name || "").trim().slice(0, 8),
     wateredOn: String(p.wateredOn || ""),
     plantedOn: String(p.plantedOn || ""),
     waters: Math.max(0, Number(p.waters) || 0),
-    potShape,
-    potColor,
     at: Number(p.at) || 0
   };
-}
-const PLANT_POTS = [
-  { id: "round", name: "圓盆" },
-  { id: "square", name: "方盆" },
-  { id: "tall", name: "高筒" },
-  { id: "bowl", name: "碗盆" },
-  { id: "hex", name: "六角" },
-  { id: "taper", name: "收腰" },
-  { id: "cup", name: "杯盆" },
-  { id: "flare", name: "寬口" },
-  { id: "foot", name: "高腳" },
-  { id: "box", name: "木箱" }
-];
-const PLANT_POT_COLORS = [
-  { id: "cream", name: "米白", hex: "#efe0c8" },
-  { id: "terra", name: "陶土", hex: "#c17b5c" },
-  { id: "gray", name: "霧灰", hex: "#c5c1ba" },
-  { id: "sand", name: "亞麻", hex: "#e2cc9a" },
-  { id: "sage", name: "鼠尾", hex: "#8aa37a" },
-  { id: "blue", name: "霧藍", hex: "#8aa6b8" },
-  { id: "pink", name: "玫瑰", hex: "#d9a8a8" },
-  { id: "char", name: "炭黑", hex: "#3d3d3d" },
-  { id: "gold", name: "暖黃", hex: "#e6c36a" },
-  { id: "forest", name: "深綠", hex: "#4a6b52" }
-];
-function plantPotOf(id) { return PLANT_POTS.find(x => x.id === id) || PLANT_POTS[0]; }
-function plantPotColorOf(id) { return PLANT_POT_COLORS.find(x => x.id === id) || PLANT_POT_COLORS[0]; }
-function shadeHex(hex, k) {
-  const n = parseInt(String(hex || "").replace("#", ""), 16);
-  if (!isFinite(n)) return "#c4a07a";
-  const ch = v => Math.max(0, Math.min(255, Math.round(v * k))).toString(16).padStart(2, "0");
-  return "#" + ch((n >> 16) & 255) + ch((n >> 8) & 255) + ch(n & 255);
 }
 const PLANT_KINDS = [
   { id: "pothos", name: "綠蘿", hint: "心形葉子，好養" },
@@ -10637,77 +10601,11 @@ function plantImgSrc(kind, stage) {
   const shot = stage === "bloom" ? "bloom" : (stage === "leaf" ? "leaf" : (stage === "seed" ? "seed" : "sprout"));
   return "images/plants/" + k + "-" + shot + ".jpg";
 }
-function plantPotBody(shape) {
-  if (shape === "square") return "M24 50h52l-3 38H27z";
-  if (shape === "tall") return "M34 40c-4 0-6 3-6 7l3.5 46c.8 5 8 8 18.5 8s17.7-3 18.5-8L72 47c0-4-2-7-6-7z";
-  if (shape === "bowl") return "M16 58c-3 0-5 2-5 5l8 20c2 6 14 9 31 9s29-3 31-9l8-20c0-3-2-5-5-5z";
-  if (shape === "hex") return "M32 48l18-8 18 8 6 40-24 10-24-10z";
-  if (shape === "taper") return "M28 48h44l-8 22 8 26H28l8-26z";
-  if (shape === "cup") return "M30 48c-8 0-10 6-9 12l6 34c1 6 10 9 23 9s22-3 23-9l6-34c1-6-1-12-9-12z";
-  if (shape === "flare") return "M20 48h60L70 90c-1 5-9 8-20 8s-19-3-20-8z";
-  if (shape === "foot") return "M32 44h36l-4 28H36z";
-  if (shape === "box") return "M22 50h56v38H22z";
-  return "M29 48c-5 0-8 3-8 8l6 34c1.2 5.5 8.4 8.5 23 8.5s21.8-3 23-8.5l6-34c0-5-3-8-8-8z";
-}
-function plantPotSvg(shape, color, uid) {
-  const s = plantPotOf(shape).id;
-  const col = plantPotColorOf(color);
-  const g = "pt" + (uid || s + col.id);
-  const fill = col.hex;
-  const deep = shadeHex(fill, 0.78);
-  const rim = shadeHex(fill, 1.12);
-  const foot = s === "foot" ? `<rect x="46" y="72" width="8" height="12" rx="1.5" fill="${deep}"/><path d="M34 84h32l-2 8H36z" fill="${fill}"/>` : "";
-  const slats = s === "box" ? `<path d="M24 62h52M24 74h52" stroke="${deep}" stroke-width="1.4" opacity=".45"/>` : "";
-  return `<svg class="plant-pot-svg" viewBox="0 0 100 110" aria-hidden="true">
-    <defs>
-      <linearGradient id="${g}b" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${rim}"/>
-        <stop offset="55%" stop-color="${fill}"/>
-        <stop offset="100%" stop-color="${deep}"/>
-      </linearGradient>
-    </defs>
-    <ellipse cx="50" cy="104" rx="28" ry="4.5" fill="#1b1714" opacity=".12"/>
-    <ellipse cx="50" cy="98" rx="26" ry="6" fill="${shadeHex(fill, 0.9)}"/>
-    <path d="${plantPotBody(s)}" fill="url(#${g}b)"/>
-    ${slats}${foot}
-    <path d="M22 46h56c3.2 0 5.2 2 5.2 4.6s-2 4.6-5.2 4.6H22c-3.2 0-5.2-2-5.2-4.6S18.8 46 22 46z" fill="${rim}"/>
-    <ellipse cx="50" cy="50.5" rx="21" ry="5.4" fill="#4a3226"/>
-    <ellipse cx="42" cy="49.4" rx="6" ry="1.8" fill="#fff" opacity=".12"/>
-  </svg>`;
-}
-function plantShotHtml(kind, stage, dry, mini, pot) {
+function plantShotHtml(kind, stage, dry, mini) {
   const st = stage === "wilt" ? "sprout" : (stage || "seed");
-  if (mini) {
-    return `<div class="plant-shot ${stage || "seed"}${dry ? " dry" : ""} mini">
-      <img src="${plantImgSrc(kind, st)}" alt="" draggable="false">
-    </div>`;
-  }
-  const p = pot || {};
-  const show = stage !== "seed";
-  return `<div class="plant-scene ${stage || "seed"}${dry ? " dry" : ""}">
-    <div class="plant-ground"></div>
-    ${show ? `<img class="plant-fg" src="${plantImgSrc(kind, st)}" alt="" draggable="false">` : `<span class="plant-seed-dot"></span>`}
-    ${plantPotSvg(p.potShape || "round", p.potColor || "cream", "main")}
+  return `<div class="plant-shot ${stage || "seed"}${dry ? " dry" : ""}${mini ? " mini" : ""}">
+    <img src="${plantImgSrc(kind, st)}" alt="" draggable="false">
   </div>`;
-}
-function plantPotPickHtml(p) {
-  return `<div class="plant-opt">
-      <div class="label">花盆形狀</div>
-      <div class="plant-rail pot-rail">
-        ${PLANT_POTS.map(x => `<button type="button" class="pot-pick${p.potShape === x.id ? " on" : ""}" data-pot-shape="${x.id}">
-          ${plantPotSvg(x.id, p.potColor, "s" + x.id)}
-          <span>${escapeHtml(x.name)}</span>
-        </button>`).join("")}
-      </div>
-    </div>
-    <div class="plant-opt">
-      <div class="label">花盆顏色</div>
-      <div class="plant-rail color-rail">
-        ${PLANT_POT_COLORS.map(c => `<button type="button" class="color-pick${p.potColor === c.id ? " on" : ""}" data-pot-color="${c.id}" title="${escapeHtml(c.name)}" style="--sw:${c.hex}">
-          <i></i><span>${escapeHtml(c.name)}</span>
-        </button>`).join("")}
-      </div>
-    </div>`;
 }
 function plantSeedPickHtml() {
   const has = !!(me() && plantOf(me()).kind);
@@ -10744,7 +10642,7 @@ function plantCardHtml(t, r) {
     ? `<input id="plant-name-in" class="plant-name-in" maxlength="8" value="${escapeHtml(named)}" placeholder="幫它取名" autocomplete="off">`
     : `<button type="button" class="plant-name" id="plant-name">${named ? escapeHtml(named) : "幫它取名"}</button>`;
   return `<div class="card card-body plant-card plant-grown slide-left">
-    ${plantShotHtml(p.kind, stage, dry, false, p)}
+    ${plantShotHtml(p.kind, stage, dry)}
     <div class="plant-copy">
       <div class="label">窗台植物${kind ? " · " + escapeHtml(kind.name) : ""}</div>
       ${nameBtn}
@@ -10755,7 +10653,6 @@ function plantCardHtml(t, r) {
         <button type="button" class="plant-reseed" id="plant-reseed">換種子</button>
       </div>
     </div>
-    ${plantPotPickHtml(p)}
   </div>`;
 }
 function savePlant(patch) {
@@ -10825,22 +10722,6 @@ function bindPlantCard() {
       ui.plantPick = false;
       savePlant({ kind, waters: 0, wateredOn: "", plantedOn: todayYmd() });
       toast("已種下" + plantKindOf(kind).name);
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  document.querySelectorAll("[data-pot-shape]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      savePlant({ potShape: btn.dataset.potShape });
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  document.querySelectorAll("[data-pot-color]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      savePlant({ potColor: btn.dataset.potColor });
       ui.keepScroll = true;
       render();
     };
