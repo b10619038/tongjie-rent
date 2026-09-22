@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-23-48";
-const APP_EDIT_COUNT = 1106;
+const APP_STAMP = "2026-09-22-23-58";
+const APP_EDIT_COUNT = 1107;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0656";
+const FILE_VER = "0657";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選植物畫面不再抖動"] },
+  { ver: APP_VERSION, items: ["澆水十段改為完整成長圖，不再用透明度"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10628,18 +10628,12 @@ function plantImgSrc(kind, stage) {
   const shot = stage === "bloom" ? "bloom" : (stage === "leaf" || stage === "mature" || stage === "young" ? "leaf" : (stage === "seed" ? "seed" : "sprout"));
   return "images/plants/" + k + "-" + shot + ".jpg";
 }
-function plantGrowFrame(kind, waters, bloom) {
-  const seed = plantImgSrc(kind, "seed");
-  const sprout = plantImgSrc(kind, "sprout");
-  const leaf = plantImgSrc(kind, "leaf");
-  const flower = plantImgSrc(kind, "bloom");
-  if (bloom) return { a: flower, b: flower, t: 1, scale: 1 };
+function plantGrowSrc(kind, waters, bloom) {
+  const k = plantKindOf(kind) ? kind : "pothos";
+  if (bloom) return "images/plants/" + k + "-bloom.jpg";
   const w = Math.max(0, Math.min(10, Number(waters) || 0));
-  if (w <= 0) return { a: seed, b: seed, t: 0, scale: 1 };
-  if (w <= 3) return { a: seed, b: sprout, t: +(w / 3).toFixed(3), scale: +(0.52 + w * 0.1).toFixed(3) };
-  if (w <= 6) return { a: sprout, b: leaf, t: +((w - 3) / 3).toFixed(3), scale: +(0.78 + (w - 4) * 0.05).toFixed(3) };
-  if (w <= 9) return { a: leaf, b: leaf, t: 1, scale: +(0.88 + (w - 7) * 0.04).toFixed(3) };
-  return { a: leaf, b: leaf, t: 1, scale: 1 };
+  if (w <= 0) return "images/plants/" + k + "-seed.jpg";
+  return "images/plants/" + k + "-g" + w + ".jpg";
 }
 function plantShotHtml(kind, stage, dry, mini, waters) {
   if (mini) {
@@ -10647,12 +10641,9 @@ function plantShotHtml(kind, stage, dry, mini, waters) {
       <img src="${plantImgSrc(kind, "bloom")}" alt="" draggable="false">
     </div>`;
   }
-  const st = stage === "wilt" ? "sprout" : (stage || "seed");
-  const bloom = stage === "bloom";
-  const fr = plantGrowFrame(kind, bloom ? 10 : waters, bloom);
-  return `<div class="plant-shot grow ${stage || "seed"}${dry ? " dry" : ""}" style="--t:${fr.t};--sc:${fr.scale}">
-    <img class="g-a" src="${fr.a}" alt="" draggable="false">
-    <img class="g-b" src="${fr.b}" alt="" draggable="false">
+  const src = plantGrowSrc(kind, waters, stage === "bloom");
+  return `<div class="plant-shot ${stage || "seed"}${dry ? " dry" : ""}">
+    <img src="${src}" alt="" draggable="false">
   </div>`;
 }
 function plantSeedPickHtml() {
