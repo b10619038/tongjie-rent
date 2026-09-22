@@ -609,85 +609,42 @@ input, textarea, select {
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
   z-index: 4;
-  animation: rent-chop 1.2s cubic-bezier(.22, .7, .2, 1) both;
+  animation: rent-chop 1.1s cubic-bezier(.22, .7, .2, 1) both;
 }
 .rent-stamp.chop i {
-  animation: rent-chop-ink 1.2s cubic-bezier(.22, .7, .2, 1) both;
-}
-.rent-stamp.chop::after {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, .28);
-  filter: blur(6px);
-  animation: rent-ink 1.2s ease-out both;
-  pointer-events: none;
-  z-index: -1;
+  animation: rent-chop-ink 1.1s cubic-bezier(.22, .7, .2, 1) both;
 }
 @keyframes rent-chop {
-  0%, 25% {
+  0%, 22% {
     opacity: 0;
-    color: transparent;
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-    transform: rotate(-10deg) scale(1.38);
-    filter: blur(1.2px);
-  }
-  52% {
-    opacity: .45;
-    color: #1a1a1a;
-    border-color: #1a1a1a;
-    background: rgba(0, 0, 0, .12);
-    box-shadow: inset 0 0 0 2px #1a1a1a;
     transform: rotate(-10deg) scale(1.22);
-    filter: blur(.5px);
   }
-  68% {
-    opacity: .9;
-    color: #3f5340;
-    border-color: #3f5340;
-    background: rgba(63, 83, 64, .14);
-    box-shadow: inset 0 0 0 2px #3f5340;
-    transform: rotate(-10deg) scale(1.08);
-    filter: blur(0);
+  48% {
+    opacity: .32;
+    transform: rotate(-10deg) scale(1.12);
   }
-  84% {
+  72% {
+    opacity: .72;
+    transform: rotate(-10deg) scale(1.03);
+  }
+  88% {
     opacity: 1;
-    color: var(--stamp);
-    border-color: var(--stamp);
-    background: rgba(94, 122, 85, .12);
-    box-shadow: inset 0 0 0 2px var(--stamp);
-    transform: rotate(-10deg) scale(.96);
+    transform: rotate(-10deg) scale(.97);
   }
   100% {
     opacity: .9;
-    color: var(--stamp);
-    border-color: var(--stamp);
-    background: rgba(94, 122, 85, .08);
-    box-shadow: inset 0 0 0 2px var(--stamp);
     transform: rotate(-10deg) scale(1);
-    filter: none;
   }
 }
 @keyframes rent-chop-ink {
-  0%, 38% { opacity: 0; }
-  62% { opacity: .35; color: #1a1a1a; }
-  74% { opacity: .85; color: #3f5340; }
-  100% { opacity: 1; color: var(--stamp); }
-}
-@keyframes rent-ink {
-  0%, 25% { opacity: 0; transform: scale(1.2); background: rgba(0, 0, 0, 0); }
-  34% { opacity: .22; transform: scale(1.28); background: rgba(0, 0, 0, .2); }
-  46% { opacity: .42; transform: scale(1.12); background: rgba(0, 0, 0, .32); }
-  66% { opacity: .2; transform: scale(1); background: rgba(63, 83, 64, .22); }
-  100% { opacity: 0; transform: scale(.88); background: rgba(94, 122, 85, 0); }
+  0%, 22% { opacity: 0; }
+  48% { opacity: .4; }
+  72% { opacity: .8; }
+  100% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rent-stamp.chop,
-  .rent-stamp.chop i,
-  .rent-stamp.chop::after { animation: none; }
+  .rent-stamp.chop i { animation: none; }
 }
 html[data-theme="void"] .hero-card {
   background: #161616;
