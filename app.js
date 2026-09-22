@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-49";
-const APP_EDIT_COUNT = 1070;
+const APP_STAMP = "2026-09-22-20-50";
+const APP_EDIT_COUNT = 1071;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0620";
+const FILE_VER = "0621";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["訊息視窗標題改成管理員對話"] },
+  { ver: APP_VERSION, items: ["對話視窗拿掉訊息視窗四字，只留房號姓名"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1758,8 +1758,7 @@ function drawChatBox() {
   wrap.innerHTML = `<div class="chat-sheet" role="dialog">
     <div class="chat-bar">
       <i class="chat-handle" aria-hidden="true"></i>
-      <strong>管理員對話</strong>
-      ${who ? `<span>${escapeHtml(who)}</span>` : ""}
+      ${who ? `<strong>${escapeHtml(who)}</strong>` : ""}
     </div>
     <div class="chat-log" id="chat-log">${msgs}</div>
     <form class="chat-compose" id="chat-form">
