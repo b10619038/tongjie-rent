@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-14-41";
-const APP_EDIT_COUNT = 1008;
+const APP_STAMP = "2026-09-22-14-43";
+const APP_EDIT_COUNT = 1009;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0558";
+const FILE_VER = "0559";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約年限拿掉半年，只留 1 年"] },
+  { ver: APP_VERSION, items: ["租客續約可點選擇簽約時間"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2366,9 +2366,9 @@ function renewAskCardHtml(t, r, opts) {
     ${mode === "move" ? renewMovePickHtml(t, r) : ""}
     <div class="small" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ～ ${escapeHtml(range.end)}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
     <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
-    <label class="field"><span>預約實際簽約日期</span>
+    <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00", gcalDraft: true })}
-    </label>
+    </div>
     <div class="small" style="margin:6px 0 0">簽約地點：5F，右轉到底，7651簽約室</div>
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
   </div>`;
@@ -2410,6 +2410,7 @@ function bindRenewForm() {
   });
   const inp = document.getElementById("renew-appoint");
   if (inp) {
+    bindAppointPicker(inp);
     inp.onchange = () => { ui.renewAppoint = inp.value; paintAppointFace(inp); };
     inp.oninput = () => { ui.renewAppoint = inp.value; paintAppointFace(inp); };
   }
@@ -9584,6 +9585,43 @@ function paintAppointFace(inp) {
   const wrap = inp && inp.closest(".appoint-one");
   const face = wrap && wrap.querySelector(".appoint-face");
   if (face) face.innerHTML = appointFaceHtml(inp.value);
+}
+function openAppointPicker(inp) {
+  if (!inp || inp.disabled) return;
+  try {
+    if (typeof inp.showPicker === "function") {
+      inp.showPicker();
+      return;
+    }
+  } catch {}
+  try { inp.focus({ preventScroll: true }); } catch { try { inp.focus(); } catch {} }
+}
+function bindAppointPicker(inp) {
+  if (!inp || inp.dataset.boundPicker === "1") return;
+  inp.dataset.boundPicker = "1";
+  paintAppointFace(inp);
+  const wrap = inp.closest(".appoint-one");
+  const open = e => {
+    if (inp.disabled) return;
+    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew]")) return;
+    openAppointPicker(inp);
+  };
+  inp.addEventListener("click", e => {
+    e.stopPropagation();
+    openAppointPicker(inp);
+  });
+  inp.addEventListener("pointerup", e => {
+    e.stopPropagation();
+  });
+  if (wrap) {
+    wrap.addEventListener("click", e => {
+      if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew]")) return;
+      if (e.target === inp) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openAppointPicker(inp);
+    });
+  }
 }
 function appointOneHtml(at, extra) {
   const x = extra || {};
@@ -24591,6 +24629,7 @@ function bindTenantFold() {
   document.querySelectorAll("[data-print-renew]").forEach(btn => bindIosPress(btn));
   document.querySelectorAll("[data-gcal-renew], .gcal-in").forEach(btn => bindIosPress(btn));
   document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
+    bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
       paintAppointFace(inp);
@@ -24860,6 +24899,7 @@ function bindTenantListTools() {
     };
   });
   document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
+    bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
       paintAppointFace(inp);
@@ -27074,6 +27114,7 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
+    bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
       const item = (state.renewals || []).find(x => x.id === inp.dataset.renewAppoint);
