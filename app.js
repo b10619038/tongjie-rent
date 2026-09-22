@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-12-32";
-const APP_EDIT_COUNT = 996;
+const APP_STAMP = "2026-09-22-12-38";
+const APP_EDIT_COUNT = 997;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0546";
+const FILE_VER = "0547";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -434,6 +434,16 @@ const XUXU_AUG_CASH_BOOKS = [
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isTenantLook() { return !!(typeof ui !== "undefined" && ui && ui.tenantLook && ui.role === "tenant"); }
+function canPilotTenant() {
+  if (typeof isDeveloper === "function" && isDeveloper()) return true;
+  const back = typeof ui !== "undefined" && ui && ui.lookBack;
+  return !!(isTenantLook() && back && back.adminCode === "1240");
+}
+function tenantAvatarLookHtml(t) {
+  const face = avatarHtml(t, "sm");
+  if (!t || typeof isDeveloper !== "function" || !isDeveloper()) return face;
+  return `<button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="以這位租客操作 App（開發者）">${face}</button>`;
+}
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
 function isDemoFactoryRoom(r) { return !!(r && (r.id === "r-demo-f" || r.no === "F0000" || (r.demo && r.kind === "factory"))); }
 function isVacatedTenant(t) {
@@ -480,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7032 楊旻憲續約申請寫入雲端，後台租客列表會顯示"] },
+  { ver: APP_VERSION, items: ["開發者點租客頭貼可進入該租客 App 並實際操作"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2415,7 +2425,7 @@ function submitTenantRenewal() {
   const t = me(); const r = myRoom();
   if (!t || !r) return;
   if (liveRenewalOf(t)) { toast(openRenewalOf(t) ? "已送出續約申請" : "續約已完成簽約"); return; }
-  if (isProspectPreview() || isTenantLook()) { toast(isTenantLook() ? "查看中，不會送出續約" : "預覽中，續約不會送出"); return; }
+  if (isProspectPreview()) { toast("預覽中，續約不會送出"); return; }
   const inp = document.getElementById("renew-appoint");
   const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
   if (!at) { toast("請先預約實際簽約日期"); return; }
@@ -9069,8 +9079,9 @@ function restoreUi() {
     ui.adminCode = s.adminCode || "";
     ui.devPreview = !!(s.devPreview && (s.adminCode === "1240" || ui.adminCode === "1240"));
     ui.prospectPreview = !!s.prospectPreview;
-    ui.tenantLook = !!s.tenantLook;
-    ui.lookBack = s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
+    const lookOk = !!(s.tenantLook && ((s.lookBack && s.lookBack.adminCode === "1240") || s.adminCode === "1240"));
+    ui.tenantLook = lookOk;
+    ui.lookBack = lookOk && s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
     if (stayingGate && !s.role) return;
     if (s.role === "tenant" && (ui.page === "tenant-login" || ui.page === "admin-login" || s.page === "tenant-login" || s.page === "admin-login")) {
       ui.page = "home";
@@ -9097,10 +9108,24 @@ function restoreUi() {
       return;
     }
     if (s.role === "tenant") {
+      if (s.tenantLook && !lookOk) {
+        ui.role = "admin";
+        ui.adminCode = s.adminCode || (s.lookBack && s.lookBack.adminCode) || ui.adminCode || "";
+        ui.page = (s.lookBack && s.lookBack.page) || "tenants";
+        ui.tenantKind = (s.lookBack && s.lookBack.tenantKind) === "factory" ? "factory" : "studio";
+        ui.tenantLook = false;
+        ui.lookBack = null;
+        ui.tenantId = null;
+        ui.roomId = null;
+        ui.roomNo = "";
+        persistUi();
+        return;
+      }
       let t = (state.tenants || []).find(x => x.id === s.tenantId);
       let room = (state.rooms || []).find(r => r.id === s.roomId) || (s.roomNo ? (state.rooms || []).find(r => r.no === s.roomNo) : null);
+      if (lookOk) ui.adminCode = "1240";
       if (t && t.former && !isDemoTenant(t)) {
-        if (s.tenantLook) {
+        if (lookOk) {
           ui.tenantLook = false;
           ui.lookBack = null;
           ui.role = "admin";
@@ -9124,7 +9149,7 @@ function restoreUi() {
         return;
       }
       if (t && t.incoming && !isDemoTenant(t)) {
-        if (s.tenantLook) {
+        if (lookOk) {
           ui.tenantLook = true;
           ui.role = "tenant";
           ui.tenantId = t.id;
@@ -10893,11 +10918,12 @@ function exitDevPreview() {
   render();
 }
 function enterTenantLook(t) {
+  if (!isDeveloper()) { toast("這個功能只有開發者能用"); return; }
   if (!t) { toast("找不到租客"); return; }
   const r = (state.rooms || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id));
   ui.lookBack = {
     role: "admin",
-    adminCode: ui.adminCode || "",
+    adminCode: "1240",
     page: "tenants",
     tenantKind: ui.tenantKind === "factory" ? "factory" : "studio",
     assetKind: ui.assetKind || "studio"
@@ -10905,6 +10931,7 @@ function enterTenantLook(t) {
   ui.tenantLook = true;
   ui.devPreview = false;
   ui.role = "tenant";
+  ui.adminCode = "1240";
   ui.tenantId = t.id;
   ui.roomId = r ? r.id : t.roomId;
   ui.roomNo = (r && r.no) || "";
@@ -11278,7 +11305,6 @@ function todayStamp() {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function flushTenantInbox() {
-  if (isTenantLook()) return;
   const t = typeof me === "function" ? me() : null;
   if (!t || !Array.isArray(t.inbox) || !t.inbox.length) return;
   const unread = t.inbox.filter(n => n && !n.osShown);
@@ -11297,7 +11323,6 @@ function flushTenantInbox() {
   }
 }
 function maybeNudgeNotifies() {
-  if (isTenantLook()) return;
   if (!canOsNotify()) return;
   if (ui.role === "tenant" && ui.tenantId) {
     flushTenantInbox();
@@ -18561,7 +18586,7 @@ function paintApp() {
     return;
   }
   ui.keepScroll = false;
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : isTenantLook() ? `<div class="preview-banner">正在查看 ${escapeHtml([myRoom() && myRoom().no, me() && me().name].filter(Boolean).join(" "))} 的 App 畫面<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : isTenantLook() ? `<div class="preview-banner">開發者代操　${escapeHtml([myRoom() && myRoom().no, me() && me().name].filter(Boolean).join(" "))}　操作會真實寫入<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   safeBind(() => {
     bindTenant();
     bindNavPill();
@@ -19166,7 +19191,7 @@ function homeView() {
         <div class="who-line">
           <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
           <div>
-            <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : isTenantLook() ? "管理員查看" : isProspectPreview() ? "看房預覽" : skyLabel(ui.sky)}</div>
+            <div class="eyebrow">${ui.devPreview ? "DEVELOPER PREVIEW" : isTenantLook() ? "開發者代操" : isProspectPreview() ? "看房預覽" : skyLabel(ui.sky)}</div>
             ${tenantNameHeadingHtml(t.name)}
           </div>
         </div>
@@ -23982,7 +24007,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini"><button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="查看租客 App 畫面">${avatarHtml(t, "sm")}</button><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -24598,6 +24623,7 @@ function bindTenantFold() {
   bindTenantLook();
 }
 function bindTenantLook() {
+  if (typeof isDeveloper !== "function" || !isDeveloper()) return;
   document.querySelectorAll("[data-look-tenant]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -24692,7 +24718,7 @@ function tenantSheetView() {
     </div></div>
     <div class="card card-body slide-left" id="tenant-sheet">
       <div class="row tenant-slim-head" style="margin-bottom:12px">
-        <span class="who-mini"><button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="查看租客 App 畫面">${avatarHtml(t, "sm")}</button><span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span>
+        <span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span>
         <span class="row-end"><button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button></span>
       </div>
       ${tenantEntryDetailsHtml(kindNow, entry)}
@@ -25333,7 +25359,6 @@ function bindTenant() {
   const av = document.getElementById("tenant-avatar");
   const avSet = document.getElementById("tenant-avatar-set");
   const onAvatar = async (inp) => {
-    if (isTenantLook()) { toast("查看中，不會更改大頭貼"); inp.value = ""; return; }
     const f = inp.files && inp.files[0];
     inp.value = "";
     if (!f) return;
@@ -25442,7 +25467,7 @@ function bindTenant() {
     markPaid.onclick = () => {
       const t0 = me();
       const r0 = myRoom();
-      if (isProspectPreview() || isTenantLook()) { toast(isTenantLook() ? "查看中，不會記真的帳" : "預覽中，不會記真的帳"); return; }
+      if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
       if (!t0 || t0.paid) return;
       if (!isDemoTenant(t0) && !tenantLineUnlocked(t0, r0)) {
         toast("請先在官方 LINE 傳送回報和轉帳截圖");
@@ -25457,7 +25482,7 @@ function bindTenant() {
   const linePaid = document.getElementById("line-paid");
   if (linePaid) {
     linePaid.onclick = async () => {
-      if (isProspectPreview() || isTenantLook()) { toast(isTenantLook() ? "查看中，不會記真的帳" : "預覽中，不會記真的帳"); return; }
+      if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
       const msg = linePayMessage();
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(msg);
@@ -25625,7 +25650,7 @@ function bindTenant() {
       e.stopPropagation();
       const note = ((document.getElementById("repair-note") || {}).value || ui.repairNote || "").trim();
       if (!note) { toast("請先描述問題，才能提交報修"); return; }
-      if (isProspectPreview() || isTenantLook()) { toast(isTenantLook() ? "查看中，報修不會送出" : "預覽中，報修不會送出"); return; }
+      if (isProspectPreview()) { toast("預覽中，報修不會送出"); return; }
       const media = (ui.repairMedia || []).slice();
       const stamp = nowStamp();
       const room = myRoom();
@@ -26091,7 +26116,6 @@ function bindSignPad() {
   };
   const ok = document.getElementById("sign-confirm");
   if (ok) ok.onclick = () => {
-    if (isTenantLook()) { toast("查看中，不會簽署"); return; }
     const agree = document.getElementById("sign-agree");
     if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
     const c = a && a.c;
