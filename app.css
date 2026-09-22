@@ -608,45 +608,70 @@ input, textarea, select {
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
   z-index: 4;
-  animation: rent-chop .7s cubic-bezier(.14, .82, .24, 1.08) both;
+  animation: rent-chop .78s cubic-bezier(.22, .7, .2, 1) both;
 }
 .rent-stamp.chop::after {
   content: "";
   position: absolute;
-  inset: -12px;
-  border-radius: 14px;
-  background: radial-gradient(circle, rgba(94, 122, 85, .38) 0%, rgba(94, 122, 85, .1) 42%, transparent 72%);
-  animation: rent-ink .7s ease-out both;
+  inset: -10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .22);
+  filter: blur(5px);
+  animation: rent-ink .78s ease-out both;
   pointer-events: none;
+  z-index: -1;
 }
 @keyframes rent-chop {
   0% {
-    opacity: 0;
-    transform: translate(16px, -42px) rotate(-36deg) scale(2.35);
-    filter: blur(.6px);
+    opacity: .28;
+    color: #2a2a2a;
+    border-color: #2a2a2a;
+    background: rgba(0, 0, 0, .1);
+    box-shadow: inset 0 0 0 2px #2a2a2a;
+    transform: rotate(-10deg) scale(1.42);
+    filter: blur(1.4px);
   }
-  22% {
-    opacity: 1;
-    transform: translate(8px, -22px) rotate(-24deg) scale(1.7);
-    filter: blur(.2px);
+  32% {
+    opacity: .55;
+    color: #141414;
+    border-color: #141414;
+    background: rgba(0, 0, 0, .2);
+    box-shadow: inset 0 0 0 2px #141414;
+    transform: rotate(-10deg) scale(1.24);
+    filter: blur(.7px);
   }
   58% {
-    opacity: 1;
-    transform: translate(0, 4px) rotate(-7deg) scale(1.1);
+    opacity: .88;
+    color: #3f5340;
+    border-color: #3f5340;
+    background: rgba(63, 83, 64, .16);
+    box-shadow: inset 0 0 0 2px #3f5340;
+    transform: rotate(-10deg) scale(1.08);
     filter: blur(0);
   }
-  76% {
-    transform: translate(0, -1px) rotate(-12deg) scale(.92);
+  78% {
+    opacity: 1;
+    color: var(--stamp);
+    border-color: var(--stamp);
+    background: rgba(94, 122, 85, .12);
+    box-shadow: inset 0 0 0 2px var(--stamp);
+    transform: rotate(-10deg) scale(.96);
   }
   100% {
     opacity: .9;
+    color: var(--stamp);
+    border-color: var(--stamp);
+    background: rgba(94, 122, 85, .08);
+    box-shadow: inset 0 0 0 2px var(--stamp);
     transform: rotate(-10deg) scale(1);
+    filter: none;
   }
 }
 @keyframes rent-ink {
-  0% { opacity: 0; transform: scale(.28); }
-  54% { opacity: .7; transform: scale(1.08); }
-  100% { opacity: 0; transform: scale(1.5); }
+  0% { opacity: .35; transform: scale(1.35); background: rgba(0, 0, 0, .28); }
+  40% { opacity: .22; transform: scale(1.12); background: rgba(20, 20, 20, .2); }
+  72% { opacity: .12; transform: scale(.95); background: rgba(94, 122, 85, .18); }
+  100% { opacity: 0; transform: scale(.85); background: rgba(94, 122, 85, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .rent-stamp.chop,
