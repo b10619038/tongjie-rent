@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-45";
-const APP_EDIT_COUNT = 1068;
+const APP_STAMP = "2026-09-22-20-47";
+const APP_EDIT_COUNT = 1069;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0618";
+const FILE_VER = "0619";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發送訊息改成管理員公告右邊小圖塊"] },
+  { ver: APP_VERSION, items: ["訊息視窗拿掉關閉，標題置中，下滑關閉會留草稿"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1651,10 +1651,78 @@ function openDevChat(tid) {
   pullChat(true);
   startChatPoll();
 }
+function saveChatDraft() {
+  const inp = document.getElementById("chat-input");
+  if (!ui.chatDrafts) ui.chatDrafts = {};
+  if (ui.chatTid && inp) ui.chatDrafts[ui.chatTid] = inp.value;
+  try { sessionStorage.setItem("tj-chat-drafts", JSON.stringify(ui.chatDrafts)); } catch {}
+}
+function chatDraftOf(tid) {
+  if (!ui.chatDrafts) {
+    try { ui.chatDrafts = JSON.parse(sessionStorage.getItem("tj-chat-drafts") || "{}"); } catch { ui.chatDrafts = {}; }
+  }
+  return (ui.chatDrafts && ui.chatDrafts[tid]) || "";
+}
 function closeDevChat() {
+  saveChatDraft();
   ui.chatOpen = false;
   const el = document.getElementById("dev-chat-box");
   if (el) el.remove();
+}
+function bindChatSwipe(wrap) {
+  if (!wrap || wrap.dataset.swipeBound) return;
+  wrap.dataset.swipeBound = "1";
+  let y0 = 0, dy = 0, on = false;
+  const sheetEl = () => wrap.querySelector(".chat-sheet");
+  const barEl = () => wrap.querySelector(".chat-bar");
+  const logEl = () => wrap.querySelector(".chat-log");
+  const fromOk = t => {
+    const bar = barEl();
+    const log = logEl();
+    return (bar && bar.contains(t)) || (log && log.contains(t) && log.scrollTop <= 1);
+  };
+  const start = e => {
+    const p = e.touches ? e.touches[0] : e;
+    if (!fromOk(e.target)) return;
+    on = true;
+    y0 = p.clientY;
+    dy = 0;
+  };
+  const move = e => {
+    if (!on) return;
+    const sheet = sheetEl();
+    if (!sheet) return;
+    const p = e.touches ? e.touches[0] : e;
+    dy = Math.max(0, p.clientY - y0);
+    if (dy < 4) return;
+    sheet.style.transition = "none";
+    sheet.style.transform = "translateY(" + dy + "px)";
+    wrap.style.background = "rgba(23,33,31," + (0.42 * (1 - Math.min(dy, 260) / 260)) + ")";
+    if (e.cancelable) e.preventDefault();
+  };
+  const end = () => {
+    if (!on) return;
+    on = false;
+    const sheet = sheetEl();
+    if (dy > 88) {
+      saveChatDraft();
+      if (sheet) {
+        sheet.style.transition = "transform .26s ease";
+        sheet.style.transform = "translateY(110%)";
+      }
+      wrap.style.background = "rgba(23,33,31,0)";
+      setTimeout(() => closeDevChat(), 240);
+    } else if (sheet) {
+      sheet.style.transition = "transform .26s ease";
+      sheet.style.transform = "";
+      wrap.style.background = "";
+    }
+    dy = 0;
+  };
+  wrap.addEventListener("touchstart", start, { passive: true });
+  wrap.addEventListener("touchmove", move, { passive: false });
+  wrap.addEventListener("touchend", end);
+  wrap.addEventListener("touchcancel", end);
 }
 function chatWhen(at) {
   const d = new Date(at);
@@ -1676,13 +1744,11 @@ function drawChatBox() {
   const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
   const th = chatThreadOf(tid);
   const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
-  const title = isDeveloper() && ui.role === "admin"
-    ? ((r && r.no ? r.no + " " : "") + (t && t.name || th.name || "租客"))
-    : "訊息視窗";
+  const who = [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ");
   const msgs = (th.msgs || []).map(m => chatBubbleHtml(m, m.from === mineFrom)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
   let wrap = document.getElementById("dev-chat-box");
   const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
-  const typed = keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "";
+  const typed = (keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "") || chatDraftOf(tid);
   if (!wrap) {
     wrap = document.createElement("div");
     wrap.id = "dev-chat-box";
@@ -1691,9 +1757,9 @@ function drawChatBox() {
   }
   wrap.innerHTML = `<div class="chat-sheet" role="dialog">
     <div class="chat-bar">
-      <button type="button" id="chat-close">關閉</button>
-      <span>${escapeHtml(title)}</span>
-      <em></em>
+      <i class="chat-handle" aria-hidden="true"></i>
+      <strong>訊息視窗</strong>
+      ${who ? `<span>${escapeHtml(who)}</span>` : ""}
     </div>
     <div class="chat-log" id="chat-log">${msgs}</div>
     <form class="chat-compose" id="chat-form">
@@ -1703,15 +1769,17 @@ function drawChatBox() {
   </div>`;
   const log = document.getElementById("chat-log");
   if (log) log.scrollTop = log.scrollHeight;
-  const close = document.getElementById("chat-close");
-  if (close) close.onclick = () => closeDevChat();
   wrap.onclick = e => { if (e.target === wrap) closeDevChat(); };
+  bindChatSwipe(wrap);
   const form = document.getElementById("chat-form");
   const inp = document.getElementById("chat-input");
+  if (inp) inp.oninput = () => saveChatDraft();
   if (form) form.onsubmit = e => {
     e.preventDefault();
     const text = inp && inp.value;
     if (inp) inp.value = "";
+    if (ui.chatDrafts) ui.chatDrafts[tid] = "";
+    try { sessionStorage.setItem("tj-chat-drafts", JSON.stringify(ui.chatDrafts || {})); } catch {}
     sendDevChat(tid, text);
     if (inp) inp.focus();
   };
