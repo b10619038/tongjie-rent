@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-12-22";
-const APP_EDIT_COUNT = 994;
+const APP_STAMP = "2026-09-22-12-28";
+const APP_EDIT_COUNT = 995;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0544";
+const FILE_VER = "0545";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -480,7 +480,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點租客頭貼可進入該租客 App 即時畫面"] },
+  { ver: APP_VERSION, items: ["7032 楊旻憲續約申請顯示於後台，簽約時間 9/28 晚上 6:00"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -5664,7 +5664,8 @@ function applyRenewal7221(data) {
     }, 500);
   }
 }
-const RENEW_7032_VER = "renew-7032-v1";
+const RENEW_7032_VER = "renew-7032-v2";
+const RENEW_7032_AT = "2026-09-28T18:00";
 function applyRenewal7032(data) {
   if (!data) return;
   if (!Array.isArray(data.renewals)) data.renewals = [];
@@ -5672,6 +5673,11 @@ function applyRenewal7032(data) {
   if (!Array.isArray(data.tenants)) data.tenants = [];
   try { ensureStudioTenant(data, "7032"); } catch {}
   let { room, tenant: t } = studioOccupantOfNo(data, "7032");
+  if (room && !t) {
+    t = (data.tenants || []).find(x => x && !x.former && !x.demo && !x.placeholder && (
+      x.roomId === room.id || x.id === room.tenantId || sameTenantName(x.name, "楊旻憲")
+    )) || t;
+  }
   if (!room) {
     room = { id: "r7032", no: "7032", title: "套房", kind: "studio", status: "rented", rent: 12000, deposit: 24000, tenantId: "t7032" };
     data.rooms.push(room);
@@ -5700,7 +5706,24 @@ function applyRenewal7032(data) {
     x.id === "rn-7032-2026"
     || (x.tenantId === t.id && x.status !== "done" && x.status !== "applied")
     || (String(x.roomNo) === "7032" && x.status !== "done" && x.status !== "applied")
+    || (sameTenantName(x.name, "楊旻憲") && x.status !== "done" && x.status !== "applied")
   ));
+  const stampTime = (row) => {
+    if (!row || row.status === "done" || row.status === "applied") return;
+    if (data.renew7032Ver !== RENEW_7032_VER || !row.appointAt) row.appointAt = RENEW_7032_AT;
+  };
+  const persist = () => {
+    if (typeof ui !== "undefined") ui.tenantOrderKey = "";
+    if (typeof state === "undefined" || data !== state) return;
+    setTimeout(() => {
+      try { save(true); } catch {}
+      try { if (typeof pushCloud === "function") pushCloud(); } catch {}
+      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
+      if (typeof ui !== "undefined" && ui.role === "admin") {
+        try { flashRenewNotice(data.renewPing); } catch {}
+      }
+    }, 400);
+  };
   if (existed) {
     existed.roomId = room.id;
     existed.tenantId = t.id;
@@ -5708,6 +5731,7 @@ function applyRenewal7032(data) {
     existed.name = t.name || "楊旻憲";
     if (existed.waterFee == null) existed.waterFee = renewWaterCashFee(t, room, existed);
     existed.waterCash = true;
+    stampTime(existed);
     if (existed.status !== "applied") {
       existed.oldStart = existed.oldStart || "2026-03-01";
       existed.oldEnd = existed.oldEnd || "2026-10-31";
@@ -5721,7 +5745,10 @@ function applyRenewal7032(data) {
         t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: 12000 }];
       }
     }
+    const needPush = data.renew7032Ver !== RENEW_7032_VER;
+    data.renewPing = data.renewPing || { at: Date.now(), roomNo: room.no, name: t.name || "楊旻憲", id: existed.id };
     data.renew7032Ver = RENEW_7032_VER;
+    if (needPush) persist();
     return;
   }
   const years = 1;
@@ -5731,7 +5758,7 @@ function applyRenewal7032(data) {
     id: "rn-7032-2026",
     roomId: room.id,
     tenantId: t.id,
-    roomNo: room.no,
+    roomNo: room.no || "7032",
     name: t.name || "楊旻憲",
     status: "open",
     years,
@@ -5739,20 +5766,15 @@ function applyRenewal7032(data) {
     end: range.end,
     waterFee: water,
     waterCash: true,
-    appointAt: "",
+    appointAt: RENEW_7032_AT,
     appointRead: false,
     createdAt: nowStamp(),
     importTag: "renew7032"
   };
   data.renewals.push(row);
-  data.renewPing = { at: Date.now(), roomNo: room.no, name: t.name || "楊旻憲", id: row.id, years, waterFee: water };
+  data.renewPing = { at: Date.now(), roomNo: row.roomNo, name: row.name, id: row.id, years, waterFee: water };
   data.renew7032Ver = RENEW_7032_VER;
-  if (typeof ui !== "undefined" && ui.role === "admin") {
-    setTimeout(() => {
-      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
-      try { flashRenewNotice(data.renewPing); } catch {}
-    }, 500);
-  }
+  persist();
 }
 function renewPingKey(p) {
   if (!p) return "";
@@ -23486,7 +23508,6 @@ function tenantListOfKind(kind, opts) {
   if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = uniq.map(t => t.id);
-    return uniq;
   }
   const rank = new Map(ui.tenantOrder.map((id, i) => [id, i]));
   uniq.forEach(t => { if (t && t.id && !rank.has(t.id)) { rank.set(t.id, ui.tenantOrder.length); ui.tenantOrder.push(t.id); } });
@@ -23784,7 +23805,7 @@ function tenantListInnerHtml(kind) {
     if (!x || x.status === "done") return false;
     const room = (state.rooms || []).find(r => r && (r.id === x.roomId || String(r.no) === String(x.roomNo)));
     if (room && room.status === "office") return false;
-    if (!room && String(x.roomNo || "") !== "7221") return false;
+    if (!room && String(x.roomNo || "") !== "7221" && String(x.roomNo || "") !== "7032") return false;
     const factoryRoom = room ? roomIsFactory(room) : false;
     return kind === "factory" ? factoryRoom : !factoryRoom;
   }).slice().reverse();
