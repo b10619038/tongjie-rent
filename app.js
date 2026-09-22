@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-30";
-const APP_EDIT_COUNT = 1046;
+const APP_STAMP = "2026-09-22-18-37";
+const APP_EDIT_COUNT = 1047;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0596";
+const FILE_VER = "0597";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約地址改填身分證戶籍地址，不再帶入房址"] },
+  { ver: APP_VERSION, items: ["移除測試房 7652 及其租客資料"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2615,7 +2615,7 @@ const STUDIO_NOS = [
   "6811", "6821", "6822", "6823", "6831", "6832", "6841", "6842",
   "7011", "7021", "7022", "7023", "7031", "7032", "7041", "7042", "7051",
   "7211", "7221", "7222", "7223", "7231", "7232", "7241", "7242", "7251",
-  "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642", "7652"
+  "7611", "7621", "7622", "7623", "7631", "7632", "7641", "7642"
 ];
 const STORE_NOS = ["6811", "7011", "7211", "7611"];
 function isStoreNo(no) { return STORE_NOS.includes(String(no)); }
@@ -2637,7 +2637,7 @@ const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
   "7011": 0, "7021": 7000, "7022": 7000, "7023": 10000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 6000,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
-  "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000, "7652": 5000
+  "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000
 };
 function studioRentOf(no, fallback) {
   const key = String(no || "");
@@ -2693,8 +2693,7 @@ const STUDIO_MONTH_PAY = {
   "7632": { name: "謝佩君", paidOn: "2026-08-05", amount: 14000 },
   "7641": { name: "洪子軒", paidOn: "2026-08-05", amount: 9000 },
   "7642": { name: "陳智泓", paidOn: "2026-08-04", amount: 14000 },
-  "7651": { name: "吳慧青", paidOn: "2026-07-03", amount: 5000 },
-  "7652": { name: "", paidOn: "", amount: 0 }
+  "7651": { name: "吳慧青", paidOn: "2026-07-03", amount: 5000 }
 };
 const STUDIO_REMIT_ON = { "7041": "2026-08-31" };
 const STUDIO_REMIT_VER = "remit-7041-0831";
@@ -2937,14 +2936,12 @@ const TENANT_INFO = {
   "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "農會", note: "已續約。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
   "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 18000, payBank: "農會", note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, payBank: "農會", note: "由 7242 換房；租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
-  "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "掛名申辦租屋補助。實際對應 7251 呂佳芸居住（呂佳芸無法申請補助）。租約與 7251 同步。7651 為辦公室、登入走管理員。月租 5,000。" },
-  "7652": { note: "空房" }
+  "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "掛名申辦租屋補助。實際對應 7251 呂佳芸居住（呂佳芸無法申請補助）。租約與 7251 同步。7651 為辦公室、登入走管理員。月租 5,000。" }
 };
 const FORMER_STUDIO = {
   "7051": [{ name: "楊旻憲", leftOn: "2026-03-01", phone: "0903-045-123", note: "換房至 7032，7051 現為空房" }],
   "7242": [{ name: "陳智泓", leftOn: "2025-11-30", note: "換房至 7642" }],
-  "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }],
-  "7652": [{ name: "小芬", leftOn: "2026-09-03", note: "不足月後退租。7652 為測試空房，之後測試入住不覆蓋這筆前任。" }]
+  "6832": [{ name: "高逸安、翁玟倫", leftOn: "2026-08-19", phone: "0905-933-908／0976-555-399", idNo: "D223309799／E126334917", note: "終止租約。退還押金 13,500＋8月租金 5,670＝19,170（匯費 30 實付 19,200）。水費 900、電費 1,812 給洪漳。身分證 D223309799／E126334917。匯翁玟倫中國信託西台南 222540083019" }]
 };
 const TENANT_BY_ROOM = Object.fromEntries(Object.entries(TENANT_INFO).filter(([, v]) => v && v.name).map(([k, v]) => [k, v.name]));
 const STUDIO_BUILDINGS = [
@@ -4349,10 +4346,7 @@ function normalize(data) {
     if (r.kind !== "factory" && r.status !== "office") {
       if (!r.utilities.electric || /自助儲值機/.test(r.utilities.electric)) r.utilities.electric = ELEC_FEE_TEXT;
       if (!r.utilities.water || /每月定額|一年固定/.test(r.utilities.water)) r.utilities.water = WATER_FEE_TEXT;
-      if (String(r.no) === "7652") {
-        r.rent = 5000;
-        if (!Number(r.deposit) || Number(r.deposit) < 10000) r.deposit = 10000;
-      } else if (r.rent == null || r.rent === "") {
+      if (r.rent == null || r.rent === "") {
         const listed = studioRentOf(r.no);
         if (listed != null) r.rent = listed;
         else if (r.demo || r.no === "DEMO" || r.no === "0000") r.rent = 10000;
@@ -4519,6 +4513,7 @@ function normalize(data) {
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
+  try { if (purgeDroppedStudios(data)) markCloudDirty(); } catch {}
   persistLedger(data);
   return data;
 }
@@ -10477,6 +10472,48 @@ function tenantPaidOnValue(t) {
 }
 function isPracticeStudioNo(no) {
   return String(no || "") === "7652";
+}
+function purgeDroppedStudios(data) {
+  if (!data) return false;
+  const nos = ["7652"];
+  const isDrop = v => nos.indexOf(String(v || "")) >= 0;
+  const rooms = (data.rooms || []).filter(r => r && isDrop(r.no));
+  const roomIds = new Set(rooms.map(r => r.id).concat(nos.map(n => "r" + n)));
+  const tenantIds = new Set();
+  (data.tenants || []).forEach(t => {
+    if (!t) return;
+    if (roomIds.has(t.roomId) || isDrop(t.roomNo)) tenantIds.add(t.id);
+  });
+  (data.goneTenants || []).forEach(t => {
+    if (!t) return;
+    if (roomIds.has(t.roomId) || isDrop(t.roomNo)) tenantIds.add(t.id);
+  });
+  const before = (data.rooms || []).length + (data.tenants || []).length + (data.books || []).length;
+  data.rooms = (data.rooms || []).filter(r => r && !isDrop(r.no) && !roomIds.has(r.id));
+  data.tenants = (data.tenants || []).filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
+  if (Array.isArray(data.goneTenants)) data.goneTenants = data.goneTenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
+  if (Array.isArray(data.renewals)) data.renewals = data.renewals.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
+  if (Array.isArray(data.repairs)) data.repairs = data.repairs.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
+  if (Array.isArray(data.notices)) data.notices = data.notices.filter(n => n && !isDrop(n.roomNo));
+  if (data.eSigns && typeof data.eSigns === "object") {
+    tenantIds.forEach(id => { try { delete data.eSigns[id]; } catch {} });
+  }
+  nos.forEach(no => {
+    try { purgePracticeRoomLedger(data, no); } catch {}
+    try {
+      if (typeof ui !== "undefined" && ui && ui.lineBinds) {
+        if (ui.lineBinds.byRoom) delete ui.lineBinds.byRoom[no];
+        if (ui.lineBinds.byUser) {
+          Object.keys(ui.lineBinds.byUser).forEach(uid => {
+            const v = ui.lineBinds.byUser[uid];
+            if (v === no || (v && (v.room === no || v.roomNo === no))) delete ui.lineBinds.byUser[uid];
+          });
+        }
+      }
+    } catch {}
+  });
+  const after = (data.rooms || []).length + (data.tenants || []).length + (data.books || []).length;
+  return after !== before || tenantIds.size > 0 || rooms.length > 0;
 }
 function skipRentVsRoom(r) {
   if (!r) return true;
