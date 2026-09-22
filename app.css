@@ -1106,7 +1106,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .row.wrap { align-items: flex-start; }
 .row.wrap .v { text-align: right; font-size: 13px; line-height: 1.5; }
 .water-fee-row { align-items: flex-start; }
-.water-fee-v {
+.water-fee-v,
+.lease-term-v {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
