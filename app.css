@@ -5548,6 +5548,14 @@ html[data-theme="void"] .site-chip {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  will-change: transform;
+}
+.chat-sheet.chat-up {
+  animation: chatUp .2s cubic-bezier(.16, .9, .28, 1) both;
+}
+@keyframes chatUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 .chat-bar {
   display: flex;

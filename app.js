@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-50";
-const APP_EDIT_COUNT = 1071;
+const APP_STAMP = "2026-09-22-20-54";
+const APP_EDIT_COUNT = 1072;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0621";
+const FILE_VER = "0622";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["對話視窗拿掉訊息視窗四字，只留房號姓名"] },
+  { ver: APP_VERSION, items: ["點姓名聊天室快速上滑，收起快速下滑"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1646,6 +1646,8 @@ function openDevChat(tid) {
   ui.chatTid = String(tid || (me() && me().id) || "");
   if (!ui.chatTid) { toast("找不到租客"); return; }
   ui.chatOpen = true;
+  ui.chatEnter = true;
+  ui.chatClosing = false;
   drawChatBox();
   markChatRead(ui.chatTid);
   pullChat(true);
@@ -1663,11 +1665,26 @@ function chatDraftOf(tid) {
   }
   return (ui.chatDrafts && ui.chatDrafts[tid]) || "";
 }
-function closeDevChat() {
-  saveChatDraft();
+function dropChatBox() {
   ui.chatOpen = false;
+  ui.chatClosing = false;
+  ui.chatEnter = false;
   const el = document.getElementById("dev-chat-box");
   if (el) el.remove();
+}
+function closeDevChat() {
+  if (ui.chatClosing) return;
+  saveChatDraft();
+  const wrap = document.getElementById("dev-chat-box");
+  const sheet = wrap && wrap.querySelector(".chat-sheet");
+  if (!wrap || !sheet) { dropChatBox(); return; }
+  ui.chatClosing = true;
+  sheet.classList.remove("chat-up");
+  sheet.style.transition = "transform .18s cubic-bezier(.2,.8,.2,1)";
+  sheet.style.transform = "translateY(110%)";
+  wrap.style.transition = "background .18s ease";
+  wrap.style.background = "rgba(23,33,31,0)";
+  setTimeout(dropChatBox, 190);
 }
 function bindChatSwipe(wrap) {
   if (!wrap || wrap.dataset.swipeBound) return;
@@ -1704,16 +1721,10 @@ function bindChatSwipe(wrap) {
     if (!on) return;
     on = false;
     const sheet = sheetEl();
-    if (dy > 88) {
-      saveChatDraft();
-      if (sheet) {
-        sheet.style.transition = "transform .26s ease";
-        sheet.style.transform = "translateY(110%)";
-      }
-      wrap.style.background = "rgba(23,33,31,0)";
-      setTimeout(() => closeDevChat(), 240);
+    if (dy > 72) {
+      closeDevChat();
     } else if (sheet) {
-      sheet.style.transition = "transform .26s ease";
+      sheet.style.transition = "transform .18s cubic-bezier(.2,.8,.2,1)";
       sheet.style.transform = "";
       wrap.style.background = "";
     }
@@ -1738,12 +1749,14 @@ function chatBubbleHtml(m, mine) {
   return `<div class="chat-row${mine ? " mine" : ""}"><div class="chat-bubble">${escapeHtml(m.text || "")}${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
 }
 function drawChatBox() {
-  if (!ui.chatOpen) return;
+  if (!ui.chatOpen || ui.chatClosing) return;
   const tid = ui.chatTid;
   const t = (state.tenants || []).find(x => x && x.id === tid) || (me() && me().id === tid ? me() : null);
   const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
   const th = chatThreadOf(tid);
   const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  const enter = !!ui.chatEnter;
+  ui.chatEnter = false;
   const who = [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ");
   const msgs = (th.msgs || []).map(m => chatBubbleHtml(m, m.from === mineFrom)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
   let wrap = document.getElementById("dev-chat-box");
@@ -1755,7 +1768,7 @@ function drawChatBox() {
     wrap.className = "chat-mask";
     document.body.appendChild(wrap);
   }
-  wrap.innerHTML = `<div class="chat-sheet" role="dialog">
+  wrap.innerHTML = `<div class="chat-sheet${enter ? " chat-up" : ""}" role="dialog">
     <div class="chat-bar">
       <i class="chat-handle" aria-hidden="true"></i>
       ${who ? `<strong>${escapeHtml(who)}</strong>` : ""}
