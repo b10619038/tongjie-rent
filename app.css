@@ -802,11 +802,11 @@ button.pay-pill[data-open-renew].on.is-press {
   color: #fff;
   border-color: #62765b;
 }
-button.pay-toggle.unpaid.on {
-  box-shadow: 0 0 0 2px #e8a8a3;
-}
+button.pay-toggle.unpaid.on,
 button.pay-toggle.paid.on {
-  box-shadow: 0 0 0 2px #c5d6c8;
+  box-shadow: none;
+  outline: none;
+  border: 0;
 }
 .tenant-slim.renew-hit {
   background: #eef3ea;
