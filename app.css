@@ -559,9 +559,103 @@ input, textarea, select {
   object-fit: cover;
   object-position: center;
 }
-.plant-grown .plant-shot {
-  width: 50%;
+.plant-grown .plant-shot,
+.plant-scene {
+  width: 58%;
   margin: 0 auto;
+}
+.plant-scene {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #f3eee6;
+}
+.plant-ground {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 34%;
+  background: radial-gradient(120% 80% at 50% 0%, #6a4a36 0%, #3a261c 70%);
+}
+.plant-fg {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 0;
+  height: 64%;
+  object-fit: cover;
+  object-position: center 12%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 58%, transparent 100%);
+  pointer-events: none;
+}
+.plant-scene.wilt .plant-fg { filter: grayscale(.55) saturate(.55) brightness(.92); }
+.plant-scene.dry .plant-fg { filter: saturate(.8) sepia(.12); }
+.plant-pot-svg {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 2%;
+  height: 52%;
+  width: auto;
+  margin: 0 auto;
+  display: block;
+  overflow: visible;
+}
+.plant-seed-dot {
+  position: absolute;
+  left: 50%;
+  bottom: 42%;
+  width: 10px;
+  height: 8px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: #6b4a2a;
+  box-shadow: 1px 1px 0 #3a261c;
+  z-index: 2;
+}
+.plant-opt { margin-top: 8px; }
+.plant-opt .label { margin-bottom: 6px; }
+.pot-rail .pot-pick,
+.color-rail .color-pick {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 6px 8px 8px;
+  font: inherit;
+  color: inherit;
+}
+.pot-pick {
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pot-pick .plant-pot-svg {
+  position: static;
+  width: 56px;
+  height: 62px;
+  left: auto; right: auto; bottom: auto;
+}
+.pot-pick span, .color-pick span { font-size: 11px; font-weight: 700; }
+.pot-pick.on, .color-pick.on { border-color: #7d9a82; box-shadow: 0 0 0 2px rgba(125,154,130,.25); }
+.color-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 52px;
+}
+.color-pick i {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sw);
+  border: 1px solid rgba(0,0,0,.08);
+  display: block;
 }
 .plant-shot.mini {
   width: 100%;
