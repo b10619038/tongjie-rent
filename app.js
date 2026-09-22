@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-02";
-const APP_EDIT_COUNT = 1045;
+const APP_STAMP = "2026-09-22-18-30";
+const APP_EDIT_COUNT = 1046;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0595";
+const FILE_VER = "0596";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者後台拿掉租客按鈕"] },
+  { ver: APP_VERSION, items: ["簽約地址改填身分證戶籍地址，不再帶入房址"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -18049,7 +18049,7 @@ function studioLeasePaperHtml(t, r, leasePart) {
       </div>
       <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
-      <p class="term-hint">承租人簽名以 App 手寫為準。身分證、電話、緊急聯絡人與地址請先填齊。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
+      <p class="term-hint">承租人簽名以 App 手寫為準。身分證、電話、緊急聯絡人與戶籍地址請先填齊。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       <div class="lease-pgno">8</div>
     </section>
   </div>`;
@@ -20072,8 +20072,24 @@ function tenantPaperAddress(t) {
   const es = typeof getESign === "function" ? getESign(t) : null;
   return String((es && es.address) || "").trim();
 }
+function isRoomLikeAddress(addr, r) {
+  const a = String(addr || "").replace(/\s+/g, "");
+  if (!a || !r) return false;
+  const cands = [
+    r.location,
+    typeof contractDoorplate === "function" ? contractDoorplate(r.no) : "",
+    typeof roomAddress === "function" ? roomAddress(r.no) : ""
+  ].map(x => String(x || "").replace(/\s+/g, "")).filter(Boolean);
+  return cands.some(c => a === c || (c.length >= 8 && a.indexOf(c) === 0) || (a.length >= 8 && c.indexOf(a) === 0));
+}
+function tenantHouseholdAddress(t, r) {
+  const raw = tenantPaperAddress(t);
+  if (!raw) return "";
+  if (isRoomLikeAddress(raw, r)) return "";
+  return raw;
+}
 function tenantAddrDefault(t, r) {
-  return tenantPaperAddress(t) || contractDoorplate(r && r.no) || roomAddress(r && r.no) || "";
+  return tenantHouseholdAddress(t, r);
 }
 function tenantContractStatus(t, r) {
   const es = getESign(t);
@@ -20242,7 +20258,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、緊急聯絡人、地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
+      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、緊急聯絡人、戶籍地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -20273,7 +20289,7 @@ function leaseSignView() {
         <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || (es && es.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
         <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || (es && es.emergencyName) || "")}" placeholder="姓名" autocomplete="off" /></label>
         <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")}" placeholder="手機號碼" autocomplete="off" /></label>
-        <label class="field"><span>地址</span><input id="sign-addr" type="text" value="${escapeHtml((t && t.address) || (es && es.address) || tenantAddrDefault(t, r))}" placeholder="通訊／戶籍地址" autocomplete="off" /></label>
+        <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(tenantHouseholdAddress(t, r))}" placeholder="請填身分證上的戶籍地址" autocomplete="street-address" /></label>
       </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -24380,7 +24396,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       ${teField("電話", "phone", t.id, r && r.id, t.phone || "", "tel", "手機號碼")}
-      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("地址", "address", t.id, r && r.id, t.address || "") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
+      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("戶籍地址", "address", t.id, r && r.id, t.address || "", "text", "身分證上的戶籍地址") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
       ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
       ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
       ${t.bankLast5 ? teField("帳戶後五碼", "bankLast5", t.id, r && r.id, t.bankLast5 || "") : ""}
@@ -25393,7 +25409,7 @@ function adminRoomEdit() {
       ${field("未稅租金", "rentUntaxed", t?.rentUntaxed || r.rentUntaxed || "")}
       ${field("帳戶後五碼", "bankLast5", t?.bankLast5 || "")}
       ${field("身分證字號", "idNo", t?.idNo || "")}
-      ${field("通訊地址", "address", t?.address || "")}
+      ${field("戶籍地址", "address", t?.address || "")}
       ${field("緊急聯絡人", "emergencyName", t?.emergencyName || "")}
       ${field("緊急電話", "emergencyPhone", t?.emergencyPhone || "")}
       ${field("起租日", "leaseStart", t?.leaseStart, "date")}
@@ -26639,7 +26655,7 @@ function bindSignPad() {
     if (!phone) { toast("請填聯絡電話"); return; }
     if (!emName) { toast("請填緊急聯絡人"); return; }
     if (!emPhone) { toast("請填緊急聯絡電話"); return; }
-    if (!addr) { toast("請填地址"); return; }
+    if (!addr) { toast("請填身分證上的戶籍地址"); return; }
     if (t) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
       if (phone) t.phone = normalizeMobile(phone);
