@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-13-45";
-const APP_EDIT_COUNT = 998;
+const APP_STAMP = "2026-09-22-13-56";
+const APP_EDIT_COUNT = 999;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0548";
+const FILE_VER = "0549";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約後租客首頁不再出現尚未簽約"] },
+  { ver: APP_VERSION, items: ["查看續約顯示新約內容；新約第一天自動套入並拿掉續約完成"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -12979,6 +12979,22 @@ function openRenewalOf(t) {
   const cur = liveRenewalOf(t);
   return cur && cur.status !== "done" && cur.status !== "applied" ? cur : null;
 }
+function pendingSignedRenewalOf(t) {
+  const cur = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  if (!cur) return null;
+  if (cur.status === "done" || cur.status === "applied") return cur;
+  return null;
+}
+function tickDueRenewals() {
+  if (!state || !Array.isArray(state.renewals) || !state.renewals.length) return;
+  const before = (state.renewals || []).map(x => x && (x.status + ":" + (x.appliedAt || ""))).join("|");
+  try { applyDueRenewals(state); } catch {}
+  const after = (state.renewals || []).map(x => x && (x.status + ":" + (x.appliedAt || ""))).join("|");
+  if (before === after) return;
+  try { markCloudDirty(); } catch {}
+  try { save(true); } catch {}
+  try { if (typeof pushCloud === "function") pushCloud(); } catch {}
+}
 function liveRenewalOf(t) {
   if (!t) return null;
   const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : (state.renewals || []));
@@ -18437,6 +18453,7 @@ let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
   _ledgerCache = null;
+  try { tickDueRenewals(); } catch {}
   try {
     paintApp();
   } catch (err) {
@@ -19750,11 +19767,14 @@ function eContractDocHtml(t, r) {
 }
 function leaseView() {
   const t = me(); const r = myRoom();
+  const pending = typeof pendingSignedRenewalOf === "function" ? pendingSignedRenewalOf(t) : null;
+  const paperT = pending ? tenantForRenewPrint(t, r, pending) : t;
+  const oldEnd = (pending && (pending.oldEnd || t.leaseEnd)) || t.leaseEnd;
   return `<div class="topbar"><div class="slide-right"><div class="eyebrow">LEASE</div><h1>租約</h1></div></div>
     <div class="screen">
       ${tenantHandoverNoteHtml(t, r)}
       <div class="card card-body slide-left">
-        <div class="row"><span class="k">承租房間</span><span class="v">${r.no} ${r.title}</span></div>
+        <div class="row"><span class="k">${pending ? "目前合約（舊約）" : "承租房間"}</span><span class="v">${r.no} ${r.title}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
         <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart || "—"}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd || "—"}</span></div>
@@ -19763,10 +19783,18 @@ function leaseView() {
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
         <div class="row wrap"><span class="k">${isStubMonthNow(t, r) ? `本月應繳<span class="rent-sub">（不足月日拆）</span>` : "每月租金"}</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
+        ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(oldEnd || "")}。新約 ${escapeHtml(pending.start || "")} 起自動生效，匯款改兆豐。</p>` : ""}
       </div>
+      ${pending ? `<div class="section-title" id="renew-new-paper"><h2 class="slide-right">新約合約</h2></div>
+      <div class="card card-body slide-left">
+        <div class="row"><span class="k">新約期間</span><span class="v">${escapeHtml(pending.start || "")} ～ ${escapeHtml(pending.end || "")}</span></div>
+        <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">已簽署　待生效</span></div>
+        <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(pending.start || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
+        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r)}
+      </div>` : ""}
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
       <div class="card card-body slide-left rules">${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>
-      <div class="section-title">
+      ${pending ? "" : `<div class="section-title">
         <h2>合約書</h2>
         ${(r.contractImages && r.contractImages.length) ? `<button type="button" class="linkish" id="dl-all-contract">下載 PDF</button>` : ""}
       </div>
@@ -19796,8 +19824,8 @@ function leaseView() {
         return (r.contractImages && r.contractImages.length)
           ? `<div class="contract-list">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
           : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`;
-      })()}
-      ${t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : ""}
+      })()}`}
+      ${pending ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
     </div>`;
 }
