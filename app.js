@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-16-26";
-const APP_EDIT_COUNT = 1030;
+const APP_STAMP = "2026-09-22-16-32";
+const APP_EDIT_COUNT = 1031;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0580";
+const FILE_VER = "0581";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請與本月繳費圖卡從標籤原位縮放"] },
+  { ver: APP_VERSION, items: ["續約申請與本月繳費圖卡互斥，點一個會收回另一個"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -24056,51 +24056,77 @@ function sheetLocked() {
 function lockSheet(ms) {
   ui.sheetLockUntil = Date.now() + (ms || 380);
 }
+function openPayIds() {
+  return Object.keys(ui.payOpen || {}).filter(k => ui.payOpen[k]);
+}
+function openRenewIds() {
+  return Object.keys(ui.renewOpen || {}).filter(k => ui.renewOpen[k]);
+}
+function closePaySheet(id, done) {
+  if (!id) { if (done) done(); return; }
+  if (ui.payOpen) ui.payOpen[id] = false;
+  const btn = document.querySelector("#tenant-list " + sheetAttrSel("data-toggle-pay", id));
+  if (btn) btn.classList.remove("on");
+  const slim = btn && btn.closest(".tenant-slim");
+  if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
+  const card = document.querySelector(sheetAttrSel("data-pay-card", id));
+  playSheetClose(card && card.closest(".sheet-drop"), done, btn);
+}
+function closeRenewSheet(id, done) {
+  if (!id) { if (done) done(); return; }
+  if (ui.renewOpen) ui.renewOpen[id] = false;
+  const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
+  if (btn) btn.classList.remove("on");
+  const card = document.querySelector(sheetAttrSel("data-renew-card", id));
+  playSheetClose(card && card.closest(".sheet-drop"), done, btn);
+}
+function closeOtherSheets(exceptKind, exceptId, done) {
+  const pays = openPayIds().filter(k => !(exceptKind === "pay" && k === exceptId));
+  const renews = openRenewIds().filter(k => !(exceptKind === "renew" && k === exceptId));
+  const run = () => {
+    if (pays.length) { closePaySheet(pays.shift(), run); return; }
+    if (renews.length) { closeRenewSheet(renews.shift(), run); return; }
+    if (done) done();
+  };
+  run();
+}
 function toggleTenantRenew(id) {
   if (!id || sheetLocked()) return;
-  lockSheet(380);
   if (!ui.renewOpen) ui.renewOpen = {};
   document.querySelectorAll("[data-open-renew].is-press").forEach(b => b.classList.remove("is-press"));
   const openNow = !!ui.renewOpen[id];
   if (openNow) {
-    ui.renewOpen[id] = false;
-    const card = document.querySelector(sheetAttrSel("data-renew-card", id));
-    const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
-    if (btn) btn.classList.remove("on");
-    playSheetClose(card && card.closest(".sheet-drop"), null, btn);
+    lockSheet(280);
+    closeRenewSheet(id);
     return;
   }
+  lockSheet(520);
   ui.renewOpen[id] = true;
-  const renew = (state.renewals || []).find(x => x && x.id === id);
-  const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
-  const block = btn && btn.closest(".tenant-renew-block");
-  if (!renew || !block) { refreshTenantList(); return; }
-  if (block.querySelector("[data-renew-card]")) return;
-  btn.classList.add("on");
-  insertTenantSheet(block, renewalAdminCardHtml(renew), btn);
+  closeOtherSheets("renew", id, () => {
+    const renew = (state.renewals || []).find(x => x && x.id === id);
+    const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
+    const block = btn && btn.closest(".tenant-renew-block");
+    if (!renew || !block) { refreshTenantList(); return; }
+    if (block.querySelector("[data-renew-card]")) return;
+    btn.classList.add("on");
+    insertTenantSheet(block, renewalAdminCardHtml(renew), btn);
+  });
 }
 function tenantPayOpen(id) {
   return !!(id && ui.payOpen && ui.payOpen[id]);
 }
 function toggleTenantPay(id) {
   if (!id || sheetLocked()) return;
-  lockSheet(380);
   if (!ui.payOpen) ui.payOpen = {};
   const openNow = !!ui.payOpen[id];
   const btnOf = tid => document.querySelector("#tenant-list " + sheetAttrSel("data-toggle-pay", tid));
   document.querySelectorAll("button.pay-toggle.is-press").forEach(b => b.classList.remove("is-press"));
   if (openNow) {
-    ui.payOpen[id] = false;
-    const card = document.querySelector(sheetAttrSel("data-pay-card", id));
-    const btn = btnOf(id);
-    if (btn) btn.classList.remove("on");
-    const slim = btn && btn.closest(".tenant-slim");
-    if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
-    playSheetClose(card && card.closest(".sheet-drop"), null, btn);
+    lockSheet(280);
+    closePaySheet(id);
     return;
   }
-  const prev = Object.keys(ui.payOpen).find(k => ui.payOpen[k]);
-  ui.payOpen = {};
+  lockSheet(520);
   ui.payOpen[id] = true;
   const openNew = () => {
     const t = (state.tenants || []).find(x => x && x.id === id);
@@ -24118,16 +24144,7 @@ function toggleTenantPay(id) {
     }
     insertTenantSheet(block, payAdminCardHtml(t, r), btn);
   };
-  if (prev) {
-    const card = document.querySelector(sheetAttrSel("data-pay-card", prev));
-    const prevBtn = btnOf(prev);
-    if (prevBtn) prevBtn.classList.remove("on");
-    const slim = prevBtn && prevBtn.closest(".tenant-slim");
-    if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
-    playSheetClose(card && card.closest(".sheet-drop"), openNew, prevBtn);
-    return;
-  }
-  openNew();
+  closeOtherSheets("pay", id, openNew);
 }
 function payPanelAmount(t, r) {
   if (!t) return 0;
