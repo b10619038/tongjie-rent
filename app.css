@@ -671,7 +671,7 @@ button.pay-pill.hand {
   text-align: left;
   padding: 8px 12px;
 }
-.renew-move-item b { font-size: 13px; }
+.renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; gap: 0; }
 .renew-move-item span { color: var(--muted); font-size: 12px; font-weight: 600; }
 .renew-move-item.off,
 .renew-move-item:disabled {
@@ -4861,6 +4861,22 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 }
 .move-room-ph { color: var(--muted); grid-column: 1 / -1; }
 .move-pick-no { font-weight: 700; letter-spacing: .04em; }
+.balc-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #f0c400;
+  box-shadow: 0 0 0 2px rgba(240, 196, 0, .28);
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+.move-pick-line {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .move-pick-dates {
   text-align: right;
   font-size: 13px;
