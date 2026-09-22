@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-33";
-const APP_EDIT_COUNT = 1064;
+const APP_STAMP = "2026-09-22-20-37";
+const APP_EDIT_COUNT = 1065;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0614";
+const FILE_VER = "0615";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["未續約剩餘 30 天內改紅色，續約完成後改回黑色"] },
+  { ver: APP_VERSION, items: ["開發者點租客名字開對話，拿掉對話按鈕"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -25016,7 +25016,9 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${isDeveloper() ? `<button type="button" class="pay-pill${chatUnreadOf(t.id) ? " hand" : ""}" data-open-chat="${escapeHtml(t.id)}">對話${chatUnreadOf(t.id) ? " " + chatUnreadOf(t.id) : ""}</button>` : ""}${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
+        ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -25735,7 +25737,9 @@ function tenantSheetView() {
     </div></div>
     <div class="card card-body slide-left" id="tenant-sheet">
       <div class="row tenant-slim-head" style="margin-bottom:12px">
-        <span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span>
+        <span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
+          ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
+          : `<span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span>
         <span class="row-end"><button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button></span>
       </div>
       ${tenantEntryDetailsHtml(kindNow, entry)}
