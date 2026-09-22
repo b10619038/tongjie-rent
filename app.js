@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-31";
-const APP_EDIT_COUNT = 1083;
+const APP_STAMP = "2026-09-22-21-35";
+const APP_EDIT_COUNT = 1084;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0633";
+const FILE_VER = "0634";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員對話頭貼改用客服女生"] },
+  { ver: APP_VERSION, items: ["每則已讀氣泡都顯示已讀，對話同步加快"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1634,7 +1634,10 @@ function mergeDevChatsInto(target, other) {
 }
 function chatFinger() {
   const th = ((ui.chats && ui.chats.threads) || (chatStore().threads) || {});
-  return Object.keys(th).map(id => id + ":" + ((th[id] && th[id].msgs) || []).length + ":" + ((th[id] && th[id].updatedAt) || 0)).join("|");
+  return Object.keys(th).map(id => {
+    const x = th[id] || {};
+    return id + ":" + ((x.msgs || []).length) + ":" + (x.updatedAt || 0) + ":" + (x.readDevAt || 0) + ":" + (x.readTenantAt || 0);
+  }).join("|");
 }
 function onChatsUpdated() {
   try { refreshChatBadges(); } catch {}
@@ -1642,6 +1645,7 @@ function onChatsUpdated() {
 }
 async function pullChat(forceDraw) {
   if (!canUseDevChat()) return;
+  const before = chatFinger();
   if (state && state.devChats) {
     ui.chats = mergeChatStores(chatStore(), state.devChats);
     saveLocalChats(ui.chats);
@@ -1651,10 +1655,10 @@ async function pullChat(forceDraw) {
     ui.chats = mergeChatStores(chatStore(), remote);
     persistChatsToState();
   }
-  if (forceDraw || ui.chatOpen) drawChatBox();
   if (ui.chatOpen && ui.chatTid && chatUnreadOf(ui.chatTid)) {
     try { markChatRead(ui.chatTid); } catch {}
   }
+  if (forceDraw || (ui.chatOpen && chatFinger() !== before)) drawChatBox();
   try { refreshChatBadges(); } catch {}
 }
 async function sendDevChat(tid, text, image) {
@@ -1681,19 +1685,19 @@ async function sendDevChat(tid, text, image) {
   try { save(true); } catch {}
   try { await pushCloud(); } catch {}
   try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
-  const posted = await chatPostRemote({
+  chatPostRemote({
     tenantId: tid,
     roomNo: th.roomNo,
     name: th.name,
     from,
     text: msg.text || (msg.image ? "照片" : ""),
     id: msg.id
-  });
-  if (posted && posted.threads) {
-    ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
-    persistChatsToState();
-  }
-  drawChatBox();
+  }).then(posted => {
+    if (posted && posted.threads) {
+      ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
+      persistChatsToState();
+    }
+  }).catch(() => {});
 }
 async function markChatRead(tid) {
   const th = chatThreadOf(tid);
@@ -1702,10 +1706,12 @@ async function markChatRead(tid) {
   const now = Date.now();
   if (who === "dev") { th.readDevAt = now; th.unreadDev = 0; }
   else { th.readTenantAt = now; th.unreadTenant = 0; }
+  th.updatedAt = Math.max(Number(th.updatedAt) || 0, now);
   saveLocalChats(chatStore());
   persistChatsToState();
-  await chatPostRemote({ tenantId: tid, read: who, roomNo: th.roomNo, name: th.name });
+  chatPostRemote({ tenantId: tid, read: who, roomNo: th.roomNo, name: th.name }).catch(() => {});
   try { save(true); } catch {}
+  try { pushCloud(); } catch {}
   try { refreshChatBadges(); } catch {}
 }
 function threadUnread(th, who) {
@@ -1734,7 +1740,7 @@ function openDevChat(tid) {
   ui.chatClosing = false;
   drawChatBox();
   markChatRead(ui.chatTid);
-  pullChat(true);
+  pullCloud().then(() => pullChat(true)).catch(() => pullChat(true));
   startChatPoll();
 }
 function saveChatDraft() {
@@ -1828,14 +1834,10 @@ function chatWhen(at) {
   let h12 = h % 12; if (!h12) h12 = 12;
   return (d.getMonth() + 1) + "/" + d.getDate() + " " + period + " " + h12 + ":" + p(d.getMinutes());
 }
-function lastReadMineId(th, mineFrom) {
-  let id = "";
-  ((th && th.msgs) || []).forEach(m => {
-    if (!m || m.recalled || m.from !== mineFrom) return;
-    const otherRead = mineFrom === "tenant" ? (Number(th.readDevAt) || 0) : (Number(th.readTenantAt) || 0);
-    if (otherRead >= (Number(m.at) || 0)) id = m.id;
-  });
-  return id;
+function msgSeenByOther(th, m, mineFrom) {
+  if (!th || !m || m.from !== mineFrom) return false;
+  const otherRead = mineFrom === "tenant" ? (Number(th.readDevAt) || 0) : (Number(th.readTenantAt) || 0);
+  return otherRead >= (Number(m.at) || 0);
 }
 function chatBubbleHtml(m, mine, t, seen) {
   if (!m || m.recalled) return "";
@@ -1978,8 +1980,7 @@ function drawChatBox() {
   const who = (isDeveloper() && ui.role === "admin")
     ? [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ")
     : "管理員";
-  const seenId = lastReadMineId(th, mineFrom);
-  const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom, t, m.id === seenId)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
+  const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom, t, msgSeenByOther(th, m, mineFrom))).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
   let wrap = document.getElementById("dev-chat-box");
   const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
   const typed = (keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "") || chatDraftOf(tid);
@@ -2087,12 +2088,15 @@ function pingChatNotify(from, tid, roomNo, name, text, msgId) {
 }
 function startChatPoll() {
   if (window.__tjChatPoll) return;
-  const tick = () => {
+  const tick = async () => {
     if (document.hidden) return;
     if (!canUseDevChat()) return;
+    if (ui.chatOpen) {
+      try { await pullCloud(); } catch {}
+    }
     pullChat(false);
   };
-  window.__tjChatPoll = setInterval(tick, 5000);
+  window.__tjChatPoll = setInterval(tick, 900);
   tick();
   try { subscribePushOnly(); } catch {}
 }
