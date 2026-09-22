@@ -546,7 +546,7 @@ input, textarea, select {
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
 .hero-card .small { color: #7a8a85; }
-.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; }
+.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; overflow: visible; }
 .stat {
   position: relative;
   display: flex;
@@ -607,30 +607,36 @@ input, textarea, select {
 }
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
-  animation: rent-chop .58s cubic-bezier(.15, .85, .25, 1.15) both;
+  z-index: 4;
+  animation: rent-chop .9s cubic-bezier(.12, .82, .22, 1.08) both;
 }
 .rent-stamp.chop::after {
   content: "";
   position: absolute;
-  inset: -8px;
-  border-radius: 12px;
-  background: radial-gradient(circle, rgba(94, 122, 85, .32) 0%, rgba(94, 122, 85, .08) 42%, transparent 70%);
-  animation: rent-ink .58s ease-out both;
+  inset: -22px;
+  border-radius: 18px;
+  background: radial-gradient(circle, rgba(94, 122, 85, .5) 0%, rgba(94, 122, 85, .16) 38%, transparent 72%);
+  animation: rent-ink .9s ease-out both;
   pointer-events: none;
 }
 @keyframes rent-chop {
   0% {
     opacity: 0;
-    transform: translate(12px, -30px) rotate(-32deg) scale(1.85);
-    filter: blur(.5px);
+    transform: translate(28px, -72px) rotate(-48deg) scale(3.6);
+    filter: blur(1px);
+  }
+  22% {
+    opacity: 1;
+    transform: translate(16px, -40px) rotate(-36deg) scale(2.6);
+    filter: blur(.4px);
   }
   58% {
     opacity: 1;
-    transform: translate(0, 3px) rotate(-7deg) scale(1.06);
+    transform: translate(0, 8px) rotate(-6deg) scale(1.22);
     filter: blur(0);
   }
-  76% {
-    transform: translate(0, -1px) rotate(-12deg) scale(.93);
+  74% {
+    transform: translate(0, -3px) rotate(-14deg) scale(.82);
   }
   100% {
     opacity: .9;
@@ -638,9 +644,9 @@ input, textarea, select {
   }
 }
 @keyframes rent-ink {
-  0% { opacity: 0; transform: scale(.35); }
-  52% { opacity: .7; transform: scale(1.05); }
-  100% { opacity: 0; transform: scale(1.45); }
+  0% { opacity: 0; transform: scale(.2); }
+  56% { opacity: .85; transform: scale(1.15); }
+  100% { opacity: 0; transform: scale(1.85); }
 }
 @media (prefers-reduced-motion: reduce) {
   .rent-stamp.chop,
