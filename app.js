@@ -20,16 +20,29 @@ const UI_KEY = "tongjie_ui_v2";
 const LOGIN_KEY = "tongjie_login_v1";
 const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240", "7736"];
+const ADMIN_STAFF_NAMES = ["趙文榮", "許喻涵", "趙洪漳"];
+const ADMIN_DEV_NAMES = ["趙文榮"];
+function normAdminName(s) {
+  return String(s || "").replace(/\s+/g, "").trim();
+}
+function adminLoginKind(code, name) {
+  const c = String(code || "").replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/\s+/g, "");
+  const n = normAdminName(name);
+  if (!c || !n) return "";
+  if (c === "1240" && ADMIN_DEV_NAMES.some(x => normAdminName(x) === n)) return "dev";
+  if (c === "7651" && ADMIN_STAFF_NAMES.some(x => normAdminName(x) === n)) return "staff";
+  return "";
+}
 const BOOK_ACCOUNTS = ["統潔", "信潔", "聯名戶", "個人戶", "現金(保險箱)"];
 const REPORT_ACCOUNTS = ["統潔", "信潔", "個人戶", "現金(保險箱)"];
 const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["聯邦"] };
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-16-11";
-const APP_EDIT_COUNT = 1028;
+const APP_STAMP = "2026-09-22-16-18";
+const APP_EDIT_COUNT = 1029;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0578";
+const FILE_VER = "0579";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["陽台黃點改在套房右邊"] },
+  { ver: APP_VERSION, items: ["管理員登入要填姓名，7651 進後台、1240 加趙文榮進開發者"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -4291,6 +4304,7 @@ let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", l
   if (!s) return;
   ui.role = s.role;
   ui.adminCode = s.adminCode || "";
+  ui.adminName = s.adminName || "";
   ui.page = s.page || (s.role === "admin" ? "dash" : "home");
   ui.tenantId = s.tenantId || null;
   ui.roomId = s.roomId || null;
@@ -8580,7 +8594,7 @@ function presencePayload() {
     const r = typeof myRoom === "function" ? myRoom() : null;
     if (r && r.no) roomNo = r.no;
   } else {
-    name = kind === "dev" ? "開發者" : "管理員";
+    name = (ui.adminName || "") || (kind === "dev" ? "開發者" : "管理員");
   }
   return { at: Date.now(), kind, role: ui.role, code: ui.adminCode || "", roomNo, name, device: deviceInfo() };
 }
@@ -8900,6 +8914,7 @@ function persistLogin() {
   const snap = JSON.stringify({
     role: ui.role,
     adminCode: ui.adminCode || "",
+    adminName: ui.adminName || "",
     page: ui.page || "",
     roomId: ui.roomId || "",
     tenantId: ui.tenantId || "",
@@ -9141,6 +9156,7 @@ function restoreUi() {
     ui.assetKind = s.assetKind || "studio";
     ui.tenantKind = s.tenantKind === "factory" ? "factory" : "studio";
     ui.adminCode = s.adminCode || "";
+    ui.adminName = s.adminName || ui.adminName || "";
     ui.devPreview = !!(s.devPreview && (s.adminCode === "1240" || ui.adminCode === "1240"));
     ui.prospectPreview = !!s.prospectPreview;
     const lookOk = !!(s.tenantLook && ((s.lookBack && s.lookBack.adminCode === "1240") || s.adminCode === "1240"));
@@ -9258,7 +9274,7 @@ function restoreUi() {
   } catch {}
 }
 function clearSession() {
-  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = "";
+  ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = ""; ui.adminName = "";
   ui.devPreview = false; ui.devTenant = null; ui.devRoom = null; ui.devRepairs = []; ui.devRenewals = []; ui.devReactions = {}; ui.devReadAnns = {};
   ui.prospectPreview = false; ui.moveIn = null;
   ui.tenantLook = false; ui.lookBack = null;
@@ -9462,6 +9478,7 @@ async function enrollBiometric() {
       credId: bufToB64(cred.rawId),
       role: ui.role,
       adminCode: ui.adminCode || "",
+      adminName: ui.adminName || "",
       roomNo: ui.roomNo || "",
       tenantId: ui.tenantId || ""
     });
@@ -9494,13 +9511,16 @@ async function biometricLogin() {
     else toast("辨識失敗，請改用密碼");
     return;
   }
-  if (rec.role === "admin" && ADMIN_CODES.includes(rec.adminCode)) {
+  if (rec.role === "admin" && rec.adminCode) {
+    const kind = rec.adminName ? adminLoginKind(rec.adminCode, rec.adminName) : (ADMIN_CODES.includes(rec.adminCode) ? (rec.adminCode === "1240" ? "dev" : "staff") : "");
+    if (!kind) { toast("請改用姓名與密碼登入"); return; }
     ui.role = "admin";
-    ui.adminCode = rec.adminCode;
+    ui.adminCode = kind === "dev" ? "1240" : "7651";
+    ui.adminName = rec.adminName || "";
     ui.page = "dash";
     ui.loginError = "";
     persistUi();
-    audit("登入", "快速登入 " + rec.adminCode);
+    audit("登入", "快速登入 " + (ui.adminName || rec.adminCode));
     beatPresence();
     render();
     enablePush().then(() => maybeNudgeNotifies());
@@ -9945,8 +9965,8 @@ function pageLabel() {
 }
 function actorLabel() {
   if (ui.role === "admin") {
-    const name = ui.adminCode === "1240" ? "開發者" : "管理員";
-    return `${name}（密碼 ${ui.adminCode || "未知"}）`;
+    const name = ui.adminName || (ui.adminCode === "1240" ? "開發者" : "管理員");
+    return `${name}（${ui.adminCode === "1240" ? "開發者" : "管理員"}）`;
   }
   if (ui.role === "tenant") {
     const room = typeof myRoom === "function" ? myRoom() : null;
@@ -19064,10 +19084,11 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入管理員密碼，進入後台" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
+        <p class="lead">${isAdmin ? "請輸入管理員姓名與密碼，進入後台" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
       </div>
       <div class="login-block slide-left">
-        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="numeric" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
+        ${isAdmin ? `<input id="admin-name" type="text" autocomplete="username" maxlength="12" placeholder="管理員姓名" value="${escapeHtml(ui.loginAdminName || "")}" />` : ""}
+        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="${isAdmin ? "numeric" : "numeric"}" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
         ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
@@ -19094,7 +19115,7 @@ function gateView() {
     </button>
     <button class="role-btn slide-left r3" data-go="admin-login">
       <strong>管理員後台</strong>
-      <span>請輸入管理員密碼後，查看全部房間、租客與報修。</span>
+      <span>請輸入管理員姓名與密碼後，查看全部房間、租客與報修。</span>
     </button>
     ${bioEnrolled() ? `<button class="role-btn slide-left r4" id="bio-login" type="button">
       <strong>${bioLabel()}</strong>
@@ -25423,18 +25444,30 @@ function tryLogin() {
   const no = String((input && input.value) || ui.loginAdmin || ui.loginRoom || "")
     .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
     .replace(/\s+/g, "");
-  if (ADMIN_CODES.includes(no)) {
-    ui.role = "admin"; ui.adminCode = no; ui.page = "dash"; ui.loginError = ""; ui.loginAdmin = "";
+  if (ui.page === "admin-login") {
+    const nameEl = document.getElementById("admin-name");
+    const name = String((nameEl && nameEl.value) || ui.loginAdminName || "").trim();
+    ui.loginAdmin = no;
+    ui.loginAdminName = name;
+    if (!name) { ui.loginError = "請輸入管理員姓名"; render(); return; }
+    if (!no) { ui.loginError = "請輸入管理員密碼"; render(); return; }
+    const kind = adminLoginKind(no, name);
+    if (!kind) {
+      ui.loginError = "姓名或密碼不正確";
+      audit("登入失敗", "嘗試管理員 " + name);
+      render();
+      return;
+    }
+    ui.role = "admin";
+    ui.adminCode = kind === "dev" ? "1240" : "7651";
+    ui.adminName = name;
+    ui.page = "dash";
+    ui.loginError = "";
+    ui.loginAdmin = "";
     persistUi();
-    audit("登入", "管理員密碼 " + no);
+    audit("登入", (kind === "dev" ? "開發者 " : "管理員 ") + name);
     beatPresence();
     render(); enablePush(true).then(() => maybeNudgeNotifies()); armPushAsk(); return;
-  }
-  if (ui.page === "admin-login") {
-    ui.loginAdmin = no;
-    ui.loginError = no ? "密碼不正確" : "請輸入管理員密碼";
-    audit("登入失敗", "嘗試管理員密碼 " + no);
-    render(); return;
   }
   if (!no) { ui.loginError = "請輸入房號"; render(); return; }
   const { room } = tenantByRoomNo(no);
@@ -25577,13 +25610,18 @@ function bindGate() {
         else tryLogin();
       }
     }});
-    if (ui.page === "admin-login") {
-      input.addEventListener("input", () => {
-        const v = input.value.replace(/\s+/g, "");
-        ui.loginAdmin = v;
-        if (v.length >= 4 && ADMIN_CODES.includes(v)) tryLogin();
-      });
-    }
+  }
+  const adminName = document.getElementById("admin-name");
+  if (adminName) {
+    adminName.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const pass = document.getElementById("room-login");
+        if (pass) pass.focus();
+        else tryLogin();
+      }
+    });
+    adminName.addEventListener("input", () => { ui.loginAdminName = adminName.value; });
   }
   document.querySelectorAll(".gate input").forEach(el => {
     el.onpointerdown = e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); };
