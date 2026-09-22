@@ -13,6 +13,7 @@ const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
+const CHAT_API = LINE_HOOK + "/api/chat";
 const FILE_API = LINE_HOOK + "/api/file/";
 const BUILD_API = LINE_HOOK + "/api/build";
 const SYNC_KEY = "tj-82934388";
@@ -39,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-23";
-const APP_EDIT_COUNT = 1062;
+const APP_STAMP = "2026-09-22-20-30";
+const APP_EDIT_COUNT = 1063;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0612";
+const FILE_VER = "0613";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["蓋章空白改為 0.3 秒再出黑影"] },
+  { ver: APP_VERSION, items: ["開發者與租客可私訊對話（管理員後台看不到）"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1489,6 +1490,308 @@ function isPhone() {
   return isIOS() || isAndroid() || /mobile|iphone|android/i.test(navigator.userAgent || "");
 }
 function isDeveloper() { return ui.role === "admin" && ui.adminCode === "1240"; }
+function canUseDevChat() {
+  if (typeof isDeveloper === "function" && isDeveloper()) return true;
+  return ui.role === "tenant";
+}
+const CHAT_LS = "tongjie_dev_chat_v1";
+const CHAT_FILE_ID = "chat-v1";
+function emptyChatStore() { return { threads: {} }; }
+function loadLocalChats() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_LS) || "{}");
+    if (raw && raw.threads) return raw;
+  } catch {}
+  return emptyChatStore();
+}
+function saveLocalChats(data) {
+  try { localStorage.setItem(CHAT_LS, JSON.stringify(data || emptyChatStore())); } catch {}
+}
+function chatStore() {
+  if (!ui.chats || !ui.chats.threads) ui.chats = loadLocalChats();
+  return ui.chats;
+}
+function chatThreadOf(tid) {
+  const id = String(tid || "");
+  if (!id) return null;
+  const all = chatStore();
+  if (!all.threads[id]) all.threads[id] = { tenantId: id, msgs: [], unreadDev: 0, unreadTenant: 0 };
+  return all.threads[id];
+}
+function mergeChatStores(a, b) {
+  const out = { threads: {} };
+  const ids = new Set([].concat(Object.keys((a && a.threads) || {}), Object.keys((b && b.threads) || {})));
+  ids.forEach(id => {
+    const x = (a && a.threads && a.threads[id]) || {};
+    const y = (b && b.threads && b.threads[id]) || {};
+    const map = new Map();
+    [].concat(x.msgs || [], y.msgs || []).forEach(m => { if (m && m.id) map.set(m.id, m); });
+    const msgs = [...map.values()].sort((p, q) => (Number(p.at) || 0) - (Number(q.at) || 0)).slice(-80);
+    out.threads[id] = {
+      tenantId: id,
+      roomNo: y.roomNo || x.roomNo || "",
+      name: y.name || x.name || "",
+      msgs,
+      unreadDev: Math.max(Number(x.unreadDev) || 0, Number(y.unreadDev) || 0),
+      unreadTenant: Math.max(Number(x.unreadTenant) || 0, Number(y.unreadTenant) || 0),
+      updatedAt: Math.max(Number(x.updatedAt) || 0, Number(y.updatedAt) || 0)
+    };
+  });
+  return out;
+}
+async function chatGetRemote() {
+  try {
+    const res = await fetch(CHAT_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (res.ok) return await res.json();
+  } catch {}
+  try {
+    const res = await fetch(FILE_API + CHAT_FILE_ID, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (res.ok) return await res.json();
+  } catch {}
+  return null;
+}
+async function chatPostRemote(body) {
+  try {
+    const res = await fetch(CHAT_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) return await res.json();
+  } catch {}
+  return null;
+}
+async function chatPutFile(store) {
+  try {
+    await fetch(FILE_API + CHAT_FILE_ID, {
+      method: "PUT",
+      headers: {
+        "X-Tongjie-Key": SYNC_KEY,
+        "Content-Type": "application/json",
+        "X-File-Name": encodeURIComponent("chat-v1.json")
+      },
+      body: JSON.stringify(store)
+    });
+  } catch {}
+}
+async function pullChat(forceDraw) {
+  if (!canUseDevChat()) return;
+  const remote = await chatGetRemote();
+  if (remote && remote.threads) {
+    ui.chats = mergeChatStores(chatStore(), remote);
+    saveLocalChats(ui.chats);
+  }
+  if (forceDraw || ui.chatOpen) drawChatBox();
+  try { refreshChatBadges(); } catch {}
+}
+async function sendDevChat(tid, text) {
+  const t = (state.tenants || []).find(x => x && x.id === tid) || (me() && me().id === tid ? me() : null);
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  const from = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  const msg = {
+    id: "m" + Date.now() + Math.random().toString(36).slice(2, 6),
+    from,
+    text: String(text || "").trim().slice(0, 400),
+    at: Date.now()
+  };
+  if (!msg.text) return;
+  const th = chatThreadOf(tid);
+  th.msgs = (th.msgs || []).concat(msg).slice(-80);
+  th.updatedAt = msg.at;
+  th.roomNo = (r && r.no) || th.roomNo || "";
+  th.name = (t && t.name) || th.name || "";
+  if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
+  else th.unreadTenant = (th.unreadTenant || 0) + 1;
+  saveLocalChats(chatStore());
+  drawChatBox();
+  const posted = await chatPostRemote({
+    tenantId: tid,
+    roomNo: th.roomNo,
+    name: th.name,
+    from,
+    text: msg.text,
+    id: msg.id
+  });
+  if (posted && posted.threads) {
+    ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
+    saveLocalChats(ui.chats);
+  } else {
+    await chatPutFile(chatStore());
+  }
+  drawChatBox();
+}
+async function markChatRead(tid) {
+  const th = chatThreadOf(tid);
+  const who = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  if (who === "dev") th.unreadDev = 0;
+  else th.unreadTenant = 0;
+  saveLocalChats(chatStore());
+  await chatPostRemote({ tenantId: tid, read: who, roomNo: th.roomNo, name: th.name });
+  try { refreshChatBadges(); } catch {}
+}
+function chatUnreadOf(tid) {
+  const th = (chatStore().threads || {})[tid];
+  if (!th) return 0;
+  if (isDeveloper() && ui.role === "admin") return Number(th.unreadDev) || 0;
+  return Number(th.unreadTenant) || 0;
+}
+function chatUnreadTotal() {
+  const threads = (chatStore().threads || {});
+  let n = 0;
+  Object.keys(threads).forEach(id => { n += chatUnreadOf(id); });
+  return n;
+}
+function openDevChat(tid) {
+  if (!canUseDevChat()) return;
+  ui.chatTid = String(tid || (me() && me().id) || "");
+  if (!ui.chatTid) { toast("找不到租客"); return; }
+  ui.chatOpen = true;
+  drawChatBox();
+  markChatRead(ui.chatTid);
+  pullChat(true);
+  startChatPoll();
+}
+function closeDevChat() {
+  ui.chatOpen = false;
+  const el = document.getElementById("dev-chat-box");
+  if (el) el.remove();
+}
+function chatWhen(at) {
+  const d = new Date(at);
+  if (!Number.isFinite(d.getTime())) return "";
+  const p = n => String(n).padStart(2, "0");
+  const h = d.getHours();
+  const period = h >= 12 ? "下午" : "上午";
+  let h12 = h % 12; if (!h12) h12 = 12;
+  return (d.getMonth() + 1) + "/" + d.getDate() + " " + period + " " + h12 + ":" + p(d.getMinutes());
+}
+function chatBubbleHtml(m, mine) {
+  const when = m.at ? chatWhen(m.at) : "";
+  return `<div class="chat-row${mine ? " mine" : ""}"><div class="chat-bubble">${escapeHtml(m.text || "")}${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+}
+function drawChatBox() {
+  if (!ui.chatOpen) return;
+  const tid = ui.chatTid;
+  const t = (state.tenants || []).find(x => x && x.id === tid) || (me() && me().id === tid ? me() : null);
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  const th = chatThreadOf(tid);
+  const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  const title = isDeveloper() && ui.role === "admin"
+    ? ((r && r.no ? r.no + " " : "") + (t && t.name || th.name || "租客"))
+    : "跟開發者說話";
+  const msgs = (th.msgs || []).map(m => chatBubbleHtml(m, m.from === mineFrom)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
+  let wrap = document.getElementById("dev-chat-box");
+  const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
+  const typed = keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "";
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "dev-chat-box";
+    wrap.className = "chat-mask";
+    document.body.appendChild(wrap);
+  }
+  wrap.innerHTML = `<div class="chat-sheet" role="dialog">
+    <div class="chat-bar">
+      <button type="button" id="chat-close">關閉</button>
+      <span>${escapeHtml(title)}</span>
+      <em></em>
+    </div>
+    <div class="chat-log" id="chat-log">${msgs}</div>
+    <form class="chat-compose" id="chat-form">
+      <input id="chat-input" maxlength="400" autocomplete="off" placeholder="輸入訊息" value="${escapeHtml(typed)}">
+      <button type="submit" class="btn-navy">送出</button>
+    </form>
+  </div>`;
+  const log = document.getElementById("chat-log");
+  if (log) log.scrollTop = log.scrollHeight;
+  const close = document.getElementById("chat-close");
+  if (close) close.onclick = () => closeDevChat();
+  wrap.onclick = e => { if (e.target === wrap) closeDevChat(); };
+  const form = document.getElementById("chat-form");
+  const inp = document.getElementById("chat-input");
+  if (form) form.onsubmit = e => {
+    e.preventDefault();
+    const text = inp && inp.value;
+    if (inp) inp.value = "";
+    sendDevChat(tid, text);
+    if (inp) inp.focus();
+  };
+  if (keep && inp) {
+    inp.focus();
+    try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch {}
+  }
+}
+function chatEntryCardHtml() {
+  if (!canUseDevChat() || ui.role !== "tenant") return "";
+  const t = me();
+  if (!t || !t.id) return "";
+  const n = chatUnreadOf(t.id);
+  return `<button type="button" class="card card-body clickable chat-entry" id="open-dev-chat">
+    <span class="k">跟開發者說話</span>
+    <span class="small">${n ? "有 " + n + " 則未讀" : "只有你們看得到"}</span>
+    ${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}
+  </button>`;
+}
+function devChatInboxHtml() {
+  if (!isDeveloper()) return "";
+  const threads = Object.values(chatStore().threads || {}).filter(th => th && (th.msgs || []).length).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const n = chatUnreadTotal();
+  if (!threads.length && !n) return "";
+  return `<div class="card card-body chat-inbox">
+    <h2 class="dash-h">開發者對話${n ? "　" + n + " 則未讀" : ""}</h2>
+    ${threads.slice(0, 8).map(th => {
+      const last = (th.msgs || [])[th.msgs.length - 1];
+      const unread = Number(th.unreadDev) || 0;
+      return `<button type="button" class="chat-inbox-row" data-open-chat="${escapeHtml(th.tenantId)}">
+        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.text) || "")}</em></span>
+        ${unread ? `<i class="badge-dot">${unread > 99 ? "99+" : unread}</i>` : ""}
+      </button>`;
+    }).join("")}
+  </div>`;
+}
+function refreshChatBadges() {
+  const entry = document.getElementById("open-dev-chat");
+  if (entry && me()) {
+    const n = chatUnreadOf(me().id);
+    let em = entry.querySelector(".badge-dot");
+    const small = entry.querySelector(".small");
+    if (small) small.textContent = n ? ("有 " + n + " 則未讀") : "只有你們看得到";
+    if (n && !em) entry.insertAdjacentHTML("beforeend", `<em class="badge-dot">${n > 99 ? "99+" : n}</em>`);
+    else if (!n && em) em.remove();
+    else if (n && em) em.textContent = n > 99 ? "99+" : String(n);
+  }
+  try { updateTabBadges(); } catch {}
+}
+function startChatPoll() {
+  if (window.__tjChatPoll) return;
+  const tick = () => {
+    if (document.hidden) return;
+    if (!canUseDevChat()) return;
+    pullChat(false);
+  };
+  window.__tjChatPoll = setInterval(tick, 5000);
+  tick();
+}
+function bindDevChat() {
+  const open = document.getElementById("open-dev-chat");
+  if (open) {
+    bindIosPress(open);
+    open.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = me();
+      if (t) openDevChat(t.id);
+    };
+  }
+  document.querySelectorAll("[data-open-chat]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openDevChat(btn.dataset.openChat);
+    };
+  });
+  if (canUseDevChat()) startChatPoll();
+}
 function visionYm() {
   try { return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 7); } catch {
     const d = new Date();
@@ -19779,6 +20082,7 @@ function homeView() {
     <div class="screen">
       ${prospectNote}
       ${hasAnn ? announceBlock : ""}
+      ${chatEntryCardHtml()}
       ${tenantNudgeNoteHtml(t)}
       ${renewAskCardHtml(t, r)}
       ${handoverNote}
@@ -20795,7 +21099,8 @@ function tabBadgeCount(id) {
   if (id === "tenants") {
     const unpaid = state.tenants.filter(t => !t.paid && !isDemoTenant(t)).length;
     const renew = (state.renewals || []).filter(x => x.status !== "done").length;
-    return unpaid + renew;
+    const chat = isDeveloper() ? chatUnreadTotal() : 0;
+    return unpaid + renew + chat;
   }
   return 0;
 }
@@ -23727,6 +24032,7 @@ function adminDash() {
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
   return `<div class="dash">
+    ${devChatInboxHtml()}
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
@@ -24242,6 +24548,7 @@ function refreshTenantList() {
     try { bindAdminRoomItems(); } catch {}
     try { bindLineSwipe(); } catch {}
     try { bindTenantListTools(); } catch {}
+    try { bindDevChat(); } catch {}
     try { bindTenantFold(); } catch {}
     try { bindHandover(); } catch {}
     try { bindTenantEdits(); } catch {}
@@ -24706,7 +25013,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span></span><span class="row-end">${isDeveloper() ? `<button type="button" class="pay-pill${chatUnreadOf(t.id) ? " hand" : ""}" data-open-chat="${escapeHtml(t.id)}">對話${chatUnreadOf(t.id) ? " " + chatUnreadOf(t.id) : ""}</button>` : ""}${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -25278,7 +25585,7 @@ function bindTenantFold() {
     const target = el.closest(".swipe-wrap") || el;
     let x0 = 0, y0 = 0, moved = false, top0 = 0;
     const pressOn = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const p = e.touches ? e.touches[0] : e;
       x0 = p.clientX; y0 = p.clientY; moved = false; ui.tenantDrag = false;
       top0 = sc ? sc.scrollTop : 0;
@@ -25305,7 +25612,7 @@ function bindTenantFold() {
     el.ontouchmove = track;
     el.ontouchend = pressOff;
     el.onclick = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const wrap = el.closest(".swipe-wrap");
       if (wrap && (wrap.dataset.swiping === "1" || wrap.dataset.scrolled === "1")) {
         e.preventDefault();
@@ -26068,6 +26375,7 @@ function bindTenant() {
   bindHistoryBack();
   flushTenantInbox();
   bindHowtoFold();
+  bindDevChat();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isTenantLook()) { exitTenantLook(); return; }
@@ -27397,6 +27705,7 @@ function bindAdmin() {
     if (p && !renewPingAlreadySeen({ id: p.id || p.roomNo, roomNo: p.roomNo, name: p.name })) setTimeout(() => flashRenewNotice(), 400);
   } catch {}
   bindTenantLook();
+  bindDevChat();
   bindHistoryBack();
   bindMediaViewers();
   bindRepairFold();

@@ -339,6 +339,46 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/chat") {
+      if (!keyOk(request)) return cors({ error: "key" }, 403);
+      if (!env.DATA) return cors({ error: "store" }, 500);
+      const CHAT_KEY = "chat:v1";
+      const load = async () => {
+        const raw = await env.DATA.get(CHAT_KEY);
+        if (!raw) return { threads: {} };
+        try { return JSON.parse(raw); } catch { return { threads: {} }; }
+      };
+      const save = async data => { await env.DATA.put(CHAT_KEY, JSON.stringify(data)); };
+      if (request.method === "GET") return cors(await load());
+      if (request.method === "POST") {
+        let body = {};
+        try { body = await request.json(); } catch {}
+        const all = await load();
+        if (!all.threads) all.threads = {};
+        const tid = String(body.tenantId || "").slice(0, 48);
+        if (!tid) return cors({ error: "tenant" }, 400);
+        const th = all.threads[tid] || { tenantId: tid, msgs: [], unreadDev: 0, unreadTenant: 0 };
+        if (body.roomNo) th.roomNo = String(body.roomNo).slice(0, 12);
+        if (body.name) th.name = String(body.name).slice(0, 40);
+        if (body.read === "dev") th.unreadDev = 0;
+        if (body.read === "tenant") th.unreadTenant = 0;
+        const text = String(body.text || "").trim().slice(0, 400);
+        if (text) {
+          const from = body.from === "dev" ? "dev" : "tenant";
+          const id = String(body.id || ("m" + Date.now() + Math.random().toString(36).slice(2, 6)));
+          if (!(th.msgs || []).some(m => m && m.id === id)) {
+            th.msgs = (th.msgs || []).concat([{ id, from, text, at: Date.now() }]).slice(-80);
+            if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
+            else th.unreadTenant = (th.unreadTenant || 0) + 1;
+            th.updatedAt = Date.now();
+          }
+        }
+        all.threads[tid] = th;
+        await save(all);
+        return cors({ ok: true, thread: th, threads: all.threads });
+      }
+    }
+
     if (url.pathname === "/api/state") {
       if (!keyOk(request)) return cors({ error: "key" }, 403);
       if (request.method === "GET") return cors((await getState(env)) || {});
