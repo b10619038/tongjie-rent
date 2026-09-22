@@ -563,6 +563,7 @@ input, textarea, select {
   align-items: baseline;
   gap: 3px;
   margin-top: auto;
+  margin-bottom: 0.25cm;
   font-size: 20px;
   line-height: 1.15;
   color: #17211f;
