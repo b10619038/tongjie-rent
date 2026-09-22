@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-15-05";
-const APP_EDIT_COUNT = 1015;
+const APP_STAMP = "2026-09-22-15-26";
+const APP_EDIT_COUNT = 1016;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0565";
+const FILE_VER = "0566";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["金額顯示拿掉 NT，改為 $"] },
+  { ver: APP_VERSION, items: ["租客公告點標題看全部，點 X 往左上收合，新公告自動跳出"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -19285,14 +19285,17 @@ function applyHiddenAnns(data) {
   if (dirty) try { markCloudDirty(); } catch {}
 }
 function hideAnnounceForMe(id) {
+  persistHideAnnounce(id);
+  toast("已收合到管理員公告");
+  ui.keepScroll = true;
+  render();
+}
+function persistHideAnnounce(id) {
   const key = String(id || "");
   if (!key) return;
   if (isDevPreview()) {
     if (!ui.devHiddenAnns) ui.devHiddenAnns = {};
     ui.devHiddenAnns[key] = true;
-    toast("已從你的畫面移除");
-    ui.keepScroll = true;
-    render();
     return;
   }
   const t = (state.tenants || []).find(x => x && x.id === ui.tenantId);
@@ -19303,21 +19306,85 @@ function hideAnnounceForMe(id) {
   saveHiddenAnnsFor(t);
   save();
   try { pushCloud(); } catch {}
-  toast("已從你的畫面移除");
-  ui.keepScroll = true;
-  render();
+}
+function tenantAnnounceList() {
+  return (state.announcements || []).filter(a => a);
+}
+function shownAnnouncements() {
+  const all = tenantAnnounceList();
+  const dismissed = new Set((ui.annDismissed || []).map(String));
+  if (ui.annOpen) return all.filter(a => !dismissed.has(String(a.id))).slice().reverse();
+  const hidden = tenantHiddenAnnSet();
+  return all.filter(a => !hidden.has(String(a.id)) && !dismissed.has(String(a.id))).slice().reverse();
 }
 function visibleAnnouncements() {
   const hidden = tenantHiddenAnnSet();
-  return (state.announcements || []).filter(a => a && !hidden.has(String(a.id)));
+  return tenantAnnounceList().filter(a => !hidden.has(String(a.id)));
+}
+function annSeenStore() {
+  try { return JSON.parse(localStorage.getItem("tongjie_ann_seen") || "[]") || []; } catch { return []; }
+}
+function ensureAnnSeenSeed() {
+  try {
+    if (localStorage.getItem("tongjie_ann_seen")) return;
+    localStorage.setItem("tongjie_ann_seen", JSON.stringify(tenantAnnounceList().map(a => String(a.id))));
+  } catch {}
+}
+function markAnnsSeen(ids) {
+  const set = new Set(annSeenStore().map(String));
+  (ids || []).forEach(id => { if (id) set.add(String(id)); });
+  try { localStorage.setItem("tongjie_ann_seen", JSON.stringify([...set])); } catch {}
+}
+function isAnnFresh(id) {
+  return !annSeenStore().map(String).includes(String(id));
+}
+function foldAnnounceAway(id, btn) {
+  const key = String(id || "");
+  if (!key || ui.annFolding === key) return;
+  ui.annFolding = key;
+  const card = (btn && btn.closest && btn.closest(".ann-card")) || document.querySelector(`[data-read-announce="${key}"]`);
+  const dock = document.getElementById("ann-dock");
+  const finish = () => {
+    if (ui.annFolding !== key) return;
+    ui.annFolding = "";
+    if (!ui.annDismissed) ui.annDismissed = [];
+    ui.annDismissed.push(key);
+    persistHideAnnounce(key);
+    toast("已收合到管理員公告");
+    ui.keepScroll = true;
+    render();
+  };
+  if (!card) { finish(); return; }
+  const from = card.getBoundingClientRect();
+  const to = dock ? dock.getBoundingClientRect() : { left: from.left, top: Math.max(8, from.top - 48), width: 80, height: 22 };
+  const ox = to.left + 18 - from.left;
+  const oy = to.top + to.height / 2 - from.top;
+  card.classList.add("ann-fold");
+  card.style.transformOrigin = ox + "px " + oy + "px";
+  requestAnimationFrame(() => {
+    card.style.transform = "scale(0.04)";
+    card.style.opacity = "0";
+  });
+  let done = false;
+  const go = () => { if (done) return; done = true; finish(); };
+  card.addEventListener("transitionend", go, { once: true });
+  setTimeout(go, 460);
 }
 function announceCardsHtml() {
-  const list = visibleAnnouncements().slice().reverse();
-  if (!list.length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
-  return list.map(a => `<div class="card card-body ann-card" data-read-announce="${a.id}">
-      <button type="button" class="ann-hide" data-hide-announce="${a.id}" aria-label="從我的畫面移除">×</button>
+  ensureAnnSeenSeed();
+  const list = shownAnnouncements();
+  if (!list.length) {
+    if (!tenantAnnounceList().length) return `<div class="card card-body slide-left"><div class="empty">目前沒有管理員公告</div></div>`;
+    return "";
+  }
+  const burst = !!ui.annBurst;
+  return list.map((a, i) => {
+    const fresh = burst || isAnnFresh(a.id);
+    return `<div class="card card-body ann-card${fresh ? " ann-from-dock" : ""}" data-read-announce="${a.id}"${fresh ? ` style="animation-delay:${(i * 0.05).toFixed(2)}s"` : ""}>
+      <button type="button" class="ann-hide" data-hide-announce="${a.id}" aria-label="收合這則公告">×</button>
       ${announceBodyHtml(a)}
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 function tenantNameHeadingHtml(name) {
@@ -19333,8 +19400,13 @@ function homeView() {
   const firstPay = firstStudioPayDue(t, r);
   const dueNow = leaseCoversYm(t, r, payYmNow());
   const stubNow = dueNow && isStubMonthNow(t, r);
-  const hasAnn = visibleAnnouncements().length > 0;
-  const announceBlock = `<div class="section-title"><h2 class="slide-right">管理員公告</h2></div><div class="ann-list">${announceCardsHtml()}</div>`;
+  const hasAnn = tenantAnnounceList().length > 0;
+  const hiddenN = tenantAnnounceList().filter(a => tenantHiddenAnnSet().has(String(a.id))).length;
+  const annHint = ui.annOpen ? "點這裡收合" : (hiddenN ? `已收合 ${hiddenN} 則 · 點看全部` : "點看全部");
+  const announceBlock = `<div class="section-title ann-dock" id="ann-dock" role="button" tabindex="0">
+      <h2 class="slide-right">管理員公告</h2>
+      <span>${annHint}</span>
+    </div><div class="ann-list" id="ann-list">${announceCardsHtml()}</div>`;
   const prospectNote = isProspectPreview() ? tenantHandoverNoteHtml(t, r) : "";
   const handoverNote = isProspectPreview() ? "" : tenantHandoverNoteHtml(t, r);
   return `
@@ -25708,12 +25780,36 @@ function bindTenant() {
     };
   });
   document.querySelectorAll("[data-hide-announce]").forEach(btn => {
+    bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      hideAnnounceForMe(btn.dataset.hideAnnounce);
+      foldAnnounceAway(btn.dataset.hideAnnounce, btn);
     };
   });
+  const dock = document.getElementById("ann-dock");
+  if (dock) {
+    bindIosPress(dock);
+    const toggle = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.annOpen = !ui.annOpen;
+      ui.annDismissed = [];
+      ui.annBurst = !!ui.annOpen;
+      ui.keepScroll = true;
+      render();
+    };
+    dock.onclick = toggle;
+    dock.onkeydown = e => {
+      if (e.key === "Enter" || e.key === " ") toggle(e);
+    };
+  }
+  const freshCards = [...document.querySelectorAll(".ann-card.ann-from-dock")];
+  if (freshCards.length) {
+    const ids = freshCards.map(el => el.dataset.readAnnounce).filter(Boolean);
+    markAnnsSeen(ids);
+  }
+  ui.annBurst = false;
   document.querySelectorAll("[data-read-announce]").forEach(el => {
     el.onclick = e => {
       if (e.target && e.target.closest && e.target.closest("[data-hide-announce]")) return;
