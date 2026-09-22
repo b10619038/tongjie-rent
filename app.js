@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-15-30";
-const APP_EDIT_COUNT = 1017;
+const APP_STAMP = "2026-09-22-15-34";
+const APP_EDIT_COUNT = 1018;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0567";
+const FILE_VER = "0568";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["修正租客畫面讀取頭貼當掉"] },
+  { ver: APP_VERSION, items: ["公告收合時下方內容同步往上滑"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -19359,20 +19359,40 @@ function foldAnnounceAway(id, btn) {
     render();
   };
   if (!card) { finish(); return; }
+  const slot = card.closest(".ann-slot") || card;
   const from = card.getBoundingClientRect();
   const to = dock ? dock.getBoundingClientRect() : { left: from.left, top: Math.max(8, from.top - 48), width: 80, height: 22 };
   const ox = to.left + 18 - from.left;
   const oy = to.top + to.height / 2 - from.top;
+  const h = slot.getBoundingClientRect().height;
+  const mb = parseFloat((window.getComputedStyle(slot).marginBottom || "0").replace("px", "")) || 0;
+  slot.style.height = h + "px";
+  slot.style.marginBottom = mb + "px";
+  slot.style.position = "relative";
+  card.style.position = "absolute";
+  card.style.left = "0";
+  card.style.top = "0";
+  card.style.width = from.width + "px";
+  card.style.margin = "0";
   card.classList.add("ann-fold");
   card.style.transformOrigin = ox + "px " + oy + "px";
+  slot.classList.add("folding");
+  void slot.offsetHeight;
   requestAnimationFrame(() => {
-    card.style.transform = "scale(0.04)";
+    slot.style.height = "0px";
+    slot.style.marginBottom = "0px";
+    card.style.transform = "scale(0.06)";
     card.style.opacity = "0";
   });
   let done = false;
-  const go = () => { if (done) return; done = true; finish(); };
-  card.addEventListener("transitionend", go, { once: true });
-  setTimeout(go, 460);
+  const go = ev => {
+    if (ev && ev.propertyName && ev.propertyName !== "height" && ev.propertyName !== "transform") return;
+    if (done) return;
+    done = true;
+    finish();
+  };
+  slot.addEventListener("transitionend", go);
+  setTimeout(() => go(), 520);
 }
 function announceCardsHtml() {
   ensureAnnSeenSeed();
@@ -19384,10 +19404,10 @@ function announceCardsHtml() {
   const burst = !!ui.annBurst;
   return list.map((a, i) => {
     const fresh = burst || isAnnFresh(a.id);
-    return `<div class="card card-body ann-card${fresh ? " ann-from-dock" : ""}" data-read-announce="${a.id}"${fresh ? ` style="animation-delay:${(i * 0.05).toFixed(2)}s"` : ""}>
+    return `<div class="ann-slot"><div class="card card-body ann-card${fresh ? " ann-from-dock" : ""}" data-read-announce="${a.id}"${fresh ? ` style="animation-delay:${(i * 0.05).toFixed(2)}s"` : ""}>
       <button type="button" class="ann-hide" data-hide-announce="${a.id}" aria-label="收合這則公告">×</button>
       ${announceBodyHtml(a)}
-    </div>`;
+    </div></div>`;
   }).join("");
 }
 

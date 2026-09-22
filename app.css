@@ -4186,13 +4186,27 @@ img.avatar { object-fit: cover; display: block; }
   100% { transform: translate(0, 0) scale(1); opacity: 1; }
 }
 .ann-card.ann-fold {
-  overflow: visible !important;
   pointer-events: none;
   z-index: 30;
   will-change: transform, opacity;
-  transition: transform .4s cubic-bezier(.55, 0, .72, .12), opacity .32s ease;
+  transition: transform .42s cubic-bezier(.55, 0, .72, .12), opacity .28s ease;
 }
-.ann-list { display: grid; gap: 14px; margin: 0 0 22px; }
+.ann-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 0 22px;
+}
+.ann-slot {
+  margin: 0 0 14px;
+}
+.ann-slot:last-child { margin-bottom: 0; }
+.ann-slot.folding {
+  overflow: visible;
+  pointer-events: none;
+  will-change: height, margin-bottom;
+  transition: height .42s cubic-bezier(.22,.82,.22,1), margin-bottom .42s cubic-bezier(.22,.82,.22,1);
+}
 .ann-card {
   position: relative;
   overflow: visible;
