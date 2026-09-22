@@ -558,7 +558,7 @@ input, textarea, select {
 .stat b { display: block; font-size: 20px; margin-top: 0; color: #17211f; }
 .stat b .remain-wait { font-size: 16px; font-weight: 800; letter-spacing: 0; }
 .rent-stamp {
-  --stamp: #c45c4c;
+  --stamp: #5e7a55;
   position: absolute;
   top: 8px;
   right: 8px;
@@ -578,7 +578,7 @@ input, textarea, select {
   line-height: 1;
   transform: rotate(-12deg);
   pointer-events: none;
-  background: rgba(196, 92, 76, 0.06);
+  background: rgba(94, 122, 85, 0.08);
   opacity: 0.9;
 }
 .rent-stamp i { font-style: normal; }
@@ -598,8 +598,8 @@ html[data-theme="void"] .stat {
 html[data-theme="void"] .stat .label { color: #a3a3a3; }
 html[data-theme="void"] .stat b { color: #ffffff; }
 html[data-theme="void"] .rent-stamp {
-  --stamp: #e08a7a;
-  background: rgba(224, 138, 122, 0.1);
+  --stamp: #9fbf96;
+  background: rgba(159, 191, 150, 0.12);
 }
 .pay-pill {
   display: inline-flex; align-items: center; gap: 6px;
