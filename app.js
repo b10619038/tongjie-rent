@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-14-16";
-const APP_EDIT_COUNT = 1002;
+const APP_STAMP = "2026-09-22-14-20";
+const APP_EDIT_COUNT = 1003;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0552";
+const FILE_VER = "0553";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台入帳銀行顯示改為統潔農會／統潔兆豐"] },
+  { ver: APP_VERSION, items: ["續約年水費 1,800 自動記入總覽日曆現金"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -4243,6 +4243,7 @@ try { state = loadLocal(); } catch (err) {
   try { console.error(err); } catch {}
   state = structuredClone(SEED);
 }
+try { if (state && state.renewWaterBookNeedPush && typeof flushSeededRenewal === "function") flushSeededRenewal(); } catch {}
 try { stripDevMemosFromState(); stripDevLogsFromState(); migrateAiAvatar(); } catch {}
 let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", loginError: "", repairType: "冷氣", repairNote: "", toast: "", repairMedia: [], announceEditId: null, announceOpen: false, errandOpen: false, bankOpen: false, aiOpen: false, announceMedia: [], editAnnounceMedia: [], assetKind: "studio", tenantKind: "studio", assetQ: "", tenantQ: "", tenantVacant: false, tenantChip: "", studioBldg: null, lineBinds: { byRoom: {}, byUser: {} }, cloudOk: null, bankMedia: [], errandMedia: [], themeOpen: false, firmPeriod: {}, editBookId: null, editSlipId: null, editErrandId: "", checkoutKind: "", adminCode: "", installSheet: "", updateNotes: false, updateReady: false, handoverAdd: {}, calFirm: "" };
 (function bootLoginNow() {
@@ -4448,6 +4449,7 @@ function normalize(data) {
   applyRenewal7221(data);
   applyRenewal7032(data);
   applyDueRenewals(data);
+  try { ensureRenewalWaterBooks(data); } catch {}
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
   applyFactorySepPaidFromBooks(data);
@@ -5684,7 +5686,7 @@ const RENEW_7032_AT = "2026-09-28T18:00";
 function flushSeededRenewal() {
   try { markCloudDirty(); } catch {}
   setTimeout(() => {
-    try { if (state) delete state.renew7032NeedPush; } catch {}
+    try { if (state) { delete state.renew7032NeedPush; delete state.renewWaterBookNeedPush; } } catch {}
     try { save(true); } catch {}
     try { if (typeof pushCloud === "function") pushCloud(); } catch {}
     try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
@@ -5840,6 +5842,51 @@ function flashRenewNotice(ping) {
   try { showOsBanner("續約申請", line + "　年水費 $1,800 現場現金", "renew-" + (p.id || "7221")); } catch {}
   try { showToastBanner("續約申請　" + line); } catch {}
 }
+function renewWaterBookDate(item) {
+  return ymdOf(item && item.doneAt) || todayYmd();
+}
+function ensureRenewalWaterBook(data, item) {
+  if (!data || !item) return false;
+  if (item.status !== "done" && item.status !== "applied") return false;
+  if (item.waterCash === false) return false;
+  const t = (data.tenants || []).find(x => x && (x.id === item.tenantId));
+  const r = (t && (data.rooms || []).find(x => x && x.id === t.roomId))
+    || (data.rooms || []).find(x => x && (x.id === item.roomId || String(x.no) === String(item.roomNo)));
+  const water = typeof renewWaterCashFee === "function" ? renewWaterCashFee(t, r, item) : (Number(item.waterFee) || 1800);
+  if (!(water > 0)) return false;
+  if (!Array.isArray(data.books)) data.books = [];
+  const id = "bk-renew-water-" + item.id;
+  if ((data.ledgerGone || []).indexOf(id) >= 0) return false;
+  const no = String((r && r.no) || item.roomNo || "");
+  const hit = (data.books || []).some(b => b && (
+    b.id === id
+    || (b.importTag === "renewWater" && String(b.roomNo || "") === no && Number(b.amount) === water)
+    || (ymdOf(b.date) === renewWaterBookDate(item) && b.type === "in" && Number(b.amount) === water && /水費/.test(String(b.note || "")) && /續約/.test(String(b.note || "")) && String(b.roomNo || "") === no)
+  ));
+  if (hit) return false;
+  data.books.push({
+    id,
+    type: "in",
+    date: renewWaterBookDate(item),
+    amount: water,
+    company: "現金(保險箱)",
+    bank: "現金",
+    note: "水費收入　續約　" + no + " " + ((t && t.name) || item.name || "") + "　現場現金",
+    roomNo: no,
+    createdAt: nowStamp(),
+    importTag: "renewWater"
+  });
+  try { _ledgerCache = null; } catch {}
+  return true;
+}
+function ensureRenewalWaterBooks(data) {
+  if (!data) return;
+  let n = 0;
+  (data.renewals || []).forEach(item => {
+    if (ensureRenewalWaterBook(data, item)) n++;
+  });
+  if (n) data.renewWaterBookNeedPush = true;
+}
 function completeRenewal(item) {
   if (!item || item.status === "done" || item.status === "applied") return false;
   const t = (state.tenants || []).find(x => x && x.id === item.tenantId);
@@ -5849,36 +5896,21 @@ function completeRenewal(item) {
     item.oldEnd = t.leaseEnd || "";
   }
   const water = renewWaterCashFee(t, r, item);
-  if (item.waterCash !== false && water > 0) {
-    if (!Array.isArray(state.books)) state.books = [];
-    const id = "bk-renew-water-" + item.id;
-    const gone = (state.ledgerGone || []).indexOf(id) >= 0;
-    const dup = (state.books || []).some(b => b && (b.id === id || (ymdOf(b.date) === todayYmd() && b.type === "in" && Number(b.amount) === water && /水費/.test(String(b.note || "")) && String(b.roomNo || "") === String((r && r.no) || ""))));
-    if (!gone && !dup) {
-      state.books.push({
-        id,
-        type: "in",
-        date: todayYmd(),
-        amount: water,
-        company: "現金(保險箱)",
-        bank: "現金",
-        note: "水費收入　續約　" + ((r && r.no) || "") + " " + ((t && t.name) || "") + "　現場現金",
-        roomNo: (r && r.no) || "",
-        createdAt: nowStamp()
-      });
-    }
-  }
   item.status = "done";
   item.doneAt = nowStamp();
+  item.waterCash = true;
+  if (item.waterFee == null) item.waterFee = water;
+  ensureRenewalWaterBook(state, item);
   if (renewalStartReached(item) && t && r) applySignedRenewalLease(t, r, item);
+  try { _ledgerCache = null; } catch {}
   save();
   try { pushCloud(); } catch {}
   if (!ui.renewOpen) ui.renewOpen = {};
   ui.renewOpen[item.id] = true;
   const until = item.oldEnd || (t && t.leaseEnd) || "";
   toast(item.status === "applied"
-    ? ("已完成續約" + (water ? "，請收年水費 " + money(water) + " 現金" : ""))
-    : ("已完成簽約。新約 " + (item.start || "") + " 才生效，目前仍是舊約" + (until ? "至 " + until : "") + (water ? "。請收年水費 " + money(water) + " 現金" : "")));
+    ? ("已完成續約" + (water ? "，年水費 " + money(water) + " 已記入現金" : ""))
+    : ("已完成簽約。新約 " + (item.start || "") + " 才生效，目前仍是舊約" + (until ? "至 " + until : "") + (water ? "。年水費 " + money(water) + " 已記入總覽日曆（現金）" : "")));
   return true;
 }
 function applyTongjieMega(data) {
@@ -8074,7 +8106,7 @@ async function pullCloud() {
       persistAvatars(state);
       try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
-      if (state.renew7032NeedPush) flushSeededRenewal();
+      if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
     }
@@ -8169,7 +8201,7 @@ async function pullCloud() {
     persistAvatars(state);
     try { ensurePhoneLoginPasses(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
-    if (state.renew7032NeedPush) flushSeededRenewal();
+    if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     ui.cloudOk = true;
     return true;
   } catch {
