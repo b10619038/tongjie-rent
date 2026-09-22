@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-00-28";
-const APP_EDIT_COUNT = 1112;
+const APP_STAMP = "2026-09-23-02-16";
+const APP_EDIT_COUNT = 1113;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0662";
+const FILE_VER = "0663";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已顯示過的系統通知，更新後不再重跳"] },
+  { ver: APP_VERSION, items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
+  { ver: "2026-09-23-00-28-1112", items: ["已顯示過的系統通知，更新後不再重跳"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -5147,6 +5148,7 @@ function normalize(data) {
   try { ensurePhoneLoginPasses(data); } catch {}
   applyESigns(data);
   try { applyClear7042TestSign(data); } catch {}
+  try { applyFix7032SignAppoint(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -5398,6 +5400,48 @@ function applyClear7042TestSign(data) {
   } catch {}
   data.clear7042EsignVer = CLEAR_7042_ESIGN_VER;
   try { markCloudDirty(); } catch {}
+}
+const SIGN_7032_AT_VER = "sign-7032-0922-v1";
+const SIGN_7032_AT = "2026-09-22T10:00";
+function applyFix7032SignAppoint(data) {
+  if (!data) return;
+  const rewriteAt = (t) => {
+    if (!t) return false;
+    const at = String(t.signAppointAt || "").trim();
+    if (!at) return false;
+    const ymd = (typeof ymdOf === "function" ? ymdOf(at) : ((at.match(/(\d{4}-\d{2}-\d{2})/) || [])[1] || ""));
+    if (ymd !== "2026-09-23") return false;
+    const rest = at.slice(10);
+    t.signAppointAt = /^\s*$/.test(rest) ? SIGN_7032_AT : ("2026-09-22" + rest);
+    t.edited = true;
+    t.editedAt = Date.now();
+    return true;
+  };
+  let dirty = false;
+  let room = null;
+  let occupant = null;
+  try {
+    const hit = studioOccupantOfNo(data, "7032");
+    room = hit && hit.room;
+    occupant = hit && hit.tenant;
+    if (rewriteAt(occupant)) dirty = true;
+  } catch {}
+  (data.tenants || []).forEach(x => {
+    if (!x || x.demo) return;
+    const is7032 = (room && (x.roomId === room.id || x.id === room.tenantId))
+      || String(x.roomNo || "") === "7032"
+      || x.id === "t12"
+      || (sameTenantName(x.name, "楊旻憲") && !x.former);
+    if (!is7032) return;
+    if (rewriteAt(x)) dirty = true;
+  });
+  if (data.sign7032AtVer !== SIGN_7032_AT_VER) {
+    data.sign7032AtVer = SIGN_7032_AT_VER;
+    dirty = true;
+  }
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
 }
 function applyRoom7051(data) {
   if (!data || !Array.isArray(data.rooms)) return;
@@ -8858,6 +8902,7 @@ async function pullCloud() {
       applyJinfangEng0921(state);
       applyRenewal7221(state);
       applyRenewal7032(state);
+      try { applyFix7032SignAppoint(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -8936,6 +8981,7 @@ async function pullCloud() {
     applyJinfangEng0921(state);
     applyRenewal7221(state);
     applyRenewal7032(state);
+    try { applyFix7032SignAppoint(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -9538,6 +9584,7 @@ async function pushCloud() {
     stripCloudMedia(payload);
     applyESigns(payload);
     try { applyClear7042TestSign(payload); } catch {}
+    try { applyFix7032SignAppoint(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
