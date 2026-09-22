@@ -4185,8 +4185,9 @@ img.avatar { object-fit: cover; display: block; }
   100% { transform: translate(0, 0) scale(1); opacity: 1; }
 }
 .ann-card.ann-fold {
+  animation: none !important;
   pointer-events: none;
-  transform-origin: 12px 0;
+  transform-origin: 8px 0;
   will-change: transform, opacity;
   transition: transform .4s cubic-bezier(.22,.82,.22,1), opacity .32s cubic-bezier(.22,.82,.22,1);
 }
