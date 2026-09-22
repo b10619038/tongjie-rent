@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-14-43";
-const APP_EDIT_COUNT = 1009;
+const APP_STAMP = "2026-09-22-14-44";
+const APP_EDIT_COUNT = 1010;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0559";
+const FILE_VER = "0560";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客續約可點選擇簽約時間"] },
+  { ver: APP_VERSION, items: ["簽約地點改為 5F 電梯出來右轉到底 7651簽約室"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1909,7 +1909,7 @@ const DEFAULT_COMPANY = {
   address: "高雄市鳳山區北興街100號",
   email: "jie59056503@gmail.com"
 };
-const STAMP_OFFICE = "5F，右轉到底，7651簽約室";
+const STAMP_OFFICE = "5F，電梯出來右轉到底，7651簽約室";
 function stampPlaceOf(r) {
   return STAMP_OFFICE;
 }
@@ -2328,7 +2328,7 @@ function renewAskCardHtml(t, r, opts) {
       <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">線上簽署新約</button>` : ""}
-      ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
+      ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
     </div>`;
   }
@@ -2369,7 +2369,7 @@ function renewAskCardHtml(t, r, opts) {
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00", gcalDraft: true })}
     </div>
-    <div class="small" style="margin:6px 0 0">簽約地點：5F，右轉到底，7651簽約室</div>
+    <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室</div>
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
   </div>`;
 }
@@ -12600,9 +12600,9 @@ function openGoogleCalendar(item, kind) {
   const tenant = state.tenants.find(x => x.id === item.tenantId);
   const isRenew = kind === "renew" || !item.type;
   const text = encodeURIComponent(isRenew ? `${room ? room.no : ""} 續約簽約` : `${room ? room.no : ""} ${item.type}維修`);
-  const loc = encodeURIComponent(typeof stampPlaceOf === "function" ? stampPlaceOf(room) : "5F，右轉到底，7651簽約室");
+  const loc = encodeURIComponent(typeof stampPlaceOf === "function" ? stampPlaceOf(room) : "5F，電梯出來右轉到底，7651簽約室");
   const details = encodeURIComponent(isRenew
-    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，右轉到底，7651簽約室\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}`
+    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，電梯出來右轉到底，7651簽約室\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}`
     : `統潔＆信潔開發有限公司報修預約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}${isRenew ? "&location=" + loc : ""}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
@@ -12610,8 +12610,8 @@ function openGoogleCalendarAt(at, title, details) {
   const range = gcalRange(at);
   if (!range) { toast("請先選擇簽約時間"); return; }
   const text = encodeURIComponent(title || "續約簽約");
-  const loc = encodeURIComponent("5F，右轉到底，7651簽約室");
-  const det = encodeURIComponent((details || "統潔＆信潔開發有限公司續約簽約") + "\n地點：5F，右轉到底，7651簽約室");
+  const loc = encodeURIComponent("5F，電梯出來右轉到底，7651簽約室");
+  const det = encodeURIComponent((details || "統潔＆信潔開發有限公司續約簽約") + "\n地點：5F，電梯出來右轉到底，7651簽約室");
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${det}&location=${loc}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
 function calendarItems() {
@@ -18933,7 +18933,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。</p>
+      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，電梯出來右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -19997,7 +19997,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。現場蓋章請到 5F，右轉到底，7651簽約室。身分證、電話、緊急聯絡人、地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，右轉到底，7651簽約室。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
+      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、緊急聯絡人、地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -20008,7 +20008,7 @@ function leaseSignView() {
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">簽約日期時間</div>
-        <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
+        <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，電梯出來右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -23753,7 +23753,7 @@ function renewalAdminCardHtml(x) {
       <label class="field"><span>簽約時間</span>
         ${appointOneHtml(x.appointAt || "", { attr: ` data-renew-appoint="${x.id}"`, disabled: signed, gcalId: x.id })}
       </label>
-      <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}　地點：5F，右轉到底，7651簽約室</div>
+      <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
     </div>
     <div class="small" style="margin:6px 0 4px">${signed ? "年水費已於簽約現場收取，只收現金。新約租金改匯兆豐。" : "簽約現場收年水費，只收現金。新約匯款改兆豐（統潔 04009039686）。"}</div>
     ${tenant && room && room.kind !== "factory" ? `<button type="button" class="btn-navy${todaySign || signed ? "" : " ghost"}" data-print-renew="${x.id}" style="margin-top:8px">${todaySign && !signed ? "列印今天續約合約" : "列印續約合約"}</button>` : ""}
