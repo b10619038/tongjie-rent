@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-22-45";
-const APP_EDIT_COUNT = 1095;
+const APP_STAMP = "2026-09-22-22-54";
+const APP_EDIT_COUNT = 1096;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0645";
+const FILE_VER = "0646";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客首頁窗台植物：可取名、看天氣澆水、準時繳會長"] },
+  { ver: APP_VERSION, items: ["窗台植物可換種子，花盆與樣子改得更可愛"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10522,11 +10522,22 @@ function setPlantPref(on) {
 }
 function plantOf(t) {
   const p = (t && t.plant) || {};
+  const kind = PLANT_KINDS.some(k => k.id === p.kind) ? p.kind : "";
   return {
+    kind,
     name: String(p.name || "").trim().slice(0, 8),
     wateredOn: String(p.wateredOn || ""),
     at: Number(p.at) || 0
   };
+}
+const PLANT_KINDS = [
+  { id: "leaf", name: "綠葉", hint: "心形葉子，好養" },
+  { id: "succulent", name: "多肉", hint: "圓圓胖胖，不太渴" },
+  { id: "flower", name: "小花", hint: "照顧好會開花" },
+  { id: "herb", name: "香草", hint: "細細一叢" }
+];
+function plantKindOf(id) {
+  return PLANT_KINDS.find(k => k.id === id) || null;
 }
 function plantNeedWater() {
   const sky = ui.sky || "cloud";
@@ -10558,39 +10569,127 @@ function plantWxLine() {
   return bits.join("　");
 }
 function plantStatusLine(t, r) {
+  const p = plantOf(t);
+  if (!p.kind) return "先選一顆種子，種在窗台上。";
   const stage = plantStageOf(t, r);
   const need = plantNeedWater();
-  const p = plantOf(t);
   const watered = p.wateredOn === todayYmd();
   if (stage === "wilt") return "這個月還沒入帳，葉子有點沒精神。";
   if (need && !watered) return "今天偏乾，該澆一點水。";
   if (ui.sky === "rain" || ui.sky === "storm") return "今天下雨，不用澆。";
   if (isFinite(Number(ui.humidity)) && ui.humidity >= 75) return "空氣夠濕，今天不用澆。";
-  if (stage === "bloom") return "這個月有準時繳，還澆過水，開了一點花。";
-  if (stage === "leaf") return "這個月有準時繳，葉子長出來了。";
-  return "新搬來的小苗，準時繳租就會長。";
+  if (stage === "bloom") return p.kind === "succulent" ? "這個月有準時繳，多肉又圓了一點。" : "這個月有準時繳，還澆過水，開了一點花。";
+  if (stage === "leaf") return "這個月有準時繳，長得很好。";
+  return "新芽剛冒出來，準時繳租就會長。";
 }
-function plantArtHtml(stage, dry) {
-  return `<div class="plant-art ${stage}${dry ? " dry" : ""}" aria-hidden="true">
-    <svg viewBox="0 0 80 100">
-      <ellipse class="soil" cx="40" cy="78" rx="22" ry="6"/>
-      <path class="pot" d="M20 76l5 18h30l5-18z"/>
-      <path class="pot-rim" d="M17 74h46v5H17z"/>
-      <g class="stem-g">
-        <path class="stem" d="M40 74C39 56 41 44 40 32"/>
-        <ellipse class="leaf l1" cx="27" cy="54" rx="13" ry="6" transform="rotate(-28 27 54)"/>
-        <ellipse class="leaf l2" cx="53" cy="48" rx="14" ry="6" transform="rotate(24 53 48)"/>
-        <ellipse class="leaf l3" cx="29" cy="38" rx="11" ry="5" transform="rotate(-18 29 38)"/>
-        <ellipse class="leaf l4" cx="51" cy="34" rx="12" ry="5" transform="rotate(16 51 34)"/>
-        <circle class="bloom" cx="40" cy="22" r="7"/>
-        <circle class="bloom-core" cx="40" cy="22" r="2.6"/>
-      </g>
-    </svg>
+function plantPotSvg(uid) {
+  const g = "p" + (uid || "0");
+  return `<defs>
+      <linearGradient id="${g}pot" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f7e4cc"/>
+        <stop offset="55%" stop-color="#e8c4a0"/>
+        <stop offset="100%" stop-color="#d7a47a"/>
+      </linearGradient>
+      <linearGradient id="${g}rim" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#fff8ee"/>
+        <stop offset="100%" stop-color="#efd4b4"/>
+      </linearGradient>
+      <radialGradient id="${g}soil" cx=".42" cy=".35" r=".75">
+        <stop offset="0%" stop-color="#7a5644"/>
+        <stop offset="100%" stop-color="#3a261c"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="50" cy="118" rx="30" ry="5.5" fill="#1b1714" opacity=".1"/>
+    <ellipse cx="50" cy="111" rx="28" ry="7.5" fill="#ead6bc"/>
+    <ellipse cx="50" cy="110" rx="20" ry="4.2" fill="#f6ead8"/>
+    <path d="M29 70c-5 0-8 3.2-8 8.2L27 100c1.2 5.5 8.4 8.5 23 8.5s21.8-3 23-8.5l6-21.8c0-5-3-8.2-8-8.2z" fill="url(#${g}pot)"/>
+    <path d="M26 76c8 5 40 5 48 0" fill="none" stroke="#fff8ee" stroke-width="2.2" opacity=".35"/>
+    <path d="M24 64h52c3.4 0 5.6 2.2 5.6 5.2S79.4 74.4 76 74.4H24c-3.4 0-5.6-2.2-5.6-5.2S20.6 64 24 64z" fill="url(#${g}rim)"/>
+    <ellipse cx="50" cy="73" rx="21.5" ry="6.6" fill="url(#${g}soil)"/>
+    <ellipse cx="42" cy="71.6" rx="6" ry="2" fill="#fff" opacity=".12"/>`;
+}
+function plantFoliageSvg(kind, stage) {
+  const grown = stage === "leaf" || stage === "bloom" || stage === "wilt";
+  const bloom = stage === "bloom";
+  if (kind === "succulent") {
+    return `<g class="stem-g succulent">
+      <ellipse class="leaf l1" cx="50" cy="62" rx="8" ry="12"/>
+      <ellipse class="leaf l2" cx="40" cy="64" rx="7" ry="11" transform="rotate(-38 40 64)"/>
+      <ellipse class="leaf l3" cx="60" cy="64" rx="7" ry="11" transform="rotate(38 60 64)"/>
+      ${grown ? `<ellipse class="leaf l4" cx="34" cy="68" rx="6" ry="10" transform="rotate(-70 34 68)"/>
+      <ellipse class="leaf l5" cx="66" cy="68" rx="6" ry="10" transform="rotate(70 66 68)"/>
+      <ellipse class="leaf l6" cx="50" cy="58" rx="6.5" ry="9"/>` : ""}
+      ${bloom ? `<circle class="bloom" cx="50" cy="50" r="4.2"/><circle class="bloom-core" cx="50" cy="50" r="1.6"/>` : ""}
+    </g>`;
+  }
+  if (kind === "flower") {
+    return `<g class="stem-g flower">
+      <path class="stem" d="M50 72C49 58 51 46 50 ${grown ? 34 : 52}"/>
+      <path class="leaf l1" d="M50 60C38 58 32 64 36 70C44 68 50 64 50 60z"/>
+      <path class="leaf l2" d="M50 56C62 54 68 60 64 66C56 64 50 60 50 56z"/>
+      ${grown ? `<path class="leaf l3" d="M50 46C39 42 34 48 38 54C45 51 50 48 50 46z"/>
+      <path class="leaf l4" d="M50 44C61 40 66 46 62 52C55 49 50 46 50 44z"/>` : ""}
+      ${bloom ? `<g class="bloom-g">
+        <circle class="petal" cx="50" cy="24" r="5.2"/>
+        <circle class="petal" cx="41.5" cy="28" r="5"/>
+        <circle class="petal" cx="58.5" cy="28" r="5"/>
+        <circle class="petal" cx="44" cy="36.5" r="5"/>
+        <circle class="petal" cx="56" cy="36.5" r="5"/>
+        <circle class="bloom-core" cx="50" cy="30" r="3.4"/>
+      </g>` : `<ellipse class="leaf l-tip" cx="50" cy="${grown ? 32 : 48}" rx="3.2" ry="5"/>`}
+    </g>`;
+  }
+  if (kind === "herb") {
+    const blades = grown
+      ? [[42,46],[46,38],[50,32],[54,38],[58,46],[38,52],[62,52]]
+      : [[46,54],[50,48],[54,54]];
+    return `<g class="stem-g herb">${blades.map(([x, y], i) =>
+      `<path class="blade b${i}" d="M50 72Q${x} ${(y + 72) / 2} ${x} ${y}"/>`
+    ).join("")}${bloom ? `<circle class="bloom" cx="50" cy="28" r="2.4"/><circle class="bloom" cx="44" cy="36" r="2"/><circle class="bloom" cx="56" cy="36" r="2"/>` : ""}</g>`;
+  }
+  return `<g class="stem-g leafy">
+      <path class="heart l1" d="M38 58C30 50 24 54 28 64C32 70 38 74 40 76C42 74 38 66 38 58z"/>
+      <path class="heart l2" d="M62 56C70 48 76 52 72 62C68 68 62 72 60 74C58 72 62 64 62 56z"/>
+      ${grown ? `<path class="heart l3" d="M34 44C26 36 20 40 24 50C28 56 34 60 36 62C38 60 34 52 34 44z"/>
+      <path class="heart l4" d="M66 42C74 34 80 38 76 48C72 54 66 58 64 60C62 58 66 50 66 42z"/>` : ""}
+      <path class="stem" d="M50 72C49 60 51 50 50 ${grown ? 36 : 56}"/>
+      ${bloom ? `<g class="bloom-g">
+        <circle class="petal" cx="50" cy="24" r="4.4"/>
+        <circle class="petal" cx="43.5" cy="27.5" r="4"/>
+        <circle class="petal" cx="56.5" cy="27.5" r="4"/>
+        <circle class="bloom-core" cx="50" cy="27" r="2.2"/>
+      </g>` : ""}
+    </g>`;
+}
+function plantArtHtml(kind, stage, dry, mini) {
+  const k = kind || "leaf";
+  const uid = (mini ? "m" : "g") + k;
+  return `<div class="plant-art ${k} ${stage || "sprout"}${dry ? " dry" : ""}${mini ? " mini" : ""}" aria-hidden="true">
+    <svg viewBox="0 0 100 124">${plantPotSvg(uid)}${kind ? plantFoliageSvg(k, stage || "sprout") : ""}</svg>
+  </div>`;
+}
+function plantSeedPickHtml() {
+  const has = !!(me() && plantOf(me()).kind);
+  return `<div class="card card-body plant-card plant-pick slide-left">
+    <div class="plant-copy wide">
+      <div class="label">窗台植物</div>
+      <h3 class="plant-name static">選一顆種子</h3>
+      <p class="small">先選一種，之後還可以換。</p>
+      <div class="plant-seeds">
+        ${PLANT_KINDS.map(k => `<button type="button" class="plant-seed" data-plant-kind="${k.id}">
+          ${plantArtHtml(k.id, "leaf", false, true)}
+          <span>${escapeHtml(k.name)}</span>
+          <em>${escapeHtml(k.hint)}</em>
+        </button>`).join("")}
+      </div>
+      ${has ? `<button type="button" class="plant-reseed" id="plant-pick-cancel">先不要</button>` : ""}
+    </div>
   </div>`;
 }
 function plantCardHtml(t, r) {
   if (!plantPrefOn() || !t || !t.id) return "";
   const p = plantOf(t);
+  if (!p.kind || ui.plantPick) return plantSeedPickHtml();
   const stage = plantStageOf(t, r);
   const need = plantNeedWater();
   const watered = p.wateredOn === todayYmd();
@@ -10598,17 +10697,21 @@ function plantCardHtml(t, r) {
   const named = p.name || "";
   const wx = plantWxLine();
   const canWater = need && !watered && stage !== "wilt";
+  const kind = plantKindOf(p.kind);
   const nameBtn = ui.plantEdit
     ? `<input id="plant-name-in" class="plant-name-in" maxlength="8" value="${escapeHtml(named)}" placeholder="幫它取名" autocomplete="off">`
     : `<button type="button" class="plant-name" id="plant-name">${named ? escapeHtml(named) : "幫它取名"}</button>`;
   return `<div class="card card-body plant-card slide-left">
-    ${plantArtHtml(stage, dry)}
+    ${plantArtHtml(p.kind, stage, dry)}
     <div class="plant-copy">
-      <div class="label">窗台植物</div>
+      <div class="label">窗台植物${kind ? " · " + escapeHtml(kind.name) : ""}</div>
       ${nameBtn}
       <p class="small">${escapeHtml(plantStatusLine(t, r))}</p>
       ${wx ? `<p class="small plant-wx">${escapeHtml(wx)}</p>` : ""}
-      ${canWater ? `<button type="button" class="ghost plant-water" id="plant-water">澆水</button>` : ""}
+      <div class="plant-actions">
+        ${canWater ? `<button type="button" class="ghost plant-water" id="plant-water">澆水</button>` : ""}
+        <button type="button" class="plant-reseed" id="plant-reseed">換種子</button>
+      </div>
     </div>
   </div>`;
 }
@@ -10654,6 +10757,32 @@ function bindPlantCard() {
     ui.keepScroll = true;
     render();
   };
+  const reseed = document.getElementById("plant-reseed");
+  if (reseed) reseed.onclick = e => {
+    e.preventDefault();
+    ui.plantPick = true;
+    ui.keepScroll = true;
+    render();
+  };
+  const cancel = document.getElementById("plant-pick-cancel");
+  if (cancel) cancel.onclick = e => {
+    e.preventDefault();
+    ui.plantPick = false;
+    ui.keepScroll = true;
+    render();
+  };
+  document.querySelectorAll("[data-plant-kind]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const kind = btn.dataset.plantKind;
+      if (!plantKindOf(kind)) return;
+      ui.plantPick = false;
+      savePlant({ kind });
+      toast("已種下" + plantKindOf(kind).name);
+      ui.keepScroll = true;
+      render();
+    };
+  });
 }
 function ensureSkyLive() {
   if (skyLive) return skyLive;
