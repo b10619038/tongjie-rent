@@ -609,27 +609,19 @@ input, textarea, select {
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
   z-index: 4;
-  animation: rent-chop 1.1s cubic-bezier(.22, .7, .2, 1) .9s both;
+  animation: rent-chop 1s cubic-bezier(.22, .72, .18, 1) .9s both;
 }
 .rent-stamp.chop i {
-  animation: rent-chop-ink 1.1s cubic-bezier(.22, .7, .2, 1) .9s both;
+  animation: rent-chop-ink 1s cubic-bezier(.22, .72, .18, 1) .9s both;
 }
 @keyframes rent-chop {
-  0%, 22% {
+  0%, 18% {
     opacity: 0;
-    transform: rotate(-10deg) scale(1.22);
+    transform: rotate(-10deg) scale(1.16);
   }
-  48% {
-    opacity: .32;
-    transform: rotate(-10deg) scale(1.12);
-  }
-  72% {
-    opacity: .72;
-    transform: rotate(-10deg) scale(1.03);
-  }
-  88% {
-    opacity: 1;
-    transform: rotate(-10deg) scale(.97);
+  58% {
+    opacity: .55;
+    transform: rotate(-10deg) scale(1.05);
   }
   100% {
     opacity: .9;
@@ -637,9 +629,8 @@ input, textarea, select {
   }
 }
 @keyframes rent-chop-ink {
-  0%, 22% { opacity: 0; }
-  48% { opacity: .4; }
-  72% { opacity: .8; }
+  0%, 18% { opacity: 0; }
+  58% { opacity: .62; }
   100% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
