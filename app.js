@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-11-32";
-const APP_EDIT_COUNT = 988;
+const APP_STAMP = "2026-09-22-11-55";
+const APP_EDIT_COUNT = 990;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0539";
+const FILE_VER = "0540";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約時間與日期空開 0.2 公分，右邊改加入日曆"] },
+  { ver: APP_VERSION, items: ["續約合約套用手寫簽名、金額改國字，並補身分證、電話、緊急聯絡人與地址"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2312,6 +2312,7 @@ function renewAskCardHtml(t, r, opts) {
       <p>${signed ? "現場已簽約。目前合約仍至 " + escapeHtml(t.leaseEnd || cur.oldEnd || "") + "。" : ""}新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(cur.start || "")} ～ ${escapeHtml(cur.end || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
       <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
+      ${!signed ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">線上簽署新約</button>` : ""}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，現場蓋章即可。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
     </div>`;
@@ -17448,26 +17449,28 @@ function studioLeasePaperHtml(t, r, leasePart) {
   const part = contractRoomPart(r && r.no);
   const name = (t && t.name) || "";
   const names = splitPair(name);
-  const ids = splitPair((t && t.idNo) || "");
-  const phones = splitPair((t && t.phone) || "");
-  const emNames = splitPair((t && t.emergencyName) || "");
-  const emPhones = splitPair((t && t.emergencyPhone) || "");
   const es = getESign(t);
+  const ids = splitPair((t && t.idNo) || (es && es.idNo) || "");
+  const phones = splitPair((t && t.phone) || (es && es.phone) || "");
+  const emNames = splitPair((t && t.emergencyName) || (es && es.emergencyName) || "");
+  const emPhones = splitPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || "");
+  const addrs = splitPair(tenantPaperAddress(t));
   const sign = rocPartsOf((es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
   const due = rentDueDay(t);
   const pay = tenantPayAccounts(t, r).primary || {};
   const ck = leaseCk;
   const u = leaseU;
   const tenantSignRow = names.map((n, i) =>
-    `${tenantMark(t, i, n)}<span class="term-chop" title="蓋章"></span>`
+    `${tenantSignOnly(t, i)}<span class="term-chop" title="蓋章"></span>`
   ).join("");
   const headerTenants = names.map((n, i) => tenantMark(t, i, n)).join("　");
   const peopleCols = names.map((n, i) => `<div class="lease-person">
-      <p>${i === 0 ? "承租人：" : ""}${tenantMark(t, i, n)}<span class="term-chop" title="蓋章"></span></p>
+      <p>${i === 0 ? "承租人：" : ""}${tenantSignOnly(t, i)}<span class="term-chop" title="蓋章"></span></p>
       <p>${i === 0 ? "身分證字號：" : ""}${leaseInk(ids[i] || "")}</p>
       <p>${i === 0 ? "聯絡電話：" : ""}${leaseInk(phones[i] || "")}</p>
       <p>${i === 0 ? "緊急聯絡人：" : ""}${leaseInk(emNames[i] || "")}</p>
       <p>${i === 0 ? "電話：" : ""}${leaseInk(emPhones[i] || "")}</p>
+      <p>${i === 0 ? "地址：" : ""}${leaseInk(addrs[i] || "")}</p>
     </div>`).join("");
   return `<div class="studio-lease-paper" id="studio-lease-paper">
     <section class="lease-pg cover">
@@ -17509,13 +17512,13 @@ function studioLeasePaperHtml(t, r, leasePart) {
     <section class="lease-pg">
       <p class="lease-art">第四條　租金約定及支付</p>
       ${isStub
-        ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(ntd(listed) || "0")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(ntd(rent) || "0")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
-        : `<p>承租人每月租金為新臺幣（下同）${u(ntd(rent) || "0")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>`}
+        ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(cnAmt(listed) || "零")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(cnAmt(rent) || "零")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
+        : `<p>承租人每月租金為新臺幣（下同）${u(cnAmt(rent) || "零")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>`}
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
       <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
       <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
       <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
-      <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(ntd(deposit) || "0")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
+      <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(cnAmt(deposit) || "零")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
       <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
       <p class="lease-art">第六條　租賃期間相關費用之支付</p>
       <p>租賃期間，使用房屋所生之相關費用如下：</p>
@@ -17608,7 +17611,7 @@ function studioLeasePaperHtml(t, r, leasePart) {
       <div class="lease-sign-block lease-people">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
       <p>簽約／蓋章地點：${escapeHtml(stampPlaceOf(r))}</p>
-      <p class="term-hint">承租人藍字與簽名已套入。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
+      <p class="term-hint">承租人簽名以 App 手寫為準。身分證、電話、緊急聯絡人與地址請先填齊。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       <div class="lease-pgno">8</div>
     </section>
   </div>`;
@@ -17816,6 +17819,7 @@ function printRenewalById(id) {
     : null;
   const r = dest || (t && (state.rooms || []).find(x => x && (x.id === t.roomId || x.id === item.roomId || String(x.no) === String(item.roomNo))));
   if (!t || !r) { toast("找不到租客"); return; }
+  if (!tenantEsigHtml(t, 0)) toast("租客尚未線上簽名，簽名欄會留白");
   try { printStudioLease(tenantForRenewPrint(t, r, item), r); }
   catch (err) { try { console.error(err); } catch {} toast("合約無法開啟，請再試一次"); }
 }
@@ -19461,6 +19465,21 @@ function tenantMark(t, i, name) {
   if (img) return `<span class="lease-sign-line signed">${img}</span>`;
   return leaseInk(name);
 }
+function tenantSignOnly(t, i) {
+  if (ui && ui.resignRenew && ui.page === "lease-sign") return `<span class="lease-u">　</span>`;
+  const img = tenantEsigHtml(t, i);
+  if (img) return `<span class="lease-sign-line signed">${img}</span>`;
+  return `<span class="lease-u">　</span>`;
+}
+function tenantPaperAddress(t) {
+  const own = String((t && t.address) || "").trim();
+  if (own) return own;
+  const es = typeof getESign === "function" ? getESign(t) : null;
+  return String((es && es.address) || "").trim();
+}
+function tenantAddrDefault(t, r) {
+  return tenantPaperAddress(t) || contractDoorplate(r && r.no) || roomAddress(r && r.no) || "";
+}
 function tenantContractStatus(t, r) {
   const es = getESign(t);
   if (es && es.cleared && es.status !== "signed") return "unsigned";
@@ -19555,8 +19574,10 @@ function leaseSignView() {
   const home = myRoom();
   const r = signTargetRoom(t) || home;
   const es = getESign(t);
-  const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
-  if (es && es.status === "signed") {
+  const renewItem = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  const paperT = renewItem ? tenantForRenewPrint(t, r, renewItem) : t;
+  const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r);
+  if (es && es.status === "signed" && !ui.resignRenew) {
     return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
       <div class="eyebrow">LEASE</div><h1>電子合約</h1>
@@ -19564,23 +19585,26 @@ function leaseSignView() {
     <div class="screen">
       <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
       <p class="small" style="margin:8px 2px 12px">你的藍字簽名與資料已套進合約。管理員列印後只蓋章。</p>
+      ${renewItem && renewItem.status !== "applied" ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-bottom:12px">簽署新約（手寫簽名）</button>` : ""}
       ${paper}
     </div>`;
   }
   const names = splitPair((t && t.name) || "");
   const two = names.length > 1;
   if (ui.signTerm1y == null) ui.signTerm1y = true;
-  const pickRoom = canPickSignRoom(t);
+  const pickRoom = canPickSignRoom(t) && !renewItem;
   const rooms = studioSignRooms(r);
   const win = signWindow(r, t);
   const cont = continueLeaseRange(r, t);
-  if (t && t.leaseStart && t.leaseStart < cont.start) {
-    applyStudioLeasePack(t, r, cont.start);
-  }
-  if (t && ui.signTerm1y && !ui.signLeaseCustom) {
-    applyStudioLeasePack(t, r, t.leaseStart || roomSoonestStart(r, t));
-  } else if (t && t.leaseStart) {
-    applyStudioLeasePack(t, r, t.leaseStart);
+  if (!renewItem) {
+    if (t && t.leaseStart && t.leaseStart < cont.start) {
+      applyStudioLeasePack(t, r, cont.start);
+    }
+    if (t && ui.signTerm1y && !ui.signLeaseCustom) {
+      applyStudioLeasePack(t, r, t.leaseStart || roomSoonestStart(r, t));
+    } else if (t && t.leaseStart) {
+      applyStudioLeasePack(t, r, t.leaseStart);
+    }
   }
   let day = ymdOf(t && t.signAppointAt);
   if (!day || day < win.min) day = win.min;
@@ -19591,12 +19615,12 @@ function leaseSignView() {
     if (nxt) day = ymdOf(nxt);
     daySlots = nextSignSlots(8, t && t.signAppointAt, win.min, day);
   }
-  if (t && !t.signAppointAt && daySlots[0]) t.signAppointAt = daySlots[0];
+  if (!renewItem && t && !t.signAppointAt && daySlots[0]) t.signAppointAt = daySlots[0];
   const slots = nextSignSlots(8, t && t.signAppointAt, win.min, ymdOf(t && t.signAppointAt) || day);
   const fastSlot = nextSignSlots(1, t && t.signAppointAt, win.min, "", win.maxFast)[0];
   const occ = roomCurrentTenant(r);
   const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
-  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r);
+  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r);
   const roomOpts = rooms.map(x => {
     const m = moveRoomMeta(x, t);
     const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ("現約至 " + (m.end || "—") + "　最快可入住 " + m.start));
@@ -19607,9 +19631,9 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請先選房號。簽約時間與合約起迄分開選。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。</p>
+      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。身分證、電話、緊急聯絡人、地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。身分證、電話用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
       ${paperNow}
-      <div class="card card-body" style="margin-top:12px">
+      ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
         <label class="field"><span>房號</span>
           <select id="sign-room" ${pickRoom ? "" : "disabled"}>${roomOpts}</select>
@@ -19631,13 +19655,14 @@ function leaseSignView() {
         <label class="field"><span>起始日（入住）</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
-      </div>
+      </div>`}
       <div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（藍字印在合約上）</div>
-        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
-        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
-        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || "")}" placeholder="姓名" autocomplete="off" /></label>
-        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || "")}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || (es && es.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
+        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || (es && es.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || (es && es.emergencyName) || "")}" placeholder="姓名" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>地址</span><input id="sign-addr" type="text" value="${escapeHtml((t && t.address) || (es && es.address) || tenantAddrDefault(t, r))}" placeholder="通訊／戶籍地址" autocomplete="off" /></label>
       </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -23659,7 +23684,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       ${teField("電話", "phone", t.id, r && r.id, t.phone || "", "tel", "手機號碼")}
-      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
+      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("地址", "address", t.id, r && r.id, t.address || "") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
       ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
       ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
       ${t.bankLast5 ? teField("帳戶後五碼", "bankLast5", t.id, r && r.id, t.bankLast5 || "") : ""}
@@ -23790,6 +23815,7 @@ function applyLiveTenantEdit(el) {
   }
   else if (key === "loginPass" && t) t.loginPass = val || phonePassOf(t.phone) || "";
   else if (key === "idNo" && t) t.idNo = val;
+  else if (key === "address" && t) t.address = val;
   else if (key === "emergencyName" && t) t.emergencyName = val;
   else if (key === "emergencyPhone" && t) t.emergencyPhone = val;
   else if (key === "contactName" && t) t.contactName = val;
@@ -25248,6 +25274,19 @@ function bindTenant() {
       item.appointRead = true; save(); openGoogleCalendar(item, "renew");
     };
   });
+  document.querySelectorAll("[data-resign-renew]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.resignRenew = true;
+      ui.signAgree = false;
+      ui.signStrokes = [];
+      ui.signStrokes2 = [];
+      ui.page = "lease-sign";
+      render();
+    };
+  });
   document.querySelectorAll("[data-hide-nudge]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -25574,6 +25613,7 @@ function captureSignDraft() {
   const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = phone;
   const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = normalizePersonName(emName);
   const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = normalizeMobile(emPhone);
+  const addr = val("sign-addr"); if (document.getElementById("sign-addr")) t.address = addr;
   const start = val("sign-lease-start");
   if (document.getElementById("sign-lease-start") && start) {
     if (start !== t.leaseStart) ui.signLeaseCustom = true;
@@ -25837,34 +25877,46 @@ function bindSignPad() {
     const c = a && a.c;
     if (!c || (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length))) { toast("請先在白框內簽名"); return; }
     const t = me(); const r = signTargetRoom(t) || myRoom();
+    const renewing = !!(t && typeof liveRenewalOf === "function" && liveRenewalOf(t));
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
     const idNo = val("sign-idno");
     const phone = val("sign-phone");
     const emName = val("sign-emname");
     const emPhone = val("sign-emphone");
+    const addr = val("sign-addr");
+    if (!idNo) { toast("請填身分證字號"); return; }
+    if (!idNoOk(idNo)) { toast("請填正確身分證字號"); return; }
+    if (!phone) { toast("請填聯絡電話"); return; }
+    if (!emName) { toast("請填緊急聯絡人"); return; }
+    if (!emPhone) { toast("請填緊急聯絡電話"); return; }
+    if (!addr) { toast("請填地址"); return; }
     if (t) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
       if (phone) t.phone = normalizeMobile(phone);
       if (emName) t.emergencyName = normalizePersonName(emName);
       if (emPhone) t.emergencyPhone = normalizeMobile(emPhone);
+      if (addr) t.address = addr;
       captureSignDraft();
       t.edited = true;
       t.editedAt = Date.now();
       const term = document.getElementById("sign-term-1y");
       ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
-      if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
-      else if (t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
+      if (!renewing) {
+        if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
+        else if (t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
+      }
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),
       sig: canvasToSig(c),
       sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? canvasToSig(b.c) : "",
       name: (t && t.name) || "",
-      idNo, phone, emergencyName: emName, emergencyPhone: emPhone
+      idNo, phone, emergencyName: emName, emergencyPhone: emPhone, address: addr
     };
     ui.signStrokes = [];
     ui.signStrokes2 = [];
     ui.signing = false;
+    ui.resignRenew = false;
     saveESignRecord(t, rec);
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
@@ -25890,11 +25942,11 @@ function bindSignPad() {
     }
     ui.page = "lease";
     ui.signing = false;
-    if (t && ui.tenantId === t.id) {
+    if (t && ui.tenantId === t.id && (t.prospect || t.incoming) && !renewing) {
       ui.prospectPreview = true;
       persistUi();
     }
-    toast("已完成電子簽署，等後台確認才會正式入住");
+    toast(renewing ? "已完成新約電子簽署，現場再蓋章即可" : "已完成電子簽署，等後台確認才會正式入住");
     render();
   };
 }
