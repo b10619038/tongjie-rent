@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-17-43";
-const APP_EDIT_COUNT = 1040;
+const APP_STAMP = "2026-09-22-17-48";
+const APP_EDIT_COUNT = 1041;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0590";
+const FILE_VER = "0591";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["水費一年優惠改為年優惠NT$1800"] },
+  { ver: APP_VERSION, items: ["租客底部導覽點擊不再卡頓"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -18798,6 +18798,43 @@ function paintApp() {
     return;
   }
   ui.keepScroll = false;
+  const overlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
+    || ui.checkoutTenantId || ui.vacateConfirmId
+    || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
+  const scKeep = root.querySelector(".tenant-scroll");
+  const navKeep = root.querySelector(".nav");
+  if (lastRenderRole === "tenant" && scKeep && navKeep && root.querySelector(".shell") && !overlays) {
+    const onBtn = navKeep.querySelector("button.active");
+    if (onBtn) ui.navPill = { x: Math.max(0, onBtn.offsetLeft - 3), w: onBtn.offsetWidth + 6 };
+    scKeep.classList.toggle("tenant-still", !pageChanged);
+    scKeep.innerHTML = `${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
+    refreshNavButtons(navKeep);
+    safeBind(() => {
+      bindTenant();
+      bindNavPill();
+      attachSkyLive();
+      bindInstallSheet();
+      bindNotifyGuide();
+      bindUpdateBar();
+      bindThemePicker();
+      playRoomHero();
+      if (pageChanged) {
+        ui.slideLock = Date.now() + 380;
+        requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
+      }
+      bindPullRefresh();
+    });
+    restoreComposeDraft();
+    if (!pageChanged) {
+      scKeep.scrollTop = oldTenant;
+      requestAnimationFrame(() => { scKeep.scrollTop = oldTenant; });
+    } else {
+      scKeep.scrollTop = 0;
+    }
+    lastRenderRole = ui.role;
+    lastRenderPage = ui.page;
+    return;
+  }
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   safeBind(() => {
     bindTenant();
@@ -18809,7 +18846,7 @@ function paintApp() {
     bindThemePicker();
     playRoomHero();
     if (pageChanged) {
-      ui.slideLock = Date.now() + 1100;
+      ui.slideLock = Date.now() + 380;
       requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
     }
     bindPullRefresh();
@@ -19163,6 +19200,29 @@ function nav() {
     return `<button type="button" data-page="${id}" class="${on ? "active" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
+function refreshNavButtons(bar) {
+  if (!bar) return;
+  const tab = navKeyOf();
+  bar.querySelectorAll("button[data-page]").forEach(btn => {
+    const id = btn.dataset.page;
+    btn.classList.toggle("active", tab === id);
+    btn.classList.remove("land");
+    btn.style.transform = "";
+    btn.style.transition = "";
+    const ic = btn.querySelector(".nav-ic");
+    if (ic) { ic.style.transform = ""; ic.style.transition = ""; }
+    const unread = !ui.tenantId ? 0
+      : id === "home" ? unreadAnnouncements(ui.tenantId).length
+      : id === "repair" ? unreadAppoints(ui.tenantId)
+      : id === "lease" ? unreadRenewTimes(ui.tenantId)
+      : 0;
+    let dot = btn.querySelector(".badge-dot");
+    if (unread && !dot) btn.insertAdjacentHTML("beforeend", `<em class="badge-dot badge-dot-only"></em>`);
+    else if (!unread && dot) dot.remove();
+  });
+  const inner = bar.querySelector(".nav-bg i");
+  if (inner) inner.style.transform = "";
+}
 function bindNavPill() {
   const bar = document.querySelector(".nav");
   const bg = bar && bar.querySelector(".nav-bg");
@@ -19180,14 +19240,14 @@ function bindNavPill() {
     bg.classList.add("land");
     setTimeout(() => {
       try { on.classList.remove("land"); bg.classList.remove("land"); } catch {}
-    }, 580);
+    }, 260);
     const prev = ui.navPill;
     if (prev) {
       bg.style.transition = "none";
       bg.style.width = prev.w + "px";
-      bg.style.transform = "translate3d(" + prev.x + "px,0,0) scale(1.22)";
+      bg.style.transform = "translate3d(" + prev.x + "px,0,0)";
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        bg.style.transition = "transform .55s cubic-bezier(.22,.82,.22,1), width .55s cubic-bezier(.22,.82,.22,1)";
+        bg.style.transition = "transform .22s cubic-bezier(.22,.82,.22,1), width .22s cubic-bezier(.22,.82,.22,1)";
         bg.style.width = w + "px";
         bg.style.transform = dest(1);
       }));
@@ -25814,23 +25874,6 @@ function bindTenant() {
   if (av) av.onchange = () => onAvatar(av);
   if (avSet) avSet.onchange = () => onAvatar(avSet);
   bindTenantSettings();
-  document.querySelectorAll(".nav [data-page]").forEach(el => {
-    el.addEventListener("pointerdown", () => {
-      if (el.classList.contains("active")) return;
-      el.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-      el.style.transform = "scale(1.22)";
-      const ic = el.querySelector(".nav-ic");
-      if (ic) {
-        ic.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-        ic.style.transform = "scale(1.7)";
-      }
-      const inner = document.querySelector(".nav-bg i");
-      if (inner) {
-        inner.style.transition = "transform .38s cubic-bezier(.22,.82,.22,1)";
-        inner.style.transform = "scale(1.22)";
-      }
-    });
-  });
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
