@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-15";
-const APP_EDIT_COUNT = 1079;
+const APP_STAMP = "2026-09-22-21-20";
+const APP_EDIT_COUNT = 1080;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0629";
+const FILE_VER = "0630";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客有頭貼時，對話氣泡左邊會顯示"] },
+  { ver: APP_VERSION, items: ["對話可拍照、上傳照片"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1532,7 +1532,8 @@ function mergeChatStores(a, b) {
       const recalled = !!(prev.recalled || m.recalled);
       map.set(m.id, Object.assign({}, prev, m, {
         recalled,
-        text: recalled ? "" : (m.text || prev.text || "")
+        text: recalled ? "" : (m.text || prev.text || ""),
+        image: recalled ? "" : (m.image || prev.image || "")
       }));
     });
     const msgs = [...map.values()].sort((p, q) => (Number(p.at) || 0) - (Number(q.at) || 0)).slice(-80);
@@ -1636,7 +1637,7 @@ async function pullChat(forceDraw) {
   if (forceDraw || ui.chatOpen) drawChatBox();
   try { refreshChatBadges(); } catch {}
 }
-async function sendDevChat(tid, text) {
+async function sendDevChat(tid, text, image) {
   const t = (state.tenants || []).find(x => x && x.id === tid) || (me() && me().id === tid ? me() : null);
   const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
   const from = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
@@ -1644,9 +1645,10 @@ async function sendDevChat(tid, text) {
     id: "m" + Date.now() + Math.random().toString(36).slice(2, 6),
     from,
     text: String(text || "").trim().slice(0, 400),
+    image: image && String(image).indexOf("data:image") === 0 ? image : "",
     at: Date.now()
   };
-  if (!msg.text) return;
+  if (!msg.text && !msg.image) return;
   const th = chatThreadOf(tid);
   th.msgs = (th.msgs || []).concat(msg).slice(-80);
   th.updatedAt = msg.at;
@@ -1658,13 +1660,13 @@ async function sendDevChat(tid, text) {
   drawChatBox();
   try { save(true); } catch {}
   try { await pushCloud(); } catch {}
-  try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text, msg.id); } catch {}
+  try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
   const posted = await chatPostRemote({
     tenantId: tid,
     roomNo: th.roomNo,
     name: th.name,
     from,
-    text: msg.text,
+    text: msg.text || (msg.image ? "照片" : ""),
     id: msg.id
   });
   if (posted && posted.threads) {
@@ -1805,7 +1807,10 @@ function chatBubbleHtml(m, mine, t) {
   const face = (m.from === "tenant" && t && t.avatar && String(t.avatar).length > 40)
     ? `<img class="chat-face" src="${t.avatar}" alt="">`
     : "";
-  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-bubble${mine ? " can-recall" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${escapeHtml(m.text || "")}</div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+  const pic = m.image ? `<img class="chat-pic" src="${m.image}" alt="">` : "";
+  const body = pic + (m.text ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : "");
+  if (!body) return "";
+  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-bubble${mine ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
 }
 function hideChatAct() {
   const el = document.getElementById("chat-act");
@@ -1843,6 +1848,7 @@ function recallDevChat(tid, msgId) {
   if (m.from !== mineFrom) return;
   m.recalled = true;
   m.text = "";
+  m.image = "";
   th.updatedAt = Date.now();
   persistChatsToState();
   drawChatBox();
@@ -1883,6 +1889,46 @@ function bindChatRecall(tid) {
     });
   });
 }
+async function chatImageData(file) {
+  if (!file) return "";
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const max = 640;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+    try { bmp.close(); } catch {}
+    return canvas.toDataURL("image/jpeg", 0.64);
+  } catch {
+    try { return await compressImage(file, 640); } catch { return ""; }
+  }
+}
+function bindChatMedia(tid) {
+  const pick = (input) => {
+    if (!input) return;
+    input.onchange = async () => {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      try { toast("照片處理中"); } catch {}
+      const data = await chatImageData(file);
+      if (!data) { try { toast("照片讀取失敗"); } catch {} return; }
+      sendDevChat(tid, "", data);
+    };
+  };
+  const cam = document.getElementById("chat-cam");
+  const album = document.getElementById("chat-album");
+  const camFile = document.getElementById("chat-cam-file");
+  const albumFile = document.getElementById("chat-album-file");
+  pick(camFile);
+  pick(albumFile);
+  if (cam) cam.onclick = e => { e.preventDefault(); e.stopPropagation(); if (camFile) camFile.click(); };
+  if (album) album.onclick = e => { e.preventDefault(); e.stopPropagation(); if (albumFile) albumFile.click(); };
+}
 function drawChatBox() {
   if (!ui.chatOpen || ui.chatClosing) return;
   const tid = ui.chatTid;
@@ -1912,6 +1958,10 @@ function drawChatBox() {
     </div>
     <div class="chat-log" id="chat-log">${msgs}</div>
     <form class="chat-compose" id="chat-form">
+      <button type="button" class="chat-media" id="chat-cam" aria-label="拍照"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.6h3.1l1.3-2.1h7.2L17 8.6H20v10.2H4z"/><circle cx="12" cy="13.4" r="3.15"/></svg></button>
+      <button type="button" class="chat-media" id="chat-album" aria-label="相簿"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2.2"/><circle cx="9" cy="10" r="1.45"/><path d="M4.6 16.6 9 12.4l3.6 3.2 2.8-2.3 4 3.3"/></svg></button>
+      <input id="chat-cam-file" type="file" accept="image/*" capture="environment" hidden>
+      <input id="chat-album-file" type="file" accept="image/*" hidden>
       <input id="chat-input" maxlength="400" autocomplete="off" placeholder="輸入訊息" value="${escapeHtml(typed)}">
       <button type="submit" class="btn-navy">送出</button>
     </form>
@@ -1921,6 +1971,7 @@ function drawChatBox() {
   wrap.onclick = e => { if (e.target === wrap) closeDevChat(); };
   bindChatSwipe(wrap);
   bindChatRecall(tid);
+  bindChatMedia(tid);
   const form = document.getElementById("chat-form");
   const inp = document.getElementById("chat-input");
   if (inp) inp.oninput = () => saveChatDraft();
@@ -1956,7 +2007,7 @@ function devChatInboxHtml() {
       const last = (th.msgs || []).filter(x => x && !x.recalled).slice(-1)[0];
       const unread = Number(th.unreadDev) || 0;
       return `<button type="button" class="chat-inbox-row" data-open-chat="${escapeHtml(th.tenantId)}">
-        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.text) || "")}</em></span>
+        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.image && !last.text) ? "照片" : ((last && last.text) || ""))}</em></span>
         ${unread ? `<i class="badge-dot">${unread > 99 ? "99+" : unread}</i>` : ""}
       </button>`;
     }).join("")}
@@ -1982,6 +2033,7 @@ function lastChatIncoming() {
     if (ui.role === "tenant" && id !== myTid) return;
     ((chatStore().threads[id] && chatStore().threads[id].msgs) || []).forEach(m => {
       if (!m || m.recalled || m.from === mineFrom) return;
+      if (!m.text && !m.image) return;
       if (!best || Number(m.at) > Number(best.at)) best = Object.assign({ tid: id }, m);
     });
   });
@@ -12194,7 +12246,7 @@ function notifyCloudChanges(before) {
     if (last && last.id && last.id !== before.chatLast && !(ui.chatOpen && ui.chatTid === last.tid)) {
       const th = chatThreadOf(last.tid) || {};
       const who = [th.roomNo, th.name].filter(Boolean).join(" ");
-      showOsBanner("新訊息", (who ? who + "：" : "") + String(last.text || ""), "chat-" + last.id);
+      showOsBanner("新訊息", (who ? who + "：" : "") + String(last.text || (last.image ? "傳了一張照片" : "")), "chat-" + last.id);
     }
   }
 }
