@@ -666,13 +666,29 @@ button.pay-pill.hand {
   width: 100%;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   text-align: left;
   padding: 8px 12px;
 }
-.renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; gap: 0; }
-.renew-move-item span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; gap: 0; white-space: nowrap; flex: 0 0 auto; }
+.renew-move-st {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+.renew-move-st em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.renew-move-until { white-space: nowrap; }
 .renew-move-item.off,
 .renew-move-item:disabled {
   opacity: 0.55;
