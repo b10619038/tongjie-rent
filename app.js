@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-22-00";
-const APP_EDIT_COUNT = 1092;
+const APP_STAMP = "2026-09-22-22-03";
+const APP_EDIT_COUNT = 1093;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0642";
+const FILE_VER = "0643";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["蓋章改成 1 秒，前 0.18 秒空白後順順浮現"] },
+  { ver: APP_VERSION, items: ["後台可顯示 QR 與邀請文案，方便租客加入 App"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -19567,7 +19567,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -19775,6 +19775,67 @@ function bindInstallSheet() {
   const tryBtn = document.getElementById("install-try");
   if (tryBtn) tryBtn.onclick = () => installApp(ui.installSheet || "desktop", true);
   try { bindVacateConfirm(); } catch {}
+}
+const APP_JOIN_URL = "https://tongjie-app.pages.dev";
+function inviteCopy() {
+  return "【統潔＆信潔開發】租客 App\n\n請用手機打開：\n" + APP_JOIN_URL + "\n\n加到主畫面後，輸入「房號＋姓名」就能登入。\n繳租金、報修、續約、跟管理員說話，都在這裡完成。\n\niPhone：Safari 開啟 → 分享 → 加入主畫面\nAndroid：Chrome 開啟 → 安裝應用程式";
+}
+function inviteQrSrc() {
+  return "https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=8&ecc=M&data=" + encodeURIComponent(APP_JOIN_URL);
+}
+function inviteCardHtml() {
+  if (ui.role !== "admin") return "";
+  return `<div class="card card-body invite-card">
+    <h2 class="dash-h">邀請租客加入 App</h2>
+    <p class="small">簽約或交房時給租客掃碼，或把文案傳到 LINE。QR 和網址都指向同一個登入頁。</p>
+    <button type="button" class="btn-navy" id="open-invite">顯示 QR 與文案</button>
+  </div>`;
+}
+function inviteSheetHtml() {
+  if (!ui.inviteSheet) return "";
+  return `<div class="install-mask" id="invite-mask">
+    <div class="install-sheet invite-sheet">
+      <div class="label">給租客</div>
+      <h2>加入統潔租客 App</h2>
+      <img class="invite-qr" src="${inviteQrSrc()}" alt="加入 App QR 圖">
+      <p class="invite-url">${APP_JOIN_URL}</p>
+      <p class="small" style="text-align:left">加到主畫面後，輸入「房號＋姓名」登入。<br>iPhone 用 Safari → 分享 → 加入主畫面。<br>Android 用 Chrome → 安裝應用程式。</p>
+      <button class="btn-navy" id="invite-copy" type="button">複製邀請文案</button>
+      <button class="ghost" id="invite-copy-url" type="button">只複製網址</button>
+      <button class="ghost" id="invite-share" type="button">傳到 LINE／分享</button>
+      <button class="ghost" id="invite-close" type="button">關閉</button>
+    </div>
+  </div>`;
+}
+function copyTextSafe(text, ok) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast(ok || "已複製")).catch(() => {
+      try { prompt("請複製以下內容", text); } catch { toast("請長按選取複製"); }
+    });
+    return;
+  }
+  try { prompt("請複製以下內容", text); } catch { toast("請長按選取複製"); }
+}
+function bindInviteSheet() {
+  const open = document.getElementById("open-invite");
+  if (open) open.onclick = e => { e.preventDefault(); ui.inviteSheet = true; render(); };
+  const close = () => { ui.inviteSheet = false; render(); };
+  const mask = document.getElementById("invite-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "invite-mask") close(); };
+  const x = document.getElementById("invite-close");
+  if (x) x.onclick = close;
+  const copy = document.getElementById("invite-copy");
+  if (copy) copy.onclick = () => copyTextSafe(inviteCopy(), "邀請文案已複製");
+  const url = document.getElementById("invite-copy-url");
+  if (url) url.onclick = () => copyTextSafe(APP_JOIN_URL, "網址已複製");
+  const share = document.getElementById("invite-share");
+  if (share) share.onclick = async () => {
+    const text = inviteCopy();
+    if (navigator.share) {
+      try { await navigator.share({ title: "統潔租客 App", text, url: APP_JOIN_URL }); return; } catch {}
+    }
+    copyTextSafe(text, "已複製，可貼到 LINE");
+  };
 }
 function installCardHtml(label) {
   if (isStandalone()) return "";
@@ -24396,6 +24457,7 @@ function adminDash() {
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
   return `<div class="dash">
+    ${inviteCardHtml()}
     ${devChatInboxHtml()}
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
@@ -28074,6 +28136,7 @@ function bindAdmin() {
   } catch {}
   bindTenantLook();
   bindDevChat();
+  bindInviteSheet();
   bindHistoryBack();
   bindMediaViewers();
   bindRepairFold();

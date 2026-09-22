@@ -4498,6 +4498,26 @@ html.preview-zoom body {
   padding: 18px 16px 14px;
   box-shadow: 0 16px 40px rgba(0,0,0,.14);
 }
+.invite-sheet { text-align: center; }
+.invite-qr {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 8px auto 10px;
+  border-radius: 16px;
+  background: #fff;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.invite-url {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--ink);
+  word-break: break-all;
+}
+.invite-card .btn-navy { width: auto; }
 #checkout-form-mask {
   display: block;
   place-items: unset;
