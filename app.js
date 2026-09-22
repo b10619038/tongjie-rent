@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-27";
-const APP_EDIT_COUNT = 1081;
+const APP_STAMP = "2026-09-22-21-29";
+const APP_EDIT_COUNT = 1082;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0631";
+const FILE_VER = "0632";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已讀或收回後，發送訊息紅點會消失"] },
+  { ver: APP_VERSION, items: ["自己的訊息已讀時，氣泡左邊顯示已讀"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1828,7 +1828,16 @@ function chatWhen(at) {
   let h12 = h % 12; if (!h12) h12 = 12;
   return (d.getMonth() + 1) + "/" + d.getDate() + " " + period + " " + h12 + ":" + p(d.getMinutes());
 }
-function chatBubbleHtml(m, mine, t) {
+function lastReadMineId(th, mineFrom) {
+  let id = "";
+  ((th && th.msgs) || []).forEach(m => {
+    if (!m || m.recalled || m.from !== mineFrom) return;
+    const otherRead = mineFrom === "tenant" ? (Number(th.readDevAt) || 0) : (Number(th.readTenantAt) || 0);
+    if (otherRead >= (Number(m.at) || 0)) id = m.id;
+  });
+  return id;
+}
+function chatBubbleHtml(m, mine, t, seen) {
   if (!m || m.recalled) return "";
   const when = m.at ? chatWhen(m.at) : "";
   const face = (m.from === "tenant" && t && t.avatar && String(t.avatar).length > 40)
@@ -1837,7 +1846,8 @@ function chatBubbleHtml(m, mine, t) {
   const pic = m.image ? `<img class="chat-pic" src="${m.image}" alt="">` : "";
   const body = pic + (m.text ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : "");
   if (!body) return "";
-  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-bubble${mine ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+  const read = mine && seen ? `<i class="chat-read">已讀</i>` : "";
+  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${mine ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
 }
 function hideChatAct() {
   const el = document.getElementById("chat-act");
@@ -1968,7 +1978,8 @@ function drawChatBox() {
   const who = (isDeveloper() && ui.role === "admin")
     ? [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ")
     : "管理員";
-  const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom, t)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
+  const seenId = lastReadMineId(th, mineFrom);
+  const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom, t, m.id === seenId)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
   let wrap = document.getElementById("dev-chat-box");
   const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
   const typed = (keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "") || chatDraftOf(tid);

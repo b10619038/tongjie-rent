@@ -5611,6 +5611,22 @@ html[data-theme="void"] .site-chip {
   align-items: flex-start;
 }
 .chat-row.mine .chat-col { align-items: flex-end; }
+.chat-main {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  max-width: 100%;
+}
+.chat-read {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  font-style: normal;
+  color: #8a948f;
+  line-height: 1;
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
 .chat-bubble {
   max-width: 100%;
   background: #fff;
