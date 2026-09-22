@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-13-56";
-const APP_EDIT_COUNT = 999;
+const APP_STAMP = "2026-09-22-14-02";
+const APP_EDIT_COUNT = 1000;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0549";
+const FILE_VER = "0550";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["查看續約顯示新約內容；新約第一天自動套入並拿掉續約完成"] },
+  { ver: APP_VERSION, items: ["續約新約第一天，開立發票總覽同步新合約與兆豐帳戶"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1935,8 +1935,8 @@ function companyBankByKey(key, company) {
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
-  const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
-  if (renew && (renew.status === "done" || renew.status === "applied") && typeof renewalStartReached === "function" && renewalStartReached(renew)) {
+  const item = typeof renewalForInvoice === "function" ? renewalForInvoice(t, r) : null;
+  if (item && ((typeof renewalStartReached === "function" && renewalStartReached(item)) || (item.start && String(payYmNow()).slice(0, 7) >= String(item.start).slice(0, 7)))) {
     return NEW_TENANT_PAY_BANK;
   }
   if (t && t.payBank === "兆豐") return "兆豐";
@@ -11741,10 +11741,35 @@ function leaseDaysLeft(end) {
   n.setHours(0, 0, 0, 0);
   return Math.round((t - n) / 86400000);
 }
+function renewalForInvoice(t, r) {
+  if (!t) return null;
+  const list = (typeof state !== "undefined" && state.renewals) || [];
+  const no = r && r.no;
+  const hits = list.filter(x => x && (x.status === "done" || x.status === "applied") && (
+    x.tenantId === t.id
+    || (r && x.roomId === r.id)
+    || (no && String(x.roomNo) === String(no))
+    || (x.moveRoomNo && String(x.moveRoomNo) === String(no))
+  ));
+  return hits[hits.length - 1] || null;
+}
+function renewalActiveOnYm(item, ym) {
+  if (!item || !item.start) return false;
+  return String(ym || payYmNow()).slice(0, 7) >= String(item.start).slice(0, 7);
+}
+function invoiceRenewalRoom(item, room) {
+  if (!item || !item.wantMove) return room;
+  const dest = ((typeof state !== "undefined" && state.rooms) || []).find(x => x && (
+    x.id === item.moveRoomId || String(x.no) === String(item.moveRoomNo)
+  ));
+  return dest || room;
+}
 function studioInvoiceEligible(t, room) {
   if (!t || t.former || t.demo || t.placeholder || t.loginRevoked || t.sessionEnded) return false;
   if (!String(t.name || "").trim()) return false;
   if (t.applyPending || t.incoming || t.prospect) return false;
+  const item = renewalForInvoice(t, room);
+  if (item && renewalActiveOnYm(item, payYmNow())) return true;
   if (room && !leaseCoversYm(t, room, payYmNow())) return false;
   return true;
 }
@@ -11793,35 +11818,41 @@ function dateFromYmd(ymd) {
 }
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
+  const item = t ? renewalForInvoice(t, room) : null;
+  const billYm = (t && paidThisMonth(t) && t.paidYm) || payYmNow();
+  const onNew = !!(item && renewalActiveOnYm(item, billYm));
+  const invRoom = onNew ? invoiceRenewalRoom(item, room) : room;
+  const invNo = onNew ? String((invRoom && invRoom.no) || item.moveRoomNo || no) : String(no);
+  const invT = onNew && t ? tenantForRenewPrint(t, invRoom || room, item) : t;
   const paid = !!(t && paidThisMonth(t));
   const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
-  const billYm = (paid && t.paidYm) || payYmNow();
   const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
-  const bankKey = tenantPayBankKey(t || info, room);
+  const bankKey = onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
-  const part = leasePartForYm(t, room, billYm);
-  const rent = part && Number(part.rent) > 0 ? Number(part.rent) : tenantRentForYm(t, room, billYm, info);
+  const part = leasePartForYm(invT, invRoom || room, billYm);
+  const rent = part && Number(part.rent) > 0 ? Number(part.rent) : tenantRentForYm(invT, invRoom || room, billYm, info);
   const note = String((t && t.note) || "") + " " + String(info.note || "");
-  const start = (part && part.start) || (t && t.leaseStart) || info.leaseStart || "";
-  const end = (part && part.end) || (t && t.leaseEnd) || info.leaseEnd || "";
+  const start = (onNew && item.start) || (part && part.start) || (invT && invT.leaseStart) || (t && t.leaseStart) || info.leaseStart || "";
+  const end = (onNew && item.end) || (part && part.end) || (invT && invT.leaseEnd) || (t && t.leaseEnd) || info.leaseEnd || "";
   return {
     remitYmd: remitYmd || "",
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
     invoiceYmd: invoiceYmd || "",
     invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
     buyer: (t && (t.invoiceBuyer || t.name)) || info.name || "",
-    room: String(no),
+    room: invNo,
     amount: rent,
     bank,
     start: rocSlash(start),
     end: rocSlash(end),
     left: leaseDaysLeft(end),
-    renew: /已續約/.test(note) || String(no) === "7632",
+    renew: onNew || /已續約/.test(note) || String(no) === "7632" || String(invNo) === "7632",
     stub: !!(part && part.kind === "stub")
   };
 }
 function invoiceOverviewRows(kind) {
   if (kind === "factory") return factoryInvoiceOverviewRows();
+  try { tickDueRenewals(); } catch {}
   const seen = new Set();
   const rows = [];
   (state.tenants || []).forEach(t => {
