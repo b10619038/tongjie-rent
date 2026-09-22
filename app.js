@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-05";
-const APP_EDIT_COUNT = 1075;
+const APP_STAMP = "2026-09-22-21-07";
+const APP_EDIT_COUNT = 1076;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0625";
+const FILE_VER = "0626";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回訊息後直接消失，不再顯示已收回"] },
+  { ver: APP_VERSION, items: ["收回訊息直接消失，對話加上即時通知"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1658,6 +1658,7 @@ async function sendDevChat(tid, text) {
   drawChatBox();
   try { save(true); } catch {}
   try { await pushCloud(); } catch {}
+  try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text, msg.id); } catch {}
   const posted = await chatPostRemote({
     tenantId: tid,
     roomNo: th.roomNo,
@@ -1889,7 +1890,7 @@ function drawChatBox() {
   const enter = !!ui.chatEnter;
   ui.chatEnter = false;
   const who = [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ");
-  const msgs = (th.msgs || []).map(m => chatBubbleHtml(m, m.from === mineFrom)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
+  const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom)).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
   let wrap = document.getElementById("dev-chat-box");
   const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
   const typed = (keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "") || chatDraftOf(tid);
@@ -1967,6 +1968,28 @@ function refreshChatBadges() {
   }
   try { updateTabBadges(); } catch {}
 }
+function lastChatIncoming() {
+  if (!canUseDevChat()) return null;
+  const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  const myTid = (me() && me().id) || ui.tenantId || "";
+  let best = null;
+  Object.keys((chatStore().threads) || {}).forEach(id => {
+    if (ui.role === "tenant" && id !== myTid) return;
+    ((chatStore().threads[id] && chatStore().threads[id].msgs) || []).forEach(m => {
+      if (!m || m.recalled || m.from === mineFrom) return;
+      if (!best || Number(m.at) > Number(best.at)) best = Object.assign({ tid: id }, m);
+    });
+  });
+  return best;
+}
+function pingChatNotify(from, tid, roomNo, name, text, msgId) {
+  if (!text) return;
+  const who = [roomNo, name].filter(Boolean).join(" ");
+  const body = (who ? who + "：" : "") + String(text).slice(0, 80);
+  const extra = { tag: "chat-" + (msgId || Date.now()), page: from === "tenant" ? "tenants" : "home" };
+  const target = from === "tenant" ? "1240" : (roomNo || "tenants");
+  if (!isDevPreview()) sendRemoteNotify(target, "新訊息", body, extra);
+}
 function startChatPoll() {
   if (window.__tjChatPoll) return;
   const tick = () => {
@@ -1976,6 +1999,7 @@ function startChatPoll() {
   };
   window.__tjChatPoll = setInterval(tick, 5000);
   tick();
+  try { subscribePushOnly(); } catch {}
 }
 function bindDevChat() {
   const open = document.getElementById("open-dev-chat");
@@ -11923,8 +11947,9 @@ function subscribePushOnly() {
         body: JSON.stringify({
           subscription: sub.toJSON(),
           role: ui.role || "",
-          roomNo: room ? room.no : (ui.role === "admin" ? "7651" : ""),
-          tenantId: ui.tenantId || ""
+          roomNo: room ? room.no : (ui.adminCode === "1240" ? "1240" : (ui.role === "admin" ? "7651" : "")),
+          tenantId: ui.tenantId || "",
+          code: ui.adminCode || ""
         })
       });
     } catch {}
@@ -12019,7 +12044,8 @@ function notifyExtra(title, target) {
     "續約簽約時間": { tag: "tongjie-renew", page: "home" },
     "入住已確認": { tag: "tongjie-movein", page: "home" },
     "租約已結束": { tag: "tongjie-out", page: "home" },
-    "本月租金已入帳": { tag: "tongjie-paid", page: "pay" }
+    "本月租金已入帳": { tag: "tongjie-paid", page: "pay" },
+    "新訊息": { tag: "tongjie-chat", page: "home" }
   };
   return map[title] || { tag: "tongjie-" + String(title || "msg"), page: target === "admin" ? "tenants" : "home" };
 }
@@ -12157,6 +12183,14 @@ function notifyCloudChanges(before) {
         showOsBanner("報修更新", (r.type || "報修") + "　" + msg, "repair-" + r.id);
       }
     });
+  }
+  if (canUseDevChat()) {
+    const last = lastChatIncoming();
+    if (last && last.id && last.id !== before.chatLast && !(ui.chatOpen && ui.chatTid === last.tid)) {
+      const th = chatThreadOf(last.tid) || {};
+      const who = [th.roomNo, th.name].filter(Boolean).join(" ");
+      showOsBanner("新訊息", (who ? who + "：" : "") + String(last.text || ""), "chat-" + last.id);
+    }
   }
 }
 
@@ -30374,7 +30408,8 @@ async function boot() {
         anns: (state.announcements || []).map(a => a.id),
         repairIds: (state.repairs || []).map(r => r.id),
         repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
-        renewIds: (state.renewals || []).map(x => x.id)
+        renewIds: (state.renewals || []).map(x => x.id),
+        chatLast: (typeof lastChatIncoming === "function" && lastChatIncoming() || {}).id || ""
       };
       const prevSig = coreSig(state);
       const chatBefore = typeof chatFinger === "function" ? chatFinger() : "";
@@ -30384,6 +30419,7 @@ async function boot() {
       refreshOnlineBadges();
       if (typeof chatFinger === "function" && chatFinger() !== chatBefore) {
         try { onChatsUpdated(); } catch {}
+        try { notifyCloudChanges(before); } catch {}
         if (typeof isDeveloper === "function" && isDeveloper() && (ui.page === "dash" || ui.page === "tenants" || ui.page === "home")) {
           ui.keepScroll = true;
           render();

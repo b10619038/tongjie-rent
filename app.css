@@ -5618,16 +5618,6 @@ html[data-theme="void"] .site-chip {
   border-radius: 16px 16px 6px 16px;
 }
 .chat-bubble.picked { filter: brightness(.92); }
-.chat-bubble.recalled,
-.chat-row.mine .chat-bubble.recalled {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  color: #8a948f;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 2px;
-}
 .chat-act {
   position: absolute;
   left: 12px;
