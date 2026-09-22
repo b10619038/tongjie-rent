@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-47";
-const APP_EDIT_COUNT = 1087;
+const APP_STAMP = "2026-09-22-21-49";
+const APP_EDIT_COUNT = 1088;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0637";
+const FILE_VER = "0638";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電費改回每度 5.5，不再顯示公司自付"] },
+  { ver: APP_VERSION, items: ["7651 租客畫面改回套房標題、租金與使用規範"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -20442,7 +20442,7 @@ function homeView() {
       ${handoverNote}
       <div class="hero-card">
         <div class="label">我的房間</div>
-        <div class="room-name">${r.no}　${r.title}</div>
+        <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
@@ -20711,12 +20711,18 @@ function roomTile(r, clickable, extraClass, photoSrc) {
     ${img}
     <div class="room-row-info">
       <strong>${r.no}</strong>
-      <span class="small">${r.title}</span>
+      <span class="small">${roomPublicTitle(r)}</span>
       <div class="small">${escapeHtml(r.location || roomAddress(r.no))}</div>
-      <div class="price">${r.status === "office" ? "自用辦公室" : `${money(r.rent)} <em>/月</em>`}</div>
+      <div class="price">${money(r.rent)} <em>/月</em></div>
     </div>
     <span class="badge ${r.status}">${statusLabel(r.status)}</span>
   </div>`;
+}
+function roomPublicTitle(r) {
+  if (!r) return "";
+  if (r.kind === "factory") return r.title || "廠房";
+  if (typeof isStoreNo === "function" && isStoreNo(r.no)) return "店面";
+  return "套房";
 }
 function roomAmenityList(r) {
   if (r && r.kind === "factory") return (Array.isArray(r.amenities) && r.amenities.length) ? r.amenities : ["電力", "停車"];
@@ -20773,12 +20779,12 @@ function roomDetailView(id) {
         <div class="row"><span class="k">房號</span><span class="v">${r.no}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
         ${r.note ? `<div class="row wrap"><span class="k">說明</span><span class="v">${escapeHtml(r.note)}</span></div>` : ""}
-        <div class="row"><span class="k">租金</span><span class="v">${r.status === "office" ? "—" : money(r.rent)}</span></div>
+        <div class="row"><span class="k">租金</span><span class="v">${money(r.rent)}</span></div>
         ${roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : ""}
         <div class="row"><span class="k">狀態</span><span class="v"><span class="badge ${r.status}">${statusLabel(r.status)}</span></span></div>
       </div>
       ${roomExtrasHtml(r)}
-      ${r.kind === "factory" || r.status === "office" ? "" : `<div class="section-title"><h2>使用規範</h2></div>
+      ${r.kind === "factory" ? "" : `<div class="section-title"><h2>使用規範</h2></div>
       <div class="card card-body rules">
         <p>1. 本房為獨立套房，請愛惜房間設備與裝潢。</p>
         <p>2. 房間內禁止抽菸；簡易加熱可以，請勿開放式烹煮油煙。</p>
