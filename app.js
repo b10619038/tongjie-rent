@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-10-38";
-const APP_EDIT_COUNT = 985;
+const APP_STAMP = "2026-09-22-10-40";
+const APP_EDIT_COUNT = 986;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0536";
+const FILE_VER = "0537";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約時間日期、鐘點、加入日曆同框，日期與時間空開"] },
+  { ver: APP_VERSION, items: ["簽約時間欄先恢復原狀"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2311,7 +2311,7 @@ function renewAskCardHtml(t, r, opts) {
       <div class="label">${signed ? "續約完成" : "續約申請已送出"}</div>
       <p>${signed ? "現場已簽約。目前合約仍至 " + escapeHtml(t.leaseEnd || cur.oldEnd || "") + "。" : ""}新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(cur.start || "")} ～ ${escapeHtml(cur.end || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
       <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
-      ${cur.appointAt && !signed ? `<div class="appoint-frame" style="margin-top:10px"><input type="date" value="${escapeHtml(appointParts(cur.appointAt).date)}" disabled /><input type="time" value="${escapeHtml(appointParts(cur.appointAt).time)}" disabled /><button type="button" class="gcal-chip" data-gcal-renew="${cur.id}">加入日曆</button></div>` : ""}
+      ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，現場蓋章即可。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
     </div>`;
@@ -2352,21 +2352,18 @@ function renewAskCardHtml(t, r, opts) {
     <div class="small" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ～ ${escapeHtml(range.end)}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
     <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
     <label class="field"><span>預約實際簽約日期</span>
-      <div class="appoint-frame">
-        <input id="renew-appoint-date" type="date" value="${escapeHtml(appointParts(ui.renewAppoint).date)}" min="${todayYmd()}" max="${maxDay}" />
-        <input id="renew-appoint-time" type="time" value="${escapeHtml(appointParts(ui.renewAppoint).time || "11:30")}" />
-      </div>
+      <input id="renew-appoint" type="datetime-local" value="${escapeHtml(ui.renewAppoint || "")}" min="${minAt}" max="${maxDay}T18:00" />
     </label>
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
   </div>`;
 }
 function bindRenewForm() {
-  const keepAppoint = () => { ui.renewAppoint = readAppointValue(); };
   document.querySelectorAll("[data-renew-years]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       ui.renewYears = btn.dataset.renewYears === "0.5" ? 0.5 : 1;
-      keepAppoint();
+      const inp = document.getElementById("renew-appoint");
+      if (inp) ui.renewAppoint = inp.value;
       ui.keepScroll = true;
       render();
     };
@@ -2377,7 +2374,8 @@ function bindRenewForm() {
       e.preventDefault();
       ui.renewMode = btn.dataset.renewMode === "move" ? "move" : "same";
       if (ui.renewMode !== "move") ui.renewMoveRoomId = "";
-      keepAppoint();
+      const inp = document.getElementById("renew-appoint");
+      if (inp) ui.renewAppoint = inp.value;
       ui.keepScroll = true;
       render();
     };
@@ -2388,17 +2386,17 @@ function bindRenewForm() {
       e.preventDefault();
       if (btn.disabled) return;
       ui.renewMoveRoomId = btn.dataset.renewPick || "";
-      keepAppoint();
+      const inp = document.getElementById("renew-appoint");
+      if (inp) ui.renewAppoint = inp.value;
       ui.keepScroll = true;
       render();
     };
   });
-  ["renew-appoint-date", "renew-appoint-time"].forEach(id => {
-    const inp = document.getElementById(id);
-    if (!inp) return;
-    inp.onchange = keepAppoint;
-    inp.oninput = keepAppoint;
-  });
+  const inp = document.getElementById("renew-appoint");
+  if (inp) {
+    inp.onchange = () => { ui.renewAppoint = inp.value; };
+    inp.oninput = () => { ui.renewAppoint = inp.value; };
+  }
   const send = document.getElementById("renew-submit");
   if (send) send.onclick = () => submitTenantRenewal();
 }
@@ -2407,8 +2405,9 @@ function submitTenantRenewal() {
   if (!t || !r) return;
   if (isProspectPreview()) { toast("預覽中，續約不會送出"); return; }
   if (liveRenewalOf(t)) { toast(openRenewalOf(t) ? "已送出續約申請" : "續約已完成簽約"); return; }
-  const at = String(readAppointValue() || ui.renewAppoint || "").trim();
-  if (!at || !appointParts(at).date) { toast("請先預約實際簽約日期"); return; }
+  const inp = document.getElementById("renew-appoint");
+  const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
+  if (!at) { toast("請先預約實際簽約日期"); return; }
   const years = Number(ui.renewYears) === 0.5 ? 0.5 : 1;
   const range = renewLeaseRange(t, years);
   const water = renewWaterCashFee(t, r);
@@ -9347,28 +9346,7 @@ function formatDateTime12(value) {
   const hour24 = Number(m[2]);
   const period = hour24 >= 12 ? "下午" : "上午";
   let hour12 = hour24 % 12; if (hour12 === 0) hour12 = 12;
-  return `${m[1]}　${period} ${hour12}:${m[3]}`;
-}
-function appointParts(at) {
-  const s = String(at || "").replace(" ", "T");
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})(?:T(\d{1,2}:\d{2}))?/);
-  let time = m && m[2] ? m[2] : "";
-  if (time && time.length === 4) time = "0" + time;
-  return { date: m ? m[1] : "", time };
-}
-function joinAppoint(date, time) {
-  const d = String(date || "").slice(0, 10);
-  let t = String(time || "").slice(0, 5);
-  if (t && t.length === 4) t = "0" + t;
-  if (!d) return "";
-  return d + "T" + (t || "11:30");
-}
-function readAppointValue() {
-  const d = document.getElementById("renew-appoint-date");
-  const tm = document.getElementById("renew-appoint-time");
-  if (d || tm) return joinAppoint(d && d.value, tm && tm.value);
-  const inp = document.getElementById("renew-appoint");
-  return String((inp && inp.value) || ui.renewAppoint || "").trim();
+  return `${m[1]} ${period} ${hour12}:${m[3]}`;
 }
 function nowStamp() {
   const now = new Date();
@@ -23331,11 +23309,7 @@ function renewalAdminCardHtml(x) {
     ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(oldEnd) : ""}。新約第一天（${escapeHtml(x.start || "")}）才換成新年合約。</div>` : ""}
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
-        <div class="appoint-frame">
-          <input type="date" data-renew-date="${x.id}" value="${escapeHtml(appointParts(x.appointAt).date)}" ${signed ? "disabled" : ""} />
-          <input type="time" data-renew-time="${x.id}" value="${escapeHtml(appointParts(x.appointAt).time)}" ${signed ? "disabled" : ""} />
-          <button type="button" class="gcal-chip" data-gcal-renew="${x.id}">加入日曆</button>
-        </div>
+        <input type="datetime-local" data-renew-appoint="${x.id}" value="${x.appointAt || ""}" ${signed ? "disabled" : ""} />
       </label>
       <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
     </div>
@@ -24192,35 +24166,6 @@ function bindTenantFold() {
       toggleTenantRenew(id);
     };
   });
-  document.querySelectorAll("[data-gcal-renew]").forEach(btn => {
-    bindIosPress(btn);
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const item = (state.renewals || []).find(x => x && x.id === btn.dataset.gcalRenew);
-      if (!item) return;
-      if (!item.appointAt) { toast("請先選擇簽約時間"); return; }
-      item.appointRead = true;
-      save();
-      openGoogleCalendar(item, "renew");
-    };
-  });
-  document.querySelectorAll("[data-renew-date], [data-renew-time]").forEach(inp => {
-    inp.onclick = e => e.stopPropagation();
-    inp.onchange = () => {
-      const id = inp.dataset.renewDate || inp.dataset.renewTime;
-      const item = (state.renewals || []).find(x => x && x.id === id);
-      if (!item) return;
-      const dateInp = document.querySelector(sheetAttrSel("data-renew-date", id));
-      const timeInp = document.querySelector(sheetAttrSel("data-renew-time", id));
-      const at = joinAppoint(dateInp && dateInp.value, timeInp && timeInp.value);
-      item.appointAt = at;
-      item.appointRead = !at;
-      save();
-      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
-      if (shown) shown.textContent = at ? "已預約 " + formatDateTime12(String(at).replace("T", " ")) : "選擇簽約時間";
-    };
-  });
   document.querySelectorAll("[data-pay-bank]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -24461,26 +24406,6 @@ function bindTenantListTools() {
         bindTenantListTools();
         bindTenantFold();
       } else render();
-    };
-  });
-  document.querySelectorAll("#tenant-list [data-renew-date], #tenant-list [data-renew-time]").forEach(inp => {
-    inp.onclick = e => e.stopPropagation();
-    inp.onchange = () => {
-      const id = inp.dataset.renewDate || inp.dataset.renewTime;
-      const item = (state.renewals || []).find(x => x.id === id);
-      if (!item) return;
-      const dateInp = document.querySelector(sheetAttrSel("data-renew-date", id));
-      const timeInp = document.querySelector(sheetAttrSel("data-renew-time", id));
-      const at = joinAppoint(dateInp && dateInp.value, timeInp && timeInp.value);
-      item.appointAt = at;
-      item.appointRead = !at;
-      save();
-      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
-      if (shown) shown.textContent = at ? "已預約 " + formatDateTime12(String(at).replace("T", " ")) : "選擇簽約時間";
-      if (at) {
-        const room = state.rooms.find(x => x.id === item.roomId);
-        pushPhoneNotify("續約簽約時間", `${room ? room.no : ""} ${formatDateTime12(String(at).replace("T", " "))}`, room ? room.no : "tenants");
-      }
     };
   });
   document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
