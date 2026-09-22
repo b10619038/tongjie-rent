@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-23-58";
-const APP_EDIT_COUNT = 1107;
+const APP_STAMP = "2026-09-23-00-08";
+const APP_EDIT_COUNT = 1108;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0657";
+const FILE_VER = "0658";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -7716,7 +7716,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "plant"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -7762,25 +7762,6 @@ function pickNewerEntity(a, b, keys) {
   }
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
-  }
-  if (keys && keys.indexOf("plant") >= 0) {
-    const pa = a && a.plant, pb = b && b.plant;
-    const ta = Number(pa && pa.at) || 0;
-    const tb = Number(pb && pb.at) || 0;
-    const src = tb >= ta ? pb : pa;
-    const other = tb >= ta ? pa : pb;
-    if (src || other) {
-      out.plant = Object.assign({}, other || {}, src || {});
-      const wa = String((pa && pa.wateredOn) || "");
-      const wb = String((pb && pb.wateredOn) || "");
-      out.plant.wateredOn = wa >= wb ? wa : wb;
-      const na = String((pa && pa.name) || "").trim();
-      const nb = String((pb && pb.name) || "").trim();
-      out.plant.name = (tb >= ta ? (nb || na) : (na || nb)).slice(0, 8);
-      const ma = ((pa && pa.medals) || []).concat((pb && pb.medals) || []);
-      out.plant.medals = [...new Set(ma.filter(id => PLANT_KINDS.some(k => k.id === id)))];
-      out.plant.at = Math.max(ta, tb);
-    }
   }
   if (keys && keys.indexOf("avatar") >= 0) {
     const aAv = a && a.avatar && String(a.avatar).length > 40 ? a.avatar : "";
@@ -10512,313 +10493,7 @@ function skyPrefOn() {
 function setSkyPref(on) {
   try { localStorage.setItem("tongjie_sky_on", on ? "1" : "0"); } catch {}
 }
-function plantPrefOn() {
-  try {
-    const v = localStorage.getItem("tongjie_plant_on");
-    if (v === "0" || v === "off" || v === "false") return false;
-  } catch {}
-  return true;
-}
-function setPlantPref(on) {
-  try { localStorage.setItem("tongjie_plant_on", on ? "1" : "0"); } catch {}
-}
-function plantOf(t) {
-  const p = (t && t.plant) || {};
-  const kind = PLANT_KINDS.some(k => k.id === p.kind) ? p.kind : "";
-  const medals = Array.isArray(p.medals) ? p.medals.filter(id => PLANT_KINDS.some(k => k.id === id)) : [];
-  return {
-    kind,
-    name: String(p.name || "").trim().slice(0, 8),
-    wateredOn: String(p.wateredOn || ""),
-    plantedOn: String(p.plantedOn || ""),
-    waters: Math.max(0, Number(p.waters) || 0),
-    medals: [...new Set(medals)],
-    at: Number(p.at) || 0
-  };
-}
-const PLANT_KINDS = [
-  { id: "pothos", name: "綠蘿", hint: "心形葉子，好養" },
-  { id: "succulent", name: "多肉", hint: "圓圓一叢，不太渴" },
-  { id: "cactus", name: "仙人掌", hint: "耐熱，少澆" },
-  { id: "lavender", name: "薰衣草", hint: "紫穗清香" },
-  { id: "sunflower", name: "向日葵", hint: "朝陽開花" },
-  { id: "rose", name: "小玫瑰", hint: "照顧好會開" },
-  { id: "mint", name: "薄荷", hint: "葉子清香" },
-  { id: "daisy", name: "雛菊", hint: "白色小花" },
-  { id: "monstera", name: "龜背芋", hint: "裂葉觀葉" },
-  { id: "tulip", name: "鬱金香", hint: "春天會開" }
-];
-function plantKindOf(id) {
-  return PLANT_KINDS.find(k => k.id === id) || null;
-}
-function plantRoomNo(r) {
-  return String((r && (r.no || r.roomNo)) || "").trim();
-}
-function plantFreeReseed(r) {
-  return plantRoomNo(r) === "7651";
-}
-function plantComplete(t, r) {
-  return plantStageOf(t, r) === "bloom";
-}
-function plantCanPick(t, r) {
-  const p = plantOf(t);
-  if (!p.kind) return true;
-  if (plantFreeReseed(r)) return true;
-  return plantComplete(t, r);
-}
-function plantUnlimitedWater(r) {
-  return plantRoomNo(r) === "7651";
-}
-function plantNeedWater(t, r) {
-  r = r || myRoom();
-  if (plantUnlimitedWater(r)) return true;
-  const p = t ? plantOf(t) : plantOf(me());
-  if ((p.waters || 0) <= 0) return true;
-  const sky = ui.sky || "cloud";
-  const hum = Number(ui.humidity);
-  const temp = Number(ui.temp);
-  if (sky === "rain" || sky === "storm") return false;
-  if (isFinite(hum) && hum >= 75) return false;
-  if (sky === "sun") return true;
-  if (isFinite(hum) && hum < 60) return true;
-  if (isFinite(temp) && temp >= 31 && !(isFinite(hum) && hum >= 70)) return true;
-  return false;
-}
-function plantStageOf(t, r) {
-  const p = plantOf(t);
-  if (!p.kind) return "";
-  const waters = Math.min(10, p.waters);
-  const due = !!(typeof leaseCoversYm === "function" && leaseCoversYm(t, r, payYmNow()) && thisMonthRentOf(t, r));
-  const paid = typeof paidThisMonth === "function" && paidThisMonth(t);
-  if (!plantUnlimitedWater(r) && due && !paid && waters >= 5) return "wilt";
-  if (waters <= 0) return "seed";
-  if (waters >= 10 && paid) return "bloom";
-  if (waters >= 10) return "mature";
-  if (waters >= 7) return "leaf";
-  if (waters >= 4) return "young";
-  return "sprout";
-}
-function plantWxLine() {
-  const bits = [];
-  if (isFinite(Number(ui.temp))) bits.push(Math.round(ui.temp) + "°");
-  if (isFinite(Number(ui.humidity))) bits.push("濕度 " + Math.round(ui.humidity) + "%");
-  const sky = skyLabel(ui.sky);
-  if (sky) bits.push(sky);
-  return bits.join("　");
-}
-function plantStatusLine(t, r) {
-  const p = plantOf(t);
-  if (!p.kind) return "先選一顆種子，種在窗台上。";
-  const stage = plantStageOf(t, r);
-  const need = plantNeedWater(t, r);
-  const watered = p.wateredOn === todayYmd();
-  const n = Math.min(10, p.waters);
-  const free = plantUnlimitedWater(r);
-  if (stage === "seed") return "種子剛放進土裡，澆一次水才會發芽。一共要澆 10 次才會成熟。";
-  if (stage === "wilt") return "這個月還沒入帳，葉子有點沒精神。";
-  if (stage === "bloom") return p.medals.indexOf(p.kind) >= 0 ? "長成了，獲得" + ((plantKindOf(p.kind) || {}).name || "") + "勳章，可以再種一顆。" : "照顧得好，開花了。";
-  if (stage === "mature") return "已經成熟。這個月租金入帳後就會開花、拿勳章。";
-  if (!free && need && !watered) return "今天偏乾，該澆一點水。（" + n + "／10）";
-  if (!free && (ui.sky === "rain" || ui.sky === "storm")) return "今天下雨，不用澆。（" + n + "／10）";
-  if (!free && isFinite(Number(ui.humidity)) && ui.humidity >= 75) return "空氣夠濕，今天不用澆。（" + n + "／10）";
-  return "第 " + n + "／10 次，再澆會慢慢長大。";
-}
-function plantImgSrc(kind, stage) {
-  const k = plantKindOf(kind) ? kind : "pothos";
-  const shot = stage === "bloom" ? "bloom" : (stage === "leaf" || stage === "mature" || stage === "young" ? "leaf" : (stage === "seed" ? "seed" : "sprout"));
-  return "images/plants/" + k + "-" + shot + ".jpg";
-}
-function plantGrowSrc(kind, waters, bloom) {
-  const k = plantKindOf(kind) ? kind : "pothos";
-  if (bloom) return "images/plants/" + k + "-bloom.jpg";
-  const w = Math.max(0, Math.min(10, Number(waters) || 0));
-  if (w <= 0) return "images/plants/" + k + "-seed.jpg";
-  return "images/plants/" + k + "-g" + w + ".jpg";
-}
-function plantShotHtml(kind, stage, dry, mini, waters) {
-  if (mini) {
-    return `<div class="plant-shot bloom mini">
-      <img src="${plantImgSrc(kind, "bloom")}" alt="" draggable="false">
-    </div>`;
-  }
-  const src = plantGrowSrc(kind, waters, stage === "bloom");
-  return `<div class="plant-shot ${stage || "seed"}${dry ? " dry" : ""}">
-    <img src="${src}" alt="" draggable="false">
-  </div>`;
-}
-function plantSeedPickHtml() {
-  const t = me();
-  const r = myRoom();
-  const p = plantOf(t);
-  const has = !!p.kind;
-  const cur = has ? p.kind : "";
-  const free = plantFreeReseed(r);
-  const done = plantComplete(t, r);
-  const hint = done && !free ? "這顆已經長成，選下一顆種子。" : (free ? "7651 可以隨時換種子。" : "選了就固定，長成拿到勳章才能再種。");
-  return `<div class="card card-body plant-card plant-pick slide-left">
-    <div class="plant-copy wide">
-      <div class="label">窗台植物</div>
-      <h3 class="plant-name static">選一顆種子</h3>
-      <p class="small">${escapeHtml(hint)}</p>
-    </div>
-    <div class="plant-rail" id="plant-rail">
-      ${PLANT_KINDS.map(k => `<button type="button" class="plant-seed${cur === k.id ? " on" : ""}" data-plant-kind="${k.id}">
-        ${plantShotHtml(k.id, "bloom", false, true)}
-        <span>${escapeHtml(k.name)}</span>
-        <em>${escapeHtml(k.hint)}</em>
-      </button>`).join("")}
-    </div>
-    ${has && (free || done) ? `<button type="button" class="plant-reseed" id="plant-pick-cancel">先不要</button>` : ""}
-  </div>`;
-}
-function plantMedalHtml(p) {
-  if (!p.medals || !p.medals.length) return "";
-  return `<div class="plant-medals">${p.medals.map(id => {
-    const k = plantKindOf(id);
-    return `<span class="plant-medal" title="${escapeHtml((k && k.name) || id)}"><img src="${plantImgSrc(id, "bloom")}" alt="${escapeHtml((k && k.name) || "")}"></span>`;
-  }).join("")}</div>`;
-}
-function plantCardHtml(t, r) {
-  if (!plantPrefOn() || !t || !t.id) return "";
-  const p = plantOf(t);
-  const canPick = plantCanPick(t, r);
-  if (!p.kind || (ui.plantPick && canPick)) return plantSeedPickHtml();
-  const stage = plantStageOf(t, r);
-  const need = plantNeedWater(t, r);
-  const watered = p.wateredOn === todayYmd();
-  const dry = need && !watered && stage !== "wilt" && stage !== "seed";
-  const named = p.name || "";
-  const wx = plantWxLine();
-  const canWater = (p.waters < 10) && (plantUnlimitedWater(r) || (need && !watered && stage !== "wilt"));
-  const kind = plantKindOf(p.kind);
-  const free = plantFreeReseed(r);
-  const done = stage === "bloom";
-  const nameBtn = ui.plantEdit
-    ? `<input id="plant-name-in" class="plant-name-in" maxlength="8" value="${escapeHtml(named)}" placeholder="幫它取名" autocomplete="off">`
-    : `<button type="button" class="plant-name" id="plant-name">${named ? escapeHtml(named) : "幫它取名"}</button>`;
-  let action = "";
-  if (free) action = `<button type="button" class="plant-reseed" id="plant-reseed">換種子</button>`;
-  else if (done) action = `<button type="button" class="ghost plant-water" id="plant-reseed">再種一顆</button>`;
-  return `<div class="card card-body plant-card plant-grown slide-left">
-    ${plantShotHtml(p.kind, stage, dry, false, p.waters)}
-    <div class="plant-copy">
-      <div class="label">窗台植物${kind ? " · " + escapeHtml(kind.name) : ""}</div>
-      ${nameBtn}
-      <p class="small">${escapeHtml(plantStatusLine(t, r))}</p>
-      ${wx ? `<p class="small plant-wx">${escapeHtml(wx)}</p>` : ""}
-      ${plantMedalHtml(p)}
-      <div class="plant-actions">
-        ${canWater ? `<button type="button" class="ghost plant-water" id="plant-water">澆水</button>` : ""}
-        ${action}
-      </div>
-    </div>
-  </div>`;
-}
-function savePlant(patch) {
-  const t = me();
-  if (!t) return;
-  const cur = plantOf(t);
-  t.plant = Object.assign({}, cur, patch, { at: Date.now() });
-  t.edited = true;
-  t.editedAt = Date.now();
-  save();
-  try { pushCloud(); } catch {}
-}
-function grantPlantMedal(t, r) {
-  if (!t) return false;
-  const p = plantOf(t);
-  if (plantStageOf(t, r) !== "bloom" || !p.kind) return false;
-  if (p.medals.indexOf(p.kind) >= 0) return false;
-  savePlant({ medals: p.medals.concat(p.kind) });
-  return true;
-}
-function bindPlantCard() {
-  const t0 = me();
-  const r0 = myRoom();
-  if (t0 && grantPlantMedal(t0, r0)) {
-    ui.keepScroll = true;
-    render();
-    return;
-  }
-  const nameBtn = document.getElementById("plant-name");
-  if (nameBtn) nameBtn.onclick = e => {
-    e.preventDefault();
-    ui.plantEdit = true;
-    ui.keepScroll = true;
-    render();
-  };
-  const inp = document.getElementById("plant-name-in");
-  if (inp) {
-    const commit = () => {
-      const n = String(inp.value || "").trim().slice(0, 8);
-      ui.plantEdit = false;
-      savePlant({ name: n });
-      toast(n ? "已幫它取名" : "名字已清空");
-      ui.keepScroll = true;
-      render();
-    };
-    setTimeout(() => { try { inp.focus(); inp.select(); } catch {} }, 40);
-    inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); commit(); } };
-    inp.onblur = () => commit();
-  }
-  const water = document.getElementById("plant-water");
-  if (water) water.onclick = e => {
-    e.preventDefault();
-    const t = me();
-    const r = myRoom();
-    const p = plantOf(t);
-    const freeWater = plantUnlimitedWater(r);
-    if (!freeWater && p.wateredOn === todayYmd()) { toast("今天澆過了"); return; }
-    if (!freeWater && !plantNeedWater(t, r)) { toast("今天不用澆"); return; }
-    const next = Math.min(10, (Number(p.waters) || 0) + 1);
-    savePlant({ wateredOn: todayYmd(), waters: next });
-    grantPlantMedal(me(), r);
-    toast(next >= 10 ? "第 10 次，成熟了" : "澆好了（" + next + "／10）");
-    ui.keepScroll = true;
-    render();
-  };
-  const reseed = document.getElementById("plant-reseed");
-  if (reseed) reseed.onclick = e => {
-    e.preventDefault();
-    const t = me();
-    const r = myRoom();
-    if (!plantCanPick(t, r)) { toast("這顆還沒長成，不能換"); return; }
-    ui.plantPick = true;
-    ui.keepScroll = true;
-    render();
-  };
-  const cancel = document.getElementById("plant-pick-cancel");
-  if (cancel) cancel.onclick = e => {
-    e.preventDefault();
-    ui.plantPick = false;
-    ui.keepScroll = true;
-    render();
-  };
-  document.querySelectorAll("[data-plant-kind]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      const kind = btn.dataset.plantKind;
-      if (!plantKindOf(kind)) return;
-      const t = me();
-      const r = myRoom();
-      if (!plantCanPick(t, r)) { toast("這顆還沒長成，不能換"); return; }
-      ui.plantPick = false;
-      savePlant({ kind, waters: 0, wateredOn: "", plantedOn: todayYmd() });
-      toast("已種下" + plantKindOf(kind).name);
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  const rail = document.getElementById("plant-rail");
-  if (rail && !rail.dataset.ready) {
-    rail.dataset.ready = "1";
-    const on = rail.querySelector(".plant-seed.on");
-    if (on) {
-      const left = on.offsetLeft - (rail.clientWidth - on.offsetWidth) / 2;
-      rail.scrollLeft = Math.max(0, left);
-    }
-  }
-}
+
 function ensureSkyLive() {
   if (skyLive) return skyLive;
   skyLive = document.createElement("div");
@@ -20848,7 +20523,6 @@ function homeView() {
           : ((t.incoming || t.prospect || t.applyPending) && tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta${ui.stampChop ? " anim" : ""}" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : "")}
       </div>
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
-      ${plantCardHtml(t, r)}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
         <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "尚無需繳費"}</span></div>
@@ -27134,7 +26808,6 @@ function bindTenant() {
   flushTenantInbox();
   bindHowtoFold();
   bindDevChat();
-  bindPlantCard();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isTenantLook()) { exitTenantLook(); return; }
@@ -29116,14 +28789,6 @@ function tenantSettings() {
         </div>
         <p class="small">問候區後面的晴天、飄雲與落雨。關掉後畫面較單純，這台手機會記住。</p>
       </div>
-      <div class="card card-body">
-        <div class="label">窗台植物</div>
-        <div class="pref-switch">
-          <span>${plantPrefOn() ? "顯示在首頁" : "已關閉"}</span>
-          <button type="button" class="pref-knob${plantPrefOn() ? " on" : ""}" id="plant-toggle" aria-pressed="${plantPrefOn() ? "true" : "false"}"></button>
-        </div>
-        <p class="small">房間圖卡下方的小盆栽。可取名、看天氣澆水。關掉後這台手機會記住。</p>
-      </div>
       ${lookSettingsHtml()}
       <div class="card card-body">
         <button type="button" class="ghost" id="logout-set">${ui.devPreview || isTenantLook() ? "返回後台" : isProspectPreview() ? "離開預覽" : "登出"}</button>
@@ -29146,19 +28811,6 @@ function bindLookSettings() {
       ui.keepScroll = true;
       render();
       try { applySkyDom(); } catch {}
-    };
-  }
-  const plantBtn = document.getElementById("plant-toggle");
-  if (plantBtn) {
-    bindIosPress(plantBtn);
-    plantBtn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const next = !plantPrefOn();
-      setPlantPref(next);
-      toast(next ? "已打開窗台植物" : "已關閉窗台植物");
-      ui.keepScroll = true;
-      render();
     };
   }
   document.querySelectorAll("#app [data-theme]").forEach(btn => {
