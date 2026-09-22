@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-57";
-const APP_EDIT_COUNT = 1051;
+const APP_STAMP = "2026-09-22-19-00";
+const APP_EDIT_COUNT = 1052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0601";
+const FILE_VER = "0602";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["空套房 7652 前任趙文榮一併移除"] },
+  { ver: APP_VERSION, items: ["申請入住與換房選單拿掉 7652"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2284,6 +2284,7 @@ function renewMoveTargets(fromRoom) {
   return (state.rooms || []).filter(x => {
     if (!x || x.id === fromId || String(x.no) === fromNo) return false;
     if (x.demo || isDemoRoom(x) || roomIsFactory(x) || x.status === "office") return false;
+    if (typeof isPracticeStudioNo === "function" && isPracticeStudioNo(x.no)) return false;
     if (typeof isStoreNo === "function" && isStoreNo(x.no)) return false;
     if (typeof studioMirrorHostNo === "function" && studioMirrorHostNo(x.no)) return false;
     if (x.kind && x.kind !== "studio") return false;
@@ -13291,6 +13292,7 @@ function studioSignRooms(currentRoom) {
   return (state.rooms || []).filter(r => {
     if (!r) return false;
     if (factory) return r.kind === "factory";
+    if (typeof isPracticeStudioNo === "function" && isPracticeStudioNo(r.no)) return false;
     return isStudioLeaseRoom(r);
   }).sort((a, b) => {
     if (a.demo && !b.demo) return -1;
@@ -17018,7 +17020,7 @@ function addIncomingTenant(roomId, fields) {
 }
 function moveInRooms() {
   ensureStudioRoomsPresent();
-  return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no) && !studioMirrorHostNo(r.no))
+  return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no) && !studioMirrorHostNo(r.no) && !isPracticeStudioNo(r.no))
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function ensureMoveIn() {
