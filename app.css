@@ -1377,7 +1377,7 @@ body:has(.move-in-page) {
   letter-spacing: 0; text-align: center;
 }
 
-textarea, input[type="text"], input[type="password"], input[type="email"], input[type="tel"], input[type="date"], input[type="datetime-local"], input[type="number"], input[type="search"], select {
+textarea, input[type="text"], input[type="password"], input[type="email"], input[type="tel"], input[type="date"], input[type="time"], input[type="datetime-local"], input[type="number"], input[type="search"], select {
   width: 100%; border: 1.5px solid var(--line); border-radius: 16px;
   padding: 12px 14px; font: inherit; font-size: 16px; background: var(--card); color: var(--ink);
   -webkit-user-select: text; user-select: text;
@@ -1945,6 +1945,29 @@ input[type="file"] {
 .ann-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; position: relative; z-index: 4; }
 .ann-actions .ghost { width: 100%; pointer-events: auto !important; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
+.appoint-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.appoint-row input[type="date"],
+.appoint-row input[type="time"] {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+}
+.appoint-row input[type="time"] { flex: 0.85; }
+.gcal-chip {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  padding: 8px 12px !important;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+}
 .appoint-link { color: var(--teal-mid); font-weight: 700; text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
 
 .admin-grid { display: grid; gap: 12px; padding: 8px 20px 30px; }
