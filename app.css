@@ -749,7 +749,9 @@ button.pay-pill[data-open-renew].on.is-press {
   pointer-events: auto;
 }
 .sheet-drop [data-print-renew],
-.sheet-drop .btn-navy {
+.sheet-drop .btn-navy,
+.sheet-drop .ghost,
+.sheet-drop [data-invoice] {
   pointer-events: auto;
 }
 .sheet-drop-inner {
