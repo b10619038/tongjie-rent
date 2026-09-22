@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-37";
-const APP_EDIT_COUNT = 1047;
+const APP_STAMP = "2026-09-22-18-42";
+const APP_EDIT_COUNT = 1048;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0597";
+const FILE_VER = "0598";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["移除測試房 7652 及其租客資料"] },
+  { ver: APP_VERSION, items: ["開立發票總覽：已申請續約也打勾"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -11999,6 +11999,22 @@ function dateFromYmd(ymd) {
   if (!m) return taipeiNow();
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
+function invoiceRenewChecked(t, room, item, note, no, invNo) {
+  if (item) return true;
+  if (/已續約/.test(String(note || ""))) return true;
+  if (String(no) === "7632" || String(invNo) === "7632") return true;
+  try {
+    if (typeof liveRenewalOf === "function" && liveRenewalOf(t)) return true;
+  } catch {}
+  const list = (typeof state !== "undefined" && state.renewals) || [];
+  const rid = room && room.id;
+  const rno = room && room.no;
+  return list.some(x => x && x.status !== "cancelled" && (
+    (t && x.tenantId === t.id)
+    || (rid && x.roomId === rid)
+    || (rno && String(x.roomNo) === String(rno))
+  ));
+}
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const item = t ? renewalForInvoice(t, room) : null;
@@ -12029,7 +12045,7 @@ function studioInvoiceRow(no, room, t, info) {
     start: rocSlash(start),
     end: rocSlash(end),
     left: leaseDaysLeft(end),
-    renew: onNew || /已續約/.test(note) || String(no) === "7632" || String(invNo) === "7632",
+    renew: invoiceRenewChecked(t, room, item, note, no, invNo),
     stub: !!(part && part.kind === "stub")
   };
 }
