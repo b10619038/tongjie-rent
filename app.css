@@ -671,7 +671,21 @@ button.pay-pill.hand {
   text-align: left;
   padding: 8px 12px;
 }
-.renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; gap: 0; white-space: nowrap; flex: 0 0 auto; }
+.renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 4px; white-space: normal; flex: 0 1 48%; }
+.nosub-tag {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #f4e4d4;
+  color: #8a4b24;
+  font-size: 10px;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+}
 .renew-move-st {
   display: flex;
   flex-direction: column;

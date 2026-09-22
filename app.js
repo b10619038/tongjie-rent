@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-16-04";
-const APP_EDIT_COUNT = 1025;
+const APP_STAMP = "2026-09-22-16-06";
+const APP_EDIT_COUNT = 1026;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0575";
+const FILE_VER = "0576";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["換房列表約至日期改下一行"] },
+  { ver: APP_VERSION, items: ["7051 申請入住與換房標示 6000 且不可申請租補"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2317,7 +2317,7 @@ function renewMovePickHtml(t, r) {
       const st = renewMoveStatus(x);
       const on = pick === x.id || pick === String(x.no);
       return `<button type="button" class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}" data-renew-pick="${escapeHtml(x.id)}" ${st.selectable ? "" : "disabled"}>
-        <b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${balconyMarkHtml(x)}</b>
+        <b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${studioPickMarksHtml(x)}</b>
         <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}</span>
       </button>`;
     }).join("")}</div>
@@ -2613,6 +2613,12 @@ function roomHasBalcony(r) {
 }
 function balconyMarkHtml(r) {
   return roomHasBalcony(r) ? `<i class="balc-dot" title="有陽台"></i>` : "";
+}
+function subsidyMarkHtml(r) {
+  return roomNoSubsidy(r) ? `<em class="nosub-tag">不可申請租補</em>` : "";
+}
+function studioPickMarksHtml(r) {
+  return balconyMarkHtml(r) + subsidyMarkHtml(r);
 }
 const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
@@ -18938,7 +18944,7 @@ function moveInView() {
     const m = moveRoomMeta(x, dummy);
     const on = d.roomId === x.id ? " on" : "";
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
-      <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${balconyMarkHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
+      <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
       <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : "現約至 " + escapeHtml(m.end || "—"))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
@@ -18965,11 +18971,11 @@ function moveInView() {
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
-            ? `<span class="move-pick-no"><span class="move-pick-line">${escapeHtml(selMeta.no)} 套房${balconyMarkHtml(r)}</span>${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
+            ? `<span class="move-pick-no"><span class="move-pick-line">${escapeHtml(selMeta.no)} 套房${studioPickMarksHtml(r)}</span>${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
       </div>
-      ${r ? `<p class="small" style="margin:6px 0 0">${escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(null, r)))}</p>` : ""}
+      ${r ? `<p class="small" style="margin:6px 0 0">${escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(null, r)))}${roomNoSubsidy(r) ? "　不可申請租補" : ""}</p>` : ""}
     </div>
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
       <div class="label">基本資料</div>
