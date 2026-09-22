@@ -600,11 +600,52 @@ input, textarea, select {
   letter-spacing: 0;
   line-height: 1;
   transform: rotate(-10deg);
+  transform-origin: 68% 32%;
   pointer-events: none;
   background: rgba(94, 122, 85, 0.08);
   opacity: 0.9;
 }
 .rent-stamp i { font-style: normal; }
+.rent-stamp.chop {
+  animation: rent-chop .58s cubic-bezier(.15, .85, .25, 1.15) both;
+}
+.rent-stamp.chop::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 12px;
+  background: radial-gradient(circle, rgba(94, 122, 85, .32) 0%, rgba(94, 122, 85, .08) 42%, transparent 70%);
+  animation: rent-ink .58s ease-out both;
+  pointer-events: none;
+}
+@keyframes rent-chop {
+  0% {
+    opacity: 0;
+    transform: translate(12px, -30px) rotate(-32deg) scale(1.85);
+    filter: blur(.5px);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(0, 3px) rotate(-7deg) scale(1.06);
+    filter: blur(0);
+  }
+  76% {
+    transform: translate(0, -1px) rotate(-12deg) scale(.93);
+  }
+  100% {
+    opacity: .9;
+    transform: rotate(-10deg) scale(1);
+  }
+}
+@keyframes rent-ink {
+  0% { opacity: 0; transform: scale(.35); }
+  52% { opacity: .7; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rent-stamp.chop,
+  .rent-stamp.chop::after { animation: none; }
+}
 html[data-theme="void"] .hero-card {
   background: #161616;
   color: #f5f5f5;
