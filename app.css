@@ -574,7 +574,22 @@ input, textarea, select {
   aspect-ratio: 1;
   border-radius: 14px;
 }
-.plant-shot.wilt img { filter: grayscale(.55) saturate(.55) brightness(.92); }
+.plant-shot.grow {
+  position: relative;
+  aspect-ratio: 1;
+}
+.plant-shot.grow img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+  transform-origin: 50% 78%;
+  transition: opacity .28s ease, transform .28s ease;
+}
+.plant-shot.grow .g-a { opacity: calc(1 - var(--t, 0)); transform: scale(var(--sc, 1)); }
+.plant-shot.grow .g-b { opacity: var(--t, 0); transform: scale(var(--sc, 1)); }
 .plant-shot.dry img { filter: saturate(.8) sepia(.12); }
 .plant-copy { min-width: 0; }
 .plant-copy.wide { flex: 1 1 100%; }

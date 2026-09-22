@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-23-34";
-const APP_EDIT_COUNT = 1104;
+const APP_STAMP = "2026-09-22-23-46";
+const APP_EDIT_COUNT = 1105;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0654";
+const FILE_VER = "0655";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["只有7651可換種子，其他房種到開花拿勳章後才能再種"] },
+  { ver: APP_VERSION, items: ["澆水改10段成長，7651可不限次數澆花，第10次成熟、繳租才開花"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -10566,9 +10566,14 @@ function plantCanPick(t, r) {
   if (plantFreeReseed(r)) return true;
   return plantComplete(t, r);
 }
+function plantUnlimitedWater(r) {
+  return plantRoomNo(r) === "7651";
+}
 function plantNeedWater(t, r) {
-  const stage = t ? plantStageOf(t, r || myRoom()) : "";
-  if (stage === "seed") return true;
+  r = r || myRoom();
+  if (plantUnlimitedWater(r)) return true;
+  const p = t ? plantOf(t) : plantOf(me());
+  if ((p.waters || 0) <= 0) return true;
   const sky = ui.sky || "cloud";
   const hum = Number(ui.humidity);
   const temp = Number(ui.temp);
@@ -10582,15 +10587,16 @@ function plantNeedWater(t, r) {
 function plantStageOf(t, r) {
   const p = plantOf(t);
   if (!p.kind) return "";
-  const waters = p.waters;
-  if (waters <= 0) return "seed";
+  const waters = Math.min(10, p.waters);
   const due = !!(typeof leaseCoversYm === "function" && leaseCoversYm(t, r, payYmNow()) && thisMonthRentOf(t, r));
   const paid = typeof paidThisMonth === "function" && paidThisMonth(t);
-  if (due && !paid && waters >= 2) return "wilt";
-  if (waters === 1) return "sprout";
-  if (waters === 2) return "leaf";
-  if (waters >= 3 && paid) return "bloom";
-  return "leaf";
+  if (!plantUnlimitedWater(r) && due && !paid && waters >= 5) return "wilt";
+  if (waters <= 0) return "seed";
+  if (waters >= 10 && paid) return "bloom";
+  if (waters >= 10) return "mature";
+  if (waters >= 7) return "leaf";
+  if (waters >= 4) return "young";
+  return "sprout";
 }
 function plantWxLine() {
   const bits = [];
@@ -10606,24 +10612,47 @@ function plantStatusLine(t, r) {
   const stage = plantStageOf(t, r);
   const need = plantNeedWater(t, r);
   const watered = p.wateredOn === todayYmd();
-  if (stage === "seed") return "種子剛放進土裡，澆一次水才會發芽。";
+  const n = Math.min(10, p.waters);
+  const free = plantUnlimitedWater(r);
+  if (stage === "seed") return "種子剛放進土裡，澆一次水才會發芽。一共要澆 10 次才會成熟。";
   if (stage === "wilt") return "這個月還沒入帳，葉子有點沒精神。";
-  if (need && !watered) return "今天偏乾，該澆一點水。";
-  if (ui.sky === "rain" || ui.sky === "storm") return "今天下雨，不用澆。";
-  if (isFinite(Number(ui.humidity)) && ui.humidity >= 75) return "空氣夠濕，今天不用澆。";
-  if (stage === "bloom") return p.medals.indexOf(p.kind) >= 0 ? "長成了，獲得" + (plantKindOf(p.kind) || {}).name + "勳章，可以再種一顆。" : "照顧得好，開花了。";
-  if (stage === "leaf") return "葉子長出來了，再澆會開花。";
-  return "發芽了，再澆一次會長葉子。";
+  if (stage === "bloom") return p.medals.indexOf(p.kind) >= 0 ? "長成了，獲得" + ((plantKindOf(p.kind) || {}).name || "") + "勳章，可以再種一顆。" : "照顧得好，開花了。";
+  if (stage === "mature") return "已經成熟。這個月租金入帳後就會開花、拿勳章。";
+  if (!free && need && !watered) return "今天偏乾，該澆一點水。（" + n + "／10）";
+  if (!free && (ui.sky === "rain" || ui.sky === "storm")) return "今天下雨，不用澆。（" + n + "／10）";
+  if (!free && isFinite(Number(ui.humidity)) && ui.humidity >= 75) return "空氣夠濕，今天不用澆。（" + n + "／10）";
+  return "第 " + n + "／10 次，再澆會慢慢長大。";
 }
 function plantImgSrc(kind, stage) {
   const k = plantKindOf(kind) ? kind : "pothos";
-  const shot = stage === "bloom" ? "bloom" : (stage === "leaf" ? "leaf" : (stage === "seed" ? "seed" : "sprout"));
+  const shot = stage === "bloom" ? "bloom" : (stage === "leaf" || stage === "mature" || stage === "young" ? "leaf" : (stage === "seed" ? "seed" : "sprout"));
   return "images/plants/" + k + "-" + shot + ".jpg";
 }
-function plantShotHtml(kind, stage, dry, mini) {
+function plantGrowFrame(kind, waters, bloom) {
+  const seed = plantImgSrc(kind, "seed");
+  const sprout = plantImgSrc(kind, "sprout");
+  const leaf = plantImgSrc(kind, "leaf");
+  const flower = plantImgSrc(kind, "bloom");
+  if (bloom) return { a: flower, b: flower, t: 1, scale: 1 };
+  const w = Math.max(0, Math.min(10, Number(waters) || 0));
+  if (w <= 0) return { a: seed, b: seed, t: 0, scale: 1 };
+  if (w <= 3) return { a: seed, b: sprout, t: +(w / 3).toFixed(3), scale: +(0.52 + w * 0.1).toFixed(3) };
+  if (w <= 6) return { a: sprout, b: leaf, t: +((w - 3) / 3).toFixed(3), scale: +(0.78 + (w - 4) * 0.05).toFixed(3) };
+  if (w <= 9) return { a: leaf, b: leaf, t: 1, scale: +(0.88 + (w - 7) * 0.04).toFixed(3) };
+  return { a: leaf, b: leaf, t: 1, scale: 1 };
+}
+function plantShotHtml(kind, stage, dry, mini, waters) {
+  if (mini) {
+    return `<div class="plant-shot bloom mini">
+      <img src="${plantImgSrc(kind, "bloom")}" alt="" draggable="false">
+    </div>`;
+  }
   const st = stage === "wilt" ? "sprout" : (stage || "seed");
-  return `<div class="plant-shot ${stage || "seed"}${dry ? " dry" : ""}${mini ? " mini" : ""}">
-    <img src="${plantImgSrc(kind, st)}" alt="" draggable="false">
+  const bloom = stage === "bloom";
+  const fr = plantGrowFrame(kind, bloom ? 10 : waters, bloom);
+  return `<div class="plant-shot grow ${stage || "seed"}${dry ? " dry" : ""}" style="--t:${fr.t};--sc:${fr.scale}">
+    <img class="g-a" src="${fr.a}" alt="" draggable="false">
+    <img class="g-b" src="${fr.b}" alt="" draggable="false">
   </div>`;
 }
 function plantSeedPickHtml() {
@@ -10669,7 +10698,7 @@ function plantCardHtml(t, r) {
   const dry = need && !watered && stage !== "wilt" && stage !== "seed";
   const named = p.name || "";
   const wx = plantWxLine();
-  const canWater = need && !watered && stage !== "wilt";
+  const canWater = (p.waters < 10) && (plantUnlimitedWater(r) || (need && !watered && stage !== "wilt"));
   const kind = plantKindOf(p.kind);
   const free = plantFreeReseed(r);
   const done = stage === "bloom";
@@ -10680,7 +10709,7 @@ function plantCardHtml(t, r) {
   if (free) action = `<button type="button" class="plant-reseed" id="plant-reseed">換種子</button>`;
   else if (done) action = `<button type="button" class="ghost plant-water" id="plant-reseed">再種一顆</button>`;
   return `<div class="card card-body plant-card plant-grown slide-left">
-    ${plantShotHtml(p.kind, stage, dry)}
+    ${plantShotHtml(p.kind, stage, dry, false, p.waters)}
     <div class="plant-copy">
       <div class="label">窗台植物${kind ? " · " + escapeHtml(kind.name) : ""}</div>
       ${nameBtn}
@@ -10747,11 +10776,13 @@ function bindPlantCard() {
     const t = me();
     const r = myRoom();
     const p = plantOf(t);
-    if (p.wateredOn === todayYmd()) { toast("今天澆過了"); return; }
-    if (!plantNeedWater(t, r)) { toast("今天不用澆"); return; }
-    savePlant({ wateredOn: todayYmd(), waters: (Number(p.waters) || 0) + 1 });
+    const freeWater = plantUnlimitedWater(r);
+    if (!freeWater && p.wateredOn === todayYmd()) { toast("今天澆過了"); return; }
+    if (!freeWater && !plantNeedWater(t, r)) { toast("今天不用澆"); return; }
+    const next = Math.min(10, (Number(p.waters) || 0) + 1);
+    savePlant({ wateredOn: todayYmd(), waters: next });
     grantPlantMedal(me(), r);
-    toast(p.waters <= 0 ? "澆好了，等它發芽" : "澆好了");
+    toast(next >= 10 ? "第 10 次，成熟了" : "澆好了（" + next + "／10）");
     ui.keepScroll = true;
     render();
   };
