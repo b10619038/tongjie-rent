@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-16-18";
-const APP_EDIT_COUNT = 1029;
+const APP_STAMP = "2026-09-22-16-26";
+const APP_EDIT_COUNT = 1030;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0579";
+const FILE_VER = "0580";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員登入要填姓名，7651 進後台、1240 加趙文榮進開發者"] },
+  { ver: APP_VERSION, items: ["續約申請與本月繳費圖卡從標籤原位縮放"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -23948,17 +23948,79 @@ function sheetAttrSel(attr, id) {
   const safe = (window.CSS && CSS.escape) ? CSS.escape(String(id || "")) : String(id || "").replace(/"/g, "");
   return "[" + attr + "=\"" + safe + "\"]";
 }
-function playSheetOpen(wrap) {
-  if (!wrap) return;
-  wrap.classList.add("sheet-drop-in");
-  const done = () => wrap.classList.add("sheet-drop-ready");
-  wrap.addEventListener("animationend", done, { once: true });
-  setTimeout(done, 220);
+function sheetOriginRect(el, fallback) {
+  if (el && el.getBoundingClientRect) {
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) return r;
+  }
+  const b = fallback || { left: 0, top: 0, width: 72, height: 28 };
+  return { left: b.left + (b.width || 0) * 0.78, top: b.top - 6, width: 72, height: 28 };
 }
-function playSheetClose(wrap, done) {
+function sheetZoomFrom(from, to) {
+  const sx = Math.max(0.08, Math.min(0.42, from.width / Math.max(1, to.width)));
+  const sy = Math.max(0.08, Math.min(0.42, from.height / Math.max(1, to.height)));
+  const s = Math.min(sx, sy);
+  const dx = (from.left + from.width / 2) - (to.left + to.width / 2);
+  const dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+  return "translate3d(" + dx + "px," + dy + "px,0) scale(" + s + ")";
+}
+function playSheetOpen(wrap, originEl) {
+  if (!wrap) return;
+  wrap._originEl = originEl || wrap._originEl || null;
+  wrap.classList.remove("sheet-drop-out", "sheet-drop-ready");
+  const inner = wrap.querySelector(".sheet-drop-inner") || wrap;
+  wrap.style.height = "auto";
+  wrap.style.overflow = "hidden";
+  const h = wrap.scrollHeight;
+  const to = inner.getBoundingClientRect();
+  const from = sheetOriginRect(wrap._originEl, to);
+  wrap.style.height = "0px";
+  inner.style.transformOrigin = "center top";
+  inner.style.transform = sheetZoomFrom(from, to);
+  inner.style.opacity = "0.35";
+  inner.style.willChange = "transform, opacity";
+  void wrap.offsetHeight;
+  requestAnimationFrame(() => {
+    wrap.classList.add("sheet-drop-in");
+    wrap.style.transition = "height .3s cubic-bezier(.22,1,.36,1)";
+    inner.style.transition = "transform .3s cubic-bezier(.22,1,.36,1), opacity .22s ease";
+    wrap.style.height = h + "px";
+    inner.style.transform = "translate3d(0,0,0) scale(1)";
+    inner.style.opacity = "1";
+    let once = false;
+    const done = () => {
+      if (once) return;
+      once = true;
+      wrap.style.height = "";
+      wrap.style.transition = "";
+      wrap.style.overflow = "";
+      inner.style.transition = "";
+      inner.style.transform = "";
+      inner.style.willChange = "";
+      wrap.classList.add("sheet-drop-ready");
+    };
+    wrap.addEventListener("transitionend", ev => { if (ev.propertyName === "height") done(); }, { once: true });
+    setTimeout(done, 360);
+  });
+}
+function playSheetClose(wrap, done, originEl) {
   if (!wrap) { if (done) done(); return; }
+  const inner = wrap.querySelector(".sheet-drop-inner") || wrap;
+  if (originEl) wrap._originEl = originEl;
+  const h = wrap.scrollHeight || wrap.getBoundingClientRect().height;
+  wrap.style.height = h + "px";
+  wrap.style.overflow = "hidden";
+  const to = inner.getBoundingClientRect();
+  const from = sheetOriginRect(wrap._originEl, to);
   wrap.classList.remove("sheet-drop-ready", "sheet-drop-in");
   wrap.classList.add("sheet-drop-out");
+  void wrap.offsetHeight;
+  wrap.style.transition = "height .22s cubic-bezier(.4,0,1,1)";
+  inner.style.transition = "transform .22s cubic-bezier(.4,0,1,1), opacity .18s ease";
+  inner.style.transformOrigin = "center top";
+  wrap.style.height = "0px";
+  inner.style.transform = sheetZoomFrom(from, to);
+  inner.style.opacity = "0";
   let once = false;
   const go = () => {
     if (once) return;
@@ -23966,8 +24028,8 @@ function playSheetClose(wrap, done) {
     wrap.remove();
     if (done) done();
   };
-  wrap.addEventListener("animationend", go, { once: true });
-  setTimeout(go, 220);
+  wrap.addEventListener("transitionend", go, { once: true });
+  setTimeout(go, 280);
 }
 function closeSheetThen(wrap, done) {
   playSheetClose(wrap, done);
@@ -23976,14 +24038,15 @@ function bindNewSheet(wrap) {
   if (!wrap) return;
   try { bindTenantFold(); } catch {}
 }
-function insertTenantSheet(block, html) {
+function insertTenantSheet(block, html, originEl) {
   if (!block) return null;
   if (block.querySelector(".sheet-drop")) return block.querySelector(".sheet-drop");
   const wrap = document.createElement("div");
-  wrap.className = "sheet-drop sheet-drop-in";
+  wrap.className = "sheet-drop";
   wrap.innerHTML = '<div class="sheet-drop-inner">' + html + "</div>";
+  wrap._originEl = originEl || null;
   block.appendChild(wrap);
-  playSheetOpen(wrap);
+  playSheetOpen(wrap, originEl);
   setTimeout(() => { try { bindNewSheet(wrap); } catch {} }, 50);
   return wrap;
 }
@@ -24004,7 +24067,7 @@ function toggleTenantRenew(id) {
     const card = document.querySelector(sheetAttrSel("data-renew-card", id));
     const btn = document.querySelector(sheetAttrSel("data-open-renew", id));
     if (btn) btn.classList.remove("on");
-    playSheetClose(card && card.closest(".sheet-drop"));
+    playSheetClose(card && card.closest(".sheet-drop"), null, btn);
     return;
   }
   ui.renewOpen[id] = true;
@@ -24014,7 +24077,7 @@ function toggleTenantRenew(id) {
   if (!renew || !block) { refreshTenantList(); return; }
   if (block.querySelector("[data-renew-card]")) return;
   btn.classList.add("on");
-  insertTenantSheet(block, renewalAdminCardHtml(renew));
+  insertTenantSheet(block, renewalAdminCardHtml(renew), btn);
 }
 function tenantPayOpen(id) {
   return !!(id && ui.payOpen && ui.payOpen[id]);
@@ -24033,7 +24096,7 @@ function toggleTenantPay(id) {
     if (btn) btn.classList.remove("on");
     const slim = btn && btn.closest(".tenant-slim");
     if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
-    playSheetClose(card && card.closest(".sheet-drop"));
+    playSheetClose(card && card.closest(".sheet-drop"), null, btn);
     return;
   }
   const prev = Object.keys(ui.payOpen).find(k => ui.payOpen[k]);
@@ -24053,7 +24116,7 @@ function toggleTenantPay(id) {
       slim.classList.toggle("unpaid", unpaid);
       slim.classList.toggle("paid", !unpaid);
     }
-    insertTenantSheet(block, payAdminCardHtml(t, r));
+    insertTenantSheet(block, payAdminCardHtml(t, r), btn);
   };
   if (prev) {
     const card = document.querySelector(sheetAttrSel("data-pay-card", prev));
@@ -24061,7 +24124,7 @@ function toggleTenantPay(id) {
     if (prevBtn) prevBtn.classList.remove("on");
     const slim = prevBtn && prevBtn.closest(".tenant-slim");
     if (slim) slim.classList.remove("pay-hit", "unpaid", "paid");
-    playSheetClose(card && card.closest(".sheet-drop"), openNew);
+    playSheetClose(card && card.closest(".sheet-drop"), openNew, prevBtn);
     return;
   }
   openNew();

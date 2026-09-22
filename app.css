@@ -752,23 +752,15 @@ button.pay-pill[data-open-renew].on.is-press {
 .sheet-drop .btn-navy {
   pointer-events: auto;
 }
-.sheet-drop-inner { min-height: 0; }
-.sheet-drop.sheet-drop-in .pay-alert,
-.sheet-drop.sheet-drop-in .renew-alert {
-  transform-origin: top center;
-  animation: sheetDropFade .18s cubic-bezier(0.22, 1, 0.36, 1) both;
+.sheet-drop-inner {
+  min-height: 0;
+  transform-origin: center top;
 }
+.sheet-drop.sheet-drop-in .pay-alert,
+.sheet-drop.sheet-drop-in .renew-alert,
 .sheet-drop.sheet-drop-out .pay-alert,
 .sheet-drop.sheet-drop-out .renew-alert {
-  animation: sheetDropFadeOut .16s cubic-bezier(0.4, 0, 1, 1) both;
-}
-@keyframes sheetDropFade {
-  from { opacity: 0; transform: translate3d(0, -10px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-@keyframes sheetDropFadeOut {
-  from { opacity: 1; transform: translate3d(0, 0, 0); }
-  to { opacity: 0; transform: translate3d(0, -10px, 0); }
+  animation: none;
 }
 .tenant-renew-block:has(.sheet-drop) .swipe-wrap.slim,
 .tenant-renew-block:has(.sheet-drop) .tenant-slim {
