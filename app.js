@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-12-28";
-const APP_EDIT_COUNT = 995;
+const APP_STAMP = "2026-09-22-12-32";
+const APP_EDIT_COUNT = 996;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0545";
+const FILE_VER = "0546";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -480,7 +480,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7032 楊旻憲續約申請顯示於後台，簽約時間 9/28 晚上 6:00"] },
+  { ver: APP_VERSION, items: ["7032 楊旻憲續約申請寫入雲端，後台租客列表會顯示"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -5664,8 +5664,20 @@ function applyRenewal7221(data) {
     }, 500);
   }
 }
-const RENEW_7032_VER = "renew-7032-v2";
+const RENEW_7032_VER = "renew-7032-v3";
 const RENEW_7032_AT = "2026-09-28T18:00";
+function flushSeededRenewal() {
+  try { markCloudDirty(); } catch {}
+  setTimeout(() => {
+    try { if (state) delete state.renew7032NeedPush; } catch {}
+    try { save(true); } catch {}
+    try { if (typeof pushCloud === "function") pushCloud(); } catch {}
+    try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
+    if (typeof ui !== "undefined" && ui.role === "admin") {
+      try { flashRenewNotice(state && state.renewPing); } catch {}
+    }
+  }, 400);
+}
 function applyRenewal7032(data) {
   if (!data) return;
   if (!Array.isArray(data.renewals)) data.renewals = [];
@@ -5679,7 +5691,7 @@ function applyRenewal7032(data) {
     )) || t;
   }
   if (!room) {
-    room = { id: "r7032", no: "7032", title: "套房", kind: "studio", status: "rented", rent: 12000, deposit: 24000, tenantId: "t7032" };
+    room = { id: "r7032", no: "7032", title: "套房", kind: "studio", status: "rented", rent: 12000, deposit: 24000, tenantId: "t12" };
     data.rooms.push(room);
     try { ensureStudioTenant(data, "7032"); } catch {}
     const again = studioOccupantOfNo(data, "7032");
@@ -5688,7 +5700,7 @@ function applyRenewal7032(data) {
   }
   if (!t) {
     t = {
-      id: "t7032",
+      id: "t12",
       roomId: room.id,
       name: "楊旻憲",
       phone: "0903-045-123",
@@ -5698,57 +5710,59 @@ function applyRenewal7032(data) {
       paid: true,
       payBank: "農會"
     };
-    data.tenants.push(t);
+    const dup = (data.tenants || []).find(x => x && x.id === t.id);
+    if (!dup) data.tenants.push(t);
+    else t = dup;
     room.tenantId = t.id;
     room.status = "rented";
   }
   const existed = (data.renewals || []).find(x => x && (
     x.id === "rn-7032-2026"
-    || (x.tenantId === t.id && x.status !== "done" && x.status !== "applied")
     || (String(x.roomNo) === "7032" && x.status !== "done" && x.status !== "applied")
-    || (sameTenantName(x.name, "楊旻憲") && x.status !== "done" && x.status !== "applied")
+    || (x.tenantId === t.id && x.status !== "done" && x.status !== "applied")
   ));
   const stampTime = (row) => {
-    if (!row || row.status === "done" || row.status === "applied") return;
-    if (data.renew7032Ver !== RENEW_7032_VER || !row.appointAt) row.appointAt = RENEW_7032_AT;
+    if (!row || row.status === "done" || row.status === "applied") return false;
+    if (data.renew7032Ver !== RENEW_7032_VER || !row.appointAt) {
+      row.appointAt = RENEW_7032_AT;
+      return true;
+    }
+    return false;
   };
   const persist = () => {
+    data.renew7032NeedPush = true;
+    data.renew7032Ver = RENEW_7032_VER;
     if (typeof ui !== "undefined") ui.tenantOrderKey = "";
-    if (typeof state === "undefined" || data !== state) return;
-    setTimeout(() => {
-      try { save(true); } catch {}
-      try { if (typeof pushCloud === "function") pushCloud(); } catch {}
-      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
-      if (typeof ui !== "undefined" && ui.role === "admin") {
-        try { flashRenewNotice(data.renewPing); } catch {}
-      }
-    }, 400);
+    if (typeof state !== "undefined" && data === state) flushSeededRenewal();
   };
   if (existed) {
+    existed.id = existed.id || "rn-7032-2026";
     existed.roomId = room.id;
     existed.tenantId = t.id;
     existed.roomNo = room.no || "7032";
     existed.name = t.name || "楊旻憲";
     if (existed.waterFee == null) existed.waterFee = renewWaterCashFee(t, room, existed);
     existed.waterCash = true;
-    stampTime(existed);
+    const stamped = stampTime(existed);
     if (existed.status !== "applied") {
-      existed.oldStart = existed.oldStart || "2026-03-01";
-      existed.oldEnd = existed.oldEnd || "2026-10-31";
-      t.leaseStart = existed.oldStart;
-      t.leaseEnd = existed.oldEnd;
-      try {
-        const pack = studioLeasePack(t.leaseStart, studioContractRent(t, room) || 12000);
-        if (pack && pack.parts && pack.parts.length) t.leases = pack.parts;
-        else t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: 12000 }];
-      } catch {
-        t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: 12000 }];
-      }
+      existed.oldStart = existed.oldStart || t.leaseStart || "2026-03-01";
+      existed.oldEnd = existed.oldEnd || t.leaseEnd || "2026-10-31";
     }
-    const needPush = data.renew7032Ver !== RENEW_7032_VER;
-    data.renewPing = data.renewPing || { at: Date.now(), roomNo: room.no, name: t.name || "楊旻憲", id: existed.id };
-    data.renew7032Ver = RENEW_7032_VER;
-    if (needPush) persist();
+    if (!existed.start) existed.start = "2026-11-01";
+    if (!existed.end) existed.end = "2027-10-31";
+    if (stamped || data.renew7032Ver !== RENEW_7032_VER || data.renew7032NeedPush) {
+      data.renewPing = {
+        at: Date.now(),
+        roomNo: existed.roomNo,
+        name: existed.name,
+        id: existed.id,
+        years: existed.years || 1,
+        waterFee: existed.waterFee
+      };
+      persist();
+    } else {
+      data.renew7032Ver = RENEW_7032_VER;
+    }
     return;
   }
   const years = 1;
@@ -5762,18 +5776,19 @@ function applyRenewal7032(data) {
     name: t.name || "楊旻憲",
     status: "open",
     years,
-    start: range.start,
-    end: range.end,
+    start: range.start || "2026-11-01",
+    end: range.end || "2027-10-31",
     waterFee: water,
     waterCash: true,
     appointAt: RENEW_7032_AT,
     appointRead: false,
     createdAt: nowStamp(),
-    importTag: "renew7032"
+    importTag: "renew7032",
+    oldStart: t.leaseStart || "2026-03-01",
+    oldEnd: t.leaseEnd || "2026-10-31"
   };
   data.renewals.push(row);
   data.renewPing = { at: Date.now(), roomNo: row.roomNo, name: row.name, id: row.id, years, waterFee: water };
-  data.renew7032Ver = RENEW_7032_VER;
   persist();
 }
 function renewPingKey(p) {
@@ -8044,6 +8059,7 @@ async function pullCloud() {
       persistAvatars(state);
       try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+      if (state.renew7032NeedPush) flushSeededRenewal();
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
     }
@@ -8119,6 +8135,7 @@ async function pullCloud() {
     try { ensureDevCycleJobs(state); } catch {}
     try { applyMemoDone(state); } catch {}
     ensureStudioTenant(state, "7221");
+    ensureStudioTenant(state, "7032");
     ensureStudioTenant(state, "6832");
     applyLinanan7231(state);
     ensureDemoTenant(state);
@@ -8137,6 +8154,7 @@ async function pullCloud() {
     persistAvatars(state);
     try { ensurePhoneLoginPasses(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
+    if (state.renew7032NeedPush) flushSeededRenewal();
     ui.cloudOk = true;
     return true;
   } catch {
