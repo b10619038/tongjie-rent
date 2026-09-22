@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-12-08";
-const APP_EDIT_COUNT = 992;
+const APP_STAMP = "2026-09-22-12-18";
+const APP_EDIT_COUNT = 993;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0542";
+const FILE_VER = "0543";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約特別約定加上油漆牆誤貼紙"] },
+  { ver: APP_VERSION, items: ["7032 楊旻憲已送出續約申請，簽約時間待約"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -4399,6 +4399,7 @@ function normalize(data) {
   applyStudioSheetPaid(data);
   applyStudioMonthUnpaid(data);
   ensureStudioTenant(data, "7221");
+  ensureStudioTenant(data, "7032");
   ensureStudioTenant(data, "6832");
   applyPaidMarks(data);
   syncPaidRentBooks(data);
@@ -4427,6 +4428,7 @@ function normalize(data) {
   applySlip0915(data);
   applyJinfangEng0921(data);
   applyRenewal7221(data);
+  applyRenewal7032(data);
   applyDueRenewals(data);
   applyTongjieMega(data);
   applyTongjieMegaSepPaid(data);
@@ -5652,6 +5654,96 @@ function applyRenewal7221(data) {
   data.renewals.push(row);
   data.renewPing = { at: Date.now(), roomNo: room.no, name: t.name || "張智傑", id: row.id, years, waterFee: water };
   data.renew7221Ver = RENEW_7221_VER;
+  if (typeof ui !== "undefined" && ui.role === "admin") {
+    setTimeout(() => {
+      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
+      try { flashRenewNotice(data.renewPing); } catch {}
+    }, 500);
+  }
+}
+const RENEW_7032_VER = "renew-7032-v1";
+function applyRenewal7032(data) {
+  if (!data) return;
+  if (!Array.isArray(data.renewals)) data.renewals = [];
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  try { ensureStudioTenant(data, "7032"); } catch {}
+  let { room, tenant: t } = studioOccupantOfNo(data, "7032");
+  if (!room) {
+    room = { id: "r7032", no: "7032", title: "套房", kind: "studio", status: "rented", rent: 12000, deposit: 24000, tenantId: "t7032" };
+    data.rooms.push(room);
+    try { ensureStudioTenant(data, "7032"); } catch {}
+    const again = studioOccupantOfNo(data, "7032");
+    room = again.room || room;
+    t = again.tenant || t;
+  }
+  if (!t) {
+    t = {
+      id: "t7032",
+      roomId: room.id,
+      name: "楊旻憲",
+      phone: "0903-045-123",
+      leaseStart: "2026-03-01",
+      leaseEnd: "2026-10-31",
+      dueDay: 1,
+      paid: true,
+      payBank: "農會"
+    };
+    data.tenants.push(t);
+    room.tenantId = t.id;
+    room.status = "rented";
+  }
+  const existed = (data.renewals || []).find(x => x && (
+    x.id === "rn-7032-2026"
+    || (x.tenantId === t.id && x.status !== "done" && x.status !== "applied")
+    || (String(x.roomNo) === "7032" && x.status !== "done" && x.status !== "applied")
+  ));
+  if (existed) {
+    existed.roomId = room.id;
+    existed.tenantId = t.id;
+    existed.roomNo = room.no || "7032";
+    existed.name = t.name || "楊旻憲";
+    if (existed.waterFee == null) existed.waterFee = renewWaterCashFee(t, room, existed);
+    existed.waterCash = true;
+    if (existed.status !== "applied") {
+      existed.oldStart = existed.oldStart || "2026-03-01";
+      existed.oldEnd = existed.oldEnd || "2026-10-31";
+      t.leaseStart = existed.oldStart;
+      t.leaseEnd = existed.oldEnd;
+      try {
+        const pack = studioLeasePack(t.leaseStart, studioContractRent(t, room) || 12000);
+        if (pack && pack.parts && pack.parts.length) t.leases = pack.parts;
+        else t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: 12000 }];
+      } catch {
+        t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: 12000 }];
+      }
+    }
+    data.renew7032Ver = RENEW_7032_VER;
+    return;
+  }
+  const years = 1;
+  const range = renewLeaseRange(t, years);
+  const water = renewWaterCashFee(t, room);
+  const row = {
+    id: "rn-7032-2026",
+    roomId: room.id,
+    tenantId: t.id,
+    roomNo: room.no,
+    name: t.name || "楊旻憲",
+    status: "open",
+    years,
+    start: range.start,
+    end: range.end,
+    waterFee: water,
+    waterCash: true,
+    appointAt: "",
+    appointRead: false,
+    createdAt: nowStamp(),
+    importTag: "renew7032"
+  };
+  data.renewals.push(row);
+  data.renewPing = { at: Date.now(), roomNo: room.no, name: t.name || "楊旻憲", id: row.id, years, waterFee: water };
+  data.renew7032Ver = RENEW_7032_VER;
   if (typeof ui !== "undefined" && ui.role === "admin") {
     setTimeout(() => {
       try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
@@ -7902,6 +7994,7 @@ async function pullCloud() {
       applySlip0915(state);
       applyJinfangEng0921(state);
       applyRenewal7221(state);
+      applyRenewal7032(state);
       applyDueRenewals(state);
       applyTongjieMega(state);
       applyTongjieMegaSepPaid(state);
@@ -7909,6 +8002,7 @@ async function pullCloud() {
       applyYushengElec(state);
       applyLinanan7231(state);
       ensureStudioTenant(state, "7221");
+      ensureStudioTenant(state, "7032");
       ensureStudioTenant(state, "6832");
       ensureDemoTenant(state);
       applyFactoryRoster(state);
@@ -7974,6 +8068,7 @@ async function pullCloud() {
     applySlip0915(state);
     applyJinfangEng0921(state);
     applyRenewal7221(state);
+    applyRenewal7032(state);
     applyDueRenewals(state);
     applyTongjieMega(state);
     applyTongjieMegaSepPaid(state);
