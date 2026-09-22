@@ -709,9 +709,12 @@ button.pay-pill[data-open-renew].on.is-press {
 .tenant-renew-block { margin: 0 0 10px; }
 .sheet-drop {
   overflow: hidden;
-  pointer-events: none;
+  pointer-events: auto;
 }
-.sheet-drop.sheet-drop-ready { pointer-events: auto; }
+.sheet-drop [data-print-renew],
+.sheet-drop .btn-navy {
+  pointer-events: auto;
+}
 .sheet-drop-inner { min-height: 0; }
 .sheet-drop.sheet-drop-in .pay-alert,
 .sheet-drop.sheet-drop-in .renew-alert {
