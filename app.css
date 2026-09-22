@@ -608,35 +608,35 @@ input, textarea, select {
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
   z-index: 4;
-  animation: rent-chop .9s cubic-bezier(.12, .82, .22, 1.08) both;
+  animation: rent-chop .7s cubic-bezier(.14, .82, .24, 1.08) both;
 }
 .rent-stamp.chop::after {
   content: "";
   position: absolute;
-  inset: -22px;
-  border-radius: 18px;
-  background: radial-gradient(circle, rgba(94, 122, 85, .5) 0%, rgba(94, 122, 85, .16) 38%, transparent 72%);
-  animation: rent-ink .9s ease-out both;
+  inset: -12px;
+  border-radius: 14px;
+  background: radial-gradient(circle, rgba(94, 122, 85, .38) 0%, rgba(94, 122, 85, .1) 42%, transparent 72%);
+  animation: rent-ink .7s ease-out both;
   pointer-events: none;
 }
 @keyframes rent-chop {
   0% {
     opacity: 0;
-    transform: translate(28px, -72px) rotate(-48deg) scale(3.6);
-    filter: blur(1px);
+    transform: translate(16px, -42px) rotate(-36deg) scale(2.35);
+    filter: blur(.6px);
   }
   22% {
     opacity: 1;
-    transform: translate(16px, -40px) rotate(-36deg) scale(2.6);
-    filter: blur(.4px);
+    transform: translate(8px, -22px) rotate(-24deg) scale(1.7);
+    filter: blur(.2px);
   }
   58% {
     opacity: 1;
-    transform: translate(0, 8px) rotate(-6deg) scale(1.22);
+    transform: translate(0, 4px) rotate(-7deg) scale(1.1);
     filter: blur(0);
   }
-  74% {
-    transform: translate(0, -3px) rotate(-14deg) scale(.82);
+  76% {
+    transform: translate(0, -1px) rotate(-12deg) scale(.92);
   }
   100% {
     opacity: .9;
@@ -644,9 +644,9 @@ input, textarea, select {
   }
 }
 @keyframes rent-ink {
-  0% { opacity: 0; transform: scale(.2); }
-  56% { opacity: .85; transform: scale(1.15); }
-  100% { opacity: 0; transform: scale(1.85); }
+  0% { opacity: 0; transform: scale(.28); }
+  54% { opacity: .7; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.5); }
 }
 @media (prefers-reduced-motion: reduce) {
   .rent-stamp.chop,
