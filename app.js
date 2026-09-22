@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-00-26";
-const APP_EDIT_COUNT = 1111;
+const APP_STAMP = "2026-09-23-00-28";
+const APP_EDIT_COUNT = 1112;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0661";
+const FILE_VER = "0662";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["辦理退租選單不再破圖"] },
+  { ver: APP_VERSION, items: ["已顯示過的系統通知，更新後不再重跳"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -6397,7 +6397,7 @@ function flushSeededRenewal() {
     try { if (typeof pushCloud === "function") pushCloud(); } catch {}
     try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
     if (typeof ui !== "undefined" && ui.role === "admin") {
-      try { flashRenewNotice(state && state.renewPing); } catch {}
+      try { if (typeof publishPaidCloud === "function") publishPaidCloud(); } catch {}
     }
   }, 400);
 }
@@ -6473,19 +6473,10 @@ function applyRenewal7032(data) {
     }
     if (!existed.start) existed.start = "2026-11-01";
     if (!existed.end) existed.end = "2027-10-31";
-    if (stamped || data.renew7032Ver !== RENEW_7032_VER || data.renew7032NeedPush) {
-      data.renewPing = {
-        at: Date.now(),
-        roomNo: existed.roomNo,
-        name: existed.name,
-        id: existed.id,
-        years: existed.years || 1,
-        waterFee: existed.waterFee
-      };
-      persist();
-    } else {
+    if (stamped || data.renew7032Ver !== RENEW_7032_VER) {
       data.renew7032Ver = RENEW_7032_VER;
     }
+    data.renew7032NeedPush = false;
     return;
   }
   const years = 1;
@@ -6514,25 +6505,44 @@ function applyRenewal7032(data) {
   data.renewPing = { at: Date.now(), roomNo: row.roomNo, name: row.name, id: row.id, years, waterFee: water };
   persist();
 }
-function renewPingKey(p) {
-  if (!p) return "";
-  return [p.id || "", p.roomNo || "", p.name || ""].join("|");
+function renewPingKeys(p) {
+  if (!p) return [];
+  const id = String(p.id || "");
+  const no = String(p.roomNo || "");
+  const name = String(p.name || "");
+  const out = [];
+  if (id && no && name) out.push([id, no, name].join("|"));
+  if (id) out.push("id:" + id);
+  if (no && name) out.push(no + "|" + name);
+  return out;
 }
 function renewPingAlreadySeen(p) {
-  const k = renewPingKey(p);
-  if (!k) return true;
+  const keys = renewPingKeys(p);
+  if (!keys.length) return true;
   try {
     const raw = JSON.parse(localStorage.getItem("tj-renew-seen") || "[]");
-    return raw.indexOf(k) >= 0;
+    return keys.some(k => raw.indexOf(k) >= 0);
   } catch { return false; }
 }
 function markRenewPingSeen(p) {
-  const k = renewPingKey(p);
-  if (!k) return;
+  const keys = renewPingKeys(p);
+  if (!keys.length) return;
   try {
     const raw = JSON.parse(localStorage.getItem("tj-renew-seen") || "[]");
-    if (raw.indexOf(k) < 0) raw.push(k);
-    localStorage.setItem("tj-renew-seen", JSON.stringify(raw.slice(-60)));
+    keys.forEach(k => { if (raw.indexOf(k) < 0) raw.push(k); });
+    localStorage.setItem("tj-renew-seen", JSON.stringify(raw.slice(-80)));
+  } catch {}
+}
+function seedOldEventNotifies() {
+  try {
+    markRenewPingSeen({ id: "rn-7032-2026", roomNo: "7032", name: "楊旻憲" });
+    markRenewPingSeen({ id: "rn-7221-2026", roomNo: "7221", name: "張智傑" });
+    if (typeof markOsBannerSeen === "function") {
+      markOsBannerSeen("renew-rn-7032-2026");
+      markOsBannerSeen("renew-rn-7221-2026");
+      markOsBannerSeen("renew-7032");
+      markOsBannerSeen("renew-7221");
+    }
   } catch {}
 }
 function flashRenewNotice(ping) {
@@ -8081,6 +8091,23 @@ function tenantViewSig() {
 }
 function ingestPaidCloud(raw) {
   try {
+    if (!ingestPaidCloud.ready) {
+      let m = {};
+      try { m = JSON.parse(localStorage.getItem("tj-ping-marks") || "{}") || {}; } catch {}
+      ingestPaidCloud.repairPing = Number(m.repairPing) || 0;
+      ingestPaidCloud.applyPing = Number(m.applyPing) || 0;
+      ingestPaidCloud.renewPing = Number(m.renewPing) || 0;
+      ingestPaidCloud.eSignPing = Number(m.eSignPing) || 0;
+      ingestPaidCloud.ready = true;
+    }
+    const stampPing = (k, v) => {
+      ingestPaidCloud[k] = v;
+      try {
+        const m = JSON.parse(localStorage.getItem("tj-ping-marks") || "{}") || {};
+        m[k] = v;
+        localStorage.setItem("tj-ping-marks", JSON.stringify(m));
+      } catch {}
+    };
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || typeof o !== "object") return;
     if (o.ym && o.ym !== payYmNow()) return;
@@ -8181,6 +8208,7 @@ function ingestPaidCloud(raw) {
     const ping = Number(o.repairPing || 0);
     if (ping && ping > (ingestPaidCloud.repairPing || 0)) {
       ingestPaidCloud.repairPing = ping;
+      stampPing("repairPing", ping);
       pullCloud().then(() => {
         applyRepairMedia(state);
         if (ui.role === "admin") {
@@ -8192,6 +8220,7 @@ function ingestPaidCloud(raw) {
     const applyAt = Number(o.applyPing && o.applyPing.at) || 0;
     if (applyAt && applyAt > (ingestPaidCloud.applyPing || 0)) {
       ingestPaidCloud.applyPing = applyAt;
+      stampPing("applyPing", applyAt);
       const ping = o.applyPing;
       const confirmed = !!(ping && (ping.kind === "official" || ping.officialAt));
       const live = !confirmed && applyPingStillLive(ping, o.tenants || state.tenants);
@@ -8206,12 +8235,13 @@ function ingestPaidCloud(raw) {
     const renewAt = Number(o.renewPing && o.renewPing.at) || 0;
     if (renewAt && renewAt > (ingestPaidCloud.renewPing || 0)) {
       ingestPaidCloud.renewPing = renewAt;
+      stampPing("renewPing", renewAt);
       const ping = o.renewPing;
       if (ping) state.renewPing = ping;
       if (ui.role === "admin" && ping && ping.name && !renewPingAlreadySeen(ping)) {
         markRenewPingSeen(ping);
         const line = `${ping.roomNo || ""} ${ping.name} 申請續約`.trim();
-        try { showOsBanner("續約申請", line + "　年水費 $1,800 現場現金", "tongjie-renew-" + renewAt); } catch {}
+        try { showOsBanner("續約申請", line + "　年水費 $1,800 現場現金", "renew-" + (ping.id || ping.roomNo || "7032")); } catch {}
         toast("續約申請　" + line);
       }
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
@@ -8219,6 +8249,7 @@ function ingestPaidCloud(raw) {
     const signAt = Number(o.eSignPing && o.eSignPing.at) || 0;
     if (signAt && signAt > (ingestPaidCloud.eSignPing || 0)) {
       ingestPaidCloud.eSignPing = signAt;
+      stampPing("eSignPing", signAt);
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
@@ -12148,6 +12179,11 @@ function canOsNotify() {
 }
 function showOsBanner(title, body, tag) {
   if (!canOsNotify()) return;
+  const fp = osBannerFp(title, body, tag);
+  if (!osBannerRepeatable(tag, title)) {
+    if (osBannerSeen(fp)) return;
+    markOsBannerSeen(fp);
+  }
   const text = String(body || "").slice(0, 180);
   const opts = {
     body: text,
@@ -12155,7 +12191,7 @@ function showOsBanner(title, body, tag) {
     lang: "zh-Hant",
     subtitle: "統潔開發",
     vibrate: [200, 80, 200],
-    tag: tag || ("tongjie-" + title),
+    tag: String(tag || ("tongjie-" + title)).replace(/-\d{10,}$/, ""),
     renotify: false,
     silent: false
   };
@@ -12164,6 +12200,32 @@ function showOsBanner(title, body, tag) {
   if (navigator.serviceWorker) viaSw().catch(viaPage);
   else viaPage();
   try { ringChime(); } catch {}
+}
+function osBannerRepeatable(tag, title) {
+  const s = String(tag || "") + " " + String(title || "");
+  return /unpaid|water|memo|notify-on|tongjie-update|admin-unpaid|admin-water/.test(s);
+}
+function osBannerFp(title, body, tag) {
+  const t = String(tag || "").replace(/-\d{10,}$/, "");
+  if (t) return t;
+  return String(title || "") + "|" + String(body || "").replace(/\s+/g, " ").slice(0, 90);
+}
+function osBannerSeen(fp) {
+  if (!fp) return false;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-os-seen") || "[]");
+    return Array.isArray(raw) && raw.indexOf(fp) >= 0;
+  } catch { return false; }
+}
+function markOsBannerSeen(fp) {
+  if (!fp) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-os-seen") || "[]");
+    const list = Array.isArray(raw) ? raw : [];
+    if (list.indexOf(fp) >= 0) return;
+    list.push(fp);
+    localStorage.setItem("tj-os-seen", JSON.stringify(list.slice(-300)));
+  } catch {}
 }
 function notifyExtra(title, target) {
   const map = {
@@ -12305,6 +12367,8 @@ function notifyCloudChanges(before) {
       showOsBanner("新報修", (r.roomNo || "") + " " + (r.type || ""), "repair-" + r.id);
     });
     (state.renewals || []).filter(x => !(before.renewIds || []).includes(x.id)).forEach(x => {
+      if (renewPingAlreadySeen({ id: x.id, roomNo: x.roomNo, name: x.name })) return;
+      markRenewPingSeen({ id: x.id, roomNo: x.roomNo, name: x.name });
       const room = (state.rooms || []).find(r => r && r.id === x.roomId);
       const tenant = (state.tenants || []).find(t => t && t.id === x.tenantId);
       const who = (x.roomNo || (room && room.no) || "") + " " + (x.name || (tenant && tenant.name) || "");
@@ -30598,7 +30662,11 @@ async function boot() {
     refreshSky(true).then(() => {
       if (ui.role === "tenant") applySkyDom();
     }).catch(() => {});
-    if (ui.role || isInstalledApp()) { enablePush().then(() => maybeNudgeNotifies()).catch(() => {}); armPushAsk(); }
+    if (ui.role || isInstalledApp()) {
+      try { seedOldEventNotifies(); } catch {}
+      enablePush().then(() => maybeNudgeNotifies()).catch(() => {});
+      armPushAsk();
+    }
   } catch (err) {
     try { console.error(err); } catch {}
     try { render(); } catch {}
@@ -30628,23 +30696,28 @@ async function boot() {
       refreshOnlineBadges();
       if (typeof chatFinger === "function" && chatFinger() !== chatBefore) {
         try { onChatsUpdated(); } catch {}
-        try { notifyCloudChanges(before); } catch {}
+        if (syncTick.ready) {
+          try { notifyCloudChanges(before); } catch {}
+        }
         if (typeof isDeveloper === "function" && isDeveloper() && (ui.page === "dash" || ui.page === "tenants" || ui.page === "home")) {
           ui.keepScroll = true;
           render();
         }
       }
       if (coreSig(state) !== prevSig) {
-        notifyCloudChanges(before);
+        if (syncTick.ready) notifyCloudChanges(before);
         if (composingNow()) {
           captureComposeDraft();
-          return;
+        } else {
+          ui.keepScroll = true;
+          render();
         }
-        ui.keepScroll = true;
-        render();
       }
     } catch {}
-    finally { syncTick.busy = false; }
+    finally {
+      syncTick.ready = true;
+      syncTick.busy = false;
+    }
   };
   setInterval(syncTick, 1500);
   setTimeout(syncTick, 200);
