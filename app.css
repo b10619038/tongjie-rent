@@ -763,8 +763,8 @@ button.pay-pill.hand {
   cursor: default;
 }
 .renew-alert {
-  border: 2px solid #62765b;
-  background: #f4f7f1;
+  border: 1px solid var(--line);
+  background: #ffffff;
   margin-top: 8px;
 }
 button.pay-pill.paid {
@@ -833,14 +833,14 @@ button.pay-pill[data-open-renew].on.is-press {
   background: #eef6f1;
 }
 .pay-alert {
-  border: 2px solid #e8a8a3;
-  background: #fdf6f5;
+  border: 1px solid var(--line);
+  background: #ffffff;
   margin-top: 8px;
 }
 .pay-alert .dash-h { color: var(--rose); }
 .pay-alert.paid {
-  border-color: #8fbf9a;
-  background: #f4f8f5;
+  border-color: var(--line);
+  background: #ffffff;
 }
 .pay-alert.paid .dash-h { color: #3f5a3a; }
 .pay-banks {
