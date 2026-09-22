@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-54";
-const APP_EDIT_COUNT = 1072;
+const APP_STAMP = "2026-09-22-21-00";
+const APP_EDIT_COUNT = 1073;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0622";
+const FILE_VER = "0623";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點姓名聊天室快速上滑，收起快速下滑"] },
+  { ver: APP_VERSION, items: ["租客對話改走雲端同步，開發者後台收得到"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1542,11 +1542,20 @@ function mergeChatStores(a, b) {
 async function chatGetRemote() {
   try {
     const res = await fetch(CHAT_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.threads) return data;
+    }
   } catch {}
   try {
     const res = await fetch(FILE_API + CHAT_FILE_ID, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const ct = String(res.headers.get("Content-Type") || "");
+      if (ct.indexOf("json") >= 0) {
+        const data = await res.json();
+        if (data && data.threads) return data;
+      }
+    }
   } catch {}
   return null;
 }
@@ -1557,7 +1566,10 @@ async function chatPostRemote(body) {
       headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
       body: JSON.stringify(body)
     });
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.threads) return data;
+    }
   } catch {}
   return null;
 }
@@ -1574,12 +1586,43 @@ async function chatPutFile(store) {
     });
   } catch {}
 }
+function persistChatsToState() {
+  const store = chatStore();
+  if (state) state.devChats = store;
+  saveLocalChats(store);
+}
+function applyDevChats(data) {
+  if (!data) return;
+  const merged = mergeChatStores(chatStore(), data.devChats);
+  ui.chats = merged;
+  data.devChats = merged;
+  if (state) state.devChats = mergeChatStores(state.devChats, merged);
+  saveLocalChats(ui.chats);
+}
+function mergeDevChatsInto(target, other) {
+  if (!target) return;
+  target.devChats = mergeChatStores(target.devChats, other && other.devChats);
+  ui.chats = mergeChatStores(chatStore(), target.devChats);
+  saveLocalChats(ui.chats);
+}
+function chatFinger() {
+  const th = ((ui.chats && ui.chats.threads) || (chatStore().threads) || {});
+  return Object.keys(th).map(id => id + ":" + ((th[id] && th[id].msgs) || []).length + ":" + ((th[id] && th[id].updatedAt) || 0)).join("|");
+}
+function onChatsUpdated() {
+  try { refreshChatBadges(); } catch {}
+  if (ui.chatOpen) try { drawChatBox(); } catch {}
+}
 async function pullChat(forceDraw) {
   if (!canUseDevChat()) return;
+  if (state && state.devChats) {
+    ui.chats = mergeChatStores(chatStore(), state.devChats);
+    saveLocalChats(ui.chats);
+  }
   const remote = await chatGetRemote();
   if (remote && remote.threads) {
     ui.chats = mergeChatStores(chatStore(), remote);
-    saveLocalChats(ui.chats);
+    persistChatsToState();
   }
   if (forceDraw || ui.chatOpen) drawChatBox();
   try { refreshChatBadges(); } catch {}
@@ -1602,8 +1645,10 @@ async function sendDevChat(tid, text) {
   th.name = (t && t.name) || th.name || "";
   if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
   else th.unreadTenant = (th.unreadTenant || 0) + 1;
-  saveLocalChats(chatStore());
+  persistChatsToState();
   drawChatBox();
+  try { save(true); } catch {}
+  try { await pushCloud(); } catch {}
   const posted = await chatPostRemote({
     tenantId: tid,
     roomNo: th.roomNo,
@@ -1614,9 +1659,7 @@ async function sendDevChat(tid, text) {
   });
   if (posted && posted.threads) {
     ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
-    saveLocalChats(ui.chats);
-  } else {
-    await chatPutFile(chatStore());
+    persistChatsToState();
   }
   drawChatBox();
 }
@@ -1626,7 +1669,9 @@ async function markChatRead(tid) {
   if (who === "dev") th.unreadDev = 0;
   else th.unreadTenant = 0;
   saveLocalChats(chatStore());
+  persistChatsToState();
   await chatPostRemote({ tenantId: tid, read: who, roomNo: th.roomNo, name: th.name });
+  try { save(true); } catch {}
   try { refreshChatBadges(); } catch {}
 }
 function chatUnreadOf(tid) {
@@ -4896,6 +4941,7 @@ function normalize(data) {
   mergeLedgerInto(data, loadLedgerBackup());
   try { if (purgeDroppedStudios(data)) markCloudDirty(); } catch {}
   persistLedger(data);
+  try { applyDevChats(data); } catch {}
   return data;
 }
 function roomNoFromBookNote(note) {
@@ -8497,13 +8543,15 @@ async function pullCloud() {
       bookVault: state.bookVault,
       bookVaultGone: state.bookVaultGone,
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
-      paidMarks: state.paidMarks
+      paidMarks: state.paidMarks,
+      devChats: state.devChats || chatStore()
     };
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
     try { applyMemoDone(state); } catch {}
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
+    mergeDevChatsInto(state, data);
     applyAnnMedia(state);
     applyRepairMedia(state);
     applyRepairStat(state);
@@ -8576,6 +8624,7 @@ async function pullCloud() {
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
     mergeSharedInto(state, mineSnap);
+    mergeDevChatsInto(state, mineSnap);
     state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
     state.extraMeters = unionById(state.extraMeters, mineSnap.extraMeters);
     state.meterBills = unionById(state.meterBills, mineSnap.meterBills);
@@ -8660,6 +8709,7 @@ async function pullCloud() {
     try { ensurePhoneLoginPasses(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
+    try { onChatsUpdated(); } catch {}
     ui.cloudOk = true;
     return true;
   } catch {
@@ -9176,7 +9226,8 @@ async function pushCloud() {
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
       bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
-      bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone)))
+      bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))),
+      devChats: mergeChatStores(remote && remote.devChats, state.devChats || chatStore())
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -9204,6 +9255,11 @@ async function pushCloud() {
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
     if (payload.bookVault) state.bookVault = payload.bookVault;
     if (payload.bookVaultGone) state.bookVaultGone = payload.bookVaultGone;
+    if (payload.devChats) {
+      state.devChats = payload.devChats;
+      ui.chats = mergeChatStores(chatStore(), payload.devChats);
+      saveLocalChats(ui.chats);
+    }
     applyBookVaultGone(state);
     stripCloudMedia(payload);
     applyESigns(payload);
@@ -9241,7 +9297,8 @@ async function pushCloud() {
         repairs: payload.repairs,
         company: payload.company,
         bookVault: payload.bookVault,
-        bookVaultGone: payload.bookVaultGone
+        bookVaultGone: payload.bookVaultGone,
+        devChats: payload.devChats
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
@@ -30233,10 +30290,18 @@ async function boot() {
         renewIds: (state.renewals || []).map(x => x.id)
       };
       const prevSig = coreSig(state);
+      const chatBefore = typeof chatFinger === "function" ? chatFinger() : "";
       const changed = await pullCloud();
       try { await pullBuild(); } catch {}
       try { await pollRemoteBuild(); } catch {}
       refreshOnlineBadges();
+      if (typeof chatFinger === "function" && chatFinger() !== chatBefore) {
+        try { onChatsUpdated(); } catch {}
+        if (typeof isDeveloper === "function" && isDeveloper() && (ui.page === "dash" || ui.page === "tenants" || ui.page === "home")) {
+          ui.keepScroll = true;
+          render();
+        }
+      }
       if (coreSig(state) !== prevSig) {
         notifyCloudChanges(before);
         if (composingNow()) {
