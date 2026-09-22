@@ -4533,6 +4533,7 @@ html.preview-zoom body {
 #checkout-pick-mask {
   background: rgba(20, 22, 21, .52);
 }
+.install-sheet.checkout-sheet {
   width: min(720px, 100%);
   max-height: none;
   margin: 8px auto 28px;
