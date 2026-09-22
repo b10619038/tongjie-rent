@@ -5594,8 +5594,16 @@ html[data-theme="void"] .site-chip {
   background: #f6f7f5;
 }
 .chat-empty { color: var(--muted); text-align: center; padding: 28px 8px; font-size: 13px; }
-.chat-row { display: flex; margin: 0 0 10px; }
+.chat-row { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 10px; }
 .chat-row.mine { justify-content: flex-end; }
+.chat-face {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 32px;
+  margin-top: 2px;
+}
 .chat-col {
   max-width: 78%;
   display: flex;
