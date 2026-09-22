@@ -263,7 +263,10 @@ input, textarea, select {
 .weather-hero[data-sky="rain"] { background: linear-gradient(180deg, #5f717f 0%, #8a99a6 58%, #d4dbd7 100%); }
 .weather-hero[data-sky="storm"] { background: linear-gradient(180deg, #33404c 0%, #566573 55%, #c8d0cc 100%); }
 .sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-.weather-hero .who-line,
+.weather-hero.sky-off {
+  background: transparent !important;
+}
+.weather-hero.sky-off .sky-live { display: none !important; }
 .weather-hero .hello-card,
 .weather-hero .back { position: relative; z-index: 1; }
 .hello-card {
