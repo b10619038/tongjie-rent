@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-21-00";
-const APP_EDIT_COUNT = 1073;
+const APP_STAMP = "2026-09-22-21-03";
+const APP_EDIT_COUNT = 1074;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0623";
+const FILE_VER = "0624";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客對話改走雲端同步，開發者後台收得到"] },
+  { ver: APP_VERSION, items: ["長按自己的訊息可收回"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1525,7 +1525,16 @@ function mergeChatStores(a, b) {
     const x = (a && a.threads && a.threads[id]) || {};
     const y = (b && b.threads && b.threads[id]) || {};
     const map = new Map();
-    [].concat(x.msgs || [], y.msgs || []).forEach(m => { if (m && m.id) map.set(m.id, m); });
+    [].concat(x.msgs || [], y.msgs || []).forEach(m => {
+      if (!m || !m.id) return;
+      const prev = map.get(m.id);
+      if (!prev) { map.set(m.id, Object.assign({}, m)); return; }
+      const recalled = !!(prev.recalled || m.recalled);
+      map.set(m.id, Object.assign({}, prev, m, {
+        recalled,
+        text: recalled ? "" : (m.text || prev.text || "")
+      }));
+    });
     const msgs = [...map.values()].sort((p, q) => (Number(p.at) || 0) - (Number(q.at) || 0)).slice(-80);
     out.threads[id] = {
       tenantId: id,
@@ -1741,7 +1750,7 @@ function bindChatSwipe(wrap) {
   const fromOk = t => {
     const bar = barEl();
     const log = logEl();
-    return (bar && bar.contains(t)) || (log && log.contains(t) && log.scrollTop <= 1);
+    return (bar && bar.contains(t)) || (log && log.contains(t) && log.scrollTop <= 1 && !t.closest(".chat-bubble, .chat-act"));
   };
   const start = e => {
     const p = e.touches ? e.touches[0] : e;
@@ -1790,8 +1799,87 @@ function chatWhen(at) {
   return (d.getMonth() + 1) + "/" + d.getDate() + " " + period + " " + h12 + ":" + p(d.getMinutes());
 }
 function chatBubbleHtml(m, mine) {
+  if (m && m.recalled) {
+    return `<div class="chat-row${mine ? " mine" : ""}"><div class="chat-bubble recalled">已收回訊息</div></div>`;
+  }
   const when = m.at ? chatWhen(m.at) : "";
-  return `<div class="chat-row${mine ? " mine" : ""}"><div class="chat-bubble">${escapeHtml(m.text || "")}${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+  return `<div class="chat-row${mine ? " mine" : ""}"><div class="chat-bubble${mine ? " can-recall" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${escapeHtml(m.text || "")}${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+}
+function hideChatAct() {
+  const el = document.getElementById("chat-act");
+  if (el) el.remove();
+}
+function showChatRecall(tid, msgId, bubble) {
+  hideChatAct();
+  const sheet = document.querySelector("#dev-chat-box .chat-sheet");
+  if (!sheet || !msgId) return;
+  const act = document.createElement("div");
+  act.id = "chat-act";
+  act.className = "chat-act";
+  act.innerHTML = `<button type="button" id="chat-recall">收回訊息</button><button type="button" id="chat-act-cancel">取消</button>`;
+  sheet.appendChild(act);
+  const rec = document.getElementById("chat-recall");
+  const cancel = document.getElementById("chat-act-cancel");
+  if (rec) rec.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideChatAct();
+    recallDevChat(tid, msgId);
+  };
+  if (cancel) cancel.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideChatAct();
+  };
+  if (bubble) bubble.classList.add("picked");
+}
+function recallDevChat(tid, msgId) {
+  const th = chatThreadOf(tid);
+  const m = (th.msgs || []).find(x => x && x.id === msgId);
+  if (!m) return;
+  const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
+  if (m.from !== mineFrom) return;
+  m.recalled = true;
+  m.text = "";
+  th.updatedAt = Date.now();
+  persistChatsToState();
+  drawChatBox();
+  try { save(true); } catch {}
+  try { pushCloud(); } catch {}
+}
+function bindChatRecall(tid) {
+  document.querySelectorAll("#chat-log .chat-bubble.can-recall").forEach(el => {
+    let t0 = 0, x0 = 0, y0 = 0, hold = 0;
+    const clear = () => { if (hold) { clearTimeout(hold); hold = 0; } };
+    const start = e => {
+      const p = e.touches ? e.touches[0] : e;
+      x0 = p.clientX; y0 = p.clientY;
+      t0 = Date.now();
+      clear();
+      hold = setTimeout(() => {
+        hold = 0;
+        try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+        showChatRecall(tid, el.dataset.msgId, el);
+      }, 420);
+    };
+    const move = e => {
+      const p = e.touches ? e.touches[0] : e;
+      if (!p) return;
+      if (Math.abs(p.clientX - x0) > 10 || Math.abs(p.clientY - y0) > 10) clear();
+    };
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: true });
+    el.addEventListener("touchend", clear);
+    el.addEventListener("touchcancel", clear);
+    el.addEventListener("mousedown", start);
+    el.addEventListener("mousemove", move);
+    el.addEventListener("mouseup", clear);
+    el.addEventListener("mouseleave", clear);
+    el.addEventListener("contextmenu", e => {
+      e.preventDefault();
+      showChatRecall(tid, el.dataset.msgId, el);
+    });
+  });
 }
 function drawChatBox() {
   if (!ui.chatOpen || ui.chatClosing) return;
@@ -1828,6 +1916,7 @@ function drawChatBox() {
   if (log) log.scrollTop = log.scrollHeight;
   wrap.onclick = e => { if (e.target === wrap) closeDevChat(); };
   bindChatSwipe(wrap);
+  bindChatRecall(tid);
   const form = document.getElementById("chat-form");
   const inp = document.getElementById("chat-input");
   if (inp) inp.oninput = () => saveChatDraft();
@@ -1863,7 +1952,7 @@ function devChatInboxHtml() {
       const last = (th.msgs || [])[th.msgs.length - 1];
       const unread = Number(th.unreadDev) || 0;
       return `<button type="button" class="chat-inbox-row" data-open-chat="${escapeHtml(th.tenantId)}">
-        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.text) || "")}</em></span>
+        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.recalled) ? "已收回訊息" : ((last && last.text) || ""))}</em></span>
         ${unread ? `<i class="badge-dot">${unread > 99 ? "99+" : unread}</i>` : ""}
       </button>`;
     }).join("")}

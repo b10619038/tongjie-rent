@@ -5541,6 +5541,7 @@ html[data-theme="void"] .site-chip {
   justify-content: center;
 }
 .chat-sheet {
+  position: relative;
   width: min(100%, 520px);
   height: min(78vh, 720px);
   background: #fff;
@@ -5606,6 +5607,9 @@ html[data-theme="void"] .site-chip {
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 .chat-row.mine .chat-bubble {
   background: #62765b;
@@ -5613,6 +5617,41 @@ html[data-theme="void"] .site-chip {
   border-color: #62765b;
   border-radius: 16px 16px 6px 16px;
 }
+.chat-bubble.picked { filter: brightness(.92); }
+.chat-bubble.recalled,
+.chat-row.mine .chat-bubble.recalled {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: #8a948f;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 2px;
+}
+.chat-act {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 72px;
+  z-index: 6;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(23, 33, 31, .16);
+}
+.chat-act button {
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.chat-act button:last-child { border-bottom: 0; font-weight: 700; color: #6a6a6a; }
+#chat-recall { color: #c45b4a; }
 .chat-bubble em {
   display: block;
   margin-top: 4px;
