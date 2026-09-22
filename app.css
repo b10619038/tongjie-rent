@@ -1322,6 +1322,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   color: var(--on-teal, #fff);
   text-align: left;
   isolation: isolate;
+}
+.esign-cta.anim {
   animation: esignBounce .7s cubic-bezier(.22,1.4,.32,1) .9s both;
 }
 .esign-cta::after {
@@ -1332,6 +1334,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   border: 2px solid currentColor;
   pointer-events: none;
   opacity: 0;
+}
+.esign-cta.anim::after {
   animation: esignEdge 1.6s ease-out 1.5s infinite;
 }
 @keyframes esignBounce {
