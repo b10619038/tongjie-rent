@@ -1948,6 +1948,65 @@ input[type="file"] {
 .ann-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; position: relative; z-index: 4; }
 .ann-actions .ghost { width: 100%; pointer-events: auto !important; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
+.appoint-one {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  min-height: 46px;
+  padding: 0 8px 0 14px;
+  background: var(--card);
+  box-sizing: border-box;
+}
+.appoint-face {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  z-index: 1;
+}
+.appoint-time { margin-left: 0.2cm; }
+.appoint-face-empty { color: var(--muted); font-weight: 600; }
+.appoint-native {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(100% - 86px);
+  opacity: 0;
+  border: 0 !important;
+  background: transparent !important;
+  min-height: 46px;
+  padding: 0 !important;
+  z-index: 2;
+}
+.appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none;
+  opacity: 0;
+  width: 0;
+}
+.gcal-in {
+  position: relative;
+  z-index: 3;
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: auto !important;
+  border: 0;
+  background: transparent;
+  color: var(--teal-mid);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 8px 6px;
+}
+.gcal-in.is-press,
+.gcal-in:active { transform: scale(0.94); }
 .appoint-link { color: var(--teal-mid); font-weight: 700; text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
 
 .admin-grid { display: grid; gap: 12px; padding: 8px 20px 30px; }

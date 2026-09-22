@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-11-26";
-const APP_EDIT_COUNT = 987;
+const APP_STAMP = "2026-09-22-11-32";
+const APP_EDIT_COUNT = 988;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0538";
+const FILE_VER = "0539";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -479,7 +479,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印今天續約合約按鈕可正常開啟"] },
+  { ver: APP_VERSION, items: ["簽約時間與日期空開 0.2 公分，右邊改加入日曆"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2352,7 +2352,7 @@ function renewAskCardHtml(t, r, opts) {
     <div class="small" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ～ ${escapeHtml(range.end)}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
     <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
     <label class="field"><span>預約實際簽約日期</span>
-      <input id="renew-appoint" type="datetime-local" value="${escapeHtml(ui.renewAppoint || "")}" min="${minAt}" max="${maxDay}T18:00" />
+      ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00", gcalDraft: true })}
     </label>
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
   </div>`;
@@ -2394,8 +2394,17 @@ function bindRenewForm() {
   });
   const inp = document.getElementById("renew-appoint");
   if (inp) {
-    inp.onchange = () => { ui.renewAppoint = inp.value; };
-    inp.oninput = () => { ui.renewAppoint = inp.value; };
+    inp.onchange = () => { ui.renewAppoint = inp.value; paintAppointFace(inp); };
+    inp.oninput = () => { ui.renewAppoint = inp.value; paintAppointFace(inp); };
+  }
+  const gcalDraft = document.querySelector("[data-gcal-draft]");
+  if (gcalDraft) {
+    bindIosPress(gcalDraft);
+    gcalDraft.onclick = e => {
+      e.preventDefault();
+      const at = (document.getElementById("renew-appoint") || {}).value || ui.renewAppoint;
+      openGoogleCalendarAt(at, "續約簽約", "統潔＆信潔開發有限公司續約簽約");
+    };
   }
   const send = document.getElementById("renew-submit");
   if (send) send.onclick = () => submitTenantRenewal();
@@ -9337,6 +9346,26 @@ function escapeHtml(s) {
     .replace(/\"/g, "\u0026quot;")
     .replace(/'/g, "\u0026#39;");
 }
+function appointFaceHtml(at) {
+  const s = String(at || "").replace(" ", "T");
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/);
+  if (!m) return `<span class="appoint-face-empty">選擇簽約時間</span>`;
+  const hh = String(m[4]).padStart(2, "0");
+  return `<span class="appoint-date">${m[1]}/${m[2]}/${m[3]}</span><span class="appoint-time">${hh}:${m[5]}</span>`;
+}
+function paintAppointFace(inp) {
+  const wrap = inp && inp.closest(".appoint-one");
+  const face = wrap && wrap.querySelector(".appoint-face");
+  if (face) face.innerHTML = appointFaceHtml(inp.value);
+}
+function appointOneHtml(at, extra) {
+  const x = extra || {};
+  return `<div class="appoint-one">
+    <span class="appoint-face">${appointFaceHtml(at)}</span>
+    <input type="datetime-local" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""} value="${escapeHtml(at || "")}" ${x.disabled ? "disabled" : ""}${x.min ? ` min="${escapeHtml(x.min)}"` : ""}${x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
+    ${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : "")}
+  </div>`;
+}
 function formatDateTime12(value) {
   if (!value) return "";
   const text = String(value);
@@ -12241,6 +12270,13 @@ function openGoogleCalendar(item, kind) {
     ? `統潔＆信潔開發有限公司續約簽約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}`
     : `統潔＆信潔開發有限公司報修預約\n租客：${tenant ? tenant.name : ""}\n房號：${room ? room.no : ""}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}&ctz=Asia/Taipei`, "_blank", "noopener");
+}
+function openGoogleCalendarAt(at, title, details) {
+  const range = gcalRange(at);
+  if (!range) { toast("請先選擇簽約時間"); return; }
+  const text = encodeURIComponent(title || "續約簽約");
+  const det = encodeURIComponent(details || "統潔＆信潔開發有限公司續約簽約");
+  window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${det}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
 function calendarItems() {
   const items = [];
@@ -23325,7 +23361,7 @@ function renewalAdminCardHtml(x) {
     ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(oldEnd) : ""}。新約第一天（${escapeHtml(x.start || "")}）才換成新年合約。</div>` : ""}
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
-        <input type="datetime-local" data-renew-appoint="${x.id}" value="${x.appointAt || ""}" ${signed ? "disabled" : ""} />
+        ${appointOneHtml(x.appointAt || "", { attr: ` data-renew-appoint="${x.id}"`, disabled: signed, gcalId: x.id })}
       </label>
       <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div>
     </div>
@@ -24180,14 +24216,40 @@ function bindTenantFold() {
   if (list && list.dataset.renewPrintBound !== "1") {
     list.dataset.renewPrintBound = "1";
     list.addEventListener("click", e => {
-      const btn = e.target.closest("[data-print-renew]");
-      if (!btn || !list.contains(btn)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      printRenewalById(btn.dataset.printRenew);
+      const printBtn = e.target.closest("[data-print-renew]");
+      if (printBtn && list.contains(printBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        printRenewalById(printBtn.dataset.printRenew);
+        return;
+      }
+      const gcalBtn = e.target.closest("[data-gcal-renew]");
+      if (gcalBtn && list.contains(gcalBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const item = (state.renewals || []).find(x => x && x.id === gcalBtn.dataset.gcalRenew);
+        if (!item || !item.appointAt) { toast("請先選擇簽約時間"); return; }
+        item.appointRead = true;
+        save();
+        openGoogleCalendar(item, "renew");
+      }
     });
   }
   document.querySelectorAll("[data-print-renew]").forEach(btn => bindIosPress(btn));
+  document.querySelectorAll("[data-gcal-renew], .gcal-in").forEach(btn => bindIosPress(btn));
+  document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
+    inp.onclick = e => e.stopPropagation();
+    inp.onchange = () => {
+      paintAppointFace(inp);
+      const item = (state.renewals || []).find(x => x && x.id === inp.dataset.renewAppoint);
+      if (!item) return;
+      item.appointAt = inp.value;
+      item.appointRead = !inp.value;
+      save();
+      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
+      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
+    };
+  });
   document.querySelectorAll("[data-pay-bank]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -24433,6 +24495,7 @@ function bindTenantListTools() {
   document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
+      paintAppointFace(inp);
       const item = (state.renewals || []).find(x => x.id === inp.dataset.renewAppoint);
       if (!item) return;
       item.appointAt = inp.value;
