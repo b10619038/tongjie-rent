@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-15-26";
-const APP_EDIT_COUNT = 1016;
+const APP_STAMP = "2026-09-22-15-30";
+const APP_EDIT_COUNT = 1017;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0566";
+const FILE_VER = "0567";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客公告點標題看全部，點 X 往左上收合，新公告自動跳出"] },
+  { ver: APP_VERSION, items: ["修正租客畫面讀取頭貼當掉"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -2534,7 +2534,7 @@ function tenantHandoverNoteHtml(t, r) {
 }
 function enforceTenantSession() {
   if (ui.role !== "tenant" || isDevPreview() || isTenantLook()) return;
-  let t = (state.tenants || []).find(x => x.id === ui.tenantId);
+  let t = (state.tenants || []).find(x => x && x.id === ui.tenantId);
   if (!t && ui.tenantId) t = (state.tenants || []).find(x => x && String(x.id) === String(ui.tenantId));
   const r = t && (state.rooms || []).find(x => x.id === t.roomId);
   if (t && (t.former || t.sessionEnded || t.clearedApply || t.loginRevoked)) {
@@ -11058,28 +11058,32 @@ function exitTenantLook() {
   render();
 }
 function me() {
+  const list = (typeof state !== "undefined" && state && state.tenants) || [];
+  const id = typeof ui !== "undefined" && ui ? ui.tenantId : "";
   if (isDevPreview()) {
-    const live = (state.tenants || []).find(x => x.demo || x.id === "t-demo");
+    const live = list.find(x => x && (x.demo || x.id === "t-demo"));
     if (live) return live;
-    ensureDevPreview();
-    return ui.devTenant;
+    try { ensureDevPreview(); } catch {}
+    return (ui && ui.devTenant) || null;
   }
-  if (isProspectPreview()) return (state.tenants || []).find(t => t && t.id === ui.tenantId) || null;
-  return state.tenants.find(t => t.id === ui.tenantId);
+  if (!id) return null;
+  return list.find(t => t && (t.id === id || String(t.id) === String(id))) || null;
 }
 function myRoom() {
+  const rooms = (typeof state !== "undefined" && state && state.rooms) || [];
   if (isDevPreview()) {
-    const live = (state.rooms || []).find(x => x.demo || x.id === "r-demo" || String(x.no) === "DEMO");
+    const live = rooms.find(x => x && (x.demo || x.id === "r-demo" || String(x.no) === "DEMO"));
     if (live) return live;
-    ensureDevPreview();
-    return ui.devRoom;
+    try { ensureDevPreview(); } catch {}
+    return (ui && ui.devRoom) || null;
   }
   const t = me();
-  if (isProspectPreview() && t) {
-    const hit = (state.rooms || []).find(r => r && r.id === t.roomId);
+  if (!t) return null;
+  if (isProspectPreview()) {
+    const hit = rooms.find(r => r && r.id === t.roomId);
     if (hit) return hit;
   }
-  return t ? state.rooms.find(r => r.id === t.roomId) : null;
+  return rooms.find(r => r && r.id === t.roomId) || null;
 }
 function unreadAnnouncements(tenantId) {
   const hidden = new Set();
@@ -19139,7 +19143,7 @@ function bindNavPill() {
 
 function tenantView() {
   if (ui.page === "rooms") return roomsView();
-  if (ui.page === "room-detail") return roomDetailView(ui.roomId || myRoom().id);
+  if (ui.page === "room-detail") return roomDetailView(ui.roomId || (myRoom() && myRoom().id) || "");
   if (ui.page === "parking") return parkingView();
   if (ui.page === "balcony") return balconyView();
   if (ui.page === "trash") return trashView();
@@ -19395,18 +19399,30 @@ function tenantNameHeadingHtml(name) {
   return `<h1>${escapeHtml(parts[0] || "租客")}</h1>`;
 }
 function homeView() {
-  const t = me(); const r = myRoom();
+  const t = me() || {};
+  const r = myRoom() || {};
+  if (!t.id) {
+    return `<div class="topbar">
+      <div><div class="eyebrow">HOME</div><h1>租客</h1></div>
+      <button class="back" id="logout-tenant" type="button">${ui.devPreview || isTenantLook() ? "返回後台" : "登出"}</button>
+    </div>
+    <div class="screen"><p class="lead">找不到這位租客，請返回後台再進一次。</p></div>`;
+  }
   const pay = payLabel(t, r);
   const firstPay = firstStudioPayDue(t, r);
   const dueNow = leaseCoversYm(t, r, payYmNow());
   const stubNow = dueNow && isStubMonthNow(t, r);
-  const hasAnn = tenantAnnounceList().length > 0;
-  const hiddenN = tenantAnnounceList().filter(a => tenantHiddenAnnSet().has(String(a.id))).length;
-  const annHint = ui.annOpen ? "點這裡收合" : (hiddenN ? `已收合 ${hiddenN} 則 · 點看全部` : "點看全部");
-  const announceBlock = `<div class="section-title ann-dock" id="ann-dock" role="button" tabindex="0">
+  let announceBlock = "";
+  let hasAnn = false;
+  try {
+    hasAnn = tenantAnnounceList().length > 0;
+    const hiddenN = tenantAnnounceList().filter(a => tenantHiddenAnnSet().has(String(a.id))).length;
+    const annHint = ui.annOpen ? "點這裡收合" : (hiddenN ? `已收合 ${hiddenN} 則 · 點看全部` : "點看全部");
+    announceBlock = `<div class="section-title ann-dock" id="ann-dock" role="button" tabindex="0">
       <h2 class="slide-right">管理員公告</h2>
       <span>${annHint}</span>
     </div><div class="ann-list" id="ann-list">${announceCardsHtml()}</div>`;
+  } catch (err) { try { console.error(err); } catch {} }
   const prospectNote = isProspectPreview() ? tenantHandoverNoteHtml(t, r) : "";
   const handoverNote = isProspectPreview() ? "" : tenantHandoverNoteHtml(t, r);
   return `
