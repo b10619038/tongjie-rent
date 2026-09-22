@@ -1945,28 +1945,58 @@ input[type="file"] {
 .ann-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; position: relative; z-index: 4; }
 .ann-actions .ghost { width: 100%; pointer-events: auto !important; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
-.appoint-row {
+.appoint-frame {
   display: flex;
   align-items: center;
-  gap: 10px;
   width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  min-height: 48px;
+  padding: 0 8px 0 12px;
+  background: var(--card);
+  box-sizing: border-box;
 }
-.appoint-row input[type="date"],
-.appoint-row input[type="time"] {
-  width: auto;
-  min-width: 0;
-  flex: 1;
-  padding: 10px 12px;
-}
-.appoint-row input[type="time"] { flex: 0.85; }
-.gcal-chip {
-  flex: 0 0 auto !important;
+.appoint-frame input[type="date"],
+.appoint-frame input[type="time"] {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+  min-height: 46px;
   width: auto !important;
-  padding: 8px 12px !important;
-  font-size: 12px;
+  max-width: none;
+  padding: 10px 0 !important;
+  border-radius: 0;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+}
+.appoint-frame input[type="date"] {
+  flex: 0 0 auto;
+  min-width: 10.4em;
+  padding-right: 18px;
+}
+.appoint-frame input[type="time"] {
+  flex: 1;
+  min-width: 5.8em;
+  padding-left: 6px;
+}
+.appoint-frame .gcal-chip {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: auto !important;
+  border: 0;
+  background: transparent;
+  color: var(--teal-mid);
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
-  border-radius: 999px;
+  padding: 8px 6px 8px 10px;
+  border-radius: 12px;
+}
+.appoint-frame .gcal-chip.is-press,
+.appoint-frame .gcal-chip:active {
+  transform: scale(0.94);
 }
 .appoint-link { color: var(--teal-mid); font-weight: 700; text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
 
