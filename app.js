@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-16-39";
-const APP_EDIT_COUNT = 1033;
+const APP_STAMP = "2026-09-22-16-58";
+const APP_EDIT_COUNT = 1034;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0583";
+const FILE_VER = "0584";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月已入帳圖卡的產出發票可點"] },
+  { ver: APP_VERSION, items: ["本月租金白卡已繳時蓋本月已繳印章"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -12863,6 +12863,10 @@ function thisMonthRentCardHtml(t, r) {
   const n = thisMonthRentOf(t, r);
   return n ? money(n) : "—";
 }
+function rentPaidStampHtml(t) {
+  if (!t || !paidThisMonth(t)) return "";
+  return `<span class="rent-stamp" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>`;
+}
 function leasePartForYm(t, r, ym) {
   const y = String(ym || payYmNow()).slice(0, 7);
   return (tenantLeaseParts(t, r) || []).find(p => {
@@ -19503,7 +19507,7 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
-          <div class="stat"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b></div>
+          <div class="stat${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
         </div>
         ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()

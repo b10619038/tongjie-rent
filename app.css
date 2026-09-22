@@ -548,13 +548,40 @@ input, textarea, select {
 .hero-card .small { color: #7a8a85; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .stat {
+  position: relative;
   background: #ffffff; color: #17211f;
   border: 1px solid #e8e8e8; border-radius: 16px; padding: 12px;
+  overflow: visible;
 }
 .stat .label { display: block; margin-bottom: 8px; color: #7a8a85; }
 .rent-sub { display: block; font-size: 12px; font-weight: 500; margin-top: 2px; line-height: 1.3; }
 .stat b { display: block; font-size: 20px; margin-top: 0; color: #17211f; }
 .stat b .remain-wait { font-size: 16px; font-weight: 800; letter-spacing: 0; }
+.rent-stamp {
+  --stamp: #c45c4c;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  place-items: center;
+  border: 1.5px solid var(--stamp);
+  box-shadow: inset 0 0 0 2.5px var(--stamp);
+  border-radius: 7px;
+  color: var(--stamp);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  transform: rotate(-12deg);
+  pointer-events: none;
+  background: rgba(196, 92, 76, 0.06);
+  opacity: 0.9;
+}
+.rent-stamp i { font-style: normal; }
 html[data-theme="void"] .hero-card {
   background: #161616;
   color: #f5f5f5;
@@ -570,6 +597,10 @@ html[data-theme="void"] .stat {
 }
 html[data-theme="void"] .stat .label { color: #a3a3a3; }
 html[data-theme="void"] .stat b { color: #ffffff; }
+html[data-theme="void"] .rent-stamp {
+  --stamp: #e08a7a;
+  background: rgba(224, 138, 122, 0.1);
+}
 .pay-pill {
   display: inline-flex; align-items: center; gap: 6px;
   border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700;
