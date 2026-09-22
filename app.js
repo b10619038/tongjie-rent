@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-42";
-const APP_EDIT_COUNT = 1048;
+const APP_STAMP = "2026-09-22-18-45";
+const APP_EDIT_COUNT = 1049;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0598";
+const FILE_VER = "0599";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽：已申請續約也打勾"] },
+  { ver: APP_VERSION, items: ["發票總覽放大後關閉會還原畫面比例"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -12409,21 +12409,14 @@ function showDepositImputedPreview() {
   const rows = depositImputedRows(kind, year);
   if (!rows.length) { toast("目前沒有可計算設算息的" + (kind === "factory" ? "廠房" : "套房")); return; }
   const page = drawDepositImputedCanvas(rows, kind, year);
-  closeInvoicePreview();
   const tot = rows.reduce((n, r) => n + (r.gross || 0), 0);
-  const wrap = document.createElement("div");
-  wrap.className = "lightbox invoice-preview";
-  wrap.id = "invoice-preview-box";
-  wrap.innerHTML = `
+  openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
       <span>${year - 1911}年${kind === "factory" ? "廠房" : "套房"}押金設算息　含稅 ${tot.toLocaleString("zh-TW")}</span>
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
-    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="押金設算息預覽"></div>`;
-  document.body.appendChild(wrap);
-  document.getElementById("inv-prev-close").onclick = closeInvoicePreview;
-  wrap.addEventListener("click", e => { if (e.target === wrap) closeInvoicePreview(); });
+    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="押金設算息預覽"></div>`);
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
@@ -12588,29 +12581,151 @@ async function downloadInvoiceOverviewPdf(page, kind) {
     toast("下載失敗，請再試一次");
   }
 }
+function viewportMetaBase() {
+  return "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual";
+}
+function resetPageZoom() {
+  try {
+    const meta = document.querySelector('meta[name="viewport"]');
+    const base = viewportMetaBase();
+    if (meta) {
+      meta.setAttribute("content", base + ", maximum-scale=1, user-scalable=no");
+      requestAnimationFrame(() => {
+        try { meta.setAttribute("content", base); } catch {}
+      });
+    }
+    document.documentElement.style.zoom = "";
+    document.body.style.zoom = "";
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+    window.scrollTo(0, 0);
+    if (typeof syncAppHeight === "function") syncAppHeight();
+  } catch {}
+}
+function bindPreviewGestureLock(on) {
+  if (on) {
+    if (!window.__tjGestLock) {
+      window.__tjGestLock = e => { try { e.preventDefault(); } catch {} };
+      document.addEventListener("gesturestart", window.__tjGestLock, { passive: false, capture: true });
+      document.addEventListener("gesturechange", window.__tjGestLock, { passive: false, capture: true });
+      document.addEventListener("gestureend", window.__tjGestLock, { passive: false, capture: true });
+    }
+    document.documentElement.classList.add("preview-zoom");
+    try {
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (meta) meta.setAttribute("content", viewportMetaBase() + ", maximum-scale=1, user-scalable=no");
+    } catch {}
+  } else {
+    if (window.__tjGestLock) {
+      document.removeEventListener("gesturestart", window.__tjGestLock, { capture: true });
+      document.removeEventListener("gesturechange", window.__tjGestLock, { capture: true });
+      document.removeEventListener("gestureend", window.__tjGestLock, { capture: true });
+      window.__tjGestLock = null;
+    }
+    document.documentElement.classList.remove("preview-zoom");
+  }
+}
+function bindInvoicePreviewZoom(sc) {
+  const img = sc && sc.querySelector("img");
+  if (!sc || !img || sc.dataset.zoomBound === "1") return;
+  sc.dataset.zoomBound = "1";
+  let scale = 1, tx = 0, ty = 0;
+  const pts = new Map();
+  let pinch0 = 0, scale0 = 1, mid0 = null, tx0 = 0, ty0 = 0, pan0 = null;
+  const paint = () => {
+    scale = Math.min(4, Math.max(1, scale));
+    const maxX = Math.max(0, (img.clientWidth * scale - sc.clientWidth) / 2 + 24);
+    const maxY = Math.max(0, (img.clientHeight * scale - sc.clientHeight) / 2 + 24);
+    tx = Math.min(maxX, Math.max(-maxX, tx));
+    ty = Math.min(maxY, Math.max(-maxY, ty));
+    img.style.transform = "translate3d(" + tx + "px," + ty + "px,0) scale(" + scale + ")";
+  };
+  img.style.transformOrigin = "center center";
+  img.style.willChange = "transform";
+  sc.style.touchAction = "none";
+  sc.addEventListener("pointerdown", e => {
+    try { sc.setPointerCapture(e.pointerId); } catch {}
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) {
+      const a = [...pts.values()];
+      pinch0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      scale0 = scale;
+      mid0 = { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
+      tx0 = tx; ty0 = ty;
+    } else if (pts.size === 1) {
+      pan0 = { x: e.clientX - tx, y: e.clientY - ty };
+    }
+  });
+  sc.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2) {
+      const a = [...pts.values()];
+      const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      scale = scale0 * (d / pinch0);
+      const mid = { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
+      if (mid0) { tx = tx0 + (mid.x - mid0.x); ty = ty0 + (mid.y - mid0.y); }
+      paint();
+    } else if (pts.size === 1 && scale > 1.02 && pan0) {
+      tx = e.clientX - pan0.x;
+      ty = e.clientY - pan0.y;
+      paint();
+    }
+  });
+  const up = e => {
+    pts.delete(e.pointerId);
+    if (pts.size < 2) mid0 = null;
+    if (pts.size === 1) {
+      const p = [...pts.values()][0];
+      pan0 = { x: p.x - tx, y: p.y - ty };
+    } else pan0 = null;
+    paint();
+  };
+  sc.addEventListener("pointerup", up);
+  sc.addEventListener("pointercancel", up);
+  sc.addEventListener("wheel", e => {
+    e.preventDefault();
+    scale *= e.deltaY < 0 ? 1.08 : 0.92;
+    paint();
+  }, { passive: false });
+  sc.addEventListener("dblclick", e => {
+    e.preventDefault();
+    if (scale > 1.05) { scale = 1; tx = 0; ty = 0; }
+    else { scale = 2.2; }
+    paint();
+  });
+}
 function closeInvoicePreview() {
+  bindPreviewGestureLock(false);
   const el = document.getElementById("invoice-preview-box");
   if (el) el.remove();
+  resetPageZoom();
+}
+function openInvoicePreviewBox(html) {
+  closeInvoicePreview();
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox invoice-preview";
+  wrap.id = "invoice-preview-box";
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap);
+  bindPreviewGestureLock(true);
+  bindInvoicePreviewZoom(wrap.querySelector(".invoice-preview-scroll"));
+  document.getElementById("inv-prev-close").onclick = closeInvoicePreview;
+  wrap.addEventListener("click", e => { if (e.target === wrap) closeInvoicePreview(); });
+  return wrap;
 }
 function showInvoiceOverviewPreview() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
   const rows = invoiceOverviewRows(kind);
   if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
   const page = drawInvoiceOverviewCanvas(rows, kind);
-  closeInvoicePreview();
-  const wrap = document.createElement("div");
-  wrap.className = "lightbox invoice-preview";
-  wrap.id = "invoice-preview-box";
-  wrap.innerHTML = `
+  openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
       <span>${kind === "factory" ? "廠房開立發票總覽預覽" : "開立發票總覽預覽"}</span>
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
-    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="開立發票總覽預覽"></div>`;
-  document.body.appendChild(wrap);
-  document.getElementById("inv-prev-close").onclick = closeInvoicePreview;
-  wrap.addEventListener("click", e => { if (e.target === wrap) closeInvoicePreview(); });
+    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="開立發票總覽預覽"></div>`);
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();

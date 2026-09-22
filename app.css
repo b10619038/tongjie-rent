@@ -3899,11 +3899,12 @@ img.avatar { object-fit: cover; display: block; }
 .invoice-preview .invoice-preview-scroll {
   width: 100%;
   max-height: calc(100% - 64px);
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: 8px 12px 18px;
+  touch-action: none;
 }
 .invoice-preview img {
   background: #fff;
@@ -3912,6 +3913,12 @@ img.avatar { object-fit: cover; display: block; }
   max-height: none;
   height: auto;
   border-radius: 8px;
+  transform-origin: center center;
+}
+html.preview-zoom,
+html.preview-zoom body {
+  overflow: hidden;
+  touch-action: none;
 }
 .lease-print-preview {
   padding: 0;
