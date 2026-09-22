@@ -258,7 +258,10 @@ input, textarea, select {
   overflow: hidden;
   min-height: 118px;
 }
-.sky-live, .sky-live * { animation: none !important; }
+.weather-hero[data-sky="sun"] { background: linear-gradient(180deg, #7ec4f5 0%, #d4ecfb 62%, #eef4ef 100%); }
+.weather-hero[data-sky="cloud"] { background: linear-gradient(180deg, #8f9eab 0%, #c4ced6 58%, #e6ece8 100%); }
+.weather-hero[data-sky="rain"] { background: linear-gradient(180deg, #5f717f 0%, #8a99a6 58%, #d4dbd7 100%); }
+.weather-hero[data-sky="storm"] { background: linear-gradient(180deg, #33404c 0%, #566573 55%, #c8d0cc 100%); }
 .sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .weather-hero .who-line,
 .weather-hero .hello-card,
@@ -299,8 +302,9 @@ input, textarea, select {
 .sky-fx .cld {
   position: absolute; height: 40px; border-radius: 40px;
   background: #d7dee4;
-  box-shadow: 18px 8px 0 0 #c5ced6;
+  box-shadow: 18px 8px 0 0 #c5ced6, 36px 4px 0 -6px #d0d8de;
   opacity: .9;
+  will-change: transform;
   animation: cloudMove linear infinite;
 }
 .sky-fx .cld.a { width: 150px; top: 10px; animation-duration: 14s; }
