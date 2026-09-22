@@ -26,10 +26,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-14-14";
-const APP_EDIT_COUNT = 1001;
+const APP_STAMP = "2026-09-22-14-16";
+const APP_EDIT_COUNT = 1002;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0551";
+const FILE_VER = "0552";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -490,7 +490,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽約地址提示統一為 5F 右轉到底 7651簽約室"] },
+  { ver: APP_VERSION, items: ["後台入帳銀行顯示改為統潔農會／統潔兆豐"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1928,6 +1928,13 @@ function companyBankByKey(key, company) {
   return COMPANY_BANKS.find(b => b.key === k && (!co || b.company === co))
     || COMPANY_BANKS.find(b => b.key === k)
     || COMPANY_BANKS[0];
+}
+function payBankDisplay(key) {
+  const k = String(key || "").trim();
+  if (!k || k === "現金" || /現金/.test(k)) return "現金";
+  if (k === "農會" || k === "統潔農會") return "統潔農會";
+  if (k === "兆豐" || k === "統潔兆豐") return "統潔兆豐";
+  return k;
 }
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
@@ -23855,7 +23862,7 @@ function payAdminCardHtml(t, r) {
         <input type="date" data-pay-date="${escapeHtml(t.id)}" value="${escapeHtml(date)}" />
       </label>
       <div class="small" style="margin:4px 0 8px">銀行</div>
-      <div class="pay-banks">${banks.map(b => `<button type="button" class="ghost${b === bankNow ? " on" : ""}" data-pay-bank="${b}" data-pay-for="${escapeHtml(t.id)}">${b}</button>`).join("")}</div>
+      <div class="pay-banks">${banks.map(b => `<button type="button" class="ghost${b === bankNow ? " on" : ""}" data-pay-bank="${b}" data-pay-for="${escapeHtml(t.id)}">${payBankDisplay(b)}</button>`).join("")}</div>
       <label class="field" style="margin-top:8px"><span>金額</span>
         <input type="number" inputmode="numeric" data-pay-amt="${escapeHtml(t.id)}" value="${amt ? String(amt) : ""}" placeholder="月租" />
       </label>
@@ -23867,7 +23874,7 @@ function payAdminCardHtml(t, r) {
     <h2 class="dash-h">本月已入帳</h2>
     <div class="small" style="margin-bottom:8px">${escapeHtml((r && r.no) || "")}　${escapeHtml(t.name || "")}${extra}</div>
     <div class="row"><span class="k">匯款日</span><span class="v">${escapeHtml(date)}</span></div>
-    <div class="row"><span class="k">銀行</span><span class="v">${escapeHtml(t.paidVia === "cash" ? "現金" : (t.payBank || bankNow))}</span></div>
+    <div class="row"><span class="k">銀行</span><span class="v">${escapeHtml(t.paidVia === "cash" ? "現金" : payBankDisplay(t.payBank || bankNow))}</span></div>
     <div class="row"><span class="k">金額</span><span class="v">${amt ? money(amt) : "—"}</span></div>
     <button type="button" class="btn-navy" data-pay-unpay="${escapeHtml(t.id)}" style="margin-top:10px">改回未繳</button>
     <button type="button" class="ghost" data-invoice="${escapeHtml(t.roomId || (r && r.id) || "")}" style="margin-top:8px">產出發票</button>
