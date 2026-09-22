@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-20-43";
-const APP_EDIT_COUNT = 1067;
+const APP_STAMP = "2026-09-22-20-45";
+const APP_EDIT_COUNT = 1068;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0617";
+const FILE_VER = "0618";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["對話視窗標題改成訊息視窗"] },
+  { ver: APP_VERSION, items: ["發送訊息改成管理員公告右邊小圖塊"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -1725,11 +1725,7 @@ function chatEntryCardHtml() {
   const t = me();
   if (!t || !t.id) return "";
   const n = chatUnreadOf(t.id);
-  return `<button type="button" class="card card-body clickable chat-entry" id="open-dev-chat">
-    <span class="k">發送訊息</span>
-    <span class="small">${n ? "有 " + n + " 則未讀" : "只有你們看得到"}</span>
-    ${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}
-  </button>`;
+  return `<button type="button" class="chat-chip" id="open-dev-chat">發送訊息${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}</button>`;
 }
 function devChatInboxHtml() {
   if (!isDeveloper()) return "";
@@ -1753,8 +1749,6 @@ function refreshChatBadges() {
   if (entry && me()) {
     const n = chatUnreadOf(me().id);
     let em = entry.querySelector(".badge-dot");
-    const small = entry.querySelector(".small");
-    if (small) small.textContent = n ? ("有 " + n + " 則未讀") : "只有你們看得到";
     if (n && !em) entry.insertAdjacentHTML("beforeend", `<em class="badge-dot">${n > 99 ? "99+" : n}</em>`);
     else if (!n && em) em.remove();
     else if (n && em) em.textContent = n > 99 ? "99+" : String(n);
@@ -20065,7 +20059,8 @@ function homeView() {
     hasAnn = tenantAnnounceList().length > 0;
     announceBlock = `<div class="section-title ann-dock" id="ann-dock" role="button" tabindex="0">
       <h2 class="slide-right">管理員公告</h2>
-    </div><div class="ann-list" id="ann-list">${announceCardsHtml()}</div>`;
+      ${chatEntryCardHtml()}
+    </div>${hasAnn ? `<div class="ann-list" id="ann-list">${announceCardsHtml()}</div>` : ""}`;
   } catch (err) { try { console.error(err); } catch {} }
   const prospectNote = isProspectPreview() ? tenantHandoverNoteHtml(t, r) : "";
   const handoverNote = isProspectPreview() ? "" : tenantHandoverNoteHtml(t, r);
@@ -20084,8 +20079,7 @@ function homeView() {
     </div>
     <div class="screen">
       ${prospectNote}
-      ${hasAnn ? announceBlock : ""}
-      ${chatEntryCardHtml()}
+      ${announceBlock}
       ${tenantNudgeNoteHtml(t)}
       ${renewAskCardHtml(t, r)}
       ${handoverNote}
@@ -20123,7 +20117,6 @@ function homeView() {
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${roomExtrasHtml(r)}
-      ${hasAnn ? "" : announceBlock}
     </div>`;
 }
 
