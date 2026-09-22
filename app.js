@@ -39,10 +39,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-22-18-45";
-const APP_EDIT_COUNT = 1049;
+const APP_STAMP = "2026-09-22-18-53";
+const APP_EDIT_COUNT = 1050;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0599";
+const FILE_VER = "0600";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -503,7 +503,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票總覽放大後關閉會還原畫面比例"] },
+  { ver: APP_VERSION, items: ["強制移除 7652 測試房與趙文榮租客卡片"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
   { ver: "2026-09-21-19-58-924", items: ["9/21 錦芳工程款 14,000 現金入保險箱"] },
@@ -8140,6 +8140,7 @@ async function pullCloud() {
       persistAnnMedia(state);
       persistRepairMedia(state); persistRepairStat(state);
       persistAvatars(state);
+      try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
       try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
@@ -8235,6 +8236,7 @@ async function pullCloud() {
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
+    try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
     try { ensurePhoneLoginPasses(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
@@ -10476,21 +10478,24 @@ function isPracticeStudioNo(no) {
 function purgeDroppedStudios(data) {
   if (!data) return false;
   const nos = ["7652"];
-  const isDrop = v => nos.indexOf(String(v || "")) >= 0;
-  const rooms = (data.rooms || []).filter(r => r && isDrop(r.no));
-  const roomIds = new Set(rooms.map(r => r.id).concat(nos.map(n => "r" + n)));
+  const isDrop = v => nos.indexOf(String(v || "").replace(/\D/g, "")) >= 0 || nos.indexOf(String(v || "")) >= 0;
+  if (!Array.isArray(data.rooms)) data.rooms = [];
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  const rooms = data.rooms.filter(r => r && isDrop(r.no));
+  const roomIds = new Set(rooms.map(r => r.id).concat(nos.map(n => "r" + n), ["r7652"]));
   const tenantIds = new Set();
-  (data.tenants || []).forEach(t => {
+  const takeTenant = t => {
     if (!t) return;
-    if (roomIds.has(t.roomId) || isDrop(t.roomNo)) tenantIds.add(t.id);
-  });
-  (data.goneTenants || []).forEach(t => {
-    if (!t) return;
-    if (roomIds.has(t.roomId) || isDrop(t.roomNo)) tenantIds.add(t.id);
-  });
-  const before = (data.rooms || []).length + (data.tenants || []).length + (data.books || []).length;
-  data.rooms = (data.rooms || []).filter(r => r && !isDrop(r.no) && !roomIds.has(r.id));
-  data.tenants = (data.tenants || []).filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
+    const r = data.rooms.find(x => x && x.id === t.roomId);
+    const factory = typeof roomIsFactory === "function" && roomIsFactory(r);
+    if (roomIds.has(t.roomId) || isDrop(t.roomNo) || isDrop(r && r.no)) { tenantIds.add(t.id); return; }
+    if (!factory && String((r && r.no) || "") !== "7651" && typeof sameTenantName === "function" && sameTenantName(t.name, "趙文榮")) tenantIds.add(t.id);
+  };
+  data.tenants.forEach(takeTenant);
+  (data.goneTenants || []).forEach(takeTenant);
+  const before = data.rooms.length + data.tenants.length + ((data.books || []).length);
+  data.rooms = data.rooms.filter(r => r && !isDrop(r.no) && !roomIds.has(r.id));
+  data.tenants = data.tenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
   if (Array.isArray(data.goneTenants)) data.goneTenants = data.goneTenants.filter(t => t && !tenantIds.has(t.id) && !roomIds.has(t.roomId) && !isDrop(t.roomNo));
   if (Array.isArray(data.renewals)) data.renewals = data.renewals.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
   if (Array.isArray(data.repairs)) data.repairs = data.repairs.filter(x => x && !isDrop(x.roomNo) && !roomIds.has(x.roomId) && !tenantIds.has(x.tenantId));
@@ -10512,8 +10517,10 @@ function purgeDroppedStudios(data) {
       }
     } catch {}
   });
-  const after = (data.rooms || []).length + (data.tenants || []).length + (data.books || []).length;
-  return after !== before || tenantIds.size > 0 || rooms.length > 0;
+  const after = data.rooms.length + data.tenants.length + ((data.books || []).length);
+  const dirty = after !== before || tenantIds.size > 0 || rooms.length > 0 || data.droppedStudioVer !== "20260922-drop-7652-b";
+  data.droppedStudioVer = "20260922-drop-7652-b";
+  return dirty;
 }
 function skipRentVsRoom(r) {
   if (!r) return true;
@@ -24080,6 +24087,8 @@ function tenantListOfKind(kind, opts) {
     if (!r || (r.status === "office" && r.no !== "7651" && !isDemoRoom(r))) return false;
     if (factory ? !roomIsFactory(r) : roomIsFactory(r)) return false;
     if (isDemoRoom(r) || isDemoFactoryRoom(r)) return false;
+    if (typeof isPracticeStudioNo === "function" && isPracticeStudioNo(r.no)) return false;
+    if (!factory && typeof sameTenantName === "function" && sameTenantName(t.name, "趙文榮")) return false;
     if (all) return true;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
     if (!tenantPayChipMatch(t, r, tenantChipOn())) return false;
