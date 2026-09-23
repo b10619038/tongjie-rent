@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-11-23";
-const APP_EDIT_COUNT = 1114;
+const APP_STAMP = "2026-09-23-11-28";
+const APP_EDIT_COUNT = 1115;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0664";
+const FILE_VER = "0665";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
+  { ver: APP_VERSION, items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
+  { ver: "2026-09-23-11-23-1114", items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
   { ver: "2026-09-23-02-16-1113", items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
   { ver: "2026-09-23-00-28-1112", items: ["已顯示過的系統通知，更新後不再重跳"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
@@ -2974,6 +2975,10 @@ function renewMovePickHtml(t, r) {
 function renewAskCardHtml(t, r, opts) {
   if (!t || !r || (r && roomIsFactory(r))) return "";
   const full = !!(opts && opts.full);
+  if (renewDecisionOf(r.no) === "no") {
+    if (!full && !inRenewAskWindow(t)) return "";
+    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(t.leaseEnd || "")}。請於到期日辦理正常退租。</p></div>`;
+  }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
   const windowOn = inRenewAskWindow(t);
@@ -5473,6 +5478,17 @@ function applyFixLeaseSegments(data) {
     t.edited = true;
     t.editedAt = Date.now();
     dirty = true;
+  });
+  (data.tenants || []).forEach(t => {
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    if (!t || t.former || !r || String(r.no) !== "7631") return;
+    const right = (TENANT_INFO["7631"] && TENANT_INFO["7631"].note) || "";
+    if (right && /已續約/.test(String(t.note || ""))) {
+      t.note = right;
+      t.edited = true;
+      t.editedAt = Date.now();
+      dirty = true;
+    }
   });
   if (data.leaseAlignVer !== LEASE_ALIGN_VER) {
     data.leaseAlignVer = LEASE_ALIGN_VER;
@@ -12883,7 +12899,16 @@ function dateFromYmd(ymd) {
   if (!m) return taipeiNow();
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
+function renewDecisionOf(no) {
+  const s = String(no || "");
+  if (s === "6822" || s === "7631") return "no";
+  if (s === "7021") return "yes";
+  return "";
+}
 function invoiceRenewChecked(t, room, item, note, no, invNo) {
+  const decision = renewDecisionOf(no) || renewDecisionOf(invNo) || renewDecisionOf(room && room.no);
+  if (decision === "no") return false;
+  if (decision === "yes") return true;
   if (item) return true;
   if (/已續約/.test(String(note || ""))) return true;
   if (String(no) === "7632" || String(invNo) === "7632") return true;
@@ -12913,10 +12938,13 @@ function studioInvoiceRow(no, room, t, info) {
   const bankKey = onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
   const part = leasePartForYm(invT, invRoom || room, billYm);
-  const rent = part && Number(part.rent) > 0 ? Number(part.rent) : tenantRentForYm(invT, invRoom || room, billYm, info);
+  const listed = (typeof studioContractRent === "function" ? studioContractRent(invT || t, invRoom || room) : 0) || Number((invRoom || room) && (invRoom || room).rent) || 0;
+  const rent = (part && part.kind === "stub" && Number(part.rent) > 0)
+    ? Number(part.rent)
+    : (listed || (part && Number(part.rent) > 0 ? Number(part.rent) : 0) || tenantRentForYm(invT, invRoom || room, billYm, info));
   const note = String((t && t.note) || "") + " " + String(info.note || "");
-  const start = (onNew && item.start) || (part && part.start) || (invT && invT.leaseStart) || (t && t.leaseStart) || info.leaseStart || "";
-  const end = (onNew && item.end) || (part && part.end) || (invT && invT.leaseEnd) || (t && t.leaseEnd) || info.leaseEnd || "";
+  const start = (onNew && item.start) || (invT && invT.leaseStart) || (t && t.leaseStart) || (part && part.start) || info.leaseStart || "";
+  const end = (onNew && item.end) || (invT && invT.leaseEnd) || (t && t.leaseEnd) || (part && part.end) || info.leaseEnd || "";
   return {
     remitYmd: remitYmd || "",
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
@@ -14371,6 +14399,7 @@ function ensureRenewNudges(data) {
     if (!t || t.former || t.incoming || t.demo || t.placeholder) return;
     const r = rooms.find(x => x && x.id === t.roomId);
     if (!r || r.demo || roomIsFactory(r) || r.status === "office") return;
+    if (renewDecisionOf(r.no) === "no") return;
     if (!inRenewAskWindow(t)) return;
     if ((data.renewals || []).some(x => x && x.tenantId === t.id && x.status !== "applied")) return;
     const tag = "renew-ask-" + String(t.leaseEnd || "") + "-" + t.id;
