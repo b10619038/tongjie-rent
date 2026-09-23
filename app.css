@@ -5515,12 +5515,14 @@ html[data-theme="void"] .site-chip {
   background: #f4f4f2;
   touch-action: none;
   overscroll-behavior: contain;
+  scrollbar-width: none;
 }
+.asset-map-wrap::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .asset-map-wrap.is-portrait { max-height: 78vh; }
 .asset-map-turn { position: relative; }
 .asset-map-wrap.is-portrait .asset-map-turn {
   height: 0;
-  padding-top: 141.636%;
+  padding-top: 141.803%;
 }
 .asset-map {
   position: relative;
@@ -5530,7 +5532,7 @@ html[data-theme="void"] .site-chip {
   position: absolute;
   top: 0;
   left: 100%;
-  width: 141.636%;
+  width: 141.803%;
   min-width: 0;
   height: auto;
   transform: rotate(90deg);
