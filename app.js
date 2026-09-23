@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-22-52";
-const APP_EDIT_COUNT = 1173;
+const APP_STAMP = "2026-09-23-23-05";
+const APP_EDIT_COUNT = 1174;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0723";
+const FILE_VER = "0724";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約舊租客不再看到新客第一次付款明細"] },
+  { ver: APP_VERSION, items: ["點租約剩餘天數可看繳費日曆"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14522,6 +14522,104 @@ function leaseSpanDays(start, end) {
   const n = Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+function shiftYm(ym, dir) {
+  let y = Number(String(ym || "").slice(0, 4));
+  let m = Number(String(ym || "").slice(5, 7)) + Number(dir || 0);
+  if (!y || !m) return payYmNow();
+  while (m < 1) { m += 12; y -= 1; }
+  while (m > 12) { m -= 12; y += 1; }
+  return y + "-" + String(m).padStart(2, "0");
+}
+function rocMonthTitle(ym) {
+  const y = Number(String(ym || "").slice(0, 4));
+  const m = Number(String(ym || "").slice(5, 7));
+  if (!y || !m) return "";
+  return (y - 1911) + "年" + m + "月";
+}
+function leaseCalMarks(t, r) {
+  const start = tenantOccupancyStart(t, r);
+  const end = tenantOccupancyEnd(t, r);
+  const due = {};
+  const put = (ymd, kind, text) => {
+    if (!ymd) return;
+    if (!due[ymd]) due[ymd] = [];
+    if (!due[ymd].some(x => x.kind === kind)) due[ymd].push({ kind, text });
+  };
+  if (start) put(start, "due", "首次應繳");
+  if (start && end) {
+    let y = Number(start.slice(0, 4));
+    let m = Number(start.slice(5, 7)) + 1;
+    let guard = 0;
+    while (guard++ < 240) {
+      if (m > 12) { m = 1; y += 1; }
+      const ymd = y + "-" + String(m).padStart(2, "0") + "-01";
+      if (ymd > end) break;
+      put(ymd, "due", "租金");
+      m += 1;
+    }
+  }
+  if (end) put(end, "back", "押金退還");
+  const paid = {};
+  const stampDay = (raw) => {
+    const d = ymdOf(raw);
+    if (!d) return;
+    if (start && d < start) return;
+    if (end && d > end) return;
+    paid[d] = true;
+  };
+  if (t && paidThisMonth(t)) stampDay((t && t.remitOn) || (t && t.paidAt) || (payYmNow() + "-01"));
+  (t && t.prepaidYm || []).forEach(ym => stampDay(String(ym || "").slice(0, 7) + "-01"));
+  const no = String((r && r.no) || "");
+  (state.books || []).forEach(b => {
+    if (!b || b.type === "out") return;
+    if (b.linkedTenantId && t && b.linkedTenantId !== t.id) return;
+    if (!b.linkedTenantId && String(b.roomNo || "") !== no) return;
+    if (!/租金|房租|rent-auto/.test(String(b.note || "") + " " + String(b.importTag || ""))) return;
+    stampDay(b.date);
+  });
+  return { due, paid };
+}
+function leaseCalGridHtml(ym, marks) {
+  const y = Number(String(ym).slice(0, 4));
+  const m = Number(String(ym).slice(5, 7));
+  const firstDow = new Date(y, m - 1, 1).getDay();
+  const last = new Date(y, m, 0).getDate();
+  const today = todayYmd();
+  let html = "";
+  for (let i = 0; i < firstDow; i++) html += `<span class="lc-day is-pad"></span>`;
+  for (let d = 1; d <= last; d++) {
+    const ymd = ym + "-" + String(d).padStart(2, "0");
+    const items = (marks.due && marks.due[ymd]) || [];
+    const labels = items.map(it => `<em class="${it.kind === "back" ? "is-back" : "is-due"}">${escapeHtml(it.text)}</em>`).join("");
+    const stamp = marks.paid && marks.paid[ymd] ? `<span class="rent-stamp lc-stamp" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>` : "";
+    html += `<span class="lc-day${ymd === today ? " is-today" : ""}">${stamp}<b>${d}</b>${labels}</span>`;
+  }
+  return html;
+}
+function leaseCalHtml(t, r) {
+  const ym = /^\d{4}-\d{2}$/.test(String(ui.leaseCalYm || "")) ? ui.leaseCalYm : payYmNow();
+  ui.leaseCalYm = ym;
+  const marks = leaseCalMarks(t, r);
+  const dir = ui.leaseCalDir === -1 ? " is-prev" : (ui.leaseCalDir === 1 ? " is-next" : "");
+  return `<div class="lease-cal-mask" id="lease-cal-mask">
+    <div class="hero-card lease-cal" role="dialog" aria-label="繳費日曆">
+      <div class="lease-cal-head">
+        <div>
+          <div class="label">繳費日曆</div>
+          <div class="room-name">${escapeHtml(rocMonthTitle(ym))}</div>
+        </div>
+        <button class="back" id="lease-cal-close" type="button">關閉</button>
+      </div>
+      <div class="lease-cal-nav">
+        <button type="button" id="lease-cal-prev" aria-label="上個月">‹</button>
+        <button type="button" id="lease-cal-next" aria-label="下個月">›</button>
+      </div>
+      <div class="lease-cal-week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="lease-cal-grid${dir}">${leaseCalGridHtml(ym, marks)}</div>
+      <div class="lc-legend"><span><i class="is-due"></i>首次應繳、每月1號租金</span><span><i class="is-back"></i>押金退還</span><span>繳過的日期會蓋本月已繳</span></div>
+    </div>
+  </div>`;
+}
 function leaseRemainHtml(t, r) {
   const start = tenantOccupancyStart(t, r);
   const end = tenantOccupancyEnd(t, r);
@@ -21728,7 +21826,7 @@ function homeView() {
         <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
-          <div class="stat"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
+          <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
         </div>
         ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
@@ -21757,7 +21855,8 @@ function homeView() {
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${roomExtrasHtml(r)}
-    </div>`;
+    </div>
+    ${ui.leaseCalOpen ? leaseCalHtml(t, r) : ""}`;
 }
 
 function markTenantLineReported() {
@@ -28120,6 +28219,7 @@ function bindTenant() {
     el.onclick = () => {
       const next = el.dataset.page;
       if (next === ui.page) return;
+      if (next !== "home") ui.leaseCalOpen = false;
       if (el.closest(".nav") && navKeyOf(next) === navKeyOf()) return;
       if (el.closest(".nav")) {
         const on = document.querySelector(".nav button.active");
@@ -28453,6 +28553,28 @@ function bindTenant() {
     render();
   };
   bindGhostPress();
+  const leaseRemain = document.getElementById("lease-remain");
+  if (leaseRemain) leaseRemain.onclick = () => {
+    ui.leaseCalOpen = true;
+    ui.leaseCalDir = 0;
+    if (!ui.leaseCalYm) ui.leaseCalYm = payYmNow();
+    render();
+  };
+  const leaseCalMask = document.getElementById("lease-cal-mask");
+  if (leaseCalMask) {
+    const shiftCal = (dir) => {
+      ui.leaseCalYm = shiftYm(ui.leaseCalYm || payYmNow(), dir);
+      ui.leaseCalDir = dir;
+      render();
+    };
+    const prev = document.getElementById("lease-cal-prev");
+    const next = document.getElementById("lease-cal-next");
+    const close = document.getElementById("lease-cal-close");
+    if (prev) prev.onclick = e => { e.stopPropagation(); shiftCal(-1); };
+    if (next) next.onclick = e => { e.stopPropagation(); shiftCal(1); };
+    if (close) close.onclick = e => { e.stopPropagation(); ui.leaseCalOpen = false; render(); };
+    leaseCalMask.onclick = e => { if (e.target === leaseCalMask) { ui.leaseCalOpen = false; render(); } };
+  }
   if (!(ui.page === "home" && ui.stampChop)) requestAnimationFrame(() => playLeaseCountdown());
 }
 
