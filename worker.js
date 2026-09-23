@@ -516,6 +516,8 @@ export default {
         body: text,
         tag: body.tag || ("tongjie-" + title),
         page: body.page || (target === "admin" ? "tenants" : ""),
+        chat: !!body.chat || String(body.tag || "").indexOf("chat-") === 0 || title === "新訊息",
+        tid: String(body.tid || ""),
         subtitle: "統潔開發"
       };
       let sent = 0, fail = 0;

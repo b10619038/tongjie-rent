@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-10";
-const APP_EDIT_COUNT = 1175;
+const APP_STAMP = "2026-09-23-23-14";
+const APP_EDIT_COUNT = 1176;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0725";
+const FILE_VER = "0726";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["整體報表的金額，$ 跟數字改成上下對齊"] },
+  { ver: APP_VERSION, items: ["點訊息通知會直接打開聊天室"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1537,7 +1537,11 @@ if ("serviceWorker" in navigator) {
       try { ensureUpdateBar(); } catch {}
     }
     if (e.data && e.data.type === "OPEN") {
-      if (e.data.page) ui.page = e.data.page;
+      if (e.data.chat) {
+        ui.pendingChatOpen = true;
+        if (e.data.tid) ui.pendingChatTid = String(e.data.tid);
+        try { armChatOpen(); } catch {}
+      } else if (e.data.page) ui.page = e.data.page;
       try { persistUi(); render(); } catch {}
     }
   });
@@ -1821,6 +1825,52 @@ function animateChatChip(toAway) {
     chip.classList.toggle("chip-lock", toAway);
     try { anim.cancel(); } catch {}
   };
+}
+function takeChatOpenQuery() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get("open") !== "chat") return;
+    ui.pendingChatOpen = true;
+    if (q.get("tid")) ui.pendingChatTid = q.get("tid");
+    q.delete("open");
+    q.delete("tid");
+    const left = q.toString();
+    history.replaceState({}, "", location.pathname + (left ? "?" + left : "") + location.hash);
+  } catch {}
+}
+function consumeChatOpen() {
+  if (!ui.pendingChatOpen || ui.chatOpen) {
+    if (ui.chatOpen) ui.pendingChatOpen = false;
+    return;
+  }
+  if (!ui.role || !canUseDevChat() || !me()) return;
+  ui.pendingChatOpen = false;
+  const go = () => {
+    const last = lastChatIncoming();
+    const tid = ui.role === "tenant" ? me().id : (ui.pendingChatTid || (last && last.tid) || "");
+    ui.pendingChatTid = "";
+    if (!tid) return;
+    if (ui.role === "tenant" && ui.page !== "home") ui.page = "home";
+    try { render(); } catch {}
+    openDevChat(tid);
+  };
+  try { pullChat(false).then(go).catch(go); } catch (e) { go(); }
+}
+function armChatOpen() {
+  if (!ui.pendingChatOpen || window.__tjChatOpenArm) return;
+  let n = 0;
+  window.__tjChatOpenArm = setInterval(() => {
+    n += 1;
+    if (!ui.pendingChatOpen || n > 40) {
+      clearInterval(window.__tjChatOpenArm);
+      window.__tjChatOpenArm = 0;
+      return;
+    }
+    if (!ui.role || !me() || !canUseDevChat()) return;
+    clearInterval(window.__tjChatOpenArm);
+    window.__tjChatOpenArm = 0;
+    consumeChatOpen();
+  }, 400);
 }
 function openDevChat(tid) {
   if (!canUseDevChat()) return;
@@ -2190,7 +2240,7 @@ function pingChatNotify(from, tid, roomNo, name, text, msgId) {
   if (!text) return;
   const who = [roomNo, name].filter(Boolean).join(" ");
   const body = (who ? who + "：" : "") + String(text).slice(0, 80);
-  const extra = { tag: "chat-" + (msgId || Date.now()), page: from === "tenant" ? "tenants" : "home" };
+  const extra = { tag: "chat-" + (msgId || Date.now()), page: from === "tenant" ? "tenants" : "home", chat: true, tid: String(tid || "") };
   const target = from === "tenant" ? "1240" : (roomNo || "tenants");
   if (!isDevPreview()) sendRemoteNotify(target, "新訊息", body, extra);
 }
@@ -12597,7 +12647,9 @@ function sendRemoteNotify(target, title, body, extra) {
       title,
       body,
       tag: extra && extra.tag,
-      page: extra && extra.page
+      page: extra && extra.page,
+      chat: !!(extra && extra.chat),
+      tid: (extra && extra.tid) || ""
     })
   }).catch(() => {});
 }
@@ -12789,6 +12841,7 @@ function showOsBanner(title, body, tag) {
     markOsBannerSeen(fp);
   }
   const text = String(body || "").slice(0, 180);
+  const chat = String(tag || "").indexOf("chat-") === 0 || title === "新訊息";
   const opts = {
     body: text,
     badge: "/icon-192.png",
@@ -12797,10 +12850,20 @@ function showOsBanner(title, body, tag) {
     vibrate: [200, 80, 200],
     tag: String(tag || ("tongjie-" + title)).replace(/-\d{10,}$/, ""),
     renotify: false,
-    silent: false
+    silent: false,
+    data: { title, tag: String(tag || ""), chat, page: chat ? "home" : "" }
   };
   const viaSw = () => navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts));
-  const viaPage = () => { try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); n.close(); }; } catch {} };
+  const viaPage = () => {
+    try {
+      const n = new Notification(title, opts);
+      n.onclick = () => {
+        try { window.focus(); } catch {}
+        n.close();
+        if (chat) { ui.pendingChatOpen = true; try { armChatOpen(); } catch {} }
+      };
+    } catch {}
+  };
   if (navigator.serviceWorker) viaSw().catch(viaPage);
   else viaPage();
   try { ringChime(); } catch {}
@@ -12848,7 +12911,7 @@ function notifyExtra(title, target) {
     "入住已確認": { tag: "tongjie-movein", page: "home" },
     "租約已結束": { tag: "tongjie-out", page: "home" },
     "本月租金已入帳": { tag: "tongjie-paid", page: "pay" },
-    "新訊息": { tag: "tongjie-chat", page: "home" }
+    "新訊息": { tag: "tongjie-chat", page: "home", chat: true }
   };
   return map[title] || { tag: "tongjie-" + String(title || "msg"), page: target === "admin" ? "tenants" : "home" };
 }
@@ -31995,6 +32058,7 @@ function hideSplash() {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
 }
 async function boot() {
+  try { takeChatOpenQuery(); armChatOpen(); } catch {}
   const splashAt = setTimeout(hideSplash, 2200);
   try {
     armCompanySave();
@@ -32035,6 +32099,7 @@ async function boot() {
     restoreUi();
     beatPresence();
     render();
+    try { armChatOpen(); } catch {}
     if (offerPhoneInstall()) render();
     refreshSky(true).then(() => {
       if (ui.role === "tenant") applySkyDom();
