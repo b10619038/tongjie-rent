@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-14";
-const APP_EDIT_COUNT = 1176;
+const APP_STAMP = "2026-09-23-23-20";
+const APP_EDIT_COUNT = 1177;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0726";
+const FILE_VER = "0727";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點訊息通知會直接打開聊天室"] },
+  { ver: APP_VERSION, items: ["聊天第一則也能收回，開發者可收回對方的訊息"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1988,6 +1988,10 @@ function msgSeenByOther(th, m, mineFrom) {
   const otherRead = mineFrom === "tenant" ? (Number(th.readDevAt) || 0) : (Number(th.readTenantAt) || 0);
   return otherRead >= (Number(m.at) || 0);
 }
+function canRecallMsg(mine) {
+  if (mine) return true;
+  return typeof isDeveloper === "function" && isDeveloper();
+}
 function chatBubbleHtml(m, mine, t, seen) {
   if (!m || m.recalled) return "";
   const when = m.at ? chatWhen(m.at) : "";
@@ -1998,7 +2002,7 @@ function chatBubbleHtml(m, mine, t, seen) {
   const body = pic + (m.text ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : "");
   if (!body) return "";
   const read = mine && seen ? `<i class="chat-read">已讀</i>` : "";
-  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${mine ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${canRecallMsg(mine) ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
 }
 function hideChatAct() {
   const el = document.getElementById("chat-act");
@@ -2033,7 +2037,7 @@ function recallDevChat(tid, msgId) {
   const m = (th.msgs || []).find(x => x && x.id === msgId);
   if (!m) return;
   const mineFrom = isDeveloper() && ui.role === "admin" ? "dev" : "tenant";
-  if (m.from !== mineFrom) return;
+  if (m.from !== mineFrom && !isDeveloper()) return;
   m.recalled = true;
   m.text = "";
   m.image = "";
@@ -2063,11 +2067,11 @@ function bindChatRecall(tid) {
       if (!p) return;
       if (Math.abs(p.clientX - x0) > 10 || Math.abs(p.clientY - y0) > 10) clear();
     };
-    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchstart", e => { e.stopPropagation(); start(e); }, { passive: true });
     el.addEventListener("touchmove", move, { passive: true });
     el.addEventListener("touchend", clear);
     el.addEventListener("touchcancel", clear);
-    el.addEventListener("mousedown", start);
+    el.addEventListener("mousedown", e => { e.stopPropagation(); start(e); });
     el.addEventListener("mousemove", move);
     el.addEventListener("mouseup", clear);
     el.addEventListener("mouseleave", clear);
@@ -2136,6 +2140,7 @@ function drawChatBox() {
     const near = logNow.scrollHeight - logNow.scrollTop - logNow.clientHeight < 90;
     logNow.innerHTML = msgs;
     if (near) logNow.scrollTop = logNow.scrollHeight;
+    bindChatRecall(tid);
     return;
   }
   let wrap = document.getElementById("dev-chat-box");
