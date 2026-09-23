@@ -1006,6 +1006,26 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   color: #fff;
   border-color: #c4453c;
 }
+.tenant-chip[data-tenant-chip="count"] {
+  color: #8a5a32;
+  border-color: #e0c2a8;
+  background: #fbf6f1;
+}
+.tenant-chip[data-tenant-chip="count"].on {
+  background: #8a5a32;
+  color: #fff;
+  border-color: #8a5a32;
+}
+.pay-pill.count-left {
+  background: #f4f7f4;
+  color: #3d5a45;
+  border: 1px solid #d5e0d6;
+}
+.pay-pill.count-left.unpaid {
+  background: #fdf6f5;
+  color: #c4453c;
+  border-color: #e8a8a3;
+}
 .tenant-search input,
 #tenant-search {
   display: block;

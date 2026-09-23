@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-50";
-const APP_EDIT_COUNT = 1143;
+const APP_STAMP = "2026-09-23-16-06";
+const APP_EDIT_COUNT = 1144;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0693";
+const FILE_VER = "0694";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["押金設算息直式表格拉滿整張 A4"] },
+  { ver: APP_VERSION, items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
+  { ver: "2026-09-23-15-50-1143", items: ["押金設算息直式表格拉滿整張 A4"] },
   { ver: "2026-09-23-15-48-1142", items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-46-1141", items: ["發票總覽直式橫式改成白塊滑動切換"] },
   { ver: "2026-09-23-15-43-1140", items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
@@ -25546,11 +25547,24 @@ function tenantSearchPlaceholder(kind) {
   return "搜尋";
 }
 function tenantChipOn() {
-  if (ui.tenantChip === "paid" || ui.tenantChip === "unpaid" || ui.tenantChip === "vacant") return ui.tenantChip;
+  if (ui.tenantChip === "paid" || ui.tenantChip === "unpaid" || ui.tenantChip === "vacant" || ui.tenantChip === "count") return ui.tenantChip;
   return ui.tenantVacant ? "vacant" : "";
 }
+function tenantRemainDays(t, r) {
+  if (!t) return 99999;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  const end = ymdOf((t && t.leaseEnd) || "");
+  const n = daysLeft(end);
+  return n == null ? 99999 : n;
+}
+function tenantRemainLabel(t, r) {
+  const n = tenantRemainDays(t, r);
+  if (n >= 99999) return "剩餘—";
+  if (n < 0) return "已到期";
+  return "剩餘" + n + "日";
+}
 function tenantPayChipMatch(t, r, chip) {
-  if (!chip || chip === "vacant") return true;
+  if (!chip || chip === "vacant" || chip === "count") return true;
   if (!t || t.former || t.incoming) return false;
   if (chip === "paid") return paidThisMonth(t);
   if (chip === "unpaid") {
@@ -25698,6 +25712,11 @@ function tenantListOfKind(kind, opts) {
     if (!tenantPayChipMatch(t, r, tenantChipOn())) return false;
     return true;
   }).sort((a, b) => {
+    if (tenantChipOn() === "count") {
+      const da = tenantRemainDays(a);
+      const db = tenantRemainDays(b);
+      if (da !== db) return da - db;
+    }
     const aa = tenantApplyRank(a);
     const ab = tenantApplyRank(b);
     if (aa !== ab) return aa - ab;
@@ -26092,7 +26111,7 @@ function tenantListInnerHtml(kind) {
   );
   const q = normSearch(ui.tenantQ);
   const chip = tenantChipOn();
-  const hideVacant = chip === "paid" || chip === "unpaid";
+  const hideVacant = chip === "paid" || chip === "unpaid" || chip === "count";
   const vacantHits = (q && !hideVacant && chip !== "vacant")
     ? vacantRoomsOfKind(kind).filter(r => !entries.some(e => e.rooms.some(x => x && x.id === r.id)))
     : [];
@@ -26269,7 +26288,8 @@ function tenantEntryCardHtml(kind, entry) {
   const renewOpen = !!(renew && tenantRenewOpen(renew.id));
   const renewLabel = renew && renew.status === "done" ? "續約完成" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
-  const payOpen = tenantPayOpen(t.id);
+  const countOn = tenantChipOn() === "count";
+  const leftCls = countOn && tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
   return `<div class="tenant-renew-block">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
@@ -26277,7 +26297,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""}${pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : ""}<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -27073,6 +27093,7 @@ function adminTenants() {
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
       <div class="tenant-search-chips" id="tenant-chip-row">
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">倒數</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空套房"}</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
