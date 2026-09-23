@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-11-28";
-const APP_EDIT_COUNT = 1115;
+const APP_STAMP = "2026-09-23-11-53";
+const APP_EDIT_COUNT = 1116;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0665";
+const FILE_VER = "0666";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
+  { ver: APP_VERSION, items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
+  { ver: "2026-09-23-11-28-1115", items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
   { ver: "2026-09-23-11-23-1114", items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
   { ver: "2026-09-23-02-16-1113", items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
   { ver: "2026-09-23-00-28-1112", items: ["已顯示過的系統通知，更新後不再重跳"] },
@@ -3570,7 +3571,7 @@ const TENANT_INFO = {
   "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000。文21；幫忙收聯廣合4桶垃圾桶錢（老司機、莊記、大姑、自己）" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
   "7251": { name: "呂佳芸", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際住在 7251。本人無法申請租屋補助，租約與繳費跟 7651 吳慧青同步；補助掛吳慧青 7651。金流以 7651 入帳，不重複計。" },
-  "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-07-01", leaseEnd: "2031-12-31", payBank: "農會", shop: "波波奇夏威夷拌飯", note: "店面。7、8月農會已收 50,000；9/1 起月租 42,000，9/5 農會 42,000。9/7 兆豐押金 80,000。聯絡曾郁翔。" },
+  "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "農會", shop: "波波奇夏威夷拌飯", note: "店面。合約 115/9/1～120/12/31。7、8月農會已收 50,000；9/1 起月租 42,000，9/5 農會 42,000。9/7 兆豐押金 80,000。聯絡曾郁翔。" },
   "7621": { name: "王俊典、曾郁庭", phone: "0984-304-618／0986-555-065", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, payBank: "農會", note: "押金 14,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", payBank: "農會", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000" },
   "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 20000, payBank: "農會", note: "2押1租 30,000；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
@@ -5508,7 +5509,7 @@ function applyRoom7051(data) {
   room.note = "月租 NT$ 6,000。不可申請租屋補助。";
   data.room7051Ver = ROOM_7051_VER;
 }
-const ROOM_7611_VER = "7611-bopoke-v2";
+const ROOM_7611_VER = "7611-bopoke-v3";
 function applyRoom7611(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7611");
@@ -5524,17 +5525,33 @@ function applyRoom7611(data) {
     if (!data.tenants) data.tenants = [];
     data.tenants.push(t);
   }
+  const start = "2026-09-01";
+  const end = "2031-12-31";
+  const rent = 42000;
+  let dirty = data.room7611Ver !== ROOM_7611_VER;
+  if (t.leaseStart !== start || t.leaseEnd !== end) dirty = true;
+  const leases = Array.isArray(t.leases) ? t.leases : [];
+  const aligned = leases.length === 1 && leases[0] && leases[0].kind !== "stub"
+    && ymdOf(leases[0].start) === start && ymdOf(leases[0].end) === end && Number(leases[0].rent) === rent;
+  if (!aligned) dirty = true;
   t.name = "波波波奇";
   t.contactName = t.contactName || "曾郁翔";
   t.phone = t.phone || "0938-550-265";
-  t.leaseStart = t.leaseStart || "2026-07-01";
-  t.leaseEnd = t.leaseEnd || "2031-12-31";
+  t.leaseStart = start;
+  t.leaseEnd = end;
+  t.leases = [{ kind: "year", start, end, rent }];
+  t.stubRent = 0;
   t.former = false;
   t.incoming = false;
   t.placeholder = false;
   t.payBank = t.payBank || "農會";
   t.roomId = room.id;
   room.tenantId = t.id;
+  if (dirty) {
+    t.edited = true;
+    t.editedAt = Date.now();
+    try { markCloudDirty(); } catch {}
+  }
   data.room7611Ver = ROOM_7611_VER;
 }
 const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v2";
