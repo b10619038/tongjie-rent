@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-02-16";
-const APP_EDIT_COUNT = 1113;
+const APP_STAMP = "2026-09-23-11-23";
+const APP_EDIT_COUNT = 1114;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0663";
+const FILE_VER = "0664";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
+  { ver: APP_VERSION, items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
+  { ver: "2026-09-23-02-16-1113", items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
   { ver: "2026-09-23-00-28-1112", items: ["已顯示過的系統通知，更新後不再重跳"] },
   { ver: "2026-09-21-20-32-926", items: ["續約現場收年水費 1,800 只收現金；7221 張智傑已送出續約申請"] },
   { ver: "2026-09-21-20-08-925", items: ["有新版本改只出現一次，開著 App 不再同時跳出系統通知"] },
@@ -5149,6 +5150,7 @@ function normalize(data) {
   applyESigns(data);
   try { applyClear7042TestSign(data); } catch {}
   try { applyFix7032SignAppoint(data); } catch {}
+  try { applyFixLeaseSegments(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -5437,6 +5439,43 @@ function applyFix7032SignAppoint(data) {
   });
   if (data.sign7032AtVer !== SIGN_7032_AT_VER) {
     data.sign7032AtVer = SIGN_7032_AT_VER;
+    dirty = true;
+  }
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
+}
+const LEASE_ALIGN_VER = "lease-align-v1";
+function applyFixLeaseSegments(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  let dirty = false;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.demo || t.former || t.placeholder) return;
+    const r = (data.rooms || []).find(x => x && x.id === t.roomId);
+    if (!r || r.demo || r.kind === "factory" || r.status === "office") return;
+    const start = ymdOf(t.leaseStart);
+    const end = ymdOf(t.leaseEnd);
+    if (!start || !end || end < start) return;
+    const leases = Array.isArray(t.leases) ? t.leases : [];
+    if (!leases.length) return;
+    const stub = leases.filter(p => p && p.kind === "stub");
+    const year = leases.filter(p => p && p.kind !== "stub");
+    const legitStub = stub.length === 1 && year.length === 1
+      && ymdOf(stub[0].start) === start
+      && ymdOf(year[0].end) === end
+      && String(ymdOf(year[0].start) || "").slice(8) === "01";
+    if (legitStub) return;
+    const only = leases.length === 1 && ymdOf(leases[0].start) === start && ymdOf(leases[0].end) === end;
+    if (only) return;
+    const rent = (typeof studioContractRent === "function" ? studioContractRent(t, r) : 0) || Number(r.rent) || Number(t.rent) || 0;
+    t.leases = [{ kind: "year", start, end, rent }];
+    t.stubRent = 0;
+    t.edited = true;
+    t.editedAt = Date.now();
+    dirty = true;
+  });
+  if (data.leaseAlignVer !== LEASE_ALIGN_VER) {
+    data.leaseAlignVer = LEASE_ALIGN_VER;
     dirty = true;
   }
   if (dirty) {
@@ -8903,6 +8942,7 @@ async function pullCloud() {
       applyRenewal7221(state);
       applyRenewal7032(state);
       try { applyFix7032SignAppoint(state); } catch {}
+      try { applyFixLeaseSegments(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -8982,6 +9022,7 @@ async function pullCloud() {
     applyRenewal7221(state);
     applyRenewal7032(state);
     try { applyFix7032SignAppoint(state); } catch {}
+    try { applyFixLeaseSegments(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -9585,6 +9626,7 @@ async function pushCloud() {
     applyESigns(payload);
     try { applyClear7042TestSign(payload); } catch {}
     try { applyFix7032SignAppoint(payload); } catch {}
+    try { applyFixLeaseSegments(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
