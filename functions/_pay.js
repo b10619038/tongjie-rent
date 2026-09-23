@@ -159,10 +159,19 @@ function roomUser(row) {
   if (typeof row === "string") return row;
   return row.userId || "";
 }
-export async function syncLineFaces(only) {
+export async function syncLineFaces(only, posted) {
   const local = await getBinds();
   const remote = await workerBinds();
   const byRoom = Object.assign({}, local.byRoom || {}, remote.byRoom || {});
+  if (posted && typeof posted === "object") {
+    Object.keys(posted).forEach(no => {
+      if (!/^(68|70|72|76)\d{2}$/.test(String(no))) return;
+      const row = posted[no];
+      const uid = typeof row === "string" ? row : (row && row.userId);
+      if (!uid || !/^U[0-9a-f]{32}$/i.test(String(uid))) return;
+      byRoom[String(no)] = { userId: String(uid), name: (row && row.name) || "" };
+    });
+  }
   const cache = await loadFaceCache();
   const faces = {};
   let more = false;

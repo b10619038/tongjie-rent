@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-57";
-const APP_EDIT_COUNT = 1156;
+const APP_STAMP = "2026-09-23-16-59";
+const APP_EDIT_COUNT = 1157;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0706";
+const FILE_VER = "0707";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["官方 LINE 綁定成功會自動把頭貼同步進 App"] },
+  { ver: APP_VERSION, items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
+  { ver: "2026-09-23-16-57-1156", items: ["官方 LINE 綁定成功會自動把頭貼同步進 App"] },
   { ver: "2026-09-23-16-48-1155", items: ["租約剩餘天數倒數改成先快後慢，1秒內順暢收尾"] },
   { ver: "2026-09-23-16-41-1154", items: ["倒數標籤改成剩XX日"] },
   { ver: "2026-09-23-16-39-1153", items: ["發票總覽確定不續約的續約欄改畫叉"] },
@@ -2910,7 +2911,11 @@ async function pullLineFaces() {
     let changed = false;
     while (more && guard < 4) {
       guard += 1;
-      const res = await fetch("/line-faces", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const res = await fetch("/line-faces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ byRoom: (ui.lineBinds && ui.lineBinds.byRoom) || {} })
+      });
       if (!res.ok) break;
       const data = await res.json();
       more = !!(data && data.more);
