@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-32";
-const APP_EDIT_COUNT = 1129;
+const APP_STAMP = "2026-09-23-14-36";
+const APP_EDIT_COUNT = 1130;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0679";
+const FILE_VER = "0680";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["使用規範可以編輯，並補上走道整潔與寵物兩條"] },
+  { ver: APP_VERSION, items: ["後台更新會在租客底部對應按鈕顯示紅點，看過就消失"] },
+  { ver: "2026-09-23-14-32-1129", items: ["使用規範可以編輯，並補上走道整潔與寵物兩條"] },
   { ver: "2026-09-23-14-24-1128", items: ["出現續約確認時，首頁顯示紅點，並通知該租客手機"] },
   { ver: "2026-09-23-14-18-1127", items: ["點前往續約會進租約頁，並把續約確認滑到畫面底部對齊"] },
   { ver: "2026-09-23-14-08-1126", items: ["總覽營收與本期收支的金額放大"] },
@@ -20464,15 +20465,116 @@ function navKeyOf(page) {
   if (p === "home" || p === "rooms" || p === "lease" || p === "repair" || p === "settings") return p;
   return "home";
 }
+const TAB_SEEN_KEY = "tj-tab-seen-v1";
+function homeNewsFinger(opts) {
+  const t = (typeof me === "function" && me()) || {};
+  const r = (typeof myRoom === "function" && myRoom()) || {};
+  const skipRenew = opts && opts.skipRenew;
+  const skipUnread = opts && opts.skipUnread;
+  const anns = (typeof tenantAnnounceList === "function" ? tenantAnnounceList() : (state.announcements || []))
+    .filter(a => a && (!skipUnread || (a.readBy || []).includes(t.id)))
+    .map(a => a.id + "@" + (a.editedAt || a.createdAt || ""))
+    .join(",");
+  const nudge = typeof latestPayNudge === "function" ? latestPayNudge(t) : null;
+  const renew = !skipRenew && typeof renewAskPending === "function" && renewAskPending(t, r) ? ("renew:" + (t.leaseEnd || "")) : "";
+  return [anns, nudge && nudge.id || "", renew, t.paid ? "paid" : "unpaid", String(t.paidAt || ""), String(t.remitOn || "")].join("|");
+}
+function roomsNewsFinger() {
+  const r = (typeof myRoom === "function" && myRoom()) || {};
+  const am = typeof roomAmenityList === "function" ? roomAmenityList(r) : [];
+  return [r.title || "", r.note || "", r.location || "", r.rent || "", (r.photos || []).length, (am || []).join(","), JSON.stringify(r.utilities || {})].join("|");
+}
+function leaseNewsFinger(rulesText) {
+  const t = (typeof me === "function" && me()) || {};
+  const r = (typeof myRoom === "function" && myRoom()) || {};
+  const cur = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  const rules = rulesText != null ? rulesText : String((state && state.houseRules) || "");
+  return [rules, t.leaseStart || "", t.leaseEnd || "", r.rent || "", r.deposit || "", (r.contractImages || []).length, cur ? [cur.id, cur.status, cur.appointAt || "", cur.start || "", cur.end || ""].join(",") : ""].join("\n");
+}
+function repairNewsFinger() {
+  const tid = ui.tenantId;
+  return (state.repairs || []).filter(r => r && r.tenantId === tid).map(r => [r.id, r.status, r.appointAt || "", r.vendor || "", r.cost || "", r.doneNote || ""].join(":")).join("|");
+}
+function settingsNewsFinger() {
+  const t = (typeof me === "function" && me()) || {};
+  return [t.name || "", t.phone || ""].join("|");
+}
+function tabFinger(tab, opts) {
+  if (tab === "home") return homeNewsFinger(opts);
+  if (tab === "rooms") return roomsNewsFinger();
+  if (tab === "lease") return leaseNewsFinger(opts && opts.rulesText);
+  if (tab === "repair") return repairNewsFinger();
+  if (tab === "settings") return settingsNewsFinger();
+  return "";
+}
+function tabSeenAll() {
+  try { return JSON.parse(localStorage.getItem(TAB_SEEN_KEY) || "{}") || {}; } catch { return {}; }
+}
+function saveTabSeen(all) {
+  try { localStorage.setItem(TAB_SEEN_KEY, JSON.stringify(all)); } catch {}
+}
+function ensureTabSeen(id) {
+  const all = tabSeenAll();
+  if (all[id]) return all;
+  const rules = String((state && state.houseRules) || "");
+  const oldRules = rules
+    .replace(/\n9\. 樓層走道[^\n]*/g, "")
+    .replace(/\n10\. 若有飼養寵物[^\n]*/g, "");
+  all[id] = {
+    home: tabFinger("home", { skipRenew: true, skipUnread: true }),
+    rooms: tabFinger("rooms"),
+    lease: tabFinger("lease", { rulesText: oldRules }),
+    repair: tabFinger("repair"),
+    settings: tabFinger("settings")
+  };
+  saveTabSeen(all);
+  return all;
+}
+function tabHasNews(tab) {
+  if (ui.role !== "tenant" || !ui.tenantId) return false;
+  const all = ensureTabSeen(String(ui.tenantId));
+  const seen = (all[ui.tenantId] || {})[tab];
+  return String(seen == null ? "" : seen) !== tabFinger(tab);
+}
+function ackTenantTab(tab) {
+  if (ui.role !== "tenant" || !ui.tenantId || !tab) return;
+  const all = ensureTabSeen(String(ui.tenantId));
+  const finger = tabFinger(tab);
+  if ((all[ui.tenantId] || {})[tab] !== finger) {
+    all[ui.tenantId][tab] = finger;
+    saveTabSeen(all);
+  }
+  if (isDevPreview()) return;
+  let dirty = false;
+  if (tab === "home") {
+    (typeof tenantAnnounceList === "function" ? tenantAnnounceList() : []).forEach(a => {
+      if (!a) return;
+      if (!a.readBy) a.readBy = [];
+      if (!a.readBy.includes(ui.tenantId)) { a.readBy.push(ui.tenantId); dirty = true; }
+    });
+  }
+  if (tab === "repair") {
+    (state.repairs || []).forEach(r => {
+      if (r && r.tenantId === ui.tenantId && r.appointAt && !r.appointRead) { r.appointRead = true; dirty = true; }
+    });
+  }
+  if (tab === "lease") {
+    (state.renewals || []).forEach(x => {
+      if (x && x.tenantId === ui.tenantId && x.appointAt && !x.appointRead) { x.appointRead = true; dirty = true; }
+    });
+  }
+  if (dirty) save();
+}
+function navUnread(id) {
+  if (!ui.tenantId || ui.role !== "tenant") return 0;
+  if (id === navKeyOf()) ackTenantTab(id);
+  return tabHasNews(id) ? 1 : 0;
+}
 function nav() {
   const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"], ["settings", "gear", "設定"]];
   const tab = navKeyOf();
   return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
-    const unread = !ui.tenantId ? 0
-      : id === "home" ? (unreadAnnouncements(ui.tenantId).length || (renewAskPending(me(), myRoom()) ? 1 : 0))
-      : id === "repair" ? unreadAppoints(ui.tenantId)
-      : id === "lease" ? unreadRenewTimes(ui.tenantId)
-      : 0;
+    const unread = navUnread(id);
     const on = tab === id;
     return `<button type="button" data-page="${id}" class="${on ? "active" : ""}"><span class="nav-ic">${icon(ic)}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
@@ -20488,11 +20590,7 @@ function refreshNavButtons(bar) {
     btn.style.transition = "";
     const ic = btn.querySelector(".nav-ic");
     if (ic) { ic.style.transform = ""; ic.style.transition = ""; }
-    const unread = !ui.tenantId ? 0
-      : id === "home" ? (unreadAnnouncements(ui.tenantId).length || (renewAskPending(me(), myRoom()) ? 1 : 0))
-      : id === "repair" ? unreadAppoints(ui.tenantId)
-      : id === "lease" ? unreadRenewTimes(ui.tenantId)
-      : 0;
+    const unread = navUnread(id);
     let dot = btn.querySelector(".badge-dot");
     if (unread && !dot) btn.insertAdjacentHTML("beforeend", `<em class="badge-dot badge-dot-only"></em>`);
     else if (!unread && dot) dot.remove();
