@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-27";
-const APP_EDIT_COUNT = 1138;
+const APP_STAMP = "2026-09-23-15-38";
+const APP_EDIT_COUNT = 1139;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0688";
+const FILE_VER = "0689";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["移除水電裡的儲值卡紀錄"] },
+  { ver: APP_VERSION, items: ["開立發票總覽改成 A4 直式滿版"] },
+  { ver: "2026-09-23-15-27-1138", items: ["移除水電裡的儲值卡紀錄"] },
   { ver: "2026-09-23-15-24-1137", items: ["儲值卡改顯示已消費金額，時間會顯示到分鐘"] },
   { ver: "2026-09-23-15-18-1136", items: ["水電可登記儲值卡一開始的金額，並記錄每次儲值"] },
   { ver: "2026-09-23-15-07-1135", items: ["租客姓名白底圖塊改成 80% 透明度"] },
@@ -13547,43 +13548,44 @@ function showDepositImputedPreview() {
   };
 }
 function drawInvoiceOverviewCanvas(rows, kind) {
-  const W = 2480, H = 1754;
+  const W = 1754, H = 2480;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  const pad = 44;
+  const pad = 40;
   const font = w => w + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
   ctx.fillStyle = "#1f3d2b";
-  ctx.font = font("700 42px");
+  ctx.font = font("700 36px");
   ctx.textBaseline = "top";
   ctx.fillText(kind === "factory" ? "統潔開發有限公司　廠房開立發票總覽" : "統潔開發有限公司　開立發票總覽", pad, 28);
-  ctx.font = font("600 22px");
+  ctx.font = font("600 20px");
   ctx.fillStyle = "#5b6b62";
   const now = new Date();
   ctx.textAlign = "right";
-  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 38);
+  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 36);
   ctx.textAlign = "left";
   const cols = [
-    { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
-    { k: "invoiceDate", h: "發票日期", w: 0.10, big: true },
-    { k: "buyer", h: "買受人", w: 0.15, big: true },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.10, big: true },
-    { k: "amount", h: "金額", w: 0.10, big: true },
+    { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.11 },
+    { k: "invoiceDate", h: "發票日期", w: 0.11, big: true },
+    { k: "buyer", h: "買受人", w: 0.20, big: true },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.08, big: true },
+    { k: "amount", h: "金額", w: 0.09, big: true },
     { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
-    { k: "start", h: "合約開始", w: 0.11 },
-    { k: "end", h: "合約結束", w: 0.11 },
+    { k: "start", h: "合約開始", w: 0.10 },
+    { k: "end", h: "合約結束", w: 0.10 },
     { k: "left", h: "剩餘天數", w: 0.08 },
-    { k: "renew", h: "續約", w: 0.08 }
+    { k: "renew", h: "續約", w: 0.06 }
   ];
-  const tableTop = 92;
-  const headH = 68;
+  const tableTop = 86;
+  const headH = 64;
   const tableW = W - pad * 2;
   const n = Math.max((rows || []).length, 1);
-  const avail = H - tableTop - headH - 52;
-  const rowH = Math.min(48, Math.max(34, Math.floor(avail / n)));
+  const footReserve = 78;
+  const avail = H - tableTop - headH - footReserve;
+  const rowH = Math.max(36, Math.floor(avail / n));
   let x = pad;
   cols.forEach((c, i) => {
     c.x = x;
@@ -13601,19 +13603,19 @@ function drawInvoiceOverviewCanvas(rows, kind) {
     ctx.lineTo(c.x, tableTop + headH);
     ctx.stroke();
     ctx.fillStyle = "#1f3d2b";
-    ctx.font = font("700 22px");
+    ctx.font = font("700 20px");
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     if (c.h2) {
-      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 24);
-      ctx.font = font("500 16px");
-      ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 48);
+      ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 22);
+      ctx.font = font("500 15px");
+      ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 46);
     } else {
       ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
     }
   });
-  const bodyBig = Math.max(20, Math.round(rowH * 0.52));
-  const bodySm = Math.max(18, Math.round(rowH * 0.46));
+  const bodyBig = Math.min(26, Math.max(18, Math.round(rowH * 0.36)));
+  const bodySm = Math.min(22, Math.max(16, Math.round(rowH * 0.32)));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
     ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
@@ -13635,8 +13637,8 @@ function drawInvoiceOverviewCanvas(rows, kind) {
       ctx.font = (c.k === "buyer" ? "700 " : "600 ") + size + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
       ctx.textAlign = c.k === "buyer" ? "left" : "center";
       ctx.textBaseline = "middle";
-      const tx = ctx.textAlign === "left" ? c.x + 10 : c.x + c.pw / 2;
-      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 16);
+      const tx = ctx.textAlign === "left" ? c.x + 8 : c.x + c.pw / 2;
+      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 12);
     });
   });
   const bottom = tableTop + headH + rows.length * rowH;
@@ -13646,9 +13648,17 @@ function drawInvoiceOverviewCanvas(rows, kind) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
-  ctx.font = font("500 18px");
-  ctx.fillText("續約欄有 ✓ 表示已續約。未繳者不填匯款日期。提前匯款發票開所屬月1日；1日當天或之後匯款發票開匯款日。不足月當月開日拆金額，次月起開一年約月租。　A4 橫式單面列印。", pad, Math.min(bottom + 14, H - 36));
-  ctx.textAlign = "left";
+  ctx.font = font("500 16px");
+  const note = "續約欄有 ✓ 表示已續約。未繳者不填匯款日期。提前匯款發票開所屬月1日；1日當天或之後匯款發票開匯款日。不足月當月開日拆金額，次月起開一年約月租。A4 直式單面列印。";
+  const lines = [];
+  let line = "";
+  for (const ch of note) {
+    const next = line + ch;
+    if (ctx.measureText(next).width > tableW && line) { lines.push(line); line = ch; }
+    else line = next;
+  }
+  if (line) lines.push(line);
+  lines.forEach((ln, i) => ctx.fillText(ln, pad, Math.min(bottom + 12 + i * 22, H - 26)));
   return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
 }
 async function downloadJpegPagesPdf(pages, filename, landscape) {
@@ -13697,7 +13707,7 @@ async function downloadInvoiceOverviewPdf(page, kind) {
   const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
   const tag = kind === "factory" ? "廠房" : "套房";
   try {
-    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, true);
+    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, false);
     toast("已下載開立發票總覽");
   } catch (err) {
     try { console.error(err); } catch {}
