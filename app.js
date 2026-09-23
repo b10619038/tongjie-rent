@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-21-02";
-const APP_EDIT_COUNT = 1163;
+const APP_STAMP = "2026-09-23-21-08";
+const APP_EDIT_COUNT = 1164;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0713";
+const FILE_VER = "0714";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發送訊息按鈕會原地縮小，關掉聊天後再從原位彈出"] },
+  { ver: APP_VERSION, items: ["發送訊息和聊天視窗改成同一段速度，打開關掉都不再中途頓一下"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1787,19 +1787,40 @@ function chatUnreadTotal() {
   Object.keys(threads).forEach(id => { n += chatUnreadOf(id); });
   return n;
 }
-function tuckChatChip() {
+function chipScale(chip) {
+  const t = getComputedStyle(chip).transform;
+  if (!t || t === "none") return 1;
+  const n = parseFloat(t.slice(t.indexOf("(") + 1));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, Math.abs(n))) : 1;
+}
+function animateChatChip(toAway) {
   const chip = document.getElementById("open-dev-chat");
   if (!chip) return;
-  chip.classList.remove("chip-back");
-  chip.classList.add("chip-away");
-}
-function revealChatChip() {
-  const chip = document.getElementById("open-dev-chat");
-  if (!chip || !chip.classList.contains("chip-away")) return;
-  chip.classList.remove("chip-away");
-  chip.classList.remove("chip-back");
-  void chip.offsetWidth;
-  chip.classList.add("chip-back");
+  chip.classList.remove("is-press");
+  const from = chipScale(chip);
+  const to = toAway ? 0 : 1;
+  chip.getAnimations().forEach(a => { if (a.id === "chip") a.cancel(); });
+  if (Math.abs(from - to) < 0.02) {
+    chip.style.transform = toAway ? "scale(0)" : "";
+    chip.style.opacity = toAway ? "0" : "";
+    chip.classList.toggle("chip-lock", toAway);
+    return;
+  }
+  const anim = chip.animate(
+    [
+      { transform: "scale(" + from + ")", opacity: from },
+      { transform: "scale(" + to + ")", opacity: to }
+    ],
+    { duration: Math.round(300 * Math.abs(to - from) + 20), easing: "cubic-bezier(0.22, 0.9, 0.28, 1)", fill: "forwards" }
+  );
+  anim.id = "chip";
+  chip.classList.add("chip-lock");
+  anim.onfinish = () => {
+    chip.style.transform = toAway ? "scale(0)" : "";
+    chip.style.opacity = toAway ? "0" : "";
+    chip.classList.toggle("chip-lock", toAway);
+    try { anim.cancel(); } catch {}
+  };
 }
 function openDevChat(tid) {
   if (!canUseDevChat()) return;
@@ -1808,10 +1829,15 @@ function openDevChat(tid) {
   ui.chatOpen = true;
   ui.chatEnter = true;
   ui.chatClosing = false;
-  tuckChatChip();
-  drawChatBox();
-  markChatRead(ui.chatTid);
-  pullCloud().then(() => pullChat(true)).catch(() => pullChat(true));
+  ui.chatAnimUntil = Date.now() + 380;
+  animateChatChip(true);
+  requestAnimationFrame(() => {
+    drawChatBox();
+    markChatRead(ui.chatTid);
+  });
+  setTimeout(() => {
+    pullCloud().then(() => pullChat(false)).catch(() => pullChat(false));
+  }, 400);
   startChatPoll();
 }
 function saveChatDraft() {
@@ -1836,17 +1862,18 @@ function dropChatBox() {
 function closeDevChat() {
   if (ui.chatClosing) return;
   saveChatDraft();
-  revealChatChip();
+  ui.chatAnimUntil = Date.now() + 380;
+  animateChatChip(false);
   const wrap = document.getElementById("dev-chat-box");
   const sheet = wrap && wrap.querySelector(".chat-sheet");
-  if (!wrap || !sheet) { dropChatBox(); revealChatChip(); return; }
+  if (!wrap || !sheet) { dropChatBox(); return; }
   ui.chatClosing = true;
   sheet.classList.remove("chat-up");
-  sheet.style.transition = "transform .18s cubic-bezier(.2,.8,.2,1)";
+  sheet.style.transition = "transform .32s cubic-bezier(.22,.9,.28,1)";
   sheet.style.transform = "translateY(110%)";
-  wrap.style.transition = "background .18s ease";
+  wrap.style.transition = "background .32s ease";
   wrap.style.background = "rgba(23,33,31,0)";
-  setTimeout(dropChatBox, 190);
+  setTimeout(dropChatBox, 340);
 }
 function bindChatSwipe(wrap) {
   if (!wrap || wrap.dataset.swipeBound) return;
@@ -2053,6 +2080,14 @@ function drawChatBox() {
     ? [r && r.no, (t && t.name) || th.name].filter(Boolean).join(" ")
     : "管理員";
   const msgs = (th.msgs || []).filter(m => m && !m.recalled).map(m => chatBubbleHtml(m, m.from === mineFrom, t, msgSeenByOther(th, m, mineFrom))).join("") || `<div class="chat-empty">還沒有訊息，直接打字送出即可。</div>`;
+  const wrapNow = document.getElementById("dev-chat-box");
+  const logNow = document.getElementById("chat-log");
+  if (!enter && wrapNow && logNow && ui.chatAnimUntil && Date.now() < ui.chatAnimUntil) {
+    const near = logNow.scrollHeight - logNow.scrollTop - logNow.clientHeight < 90;
+    logNow.innerHTML = msgs;
+    if (near) logNow.scrollTop = logNow.scrollHeight;
+    return;
+  }
   let wrap = document.getElementById("dev-chat-box");
   const keep = wrap && document.activeElement && wrap.contains(document.activeElement);
   const typed = (keep && document.getElementById("chat-input") ? document.getElementById("chat-input").value : "") || chatDraftOf(tid);
@@ -2105,7 +2140,8 @@ function chatEntryCardHtml() {
   const t = me();
   if (!t || !t.id) return "";
   const n = chatUnreadOf(t.id);
-  return `<button type="button" class="chat-chip${ui.chatOpen ? " chip-away" : ""}" id="open-dev-chat">發送訊息${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}</button>`;
+  const away = !!ui.chatOpen;
+  return `<button type="button" class="chat-chip${away ? " chip-lock" : ""}" id="open-dev-chat"${away ? " style=\"transform:scale(0);opacity:0\"" : ""}>發送訊息${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}</button>`;
 }
 function devChatInboxHtml() {
   if (!isDeveloper()) return "";

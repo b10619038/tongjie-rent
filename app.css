@@ -4405,20 +4405,10 @@ html.preview-zoom body {
   line-height: 1.2;
   cursor: pointer;
   transform-origin: center center;
-  transition: transform .26s cubic-bezier(.3, .7, .2, 1), opacity .2s ease;
+  will-change: transform;
 }
-.chat-chip.chip-away {
-  transform: scale(0);
-  opacity: 0;
+.chat-chip.chip-lock {
   pointer-events: none;
-}
-.chat-chip.chip-back {
-  animation: chipBack .34s cubic-bezier(.16, 1.28, .32, 1) both;
-}
-@keyframes chipBack {
-  0% { transform: scale(0); opacity: 0; }
-  68% { transform: scale(1.06); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
 }
 .chat-chip .badge-dot {
   position: absolute;
@@ -5679,7 +5669,7 @@ html[data-theme="void"] .site-chip {
   will-change: transform;
 }
 .chat-sheet.chat-up {
-  animation: chatUp .2s cubic-bezier(.16, .9, .28, 1) both;
+  animation: chatUp .32s cubic-bezier(.22, .9, .28, 1) both;
 }
 @keyframes chatUp {
   from { transform: translateY(100%); }
