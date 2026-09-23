@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-22";
-const APP_EDIT_COUNT = 1149;
+const APP_STAMP = "2026-09-23-16-28";
+const APP_EDIT_COUNT = 1150;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0699";
+const FILE_VER = "0700";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["倒數改到空套房右邊，未續約排上面並標出續約完成"] },
+  { ver: APP_VERSION, items: ["租客可點不續約，倒數列表會標出並排在續約完成上面"] },
+  { ver: "2026-09-23-16-22-1149", items: ["倒數改到空套房右邊，未續約排上面並標出續約完成"] },
   { ver: "2026-09-23-16-17-1148", items: ["套房入帳銀行拿掉聯邦，只留農會、兆豐、現金"] },
   { ver: "2026-09-23-16-16-1147", items: ["匯款銀行下拉可以手動改，改完會留住"] },
   { ver: "2026-09-23-16-12-1146", items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
@@ -3074,6 +3075,7 @@ function renewAskCardHtml(t, r, opts) {
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">線上簽署新約</button>` : ""}
+      ${!signed ? `<button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">改為不續約</button>` : ""}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
     </div>`;
@@ -3088,7 +3090,10 @@ function renewAskCardHtml(t, r, opts) {
     return `<div class="handover-note renew-note">
       <div class="label">續約確認</div>
       <p>${escapeHtml(polite)}</p>
-      <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1" style="margin-top:10px">前往續約</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1">前往續約</button>
+        <button type="button" class="ghost" data-renew-decline="1" style="width:auto">不續約</button>
+      </div>
     </div>`;
   }
   const minAt = todayYmd() + "T09:00";
@@ -3117,6 +3122,7 @@ function renewAskCardHtml(t, r, opts) {
     </div>
     <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室</div>
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
+    <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
   </div>`;
 }
 function bindRenewForm() {
@@ -3171,6 +3177,9 @@ function bindRenewForm() {
   }
   const send = document.getElementById("renew-submit");
   if (send) send.onclick = () => submitTenantRenewal();
+  document.querySelectorAll("[data-renew-decline]").forEach(btn => {
+    btn.onclick = e => { e.preventDefault(); e.stopPropagation(); declineTenantRenewal(); };
+  });
 }
 function submitTenantRenewal() {
   const t = me(); const r = myRoom();
@@ -3222,12 +3231,32 @@ function submitTenantRenewal() {
   state.renewPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, years, waterFee: water };
   const tag = "renew-ask-" + String(t.leaseEnd || "") + "-" + t.id;
   if (Array.isArray(t.inbox)) t.inbox.forEach(n => { if (n && n.id === tag) n.read = true; });
+  t.renewChoice = "yes";
   t.edited = true;
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   pushPhoneNotify("續約申請", `${r.no} ${t.name || ""}${dest ? "　換至 " + dest.no : ""}　${years === 0.5 ? "半年" : "1年"}　年水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
   toast(dest ? "已送出換房續約" : "已送出續約申請");
+  ui.keepScroll = true;
+  render();
+}
+function declineTenantRenewal() {
+  const t = me(); const r = myRoom();
+  if (!t || !r) return;
+  if (isProspectPreview()) { toast("預覽中，不會送出"); return; }
+  const cur = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  if (cur && (cur.status === "done" || cur.status === "applied")) { toast("已經續約完成"); return; }
+  if (isDevPreview()) { toast("預覽：已記不續約（不會寫入）"); return; }
+  if (cur) cur.status = "cancelled";
+  t.renewChoice = "no";
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
+  pushPhoneNotify("不續約", (r.no || "") + " " + (t.name || "") + " 確認不續約，合約至 " + (t.leaseEnd || ""), "admin");
+  toast("已確認不續約");
   ui.keepScroll = true;
   render();
 }
@@ -8050,7 +8079,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -13145,6 +13174,11 @@ function dateFromYmd(ymd) {
 }
 function renewDecisionOf(no) {
   const s = String(no || "");
+  try {
+    const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === s);
+    const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (t && (t.renewChoice === "no" || t.renewChoice === "yes")) return t.renewChoice;
+  } catch {}
   if (s === "6822" || s === "7631") return "no";
   if (s === "7021") return "yes";
   return "";
@@ -14727,7 +14761,7 @@ function liveRenewalOf(t) {
   const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : (state.renewals || []));
   const room = (state.rooms || []).find(x => x && x.id === t.roomId);
   const hits = list.filter(x => {
-    if (!x || x.status === "applied") return false;
+    if (!x || x.status === "applied" || x.status === "cancelled") return false;
     if (x.status === "done" && renewalStartReached(x)) return false;
     const hit = x.tenantId === t.id || (room && x.roomId === room.id) || (room && String(x.roomNo) === String(room.no));
     return !!hit;
@@ -25623,6 +25657,21 @@ function tenantRenewDone(t, r) {
     x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
   ));
 }
+function tenantRenewNo(t, r) {
+  if (!t || tenantRenewDone(t, r)) return false;
+  if (t.renewChoice === "no") return true;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  return !!(r && typeof renewDecisionOf === "function" && renewDecisionOf(r.no) === "no");
+}
+function tenantCountRank(t) {
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  if (tenantRenewNo(t, r)) return 1;
+  if (tenantRenewDone(t, r)) return 2;
+  const stated = t && (t.renewChoice === "yes" || t.renewChoice === "no");
+  const decided = stated || (r && typeof renewDecisionOf === "function" && !!renewDecisionOf(r.no));
+  if (!decided && tenantRemainDays(t, r) <= 30) return 0;
+  return 3;
+}
 function tenantPayChipMatch(t, r, chip) {
   if (!chip || chip === "vacant" || chip === "count") return true;
   if (!t || t.former || t.incoming) return false;
@@ -25773,8 +25822,8 @@ function tenantListOfKind(kind, opts) {
     return true;
   }).sort((a, b) => {
     if (tenantChipOn() === "count") {
-      const fa = tenantRenewDone(a) ? 1 : 0;
-      const fb = tenantRenewDone(b) ? 1 : 0;
+      const fa = tenantCountRank(a);
+      const fb = tenantCountRank(b);
       if (fa !== fb) return fa - fb;
       const da = tenantRemainDays(a);
       const db = tenantRemainDays(b);
@@ -25808,7 +25857,7 @@ function tenantListOfKind(kind, opts) {
     }
     uniq.push(t);
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|cdone|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c4|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
   if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = uniq.map(t => t.id);
@@ -26363,7 +26412,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">續約完成</span>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewNo(t, r) ? `<span class="pay-pill unpaid">不續約</span>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">續約完成</span>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
