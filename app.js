@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-01-58";
-const APP_EDIT_COUNT = 1209;
+const APP_STAMP = "2026-09-24-02-04";
+const APP_EDIT_COUNT = 1210;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0759";
+const FILE_VER = "0760";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費日曆會標出續約簽約日"] },
+  { ver: APP_VERSION, items: ["繳費日曆往左最多停在合約開始月份"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14596,6 +14596,14 @@ function leaseSpanDays(start, end) {
   const n = Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+function leaseCalFloorYm(t, r) {
+  let start = tenantOccupancyStart(t, r) || ymdOf(t && t.leaseStart) || "";
+  leasePaySheets(t, r).forEach(s => {
+    const a = ymdOf(s && s.start);
+    if (a && (!start || a < start)) start = a;
+  });
+  return start ? start.slice(0, 7) : "";
+}
 function leaseCalCapYm(t, r) {
   let end = tenantOccupancyEnd(t, r) || ymdOf(t && t.leaseEnd) || "";
   const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
@@ -14827,8 +14835,10 @@ function leasePayTableHtml(rows) {
 }
 function leaseCalHtml(t, r) {
   const cap = leaseCalCapYm(t, r);
+  const floor = leaseCalFloorYm(t, r);
   let ym = /^\d{4}-\d{2}$/.test(String(ui.leaseCalYm || "")) ? ui.leaseCalYm : payYmNow();
   if (cap && ym > cap) ym = cap;
+  if (floor && ym < floor) ym = floor;
   ui.leaseCalYm = ym;
   const marks = leaseCalMarks(t, r);
   const pane = ui.leasePane === "sheet" ? "sheet" : "cal";
@@ -14843,7 +14853,7 @@ function leaseCalHtml(t, r) {
   const atEnd = pane === "sheet"
     ? !(multi && sheetIdx < sheets.length - 1)
     : !!(cap && ym >= cap);
-  const atStart = pane === "sheet" ? !(multi && sheetIdx > 0) : false;
+  const atStart = pane === "sheet" ? !(multi && sheetIdx > 0) : !!(floor && ym <= floor);
   const title = pane === "sheet" ? (sheet ? sheet.label : "繳費總表") : rocMonthTitle(ym);
   const sub = pane === "sheet" && sheet ? rocSlash(sheet.start) + "～" + rocSlash(sheet.end) : "";
   const body = pane === "sheet"
@@ -14882,8 +14892,10 @@ function paintLeasePane(dir) {
   const pane = ui.leasePane === "sheet" ? "sheet" : "cal";
   setSegSide(document.getElementById("lease-pane-seg"), pane === "sheet", "", "is-sheet");
   const cap = leaseCalCapYm(who, room);
+  const floor = leaseCalFloorYm(who, room);
   let ym = /^\d{4}-\d{2}$/.test(String(ui.leaseCalYm || "")) ? ui.leaseCalYm : payYmNow();
   if (cap && ym > cap) ym = cap;
+  if (floor && ym < floor) ym = floor;
   ui.leaseCalYm = ym;
   const sheets = leasePaySheets(who, room);
   let sheetIdx = Number(ui.leaseSheetPage) || 0;
@@ -14893,7 +14905,7 @@ function paintLeasePane(dir) {
   const sheet = sheets[sheetIdx] || null;
   const multi = sheets.length > 1;
   const atEnd = pane === "sheet" ? !(multi && sheetIdx < sheets.length - 1) : !!(cap && ym >= cap);
-  const atStart = pane === "sheet" ? !(multi && sheetIdx > 0) : false;
+  const atStart = pane === "sheet" ? !(multi && sheetIdx > 0) : !!(floor && ym <= floor);
   const title = pane === "sheet" ? (sheet ? sheet.label : "繳費總表") : rocMonthTitle(ym);
   const sub = pane === "sheet" && sheet ? rocSlash(sheet.start) + "～" + rocSlash(sheet.end) : "";
   const titleBox = mask.querySelector(".lease-cal-title");
@@ -29732,11 +29744,15 @@ function wireLeaseCal(skipPlace) {
     }
     const cur = ui.leaseCalYm || payYmNow();
     const nextYm = shiftYm(cur, dir);
+    const who = typeof me === "function" ? me() : null;
+    const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
     if (dir > 0) {
-      const who = typeof me === "function" ? me() : null;
-      const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
       const cap = leaseCalCapYm(who, room);
       if (cap && nextYm > cap) return;
+    }
+    if (dir < 0) {
+      const floor = leaseCalFloorYm(who, room);
+      if (floor && nextYm < floor) return;
     }
     ui.leaseCalYm = nextYm;
     ui.leaseCalDir = dir;
