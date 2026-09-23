@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-10";
-const APP_EDIT_COUNT = 1119;
+const APP_STAMP = "2026-09-23-12-14";
+const APP_EDIT_COUNT = 1120;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0669";
+const FILE_VER = "0670";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["公告愛心先收起；點愛心可看是哪些房號"] },
+  { ver: APP_VERSION, items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
+  { ver: "2026-09-23-12-10-1119", items: ["公告愛心先收起；點愛心可看是哪些房號"] },
   { ver: "2026-09-23-12-04-1118", items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
   { ver: "2026-09-23-11-58-1117", items: ["偵測到新版本直接換上，不用再點兩次"] },
   { ver: "2026-09-23-11-53-1116", items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
@@ -20499,7 +20500,7 @@ function reactBarHtml(a) {
   const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
   const open = ui.reactWho === a.id;
   const who = open ? reactionWho(a) : [];
-  const list = open ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml((x.no ? x.no + " " : "") + x.name)}</span>`).join("") || `<span>還沒有人按愛心</span>`}</div>` : "";
+  const list = open ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人按愛心</span>`}</div>` : "";
   return `<div class="ann-react${open ? " open" : ""}" data-react-ann="${a.id}"><button type="button" data-react-who="${a.id}" class="${mine ? "on" : ""} has" aria-label="看是哪些房號按了愛心">❤️<em>${n}</em></button>${list}</div>`;
 }
 function applyClearForgottenHearts(data) {
