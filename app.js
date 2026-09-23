@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-22-36";
-const APP_EDIT_COUNT = 1171;
+const APP_STAMP = "2026-09-23-22-44";
+const APP_EDIT_COUNT = 1172;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0721";
+const FILE_VER = "0722";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7031 朱甫晟補上身分證字號與戶籍地址"] },
+  { ver: APP_VERSION, items: ["本月已繳印章和剩餘天數倒數同時開始、同時停"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14546,6 +14546,19 @@ function leaseRemainHtml(t, r) {
   return days;
 }
 let leaseCountRaf = 0;
+function stampEase(t) {
+  const x1 = 0.22, y1 = 0.72, x2 = 0.18, y2 = 1;
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sample = (u, a, b, c) => ((a * u + b) * u + c) * u;
+  let u = t;
+  for (let i = 0; i < 6; i++) {
+    const dx = (3 * ax * u + 2 * bx) * u + cx;
+    if (Math.abs(dx) < 1e-4) break;
+    u = Math.min(1, Math.max(0, u - (sample(u, ax, bx, cx) - t) / dx));
+  }
+  return sample(u, ay, by, cy);
+}
 function playLeaseCountdown() {
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const nodes = document.querySelectorAll("[data-lease-count]");
@@ -14571,13 +14584,13 @@ function playLeaseCountdown() {
     }
     let live = ui.leaseCountLive;
     if (!live || live.key !== key || live.done) {
-      live = { key, from, to, t0: 0, value: from, done: false };
+      live = { key, from, to, t0: performance.now(), value: from, done: false };
       ui.leaseCountLive = live;
     }
     el.textContent = live.value + " 天";
   });
   if (leaseCountRaf) return;
-  const ms = 980;
+  const ms = 1000;
   const tick = (now) => {
     const list = document.querySelectorAll("[data-lease-count]");
     if (!list.length) { leaseCountRaf = 0; return; }
@@ -14589,8 +14602,7 @@ function playLeaseCountdown() {
       if (!live.t0) live.t0 = now;
       const p = Math.min(1, (now - live.t0) / ms);
       const span = live.from - live.to;
-      const eased = 1 - (1 - p) * (1 - p);
-      const passed = p >= 1 ? span : Math.min(span, Math.round(span * eased));
+      const passed = p >= 1 ? span : Math.min(span - 1, Math.floor(span * stampEase(p)));
       const value = live.from - passed;
       if (live.value !== value) {
         live.value = value;
