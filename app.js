@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-21-08";
-const APP_EDIT_COUNT = 1164;
+const APP_STAMP = "2026-09-23-21-45";
+const APP_EDIT_COUNT = 1165;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0714";
+const FILE_VER = "0715";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發送訊息和聊天視窗改成同一段速度，打開關掉都不再中途頓一下"] },
+  { ver: APP_VERSION, items: ["公告收合改成往左上角收，速度和打開時一樣"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -21548,12 +21548,17 @@ function foldAnnounceAway(id, btn) {
   slot.style.marginBottom = mb + "px";
   slot.classList.add("folding");
   card.classList.add("ann-fold");
-  card.style.transformOrigin = "8px 0";
+  const dock = document.getElementById("ann-dock");
+  const cr = card.getBoundingClientRect();
+  const dr = dock ? dock.getBoundingClientRect() : null;
+  const dx = dr ? Math.round(dr.left - cr.left) : -18;
+  const dy = dr ? Math.round(dr.top - cr.top) : -36;
+  card.style.transformOrigin = "0 0";
   void slot.offsetHeight;
   requestAnimationFrame(() => {
     slot.style.height = "0px";
     slot.style.marginBottom = "0px";
-    card.style.transform = "translate(-12px, -18px) scale(0.12)";
+    card.style.transform = "translate(" + dx + "px, " + dy + "px) scale(0.08)";
     card.style.opacity = "0";
   });
   let done = false;
@@ -21564,7 +21569,7 @@ function foldAnnounceAway(id, btn) {
     finish();
   };
   slot.addEventListener("transitionend", go);
-  setTimeout(() => go(), 480);
+  setTimeout(() => go(), 600);
 }
 function announceCardsHtml() {
   ensureAnnSeenSeed();
