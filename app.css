@@ -2374,7 +2374,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 }
 .firm-legend { display: grid; gap: 8px; flex: 1; min-width: 0; overflow: hidden; }
 .firm-legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
-.firm-legend strong { margin-left: auto; font-weight: 800; white-space: nowrap; flex: 0 0 auto; font-size: 18px; }
+.firm-legend strong, .firm-legend .money { margin-left: auto; font-weight: 800; white-space: nowrap; flex: 0 0 auto; font-size: 18px; }
 .firm-legend i { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }
 .firm-legend i.in { background: #3FA89A; }
 .firm-legend i.out { background: #E8896C; }
@@ -2394,7 +2394,8 @@ button.avatar-look.is-press { transform: scale(.94); }
   .firm-legend { gap: 5px; }
   .firm-legend div { font-size: 12px; gap: 6px; }
   .firm-legend span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .firm-legend strong { font-size: 16px; letter-spacing: -0.02em; margin-left: 6px; }
+  .firm-legend strong, .firm-legend .money { font-size: 16px; letter-spacing: -0.02em; margin-left: auto; }
+  .firm-legend .money-num { width: 9.5ch; }
   .ring-card { padding: 12px; gap: 8px; overflow: hidden; max-width: 100%; }
   .ring-wrap { width: 52px; height: 52px; flex: 0 0 52px; }
   .ring-row { grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 8px; }
