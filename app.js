@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-24";
-const APP_EDIT_COUNT = 1128;
+const APP_STAMP = "2026-09-23-14-32";
+const APP_EDIT_COUNT = 1129;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0678";
+const FILE_VER = "0679";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["出現續約確認時，首頁顯示紅點，並通知該租客手機"] },
+  { ver: APP_VERSION, items: ["使用規範可以編輯，並補上走道整潔與寵物兩條"] },
+  { ver: "2026-09-23-14-24-1128", items: ["出現續約確認時，首頁顯示紅點，並通知該租客手機"] },
   { ver: "2026-09-23-14-18-1127", items: ["點前往續約會進租約頁，並把續約確認滑到畫面底部對齊"] },
   { ver: "2026-09-23-14-08-1126", items: ["總覽營收與本期收支的金額放大"] },
   { ver: "2026-09-23-14-06-1125", items: ["我要續約圖卡底色改成與設備圖塊相同的米色"] },
@@ -3294,7 +3295,9 @@ const DEFAULT_RULES = `1. 每月租金請於每月 1 日前完成，逾期將依
 5. 冷氣、熱水器等設備請正常使用，損壞請從 App 報修，勿自行拆修。
 6. 電費每度 NT$ 5.5，請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
 7. 訪客請由承租人陪同，勿將房間轉租或借給他人長期居住。
-8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。`;
+8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。
+9. 樓層走道請保持整潔，勿堆放過多雜物，以免影響他人通行。
+10. 若有飼養寵物，請維持環境整潔，並降低音量，避免影響鄰戶安寧。`;
 function todayDate() {
   const d = taipeiNow();
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -5060,9 +5063,17 @@ function normalize(data) {
     else if (/1976/.test(who)) a.postedBy = "1976";
   });
   if (!data.houseRules) data.houseRules = DEFAULT_RULES;
-  else data.houseRules = String(data.houseRules)
-    .replace(/水費為每月定額[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。")
-    .replace(/水費為一年固定 \$1,800[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。");
+  else {
+    let rules = String(data.houseRules)
+      .replace(/水費為每月定額[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。")
+      .replace(/水費為一年固定 \$1,800[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。");
+    if (!/樓層走道/.test(rules)) rules = rules.replace(/\s*$/, "") + "\n9. 樓層走道請保持整潔，勿堆放過多雜物，以免影響他人通行。";
+    if (!/飼養寵物/.test(rules)) rules = rules.replace(/\s*$/, "") + "\n10. 若有飼養寵物，請維持環境整潔，並降低音量，避免影響鄰戶安寧。";
+    if (rules !== data.houseRules) {
+      data.houseRules = rules;
+      try { markCloudDirty(); } catch {}
+    }
+  }
   if (!Array.isArray(data.renewals)) data.renewals = [];
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
@@ -23865,7 +23876,7 @@ function adminAnnounce() {
     <form class="card card-body" id="rules-form">
       <h2 class="dash-h">使用規範</h2>
       <p class="small">修改後會同步顯示在租客「租約」頁、合約書上方。</p>
-      <label class="field"><span>規範內容</span><textarea id="rules-text" name="rules" style="min-height:220px">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
+      <label class="field"><span>規範內容</span><textarea id="rules-text" name="rules" style="min-height:220px" enterkeyhint="done">${escapeHtml(state.houseRules || DEFAULT_RULES)}</textarea></label>
       <button class="btn-navy" type="submit">儲存規範</button>
     </form>
     <div class="card card-body">
@@ -29049,7 +29060,8 @@ function bindAdmin() {
   if (rulesForm) {
     rulesForm.onsubmit = e => {
       e.preventDefault();
-      const text = formVal(rulesForm, "rules").trim();
+      const box = document.getElementById("rules-text");
+      const text = String((box && box.value) || formVal(rulesForm, "rules") || "").trim();
       if (!text) { toast("請填寫使用規範"); return; }
       state.houseRules = text;
       save();
@@ -31144,6 +31156,7 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
   window.__tjFieldGuard = true;
   let lastScrollAt = 0;
   let startY = 0;
+  let touchField = false;
   const isField = el => {
     if (!el || !el.tagName) return false;
     const tag = el.tagName;
@@ -31152,24 +31165,33 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
     if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio" || type === "range" || type === "button" || type === "submit") return false;
     return true;
   };
+  const fieldFrom = e => {
+    const t = e && e.target && e.target.closest && e.target.closest("input, textarea, select");
+    return isField(t) ? t : null;
+  };
   const bump = () => { lastScrollAt = Date.now(); };
   window.addEventListener("touchmove", e => {
+    if (touchField || fieldFrom(e)) return;
     bump();
     const y = e.touches && e.touches[0] ? e.touches[0].clientY : startY;
     if (Math.abs(y - startY) < 12) return;
     const a = document.activeElement;
     if (isField(a)) try { a.blur(); } catch {}
   }, { capture: true, passive: true });
-  window.addEventListener("wheel", bump, { capture: true, passive: true });
-  document.addEventListener("scroll", bump, { capture: true, passive: true });
+  window.addEventListener("wheel", e => { if (!fieldFrom(e)) bump(); }, { capture: true, passive: true });
+  document.addEventListener("scroll", e => { if (!fieldFrom(e)) bump(); }, { capture: true, passive: true });
   document.addEventListener("touchstart", e => {
     startY = e.touches && e.touches[0] ? e.touches[0].clientY : 0;
-    const t = e.target && e.target.closest && e.target.closest("input, textarea, select");
-    if (!isField(t)) return;
-    if (Date.now() - lastScrollAt < 450) e.preventDefault();
+    touchField = !!fieldFrom(e);
+    if (touchField) return;
+    if (Date.now() - lastScrollAt < 450) {
+      const t = e.target && e.target.closest && e.target.closest("input, textarea, select");
+      if (isField(t)) e.preventDefault();
+    }
   }, { capture: true, passive: false });
   document.addEventListener("focusin", e => {
     if (!isField(e.target)) return;
+    if (touchField) return;
     if (Date.now() - lastScrollAt < 450) try { e.target.blur(); } catch {}
   });
 })();
