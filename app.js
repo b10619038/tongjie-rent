@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-39";
-const APP_EDIT_COUNT = 1153;
+const APP_STAMP = "2026-09-23-16-41";
+const APP_EDIT_COUNT = 1154;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0703";
+const FILE_VER = "0704";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票總覽確定不續約的續約欄改畫叉"] },
+  { ver: APP_VERSION, items: ["倒數標籤改成剩XX日"] },
+  { ver: "2026-09-23-16-39-1153", items: ["發票總覽確定不續約的續約欄改畫叉"] },
   { ver: "2026-09-23-16-37-1152", items: ["倒數卡片的續約完成改成已續約"] },
   { ver: "2026-09-23-16-31-1151", items: ["租約剩餘天數倒數改成均速，不再中途頓一下"] },
   { ver: "2026-09-23-16-28-1150", items: ["租客可點不續約，倒數列表會標出並排在續約完成上面"] },
@@ -25667,9 +25668,9 @@ function tenantRemainDays(t, r) {
 }
 function tenantRemainLabel(t, r) {
   const n = tenantRemainDays(t, r);
-  if (n >= 99999) return "剩餘—";
+  if (n >= 99999) return "剩—";
   if (n < 0) return "已到期";
-  return "剩餘" + n + "日";
+  return "剩" + n + "日";
 }
 function tenantRenewDone(t, r) {
   if (!t) return false;
