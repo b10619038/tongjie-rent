@@ -734,6 +734,7 @@ html[data-theme="void"] .rent-stamp {
   font-size: 18px;
   cursor: pointer;
 }
+.lease-cal-nav button:disabled { opacity: .28; cursor: default; }
 .lease-cal-week,
 .lease-cal-grid {
   display: grid;

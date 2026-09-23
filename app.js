@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-00-08";
-const APP_EDIT_COUNT = 1188;
+const APP_STAMP = "2026-09-24-00-14";
+const APP_EDIT_COUNT = 1189;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0738";
+const FILE_VER = "0739";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["有實際匯款日的月份，印章蓋在匯款日"] },
+  { ver: APP_VERSION, items: ["繳費日曆最多翻到合約最後一個月，續約則到新約月底"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14596,6 +14596,19 @@ function leaseSpanDays(start, end) {
   const n = Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+function leaseCalCapYm(t, r) {
+  let end = tenantOccupancyEnd(t, r) || ymdOf(t && t.leaseEnd) || "";
+  const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
+  const roomNo = r ? String(r.no || "") : "";
+  (list || []).forEach(x => {
+    if (!x || (x.status !== "done" && x.status !== "applied")) return;
+    const hit = t && (x.tenantId === t.id || (r && x.roomId === r.id) || (roomNo && String(x.roomNo) === roomNo));
+    if (!hit) return;
+    const e = ymdOf(x.end);
+    if (e && (!end || e > end)) end = e;
+  });
+  return end ? end.slice(0, 7) : "";
+}
 function shiftYm(ym, dir) {
   let y = Number(String(ym || "").slice(0, 4));
   let m = Number(String(ym || "").slice(5, 7)) + Number(dir || 0);
@@ -14696,10 +14709,13 @@ function leaseCalGridHtml(ym, marks) {
   return html;
 }
 function leaseCalHtml(t, r) {
-  const ym = /^\d{4}-\d{2}$/.test(String(ui.leaseCalYm || "")) ? ui.leaseCalYm : payYmNow();
+  const cap = leaseCalCapYm(t, r);
+  let ym = /^\d{4}-\d{2}$/.test(String(ui.leaseCalYm || "")) ? ui.leaseCalYm : payYmNow();
+  if (cap && ym > cap) ym = cap;
   ui.leaseCalYm = ym;
   const marks = leaseCalMarks(t, r);
   const dir = ui.leaseCalDir === -1 ? " is-prev" : (ui.leaseCalDir === 1 ? " is-next" : "");
+  const atEnd = !!(cap && ym >= cap);
   return `<div class="lease-cal-mask" id="lease-cal-mask">
     <div class="hero-card lease-cal" role="dialog" aria-label="繳費日曆">
       <div class="lease-cal-head">
@@ -14711,7 +14727,7 @@ function leaseCalHtml(t, r) {
       </div>
       <div class="lease-cal-nav">
         <button type="button" id="lease-cal-prev" aria-label="上個月">‹</button>
-        <button type="button" id="lease-cal-next" aria-label="下個月">›</button>
+        <button type="button" id="lease-cal-next" aria-label="下個月"${atEnd ? " disabled" : ""}>›</button>
       </div>
       <div class="lease-cal-week"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
       <div class="lease-cal-grid${dir}">${leaseCalGridHtml(ym, marks)}</div>
@@ -29429,7 +29445,15 @@ function bindLeaseCal() {
   const leaseCalMask = document.getElementById("lease-cal-mask");
   if (!leaseCalMask) return;
   const shiftCal = (dir) => {
-    ui.leaseCalYm = shiftYm(ui.leaseCalYm || payYmNow(), dir);
+    const cur = ui.leaseCalYm || payYmNow();
+    const nextYm = shiftYm(cur, dir);
+    if (dir > 0) {
+      const who = typeof me === "function" ? me() : null;
+      const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
+      const cap = leaseCalCapYm(who, room);
+      if (cap && nextYm > cap) return;
+    }
+    ui.leaseCalYm = nextYm;
     ui.leaseCalDir = dir;
     render();
   };
