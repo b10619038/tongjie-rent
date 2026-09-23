@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-02-28";
-const APP_EDIT_COUNT = 1214;
+const APP_STAMP = "2026-09-24-02-36";
+const APP_EDIT_COUNT = 1215;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0764";
+const FILE_VER = "0765";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["公告展開後，繳費日曆仍對齊我的房間"] },
+  { ver: APP_VERSION, items: ["繳費日起通知月租金，已繳不通知，未繳則每天提醒"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3139,7 +3139,7 @@ function unbindRoomLine(no, oldT) {
   } catch {}
 }
 function latestPayNudge(t) {
-  if (!t || t.paid || isProspectPreview()) return null;
+  if (!t || paidThisMonth(t) || isProspectPreview()) return null;
   const hidden = new Set((t.hiddenInbox || []).map(String));
   const list = (t.inbox || []).filter(n => n && n.kind === "pay" && !hidden.has(String(n.id)));
   return list.length ? list[list.length - 1] : null;
@@ -3147,9 +3147,10 @@ function latestPayNudge(t) {
 function tenantNudgeNoteHtml(t) {
   const n = latestPayNudge(t);
   if (!n) return "";
+  const title = n.title || "屋主催繳";
   return `<div class="handover-note nudge-note">
       <button type="button" class="ann-hide" data-hide-nudge="${escapeHtml(n.id)}" aria-label="從我的畫面移除">×</button>
-      <div class="label">屋主催繳</div>
+      <div class="label">${escapeHtml(title)}</div>
       <p>${escapeHtml(n.body || "本月租金尚未入帳，請盡快繳納。")}</p>
       <button type="button" class="btn-navy" data-page="pay" style="margin-top:10px">前往繳費</button>
     </div>`;
@@ -5486,6 +5487,7 @@ function normalize(data) {
   try { ensureRenewNudges(data); } catch {}
   try { applyLuWuSepUnpaid(data); } catch {}
   try { applyRemitMarksPaid(data); } catch {}
+  try { ensureRentDueNotices(data); } catch {}
   try { apply6841RenewLai(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
@@ -8325,7 +8327,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12875,7 +12877,7 @@ function showOsBanner(title, body, tag) {
 }
 function osBannerRepeatable(tag, title) {
   const s = String(tag || "") + " " + String(title || "");
-  return /unpaid|water|memo|notify-on|tongjie-update|admin-unpaid|admin-water/.test(s);
+  return /unpaid|water|memo|notify-on|tongjie-update|admin-unpaid|admin-water|rent-due/.test(s);
 }
 function osBannerFp(title, body, tag) {
   const t = String(tag || "").replace(/-\d{10,}$/, "");
@@ -12910,6 +12912,7 @@ function notifyExtra(title, target) {
     "管理員公告": { tag: "tongjie-ann", page: "home" },
     "使用規範已更新": { tag: "tongjie-rules", page: "home" },
     "屋主催繳": { tag: "tongjie-nudge", page: "pay" },
+    "租金繳費通知": { tag: "tongjie-rent-due", page: "pay" },
     "報修進度": { tag: "tongjie-repair", page: "repair" },
     "報修預約已安排": { tag: "tongjie-repair", page: "repair" },
     "續約簽約時間": { tag: "tongjie-renew", page: "home" },
@@ -12925,7 +12928,9 @@ function pushPhoneNotify(title, body, target) {
   const extra = notifyExtra(title, target);
   if (target && !isDevPreview()) sendRemoteNotify(target, title, text, extra);
   if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
-  const tag = title === "入住申請" ? extra.tag + "-" + Date.now() : extra.tag;
+  const tag = title === "租金繳費通知"
+    ? extra.tag + "-" + todayYmd()
+    : (title === "入住申請" ? extra.tag + "-" + Date.now() : extra.tag);
   const show = () => showOsBanner(title, text, tag);
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") { show(); return; }
@@ -15552,6 +15557,59 @@ function tenantForRenewPrint(t, r, item) {
 function isRenewSignDay(item) {
   const at = String(item && item.appointAt || "").replace(" ", "T").slice(0, 10);
   return !!(at && at === todayYmd());
+}
+function rentPayDueYmd(t, r) {
+  const ym = payYmNow();
+  const first = typeof firstStudioPayDue === "function" ? firstStudioPayDue(t, r) : null;
+  if (first || (typeof isStubMonthNow === "function" && isStubMonthNow(t, r))) {
+    const start = ymdOf(t && t.leaseStart) || (typeof tenantOccupancyStart === "function" ? tenantOccupancyStart(t, r) : "");
+    if (start && start.slice(0, 7) === ym) return start;
+  }
+  const day = rentDueDay(t);
+  return ym + "-" + String(day).padStart(2, "0");
+}
+function ensureRentDueNotices(data) {
+  const st = data || (typeof state !== "undefined" ? state : null);
+  if (!st || !Array.isArray(st.tenants)) return;
+  const today = todayYmd();
+  const ym = payYmNow();
+  const m = Number(ym.slice(5, 7));
+  const fresh = [];
+  st.tenants.forEach(t => {
+    if (!t || t.former || t.incoming || t.demo || t.placeholder || t.prospect) return;
+    const r = (st.rooms || []).find(x => x && x.id === t.roomId);
+    if (!r || r.demo || r.status === "office") return;
+    if (paidThisMonth(t)) return;
+    const covered = typeof leaseCoversYm === "function" && leaseCoversYm(t, r, ym);
+    const first = typeof firstStudioPayDue === "function" ? firstStudioPayDue(t, r) : null;
+    if (!covered && !first) return;
+    const due = rentPayDueYmd(t, r);
+    if (!due || today < due) return;
+    if (t.rentDueNoticeOn === today) return;
+    const amount = typeof thisMonthDueOf === "function" ? thisMonthDueOf(t, r) : thisMonthRentOf(t, r);
+    if (!amount) return;
+    const body = m + "月租金 " + money(amount) + " 需繳費";
+    const id = "rent-due-" + today + "-" + t.id;
+    if (!Array.isArray(t.inbox)) t.inbox = [];
+    if (!t.inbox.some(n => n && n.id === id)) {
+      t.inbox.push({
+        id, title: "租金繳費通知", body, at: nowStamp(),
+        read: false, kind: "pay", osShown: false
+      });
+    }
+    t.rentDueNoticeOn = today;
+    t.edited = true;
+    t.editedAt = Date.now();
+    fresh.push({ no: r.no || "", body });
+  });
+  if (!fresh.length) return;
+  try { markCloudDirty(); } catch {}
+  setTimeout(() => {
+    if (typeof isDevPreview === "function" && isDevPreview()) return;
+    fresh.forEach(x => {
+      try { sendRemoteNotify(x.no || "tenants", "租金繳費通知", x.body, notifyExtra("租金繳費通知")); } catch {}
+    });
+  }, 800);
 }
 function ensureRenewNudges(data) {
   if (!data) return;
