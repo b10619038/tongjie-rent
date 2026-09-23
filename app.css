@@ -622,27 +622,16 @@ input, textarea, select {
   z-index: 4;
   animation: rent-chop 1s cubic-bezier(.22, .72, .18, 1) both;
 }
-.rent-stamp.chop i {
-  animation: rent-chop-ink 1s cubic-bezier(.22, .72, .18, 1) both;
-}
+.rent-stamp.chop i { animation: none; }
 @keyframes rent-chop {
-  0%, 18% {
+  0% {
     opacity: 0;
-    transform: rotate(-10deg) scale(1.16);
-  }
-  58% {
-    opacity: .55;
-    transform: rotate(-10deg) scale(1.05);
+    transform: rotate(-10deg) scale(2);
   }
   100% {
-    opacity: .9;
+    opacity: 1;
     transform: rotate(-10deg) scale(1);
   }
-}
-@keyframes rent-chop-ink {
-  0%, 18% { opacity: 0; }
-  58% { opacity: .62; }
-  100% { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rent-stamp.chop,
