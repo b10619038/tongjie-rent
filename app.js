@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-28";
-const APP_EDIT_COUNT = 1179;
+const APP_STAMP = "2026-09-23-23-32";
+const APP_EDIT_COUNT = 1180;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0729";
+const FILE_VER = "0730";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["圓餅圖金額固定欄寬，數字不再左右跳"] },
+  { ver: APP_VERSION, items: ["點租約剩餘天數，繳費日曆從房間圖卡右邊滑入"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -28633,28 +28633,7 @@ function bindTenant() {
     render();
   };
   bindGhostPress();
-  const leaseRemain = document.getElementById("lease-remain");
-  if (leaseRemain) leaseRemain.onclick = () => {
-    ui.leaseCalOpen = true;
-    ui.leaseCalDir = 0;
-    if (!ui.leaseCalYm) ui.leaseCalYm = payYmNow();
-    render();
-  };
-  const leaseCalMask = document.getElementById("lease-cal-mask");
-  if (leaseCalMask) {
-    const shiftCal = (dir) => {
-      ui.leaseCalYm = shiftYm(ui.leaseCalYm || payYmNow(), dir);
-      ui.leaseCalDir = dir;
-      render();
-    };
-    const prev = document.getElementById("lease-cal-prev");
-    const next = document.getElementById("lease-cal-next");
-    const close = document.getElementById("lease-cal-close");
-    if (prev) prev.onclick = e => { e.stopPropagation(); shiftCal(-1); };
-    if (next) next.onclick = e => { e.stopPropagation(); shiftCal(1); };
-    if (close) close.onclick = e => { e.stopPropagation(); ui.leaseCalOpen = false; render(); };
-    leaseCalMask.onclick = e => { if (e.target === leaseCalMask) { ui.leaseCalOpen = false; render(); } };
-  }
+  bindLeaseCal();
   if (!(ui.page === "home" && ui.stampChop)) requestAnimationFrame(() => playLeaseCountdown());
 }
 
@@ -29379,6 +29358,64 @@ function bindTabPress(el) {
   el.addEventListener("pointerup", off);
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
+}
+function placeLeaseCal(slide) {
+  const hero = document.querySelector(".screen > .hero-card");
+  const card = document.querySelector("#lease-cal-mask .lease-cal");
+  if (!hero || !card) return null;
+  const r = hero.getBoundingClientRect();
+  card.style.top = r.top + "px";
+  card.style.left = r.left + "px";
+  card.style.width = r.width + "px";
+  card.style.maxHeight = Math.max(240, window.innerHeight - r.top - 12) + "px";
+  card.classList.add("is-placed");
+  if (!slide || !card.animate) return null;
+  try { card.getAnimations().forEach(a => a.cancel()); } catch {}
+  return card.animate(
+    [{ transform: "translateX(100%)" }, { transform: "translateX(0)" }],
+    { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
+  );
+}
+function closeLeaseCal() {
+  const card = document.querySelector("#lease-cal-mask .lease-cal");
+  const mask = document.getElementById("lease-cal-mask");
+  const done = () => { ui.leaseCalOpen = false; ui.leaseCalDir = 0; render(); };
+  if (!card) { done(); return; }
+  if (mask) mask.classList.add("is-out");
+  let anim = null;
+  if (card.animate) {
+    try { card.getAnimations().forEach(a => a.cancel()); } catch {}
+    anim = card.animate(
+      [{ transform: "translateX(0)" }, { transform: "translateX(108%)" }],
+      { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
+    );
+  }
+  if (anim && anim.finished) anim.finished.then(done).catch(done);
+  else setTimeout(done, 900);
+}
+function bindLeaseCal() {
+  const leaseRemain = document.getElementById("lease-remain");
+  if (leaseRemain) leaseRemain.onclick = () => {
+    ui.leaseCalOpen = true;
+    ui.leaseCalDir = 0;
+    if (!ui.leaseCalYm) ui.leaseCalYm = payYmNow();
+    render();
+  };
+  const leaseCalMask = document.getElementById("lease-cal-mask");
+  if (!leaseCalMask) return;
+  const shiftCal = (dir) => {
+    ui.leaseCalYm = shiftYm(ui.leaseCalYm || payYmNow(), dir);
+    ui.leaseCalDir = dir;
+    render();
+  };
+  const prev = document.getElementById("lease-cal-prev");
+  const next = document.getElementById("lease-cal-next");
+  const close = document.getElementById("lease-cal-close");
+  if (prev) prev.onclick = e => { e.stopPropagation(); shiftCal(-1); };
+  if (next) next.onclick = e => { e.stopPropagation(); shiftCal(1); };
+  if (close) close.onclick = e => { e.stopPropagation(); closeLeaseCal(); };
+  leaseCalMask.onclick = e => { if (e.target === leaseCalMask) closeLeaseCal(); };
+  placeLeaseCal(!ui.leaseCalDir);
 }
 function bindGhostPress() {
   document.querySelectorAll(".ghost, .btn-navy, .issue-opt").forEach(bindIosPress);

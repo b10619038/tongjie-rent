@@ -694,17 +694,21 @@ html[data-theme="void"] .rent-stamp {
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(20, 22, 21, .38);
-  display: grid;
-  place-items: center;
-  padding: 18px;
+  background: rgba(20, 22, 21, .28);
+  display: block;
+  padding: 0;
 }
+.lease-cal-mask.is-out { background: transparent; transition: background .9s ease; }
 .lease-cal-mask .hero-card {
-  width: min(420px, 100%);
-  max-height: min(640px, 100%);
+  position: fixed;
+  visibility: hidden;
+  width: auto;
+  max-height: none;
   overflow: auto;
   margin: 0;
+  box-shadow: 0 18px 40px rgba(23, 33, 31, .18);
 }
+.lease-cal-mask .hero-card.is-placed { visibility: visible; }
 .lease-cal-head {
   display: flex;
   align-items: flex-start;
