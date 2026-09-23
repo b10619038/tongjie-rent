@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-14";
-const APP_EDIT_COUNT = 1120;
+const APP_STAMP = "2026-09-23-12-18";
+const APP_EDIT_COUNT = 1121;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0670";
+const FILE_VER = "0671";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
+  { ver: APP_VERSION, items: ["收回剛剛按的公告愛心"] },
+  { ver: "2026-09-23-12-14-1120", items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
   { ver: "2026-09-23-12-10-1119", items: ["公告愛心先收起；點愛心可看是哪些房號"] },
   { ver: "2026-09-23-12-04-1118", items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
   { ver: "2026-09-23-11-58-1117", items: ["偵測到新版本直接換上，不用再點兩次"] },
@@ -5181,6 +5182,7 @@ function normalize(data) {
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
   try { applyClearForgottenHearts(data); } catch {}
+  try { applyClearRecentHearts(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -9003,6 +9005,7 @@ async function pullCloud() {
       try { applyRoom7611(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyClearForgottenHearts(state); } catch {}
+      try { applyClearRecentHearts(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -9084,6 +9087,7 @@ async function pullCloud() {
     try { applyFix7032SignAppoint(state); } catch {}
     try { applyFixLeaseSegments(state); } catch {}
     try { applyClearForgottenHearts(state); } catch {}
+    try { applyClearRecentHearts(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -9691,6 +9695,7 @@ async function pushCloud() {
     try { applyRoom7611(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyClearForgottenHearts(payload); } catch {}
+    try { applyClearRecentHearts(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
@@ -20523,6 +20528,29 @@ function applyClearForgottenHearts(data) {
     try { markCloudDirty(); } catch {}
   }
 }
+const ANN_HEART_CLEAR2 = "ann-heart-clear-v2";
+function applyClearRecentHearts(data) {
+  if (!data) return;
+  const cutoff = 1790136707473;
+  let dirty = false;
+  (data.announcements || []).forEach(a => {
+    if (!a || !a.reactions) return;
+    const ids = Object.keys(a.reactions).filter(k => a.reactions[k]);
+    if (!ids.length) return;
+    if (data.annHeartClear2 === ANN_HEART_CLEAR2 && Number(a.editedAt) > cutoff) return;
+    a.reactions = {};
+    a.edited = true;
+    a.editedAt = Date.now();
+    dirty = true;
+  });
+  if (data.annHeartClear2 !== ANN_HEART_CLEAR2) {
+    data.annHeartClear2 = ANN_HEART_CLEAR2;
+    dirty = true;
+  }
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
+}
 function startAnnounceEdit(id) {
   const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
   if (!a) { toast("找不到這則公告"); return; }
@@ -28299,6 +28327,7 @@ function applyAnnouncementReaction(id) {
   }
   if (!a.reactions) a.reactions = {};
   a.reactions[ui.tenantId] = "heart";
+  a.editedAt = Date.now();
   save();
   document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
 }
