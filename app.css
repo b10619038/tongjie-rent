@@ -716,7 +716,20 @@ html[data-theme="void"] .rent-stamp {
   gap: 8px;
 }
 .lease-cal-head .room-name { margin: 0; }
-.lease-cal-head .back { margin: 0; }
+.lease-cal-x {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #17211f;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  flex: none;
+}
 .lease-cal-nav {
   display: flex;
   justify-content: flex-end;
