@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-21-57";
-const APP_EDIT_COUNT = 1168;
+const APP_STAMP = "2026-09-23-22-24";
+const APP_EDIT_COUNT = 1169;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0718";
+const FILE_VER = "0719";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月已繳印章等房間圖卡滑到位後，再從三倍大蓋下"] },
+  { ver: APP_VERSION, items: ["晚上的租客天氣改成黑夜、月亮和星星"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11071,11 +11071,31 @@ function skyFromCode(code) {
   if (c === 0 || c === 1) return "sun";
   return "cloud";
 }
+function taipeiHour() {
+  try {
+    return Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Taipei", hour: "numeric", hourCycle: "h23" }).format(new Date()));
+  } catch {
+    return new Date().getHours();
+  }
+}
+function isNightHour() {
+  const h = taipeiHour();
+  return h >= 18 || h < 6;
+}
+function displaySky(sky) {
+  const s = sky || "cloud";
+  if (isNightHour() && (s === "sun" || s === "cloud")) return "night";
+  return s;
+}
 function skyLabel(sky) {
-  return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨" }[sky] || "陰天";
+  return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨", night: "夜晚" }[displaySky(sky)] || "陰天";
 }
 function skyFxHtml(sky) {
   const s = sky || "cloud";
+  if (s === "night") {
+    const stars = [[14, 16, 0.2], [30, 40, 1.1], [48, 12, 0.6], [64, 34, 1.6], [78, 14, 0.4], [22, 62, 1.3], [88, 46, 0.9], [40, 24, 1.8], [56, 58, 0.3], [8, 38, 1.4]];
+    return `<span class="moon"></span>` + stars.map((p, i) => `<span class="star${i % 4 === 0 ? " big" : ""}" style="left:${p[0]}%;top:${p[1]}%;animation-delay:${p[2]}s"></span>`).join("");
+  }
   if (s === "sun") {
     return `<span class="sun-ball"></span><span class="sun-rays"></span>${[0,1,2,3,4,5].map(i => `<span class="spark" style="--i:${i}"></span>`).join("")}`;
   }
@@ -11120,7 +11140,7 @@ function attachSkyLive() {
   const hero = document.querySelector(".weather-hero");
   const el = ensureSkyLive();
   const on = skyPrefOn();
-  const sky = ui.sky || "cloud";
+  const sky = displaySky(ui.sky || "cloud");
   const moving = !!(hero && el.parentNode !== hero);
   const wasHidden = el.style.display === "none" || !el.isConnected;
   if (hero) {
@@ -21630,7 +21650,7 @@ function homeView() {
   const prospectNote = isProspectPreview() ? tenantHandoverNoteHtml(t, r) : "";
   const handoverNote = isProspectPreview() ? "" : tenantHandoverNoteHtml(t, r);
   return `
-    <div class="topbar weather-hero" data-sky="${ui.sky || "cloud"}">
+    <div class="topbar weather-hero" data-sky="${displaySky(ui.sky)}">
       <div class="hello-card">
         <div class="who-line">
           <label class="avatar" title="上傳大頭貼">${t.avatar ? `<img src="${t.avatar}" alt="">` : defaultAvatarSvg()}<input id="tenant-avatar" type="file" accept="image/*" hidden /></label>
