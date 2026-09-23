@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-06";
-const APP_EDIT_COUNT = 1144;
+const APP_STAMP = "2026-09-23-16-07";
+const APP_EDIT_COUNT = 1145;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0694";
+const FILE_VER = "0695";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -26288,6 +26288,7 @@ function tenantEntryCardHtml(kind, entry) {
   const renewOpen = !!(renew && tenantRenewOpen(renew.id));
   const renewLabel = renew && renew.status === "done" ? "續約完成" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
+  const payOpen = tenantPayOpen(t.id);
   const countOn = tenantChipOn() === "count";
   const leftCls = countOn && tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
   return `<div class="tenant-renew-block">
