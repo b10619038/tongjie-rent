@@ -857,7 +857,8 @@ html[data-theme="void"] .rent-stamp {
   word-break: break-all;
   transform: translate(-50%, -50%);
 }
-.lc-day em.is-rent-dot {
+.lc-day em.is-rent-dot,
+.lc-day em.is-back-dot {
   position: absolute;
   left: 50%;
   top: 68%;
@@ -870,6 +871,7 @@ html[data-theme="void"] .rent-stamp {
   background: #c45b4a;
   transform: translate(-50%, -50%);
 }
+.lc-day em.is-back-dot { background: #5e7a55; }
 .lc-day em.is-due { color: #c45b4a; }
 .lc-day em.is-back { color: #5e7a55; }
 .lc-stamp {

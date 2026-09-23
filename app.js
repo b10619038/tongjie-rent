@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-01-36";
-const APP_EDIT_COUNT = 1206;
+const APP_STAMP = "2026-09-24-01-40";
+const APP_EDIT_COUNT = 1207;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0756";
+const FILE_VER = "0757";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費總表拿掉項目，應繳日改到金額左邊"] },
+  { ver: APP_VERSION, items: ["繳費日曆的押金退還改成綠色圓點"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14702,9 +14702,11 @@ function leaseCalGridHtml(ym, marks) {
   for (let d = 1; d <= last; d++) {
     const ymd = ym + "-" + String(d).padStart(2, "0");
     const items = (marks.due && marks.due[ymd]) || [];
-    const labels = items.map(it => it.text === "租金"
-      ? `<em class="is-rent-dot" aria-label="租金"></em>`
-      : `<em class="${it.kind === "back" ? "is-back" : "is-due"} is-fit">${escapeHtml(it.text)}</em>`).join("");
+    const labels = items.map(it => {
+      if (it.text === "租金") return `<em class="is-rent-dot" aria-label="租金"></em>`;
+      if (it.text === "押金退還") return `<em class="is-back-dot" aria-label="押金退還"></em>`;
+      return `<em class="${it.kind === "back" ? "is-back" : "is-due"} is-fit">${escapeHtml(it.text)}</em>`;
+    }).join("");
     const stamp = marks.paid && marks.paid[ymd] ? `<span class="rent-stamp lc-stamp" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>` : "";
     html += `<span class="lc-day${ymd === today ? " is-today" : ""}">${stamp}<b>${d}</b>${labels}</span>`;
   }
