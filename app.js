@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-18";
-const APP_EDIT_COUNT = 1127;
+const APP_STAMP = "2026-09-23-14-24";
+const APP_EDIT_COUNT = 1128;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0677";
+const FILE_VER = "0678";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點前往續約會進租約頁，並把續約確認滑到畫面底部對齊"] },
+  { ver: APP_VERSION, items: ["出現續約確認時，首頁顯示紅點，並通知該租客手機"] },
+  { ver: "2026-09-23-14-18-1127", items: ["點前往續約會進租約頁，並把續約確認滑到畫面底部對齊"] },
   { ver: "2026-09-23-14-08-1126", items: ["總覽營收與本期收支的金額放大"] },
   { ver: "2026-09-23-14-06-1125", items: ["我要續約圖卡底色改成與設備圖塊相同的米色"] },
   { ver: "2026-09-23-14-02-1124", items: ["租客按的表情會同步出現在管理員與開發者的公告圖卡"] },
@@ -12498,6 +12499,7 @@ function flushTenantInbox() {
   }
 }
 function maybeNudgeNotifies() {
+  try { nudgeRenewAsk(); } catch {}
   if (!canOsNotify()) return;
   if (ui.role === "tenant" && ui.tenantId) {
     flushTenantInbox();
@@ -12514,13 +12516,6 @@ function maybeNudgeNotifies() {
     if (t && t.paid === false && notifyPrefOn("unpaid") && !alreadyNudged("unpaid-" + t.id)) {
       markNudged("unpaid-" + t.id);
       showOsBanner("本月租金尚未繳納", (room ? room.no + "　" : "") + "請至繳費租金完成轉帳。", "unpaid");
-    }
-    if (t && t.leaseEnd) {
-      const left = Math.ceil((new Date(t.leaseEnd + "T00:00:00") - new Date()) / 86400000);
-      if (left >= 0 && left <= 30 && !openRenewalOf(t) && !alreadyNudged("lease-" + t.id)) {
-        markNudged("lease-" + t.id);
-        showOsBanner("續約確認", `您好，合約將於 ${t.leaseEnd} 到期，還有 ${left} 天。若方便續住，懇請盡早在 App 確認並預約簽約日。`, "lease");
-      }
     }
     if (t && room && /1,?800|150|一年/.test(String((room.utilities || {}).water || WATER_FEE_TEXT))) {
       const due = waterDueDate(t);
@@ -14355,6 +14350,26 @@ function renewConfirmYmd(t) {
 function inRenewAskWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
   return left != null && left >= 0 && left <= 30;
+}
+function renewAskPending(t, r) {
+  if (!t || !r || (typeof roomIsFactory === "function" && roomIsFactory(r))) return false;
+  if (renewDecisionOf(r.no) === "no") return false;
+  if (typeof liveRenewalOf === "function" && liveRenewalOf(t)) return false;
+  return inRenewAskWindow(t);
+}
+function nudgeRenewAsk() {
+  if (ui.role !== "tenant" || !ui.tenantId || isDevPreview() || isTenantLook()) return;
+  const t = typeof me === "function" ? me() : null;
+  const room = typeof myRoom === "function" ? myRoom() : null;
+  if (!renewAskPending(t, room)) return;
+  const end = ymdOf(t.leaseEnd);
+  const key = "tj-renew-note-" + t.id + "-" + end;
+  try { if (localStorage.getItem(key) === "1") return; } catch { return; }
+  try { localStorage.setItem(key, "1"); } catch {}
+  const left = daysLeft(end);
+  const body = "您好，合約將於 " + t.leaseEnd + " 到期，還有 " + left + " 天。若方便續住，懇請盡早在 App 確認並預約簽約日。";
+  showOsBanner("續約確認", body, "lease-" + t.id + "-" + end);
+  sendRemoteNotify(room.no || t.id, "續約確認", body, { tag: "lease-" + t.id + "-" + end, page: "home" });
 }
 function openRenewalOf(t) {
   const cur = liveRenewalOf(t);
@@ -20443,7 +20458,7 @@ function nav() {
   const tab = navKeyOf();
   return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = !ui.tenantId ? 0
-      : id === "home" ? unreadAnnouncements(ui.tenantId).length
+      : id === "home" ? (unreadAnnouncements(ui.tenantId).length || (renewAskPending(me(), myRoom()) ? 1 : 0))
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
@@ -20463,7 +20478,7 @@ function refreshNavButtons(bar) {
     const ic = btn.querySelector(".nav-ic");
     if (ic) { ic.style.transform = ""; ic.style.transition = ""; }
     const unread = !ui.tenantId ? 0
-      : id === "home" ? unreadAnnouncements(ui.tenantId).length
+      : id === "home" ? (unreadAnnouncements(ui.tenantId).length || (renewAskPending(me(), myRoom()) ? 1 : 0))
       : id === "repair" ? unreadAppoints(ui.tenantId)
       : id === "lease" ? unreadRenewTimes(ui.tenantId)
       : 0;
@@ -31052,6 +31067,7 @@ async function boot() {
     }).catch(() => {});
     if (ui.role || isInstalledApp()) {
       try { seedOldEventNotifies(); } catch {}
+      try { nudgeRenewAsk(); } catch {}
       enablePush().then(() => maybeNudgeNotifies()).catch(() => {});
       armPushAsk();
     }
