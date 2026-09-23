@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-43";
-const APP_EDIT_COUNT = 1140;
+const APP_STAMP = "2026-09-23-15-46";
+const APP_EDIT_COUNT = 1141;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0690";
+const FILE_VER = "0691";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
+  { ver: APP_VERSION, items: ["發票總覽直式橫式改成白塊滑動切換"] },
+  { ver: "2026-09-23-15-43-1140", items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-38-1139", items: ["開立發票總覽改成 A4 直式滿版"] },
   { ver: "2026-09-23-15-27-1138", items: ["移除水電裡的儲值卡紀錄"] },
   { ver: "2026-09-23-15-24-1137", items: ["儲值卡改顯示已消費金額，時間會顯示到分鐘"] },
@@ -13887,12 +13888,15 @@ function showInvoiceOverviewPreview() {
     document.querySelectorAll("[data-inv-paper]").forEach(b => {
       b.classList.toggle("on", b.dataset.invPaper === ui.invoicePaper);
     });
+    const paper = document.querySelector("#invoice-preview-box .inv-paper");
+    if (paper) paper.classList.toggle("is-land", ui.invoicePaper === "landscape");
   };
   openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
       <div class="inv-paper" role="tablist" aria-label="版面">
-        <button type="button" data-inv-paper="portrait">直式</button>
+        <i class="inv-paper-bg"></i>
+        <button type="button" data-inv-paper="portrait" class="on">直式</button>
         <button type="button" data-inv-paper="landscape">橫式</button>
       </div>
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
