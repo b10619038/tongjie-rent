@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-00-52";
-const APP_EDIT_COUNT = 1196;
+const APP_STAMP = "2026-09-24-00-58";
+const APP_EDIT_COUNT = 1197;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0746";
+const FILE_VER = "0747";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點剩餘天數時，繳費日曆滑入不再整頁重畫"] },
+  { ver: APP_VERSION, items: ["點本月租金圖卡直接進入繳費租金"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22031,7 +22031,7 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
-          <div class="stat${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
+          <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
         </div>
         ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()

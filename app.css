@@ -688,8 +688,10 @@ html[data-theme="void"] .rent-stamp {
   --stamp: #9fbf96;
   background: rgba(159, 191, 150, 0.12);
 }
-.stat.is-cal { cursor: pointer; }
-.stat.is-cal:active { transform: scale(0.98); }
+.stat.is-cal,
+.stat.is-pay { cursor: pointer; }
+.stat.is-cal:active,
+.stat.is-pay:active { transform: scale(0.98); }
 .lease-cal-mask {
   position: fixed;
   inset: 0;
