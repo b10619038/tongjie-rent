@@ -738,8 +738,9 @@ html[data-theme="void"] .rent-stamp {
 .lease-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
+  gap: 4px;
 }
+.lease-cal-grid { overflow: visible; padding-top: 20px; }
 .lease-cal-week {
   margin-bottom: 4px;
   color: #7a8a85;
@@ -748,11 +749,13 @@ html[data-theme="void"] .rent-stamp {
 }
 .lc-day {
   position: relative;
-  min-height: 58px;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  height: auto;
   border-radius: 10px;
   background: #fff;
   padding: 3px 2px 4px;
-  overflow: hidden;
+  overflow: visible;
 }
 .lc-day.is-pad { background: transparent; }
 .lc-day.is-today { box-shadow: inset 0 0 0 1.5px #7d9a82; }
@@ -787,18 +790,18 @@ html[data-theme="void"] .rent-stamp {
 .lc-day em.is-due { color: #c45b4a; }
 .lc-day em.is-back { color: #5e7a55; }
 .lc-stamp {
-  width: 36px;
-  height: 36px;
-  top: 50%;
-  right: 1px;
-  left: auto;
-  font-size: 9px;
+  width: 42px;
+  height: 42px;
+  top: 0;
+  left: 50%;
+  right: auto;
+  font-size: 10px;
   border-width: 1.5px;
   box-shadow: inset 0 0 0 1px var(--stamp);
   border-radius: 5px;
-  transform: translateY(-50%) rotate(-8deg);
+  transform: translate(-50%, -42%) rotate(-8deg);
   transform-origin: center;
-  z-index: 1;
+  z-index: 4;
 }
 .lease-cal-grid.is-next { animation: leaseCalIn .28s cubic-bezier(.22,.82,.22,1); }
 .lease-cal-grid.is-prev { animation: leaseCalIn .28s cubic-bezier(.22,.82,.22,1); }
