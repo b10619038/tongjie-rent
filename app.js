@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-42";
-const APP_EDIT_COUNT = 1131;
+const APP_STAMP = "2026-09-23-14-50";
+const APP_EDIT_COUNT = 1132;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0681";
+const FILE_VER = "0682";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7632 謝佩君 8/25 已續約，新約 115/10/1～116/9/30，10/1 起生效"] },
+  { ver: APP_VERSION, items: ["租約剩餘天數從合約總天數快速倒數到今天"] },
+  { ver: "2026-09-23-14-42-1131", items: ["7632 謝佩君 8/25 已續約，新約 115/10/1～116/9/30，10/1 起生效"] },
   { ver: "2026-09-23-14-36-1130", items: ["後台更新會在租客底部對應按鈕顯示紅點，看過就消失"] },
   { ver: "2026-09-23-14-32-1129", items: ["使用規範可以編輯，並補上走道整潔與寵物兩條"] },
   { ver: "2026-09-23-14-24-1128", items: ["出現續約確認時，首頁顯示紅點，並通知該租客手機"] },
@@ -14108,6 +14109,11 @@ function tenantOccupancyEnd(t, r) {
   }
   return ymdOf(t && t.leaseEnd) || "";
 }
+function leaseSpanDays(start, end) {
+  if (!start || !end) return null;
+  const n = Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 function leaseRemainHtml(t, r) {
   const start = tenantOccupancyStart(t, r);
   const end = tenantOccupancyEnd(t, r);
@@ -14122,9 +14128,44 @@ function leaseRemainHtml(t, r) {
     : null;
   const renewed = extra != null && extra > 0;
   const warn = !renewed && n <= 30;
-  const days = `<span class="${warn ? "remain-warn" : ""}">${n} 天</span>`;
+  const total = leaseSpanDays(start, end);
+  const key = (t && t.id || "") + ":" + (ui.page || "") + ":" + end + ":" + n;
+  const canRoll = total != null && total > n && ui.leaseCountKey !== key;
+  const days = canRoll
+    ? `<span class="lease-count${warn ? " remain-warn" : ""}" data-lease-count="${escapeHtml(key)}" data-from="${total}" data-to="${n}">${total} 天</span>`
+    : `<span class="${warn ? "remain-warn" : ""}">${n} 天</span>`;
   if (renewed) return days + `<span class="remain-plus">+${extra}</span>`;
   return days;
+}
+function playLeaseCountdown() {
+  document.querySelectorAll("[data-lease-count]").forEach(el => {
+    const key = el.dataset.leaseCount || "";
+    const from = Number(el.dataset.from);
+    const to = Number(el.dataset.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from <= to) {
+      el.textContent = (Number.isFinite(to) ? to : from) + " 天";
+      return;
+    }
+    ui.leaseCountKey = key;
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      el.textContent = to + " 天";
+      return;
+    }
+    const ms = 1100;
+    const t0 = performance.now();
+    const tick = (now) => {
+      if (!el.isConnected) return;
+      const p = Math.min(1, (now - t0) / ms);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const n = Math.round(from + (to - from) * ease);
+      el.textContent = n + " 天";
+      if (p < 1) requestAnimationFrame(tick);
+      else el.textContent = to + " 天";
+    };
+    el.textContent = from + " 天";
+    requestAnimationFrame(tick);
+  });
 }
 function renewalBonusDays(item) {
   const a = ymdOf(item && item.start);
@@ -19983,6 +20024,7 @@ function paintApp() {
   maybeAuditBrowse();
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
+  if (pageChanged) ui.leaseCountKey = "";
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
@@ -27457,6 +27499,7 @@ function bindTenant() {
   flushTenantInbox();
   bindHowtoFold();
   bindDevChat();
+  playLeaseCountdown();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isTenantLook()) { exitTenantLook(); return; }

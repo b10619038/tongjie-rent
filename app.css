@@ -571,6 +571,12 @@ input, textarea, select {
 }
 .stat b .remain-wait { font-size: 16px; font-weight: 800; letter-spacing: 0; }
 .stat b .remain-warn { color: #c45b4a; }
+.lease-count {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 4.6ch;
+  text-align: left;
+}
 .stat b .remain-plus,
 .v .remain-plus {
   display: inline;
