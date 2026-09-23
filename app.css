@@ -4356,6 +4356,7 @@ html.preview-zoom body {
   will-change: height, margin-bottom;
   transition: height .4s cubic-bezier(.22,.82,.22,1), margin-bottom .4s cubic-bezier(.22,.82,.22,1);
 }
+.card.ann-card, .card.ann-admin-card { overflow: visible; }
 .ann-card {
   position: relative;
   overflow: visible;

@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-50";
-const APP_EDIT_COUNT = 1123;
+const APP_STAMP = "2026-09-23-14-02";
+const APP_EDIT_COUNT = 1124;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0673";
+const FILE_VER = "0674";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回住戶門牌上剛按的兩顆星星"] },
+  { ver: APP_VERSION, items: ["租客按的表情會同步出現在管理員與開發者的公告圖卡"] },
+  { ver: "2026-09-23-12-50-1123", items: ["收回住戶門牌上剛按的兩顆星星"] },
   { ver: "2026-09-23-12-44-1122", items: ["長按公告愛心可改成讚、花朵、星星或笑臉"] },
   { ver: "2026-09-23-12-18-1121", items: ["收回剛剛按的公告愛心"] },
   { ver: "2026-09-23-12-14-1120", items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
@@ -7909,6 +7910,26 @@ const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title"
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
 }
+const REACT_KEEP_AFTER = 1790138935786;
+function mergeAnnouncementReactions(a, b) {
+  const reactions = {};
+  const reactionAt = {};
+  [a, b].forEach(src => {
+    if (!src) return;
+    const rec = src.reactions || {};
+    const at = src.reactionAt || {};
+    Object.keys(rec).forEach(id => {
+      if (!rec[id]) return;
+      const stamp = Number(at[id]) || Number(src.editedAt) || 0;
+      if (stamp <= REACT_KEEP_AFTER) return;
+      if (!reactions[id] || stamp >= (reactionAt[id] || 0)) {
+        reactions[id] = rec[id];
+        reactionAt[id] = stamp;
+      }
+    });
+  });
+  return { reactions, reactionAt };
+}
 function pickNewerEntity(a, b, keys) {
   if (!a) return b;
   if (!b) return a;
@@ -7934,6 +7955,11 @@ function pickNewerEntity(a, b, keys) {
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
+  if (keys && keys.indexOf("pinned") >= 0) {
+    const merged = mergeAnnouncementReactions(a, b);
+    out.reactions = merged.reactions;
+    out.reactionAt = merged.reactionAt;
+  }
   if (keys && keys.indexOf("hiddenAnns") >= 0) {
     out.hiddenAnns = [...new Set([].concat((a && a.hiddenAnns) || [], (b && b.hiddenAnns) || [], out.hiddenAnns || []))];
   }
@@ -20566,7 +20592,14 @@ function applyClearRecentHearts(data) {
     if (!a || !a.reactions) return;
     const ids = Object.keys(a.reactions).filter(k => a.reactions[k]);
     if (!ids.length) return;
-    if (data.annHeartClear2 === ANN_HEART_CLEAR2 && Number(a.editedAt) > cutoff) return;
+    if (data.annHeartClear2 === ANN_HEART_CLEAR2) {
+      const at = a.reactionAt || {};
+      ids.forEach(id => {
+        const stamp = Number(at[id]) || Number(a.editedAt) || 0;
+        if (stamp <= cutoff) delete a.reactions[id];
+      });
+      return;
+    }
     a.reactions = {};
     a.edited = true;
     a.editedAt = Date.now();
@@ -20589,7 +20622,16 @@ function applyClearStarPair(data) {
     if (!a || !a.reactions) return;
     const ids = Object.keys(a.reactions).filter(k => a.reactions[k]);
     if (!ids.length) return;
-    if (data.annHeartClear3 === ANN_HEART_CLEAR3 && Number(a.editedAt) > cutoff) return;
+    if (data.annHeartClear3 === ANN_HEART_CLEAR3) {
+      const at = a.reactionAt || {};
+      let kept = false;
+      ids.forEach(id => {
+        const stamp = Number(at[id]) || Number(a.editedAt) || 0;
+        if (stamp > cutoff) kept = true;
+        else delete a.reactions[id];
+      });
+      if (kept || !Object.keys(a.reactions).some(k => a.reactions[k])) return;
+    }
     a.reactions = {};
     a.edited = true;
     a.editedAt = Date.now();
@@ -23781,7 +23823,7 @@ function adminAnnounce() {
           </form>
         </div>`;
       }
-      return `<div class="card card-body">
+      return `<div class="card card-body ann-admin-card">
         ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
             <button type="button" class="ghost" data-del-announce="${a.id}">刪除</button></div>`)}
       </div>`;
@@ -28379,7 +28421,9 @@ function applyAnnouncementReaction(id, kind) {
     return;
   }
   if (!a.reactions) a.reactions = {};
+  if (!a.reactionAt) a.reactionAt = {};
   a.reactions[ui.tenantId] = kind;
+  a.reactionAt[ui.tenantId] = Date.now();
   a.editedAt = Date.now();
   save();
   document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
