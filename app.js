@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-50";
-const APP_EDIT_COUNT = 1132;
+const APP_STAMP = "2026-09-23-14-56";
+const APP_EDIT_COUNT = 1133;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0682";
+const FILE_VER = "0683";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租約剩餘天數從合約總天數快速倒數到今天"] },
+  { ver: APP_VERSION, items: ["租約剩餘天數倒數收尾不再頓一下"] },
+  { ver: "2026-09-23-14-50-1132", items: ["租約剩餘天數從合約總天數快速倒數到今天"] },
   { ver: "2026-09-23-14-42-1131", items: ["7632 謝佩君 8/25 已續約，新約 115/10/1～116/9/30，10/1 起生效"] },
   { ver: "2026-09-23-14-36-1130", items: ["後台更新會在租客底部對應按鈕顯示紅點，看過就消失"] },
   { ver: "2026-09-23-14-32-1129", items: ["使用規範可以編輯，並補上走道整潔與寵物兩條"] },
@@ -14130,10 +14131,10 @@ function leaseRemainHtml(t, r) {
   const warn = !renewed && n <= 30;
   const total = leaseSpanDays(start, end);
   const key = (t && t.id || "") + ":" + (ui.page || "") + ":" + end + ":" + n;
-  const canRoll = total != null && total > n && ui.leaseCountKey !== key;
-  const days = canRoll
-    ? `<span class="lease-count${warn ? " remain-warn" : ""}" data-lease-count="${escapeHtml(key)}" data-from="${total}" data-to="${n}">${total} 天</span>`
-    : `<span class="${warn ? "remain-warn" : ""}">${n} 天</span>`;
+  const live = ui.leaseCountLive && ui.leaseCountLive.key === key && !ui.leaseCountLive.done ? ui.leaseCountLive : null;
+  const canRoll = total != null && total > n && (live || ui.leaseCountKey !== key);
+  const shown = live ? live.value : (canRoll ? total : n);
+  const days = `<span class="lease-count${warn ? " remain-warn" : ""}"${canRoll ? ` data-lease-count="${escapeHtml(key)}" data-from="${total}" data-to="${n}"` : ""}>${shown} 天</span>`;
   if (renewed) return days + `<span class="remain-plus">+${extra}</span>`;
   return days;
 }
@@ -14146,24 +14147,37 @@ function playLeaseCountdown() {
       el.textContent = (Number.isFinite(to) ? to : from) + " 天";
       return;
     }
-    ui.leaseCountKey = key;
     const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
       el.textContent = to + " 天";
+      ui.leaseCountKey = key;
+      ui.leaseCountLive = null;
       return;
     }
-    const ms = 1100;
-    const t0 = performance.now();
+    let live = ui.leaseCountLive;
+    if (!live || live.key !== key || live.done) {
+      live = { key, from, to, t0: performance.now(), value: from, done: false };
+      ui.leaseCountLive = live;
+    }
+    const ms = 860;
+    const ease = (p) => 1 - Math.pow(1 - p, 1.25);
     const tick = (now) => {
       if (!el.isConnected) return;
-      const p = Math.min(1, (now - t0) / ms);
-      const ease = 1 - Math.pow(1 - p, 3);
-      const n = Math.round(from + (to - from) * ease);
-      el.textContent = n + " 天";
+      const p = Math.min(1, (now - live.t0) / ms);
+      const value = p >= 1 ? to : Math.round(from + (to - from) * ease(p));
+      if (live.value !== value) {
+        live.value = value;
+        el.textContent = value + " 天";
+      }
       if (p < 1) requestAnimationFrame(tick);
-      else el.textContent = to + " 天";
+      else {
+        live.done = true;
+        live.value = to;
+        el.textContent = to + " 天";
+        ui.leaseCountKey = key;
+        ui.leaseCountLive = null;
+      }
     };
-    el.textContent = from + " 天";
     requestAnimationFrame(tick);
   });
 }
@@ -20024,7 +20038,7 @@ function paintApp() {
   maybeAuditBrowse();
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
-  if (pageChanged) ui.leaseCountKey = "";
+  if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
