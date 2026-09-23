@@ -3827,11 +3827,40 @@ body.rev-zooming { overflow: hidden; }
 }
 .acct-person strong { font-size: 12px; font-weight: 800; white-space: nowrap; }
 .acct-person:hover { background: rgba(255,255,255,.45); }
+.money {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.35em;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+  font-weight: 800;
+}
+.money-sign { flex: 0 0 auto; }
+.money-num { width: 10ch; text-align: right; }
+.delta-slot { display: inline-flex; align-items: baseline; gap: 6px; margin-left: auto; }
+.delta-slot em { width: 2.2em; text-align: right; font-style: normal; font-weight: 700; }
+.delta-slot .money { margin-left: 0; }
 .acct-bal {
-  display: block; width: 100%; margin-top: 10px; padding-top: 8px;
-  border: 0; border-top: 1px solid var(--line); background: transparent;
-  font: inherit; font-size: 13px; font-weight: 800; text-align: left;
-  color: inherit; cursor: pointer; border-radius: 0 0 12px 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 8px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 0 0 12px 12px;
 }
 .acct-bal:hover { background: rgba(255,255,255,.55); }
 .acct-total {
@@ -3864,7 +3893,9 @@ body.rev-zooming { overflow: hidden; }
 }
 .site-kpis > div + div { border-top: 1px solid var(--line); }
 .site-kpis .k { display: inline; margin: 0; }
-.site-kpis strong { font-size: 18px; font-weight: 800; white-space: nowrap; }
+.site-kpis strong, .site-kpis .money { font-size: 18px; font-weight: 800; white-space: nowrap; }
+.rev-table td .money { width: 100%; font-weight: inherit; }
+.acct-total .money { font-size: 22px; }
 .acct-card.on { box-shadow: inset 0 0 0 1.5px var(--teal); }
 .item {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center;

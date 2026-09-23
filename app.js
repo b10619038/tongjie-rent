@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-05";
-const APP_EDIT_COUNT = 1174;
+const APP_STAMP = "2026-09-23-23-10";
+const APP_EDIT_COUNT = 1175;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0724";
+const FILE_VER = "0725";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點租約剩餘天數可看繳費日曆"] },
+  { ver: APP_VERSION, items: ["整體報表的金額，$ 跟數字改成上下對齊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11399,6 +11399,12 @@ function rentOverdueDays() {
   return Math.max(0, Math.floor((todayDate() - due) / 86400000));
 }
 function money(n) { return "$ " + Number(n).toLocaleString("zh-TW"); }
+function moneyBox(n, cls) {
+  const v = Number(n);
+  const neg = Number.isFinite(v) && v < 0;
+  const abs = Math.abs(Number.isFinite(v) ? v : 0).toLocaleString("zh-TW");
+  return `<span class="money${cls ? " " + cls : ""}"><span class="money-sign">${neg ? "-$" : "$"}</span><span class="money-num">${abs}</span></span>`;
+}
 function rocDate(d) {
   d = d || new Date();
   return `中華民國 ${d.getFullYear() - 1911} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
@@ -16034,15 +16040,15 @@ function overallReportBodyHtml() {
       ${stats.map(s => `
         <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
           <div class="k">${escapeHtml(s.name)}</div>
-          <div class="acct-row"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
-          <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+          <div class="acct-row"><span class="led-in">本期收入</span>${moneyBox(s.inn, "led-in")}</div>
+          <div class="acct-row"><span class="led-out">本期支出</span>${moneyBox(s.out, "led-out")}</div>
           ${banksOf(s.name).length ? `<div class="acct-banks">${bankPeriodBits(s.name, b.start, b.end).map(bk => `
             <button type="button" class="acct-bank${ui.calFilter === s.name && ui.calBank === bk.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" data-filter-bank="${escapeHtml(bk.name)}">
               <span>${escapeHtml(bk.name)}</span>
               <span>收 ${money(bk.inn)}　支 ${money(bk.out)}　餘 ${money(bk.bal)}</span>
             </button>`).join("")}</div>` : ""}
           ${s.name === "個人戶" ? `<button type="button" class="acct-drop-btn" id="acct-person-pick">請下拉選擇</button>` : ""}
-          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}">營收總額　${money(s.bal)}</button>
+          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}"><span>營收總額</span>${moneyBox(s.bal, s.bal < 0 ? "led-out" : "")}</button>
         </div>`).join("")}
     </div>
     ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶營收總額 ${money(joint.bal)}</div>` : ""}
@@ -16051,7 +16057,7 @@ function overallReportBodyHtml() {
         <div class="k">總餘額</div>
         <div class="small">四戶累計至 ${escapeHtml(b.label)}　本期收入 ${money(totalIn)}　本期支出 ${money(totalOut)}</div>
       </div>
-      <strong class="${totalBal >= 0 ? "led-in" : "led-out"}">${money(totalBal)}</strong>
+      <strong>${moneyBox(totalBal, totalBal >= 0 ? "led-in" : "led-out")}</strong>
     </div>
     ${revenueTableHtml()}`;
 }
@@ -16068,9 +16074,9 @@ function siteReportBodyHtml() {
       <button type="button" class="ghost" data-report-nav="1">${b.next}</button>
     </div>
     <div class="site-kpis">
-      <div><span class="k">總營收</span><strong class="led-in">${money(totIn)}</strong></div>
-      <div><span class="k">總支出</span><strong class="led-out">${money(totOut)}</strong></div>
-      <div><span class="k">總盈餘</span><strong class="${totNet >= 0 ? "led-in" : "led-out"}">${money(totNet)}</strong></div>
+      <div><span class="k">總營收</span>${moneyBox(totIn, "led-in")}</div>
+      <div><span class="k">總支出</span>${moneyBox(totOut, "led-out")}</div>
+      <div><span class="k">總盈餘</span>${moneyBox(totNet, totNet >= 0 ? "led-in" : "led-out")}</div>
     </div>
     <div class="small" style="margin:6px 2px 10px">含各牛案場、拉皮、大樹，以及牛10 文龍東路套房。</div>
     <div class="acct-grid site-grid">
@@ -16078,9 +16084,9 @@ function siteReportBodyHtml() {
         <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
           <div class="k">${s.name === "牛10" ? "牛10　套房" : escapeHtml(s.name)}</div>
           <div class="small">${escapeHtml(siteStreet(s.name))}</div>
-          <div class="acct-row"><span class="led-in">收入</span><strong class="led-in">${money(s.inn)}</strong></div>
-          <div class="acct-row"><span class="led-out">支出</span><strong class="led-out">${money(s.out)}</strong></div>
-          <div class="acct-row"><span>盈餘</span><strong class="${s.net >= 0 ? "led-in" : "led-out"}">${money(s.net)}</strong></div>
+          <div class="acct-row"><span class="led-in">收入</span>${moneyBox(s.inn, "led-in")}</div>
+          <div class="acct-row"><span class="led-out">支出</span>${moneyBox(s.out, "led-out")}</div>
+          <div class="acct-row"><span>盈餘</span>${moneyBox(s.net, s.net >= 0 ? "led-in" : "led-out")}</div>
           ${siteAccountChipsHtml(s.name, b.start, b.end)}
         </div>`).join("")}
     </div>
@@ -16096,8 +16102,8 @@ function overallReportHtml() {
       <button type="button" class="back" id="acct-bal-back">← 返回</button>
       <h2 class="dash-h">${escapeHtml(accountLabel(s.name))}　營收總額</h2>
       <div class="small">輸入目前實際餘額後儲存。之後用「新增一筆」進出帳會自動加減。</div>
-      <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span><strong class="led-in">${money(s.inn)}</strong></div>
-      <div class="acct-row"><span class="led-out">本期支出</span><strong class="led-out">${money(s.out)}</strong></div>
+      <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span>${moneyBox(s.inn, "led-in")}</div>
+      <div class="acct-row"><span class="led-out">本期支出</span>${moneyBox(s.out, "led-out")}</div>
       <form id="acct-bal-form" style="margin-top:14px">
         <label class="field"><span>營收總額</span>
           <input name="bal" type="text" inputmode="decimal" value="${s.bal}" />
@@ -24884,6 +24890,12 @@ function reportDeltaText(kind, dlt) {
   if (kind === "out") return (dlt > 0 ? "多花 " : "少花 ") + money(Math.abs(dlt));
   return (dlt > 0 ? "多賺 " : "少賺 ") + money(Math.abs(dlt));
 }
+function reportDeltaSlot(kind, dlt) {
+  const cls = reportDeltaClass(kind, dlt);
+  if (!dlt) return `<span class="delta-slot ${cls}"><em>持平</em></span>`;
+  const word = kind === "in" ? (dlt > 0 ? "多收" : "少收") : (kind === "out" ? (dlt > 0 ? "多花" : "少花") : (dlt > 0 ? "多賺" : "少賺"));
+  return `<span class="delta-slot ${cls}"><em>${word}</em>${moneyBox(Math.abs(dlt), cls)}</span>`;
+}
 function reportDeltaClass(kind, dlt) {
   if (!dlt) return "";
   if (kind === "out") return dlt > 0 ? "led-out" : "led-in";
@@ -24912,11 +24924,11 @@ function reportDiffHtml(siteOn) {
     : `<div class="small">跟上期相同，沒有明顯差異。</div>`;
   return `<div class="report-diff">
     <div class="small">跟上期 ${escapeHtml(b.prevLabel)} 比</div>
-    <div class="acct-row"><span class="led-in">收入</span><strong class="${reportDeltaClass("in", dIn)}">${reportDeltaText("in", dIn)}</strong></div>
+    <div class="acct-row"><span class="led-in">收入</span>${reportDeltaSlot("in", dIn)}</div>
     <div class="small">本期 ${money(b.inn)}　上期 ${money(b.pInn)}</div>
-    <div class="acct-row"><span class="led-out">支出</span><strong class="${reportDeltaClass("out", dOut)}">${reportDeltaText("out", dOut)}</strong></div>
+    <div class="acct-row"><span class="led-out">支出</span>${reportDeltaSlot("out", dOut)}</div>
     <div class="small">本期 ${money(b.out)}　上期 ${money(b.pOut)}</div>
-    <div class="acct-row"><span>盈餘</span><strong class="${reportDeltaClass("net", dNet)}">${reportDeltaText("net", dNet)}</strong></div>
+    <div class="acct-row"><span>盈餘</span>${reportDeltaSlot("net", dNet)}</div>
     <div class="small">本期 ${money(net)}　上期 ${money(pNet)}</div>
     <button type="button" class="ghost report-diff-toggle" id="report-diff-toggle">${open ? "收合差異" : "差異在哪"}</button>
     ${open ? `<div class="report-diff-list">${list}</div>` : ""}
@@ -24924,7 +24936,7 @@ function reportDiffHtml(siteOn) {
 }
 function revenueTableHtml() {
   const d = reportAccountBundle();
-  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${money(v)}</td>`;
+  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${moneyBox(v, v < 0 ? "led-out" : "")}</td>`;
   const row = (label, pick, cls) => {
     const vals = d.cols.map(pick);
     const tot = vals.reduce((s, x) => s + x, 0);
@@ -24977,7 +24989,7 @@ function reportSiteBundle() {
 }
 function siteRevenueTableHtml() {
   const d = reportSiteBundle();
-  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${money(v)}</td>`;
+  const td = v => `<td class="${v < 0 ? "led-out" : ""}">${moneyBox(v, v < 0 ? "led-out" : "")}</td>`;
   const row = (label, pick, cls) => {
     const vals = d.cols.map(pick);
     const tot = vals.reduce((s, x) => s + x, 0);
