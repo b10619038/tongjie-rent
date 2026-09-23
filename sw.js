@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v1181";
-const BUILD = "20260923-0666";
+const CACHE = "tongjie-app-v1182";
+const BUILD = "20260923-0667";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -15,7 +15,7 @@ self.addEventListener("activate", e => {
       try {
         const u = new URL(c.url, self.location.origin);
         if (u.searchParams.get("sw") === BUILD) return null;
-        if (u.searchParams.has("v")) return null;
+        u.searchParams.delete("v");
         u.searchParams.set("sw", BUILD);
         return c.navigate(u.href);
       } catch { return null; }

@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-11-53";
-const APP_EDIT_COUNT = 1116;
+const APP_STAMP = "2026-09-23-11-58";
+const APP_EDIT_COUNT = 1117;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0666";
+const FILE_VER = "0667";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
+  { ver: APP_VERSION, items: ["偵測到新版本直接換上，不用再點兩次"] },
+  { ver: "2026-09-23-11-53-1116", items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
   { ver: "2026-09-23-11-28-1115", items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
   { ver: "2026-09-23-11-23-1114", items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
   { ver: "2026-09-23-02-16-1113", items: ["7032 楊旻憲實體蓋章簽約改為 9/22 上午 10:00"] },
@@ -2385,6 +2386,22 @@ async function pollRemoteBuild() {
     flagAppUpdate(m[1]);
   } catch {}
 }
+function scheduleAutoUpdate() {
+  if (typeof __reloading !== "undefined" && __reloading) return;
+  clearTimeout(scheduleAutoUpdate.timer);
+  scheduleAutoUpdate.timer = setTimeout(() => {
+    if (typeof __reloading !== "undefined" && __reloading) return;
+    const remote = String(ui.pendingFileVer || "");
+    if (!remote || !isNewerBuild(remote) || isDismissed(remote)) return;
+    const el = document.activeElement;
+    const typing = !!(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable));
+    if (typing) {
+      try { ensureUpdateBar(); } catch {}
+      return;
+    }
+    applyAppUpdate();
+  }, 700);
+}
 function flagAppUpdate(fileVer) {
   if (typeof __reloading !== "undefined" && __reloading) return;
   const ver = String(fileVer || "");
@@ -2395,6 +2412,7 @@ function flagAppUpdate(fileVer) {
   if (ui.updateNotes) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch {}
+  scheduleAutoUpdate();
 }
 async function announceBuild(fileVer) {
   const ver = String(fileVer || FILE_VER);
