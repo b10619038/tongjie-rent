@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-18";
-const APP_EDIT_COUNT = 1121;
+const APP_STAMP = "2026-09-23-12-44";
+const APP_EDIT_COUNT = 1122;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0671";
+const FILE_VER = "0672";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回剛剛按的公告愛心"] },
+  { ver: APP_VERSION, items: ["長按公告愛心可改成讚、花朵、星星或笑臉"] },
+  { ver: "2026-09-23-12-18-1121", items: ["收回剛剛按的公告愛心"] },
   { ver: "2026-09-23-12-14-1120", items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
   { ver: "2026-09-23-12-10-1119", items: ["公告愛心先收起；點愛心可看是哪些房號"] },
   { ver: "2026-09-23-12-04-1118", items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
@@ -20479,34 +20480,57 @@ function tenantView() {
   return homeView();
 }
 
-function reactionCounts(a) {
-  const rec = Object.assign({}, (a && a.reactions) || {});
-  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id]) rec[ui.tenantId] = "heart";
-  let heart = 0;
-  Object.keys(rec).forEach(id => { if (rec[id]) heart++; });
-  return { heart };
+const REACT_KINDS = [
+  { id: "heart", emoji: "❤️" },
+  { id: "like", emoji: "👍" },
+  { id: "flower", emoji: "🌼" },
+  { id: "star", emoji: "⭐" },
+  { id: "smile", emoji: "😄" }
+];
+function reactKindOf(v) {
+  const s = String(v || "");
+  return REACT_KINDS.some(k => k.id === s) ? s : (v ? "heart" : "");
 }
-function reactionWho(a) {
+function reactionMap(a) {
   const rec = Object.assign({}, (a && a.reactions) || {});
-  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id] && ui.tenantId) rec[ui.tenantId] = "heart";
+  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id] && ui.tenantId) rec[ui.tenantId] = ui.devReactions[a.id];
+  return rec;
+}
+function reactionCounts(a) {
+  const rec = reactionMap(a);
+  const counts = {};
+  REACT_KINDS.forEach(k => { counts[k.id] = 0; });
+  Object.keys(rec).forEach(id => {
+    const kind = reactKindOf(rec[id]);
+    if (kind) counts[kind] += 1;
+  });
+  return counts;
+}
+function reactionWho(a, kind) {
+  const rec = reactionMap(a);
+  const want = reactKindOf(kind);
   const rows = [];
   Object.keys(rec).forEach(id => {
-    if (!rec[id]) return;
+    const got = reactKindOf(rec[id]);
+    if (!got || (want && got !== want)) return;
     const t = ((typeof state !== "undefined" && state.tenants) || []).find(x => x && String(x.id) === String(id));
     const r = t && ((state.rooms || []).find(x => x && x.id === t.roomId));
-    rows.push({ id, no: (r && r.no) || "", name: (t && t.name) || "住戶" });
+    rows.push({ id, no: (r && r.no) || "" });
   });
-  rows.sort((a, b) => String(a.no).localeCompare(String(b.no), "zh-Hant"));
+  rows.sort((p, q) => String(p.no).localeCompare(String(q.no), "zh-Hant"));
   return rows;
 }
 function reactBarHtml(a) {
-  const n = reactionCounts(a).heart;
-  if (!n) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
-  const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
-  const open = ui.reactWho === a.id;
-  const who = open ? reactionWho(a) : [];
-  const list = open ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人按愛心</span>`}</div>` : "";
-  return `<div class="ann-react${open ? " open" : ""}" data-react-ann="${a.id}"><button type="button" data-react-who="${a.id}" class="${mine ? "on" : ""} has" aria-label="看是哪些房號按了愛心">❤️<em>${n}</em></button>${list}</div>`;
+  const counts = reactionCounts(a);
+  const total = REACT_KINDS.reduce((n, k) => n + (counts[k.id] || 0), 0);
+  if (!total) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
+  const mine = reactKindOf((a.reactions || {})[ui.tenantId] || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
+  const openKind = String(ui.reactWho || "").indexOf(a.id + ":") === 0 ? String(ui.reactWho).slice(String(a.id).length + 1) : "";
+  const chips = REACT_KINDS.filter(k => counts[k.id] > 0).map(k => `<button type="button" data-react-ann="${a.id}" data-react-who="${a.id}:${k.id}" class="has${mine === k.id ? " on" : ""}" aria-label="看哪些房號按了這個">${k.emoji}<em>${counts[k.id]}</em></button>`).join("");
+  const pick = ui.reactPick === a.id ? `<div class="ann-pick">${REACT_KINDS.map(k => `<button type="button" data-react-ann="${a.id}" data-react-pick="${k.id}" class="${mine === k.id ? "on" : ""}">${k.emoji}</button>`).join("")}</div>` : "";
+  const who = openKind ? reactionWho(a, openKind) : [];
+  const list = openKind ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人</span>`}</div>` : "";
+  return `<div class="ann-react${openKind || ui.reactPick === a.id ? " open" : ""}" data-react-ann="${a.id}">${pick}${chips}${list}</div>`;
 }
 function applyClearForgottenHearts(data) {
   if (!data || !Array.isArray(data.announcements)) return;
@@ -28315,18 +28339,19 @@ function bindStudioFold() {
     };
   }
 }
-function applyAnnouncementReaction(id) {
+function applyAnnouncementReaction(id, kind) {
   if (!ui.tenantId) return;
+  kind = reactKindOf(kind || "heart");
   const a = (state.announcements || []).find(x => x.id === id);
   if (!a) return;
   if (isDevPreview()) {
     if (!ui.devReactions) ui.devReactions = {};
-    ui.devReactions[id] = "heart";
+    ui.devReactions[id] = kind;
     document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
     return;
   }
   if (!a.reactions) a.reactions = {};
-  a.reactions[ui.tenantId] = "heart";
+  a.reactions[ui.tenantId] = kind;
   a.editedAt = Date.now();
   save();
   document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
@@ -28344,13 +28369,42 @@ function popAnnounceCard(card) {
 }
 function bindAnnounceReactions() {
   document.querySelectorAll("[data-react-who]").forEach(btn => {
+    let timer = 0;
+    let held = false;
+    const end = () => { clearTimeout(timer); timer = 0; };
+    btn.addEventListener("pointerdown", e => {
+      if (e.button && e.button !== 0) return;
+      held = false;
+      timer = setTimeout(() => {
+        held = true;
+        timer = 0;
+        ui.reactPick = btn.dataset.reactAnn || "";
+        ui.reactWho = "";
+        ui.keepScroll = true;
+        render();
+      }, 460);
+    });
+    btn.addEventListener("pointerup", end);
+    btn.addEventListener("pointercancel", end);
+    btn.addEventListener("pointerleave", end);
+    btn.addEventListener("contextmenu", e => e.preventDefault());
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const id = btn.dataset.reactWho;
-      ui.reactWho = ui.reactWho === id ? "" : id;
+      if (held) { held = false; return; }
+      const key = btn.dataset.reactWho;
+      ui.reactWho = ui.reactWho === key ? "" : key;
+      ui.reactPick = "";
       ui.keepScroll = true;
       render();
+    };
+  });
+  document.querySelectorAll("[data-react-pick]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.reactPick = "";
+      applyAnnouncementReaction(btn.dataset.reactAnn, btn.dataset.reactPick);
     };
   });
   document.querySelectorAll("[data-read-announce]").forEach(card => {
