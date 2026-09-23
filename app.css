@@ -883,9 +883,11 @@ html[data-theme="void"] .rent-stamp {
 }
 .lease-cal-grid.is-next { animation: leaseCalIn .28s cubic-bezier(.22,.82,.22,1); }
 .lease-cal-grid.is-prev { animation: leaseCalIn .28s cubic-bezier(.22,.82,.22,1); }
-@keyframes leaseCalIn { from { opacity: .35; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes leaseCalIn { from { opacity: .35; transform: translateX(18px); } to { opacity: 1; transform: none; } }
 .lease-cal-grid.is-prev { animation-name: leaseCalBack; }
-@keyframes leaseCalBack { from { opacity: .35; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes leaseCalBack { from { opacity: .35; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+.lease-cal-body.is-next { animation: leaseCalIn .45s cubic-bezier(.22,.82,.22,1); }
+.lease-cal-body.is-prev { animation: leaseCalBack .45s cubic-bezier(.22,.82,.22,1); }
 .lc-legend {
   display: flex;
   flex-wrap: wrap;
