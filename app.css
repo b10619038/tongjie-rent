@@ -716,12 +716,18 @@ html[data-theme="void"] .rent-stamp {
 .lease-cal-head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
 }
 .lease-cal-head .room-name { margin: 0; }
 .lease-cal-sub { margin-top: 10px; }
-.lease-pane { margin: 0; flex: 1; min-width: 0; }
+.seg.lease-pane {
+  margin: 0 auto;
+  flex: none;
+  width: min(100%, 280px);
+  min-width: 0;
+  background: #e6e6e4;
+}
 .lease-pane button { padding: 7px 4px; font-size: 13px; }
 .lease-cal-nav.is-hidden { display: none; }
 .lease-sheet { overflow: auto; }
