@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-02-22";
-const APP_EDIT_COUNT = 1213;
+const APP_STAMP = "2026-09-24-02-28";
+const APP_EDIT_COUNT = 1214;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0763";
+const FILE_VER = "0764";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費總表照內容完整展開，右邊不再出現滾輪"] },
+  { ver: APP_VERSION, items: ["公告展開後，繳費日曆仍對齊我的房間"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22182,8 +22182,7 @@ function homeView() {
         <button class="btn-navy" data-page="repair">我要報修</button>
       </div>
       ${roomExtrasHtml(r)}
-    </div>
-    ${ui.leaseCalOpen ? leaseCalHtml(t, r) : ""}`;
+    </div>`;
 }
 
 function markTenantLineReported() {
@@ -29643,9 +29642,14 @@ function fitLeaseSheet() {
   card.style.maxHeight = "none";
   card.style.overflow = "visible";
 }
+function mountLeaseCalMask(mask) {
+  if (mask && mask.parentElement !== document.body) document.body.appendChild(mask);
+}
 function placeLeaseCal(slide) {
+  const mask = document.getElementById("lease-cal-mask");
+  mountLeaseCalMask(mask);
   const hero = document.querySelector(".screen > .hero-card");
-  const card = document.querySelector("#lease-cal-mask .lease-cal");
+  const card = mask && mask.querySelector(".lease-cal");
   if (!hero || !card) return null;
   const r = hero.getBoundingClientRect();
   card.style.top = r.top + "px";
@@ -29685,8 +29689,7 @@ function openLeaseCal() {
   if (ui.leaseCalOpen || ui.leaseCalClosing) return;
   const who = typeof me === "function" ? me() : null;
   const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
-  const host = document.querySelector(".screen") || document.getElementById("app");
-  if (!who || !host) return;
+  if (!who) return;
   ui.leaseCalOpen = true;
   ui.leaseCalDir = 0;
   ui.leaseCalEntered = true;
@@ -29695,7 +29698,7 @@ function openLeaseCal() {
   ui.leaseCalYm = payYmNow();
   const old = document.getElementById("lease-cal-mask");
   if (old) old.remove();
-  host.insertAdjacentHTML("beforeend", leaseCalHtml(who, room));
+  document.body.insertAdjacentHTML("beforeend", leaseCalHtml(who, room));
   holdTenantSlide();
   wireLeaseCal(true);
   placeLeaseCal(true);
@@ -29727,6 +29730,8 @@ function closeLeaseCal() {
   const card = document.querySelector("#lease-cal-mask .lease-cal");
   const mask = document.getElementById("lease-cal-mask");
   const done = () => {
+    const live = document.getElementById("lease-cal-mask");
+    if (live) live.remove();
     ui.leaseCalClosing = false;
     ui.leaseCalOpen = false;
     ui.leaseCalDir = 0;
@@ -29759,6 +29764,11 @@ function bindLeaseCal() {
     e.stopPropagation();
     openLeaseCal();
   };
+  const mask = document.getElementById("lease-cal-mask");
+  if (mask && ui.leaseCalOpen) {
+    mountLeaseCalMask(mask);
+    if (mask.dataset.wired === "1") placeLeaseCal(false);
+  }
   wireLeaseCal(false);
 }
 function wireLeaseCal(skipPlace) {
