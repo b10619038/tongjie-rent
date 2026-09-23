@@ -250,6 +250,53 @@ async function linePush(userId, text) {
     body: JSON.stringify({ to: userId, messages: [{ type: "text", text: String(text).slice(0, 900) }] })
   });
 }
+function bytesToB64(bytes) {
+  let s = "";
+  const chunk = 0x2000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}
+async function lineAvatarData(userId) {
+  if (!userId) return "";
+  const token = await lineToken();
+  if (!token) return "";
+  const prof = await fetch("https://api.line.me/v2/bot/profile/" + encodeURIComponent(userId), {
+    headers: { Authorization: "Bearer " + token }
+  });
+  if (!prof.ok) return "";
+  const j = await prof.json();
+  const url = j && j.pictureUrl;
+  if (!url) return "";
+  const img = await fetch(url);
+  if (!img.ok) return "";
+  const buf = await img.arrayBuffer();
+  if (!buf || buf.byteLength < 80 || buf.byteLength > 180000) return "";
+  const type = String(img.headers.get("content-type") || "image/jpeg").split(";")[0];
+  if (!/^image\//.test(type)) return "";
+  return "data:" + type + ";base64," + bytesToB64(new Uint8Array(buf));
+}
+async function saveLineAvatar(env, userId, room) {
+  const src = await lineAvatarData(userId);
+  if (!src || !room) return;
+  const state = await getState(env);
+  if (!state || !Array.isArray(state.tenants)) return;
+  const rm = (state.rooms || []).find(r => r && String(r.no) === String(room));
+  if (!rm) return;
+  const t = (state.tenants || []).find(x => x && x.roomId === rm.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  if (t.avatar && String(t.avatar).length > 40 && t.avatarFrom !== "line") return;
+  if (t.avatar === src) return;
+  const now = Date.now();
+  t.avatar = src;
+  t.avatarFrom = "line";
+  t.avatarAt = now;
+  t.edited = true;
+  t.editedAt = now;
+  state.updatedAt = now;
+  await putState(env, state);
+}
 function matchSub(sub, target) {
   const t = String(target || "all");
   const role = String((sub && sub.role) || "");
@@ -261,7 +308,7 @@ function matchSub(sub, target) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors("", 204);
 
@@ -537,6 +584,9 @@ export default {
         data.byRoom[room] = { userId: userId, name: name };
         dirty = true;
         await reply(replyToken, "已綁定 " + room + " " + name);
+        const job = saveLineAvatar(env, userId, room);
+        if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+        else await job;
         continue;
       }
       const bound = boundRoomOf(data, userId);

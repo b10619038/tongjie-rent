@@ -106,6 +106,121 @@ async function reply(replyToken, text) {
   });
 }
 
+const STATE_HOOK = "https://tongjie-line.b10619038.workers.dev";
+const STATE_KEY = "tj-82934388";
+const FACE_URL = "https://internal/line-faces";
+
+function bytesToB64(bytes) {
+  let s = "";
+  const chunk = 0x2000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}
+export async function lineAvatarData(userId) {
+  if (!userId) return "";
+  const token = await lineToken();
+  if (!token) return "";
+  const prof = await fetch("https://api.line.me/v2/bot/profile/" + encodeURIComponent(userId), {
+    headers: { Authorization: "Bearer " + token }
+  });
+  if (!prof.ok) return "";
+  const j = await prof.json();
+  const url = j && j.pictureUrl;
+  if (!url) return "";
+  const img = await fetch(url);
+  if (!img.ok) return "";
+  const buf = await img.arrayBuffer();
+  if (!buf || buf.byteLength < 80 || buf.byteLength > 180000) return "";
+  const type = String(img.headers.get("content-type") || "image/jpeg").split(";")[0];
+  if (!/^image\//.test(type)) return "";
+  return "data:" + type + ";base64," + bytesToB64(new Uint8Array(buf));
+}
+async function loadFaceCache() {
+  const hit = await caches.default.match(FACE_URL);
+  if (!hit) return {};
+  try { return await hit.json() || {}; } catch { return {}; }
+}
+async function saveFaceCache(data) {
+  await caches.default.put(FACE_URL, new Response(JSON.stringify(data || {}), {
+    headers: { "Cache-Control": "max-age=31536000", "Content-Type": "application/json" }
+  }));
+}
+async function workerBinds() {
+  try {
+    const res = await fetch(STATE_HOOK + "/binds", { cache: "no-store" });
+    if (!res.ok) return { byRoom: {} };
+    return await res.json();
+  } catch { return { byRoom: {} }; }
+}
+function roomUser(row) {
+  if (!row) return "";
+  if (typeof row === "string") return row;
+  return row.userId || "";
+}
+export async function syncLineFaces(only) {
+  const local = await getBinds();
+  const remote = await workerBinds();
+  const byRoom = Object.assign({}, local.byRoom || {}, remote.byRoom || {});
+  const cache = await loadFaceCache();
+  const faces = {};
+  let more = false;
+  let fetched = 0;
+  const rooms = only && only.length ? only.map(x => String(x.room || x)) : Object.keys(byRoom);
+  const forced = {};
+  (only || []).forEach(x => { if (x && x.room && x.userId) forced[String(x.room)] = x.userId; });
+  for (const room of rooms) {
+    const uid = forced[room] || roomUser(byRoom[room]);
+    if (!uid) continue;
+    const prev = cache[room];
+    const fresh = prev && prev.src && prev.userId === uid && Date.now() - Number(prev.at || 0) < 7 * 86400000;
+    if (fresh) { faces[room] = prev.src; continue; }
+    if (fetched >= 12) { more = true; continue; }
+    fetched += 1;
+    let src = "";
+    try { src = await lineAvatarData(uid); } catch { src = ""; }
+    cache[room] = { src, at: Date.now(), userId: uid };
+    if (src) faces[room] = src;
+  }
+  await saveFaceCache(cache);
+  if (Object.keys(faces).length) {
+    try { await paintFacesIntoState(faces); } catch {}
+  }
+  return { faces, more };
+}
+async function paintFacesIntoState(faces) {
+  const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
+  if (!res.ok) return;
+  const state = await res.json();
+  if (!state || !Array.isArray(state.tenants)) return;
+  const now = Date.now();
+  let changed = false;
+  Object.keys(faces).forEach(no => {
+    const src = faces[no];
+    if (!src) return;
+    const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room) return;
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (!t) return;
+    if (t.avatar && String(t.avatar).length > 40 && t.avatarFrom !== "line") return;
+    if (t.avatar === src) return;
+    t.avatar = src;
+    t.avatarFrom = "line";
+    t.avatarAt = now;
+    t.edited = true;
+    t.editedAt = now;
+    changed = true;
+  });
+  if (!changed) return;
+  state.updatedAt = now;
+  await fetch(STATE_HOOK + "/api/state", {
+    method: "PUT",
+    headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(state)
+  });
+}
+
 export async function handleLineEvents(request) {
   let body = {};
   try { body = await request.json(); } catch (e) {}
@@ -116,6 +231,7 @@ export async function handleLineEvents(request) {
   if (!data.payUsers) data.payUsers = {};
   if (!data.pendingPayImages) data.pendingPayImages = {};
   let dirty = false;
+  const justBound = [];
   for (const ev of body.events || []) {
     const userId = ev.source && ev.source.userId;
     const replyToken = ev.replyToken;
@@ -134,6 +250,7 @@ export async function handleLineEvents(request) {
       data.byUser[userId] = { room, name };
       data.byRoom[room] = { userId, name };
       dirty = true;
+      justBound.push({ room, userId });
       await reply(replyToken, "已綁定 " + room + " " + name);
       continue;
     }
@@ -172,5 +289,8 @@ export async function handleLineEvents(request) {
     if (replyToken) await reply(replyToken, HINT);
   }
   if (dirty) await saveBinds(data);
+  if (justBound.length) {
+    try { await syncLineFaces(justBound); } catch (e) {}
+  }
   return new Response("OK", { status: 200 });
 }
