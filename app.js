@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-20-55";
-const APP_EDIT_COUNT = 1162;
+const APP_STAMP = "2026-09-23-21-02";
+const APP_EDIT_COUNT = 1163;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0712";
+const FILE_VER = "0713";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["從後台查看租客時，不再顯示上方那列返回提示"] },
+  { ver: APP_VERSION, items: ["發送訊息按鈕會原地縮小，關掉聊天後再從原位彈出"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1787,6 +1787,20 @@ function chatUnreadTotal() {
   Object.keys(threads).forEach(id => { n += chatUnreadOf(id); });
   return n;
 }
+function tuckChatChip() {
+  const chip = document.getElementById("open-dev-chat");
+  if (!chip) return;
+  chip.classList.remove("chip-back");
+  chip.classList.add("chip-away");
+}
+function revealChatChip() {
+  const chip = document.getElementById("open-dev-chat");
+  if (!chip || !chip.classList.contains("chip-away")) return;
+  chip.classList.remove("chip-away");
+  chip.classList.remove("chip-back");
+  void chip.offsetWidth;
+  chip.classList.add("chip-back");
+}
 function openDevChat(tid) {
   if (!canUseDevChat()) return;
   ui.chatTid = String(tid || (me() && me().id) || "");
@@ -1794,6 +1808,7 @@ function openDevChat(tid) {
   ui.chatOpen = true;
   ui.chatEnter = true;
   ui.chatClosing = false;
+  tuckChatChip();
   drawChatBox();
   markChatRead(ui.chatTid);
   pullCloud().then(() => pullChat(true)).catch(() => pullChat(true));
@@ -1821,9 +1836,10 @@ function dropChatBox() {
 function closeDevChat() {
   if (ui.chatClosing) return;
   saveChatDraft();
+  revealChatChip();
   const wrap = document.getElementById("dev-chat-box");
   const sheet = wrap && wrap.querySelector(".chat-sheet");
-  if (!wrap || !sheet) { dropChatBox(); return; }
+  if (!wrap || !sheet) { dropChatBox(); revealChatChip(); return; }
   ui.chatClosing = true;
   sheet.classList.remove("chat-up");
   sheet.style.transition = "transform .18s cubic-bezier(.2,.8,.2,1)";
@@ -2089,7 +2105,7 @@ function chatEntryCardHtml() {
   const t = me();
   if (!t || !t.id) return "";
   const n = chatUnreadOf(t.id);
-  return `<button type="button" class="chat-chip" id="open-dev-chat">發送訊息${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}</button>`;
+  return `<button type="button" class="chat-chip${ui.chatOpen ? " chip-away" : ""}" id="open-dev-chat">發送訊息${n ? `<em class="badge-dot">${n > 99 ? "99+" : n}</em>` : ""}</button>`;
 }
 function devChatInboxHtml() {
   if (!isDeveloper()) return "";
