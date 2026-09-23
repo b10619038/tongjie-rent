@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-14-08";
-const APP_EDIT_COUNT = 1126;
+const APP_STAMP = "2026-09-23-14-18";
+const APP_EDIT_COUNT = 1127;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0676";
+const FILE_VER = "0677";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽營收與本期收支的金額放大"] },
+  { ver: APP_VERSION, items: ["點前往續約會進租約頁，並把續約確認滑到畫面底部對齊"] },
+  { ver: "2026-09-23-14-08-1126", items: ["總覽營收與本期收支的金額放大"] },
   { ver: "2026-09-23-14-06-1125", items: ["我要續約圖卡底色改成與設備圖塊相同的米色"] },
   { ver: "2026-09-23-14-02-1124", items: ["租客按的表情會同步出現在管理員與開發者的公告圖卡"] },
   { ver: "2026-09-23-12-50-1123", items: ["收回住戶門牌上剛按的兩顆星星"] },
@@ -3002,6 +3003,20 @@ function renewMovePickHtml(t, r) {
     }).join("")}</div>
   </div>`;
 }
+function scrollRenewCardIntoPlace() {
+  if (!ui.scrollRenew || ui.page !== "lease") return;
+  ui.scrollRenew = false;
+  const go = () => {
+    const sc = document.querySelector(".tenant-scroll");
+    const box = document.getElementById("renew-box");
+    if (!sc || !box) return;
+    const nav = document.querySelector(".nav");
+    const limit = nav ? nav.getBoundingClientRect().top - 10 : sc.getBoundingClientRect().bottom;
+    const delta = box.getBoundingClientRect().bottom - limit;
+    sc.scrollTop = Math.max(0, sc.scrollTop + delta);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+}
 function renewAskCardHtml(t, r, opts) {
   if (!t || !r || (r && roomIsFactory(r))) return "";
   const full = !!(opts && opts.full);
@@ -3040,7 +3055,7 @@ function renewAskCardHtml(t, r, opts) {
     return `<div class="handover-note renew-note">
       <div class="label">續約確認</div>
       <p>${escapeHtml(polite)}</p>
-      <button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">前往續約</button>
+      <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1" style="margin-top:10px">前往續約</button>
     </div>`;
   }
   const minAt = todayYmd() + "T09:00";
@@ -20004,6 +20019,7 @@ function paintApp() {
     } else {
       scKeep.scrollTop = 0;
     }
+    scrollRenewCardIntoPlace();
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     return;
@@ -20032,6 +20048,7 @@ function paintApp() {
       requestAnimationFrame(() => { ts.scrollTop = oldTenant; });
     }
   }
+  scrollRenewCardIntoPlace();
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
 }
@@ -27277,6 +27294,7 @@ function bindTenant() {
         lastRenderPage = "__anim__";
       }
       ui.page = next;
+      if (el.dataset.scrollRenew) ui.scrollRenew = true;
       if (ui.page === "repair" && ui.tenantId) {
         let changed = false;
         state.repairs.forEach(r => {
