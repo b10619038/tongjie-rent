@@ -272,7 +272,7 @@ input, textarea, select {
 .hello-card {
   flex: 1;
   min-width: 0;
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
   border: 0;
   border-radius: 22px;
   padding: 10px 14px;

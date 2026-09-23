@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-04";
-const APP_EDIT_COUNT = 1134;
+const APP_STAMP = "2026-09-23-15-07";
+const APP_EDIT_COUNT = 1135;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0684";
+const FILE_VER = "0685";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["首頁雲朵持續飄，切去其他選單再回來不會從左邊重來"] },
+  { ver: APP_VERSION, items: ["租客姓名白底圖塊改成 80% 透明度"] },
+  { ver: "2026-09-23-15-04-1134", items: ["首頁雲朵持續飄，切去其他選單再回來不會從左邊重來"] },
   { ver: "2026-09-23-14-56-1133", items: ["租約剩餘天數倒數收尾不再頓一下"] },
   { ver: "2026-09-23-14-50-1132", items: ["租約剩餘天數從合約總天數快速倒數到今天"] },
   { ver: "2026-09-23-14-42-1131", items: ["7632 謝佩君 8/25 已續約，新約 115/10/1～116/9/30，10/1 起生效"] },
