@@ -725,8 +725,8 @@ button.pay-pill.hand {
   right: 8px;
 }
 .renew-note {
-  background: #eef3ea;
-  border: 1px solid #cfd9c6;
+  background: var(--chip);
+  border: 1px solid #efe2d4;
 }
 .renew-note .label { color: #3f5a3a; }
 .renew-years {
