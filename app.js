@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-18";
-const APP_EDIT_COUNT = 1136;
+const APP_STAMP = "2026-09-23-15-24";
+const APP_EDIT_COUNT = 1137;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0686";
+const FILE_VER = "0687";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["水電可登記儲值卡一開始的金額，並記錄每次儲值"] },
+  { ver: APP_VERSION, items: ["儲值卡改顯示已消費金額，時間會顯示到分鐘"] },
+  { ver: "2026-09-23-15-18-1136", items: ["水電可登記儲值卡一開始的金額，並記錄每次儲值"] },
   { ver: "2026-09-23-15-07-1135", items: ["租客姓名白底圖塊改成 80% 透明度"] },
   { ver: "2026-09-23-15-04-1134", items: ["首頁雲朵持續飄，切去其他選單再回來不會從左邊重來"] },
   { ver: "2026-09-23-14-56-1133", items: ["租約剩餘天數倒數收尾不再頓一下"] },
@@ -21552,10 +21553,10 @@ function elecCardHtml(t) {
   const logs = (card.logs || []).slice(0, 8);
   const more = Math.max(0, (card.logs || []).length - logs.length);
   return `<div class="elec-card">
-    <div class="row"><span class="k">儲值卡餘額</span><span class="v">${bal == null ? "尚未登記" : money(bal)}</span></div>
+    <div class="row"><span class="k">儲值卡已消費金額</span><span class="v">${bal == null ? "尚未登記" : money(bal)}</span></div>
     ${ready ? `<p class="small" style="margin:4px 0 0">一開始 ${money(card.start)}　已儲值 ${money(elecAdded(card))}</p>` : `<p class="small" style="margin:4px 0 0">先登記卡上原本的金額，之後每次儲值再記一筆。</p>`}
-    <p class="small">自己紀錄，機器扣下的電費不會自動減。</p>
-    ${logs.length ? `<div class="elec-logs">${logs.map(x => `<div class="elec-log"><span>${escapeHtml(String(x.at || "").slice(0, 16))}</span><b>+${money(x.amount)}</b><button type="button" data-elec-del="${escapeHtml(x.id)}" aria-label="刪除這筆">×</button></div>`).join("")}${more ? `<p class="small">還有 ${more} 筆</p>` : ""}</div>` : ""}
+    <p class="small">已消費金額＝一開始的卡金＋每次儲值。機器扣電不會自動減。</p>
+    ${logs.length ? `<div class="elec-logs">${logs.map(x => `<div class="elec-log"><span>${escapeHtml(formatDateTime12(x.at) || String(x.at || ""))}</span><b>+${money(x.amount)}</b><button type="button" data-elec-del="${escapeHtml(x.id)}" aria-label="刪除這筆">×</button></div>`).join("")}${more ? `<p class="small">還有 ${more} 筆</p>` : ""}</div>` : ""}
     <form id="elec-card-form" class="elec-card-form">
       ${ready ? `<label class="field"><span>這次儲值</span><input name="amt" type="text" inputmode="numeric" autocomplete="off" placeholder="例如 500" /></label>
         <div class="btn-row">
