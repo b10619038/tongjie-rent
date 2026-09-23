@@ -618,6 +618,10 @@ input, textarea, select {
   opacity: 0.9;
 }
 .rent-stamp i { font-style: normal; }
+.rent-stamp.chop-wait {
+  opacity: 0;
+  animation: none;
+}
 .rent-stamp.chop {
   z-index: 4;
   animation: rent-chop 1s cubic-bezier(.22, .72, .18, 1) both;
@@ -626,7 +630,7 @@ input, textarea, select {
 @keyframes rent-chop {
   0% {
     opacity: 0;
-    transform: rotate(-10deg) scale(2);
+    transform: rotate(-10deg) scale(3);
   }
   100% {
     opacity: 1;

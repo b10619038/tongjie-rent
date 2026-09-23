@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-21-53";
-const APP_EDIT_COUNT = 1167;
+const APP_STAMP = "2026-09-23-21-57";
+const APP_EDIT_COUNT = 1168;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0717";
+const FILE_VER = "0718";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月已繳印章從兩倍大、全透明，1 秒蓋到正常大小"] },
+  { ver: APP_VERSION, items: ["本月已繳印章等房間圖卡滑到位後，再從三倍大蓋下"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4904,7 +4904,7 @@ function playHomeSlides() {
   const run = (el, from) => {
     if (!el || !el.animate) return;
     try { el.getAnimations().forEach(a => a.cancel()); } catch {}
-    el.animate(
+    return el.animate(
       [{ transform: from, opacity: 1 }, { transform: "translateX(0)", opacity: 1 }],
       { duration: 900, easing: ease, fill: "both" }
     );
@@ -4913,7 +4913,16 @@ function playHomeSlides() {
     setTimeout(() => run(el, "translateX(-80%)"), i * 70);
   });
   run(document.querySelector(".hello-card"), "translateX(-80%)");
-  run(document.querySelector(".hero-card"), "translateX(80%)");
+  const heroAnim = run(document.querySelector(".hero-card"), "translateX(80%)");
+  const stamp = document.querySelector(".rent-stamp.chop-wait");
+  if (!stamp) return;
+  const go = () => {
+    if (!stamp.isConnected) return;
+    stamp.classList.remove("chop-wait");
+    stamp.classList.add("chop");
+  };
+  if (heroAnim && heroAnim.finished) heroAnim.finished.then(go).catch(go);
+  else setTimeout(go, 900);
 }
 function amenityVideoHtml(src, poster) {
   return `<div class="photos photos-video slide-left">
@@ -14581,7 +14590,7 @@ function thisMonthRentCardHtml(t, r) {
 }
 function rentPaidStampHtml(t) {
   if (!t || !paidThisMonth(t)) return "";
-  return `<span class="rent-stamp${ui.stampChop ? " chop" : ""}" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>`;
+  return `<span class="rent-stamp${ui.stampChop ? " chop-wait" : ""}" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>`;
 }
 function leasePartForYm(t, r, ym) {
   const y = String(ym || payYmNow()).slice(0, 7);
