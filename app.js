@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-02-08";
-const APP_EDIT_COUNT = 1211;
+const APP_STAMP = "2026-09-24-02-16";
+const APP_EDIT_COUNT = 1212;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0761";
+const FILE_VER = "0762";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費日曆的首次應繳改成紅點"] },
+  { ver: APP_VERSION, items: ["不足月合約補上隔月1日，標題改成合約(不足月+1年)"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14747,6 +14747,10 @@ function leaseUpcomingRenewal(t, r) {
   });
   return best;
 }
+function leaseSheetTitle(base, start) {
+  const day = Number(String(ymdOf(start) || "").slice(8, 10));
+  return day > 1 ? base + "(不足月+1年)" : base;
+}
 function leasePaySheets(t, r) {
   const curStart = tenantOccupancyStart(t, r);
   const curEnd = tenantOccupancyEnd(t, r);
@@ -14757,11 +14761,11 @@ function leasePaySheets(t, r) {
     let oldEnd = curEnd;
     if (oldEnd >= newStart) oldEnd = addDaysYmd(newStart, -1);
     return [
-      { label: "原合約", start: curStart, end: oldEnd },
-      { label: "新合約", start: newStart, end: newEnd }
+      { label: leaseSheetTitle("原合約", curStart), start: curStart, end: oldEnd },
+      { label: leaseSheetTitle("新合約", newStart), start: newStart, end: newEnd }
     ].filter(s => s.start && s.end && s.start <= s.end);
   }
-  if (curStart && curEnd) return [{ label: "合約", start: curStart, end: curEnd }];
+  if (curStart && curEnd) return [{ label: leaseSheetTitle("合約", curStart), start: curStart, end: curEnd }];
   return [];
 }
 function leasePaidMap(t, r) {
@@ -14772,7 +14776,7 @@ function leasePaidMap(t, r) {
 }
 function leaseSheetIsRenewal(t, r, sheet) {
   if (!sheet || !t) return false;
-  if (sheet.label === "新合約") return true;
+  if (String(sheet.label || "").indexOf("新合約") === 0) return true;
   const start = ymdOf(sheet.start);
   if (!start) return false;
   const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
@@ -14796,7 +14800,7 @@ function leaseMoveInBits(t, r, start) {
   const elec = studioElecStoreFee(t, r);
   return {
     total: deposit + stubRent + firstMonth + water + elec,
-    covered: ymdOf(year && year.start) || start
+    covered: stub ? start : (ymdOf(year && year.start) || start)
   };
 }
 function leasePayRows(t, r, sheet) {
