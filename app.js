@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-48";
-const APP_EDIT_COUNT = 1184;
+const APP_STAMP = "2026-09-23-23-52";
+const APP_EDIT_COUNT = 1185;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0734";
+const FILE_VER = "0735";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["日曆的租金、押金退還會跟著格子縮放"] },
+  { ver: APP_VERSION, items: ["日曆的本月已繳印章下移，對準日期"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14666,7 +14666,7 @@ function leaseCalGridHtml(ym, marks) {
     const items = (marks.due && marks.due[ymd]) || [];
     const labels = items.map(it => `<em class="${it.kind === "back" ? "is-back" : "is-due"} is-fit${it.text === "租金" ? " is-rent" : ""}">${escapeHtml(it.text)}</em>`).join("");
     const stamp = marks.paid && marks.paid[ymd] ? `<span class="rent-stamp lc-stamp" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>` : "";
-    html += `<span class="lc-day${ymd === today ? " is-today" : ""}">${stamp}<b>${d}</b>${labels}</span>`;
+    html += `<span class="lc-day${ymd === today ? " is-today" : ""}"><b>${d}${stamp}</b>${labels}</span>`;
   }
   return html;
 }
