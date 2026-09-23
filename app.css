@@ -857,21 +857,24 @@ html[data-theme="void"] .rent-stamp {
   word-break: break-all;
   transform: translate(-50%, -50%);
 }
-.lc-day em.is-rent-dot,
-.lc-day em.is-back-dot {
+.lc-dots {
   position: absolute;
   left: 50%;
   top: 68%;
   z-index: 2;
-  width: 8px;
-  height: 8px;
-  margin: 0;
-  padding: 0;
-  border-radius: 50%;
-  background: #c45b4a;
+  display: flex;
+  gap: 3px;
   transform: translate(-50%, -50%);
 }
-.lc-day em.is-back-dot { background: #5e7a55; }
+.lc-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: block;
+}
+.lc-dots i.is-rent { background: #c45b4a; }
+.lc-dots i.is-back { background: #5e7a55; }
+.lc-dots i.is-sign { background: #3d6ea8; }
 .lc-day em.is-due { color: #c45b4a; }
 .lc-day em.is-back { color: #5e7a55; }
 .lc-stamp {
@@ -914,6 +917,7 @@ html[data-theme="void"] .rent-stamp {
 }
 .lc-legend i.is-due { background: #c45b4a; }
 .lc-legend i.is-back { background: #5e7a55; }
+.lc-legend i.is-sign { background: #3d6ea8; }
 html[data-theme="void"] .lc-day,
 html[data-theme="void"] .lease-cal-nav button { background: #101010; color: #f5f5f5; }
 .pay-pill {
