@@ -857,12 +857,18 @@ html[data-theme="void"] .rent-stamp {
   word-break: break-all;
   transform: translate(-50%, -50%);
 }
-.lc-day em.is-rent {
-  width: auto;
-  max-width: 96%;
-  font-size: 38cqi;
-  white-space: nowrap;
-  word-break: keep-all;
+.lc-day em.is-rent-dot {
+  position: absolute;
+  left: 50%;
+  top: 68%;
+  z-index: 2;
+  width: 8px;
+  height: 8px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: #c45b4a;
+  transform: translate(-50%, -50%);
 }
 .lc-day em.is-due { color: #c45b4a; }
 .lc-day em.is-back { color: #5e7a55; }
