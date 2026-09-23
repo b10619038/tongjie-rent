@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-00-42";
-const APP_EDIT_COUNT = 1194;
+const APP_STAMP = "2026-09-24-00-46";
+const APP_EDIT_COUNT = 1195;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0744";
+const FILE_VER = "0745";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費日曆年月置中，左右箭頭分在兩側"] },
+  { ver: APP_VERSION, items: ["繳費日曆的箭頭改粗"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14810,15 +14810,15 @@ function leaseCalHtml(t, r) {
           <button type="button" data-lease-pane="cal" class="${pane === "cal" ? "on" : ""}">繳費日曆</button>
           <button type="button" data-lease-pane="sheet" class="${pane === "sheet" ? "on" : ""}">繳費總表</button>
         </div>
-        <button class="lease-cal-x" id="lease-cal-close" type="button" aria-label="關閉">›</button>
+        <button class="lease-cal-x" id="lease-cal-close" type="button" aria-label="關閉"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
       <div class="lease-cal-nav">
-        <button type="button" id="lease-cal-prev" aria-label="上一頁" class="${pane === "sheet" && !multi ? "is-off" : ""}"${atStart ? " disabled" : ""}>‹</button>
+        <button type="button" id="lease-cal-prev" aria-label="上一頁" class="${pane === "sheet" && !multi ? "is-off" : ""}"${atStart ? " disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="lease-cal-title">
           <div class="label">${escapeHtml(sub)}</div>
           <div class="room-name">${escapeHtml(title)}</div>
         </div>
-        <button type="button" id="lease-cal-next" aria-label="下一頁" class="${pane === "sheet" && !multi ? "is-off" : ""}"${atEnd ? " disabled" : ""}>›</button>
+        <button type="button" id="lease-cal-next" aria-label="下一頁" class="${pane === "sheet" && !multi ? "is-off" : ""}"${atEnd ? " disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
       ${body}
     </div>

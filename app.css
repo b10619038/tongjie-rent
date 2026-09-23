@@ -772,8 +772,21 @@ html[data-theme="void"] .rent-stamp {
   font: inherit;
   font-size: 18px;
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 .lease-cal-nav button:disabled { opacity: .28; cursor: default; }
+.lease-cal-x {
+  display: grid;
+  place-items: center;
+}
+.lease-cal-x svg,
+.lease-cal-nav button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 0 auto;
+}
 .lease-cal-week,
 .lease-cal-grid {
   display: grid;
