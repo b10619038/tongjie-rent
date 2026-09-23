@@ -753,11 +753,15 @@ html[data-theme="void"] .rent-stamp {
   flex: none;
 }
 .lease-cal-nav {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
   gap: 8px;
-  margin: -28px 0 8px;
+  margin: 12px 0 8px;
 }
+.lease-cal-title { text-align: center; min-width: 0; }
+.lease-cal-title .room-name { margin: 0; }
+.lease-cal-nav button.is-off { visibility: hidden; }
 .lease-cal-nav button {
   width: 32px;
   height: 32px;
