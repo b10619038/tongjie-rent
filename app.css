@@ -4685,6 +4685,15 @@ html.preview-zoom body {
 .poi-name { font-weight: 700; color: var(--ink); }
 .poi-go { font-size: 12px; font-weight: 800; color: var(--teal); }
 .install-sheet .btn-navy { width: 100%; margin: 12px 0 8px; }
+.install-steps {
+  margin: 8px 0 4px;
+  padding-left: 1.2em;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.55;
+  color: inherit;
+}
+.install-steps li { margin: 6px 0; }
 .install-sheet .danger { width: 100%; margin: 12px 0 8px; }
 .install-sheet .ghost { width: 100%; }
 .log-list { max-height: 46vh; overflow: auto; margin: 4px 0 8px; }

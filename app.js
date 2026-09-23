@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-17-08";
-const APP_EDIT_COUNT = 1159;
+const APP_STAMP = "2026-09-23-18-12";
+const APP_EDIT_COUNT = 1160;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0709";
+const FILE_VER = "0710";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["資產平面圖左右與底部的黑邊去掉"] },
+  { ver: APP_VERSION, items: ["手機第一次打開會直接跳出安裝，Android 可一鍵安裝，iPhone 會帶加入主畫面"] },
+  { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
   { ver: "2026-09-23-16-57-1156", items: ["官方 LINE 綁定成功會自動把頭貼同步進 App"] },
@@ -1510,6 +1511,9 @@ let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   deferredInstall = e;
+  if (ui.installSheet && !document.getElementById("install-try")) {
+    try { render(); } catch {}
+  }
 });
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js?v=" + APP_STAMP, { updateViaCache: "none" }).then(r => {
@@ -20561,15 +20565,34 @@ function installSheetHtml() {
   const framed = (() => { try { return window.self !== window.top; } catch { return true; } })();
   const ua = navigator.userAgent || "";
   const safari = /^((?!chrome|android).)*safari/i.test(ua);
+  const webview = /Line\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(ua);
   let body;
+  let extra = "";
   if (mobile) {
-    body = framed
-      ? "請用手機瀏覽器打開 https://tongjie-app.pages.dev 再安裝。"
-      : isIOS()
-        ? "請按底部分享鈕，再選「加入主畫面」。"
-        : isAndroid()
-          ? "請用 Chrome 右上選單，選「安裝應用程式」或「加入主畫面」。"
-          : "請用手機 Safari 或 Chrome 打開此網址。Android 點「安裝應用程式」；iPhone 按分享後選「加入主畫面」。";
+    if (framed) {
+      body = "請用手機瀏覽器打開 https://tongjie-app.pages.dev 再安裝。";
+    } else if (isIOS()) {
+      body = "";
+      extra = `<ol class="install-steps">
+        <li>請用 <b>Safari</b> 打開。若現在在 LINE 裡，點右下角改用瀏覽器。</li>
+        <li>點畫面底部的分享鈕。</li>
+        <li>往下滑，選「<b>加入主畫面</b>」，再按右上角「新增」。</li>
+      </ol>
+      <p class="small">iPhone 不允許網頁自己安裝，一定要按這三步。加完後請用桌面上的圖示打開。</p>`;
+    } else if (isAndroid() && webview) {
+      body = "";
+      extra = `<p class="small">現在是在 LINE 裡面，沒辦法直接安裝。請改用 Chrome 開啟。</p>
+        <a class="btn-navy" href="intent://tongjie-app.pages.dev/?install=1#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Ftongjie-app.pages.dev%2F%3Finstall%3D1;end">用 Chrome 開啟</a>`;
+    } else if (isAndroid()) {
+      body = "";
+      extra = `<ol class="install-steps">
+        <li>請用 <b>Chrome</b> 打開這個頁面。</li>
+        <li>點下方「<b>立即安裝</b>」，手機會跳出系統安裝窗。</li>
+      </ol>
+      <p class="small">若沒有按鈕，點 Chrome 右上角 ⋮，選「安裝應用程式」或「加入主畫面」。</p>`;
+    } else {
+      body = "請用手機 Safari 或 Chrome 打開此網址。Android 點「安裝應用程式」；iPhone 按分享後選「加入主畫面」。";
+    }
   } else if (isStandalone()) {
     body = "這台電腦已經安裝過了，可從開始功能表或 Dock 開啟「統潔＆信潔開發」。";
   } else if (framed) {
@@ -20581,19 +20604,26 @@ function installSheetHtml() {
   } else {
     body = "請用 Chrome 或 Edge：點網址列右側的「安裝」圖示，或右上角 ⋮ → 安裝「統潔＆信潔開發」。安裝後可從開始功能表開啟。";
   }
+  const tryBtn = deferredInstall && !isIOS() && !framed
+    ? `<button class="btn-navy" id="install-try" type="button">立即安裝</button>` : "";
   return `<div class="install-mask" id="install-mask">
     <div class="install-sheet">
       <div class="label">${mobile ? "下載 App" : "電腦版"}</div>
       <h2>${mobile ? "安裝到手機" : "安裝到電腦"}</h2>
-      <p class="small">${escapeHtml(body)}</p>
+      ${body ? `<p class="small">${escapeHtml(body)}</p>` : ""}
+      ${extra}
       <p class="small">網址：https://tongjie-app.pages.dev</p>
-      ${deferredInstall && !isIOS() ? `<button class="btn-navy" id="install-try" type="button">立即安裝</button>` : ""}
+      ${tryBtn}
       <button class="ghost" id="install-close" type="button">關閉</button>
     </div>
   </div>`;
 }
 function bindInstallSheet() {
-  const close = () => { ui.installSheet = ""; render(); };
+  const close = () => {
+    ui.installSheet = "";
+    try { localStorage.setItem("tongjie_install_offer", "skip"); } catch {}
+    render();
+  };
   const mask = document.getElementById("install-mask");
   if (mask) mask.onclick = e => { if (e.target.id === "install-mask") close(); };
   const btn = document.getElementById("install-close");
@@ -20602,7 +20632,8 @@ function bindInstallSheet() {
   if (tryBtn) tryBtn.onclick = () => installApp(ui.installSheet || "desktop", true);
   try { bindVacateConfirm(); } catch {}
 }
-const APP_JOIN_URL = "https://tongjie-app.pages.dev";
+const APP_HOME_URL = "https://tongjie-app.pages.dev";
+const APP_JOIN_URL = APP_HOME_URL + "/?openExternalBrowser=1&install=1";
 function inviteCopy() {
   return "【統潔＆信潔開發】租客 App\n\n請用手機打開：\n" + APP_JOIN_URL + "\n\n加到主畫面後，輸入「房號＋姓名」就能登入。\n繳租金、報修、續約、跟管理員說話，都在這裡完成。\n\niPhone：Safari 開啟 → 分享 → 加入主畫面\nAndroid：Chrome 開啟 → 安裝應用程式";
 }
@@ -20624,7 +20655,7 @@ function inviteSheetHtml() {
       <div class="label">給租客</div>
       <h2>加入統潔租客 App</h2>
       <img class="invite-qr" src="${inviteQrSrc()}" alt="加入 App QR 圖">
-      <p class="invite-url">${APP_JOIN_URL}</p>
+      <p class="invite-url">${APP_HOME_URL}</p>
       <p class="small" style="text-align:left">加到主畫面後，輸入「房號＋姓名」登入。<br>iPhone 用 Safari → 分享 → 加入主畫面。<br>Android 用 Chrome → 安裝應用程式。</p>
       <button class="btn-navy" id="invite-copy" type="button">複製邀請文案</button>
       <button class="ghost" id="invite-copy-url" type="button">只複製網址</button>
@@ -20653,7 +20684,7 @@ function bindInviteSheet() {
   const copy = document.getElementById("invite-copy");
   if (copy) copy.onclick = () => copyTextSafe(inviteCopy(), "邀請文案已複製");
   const url = document.getElementById("invite-copy-url");
-  if (url) url.onclick = () => copyTextSafe(APP_JOIN_URL, "網址已複製");
+  if (url) url.onclick = () => copyTextSafe(APP_HOME_URL, "網址已複製");
   const share = document.getElementById("invite-share");
   if (share) share.onclick = async () => {
     const text = inviteCopy();
@@ -31499,6 +31530,25 @@ function isInstalledApp() {
   try { if (localStorage.getItem("tongjie_installed") === "1") return true; } catch {}
   return false;
 }
+function installQueryOn() {
+  try { return new URLSearchParams(location.search).get("install") === "1"; } catch { return false; }
+}
+function shouldOfferPhoneInstall() {
+  if (isStandalone()) return false;
+  if (!isPhone()) return false;
+  if (installQueryOn()) return true;
+  try { if (localStorage.getItem("tongjie_install_offer") === "skip") return false; } catch {}
+  return true;
+}
+function offerPhoneInstall() {
+  if (!shouldOfferPhoneInstall()) return false;
+  if (ui.installSheet === "mobile") return false;
+  ui.installSheet = "mobile";
+  if (!installQueryOn()) {
+    try { localStorage.setItem("tongjie_install_offer", "skip"); } catch {}
+  }
+  return true;
+}
 async function installApp(kind, fromSheet) {
   const wantMobile = kind === "mobile";
   if (deferredInstall && !isIOS()) {
@@ -31700,6 +31750,7 @@ async function boot() {
     restoreUi();
     beatPresence();
     render();
+    if (offerPhoneInstall()) render();
     refreshSky(true).then(() => {
       if (ui.role === "tenant") applySkyDom();
     }).catch(() => {});
