@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-23-52";
-const APP_EDIT_COUNT = 1185;
+const APP_STAMP = "2026-09-23-23-56";
+const APP_EDIT_COUNT = 1186;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0735";
+const FILE_VER = "0736";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["日曆的本月已繳印章下移，對準日期"] },
+  { ver: APP_VERSION, items: ["繳費日曆的已繳印章，統一蓋在每月1號"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14641,15 +14641,22 @@ function leaseCalMarks(t, r) {
     if (end && d > end) return;
     paid[d] = true;
   };
-  if (t && paidThisMonth(t)) stampDay((t && t.remitOn) || (t && t.paidAt) || (payYmNow() + "-01"));
-  (t && t.prepaidYm || []).forEach(ym => stampDay(String(ym || "").slice(0, 7) + "-01"));
+  const stampFirst = (raw) => {
+    const d = ymdOf(raw);
+    if (!d) return;
+    stampDay(d.slice(0, 7) + "-01");
+  };
+  if (t && paidThisMonth(t)) stampFirst(payYmNow() + "-01");
+  (t && t.prepaidYm || []).forEach(ym => stampFirst(String(ym || "").slice(0, 7) + "-01"));
   const no = String((r && r.no) || "");
   (state.books || []).forEach(b => {
     if (!b || b.type === "out") return;
     if (b.linkedTenantId && t && b.linkedTenantId !== t.id) return;
     if (!b.linkedTenantId && String(b.roomNo || "") !== no) return;
     if (!/租金|房租|rent-auto/.test(String(b.note || "") + " " + String(b.importTag || ""))) return;
-    stampDay(b.date);
+    const tag = String(b.importTag || "");
+    const auto = tag.indexOf("rent-auto-") === 0 ? tag.slice(10, 17) : "";
+    stampFirst(/^\d{4}-\d{2}$/.test(auto) ? auto + "-01" : b.date);
   });
   return { due, paid };
 }
