@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-07";
-const APP_EDIT_COUNT = 1145;
+const APP_STAMP = "2026-09-23-16-12";
+const APP_EDIT_COUNT = 1146;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0695";
+const FILE_VER = "0696";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
+  { ver: APP_VERSION, items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
+  { ver: "2026-09-23-16-07-1145", items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
   { ver: "2026-09-23-15-50-1143", items: ["押金設算息直式表格拉滿整張 A4"] },
   { ver: "2026-09-23-15-48-1142", items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-46-1141", items: ["發票總覽直式橫式改成白塊滑動切換"] },
@@ -2632,13 +2633,22 @@ function payBankDisplay(key) {
   if (k === "兆豐" || k === "統潔兆豐") return "統潔兆豐";
   return k;
 }
+function studioRenewedForMega(t, r) {
+  if (!t || t.former || t.demo || t.incoming) return false;
+  if (r && (roomIsFactory(r) || r.status === "office")) return false;
+  const no = String((r && r.no) || "");
+  if (typeof renewDecisionOf === "function" && renewDecisionOf(no) === "no") return false;
+  if (typeof renewDecisionOf === "function" && renewDecisionOf(no) === "yes") return true;
+  if (/已續約/.test(String(t.note || ""))) return true;
+  const list = (typeof state !== "undefined" && state && state.renewals) || [];
+  return list.some(x => x && (x.status === "done" || x.status === "applied") && (
+    x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
+  ));
+}
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
-  const item = typeof renewalForInvoice === "function" ? renewalForInvoice(t, r) : null;
-  if (item && ((typeof renewalStartReached === "function" && renewalStartReached(item)) || (item.start && String(payYmNow()).slice(0, 7) >= String(item.start).slice(0, 7)))) {
-    return NEW_TENANT_PAY_BANK;
-  }
+  if (studioRenewedForMega(t, r)) return NEW_TENANT_PAY_BANK;
   if (t && t.payBank === "兆豐") return "兆豐";
   const start = ymdOf((t && t.leaseStart) || "");
   if (start && start >= NEW_TENANT_SINCE) return (t && t.payBank) || NEW_TENANT_PAY_BANK;
@@ -3639,7 +3649,7 @@ const TENANT_INFO = {
   "7622": { name: "邱育琳", phone: "0988-241-358", leaseStart: "2026-01-01", leaseEnd: "2026-12-31", deposit: 14000, bankLast5: "65380", payBank: "農會", note: "2押1租 21,000；水費年 1,800；電儲值 1,000；仲介 7,000" },
   "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 20000, payBank: "農會", note: "2押1租 30,000；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
   "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 1,800；電儲值 1,000；仲介 9,000；發票 RT00055074" },
-  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "農會", note: "已續約 115/8/25。新約 115/10/1～116/9/30，10/1 起生效。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200" },
+  "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "兆豐", note: "已續約 115/8/25。新約 115/10/1～116/9/30，10/1 起生效。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200。續約後改匯統潔兆豐。" },
   "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 18000, payBank: "農會", note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, payBank: "農會", note: "由 7242 換房；租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
   "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "掛名申辦租屋補助。實際對應 7251 呂佳芸居住（呂佳芸無法申請補助）。租約與 7251 同步。7651 為辦公室、登入走管理員。月租 5,000。" }
@@ -5230,6 +5240,7 @@ function normalize(data) {
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
   try { applyRenewal7632(data); } catch {}
+  try { applyRenewedPayBanks(data); } catch {}
   try { applyClearForgottenHearts(data); } catch {}
   try { applyClearRecentHearts(data); } catch {}
   try { applyClearStarPair(data); } catch {}
@@ -6749,7 +6760,7 @@ function applyRenewal7632(data) {
     put(t, "leases", [{ kind: "year", start: oldStart, end: oldEnd, rent: 14000 }]);
     put(t, "rent", 14000);
     put(room, "rent", 14000);
-    if (t.payBank === "兆豐") put(t, "payBank", "農會");
+    put(t, "payBank", "兆豐");
   } else if (row.status !== "applied") {
     put(row, "status", "done");
     try { applySignedRenewalLease(t, room, row); } catch {}
@@ -6884,6 +6895,11 @@ function completeRenewal(item) {
   item.waterCash = true;
   if (item.waterFee == null) item.waterFee = water;
   ensureRenewalWaterBook(state, item);
+  if (t) {
+    t.payBank = NEW_TENANT_PAY_BANK;
+    t.edited = true;
+    t.editedAt = Date.now();
+  }
   if (renewalStartReached(item) && t && r) applySignedRenewalLease(t, r, item);
   try { _ledgerCache = null; } catch {}
   save();
@@ -9156,6 +9172,7 @@ async function pullCloud() {
       try { applyRoom7611(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRenewal7632(state); } catch {}
+      try { applyRenewedPayBanks(state); } catch {}
       try { applyClearForgottenHearts(state); } catch {}
       try { applyClearRecentHearts(state); } catch {}
       try { applyClearStarPair(state); } catch {}
@@ -9241,6 +9258,7 @@ async function pullCloud() {
     try { applyFix7032SignAppoint(state); } catch {}
     try { applyFixLeaseSegments(state); } catch {}
     try { applyRenewal7632(state); } catch {}
+    try { applyRenewedPayBanks(state); } catch {}
     try { applyClearForgottenHearts(state); } catch {}
     try { applyClearRecentHearts(state); } catch {}
     try { applyClearStarPair(state); } catch {}
@@ -9851,6 +9869,7 @@ async function pushCloud() {
     try { applyRoom7611(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
+    try { applyRenewedPayBanks(payload); } catch {}
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
@@ -14660,6 +14679,30 @@ function pendingSignedRenewalOf(t) {
   if (!cur) return null;
   if (cur.status === "done" || cur.status === "applied") return cur;
   return null;
+}
+function applyRenewedPayBanks(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  let changed = false;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.incoming) return;
+    const room = (data.rooms || []).find(r => r && r.id === t.roomId);
+    if (!room || room.kind === "factory" || room.status === "office") return;
+    const no = String(room.no || "");
+    if (typeof renewDecisionOf === "function" && renewDecisionOf(no) === "no") return;
+    const signed = (typeof renewDecisionOf === "function" && renewDecisionOf(no) === "yes")
+      || /已續約/.test(String(t.note || ""))
+      || (data.renewals || []).some(x => x && (x.status === "done" || x.status === "applied") && (
+        x.tenantId === t.id || x.roomId === room.id || String(x.roomNo) === no
+      ));
+    if (!signed || t.payBank === "兆豐") return;
+    t.payBank = "兆豐";
+    t.edited = true;
+    t.editedAt = Date.now();
+    changed = true;
+  });
+  if (changed) {
+    try { markCloudDirty(); } catch {}
+  }
 }
 function tickDueRenewals() {
   if (!state || !Array.isArray(state.renewals) || !state.renewals.length) return;
@@ -21450,8 +21493,8 @@ function payView() {
       : pack.key === "農會"
         ? "請匯統潔　鳳山區農會"
         : "請匯" + (pack.primary && pack.primary.bank || "");
-  const megaHint = megaSoon
-    ? `<p class="small slide-left" style="margin-top:8px;padding:0 6px">新約 ${escapeHtml(renew.start || "")} 起改匯兆豐銀行（統潔 04009039686）。本月仍走目前帳戶。</p>`
+  const megaHint = megaSoon && !megaNow
+    ? `<p class="small slide-left" style="margin-top:8px;padding:0 6px">續約後改匯兆豐銀行（統潔 04009039686）。</p>`
     : "";
   const proofHint = paid
     ? ""
