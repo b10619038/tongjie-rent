@@ -716,6 +716,28 @@ html[data-theme="void"] .rent-stamp {
   gap: 8px;
 }
 .lease-cal-head .room-name { margin: 0; }
+.lease-cal-sub { margin-top: 10px; }
+.lease-pane { margin: 0; flex: 1; min-width: 0; }
+.lease-pane button { padding: 7px 4px; font-size: 13px; }
+.lease-cal-nav.is-hidden { display: none; }
+.lease-sheet { overflow: auto; }
+.pay-sheet { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pay-sheet th { text-align: left; color: #7a8a85; font-size: 11px; font-weight: 700; padding: 0 4px 6px; }
+.pay-sheet td { padding: 8px 4px; border-top: 1px solid rgba(23, 33, 31, .08); vertical-align: middle; white-space: nowrap; }
+.pay-sheet td:first-child { font-weight: 800; }
+.pay-seal-cell { position: relative; width: 36px; height: 32px; }
+.pay-seal {
+  width: 28px;
+  height: 28px;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  font-size: 7px;
+  border-width: 1px;
+  box-shadow: inset 0 0 0 1px var(--stamp);
+  transform: translate(-50%, -50%) rotate(-8deg);
+  transform-origin: center;
+}
 .lease-cal-x {
   width: 32px;
   height: 32px;
@@ -4124,7 +4146,8 @@ img.avatar { object-fit: cover; display: block; }
 .seg.is-factory .seg-bg,
 .seg.is-done .seg-bg,
 .seg.is-site .seg-bg,
-.seg.is-land .seg-bg { transform: translate3d(100%,0,0); }
+.seg.is-land .seg-bg,
+.seg.is-sheet .seg-bg { transform: translate3d(100%,0,0); }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
 .seg button {
   position: relative; z-index: 2; border: 0; background: transparent; border-radius: 999px;
