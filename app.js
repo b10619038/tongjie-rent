@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-28";
-const APP_EDIT_COUNT = 1150;
+const APP_STAMP = "2026-09-23-16-31";
+const APP_EDIT_COUNT = 1151;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0700";
+const FILE_VER = "0701";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客可點不續約，倒數列表會標出並排在續約完成上面"] },
+  { ver: APP_VERSION, items: ["租約剩餘天數倒數改成均速，不再中途頓一下"] },
+  { ver: "2026-09-23-16-28-1150", items: ["租客可點不續約，倒數列表會標出並排在續約完成上面"] },
   { ver: "2026-09-23-16-22-1149", items: ["倒數改到空套房右邊，未續約排上面並標出續約完成"] },
   { ver: "2026-09-23-16-17-1148", items: ["套房入帳銀行拿掉聯邦，只留農會、兆豐、現金"] },
   { ver: "2026-09-23-16-16-1147", items: ["匯款銀行下拉可以手動改，改完會留住"] },
@@ -14329,48 +14330,66 @@ function leaseRemainHtml(t, r) {
   if (renewed) return days + `<span class="remain-plus">+${extra}</span>`;
   return days;
 }
+let leaseCountRaf = 0;
 function playLeaseCountdown() {
-  document.querySelectorAll("[data-lease-count]").forEach(el => {
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const nodes = document.querySelectorAll("[data-lease-count]");
+  if (!nodes.length) return;
+  if (reduce) {
+    nodes.forEach(el => {
+      el.textContent = (el.dataset.to || "") + " 天";
+      ui.leaseCountKey = el.dataset.leaseCount || "";
+    });
+    ui.leaseCountLive = null;
+    if (leaseCountRaf) cancelAnimationFrame(leaseCountRaf);
+    leaseCountRaf = 0;
+    return;
+  }
+  nodes.forEach(el => {
     const key = el.dataset.leaseCount || "";
     const from = Number(el.dataset.from);
     const to = Number(el.dataset.to);
     if (!Number.isFinite(from) || !Number.isFinite(to) || from <= to) {
       el.textContent = (Number.isFinite(to) ? to : from) + " 天";
-      return;
-    }
-    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      el.textContent = to + " 天";
       ui.leaseCountKey = key;
-      ui.leaseCountLive = null;
       return;
     }
     let live = ui.leaseCountLive;
     if (!live || live.key !== key || live.done) {
-      live = { key, from, to, t0: performance.now(), value: from, done: false };
+      live = { key, from, to, t0: 0, value: from, done: false };
       ui.leaseCountLive = live;
     }
-    const ms = 860;
-    const ease = (p) => 1 - Math.pow(1 - p, 1.25);
-    const tick = (now) => {
-      if (!el.isConnected) return;
+    el.textContent = live.value + " 天";
+  });
+  if (leaseCountRaf) return;
+  const ms = 980;
+  const tick = (now) => {
+    const list = document.querySelectorAll("[data-lease-count]");
+    if (!list.length) { leaseCountRaf = 0; return; }
+    let running = false;
+    list.forEach(el => {
+      const key = el.dataset.leaseCount || "";
+      const live = ui.leaseCountLive;
+      if (!live || live.key !== key || live.done) return;
+      if (!live.t0) live.t0 = now;
       const p = Math.min(1, (now - live.t0) / ms);
-      const value = p >= 1 ? to : Math.round(from + (to - from) * ease(p));
+      const span = live.from - live.to;
+      const value = p >= 1 ? live.to : live.from - Math.floor(span * p);
       if (live.value !== value) {
         live.value = value;
         el.textContent = value + " 天";
       }
-      if (p < 1) requestAnimationFrame(tick);
-      else {
+      if (p >= 1) {
         live.done = true;
-        live.value = to;
-        el.textContent = to + " 天";
+        live.value = live.to;
+        el.textContent = live.to + " 天";
         ui.leaseCountKey = key;
         ui.leaseCountLive = null;
-      }
-    };
-    requestAnimationFrame(tick);
-  });
+      } else running = true;
+    });
+    leaseCountRaf = running ? requestAnimationFrame(tick) : 0;
+  };
+  leaseCountRaf = requestAnimationFrame(tick);
 }
 function renewalBonusDays(item) {
   const a = ymdOf(item && item.start);
@@ -27780,7 +27799,6 @@ function bindTenant() {
   flushTenantInbox();
   bindHowtoFold();
   bindDevChat();
-  playLeaseCountdown();
   const out = document.getElementById("logout-tenant");
   if (out) out.onclick = () => {
     if (isTenantLook()) { exitTenantLook(); return; }
@@ -28151,6 +28169,7 @@ function bindTenant() {
     render();
   };
   bindGhostPress();
+  requestAnimationFrame(() => playLeaseCountdown());
 }
 
 function captureMoveInDraft() {

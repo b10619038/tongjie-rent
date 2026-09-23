@@ -577,9 +577,10 @@ input, textarea, select {
 .lease-count {
   font-variant-numeric: tabular-nums;
   display: inline-block;
-  min-width: 5.2ch;
+  min-width: 5.6ch;
   text-align: right;
   font-feature-settings: "tnum";
+  font-synthesis: none;
 }
 .stat b .remain-plus,
 .v .remain-plus {
