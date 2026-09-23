@@ -620,10 +620,10 @@ input, textarea, select {
 .rent-stamp i { font-style: normal; }
 .rent-stamp.chop {
   z-index: 4;
-  animation: rent-chop 1s cubic-bezier(.22, .72, .18, 1) .9s both;
+  animation: rent-chop 1s cubic-bezier(.22, .72, .18, 1) both;
 }
 .rent-stamp.chop i {
-  animation: rent-chop-ink 1s cubic-bezier(.22, .72, .18, 1) .9s both;
+  animation: rent-chop-ink 1s cubic-bezier(.22, .72, .18, 1) both;
 }
 @keyframes rent-chop {
   0%, 18% {
