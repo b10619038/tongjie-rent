@@ -1148,6 +1148,14 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .row.wrap { align-items: flex-start; }
 .row.wrap .v { text-align: right; font-size: 13px; line-height: 1.5; }
 .water-fee-row { align-items: flex-start; }
+.elec-card { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.elec-card .field { margin: 8px 0; }
+.elec-card .btn-row { margin-top: 0; }
+.elec-logs { margin-top: 6px; }
+.elec-log { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+.elec-log span { color: var(--muted); }
+.elec-log b { margin-left: auto; font-weight: 700; }
+.elec-log button { border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 2px; }
 .water-fee-v,
 .lease-term-v {
   display: flex;

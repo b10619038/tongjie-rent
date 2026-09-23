@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-07";
-const APP_EDIT_COUNT = 1135;
+const APP_STAMP = "2026-09-23-15-18";
+const APP_EDIT_COUNT = 1136;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0685";
+const FILE_VER = "0686";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客姓名白底圖塊改成 80% 透明度"] },
+  { ver: APP_VERSION, items: ["水電可登記儲值卡一開始的金額，並記錄每次儲值"] },
+  { ver: "2026-09-23-15-07-1135", items: ["租客姓名白底圖塊改成 80% 透明度"] },
   { ver: "2026-09-23-15-04-1134", items: ["首頁雲朵持續飄，切去其他選單再回來不會從左邊重來"] },
   { ver: "2026-09-23-14-56-1133", items: ["租約剩餘天數倒數收尾不再頓一下"] },
   { ver: "2026-09-23-14-50-1132", items: ["租約剩餘天數從合約總天數快速倒數到今天"] },
@@ -8017,7 +8018,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "elecCard"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -8086,6 +8087,7 @@ function pickNewerEntity(a, b, keys) {
     out.lastNudgeAt = Math.max(Number(a && a.lastNudgeAt) || 0, Number(b && b.lastNudgeAt) || 0, Number(out.lastNudgeAt) || 0) || out.lastNudgeAt;
     out.hiddenInbox = [...new Set([].concat((a && a.hiddenInbox) || [], (b && b.hiddenInbox) || [], out.hiddenInbox || []))];
   }
+  if (keys && keys.indexOf("elecCard") >= 0) out.elecCard = mergeElecCards(a && a.elecCard, b && b.elecCard);
   if (keys && keys.indexOf("eSign") >= 0) {
     out.eSign = eSignNewer((a && a.eSign) || out.eSign, (b && b.eSign) || out.eSign);
   }
@@ -21508,6 +21510,132 @@ function roomPublicTitle(r) {
   if (typeof isStoreNo === "function" && isStoreNo(r.no)) return "店面";
   return r.title || "套房";
 }
+function mergeElecCards(a, b) {
+  if (!a && !b) return null;
+  if (!a) return b;
+  if (!b) return a;
+  const seen = new Set();
+  const logs = [];
+  [].concat(a.logs || [], b.logs || []).forEach(x => {
+    if (!x || !x.id || seen.has(String(x.id))) return;
+    seen.add(String(x.id));
+    const amount = Math.round(Number(x.amount) || 0);
+    if (amount <= 0) return;
+    logs.push({ id: String(x.id), at: String(x.at || ""), amount });
+  });
+  logs.sort((p, q) => String(q.at || "").localeCompare(String(p.at || "")));
+  const aAt = Number(a.startAt) || 0;
+  const bAt = Number(b.startAt) || 0;
+  const src = bAt >= aAt ? b : a;
+  const raw = src.start == null || src.start === "" ? (a.start != null && a.start !== "" ? a.start : b.start) : src.start;
+  const start = raw == null || raw === "" ? null : Math.round(Number(raw) || 0);
+  return { start, startAt: Math.max(aAt, bAt), logs };
+}
+function elecCardNow(t) {
+  if (typeof isDevPreview === "function" && isDevPreview()) {
+    if (!ui.devElecCard) ui.devElecCard = { start: null, startAt: 0, logs: [] };
+    return ui.devElecCard;
+  }
+  return (t && t.elecCard) || { start: null, startAt: 0, logs: [] };
+}
+function elecAdded(card) {
+  return (card && card.logs || []).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+}
+function elecBalance(card) {
+  if (!card || card.start == null || card.start === "") return null;
+  return Math.round(Number(card.start) || 0) + elecAdded(card);
+}
+function elecCardHtml(t) {
+  const card = elecCardNow(t);
+  const ready = card.start != null && card.start !== "";
+  const bal = elecBalance(card);
+  const logs = (card.logs || []).slice(0, 8);
+  const more = Math.max(0, (card.logs || []).length - logs.length);
+  return `<div class="elec-card">
+    <div class="row"><span class="k">儲值卡餘額</span><span class="v">${bal == null ? "尚未登記" : money(bal)}</span></div>
+    ${ready ? `<p class="small" style="margin:4px 0 0">一開始 ${money(card.start)}　已儲值 ${money(elecAdded(card))}</p>` : `<p class="small" style="margin:4px 0 0">先登記卡上原本的金額，之後每次儲值再記一筆。</p>`}
+    <p class="small">自己紀錄，機器扣下的電費不會自動減。</p>
+    ${logs.length ? `<div class="elec-logs">${logs.map(x => `<div class="elec-log"><span>${escapeHtml(String(x.at || "").slice(0, 16))}</span><b>+${money(x.amount)}</b><button type="button" data-elec-del="${escapeHtml(x.id)}" aria-label="刪除這筆">×</button></div>`).join("")}${more ? `<p class="small">還有 ${more} 筆</p>` : ""}</div>` : ""}
+    <form id="elec-card-form" class="elec-card-form">
+      ${ready ? `<label class="field"><span>這次儲值</span><input name="amt" type="text" inputmode="numeric" autocomplete="off" placeholder="例如 500" /></label>
+        <div class="btn-row">
+          <button class="btn-navy" type="submit">記錄儲值</button>
+          <button class="ghost" type="button" id="elec-edit-start">修改一開始</button>
+        </div>
+        <label class="field" id="elec-start-box" hidden><span>一開始卡上金額</span><input name="start" type="text" inputmode="numeric" autocomplete="off" value="${card.start}" /></label>`
+      : `<label class="field"><span>一開始卡上金額</span><input name="start" type="text" inputmode="numeric" autocomplete="off" placeholder="例如 1000" /></label>
+        <button class="btn-navy" type="submit">登記儲值卡</button>`}
+    </form>
+  </div>`;
+}
+function saveElecCard(card) {
+  if (typeof isDevPreview === "function" && isDevPreview()) {
+    ui.devElecCard = card;
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  const t = typeof me === "function" ? me() : null;
+  if (!t) return;
+  t.elecCard = card;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  try { save(true); } catch {}
+  try { if (typeof pushCloud === "function") pushCloud(); } catch {}
+  ui.keepScroll = true;
+  render();
+}
+function readMoneyInput(v) {
+  const n = Number(String(v || "").replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n);
+}
+function bindElecCard() {
+  const form = document.getElementById("elec-card-form");
+  const t = typeof me === "function" ? me() : null;
+  if (form) {
+    const edit = document.getElementById("elec-edit-start");
+    const box = document.getElementById("elec-start-box");
+    if (edit && box) edit.onclick = e => {
+      e.preventDefault();
+      box.hidden = !box.hidden;
+      const input = box.querySelector("input");
+      if (!box.hidden && input) input.focus();
+    };
+    form.onsubmit = e => {
+      e.preventDefault();
+      const card = Object.assign({ start: null, startAt: 0, logs: [] }, elecCardNow(t));
+      card.logs = (card.logs || []).slice();
+      const startEl = form.querySelector("[name=start]");
+      const amtEl = form.querySelector("[name=amt]");
+      const editingStart = startEl && (!amtEl || (box && !box.hidden) || !amtEl.value);
+      if (card.start == null || (startEl && box && !box.hidden) || (!amtEl && startEl)) {
+        const n = readMoneyInput(startEl && startEl.value);
+        if (n == null) { toast("請填卡上金額"); return; }
+        card.start = n;
+        card.startAt = Date.now();
+        saveElecCard(card);
+        toast("已登記一開始的金額");
+        return;
+      }
+      const n = readMoneyInput(amtEl && amtEl.value);
+      if (n == null || n <= 0) { toast("請填這次儲值的金額"); return; }
+      card.logs.unshift({ id: "ec" + Date.now(), at: nowStamp(), amount: n });
+      saveElecCard(card);
+      toast("已記下這次儲值");
+    };
+  }
+  document.querySelectorAll("[data-elec-del]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const id = btn.dataset.elecDel;
+      const card = Object.assign({ start: null, startAt: 0, logs: [] }, elecCardNow(t));
+      card.logs = (card.logs || []).filter(x => x && String(x.id) !== String(id));
+      saveElecCard(card);
+    };
+  });
+}
 function roomAmenityList(r) {
   if (r && r.kind === "factory") return (Array.isArray(r.amenities) && r.amenities.length) ? r.amenities : ["電力", "停車"];
   return AMENITIES.slice();
@@ -21532,6 +21660,7 @@ function roomExtrasHtml(r) {
           })(util.electric)}</span>
         </div>
         <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>年優惠NT$1800</span></span></div>
+        ${(r && typeof roomIsFactory === "function" && roomIsFactory(r)) ? "" : elecCardHtml(typeof me === "function" ? me() : null)}
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">
@@ -27803,6 +27932,7 @@ function bindTenant() {
       openMediaViewer([{ kind: "image", src: "images/electric-topup.jpg?v=1123", title: "5樓自助儲值機" }], 0, el.querySelector(".topup-origin") || el);
     };
   });
+  bindElecCard();
   const contracts = (myRoom() && myRoom().contractImages) || [];
   document.querySelectorAll("[data-contract]").forEach(img => {
     img.onclick = () => openContractViewer(contracts, Number(img.dataset.contract));
