@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-48";
-const APP_EDIT_COUNT = 1142;
+const APP_STAMP = "2026-09-23-15-50";
+const APP_EDIT_COUNT = 1143;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0692";
+const FILE_VER = "0693";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
+  { ver: APP_VERSION, items: ["押金設算息直式表格拉滿整張 A4"] },
+  { ver: "2026-09-23-15-48-1142", items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-46-1141", items: ["發票總覽直式橫式改成白塊滑動切換"] },
   { ver: "2026-09-23-15-43-1140", items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-38-1139", items: ["開立發票總覽改成 A4 直式滿版"] },
@@ -13472,7 +13473,7 @@ function drawDepositImputedCanvas(rows, kind, year, orient) {
   const footReserve = portrait ? 70 : 56;
   const avail = H - tableTop - headH - footReserve;
   const rowH = portrait
-    ? Math.max(30, Math.min(48, Math.floor(avail / n)))
+    ? Math.max(32, Math.floor(avail / n))
     : Math.min(46, Math.max(28, Math.floor(avail / Math.max(n, 8))));
   let x = pad;
   cols.forEach((c, i) => {
@@ -13497,7 +13498,7 @@ function drawDepositImputedCanvas(rows, kind, year, orient) {
     ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2, c.pw - 8);
   });
   const bodySize = portrait
-    ? Math.min(20, Math.max(15, Math.round(rowH * 0.42)))
+    ? Math.min(24, Math.max(16, Math.round(rowH * 0.34)))
     : Math.max(16, Math.round(rowH * 0.48));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
