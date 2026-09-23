@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-16";
-const APP_EDIT_COUNT = 1147;
+const APP_STAMP = "2026-09-23-16-17";
+const APP_EDIT_COUNT = 1148;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0697";
+const FILE_VER = "0698";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["匯款銀行下拉可以手動改，改完會留住"] },
+  { ver: APP_VERSION, items: ["套房入帳銀行拿掉聯邦，只留農會、兆豐、現金"] },
+  { ver: "2026-09-23-16-16-1147", items: ["匯款銀行下拉可以手動改，改完會留住"] },
   { ver: "2026-09-23-16-12-1146", items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
   { ver: "2026-09-23-16-07-1145", items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
   { ver: "2026-09-23-15-50-1143", items: ["押金設算息直式表格拉滿整張 A4"] },
@@ -26114,7 +26115,7 @@ function payAdminCardHtml(t, r) {
   if (!t) return "";
   const unpaid = !paidThisMonth(t);
   const bankNow = tenantPayBankKey(t, r) || "農會";
-  const banks = ["農會", "聯邦", "兆豐", "現金"];
+  const banks = roomIsFactory(r) ? ["農會", "聯邦", "兆豐", "現金"] : ["農會", "兆豐", "現金"];
   const amt = Number(t.paidAmt) > 0 ? Number(t.paidAmt) : payPanelAmount(t, r);
   const date = ymdOf(t.remitOn) || (unpaid ? todayYmd() : ymdOf(t.paidAt)) || todayYmd();
   const group = factoryGroupTenants(t, state);
@@ -26234,7 +26235,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       + (roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : "")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
-          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${(t && t.payBankLock && t.payBank === k) || (!(t && t.payBankLock) && tenantPayBankKey(t, r) === k) ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
+          ${["農會", "兆豐"].map(k => `<option value="${k}" ${(t && t.payBankLock && t.payBank === k) || (!(t && t.payBankLock) && tenantPayBankKey(t, r) === k) ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : "兆豐（新客・統潔）"}</option>`).join("")}
         </select></label>` : ""}
       ${kind !== "factory" ? teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date") : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
