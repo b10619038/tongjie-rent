@@ -3983,6 +3983,26 @@ img.avatar { object-fit: cover; display: block; }
   border-radius: 8px;
   transform-origin: center center;
 }
+.lightbox-bar .inv-paper {
+  display: flex;
+  flex: 0 0 auto;
+  background: rgba(255,255,255,.18);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.lightbox-bar .inv-paper button {
+  background: transparent;
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  box-shadow: none;
+}
+.lightbox-bar .inv-paper button.on {
+  background: #fff;
+  color: #1f3d2b;
+}
 html.preview-zoom,
 html.preview-zoom body {
   overflow: hidden;

@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-38";
-const APP_EDIT_COUNT = 1139;
+const APP_STAMP = "2026-09-23-15-43";
+const APP_EDIT_COUNT = 1140;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0689";
+const FILE_VER = "0690";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽改成 A4 直式滿版"] },
+  { ver: APP_VERSION, items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
+  { ver: "2026-09-23-15-38-1139", items: ["開立發票總覽改成 A4 直式滿版"] },
   { ver: "2026-09-23-15-27-1138", items: ["移除水電裡的儲值卡紀錄"] },
   { ver: "2026-09-23-15-24-1137", items: ["儲值卡改顯示已消費金額，時間會顯示到分鐘"] },
   { ver: "2026-09-23-15-18-1136", items: ["水電可登記儲值卡一開始的金額，並記錄每次儲值"] },
@@ -13547,27 +13548,33 @@ function showDepositImputedPreview() {
     downloadDepositImputedPdf(page, kind, year);
   };
 }
-function drawInvoiceOverviewCanvas(rows, kind) {
-  const W = 1754, H = 2480;
+function drawInvoiceOverviewCanvas(rows, kind, orient) {
+  const portrait = orient !== "landscape";
+  const W = portrait ? 1754 : 2480;
+  const H = portrait ? 2480 : 1754;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  const pad = 40;
+  const pad = portrait ? 40 : 44;
   const font = w => w + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+  const titleSize = portrait ? 36 : 42;
+  const dateSize = portrait ? 20 : 22;
+  const headSize = portrait ? 20 : 22;
+  const subSize = portrait ? 15 : 16;
   ctx.fillStyle = "#1f3d2b";
-  ctx.font = font("700 36px");
+  ctx.font = font("700 " + titleSize + "px");
   ctx.textBaseline = "top";
   ctx.fillText(kind === "factory" ? "統潔開發有限公司　廠房開立發票總覽" : "統潔開發有限公司　開立發票總覽", pad, 28);
-  ctx.font = font("600 20px");
+  ctx.font = font("600 " + dateSize + "px");
   ctx.fillStyle = "#5b6b62";
   const now = new Date();
   ctx.textAlign = "right";
-  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, 36);
+  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, portrait ? 36 : 38);
   ctx.textAlign = "left";
-  const cols = [
+  const cols = portrait ? [
     { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.11 },
     { k: "invoiceDate", h: "發票日期", w: 0.11, big: true },
     { k: "buyer", h: "買受人", w: 0.20, big: true },
@@ -13578,14 +13585,27 @@ function drawInvoiceOverviewCanvas(rows, kind) {
     { k: "end", h: "合約結束", w: 0.10 },
     { k: "left", h: "剩餘天數", w: 0.08 },
     { k: "renew", h: "續約", w: 0.06 }
+  ] : [
+    { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
+    { k: "invoiceDate", h: "發票日期", w: 0.10, big: true },
+    { k: "buyer", h: "買受人", w: 0.15, big: true },
+    { k: "room", h: "備註", h2: "（房號）", w: 0.10, big: true },
+    { k: "amount", h: "金額", w: 0.10, big: true },
+    { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
+    { k: "start", h: "合約開始", w: 0.11 },
+    { k: "end", h: "合約結束", w: 0.11 },
+    { k: "left", h: "剩餘天數", w: 0.08 },
+    { k: "renew", h: "續約", w: 0.08 }
   ];
-  const tableTop = 86;
-  const headH = 64;
+  const tableTop = portrait ? 86 : 92;
+  const headH = portrait ? 64 : 68;
   const tableW = W - pad * 2;
   const n = Math.max((rows || []).length, 1);
-  const footReserve = 78;
+  const footReserve = portrait ? 78 : 52;
   const avail = H - tableTop - headH - footReserve;
-  const rowH = Math.max(36, Math.floor(avail / n));
+  const rowH = portrait
+    ? Math.max(36, Math.floor(avail / n))
+    : Math.min(48, Math.max(34, Math.floor(avail / n)));
   let x = pad;
   cols.forEach((c, i) => {
     c.x = x;
@@ -13603,19 +13623,23 @@ function drawInvoiceOverviewCanvas(rows, kind) {
     ctx.lineTo(c.x, tableTop + headH);
     ctx.stroke();
     ctx.fillStyle = "#1f3d2b";
-    ctx.font = font("700 20px");
+    ctx.font = font("700 " + headSize + "px");
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     if (c.h2) {
       ctx.fillText(c.h, c.x + c.pw / 2, tableTop + 22);
-      ctx.font = font("500 15px");
+      ctx.font = font("500 " + subSize + "px");
       ctx.fillText(c.h2, c.x + c.pw / 2, tableTop + 46);
     } else {
       ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
     }
   });
-  const bodyBig = Math.min(26, Math.max(18, Math.round(rowH * 0.36)));
-  const bodySm = Math.min(22, Math.max(16, Math.round(rowH * 0.32)));
+  const bodyBig = portrait
+    ? Math.min(26, Math.max(18, Math.round(rowH * 0.36)))
+    : Math.max(20, Math.round(rowH * 0.52));
+  const bodySm = portrait
+    ? Math.min(22, Math.max(16, Math.round(rowH * 0.32)))
+    : Math.max(18, Math.round(rowH * 0.46));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
     ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
@@ -13648,8 +13672,8 @@ function drawInvoiceOverviewCanvas(rows, kind) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
-  ctx.font = font("500 16px");
-  const note = "續約欄有 ✓ 表示已續約。未繳者不填匯款日期。提前匯款發票開所屬月1日；1日當天或之後匯款發票開匯款日。不足月當月開日拆金額，次月起開一年約月租。A4 直式單面列印。";
+  ctx.font = font("500 " + (portrait ? 16 : 18) + "px");
+  const note = "續約欄有 ✓ 表示已續約。未繳者不填匯款日期。提前匯款發票開所屬月1日；1日當天或之後匯款發票開匯款日。不足月當月開日拆金額，次月起開一年約月租。A4 " + (portrait ? "直式" : "橫式") + "單面列印。";
   const lines = [];
   let line = "";
   for (const ch of note) {
@@ -13701,13 +13725,13 @@ async function downloadInvoiceOverviewPdf(page, kind) {
   if (!page) {
     const rows = invoiceOverviewRows(kind || (ui.tenantKind === "factory" ? "factory" : "studio"));
     if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
-    page = drawInvoiceOverviewCanvas(rows, kind);
+    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper || "portrait");
   }
   const n = new Date();
   const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
   const tag = kind === "factory" ? "廠房" : "套房";
   try {
-    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, false);
+    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, page.w > page.h);
     toast("已下載開立發票總覽");
   } catch (err) {
     try { console.error(err); } catch {}
@@ -13773,6 +13797,7 @@ function bindInvoicePreviewZoom(sc) {
     ty = Math.min(maxY, Math.max(-maxY, ty));
     img.style.transform = "translate3d(" + tx + "px," + ty + "px,0) scale(" + scale + ")";
   };
+  sc.resetZoom = () => { scale = 1; tx = 0; ty = 0; paint(); };
   img.style.transformOrigin = "center center";
   img.style.willChange = "transform";
   sc.style.touchAction = "none";
@@ -13851,19 +13876,44 @@ function showInvoiceOverviewPreview() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
   const rows = invoiceOverviewRows(kind);
   if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
-  const page = drawInvoiceOverviewCanvas(rows, kind);
+  ui.invoicePaper = "portrait";
+  let page = null;
+  const paint = () => {
+    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper);
+    const img = document.querySelector("#invoice-preview-box .invoice-preview-scroll img");
+    const sc = document.querySelector("#invoice-preview-box .invoice-preview-scroll");
+    if (img) img.src = page.dataUrl;
+    if (sc && sc.resetZoom) sc.resetZoom();
+    document.querySelectorAll("[data-inv-paper]").forEach(b => {
+      b.classList.toggle("on", b.dataset.invPaper === ui.invoicePaper);
+    });
+  };
   openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
-      <span>${kind === "factory" ? "廠房開立發票總覽預覽" : "開立發票總覽預覽"}</span>
+      <div class="inv-paper" role="tablist" aria-label="版面">
+        <button type="button" data-inv-paper="portrait">直式</button>
+        <button type="button" data-inv-paper="landscape">橫式</button>
+      </div>
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
-    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="開立發票總覽預覽"></div>`);
+    <div class="invoice-preview-scroll"><img src="" alt="開立發票總覽預覽"></div>`);
+  document.querySelectorAll("[data-inv-paper]").forEach(b => {
+    b.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = b.dataset.invPaper === "landscape" ? "landscape" : "portrait";
+      if (ui.invoicePaper === next) return;
+      ui.invoicePaper = next;
+      paint();
+    };
+  });
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     downloadInvoiceOverviewPdf(page, kind);
   };
+  paint();
 }
 function bindInvoiceOverviewBtn() {
   const btn = document.getElementById("invoice-overview-btn");
