@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-18-12";
-const APP_EDIT_COUNT = 1160;
+const APP_STAMP = "2026-09-23-19-32";
+const APP_EDIT_COUNT = 1161;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0710";
+const FILE_VER = "0711";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -448,6 +448,15 @@ const XUXU_AUG_CASH_BOOKS = [
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isTenantLook() { return !!(typeof ui !== "undefined" && ui && ui.tenantLook && ui.role === "tenant"); }
+function tenantPreviewBannerHtml() {
+  if (isDevPreview()) {
+    return `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>`;
+  }
+  if (isTenantLook()) {
+    return `<div class="preview-banner">正在從後台查看這位租客　本人登入不會看到這列<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>`;
+  }
+  return "";
+}
 function canPilotTenant() {
   if (typeof isDeveloper === "function" && isDeveloper()) return true;
   const back = typeof ui !== "undefined" && ui && ui.lookBack;
@@ -504,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["手機第一次打開會直接跳出安裝，Android 可一鍵安裝，iPhone 會帶加入主畫面"] },
+  { ver: APP_VERSION, items: ["租客設定的登出不再顯示返回後台，只有從後台查看時頂端才有返回"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20501,7 +20510,7 @@ function paintApp() {
     const onBtn = navKeep.querySelector("button.active");
     if (onBtn) ui.navPill = { x: Math.max(0, onBtn.offsetLeft - 3), w: onBtn.offsetWidth + 6 };
     scKeep.classList.toggle("tenant-still", !pageChanged);
-    scKeep.innerHTML = `${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
+    scKeep.innerHTML = `${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
     refreshNavButtons(navKeep);
     safeBind(() => {
       bindTenant();
@@ -20530,7 +20539,7 @@ function paintApp() {
     lastRenderPage = ui.page;
     return;
   }
-  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${isDevPreview() ? `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>` : ""}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   safeBind(() => {
     bindTenant();
     bindNavPill();
@@ -21538,7 +21547,7 @@ function homeView() {
   if (!t.id) {
     return `<div class="topbar">
       <div><div class="eyebrow">HOME</div><h1>租客</h1></div>
-      <button class="back" id="logout-tenant" type="button">${ui.devPreview || isTenantLook() ? "返回後台" : "登出"}</button>
+      <button class="back" id="logout-tenant" type="button">登出</button>
     </div>
     <div class="screen"><p class="lead">找不到這位租客，請返回後台再進一次。</p></div>`;
   }
@@ -21568,7 +21577,7 @@ function homeView() {
           </div>
         </div>
       </div>
-      <button class="back" id="logout-tenant" type="button">${ui.devPreview || isTenantLook() ? "返回後台" : isProspectPreview() ? "離開預覽" : "登出"}</button>
+      <button class="back" id="logout-tenant" type="button">${isProspectPreview() ? "離開預覽" : "登出"}</button>
     </div>
     <div class="screen">
       ${prospectNote}
@@ -27639,6 +27648,10 @@ function nameMatch(a, b) {
 }
 function enterTenant(room, tenant) {
   ui.role = "tenant";
+  ui.devPreview = false;
+  ui.tenantLook = false;
+  ui.lookBack = null;
+  ui.adminCode = "";
   ui.tenantId = tenant.id;
   ui.roomId = room.id;
   ui.roomNo = room.no;
@@ -29961,7 +29974,7 @@ function tenantSettings() {
       </div>
       ${lookSettingsHtml()}
       <div class="card card-body">
-        <button type="button" class="ghost" id="logout-set">${ui.devPreview || isTenantLook() ? "返回後台" : isProspectPreview() ? "離開預覽" : "登出"}</button>
+        <button type="button" class="ghost" id="logout-set">${isProspectPreview() ? "離開預覽" : "登出"}</button>
       </div>
     </div>`;
 }
