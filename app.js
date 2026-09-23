@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-15-46";
-const APP_EDIT_COUNT = 1141;
+const APP_STAMP = "2026-09-23-15-48";
+const APP_EDIT_COUNT = 1142;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0691";
+const FILE_VER = "0692";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票總覽直式橫式改成白塊滑動切換"] },
+  { ver: APP_VERSION, items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
+  { ver: "2026-09-23-15-46-1141", items: ["發票總覽直式橫式改成白塊滑動切換"] },
   { ver: "2026-09-23-15-43-1140", items: ["開立發票總覽可切換直式或橫式，下載跟著目前的版面"] },
   { ver: "2026-09-23-15-38-1139", items: ["開立發票總覽改成 A4 直式滿版"] },
   { ver: "2026-09-23-15-27-1138", items: ["移除水電裡的儲值卡紀錄"] },
@@ -13417,32 +13418,44 @@ function depositImputedRows(kind, year) {
   rows.sort((a, b) => String(a.addr || "").localeCompare(String(b.addr || ""), "zh-Hant") || String(a.name || "").localeCompare(String(b.name || ""), "zh-Hant"));
   return rows;
 }
-function drawDepositImputedCanvas(rows, kind, year) {
+function drawDepositImputedCanvas(rows, kind, year, orient) {
   year = Number(year || depositImputedYear());
-  const W = 2480, H = 1754;
+  const portrait = orient !== "landscape";
+  const W = portrait ? 1754 : 2480;
+  const H = portrait ? 2480 : 1754;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
-  const pad = 44;
+  const pad = portrait ? 36 : 44;
   const font = w => w + " \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
   const rocY = year - 1911;
   const totGross = rows.reduce((n, r) => n + (r.gross || 0), 0);
   const totNet = rows.reduce((n, r) => n + (r.net || 0), 0);
   const totTax = rows.reduce((n, r) => n + (r.tax || 0), 0);
   ctx.fillStyle = "#1f3d2b";
-  ctx.font = font("700 40px");
+  ctx.font = font("700 " + (portrait ? 32 : 40) + "px");
   ctx.textBaseline = "top";
   ctx.fillText("統潔開發有限公司　" + rocY + "年" + (kind === "factory" ? "廠房" : "套房") + "押金設算息", pad, 24);
-  ctx.font = font("600 20px");
+  ctx.font = font("600 " + (portrait ? 16 : 20) + "px");
   ctx.fillStyle = "#5b6b62";
-  ctx.fillText("利率 " + (postDepositRate(year) * 100).toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + "%　含稅＝押金×利率×月數÷12　未稅＝含稅÷1.05", pad, 72);
+  ctx.fillText("利率 " + (postDepositRate(year) * 100).toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + "%　含稅＝押金×利率×月數÷12　未稅＝含稅÷1.05", pad, portrait ? 68 : 72);
   ctx.textAlign = "right";
-  ctx.fillText("合計含稅 " + totGross.toLocaleString("zh-TW") + "　未稅 " + totNet.toLocaleString("zh-TW") + "　稅額 " + totTax.toLocaleString("zh-TW"), W - pad, 28);
+  ctx.font = font("600 " + (portrait ? 16 : 20) + "px");
+  ctx.fillText("合計含稅 " + totGross.toLocaleString("zh-TW") + "　未稅 " + totNet.toLocaleString("zh-TW") + "　稅額 " + totTax.toLocaleString("zh-TW"), W - pad, portrait ? 26 : 28);
   ctx.textAlign = "left";
-  const cols = [
+  const cols = portrait ? [
+    { k: "name", h: "名稱", w: 0.15, big: true, left: true },
+    { k: "addr", h: "地址", w: 0.29, left: true },
+    { k: "period", h: "租賃期間", w: 0.20 },
+    { k: "deposit", h: "押金", w: 0.09, big: true },
+    { k: "months", h: "期間", w: 0.06 },
+    { k: "gross", h: "設算息", w: 0.09, big: true },
+    { k: "net", h: "未稅", w: 0.06 },
+    { k: "tax", h: "稅額", w: 0.06 }
+  ] : [
     { k: "name", h: "名稱", w: 0.20, big: true, left: true },
     { k: "addr", h: "地址", w: 0.28, left: true },
     { k: "period", h: "租賃期間", w: 0.18 },
@@ -13452,12 +13465,15 @@ function drawDepositImputedCanvas(rows, kind, year) {
     { k: "net", h: "未稅", w: 0.05 },
     { k: "tax", h: "稅額", w: 0.05 }
   ];
-  const tableTop = 104;
-  const headH = 52;
+  const tableTop = portrait ? 104 : 104;
+  const headH = portrait ? 48 : 52;
   const tableW = W - pad * 2;
   const n = Math.max((rows || []).length, 1);
-  const avail = H - tableTop - headH - 56;
-  const rowH = Math.min(46, Math.max(28, Math.floor(avail / Math.max(n, 8))));
+  const footReserve = portrait ? 70 : 56;
+  const avail = H - tableTop - headH - footReserve;
+  const rowH = portrait
+    ? Math.max(30, Math.min(48, Math.floor(avail / n)))
+    : Math.min(46, Math.max(28, Math.floor(avail / Math.max(n, 8))));
   let x = pad;
   cols.forEach((c, i) => {
     c.x = x;
@@ -13475,11 +13491,14 @@ function drawDepositImputedCanvas(rows, kind, year) {
     ctx.lineTo(c.x, tableTop + headH);
     ctx.stroke();
     ctx.fillStyle = "#1f3d2b";
-    ctx.font = font("700 20px");
+    ctx.font = font("700 " + (portrait ? 18 : 20) + "px");
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
+    ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2, c.pw - 8);
   });
+  const bodySize = portrait
+    ? Math.min(20, Math.max(15, Math.round(rowH * 0.42)))
+    : Math.max(16, Math.round(rowH * 0.48));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
     ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
@@ -13495,11 +13514,11 @@ function drawDepositImputedCanvas(rows, kind, year) {
       let val = row[c.k];
       if (c.k === "deposit" || c.k === "gross" || c.k === "net" || c.k === "tax") val = Number(val) ? Number(val).toLocaleString("zh-TW") : "";
       ctx.fillStyle = "#24332a";
-      ctx.font = (c.big ? "700 " : "600 ") + Math.max(16, Math.round(rowH * 0.48)) + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
+      ctx.font = (c.big ? "700 " : "600 ") + bodySize + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
       ctx.textAlign = c.left ? "left" : "center";
       ctx.textBaseline = "middle";
-      const tx = c.left ? c.x + 10 : c.x + c.pw / 2;
-      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 16);
+      const tx = c.left ? c.x + 8 : c.x + c.pw / 2;
+      ctx.fillText(String(val == null ? "" : val), tx, y + rowH / 2, c.pw - 12);
     });
   });
   const bottom = tableTop + headH + rows.length * rowH;
@@ -13509,8 +13528,17 @@ function drawDepositImputedCanvas(rows, kind, year) {
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#5b6b62";
-  ctx.font = font("500 18px");
-  ctx.fillText("12 月開立" + (kind === "factory" ? "廠房" : "套房") + "設算息發票。不滿一個月不計。同約多戶押金已合併。　A4 橫式單面列印。", pad, Math.min(bottom + 12, H - 34));
+  ctx.font = font("500 " + (portrait ? 15 : 18) + "px");
+  const note = "12 月開立" + (kind === "factory" ? "廠房" : "套房") + "設算息發票。不滿一個月不計。同約多戶押金已合併。A4 " + (portrait ? "直式" : "橫式") + "單面列印。";
+  const lines = [];
+  let line = "";
+  for (const ch of note) {
+    const next = line + ch;
+    if (ctx.measureText(next).width > tableW && line) { lines.push(line); line = ch; }
+    else line = next;
+  }
+  if (line) lines.push(line);
+  lines.forEach((ln, i) => ctx.fillText(ln, pad, Math.min(bottom + 12 + i * 20, H - 24)));
   return { dataUrl: canvas.toDataURL("image/jpeg", 0.93), w: W, h: H };
 }
 async function downloadDepositImputedPdf(page, kind, year) {
@@ -13518,36 +13546,72 @@ async function downloadDepositImputedPdf(page, kind, year) {
   if (!page) {
     const rows = depositImputedRows(kind, year);
     if (!rows.length) { toast("目前沒有可計算設算息的" + (kind === "factory" ? "廠房" : "套房")); return; }
-    page = drawDepositImputedCanvas(rows, kind, year);
+    page = drawDepositImputedCanvas(rows, kind, year, ui.invoicePaper || "portrait");
   }
   const tag = kind === "factory" ? "廠房" : "套房";
   try {
-    await downloadJpegPagesPdf([page], `統潔-${year - 1911}年${tag}押金設算息.pdf`, true);
+    await downloadJpegPagesPdf([page], `統潔-${year - 1911}年${tag}押金設算息.pdf`, page.w > page.h);
     toast("已下載" + tag + "設算息");
   } catch (err) {
     try { console.error(err); } catch {}
     toast("下載失敗，請再試一次");
   }
 }
+function invoicePaperBarHtml() {
+  return `<div class="inv-paper" role="tablist" aria-label="版面">
+    <i class="inv-paper-bg"></i>
+    <button type="button" data-inv-paper="portrait" class="on">直式</button>
+    <button type="button" data-inv-paper="landscape">橫式</button>
+  </div>`;
+}
+function markInvoicePaper() {
+  document.querySelectorAll("#invoice-preview-box [data-inv-paper]").forEach(b => {
+    b.classList.toggle("on", b.dataset.invPaper === ui.invoicePaper);
+  });
+  const paper = document.querySelector("#invoice-preview-box .inv-paper");
+  if (paper) paper.classList.toggle("is-land", ui.invoicePaper === "landscape");
+}
+function bindInvoicePaper(onChange) {
+  document.querySelectorAll("#invoice-preview-box [data-inv-paper]").forEach(b => {
+    b.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = b.dataset.invPaper === "landscape" ? "landscape" : "portrait";
+      if (ui.invoicePaper === next) return;
+      ui.invoicePaper = next;
+      onChange();
+    };
+  });
+}
 function showDepositImputedPreview() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
   const year = depositImputedYear();
   const rows = depositImputedRows(kind, year);
   if (!rows.length) { toast("目前沒有可計算設算息的" + (kind === "factory" ? "廠房" : "套房")); return; }
-  const page = drawDepositImputedCanvas(rows, kind, year);
-  const tot = rows.reduce((n, r) => n + (r.gross || 0), 0);
+  ui.invoicePaper = "portrait";
+  let page = null;
+  const paint = () => {
+    page = drawDepositImputedCanvas(rows, kind, year, ui.invoicePaper);
+    const img = document.querySelector("#invoice-preview-box .invoice-preview-scroll img");
+    const sc = document.querySelector("#invoice-preview-box .invoice-preview-scroll");
+    if (img) img.src = page.dataUrl;
+    if (sc && sc.resetZoom) sc.resetZoom();
+    markInvoicePaper();
+  };
   openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
-      <span>${year - 1911}年${kind === "factory" ? "廠房" : "套房"}押金設算息　含稅 ${tot.toLocaleString("zh-TW")}</span>
+      ${invoicePaperBarHtml()}
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
-    <div class="invoice-preview-scroll"><img src="${page.dataUrl}" alt="押金設算息預覽"></div>`);
+    <div class="invoice-preview-scroll"><img src="" alt="押金設算息預覽"></div>`);
+  bindInvoicePaper(paint);
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
     downloadDepositImputedPdf(page, kind, year);
   };
+  paint();
 }
 function drawInvoiceOverviewCanvas(rows, kind, orient) {
   const portrait = orient !== "landscape";
@@ -13885,33 +13949,16 @@ function showInvoiceOverviewPreview() {
     const sc = document.querySelector("#invoice-preview-box .invoice-preview-scroll");
     if (img) img.src = page.dataUrl;
     if (sc && sc.resetZoom) sc.resetZoom();
-    document.querySelectorAll("[data-inv-paper]").forEach(b => {
-      b.classList.toggle("on", b.dataset.invPaper === ui.invoicePaper);
-    });
-    const paper = document.querySelector("#invoice-preview-box .inv-paper");
-    if (paper) paper.classList.toggle("is-land", ui.invoicePaper === "landscape");
+    markInvoicePaper();
   };
   openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
-      <div class="inv-paper" role="tablist" aria-label="版面">
-        <i class="inv-paper-bg"></i>
-        <button type="button" data-inv-paper="portrait" class="on">直式</button>
-        <button type="button" data-inv-paper="landscape">橫式</button>
-      </div>
+      ${invoicePaperBarHtml()}
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
     <div class="invoice-preview-scroll"><img src="" alt="開立發票總覽預覽"></div>`);
-  document.querySelectorAll("[data-inv-paper]").forEach(b => {
-    b.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const next = b.dataset.invPaper === "landscape" ? "landscape" : "portrait";
-      if (ui.invoicePaper === next) return;
-      ui.invoicePaper = next;
-      paint();
-    };
-  });
+  bindInvoicePaper(paint);
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
