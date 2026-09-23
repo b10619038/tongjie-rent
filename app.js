@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-00-46";
-const APP_EDIT_COUNT = 1195;
+const APP_STAMP = "2026-09-24-00-52";
+const APP_EDIT_COUNT = 1196;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0745";
+const FILE_VER = "0746";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費日曆的箭頭改粗"] },
+  { ver: APP_VERSION, items: ["點剩餘天數時，繳費日曆滑入不再整頁重畫"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -29498,13 +29498,53 @@ function placeLeaseCal(slide) {
   card.style.left = r.left + "px";
   card.style.width = r.width + "px";
   card.style.maxHeight = Math.max(240, window.innerHeight - r.top - 12) + "px";
+  card.style.willChange = "transform";
+  if (slide) {
+    card.style.transform = "translate3d(100%,0,0)";
+    card.style.overflow = "hidden";
+  }
   card.classList.add("is-placed");
-  if (!slide || !card.animate) return null;
+  if (!slide || !card.animate) {
+    card.style.transform = "translate3d(0,0,0)";
+    card.style.overflow = "";
+    card.style.willChange = "";
+    return null;
+  }
   try { card.getAnimations().forEach(a => a.cancel()); } catch {}
-  return card.animate(
-    [{ transform: "translateX(100%)" }, { transform: "translateX(0)" }],
-    { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
-  );
+  const run = () => {
+    const anim = card.animate(
+      [{ transform: "translate3d(100%,0,0)" }, { transform: "translate3d(0,0,0)" }],
+      { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
+    );
+    const done = () => {
+      card.style.transform = "translate3d(0,0,0)";
+      card.style.overflow = "";
+      card.style.willChange = "";
+    };
+    anim.onfinish = done;
+    anim.oncancel = done;
+  };
+  requestAnimationFrame(() => requestAnimationFrame(run));
+  return null;
+}
+function openLeaseCal() {
+  if (ui.leaseCalOpen || ui.leaseCalClosing) return;
+  const who = typeof me === "function" ? me() : null;
+  const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
+  const host = document.querySelector(".screen") || document.getElementById("app");
+  if (!who || !host) return;
+  ui.leaseCalOpen = true;
+  ui.leaseCalDir = 0;
+  ui.leaseCalEntered = true;
+  ui.leasePane = "cal";
+  ui.leaseSheetPage = 0;
+  ui.leaseCalYm = payYmNow();
+  const old = document.getElementById("lease-cal-mask");
+  if (old) old.remove();
+  host.insertAdjacentHTML("beforeend", leaseCalHtml(who, room));
+  holdTenantSlide();
+  wireLeaseCal(true);
+  placeLeaseCal(true);
 }
 function jumpLeaseCalToToday() {
   const todayYm = payYmNow();
@@ -29547,7 +29587,7 @@ function closeLeaseCal() {
     if (card.animate) {
       try { card.getAnimations().forEach(a => a.cancel()); } catch {}
       anim = card.animate(
-        [{ transform: "translateX(0)" }, { transform: "translateX(108%)" }],
+        [{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(108%,0,0)" }],
         { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
       );
     }
@@ -29563,17 +29603,14 @@ function bindLeaseCal() {
   if (leaseRemain) leaseRemain.onclick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (ui.leaseCalOpen || ui.leaseCalClosing) return;
-    ui.leaseCalOpen = true;
-    ui.leaseCalDir = 0;
-    ui.leaseCalEntered = false;
-    ui.leasePane = "cal";
-    ui.leaseSheetPage = 0;
-    ui.leaseCalYm = payYmNow();
-    render();
+    openLeaseCal();
   };
+  wireLeaseCal(false);
+}
+function wireLeaseCal(skipPlace) {
   const leaseCalMask = document.getElementById("lease-cal-mask");
-  if (!leaseCalMask) return;
+  if (!leaseCalMask || leaseCalMask.dataset.wired === "1") return;
+  leaseCalMask.dataset.wired = "1";
   const shiftCal = (dir) => {
     if (ui.leasePane === "sheet") {
       const who = typeof me === "function" ? me() : null;
@@ -29623,6 +29660,10 @@ function bindLeaseCal() {
     );
   }
   leaseCalMask.onclick = e => { if (e.target === leaseCalMask) closeLeaseCal(); };
+  if (skipPlace) {
+    ui.leaseCalDir = 0;
+    return;
+  }
   const slideIn = !ui.leaseCalDir && !ui.leaseCalEntered;
   if (slideIn) ui.leaseCalEntered = true;
   placeLeaseCal(slideIn);
