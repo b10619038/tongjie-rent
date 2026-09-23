@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-04";
-const APP_EDIT_COUNT = 1118;
+const APP_STAMP = "2026-09-23-12-10";
+const APP_EDIT_COUNT = 1119;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0668";
+const FILE_VER = "0669";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
+  { ver: APP_VERSION, items: ["公告愛心先收起；點愛心可看是哪些房號"] },
+  { ver: "2026-09-23-12-04-1118", items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
   { ver: "2026-09-23-11-58-1117", items: ["偵測到新版本直接換上，不用再點兩次"] },
   { ver: "2026-09-23-11-53-1116", items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
   { ver: "2026-09-23-11-28-1115", items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
@@ -5178,6 +5179,7 @@ function normalize(data) {
   try { applyClear7042TestSign(data); } catch {}
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
+  try { applyClearForgottenHearts(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -8999,6 +9001,7 @@ async function pullCloud() {
       try { applyFix7032SignAppoint(state); } catch {}
       try { applyRoom7611(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
+      try { applyClearForgottenHearts(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -9079,6 +9082,7 @@ async function pullCloud() {
     applyRenewal7032(state);
     try { applyFix7032SignAppoint(state); } catch {}
     try { applyFixLeaseSegments(state); } catch {}
+    try { applyClearForgottenHearts(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -9685,6 +9689,7 @@ async function pushCloud() {
     try { applyFix7032SignAppoint(payload); } catch {}
     try { applyRoom7611(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
+    try { applyClearForgottenHearts(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
@@ -20475,11 +20480,47 @@ function reactionCounts(a) {
   Object.keys(rec).forEach(id => { if (rec[id]) heart++; });
   return { heart };
 }
+function reactionWho(a) {
+  const rec = Object.assign({}, (a && a.reactions) || {});
+  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id] && ui.tenantId) rec[ui.tenantId] = "heart";
+  const rows = [];
+  Object.keys(rec).forEach(id => {
+    if (!rec[id]) return;
+    const t = ((typeof state !== "undefined" && state.tenants) || []).find(x => x && String(x.id) === String(id));
+    const r = t && ((state.rooms || []).find(x => x && x.id === t.roomId));
+    rows.push({ id, no: (r && r.no) || "", name: (t && t.name) || "住戶" });
+  });
+  rows.sort((a, b) => String(a.no).localeCompare(String(b.no), "zh-Hant"));
+  return rows;
+}
 function reactBarHtml(a) {
   const n = reactionCounts(a).heart;
   if (!n) return `<div class="ann-react" data-react-ann="${a.id}" hidden></div>`;
   const mine = ui.tenantId && (((a.reactions || {})[ui.tenantId]) || (isDevPreview() && ui.devReactions && ui.devReactions[a.id]));
-  return `<div class="ann-react" data-react-ann="${a.id}"><span data-react-kind="heart" class="${mine ? "on" : ""} has">❤️<em>${n}</em></span></div>`;
+  const open = ui.reactWho === a.id;
+  const who = open ? reactionWho(a) : [];
+  const list = open ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml((x.no ? x.no + " " : "") + x.name)}</span>`).join("") || `<span>還沒有人按愛心</span>`}</div>` : "";
+  return `<div class="ann-react${open ? " open" : ""}" data-react-ann="${a.id}"><button type="button" data-react-who="${a.id}" class="${mine ? "on" : ""} has" aria-label="看是哪些房號按了愛心">❤️<em>${n}</em></button>${list}</div>`;
+}
+function applyClearForgottenHearts(data) {
+  if (!data || !Array.isArray(data.announcements)) return;
+  let dirty = false;
+  data.announcements.forEach(a => {
+    if (!a || String(a.id) !== "a1788790357596") return;
+    if (a.heartEpoch) return;
+    const rec = a.reactions || {};
+    if (Object.keys(rec).some(k => rec[k])) {
+      a.reactions = {};
+      dirty = true;
+    }
+    a.heartEpoch = 1;
+    a.edited = true;
+    a.editedAt = Date.now();
+    dirty = true;
+  });
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
 }
 function startAnnounceEdit(id) {
   const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
@@ -28272,6 +28313,16 @@ function popAnnounceCard(card) {
   setTimeout(() => burst.remove(), 650);
 }
 function bindAnnounceReactions() {
+  document.querySelectorAll("[data-react-who]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.reactWho;
+      ui.reactWho = ui.reactWho === id ? "" : id;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-read-announce]").forEach(card => {
     if (ui.role !== "tenant" || !ui.tenantId) return;
     let lastTap = 0;

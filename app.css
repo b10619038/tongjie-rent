@@ -4414,19 +4414,25 @@ html.preview-zoom body {
   100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
 }
 .ann-react {
-  display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px;
+  display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px;
 }
-.ann-react span {
+.ann-react button {
   position: relative; font-size: 18px; opacity: .42;
   user-select: none; line-height: 1;
+  border: 0; background: transparent; padding: 0; cursor: pointer;
 }
-.ann-react span.has { opacity: .92; }
-.ann-react span.on { opacity: 1; transform: none; }
+.ann-react button.has { opacity: .92; }
+.ann-react button.on { opacity: 1; }
 .ann-react em {
   position: absolute; top: -6px; right: -8px;
   font-size: 10px; font-style: normal; font-weight: 800;
   color: var(--teal); background: var(--card); border-radius: 99px;
   min-width: 14px; text-align: center;
+}
+.ann-who {
+  flex: 1 0 100%;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  font-size: 13px; font-weight: 650; color: var(--ink);
 }
 .ver {
   position: fixed;
