@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-17";
-const APP_EDIT_COUNT = 1148;
+const APP_STAMP = "2026-09-23-16-22";
+const APP_EDIT_COUNT = 1149;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0698";
+const FILE_VER = "0699";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["套房入帳銀行拿掉聯邦，只留農會、兆豐、現金"] },
+  { ver: APP_VERSION, items: ["倒數改到空套房右邊，未續約排上面並標出續約完成"] },
+  { ver: "2026-09-23-16-17-1148", items: ["套房入帳銀行拿掉聯邦，只留農會、兆豐、現金"] },
   { ver: "2026-09-23-16-16-1147", items: ["匯款銀行下拉可以手動改，改完會留住"] },
   { ver: "2026-09-23-16-12-1146", items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
   { ver: "2026-09-23-16-07-1145", items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
@@ -25613,6 +25614,15 @@ function tenantRemainLabel(t, r) {
   if (n < 0) return "已到期";
   return "剩餘" + n + "日";
 }
+function tenantRenewDone(t, r) {
+  if (!t) return false;
+  if (/已續約/.test(String(t.note || ""))) return true;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  const no = r && String(r.no || "");
+  return ((state && state.renewals) || []).some(x => x && (x.status === "done" || x.status === "applied") && (
+    x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
+  ));
+}
 function tenantPayChipMatch(t, r, chip) {
   if (!chip || chip === "vacant" || chip === "count") return true;
   if (!t || t.former || t.incoming) return false;
@@ -25763,6 +25773,9 @@ function tenantListOfKind(kind, opts) {
     return true;
   }).sort((a, b) => {
     if (tenantChipOn() === "count") {
+      const fa = tenantRenewDone(a) ? 1 : 0;
+      const fb = tenantRenewDone(b) ? 1 : 0;
+      if (fa !== fb) return fa - fb;
       const da = tenantRemainDays(a);
       const db = tenantRemainDays(b);
       if (da !== db) return da - db;
@@ -25795,7 +25808,7 @@ function tenantListOfKind(kind, opts) {
     }
     uniq.push(t);
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|cdone|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
   if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = uniq.map(t => t.id);
@@ -25806,9 +25819,11 @@ function tenantListOfKind(kind, opts) {
     const da = isDemoTenant(a) ? 0 : 1;
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
-    const aa = tenantApplyRank(a);
-    const ab = tenantApplyRank(b);
-    if (aa !== ab) return aa - ab;
+    if (tenantChipOn() !== "count") {
+      const aa = tenantApplyRank(a);
+      const ab = tenantApplyRank(b);
+      if (aa !== ab) return aa - ab;
+    }
     return (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999);
   });
   return uniq;
@@ -26348,7 +26363,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${kind === "factory" && r ? `<span class="who-room">${escapeHtml(displayRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">續約完成</span>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -27146,8 +27161,8 @@ function adminTenants() {
     <div class="card card-body tenant-search">
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
       <div class="tenant-search-chips" id="tenant-chip-row">
-        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">倒數</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空套房"}</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">倒數</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>
