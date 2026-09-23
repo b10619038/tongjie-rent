@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-22-30";
-const APP_EDIT_COUNT = 1170;
+const APP_STAMP = "2026-09-23-22-36";
+const APP_EDIT_COUNT = 1171;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0720";
+const FILE_VER = "0721";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["回首頁時不再中途重畫，天數倒數等房間圖卡到位後才跑"] },
+  { ver: APP_VERSION, items: ["7031 朱甫晟補上身分證字號與戶籍地址"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3790,7 +3790,7 @@ const TENANT_INFO = {
   "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
   "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
-  "7031": { name: "朱甫晟", phone: "0905-798-136", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
   "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。" },
@@ -7887,6 +7887,28 @@ function ensureStudioTenant(data, no) {
   if (!Number(room.deposit)) room.deposit = info.deposit != null ? info.deposit : studioDepositOf(room.rent);
   if (room.status === "vacant") room.status = "rented";
 }
+function applyId7031(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  const room = data.rooms.find(r => r && String(r.no) === "7031");
+  if (!room) return false;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && (x.roomId === room.id || sameTenantName(x.name, "朱甫晟")));
+  if (!t || (t.name && !sameTenantName(t.name, "朱甫晟"))) return false;
+  const idNo = "W100522226";
+  const address = "金門縣金城鎮古城里1鄰金門城125號";
+  const bit = "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。";
+  let changed = false;
+  if (t.idNo !== idNo) { t.idNo = idNo; changed = true; }
+  if (t.address !== address) { t.address = address; changed = true; }
+  if (!String(t.note || "").includes(idNo)) {
+    t.note = String(t.note || "").trim() ? (bit + String(t.note).trim()) : bit;
+    changed = true;
+  }
+  if (!changed) return false;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  return true;
+}
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   let dirty = false;
@@ -9376,6 +9398,7 @@ async function pullCloud() {
       applyRenewal7632(state);
       try { applyFix7032SignAppoint(state); } catch {}
       try { applyRoom7611(state); } catch {}
+      try { applyId7031(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewedPayBanks(state); } catch {}
@@ -9514,6 +9537,7 @@ async function pullCloud() {
     try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
     try { ensurePhoneLoginPasses(state); } catch {}
     try { applyRoom7611(state); } catch {}
+    try { applyId7031(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -10073,6 +10097,7 @@ async function pushCloud() {
     try { applyClear7042TestSign(payload); } catch {}
     try { applyFix7032SignAppoint(payload); } catch {}
     try { applyRoom7611(payload); } catch {}
+    try { applyId7031(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewedPayBanks(payload); } catch {}
