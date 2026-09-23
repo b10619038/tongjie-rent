@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-11-58";
-const APP_EDIT_COUNT = 1117;
+const APP_STAMP = "2026-09-23-12-04";
+const APP_EDIT_COUNT = 1118;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0667";
+const FILE_VER = "0668";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["偵測到新版本直接換上，不用再點兩次"] },
+  { ver: APP_VERSION, items: ["7611 租客租約頁改為 115/9/1 起，同步不會被舊日期蓋回"] },
+  { ver: "2026-09-23-11-58-1117", items: ["偵測到新版本直接換上，不用再點兩次"] },
   { ver: "2026-09-23-11-53-1116", items: ["7611 波波奇合約改為 115/9/1～120/12/31，發票總覽同步"] },
   { ver: "2026-09-23-11-28-1115", items: ["發票總覽合約日期與金額跟租約同一段；7021 續約打勾，6822、7631 不續約"] },
   { ver: "2026-09-23-11-23-1114", items: ["7631、7622、7032、7611 一年合約改跟起租日、到期日同一段"] },
@@ -2501,12 +2502,14 @@ function watchAppUpdate(reg) {
   setInterval(pollRemoteBuild, 20000);
 }
 let __reloading = false;
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
+    __reloading = true;
     try { persistLogin(); persistUi(); } catch {}
-    ui.updateReady = true;
-    try { ensureUpdateBar(); } catch { try { render(); } catch {} }
+    try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
+    const next = location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now();
+    try { location.replace(next); } catch { location.reload(); }
   });
 }
 function urlBase64ToUint8Array(b64) {
@@ -5527,7 +5530,7 @@ function applyRoom7051(data) {
   room.note = "月租 NT$ 6,000。不可申請租屋補助。";
   data.room7051Ver = ROOM_7051_VER;
 }
-const ROOM_7611_VER = "7611-bopoke-v3";
+const ROOM_7611_VER = "7611-bopoke-v4";
 function applyRoom7611(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7611");
@@ -8218,7 +8221,7 @@ function mqttParsePublish(buf) {
 function tenantViewSig() {
   const ts = (state.tenants || []).map(t => [
     t && t.id, t && t.roomId, t && t.paid ? 1 : 0, t && (t.paidYm || ""), t && (t.remitOn || ""), t && (t.paidAt || ""),
-    t && (t.name || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0
+    t && (t.name || ""), t && (t.leaseStart || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0
   ].join(":")).join("|");
   const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
@@ -8336,6 +8339,7 @@ function ingestPaidCloud(raw) {
         }
       });
     }
+    try { applyRoom7611(state); } catch {}
     applyPaidMarks(state);
     if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
@@ -8993,6 +8997,7 @@ async function pullCloud() {
       applyRenewal7221(state);
       applyRenewal7032(state);
       try { applyFix7032SignAppoint(state); } catch {}
+      try { applyRoom7611(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
@@ -9119,6 +9124,7 @@ async function pullCloud() {
     persistAvatars(state);
     try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
     try { ensurePhoneLoginPasses(state); } catch {}
+    try { applyRoom7611(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -9677,6 +9683,7 @@ async function pushCloud() {
     applyESigns(payload);
     try { applyClear7042TestSign(payload); } catch {}
     try { applyFix7032SignAppoint(payload); } catch {}
+    try { applyRoom7611(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
@@ -21326,6 +21333,7 @@ function eContractDocHtml(t, r) {
   </div>`;
 }
 function leaseView() {
+  try { applyRoom7611(state); } catch {}
   const t = me(); const r = myRoom();
   const pending = typeof pendingSignedRenewalOf === "function" ? pendingSignedRenewalOf(t) : null;
   const paperT = pending ? tenantForRenewPrint(t, r, pending) : t;
