@@ -1305,7 +1305,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .nav button { overflow: visible; }
 .nav button.active .nav-ic { transform: scale(1.34); }
 .nav button.land .nav-ic { animation: none; }
-.zoom-page { animation: none; transform: none; }
+.zoom-page { animation: none; transform: none; contain: layout style; }
 .zoom-page.keep-still { animation: none !important; transform: none !important; }
 .tenant-still .slide-left,
 .tenant-still .slide-right,

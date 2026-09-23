@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-22-24";
-const APP_EDIT_COUNT = 1169;
+const APP_STAMP = "2026-09-23-22-30";
+const APP_EDIT_COUNT = 1170;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0719";
+const FILE_VER = "0720";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["晚上的租客天氣改成黑夜、月亮和星星"] },
+  { ver: APP_VERSION, items: ["回首頁時不再中途重畫，天數倒數等房間圖卡到位後才跑"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4909,20 +4909,19 @@ function playHomeSlides() {
       { duration: 900, easing: ease, fill: "both" }
     );
   };
-  document.querySelectorAll(".ann-card").forEach((el, i) => {
-    setTimeout(() => run(el, "translateX(-80%)"), i * 70);
-  });
+  run(document.querySelector(".ann-list"), "translateX(-36%)");
   run(document.querySelector(".hello-card"), "translateX(-80%)");
   const heroAnim = run(document.querySelector(".hero-card"), "translateX(80%)");
   const stamp = document.querySelector(".rent-stamp.chop-wait");
-  if (!stamp) return;
-  const go = () => {
-    if (!stamp.isConnected) return;
-    stamp.classList.remove("chop-wait");
-    stamp.classList.add("chop");
+  const after = () => {
+    if (stamp && stamp.isConnected) {
+      stamp.classList.remove("chop-wait");
+      stamp.classList.add("chop");
+    }
+    try { playLeaseCountdown(); } catch {}
   };
-  if (heroAnim && heroAnim.finished) heroAnim.finished.then(go).catch(go);
-  else setTimeout(go, 900);
+  if (heroAnim && heroAnim.finished) heroAnim.finished.then(after).catch(after);
+  else setTimeout(after, 900);
 }
 function amenityVideoHtml(src, poster) {
   return `<div class="photos photos-video slide-left">
@@ -20458,6 +20457,17 @@ function render() {
 function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
 }
+function holdTenantSlide() {
+  ui.slideLock = Date.now() + 1100;
+  ui.slideLockPending = false;
+  if (ui.slideLockTimer) clearTimeout(ui.slideLockTimer);
+  ui.slideLockTimer = setTimeout(() => {
+    ui.slideLockTimer = 0;
+    if (!ui.slideLockPending) return;
+    ui.slideLockPending = false;
+    render();
+  }, 1140);
+}
 function paintApp() {
   captureComposeDraft();
   persistUi();
@@ -20469,6 +20479,7 @@ function paintApp() {
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged;
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
+    ui.slideLockPending = true;
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     return;
@@ -20600,7 +20611,7 @@ function paintApp() {
       bindThemePicker();
       playRoomHero();
       if (pageChanged) {
-        ui.slideLock = Date.now() + 380;
+        holdTenantSlide();
         requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
       }
       bindPullRefresh();
@@ -20628,7 +20639,7 @@ function paintApp() {
     bindThemePicker();
     playRoomHero();
     if (pageChanged) {
-      ui.slideLock = Date.now() + 380;
+      holdTenantSlide();
       requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
     }
     bindPullRefresh();
@@ -21428,7 +21439,7 @@ function announceMediaHtml(a) {
     const kind = m.kind === "video" ? "video" : "image";
     const inner = kind === "video"
       ? `<video src="${m.src || ""}" muted playsinline></video>`
-      : `<img src="${m.src || ""}" alt="">`;
+      : `<img src="${m.src || ""}" alt="" decoding="async">`;
     return `<button type="button" class="ann-thumb" data-view-media="${escapeHtml(a.id)}|${kind}" data-view-idx="${i}">${inner}</button>`;
   }).join("");
   return `<div class="ann-thumbs">${thumbs}</div>`;
@@ -28398,7 +28409,7 @@ function bindTenant() {
     render();
   };
   bindGhostPress();
-  requestAnimationFrame(() => playLeaseCountdown());
+  if (!(ui.page === "home" && ui.stampChop)) requestAnimationFrame(() => playLeaseCountdown());
 }
 
 function captureMoveInDraft() {
