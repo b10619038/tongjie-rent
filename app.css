@@ -730,7 +730,13 @@ html[data-theme="void"] .rent-stamp {
 }
 .lease-pane button { padding: 7px 4px; font-size: 13px; }
 .lease-cal-nav.is-hidden { display: none; }
-.lease-sheet { overflow: auto; }
+.lease-cal-mask.is-full {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.lease-cal-mask.is-full::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.lease-sheet { overflow: visible; }
 .pay-sheet { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pay-sheet th { text-align: left; color: #7a8a85; font-size: 11px; font-weight: 700; padding: 0 4px 6px; }
 .pay-sheet td { padding: 8px 4px; border-top: 1px solid rgba(23, 33, 31, .08); vertical-align: middle; white-space: nowrap; }

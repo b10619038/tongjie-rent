@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-02-16";
-const APP_EDIT_COUNT = 1212;
+const APP_STAMP = "2026-09-24-02-22";
+const APP_EDIT_COUNT = 1213;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0762";
+const FILE_VER = "0763";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["不足月合約補上隔月1日，標題改成合約(不足月+1年)"] },
+  { ver: APP_VERSION, items: ["繳費總表照內容完整展開，右邊不再出現滾輪"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14945,6 +14945,7 @@ function paintLeasePane(dir) {
     void box.offsetWidth;
     box.style.animation = "";
   }
+  fitLeaseSheet();
 }
 function leaseRemainHtml(t, r) {
   const start = tenantOccupancyStart(t, r);
@@ -29611,6 +29612,37 @@ function bindTabPress(el) {
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
 }
+function fitLeaseSheet() {
+  const mask = document.getElementById("lease-cal-mask");
+  const card = mask && mask.querySelector(".lease-cal");
+  if (!mask || !card) return;
+  const sheet = ui.leasePane === "sheet";
+  mask.classList.toggle("is-full", sheet);
+  const hero = document.querySelector(".screen > .hero-card");
+  const r = hero ? hero.getBoundingClientRect() : null;
+  if (!sheet) {
+    if (!r) return;
+    card.style.position = "fixed";
+    card.style.top = r.top + "px";
+    card.style.left = r.left + "px";
+    card.style.marginTop = "";
+    card.style.marginLeft = "";
+    card.style.marginBottom = "";
+    card.style.maxHeight = Math.max(240, window.innerHeight - r.top - 12) + "px";
+    card.style.overflow = "auto";
+    return;
+  }
+  const top = r ? r.top : 12;
+  const left = r ? r.left : 16;
+  card.style.position = "relative";
+  card.style.top = "auto";
+  card.style.left = "auto";
+  card.style.marginTop = Math.max(12, top) + "px";
+  card.style.marginLeft = left + "px";
+  card.style.marginBottom = "28px";
+  card.style.maxHeight = "none";
+  card.style.overflow = "visible";
+}
 function placeLeaseCal(slide) {
   const hero = document.querySelector(".screen > .hero-card");
   const card = document.querySelector("#lease-cal-mask .lease-cal");
@@ -29628,8 +29660,8 @@ function placeLeaseCal(slide) {
   card.classList.add("is-placed");
   if (!slide || !card.animate) {
     card.style.transform = "translate3d(0,0,0)";
-    card.style.overflow = "";
     card.style.willChange = "";
+    fitLeaseSheet();
     return null;
   }
   try { card.getAnimations().forEach(a => a.cancel()); } catch {}
@@ -29640,8 +29672,8 @@ function placeLeaseCal(slide) {
     );
     const done = () => {
       card.style.transform = "translate3d(0,0,0)";
-      card.style.overflow = "";
       card.style.willChange = "";
+      fitLeaseSheet();
     };
     anim.onfinish = done;
     anim.oncancel = done;
