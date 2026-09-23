@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-01-40";
-const APP_EDIT_COUNT = 1207;
+const APP_STAMP = "2026-09-24-01-48";
+const APP_EDIT_COUNT = 1208;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0757";
+const FILE_VER = "0758";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費日曆的押金退還改成綠色圓點"] },
+  { ver: APP_VERSION, items: ["繳費總表第一天自動算2押1租、水費、電儲值，不足月另加日拆"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14750,27 +14750,58 @@ function leasePaidMap(t, r) {
   Object.keys((marks && marks.paid) || {}).forEach(d => { map[String(d).slice(0, 7)] = d; });
   return map;
 }
+function leaseSheetIsRenewal(t, r, sheet) {
+  if (!sheet || !t) return false;
+  if (sheet.label === "新合約") return true;
+  const start = ymdOf(sheet.start);
+  if (!start) return false;
+  const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
+  const roomNo = r ? String(r.no || "") : "";
+  return (list || []).some(x => {
+    if (!x || (x.status !== "done" && x.status !== "applied")) return false;
+    const hit = x.tenantId === t.id || (r && x.roomId === r.id) || (roomNo && String(x.roomNo) === roomNo);
+    return hit && ymdOf(x.start) === start;
+  });
+}
+function leaseMoveInBits(t, r, start) {
+  if (!start || (r && roomIsFactory(r))) return null;
+  const monthly = studioContractRent(t, r) || Number(r && r.rent) || Number(t && t.rent) || 0;
+  const deposit = Number(t && t.deposit) || Number(r && r.deposit) || (monthly > 0 ? monthly * 2 : 0);
+  const pack = studioLeasePack(start, monthly);
+  const stub = (pack.parts || []).find(p => p && p.kind === "stub");
+  const year = (pack.parts || []).find(p => p && p.kind === "year") || (pack.parts || [])[0];
+  const stubRent = stub ? (Number(stub.rent) || 0) : 0;
+  const firstMonth = year ? (Number(year.rent) || monthly) : monthly;
+  const water = studioWaterYearFee(t, r);
+  const elec = studioElecStoreFee(t, r);
+  return {
+    total: deposit + stubRent + firstMonth + water + elec,
+    covered: ymdOf(year && year.start) || start
+  };
+}
 function leasePayRows(t, r, sheet) {
   const paid = leasePaidMap(t, r);
   const start = ymdOf(sheet && sheet.start);
   const end = ymdOf(sheet && sheet.end);
   if (!start || !end) return [];
   const rows = [];
-  const push = (item, due) => {
+  const monthRent = (due) => tenantRentForYm(t, r, String(due).slice(0, 7)) || studioContractRent(t, r) || Number(t && t.rent) || 0;
+  const push = (due, amount) => {
     const ym = String(due).slice(0, 7);
-    const amount = tenantRentForYm(t, r, ym) || studioContractRent(t, r) || Number(t && t.rent) || 0;
     const actual = paid[ym] || "";
-    rows.push({ item, due, amount, actual, paid: !!actual });
+    rows.push({ due, amount, actual, paid: !!actual });
   };
-  push("首次繳費", start);
-  let y = Number(start.slice(0, 4));
-  let m = Number(start.slice(5, 7)) + 1;
+  const move = leaseSheetIsRenewal(t, r, sheet) ? null : leaseMoveInBits(t, r, start);
+  push(start, move && move.total ? move.total : monthRent(start));
+  const covered = move && move.covered ? move.covered : start;
+  let y = Number(covered.slice(0, 4));
+  let m = Number(covered.slice(5, 7)) + 1;
   let guard = 0;
   while (guard++ < 240) {
     if (m > 12) { m = 1; y += 1; }
     const ymd = y + "-" + String(m).padStart(2, "0") + "-01";
     if (ymd > end) break;
-    push(m + "月租金", ymd);
+    push(ymd, monthRent(ymd));
     m += 1;
   }
   return rows;
