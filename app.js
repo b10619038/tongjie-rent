@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-59";
-const APP_EDIT_COUNT = 1157;
+const APP_STAMP = "2026-09-23-17-02";
+const APP_EDIT_COUNT = 1158;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0707";
+const FILE_VER = "0708";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
+  { ver: APP_VERSION, items: ["資產平面圖可切換直式或橫式"] },
+  { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
   { ver: "2026-09-23-16-57-1156", items: ["官方 LINE 綁定成功會自動把頭貼同步進 App"] },
   { ver: "2026-09-23-16-48-1155", items: ["租約剩餘天數倒數改成先快後慢，1秒內順暢收尾"] },
   { ver: "2026-09-23-16-41-1154", items: ["倒數標籤改成剩XX日"] },
@@ -3929,6 +3930,7 @@ function assetMapPopHtml(spot) {
 }
 function assetMapHtml() {
   const z = Number(ui.assetMapZoom) > 0 ? Number(ui.assetMapZoom) : 1;
+  const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
   return `<div class="card card-body asset-map-card">
     <div class="row"><h2 class="dash-h">資產平面圖</h2>
@@ -3939,10 +3941,17 @@ function assetMapHtml() {
     </div>
     <div class="small" style="margin-bottom:8px">雙指開合放大，單指拖移。點灰色建物看出租與繳費。大樹不在這張圖。</div>
     <div class="map-legend"><span class="map-dot paid"></span>已繳　<span class="map-dot unpaid"></span>未繳　<span class="map-dot vacant"></span>空置</div>
-    <div class="asset-map-wrap" id="asset-map-wrap">
-      <div class="asset-map" id="asset-map" style="width:${Math.round(z * 100)}%">
-        <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
-        ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
+    <div class="seg ${portrait ? "" : "is-land"}" id="map-paper-seg">
+      <i class="seg-bg"></i>
+      <button type="button" class="${portrait ? "on" : ""}" data-map-paper="portrait">直式</button>
+      <button type="button" class="${portrait ? "" : "on"}" data-map-paper="landscape">橫式</button>
+    </div>
+    <div class="asset-map-wrap${portrait ? " is-portrait" : ""}" id="asset-map-wrap">
+      <div class="asset-map-turn" id="asset-map-turn"${portrait ? ` style="width:${Math.round(z * 100)}%"` : ""}>
+        <div class="asset-map" id="asset-map"${portrait ? "" : ` style="width:${Math.round(z * 100)}%"`}>
+          <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
+          ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
+        </div>
       </div>
     </div>
     <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>
@@ -3950,20 +3959,32 @@ function assetMapHtml() {
 }
 function bindAssetMap() {
   const wrap = document.getElementById("asset-map-wrap");
+  const turn = document.getElementById("asset-map-turn");
   const map = document.getElementById("asset-map");
   const pop = document.getElementById("asset-map-pop");
+  const frame = () => {
+    if (!wrap || !map) return;
+    const portrait = ui.assetMapPaper === "portrait";
+    const z = ui.assetMapZoom || 1;
+    wrap.classList.toggle("is-portrait", portrait);
+    if (turn) turn.style.width = portrait ? (z * 100) + "%" : "";
+    map.style.width = portrait ? "" : (z * 100) + "%";
+  };
+  const boxOf = () => turn || map;
   const applyZoomAt = (z, clientX, clientY) => {
     if (!wrap || !map) return;
     z = Math.max(1, Math.min(3, z));
     const rect = wrap.getBoundingClientRect();
+    const box = boxOf();
     const x = clientX == null ? rect.left + rect.width / 2 : clientX;
     const y = clientY == null ? rect.top + rect.height / 2 : clientY;
-    const mx = (x - rect.left + wrap.scrollLeft) / Math.max(1, map.offsetWidth);
-    const my = (y - rect.top + wrap.scrollTop) / Math.max(1, map.offsetHeight);
+    const mx = (x - rect.left + wrap.scrollLeft) / Math.max(1, box.offsetWidth);
+    const my = (y - rect.top + wrap.scrollTop) / Math.max(1, box.offsetHeight);
     ui.assetMapZoom = z;
-    map.style.width = (z * 100) + "%";
-    wrap.scrollLeft = mx * map.offsetWidth - (x - rect.left);
-    wrap.scrollTop = my * map.offsetHeight - (y - rect.top);
+    frame();
+    const next = boxOf();
+    wrap.scrollLeft = mx * next.offsetWidth - (x - rect.left);
+    wrap.scrollTop = my * next.offsetHeight - (y - rect.top);
   };
   document.querySelectorAll("[data-map-spot]").forEach(btn => {
     bindIosPress(btn);
@@ -3986,6 +4007,21 @@ function bindAssetMap() {
   const zout = document.getElementById("map-zoom-out");
   if (zin) { bindIosPress(zin); zin.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) + 0.35); }; }
   if (zout) { bindIosPress(zout); zout.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) - 0.35); }; }
+  const paperSeg = document.getElementById("map-paper-seg");
+  if (paperSeg) {
+    paperSeg.querySelectorAll("[data-map-paper]").forEach(b => {
+      bindIosPress(b);
+      b.onclick = e => {
+        e.preventDefault();
+        const next = b.dataset.mapPaper === "portrait" ? "portrait" : "landscape";
+        if ((ui.assetMapPaper || "landscape") === next) return;
+        ui.assetMapPaper = next;
+        setSegSide(paperSeg, next === "landscape", "", "is-land");
+        frame();
+        if (wrap) { wrap.scrollLeft = 0; wrap.scrollTop = 0; }
+      };
+    });
+  }
   if (!wrap || !map || wrap.dataset.mapPinch === "1") return;
   wrap.dataset.mapPinch = "1";
   let startDist = 0, startZ = 1, pinching = false, panning = false, panX = 0, panY = 0, sl = 0, st = 0;
