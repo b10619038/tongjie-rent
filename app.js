@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-12-44";
-const APP_EDIT_COUNT = 1122;
+const APP_STAMP = "2026-09-23-12-50";
+const APP_EDIT_COUNT = 1123;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0672";
+const FILE_VER = "0673";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["長按公告愛心可改成讚、花朵、星星或笑臉"] },
+  { ver: APP_VERSION, items: ["收回住戶門牌上剛按的兩顆星星"] },
+  { ver: "2026-09-23-12-44-1122", items: ["長按公告愛心可改成讚、花朵、星星或笑臉"] },
   { ver: "2026-09-23-12-18-1121", items: ["收回剛剛按的公告愛心"] },
   { ver: "2026-09-23-12-14-1120", items: ["點公告愛心只顯示房號，住戶之間都能看到"] },
   { ver: "2026-09-23-12-10-1119", items: ["公告愛心先收起；點愛心可看是哪些房號"] },
@@ -5184,6 +5185,7 @@ function normalize(data) {
   try { applyFixLeaseSegments(data); } catch {}
   try { applyClearForgottenHearts(data); } catch {}
   try { applyClearRecentHearts(data); } catch {}
+  try { applyClearStarPair(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -9007,6 +9009,7 @@ async function pullCloud() {
       try { applyFixLeaseSegments(state); } catch {}
       try { applyClearForgottenHearts(state); } catch {}
       try { applyClearRecentHearts(state); } catch {}
+      try { applyClearStarPair(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -9089,6 +9092,7 @@ async function pullCloud() {
     try { applyFixLeaseSegments(state); } catch {}
     try { applyClearForgottenHearts(state); } catch {}
     try { applyClearRecentHearts(state); } catch {}
+    try { applyClearStarPair(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -9697,6 +9701,7 @@ async function pushCloud() {
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
+    try { applyClearStarPair(payload); } catch {}
     const body = JSON.stringify(payload);
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
@@ -20569,6 +20574,29 @@ function applyClearRecentHearts(data) {
   });
   if (data.annHeartClear2 !== ANN_HEART_CLEAR2) {
     data.annHeartClear2 = ANN_HEART_CLEAR2;
+    dirty = true;
+  }
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
+}
+const ANN_HEART_CLEAR3 = "ann-heart-clear-v3";
+function applyClearStarPair(data) {
+  if (!data) return;
+  const cutoff = 1790138935786;
+  let dirty = false;
+  (data.announcements || []).forEach(a => {
+    if (!a || !a.reactions) return;
+    const ids = Object.keys(a.reactions).filter(k => a.reactions[k]);
+    if (!ids.length) return;
+    if (data.annHeartClear3 === ANN_HEART_CLEAR3 && Number(a.editedAt) > cutoff) return;
+    a.reactions = {};
+    a.edited = true;
+    a.editedAt = Date.now();
+    dirty = true;
+  });
+  if (data.annHeartClear3 !== ANN_HEART_CLEAR3) {
+    data.annHeartClear3 = ANN_HEART_CLEAR3;
     dirty = true;
   }
   if (dirty) {
