@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-16-12";
-const APP_EDIT_COUNT = 1146;
+const APP_STAMP = "2026-09-23-16-16";
+const APP_EDIT_COUNT = 1147;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0696";
+const FILE_VER = "0697";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -504,7 +504,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
+  { ver: APP_VERSION, items: ["匯款銀行下拉可以手動改，改完會留住"] },
+  { ver: "2026-09-23-16-12-1146", items: ["已續約的套房匯款銀行自動改統潔兆豐，發票和繳費頁同步"] },
   { ver: "2026-09-23-16-07-1145", items: ["租客篩選新增倒數，依剩餘天數由少到多排列"] },
   { ver: "2026-09-23-15-50-1143", items: ["押金設算息直式表格拉滿整張 A4"] },
   { ver: "2026-09-23-15-48-1142", items: ["押金設算息也可切換直式或橫式，下載跟著目前的版面"] },
@@ -2647,9 +2648,12 @@ function studioRenewedForMega(t, r) {
 }
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
+  const saved = t && t.payBank;
+  const picked = saved === "兆豐" || saved === "農會" || saved === "聯邦";
+  if (t && t.payBankLock && picked) return saved;
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
   if (studioRenewedForMega(t, r)) return NEW_TENANT_PAY_BANK;
-  if (t && t.payBank === "兆豐") return "兆豐";
+  if (picked) return saved;
   const start = ymdOf((t && t.leaseStart) || "");
   if (start && start >= NEW_TENANT_SINCE) return (t && t.payBank) || NEW_TENANT_PAY_BANK;
   if (t && t.payBank && t.payBank !== "聯邦") return t.payBank;
@@ -5721,7 +5725,7 @@ function applyOfficeSubsidyTenant(data) {
   if (info.phone) t.phone = info.phone;
   if (info.leaseStart) t.leaseStart = info.leaseStart;
   if (info.leaseEnd) t.leaseEnd = info.leaseEnd;
-  if (info.payBank) t.payBank = info.payBank;
+  if (info.payBank && !t.payBankLock) t.payBank = info.payBank;
   if (info.note) t.note = info.note;
 }
 function applyAug31Docs(data) {
@@ -6760,14 +6764,14 @@ function applyRenewal7632(data) {
     put(t, "leases", [{ kind: "year", start: oldStart, end: oldEnd, rent: 14000 }]);
     put(t, "rent", 14000);
     put(room, "rent", 14000);
-    put(t, "payBank", "兆豐");
+    if (!t.payBankLock) put(t, "payBank", "兆豐");
   } else if (row.status !== "applied") {
     put(row, "status", "done");
     try { applySignedRenewalLease(t, room, row); } catch {}
     put(t, "leaseStart", start);
     put(t, "leaseEnd", end);
     put(t, "leases", [{ kind: "year", start, end, rent: 14000 }]);
-    put(t, "payBank", "兆豐");
+    if (!t.payBankLock) put(t, "payBank", "兆豐");
     put(t, "rent", 14000);
     put(room, "rent", 14000);
   }
@@ -6895,7 +6899,7 @@ function completeRenewal(item) {
   item.waterCash = true;
   if (item.waterFee == null) item.waterFee = water;
   ensureRenewalWaterBook(state, item);
-  if (t) {
+  if (t && !t.payBankLock) {
     t.payBank = NEW_TENANT_PAY_BANK;
     t.edited = true;
     t.editedAt = Date.now();
@@ -7317,7 +7321,7 @@ function applyFactoryRoster(data) {
     if (info.rentUntaxed != null) t.rentUntaxed = info.rentUntaxed;
     if (info.invoiceAddr) t.address = info.invoiceAddr;
     if (info.dueDay) t.dueDay = info.dueDay;
-    if (info.payBank) t.payBank = info.payBank;
+    if (info.payBank && !t.payBankLock) t.payBank = info.payBank;
     if (info.payCompany) t.payCompany = info.payCompany;
     if (info.payWay) t.payWay = info.payWay;
     if (info.waterNote) t.waterNote = info.waterNote;
@@ -7522,8 +7526,10 @@ function applyTenantRoster(data) {
       if (info.bankLast5) t.bankLast5 = info.bankLast5;
       if (info.note) t.note = info.note;
       else if (info.shop && !t.note) t.note = "店面：" + info.shop;
-      if (info.payBank) t.payBank = info.payBank;
-      else if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
+      if (!t.payBankLock) {
+        if (info.payBank && !t.payBank) t.payBank = info.payBank;
+        else if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
+      }
       if (info.shop) {
         room.shop = info.shop;
         if (!t.note || t.note.indexOf("店面") < 0) t.note = (t.note ? t.note + "　" : "") + "店面：" + info.shop;
@@ -7619,7 +7625,7 @@ function foldStudioRoommateCards(data) {
     if (info.contactName) keep.contactName = info.contactName;
     if (info.leaseStart) keep.leaseStart = info.leaseStart;
     if (info.leaseEnd) keep.leaseEnd = info.leaseEnd;
-    if (info.payBank) keep.payBank = info.payBank;
+    if (info.payBank && !keep.payBankLock && !keep.payBank) keep.payBank = info.payBank;
     if (info.note) keep.note = info.note;
     if (info.deposit != null) keep.deposit = info.deposit;
     room.tenantId = keep.id;
@@ -8042,7 +8048,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -14694,7 +14700,7 @@ function applyRenewedPayBanks(data) {
       || (data.renewals || []).some(x => x && (x.status === "done" || x.status === "applied") && (
         x.tenantId === t.id || x.roomId === room.id || String(x.roomNo) === no
       ));
-    if (!signed || t.payBank === "兆豐") return;
+    if (!signed || t.payBankLock || t.payBank === "兆豐") return;
     t.payBank = "兆豐";
     t.edited = true;
     t.editedAt = Date.now();
@@ -26228,7 +26234,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       + (roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : "")
       + teField("押金", "deposit", t.id, r && r.id, r && r.deposit ? r.deposit : "", "number", "0")
       + `<label class="row te-row"><span class="k">匯款銀行</span><select class="v-edit" data-te="payBank" data-tid="${escapeHtml(t.id)}" data-rid="${escapeHtml(r && r.id || "")}">
-          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${tenantPayBankKey(t, r) === k ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
+          ${["農會", "兆豐", "聯邦"].map(k => `<option value="${k}" ${(t && t.payBankLock && t.payBank === k) || (!(t && t.payBankLock) && tenantPayBankKey(t, r) === k) ? "selected" : ""}>${k === "農會" ? "農會（舊客・統潔）" : k === "兆豐" ? "兆豐（新客・統潔）" : "聯邦"}</option>`).join("")}
         </select></label>` : ""}
       ${kind !== "factory" ? teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date") : ""}
       ${kind !== "factory" ? teField("本月收款日", "paidOn", t.id, r && r.id, tenantPaidOnValue(t), "date") : ""}
@@ -26429,6 +26435,7 @@ function applyLiveTenantEdit(el) {
     else if (r) r.deposit = neu;
   } else if (key === "payBank" && t) {
     t.payBank = val === "兆豐" || val === "聯邦" || val === "農會" ? val : "農會";
+    t.payBankLock = true;
   }
   save();
   clearTimeout(saveTimer);
@@ -26443,7 +26450,8 @@ function applyLiveTenantEdit(el) {
 }
 function bindTenantEdits() {
   document.querySelectorAll(".v-edit").forEach(el => {
-    el.addEventListener("pointerdown", e => e.stopPropagation());
+    el.addEventListener("pointerdown", e => { if (el.tagName !== "SELECT") e.stopPropagation(); });
+    el.addEventListener("mousedown", e => e.stopPropagation());
     el.addEventListener("click", e => e.stopPropagation());
     el.onchange = () => applyLiveTenantEdit(el);
     el.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } };
