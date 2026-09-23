@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-23-22-44";
-const APP_EDIT_COUNT = 1172;
+const APP_STAMP = "2026-09-23-22-52";
+const APP_EDIT_COUNT = 1173;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0722";
+const FILE_VER = "0723";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月已繳印章和剩餘天數倒數同時開始、同時停"] },
+  { ver: APP_VERSION, items: ["續約舊租客不再看到新客第一次付款明細"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14757,8 +14757,15 @@ function firstPayWayLabel(t, bits) {
   if (s.way === "split") return "現金 " + money(s.cash) + " ＋ 兆豐 " + money(s.mega);
   return "簽約現場現金";
 }
+function renewedTenant(t) {
+  if (!t) return false;
+  if (/已續約/.test(String(t.note || ""))) return true;
+  const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((typeof state !== "undefined" && state && state.renewals) || []));
+  return list.some(x => x && x.status !== "cancelled" && x.tenantId && x.tenantId === t.id);
+}
 function firstStudioPayDue(t, r) {
   if (!t || !r || roomIsFactory(r) || t.former || t.demo) return null;
+  if (renewedTenant(t)) return null;
   if (!isNewStudioTenant(t, r)) return null;
   const bits = firstStudioPayBits(t, r);
   const startYm = String(ymdOf(t.leaseStart || tenantOccupancyStart(t, r) || "") || "").slice(0, 7);
