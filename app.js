@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-03-51";
-const APP_EDIT_COUNT = 1362;
+const APP_STAMP = "2026-09-25-03-52";
+const APP_EDIT_COUNT = 1363;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0913";
+const FILE_VER = "0914";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["周邊景點圖示改回原本的定位點"] },
+  { ver: APP_VERSION, items: ["綁定LINE中間空格拿掉"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23033,7 +23033,7 @@ function homeView() {
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
         <button class="ghost" data-page="pay"><span class="btn-ic">${icon("pay")}</span>繳費租金</button>
-        <button class="ghost" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定 LINE</button>
+        <button class="ghost" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
         <button class="btn-navy" data-page="repair">我要報修</button>
@@ -32102,9 +32102,9 @@ function tenantSettings() {
       </div>
       ${bioSettingsHtml()}
       <div class="card card-body">
-        <div class="label">綁定 LINE</div>
+        <div class="label">綁定LINE</div>
         <div class="row"><span class="k">狀態</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>
-        <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px">${bound ? "再次綁定 LINE" : "綁定 LINE"}</button>
+        <button type="button" class="ghost" id="bind-line-set" style="margin-top:10px">${bound ? "再次綁定LINE" : "綁定LINE"}</button>
         <p class="small" style="margin-top:8px">${isHandoverRoom(r, t) ? "交接完成前，LINE 仍是目前這位租客。點交後請新客重新傳送「房號 姓名」。" : (r.lineCleared && !bound ? "請加入官方 LINE，傳送「" + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "」完成綁定。" : "加入後傳送「房號 姓名」，例如 " + escapeHtml(r.no || "") + " " + escapeHtml(t.name || "") + "。")}</p>
       </div>
       <div class="card card-body">
