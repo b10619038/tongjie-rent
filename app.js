@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-22-27";
-const APP_EDIT_COUNT = 1301;
+const APP_STAMP = "2026-09-24-22-33";
+const APP_EDIT_COUNT = 1302;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0852";
+const FILE_VER = "0853";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖關閉按鈕改成黑底白字"] },
+  { ver: APP_VERSION, items: ["平面圖點開不再黑畫面卡住"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13441,16 +13441,20 @@ function planFocusTransform(box, focus) {
 function openZoomPhoto(item, originEl) {
   closeMediaViewer();
   const origin = originEl && originEl.getBoundingClientRect ? originEl.getBoundingClientRect() : null;
+  const thumbSrc = originEl && originEl.tagName === "IMG" ? (originEl.currentSrc || originEl.src || "") : "";
+  const hdSrc = item.src || "";
+  const firstSrc = thumbSrc || hdSrc;
   const wrap = document.createElement("div");
   wrap.className = "photo-zoom";
   wrap.id = "media-box";
   wrap.innerHTML = `
     <div class="photo-zoom-bg"></div>
-    <img class="photo-zoom-img" src="${item.src}" alt="">
+    <img class="photo-zoom-img" alt="">
     <button type="button" class="photo-zoom-close" id="lb-close">關閉</button>
     ${item.title ? `<div class="photo-zoom-caption">${item.above ? `<div class="photo-zoom-above">${escapeHtml(item.above)}</div>` : ""}${escapeHtml(item.title)}</div>` : ""}`;
   document.body.appendChild(wrap);
   const img = wrap.querySelector(".photo-zoom-img");
+  img.src = firstSrc;
   const place = () => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -13493,12 +13497,29 @@ function openZoomPhoto(item, originEl) {
     img.style.transform = start === "none" ? "scale(.92)" : start;
     img.getBoundingClientRect();
     requestAnimationFrame(() => {
-      wrap.classList.add("on");
-      const dur = zoomRoom ? "1.15s" : ".42s";
-      img.style.transition = "transform " + dur + " cubic-bezier(.22,1,.36,1), border-radius " + dur + " cubic-bezier(.22,1,.36,1)";
-      img.style.transform = endTf;
-      img.style.borderRadius = "12px";
+      requestAnimationFrame(() => {
+        if (!wrap.isConnected || wrap.classList.contains("out")) return;
+        wrap.classList.add("on");
+        const dur = zoomRoom ? "1.15s" : ".42s";
+        img.style.transition = "transform " + dur + " cubic-bezier(.22,1,.36,1), border-radius " + dur + " cubic-bezier(.22,1,.36,1)";
+        img.style.transform = endTf;
+        img.style.borderRadius = "12px";
+      });
     });
+    if (hdSrc && firstSrc && hdSrc !== firstSrc) {
+      const hd = new Image();
+      let hdOk = false;
+      let moved = false;
+      const swap = () => {
+        if (!hdOk || !moved || !wrap.isConnected || wrap.classList.contains("out")) return;
+        img.src = hd.src;
+      };
+      hd.onload = () => { hdOk = true; swap(); };
+      hd.src = hdSrc;
+      if (hd.decode) hd.decode().then(() => { hdOk = true; swap(); }).catch(() => {});
+      const mark = () => { moved = true; swap(); };
+      setTimeout(mark, zoomRoom ? 1250 : 520);
+    }
     if (!zoomRoom && item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
       setTimeout(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
@@ -13530,8 +13551,21 @@ function openZoomPhoto(item, originEl) {
       img.style.borderRadius = "16px";
     };
   };
-  if (img.complete && img.naturalWidth) place();
-  else img.onload = place;
+  const startZoom = () => {
+    if (!wrap.isConnected || wrap.dataset.placed) return;
+    wrap.dataset.placed = "1";
+    place();
+  };
+  const begin = () => {
+    if (img.naturalWidth) startZoom();
+    else {
+      img.onload = startZoom;
+      img.onerror = startZoom;
+    }
+  };
+  if (img.decode) img.decode().then(begin).catch(begin);
+  else begin();
+  setTimeout(() => { if (wrap.isConnected) startZoom(); }, 800);
   document.getElementById("lb-close").onclick = e => { e.stopPropagation(); closeMediaViewer(); };
   wrap.addEventListener("click", e => {
     if (e.target === wrap || e.target.classList.contains("photo-zoom-bg")) closeMediaViewer();
