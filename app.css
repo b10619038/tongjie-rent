@@ -2402,10 +2402,10 @@ button.avatar-look.is-press { transform: scale(.94); }
   min-height: 59px;
 }
 .shell.admin-wide .tab {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.15;
-  padding: 0 12px;
+  padding: 0 14px;
   min-height: 59px;
   display: inline-flex;
   align-items: center;
