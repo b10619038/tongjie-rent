@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-22-03";
-const APP_EDIT_COUNT = 1293;
+const APP_STAMP = "2026-09-24-22-06";
+const APP_EDIT_COUNT = 1294;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0844";
+const FILE_VER = "0845";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6821 房號圖卡縮小一半"] },
+  { ver: APP_VERSION, items: ["6821 平面圖先放大，點藍點才縮進房間"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13427,6 +13427,28 @@ function closeMediaViewer() {
   }
   el.remove();
 }
+function planFocusTransform(box, focus) {
+  const vw = box.vw, vh = box.vh, tw = box.tw, th = box.th, tx = box.tx, ty = box.ty;
+  const fcx = (focus.x + focus.w / 2) * tw;
+  const fcy = (focus.y + focus.h / 2) * th;
+  const fw = focus.w * tw;
+  const fh = focus.h * th;
+  const zs = Math.min((vw * 0.9) / fw, (vh * 0.78) / fh);
+  const dx = vw / 2 - tx - tw / 2 - (fcx - tw / 2) * zs;
+  const dy = vh / 2 - ty - th / 2 - (fcy - th / 2) * zs;
+  return "translate(" + dx + "px, " + dy + "px) scale(" + zs + ")";
+}
+function showPlanRoomBadge(wrap, label) {
+  if (!label || !wrap.isConnected || wrap.classList.contains("out")) return;
+  let badge = wrap.querySelector(".plan-room-badge");
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.className = "plan-room-badge";
+    badge.textContent = label;
+    wrap.appendChild(badge);
+  }
+  requestAnimationFrame(() => { if (wrap.isConnected && !wrap.classList.contains("out")) badge.classList.add("on"); });
+}
 function openZoomPhoto(item, originEl) {
   closeMediaViewer();
   const origin = originEl && originEl.getBoundingClientRect ? originEl.getBoundingClientRect() : null;
@@ -13471,29 +13493,37 @@ function openZoomPhoto(item, originEl) {
       img.style.borderRadius = "12px";
     });
     const focus = item && item.focus;
+    const box = { vw, vh, tw, th, tx, ty };
+    const beginRoomZoom = () => {
+      if (!wrap.isConnected || wrap.classList.contains("out") || !focus || !(focus.w > 0)) return;
+      img.style.transition = "transform 1.6s cubic-bezier(.22,1,.36,1)";
+      img.style.transform = planFocusTransform(box, focus);
+      if (item.label) setTimeout(() => showPlanRoomBadge(wrap, item.label), 1620);
+    };
     if (focus && focus.w > 0 && focus.h > 0) {
-      const fcx = (focus.x + focus.w / 2) * tw;
-      const fcy = (focus.y + focus.h / 2) * th;
-      const fw = focus.w * tw;
-      const fh = focus.h * th;
-      const zs = Math.min((vw * 0.9) / fw, (vh * 0.78) / fh);
-      const dx = vw / 2 - tx - tw / 2 - (fcx - tw / 2) * zs;
-      const dy = vh / 2 - ty - th / 2 - (fcy - th / 2) * zs;
-      const zoomTf = "translate(" + dx + "px, " + dy + "px) scale(" + zs + ")";
+      setTimeout(beginRoomZoom, 460);
+    } else if (item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
       setTimeout(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
-        img.style.transition = "transform 1.6s cubic-bezier(.22,1,.36,1)";
-        img.style.transform = zoomTf;
-        if (item.label) {
-          const badge = document.createElement("div");
-          badge.className = "plan-room-badge";
-          badge.textContent = item.label;
-          wrap.appendChild(badge);
-          setTimeout(() => {
-            if (!wrap.isConnected || wrap.classList.contains("out")) return;
-            badge.classList.add("on");
-          }, 1620);
-        }
+        const rect = img.getBoundingClientRect();
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "plan-zoom-dot";
+        dot.setAttribute("aria-label", item.roomLabel || "房間");
+        dot.style.left = (rect.left + rect.width * item.dot.x) + "px";
+        dot.style.top = (rect.top + rect.height * item.dot.y) + "px";
+        dot.onclick = ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (dot.dataset.used) return;
+          dot.dataset.used = "1";
+          dot.classList.add("off");
+          img.style.transition = "transform 1.6s cubic-bezier(.22,1,.36,1)";
+          img.style.transform = planFocusTransform(box, item.roomFocus);
+          if (item.roomLabel) setTimeout(() => showPlanRoomBadge(wrap, item.roomLabel), 1620);
+        };
+        wrap.appendChild(dot);
+        requestAnimationFrame(() => dot.classList.add("on"));
       }, 460);
     }
     wrap._zoomBack = () => {
@@ -22938,8 +22968,11 @@ function floorPlanCardHtml(r) {
   const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
   return `
       <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
-      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-focus="0.452,0.746,0.208,0.172" data-zoom-label="${escapeHtml(no)}" role="button">
-        <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
+      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-dot="0.556,0.832" data-room-focus="0.452,0.746,0.208,0.172" data-room-label="${escapeHtml(no)}" role="button">
+        <div class="plan-frame">
+          <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
+          <span class="plan-room-dot" style="left:55.6%;top:83.2%" aria-hidden="true"></span>
+        </div>
       </div>`;
 }
 function findRoom(id) {
@@ -30534,7 +30567,14 @@ function bindZoomPhotos() {
         ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
         : null;
       const label = el.dataset.zoomLabel || "";
-      openMediaViewer([{ kind: "image", src: photo, title, focus, label }], 0, origin);
+      const dotParts = String(el.dataset.zoomDot || "").split(",").map(Number);
+      const dot = dotParts.length === 2 && dotParts.every(n => Number.isFinite(n)) ? { x: dotParts[0], y: dotParts[1] } : null;
+      const roomParts = String(el.dataset.roomFocus || "").split(",").map(Number);
+      const roomFocus = roomParts.length === 4 && roomParts.every(n => Number.isFinite(n))
+        ? { x: roomParts[0], y: roomParts[1], w: roomParts[2], h: roomParts[3] }
+        : null;
+      const roomLabel = el.dataset.roomLabel || "";
+      openMediaViewer([{ kind: "image", src: photo, title, focus, label, dot, roomFocus, roomLabel }], 0, origin);
     };
   });
 }
