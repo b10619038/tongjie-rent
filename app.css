@@ -198,6 +198,7 @@ input, textarea, select {
   touch-action: pan-y;
 }
 .admin-scroll { padding: 8px 0 16px; }
+.shell.admin-wide .admin-scroll { padding-bottom: calc(108px + var(--safe-b)); }
 .admin-static { min-width: 0; max-width: 100%; overflow-x: hidden; }
 .tenant-scroll { padding-bottom: calc(88px + var(--safe-b)); }
 
@@ -2406,8 +2407,12 @@ button.avatar-look.is-press { transform: scale(.94); }
   will-change: transform, width, height;
 }
 .shell.admin-wide .tabs {
+  position: absolute;
   z-index: 41;
-  margin: 8px 12px 14px;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  margin: 0;
   padding: 8px 6px;
   max-height: 140px;
   background: color-mix(in srgb, var(--card) 90%, transparent);
