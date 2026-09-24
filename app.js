@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-02";
-const APP_EDIT_COUNT = 1246;
+const APP_STAMP = "2026-09-24-16-05";
+const APP_EDIT_COUNT = 1247;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0796";
+const FILE_VER = "0797";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約確定後下載合約會有原合約和新合約，新約第一天起原合約消失"] },
+  { ver: APP_VERSION, items: ["合約第十九條新增配合安裝統潔租客 App 與官方 LINE"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20589,6 +20589,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（二）本契約廣告及相關附件視為本契約之一部分。</p>
       <p>（三）本契約所定之權利義務對租賃雙方之契約繼受人均有效力。</p>
       <p>（四）特別約定：1.屋內禁止抽菸、拜拜、油漆牆誤貼紙。</p>
+      <p>（五）為提升租客安全及服務品質，承租人應配合下載安裝統潔租客 App，並加入統潔官方 LINE。</p>
       <div class="lease-sign-block">
         <p>出租人：${leaseInk(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
         <p>代表人：${leaseInk("趙正賢")}</p>
