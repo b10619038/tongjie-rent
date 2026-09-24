@@ -2389,7 +2389,16 @@ button.avatar-look.is-press { transform: scale(.94); }
   overflow: visible;
 }
 .tab-bg {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: 999px;
+  background: var(--press);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform, width, height;
 }
 .shell.admin-wide .tabs {
   z-index: 41;
@@ -2441,8 +2450,9 @@ button.avatar-look.is-press { transform: scale(.94); }
   transition: transform .46s cubic-bezier(.22, 1.55, .36, 1);
   will-change: transform;
 }
-.tab.on {
-  background: var(--press);
+.shell.admin-wide .tab.on,
+.shell.admin-wide .tab.on:hover {
+  background: transparent;
   color: var(--teal);
   box-shadow: none;
 }
