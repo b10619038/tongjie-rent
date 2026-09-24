@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-11";
-const APP_EDIT_COUNT = 1268;
+const APP_STAMP = "2026-09-24-17-14";
+const APP_EDIT_COUNT = 1269;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0818";
+const FILE_VER = "0819";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客通知移除年度水費"] },
+  { ver: APP_VERSION, items: ["租客通知名稱可點開說明"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -31159,23 +31159,44 @@ function lookSettingsHtml() {
     </div>`;
 }
 const TENANT_NOTIFY_CATALOG = [
-  ["管理員公告", "後台發布新公告"],
-  ["使用規範", "使用規範有更新"],
-  ["租金繳費", "到了應繳日還沒繳，當天通知；還沒繳就每天提醒"],
-  ["屋主催繳", "管理員催繳租金"],
-  ["租金入帳", "本月或不足月租金已入帳"],
-  ["報修進度", "報修改為處理中或已完成"],
-  ["報修預約", "已安排維修時間"],
-  ["續約確認", "合約快到期，請確認是否續約"],
-  ["續約簽約", "預約或更改簽約時間"],
-  ["新訊息", "管理員傳來訊息"],
-  ["入住確認", "申請入住已核准"],
-  ["租約結束", "已辦理退租"]
+  ["管理員公告", "後台發布新公告時會通知。首頁公告圖卡會出現紅點，看過之後紅點消失。"],
+  ["使用規範", "使用規範有更新時會通知。進到規範看過之後，紅點消失。"],
+  ["租金繳費", "到了每月應繳日還沒繳，當天會通知。若仍未繳，之後每天提醒。已經繳清就不會再通知。"],
+  ["屋主催繳", "管理員手動催繳租金時會通知。"],
+  ["租金入帳", "本月租金或不足月租金入帳後會通知。"],
+  ["報修進度", "報修狀態改為處理中或已完成時會通知。"],
+  ["報修預約", "已安排維修時間時會通知。"],
+  ["續約確認", "合約快到期、需要確認是否續約時會通知。"],
+  ["續約簽約", "預約或更改續約簽約時間時會通知。"],
+  ["新訊息", "管理員傳來新訊息時會通知。點通知可直接打開聊天室。"],
+  ["入住確認", "申請入住已核准時會通知。"],
+  ["租約結束", "已辦理退租時會通知。"]
 ];
 function tenantNotifyCatalogHtml() {
-  return `<div class="notify-names">${TENANT_NOTIFY_CATALOG.map(([name]) =>
-    `<span>${escapeHtml(name)}</span>`
+  return `<div class="notify-names">${TENANT_NOTIFY_CATALOG.map((row, i) =>
+    `<button type="button" data-notify-info="${i}">${escapeHtml(row[0])}</button>`
   ).join("")}</div>`;
+}
+function openNotifyInfo(i) {
+  const item = TENANT_NOTIFY_CATALOG[Number(i)];
+  const root = document.getElementById("app");
+  if (!item || !root) return;
+  const old = document.getElementById("notify-info-mask");
+  if (old) old.remove();
+  const mask = document.createElement("div");
+  mask.className = "install-mask";
+  mask.id = "notify-info-mask";
+  mask.innerHTML = `<div class="install-sheet" role="dialog" aria-label="${escapeHtml(item[0])}">
+    <div class="label">通知說明</div>
+    <h2>${escapeHtml(item[0])}</h2>
+    <p class="small">${escapeHtml(item[1])}</p>
+    <button class="btn-navy" type="button" id="notify-info-ok">知道了</button>
+  </div>`;
+  root.appendChild(mask);
+  const close = () => mask.remove();
+  mask.addEventListener("click", e => { if (e.target === mask) close(); });
+  const ok = mask.querySelector("#notify-info-ok");
+  if (ok) ok.onclick = close;
 }
 function tenantNdaHtml() {
   const lines = [
@@ -31365,6 +31386,13 @@ function bindLookSettings() {
 function bindTenantSettings() {
   bindLookSettings();
   bindHowtoFold();
+  document.querySelectorAll("[data-notify-info]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openNotifyInfo(btn.dataset.notifyInfo);
+    };
+  });
   const notify = document.getElementById("set-notify");
   if (notify) {
     bindIosPress(notify);
