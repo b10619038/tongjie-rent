@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-08";
-const APP_EDIT_COUNT = 1267;
+const APP_STAMP = "2026-09-24-17-11";
+const APP_EDIT_COUNT = 1268;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0817";
+const FILE_VER = "0818";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽金額固定欄寬，內容沒變不再重畫"] },
+  { ver: APP_VERSION, items: ["租客通知移除年度水費"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -31170,8 +31170,7 @@ const TENANT_NOTIFY_CATALOG = [
   ["續約簽約", "預約或更改簽約時間"],
   ["新訊息", "管理員傳來訊息"],
   ["入住確認", "申請入住已核准"],
-  ["租約結束", "已辦理退租"],
-  ["年度水費", "水費到期前 30 天提醒"]
+  ["租約結束", "已辦理退租"]
 ];
 function tenantNotifyCatalogHtml() {
   return `<div class="notify-names">${TENANT_NOTIFY_CATALOG.map(([name]) =>
