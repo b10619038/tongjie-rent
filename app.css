@@ -4403,7 +4403,7 @@ img.avatar { object-fit: cover; display: block; }
 .plan-room-badge {
   position: absolute;
   left: 50%;
-  top: 46%;
+  top: calc(46% + 2cm);
   z-index: 3;
   transform: translate(-50%, -50%) scale(.2);
   opacity: 0;
