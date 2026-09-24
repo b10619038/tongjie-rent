@@ -4358,6 +4358,7 @@ img.avatar { object-fit: cover; display: block; }
   z-index: 1;
   display: block;
   object-fit: contain;
+  image-rendering: auto;
   transform-origin: center center;
   border-radius: 16px;
   will-change: transform, border-radius;
