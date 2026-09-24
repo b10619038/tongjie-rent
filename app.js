@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-15-32";
-const APP_EDIT_COUNT = 1232;
+const APP_STAMP = "2026-09-24-15-40";
+const APP_EDIT_COUNT = 1233;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0782";
+const FILE_VER = "0783";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["我要續約改剩100天才出現；剩30天未回覆會在首頁房間圖卡上提醒"] },
+  { ver: APP_VERSION, items: ["7042 九月先繳 10,000，餘 4,000 併入十月；未繳清會補到下個月"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3850,7 +3850,7 @@ const TENANT_INFO = {
   "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
-  "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。" },
+  "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。" },
   "7051": { rent: 6000, deposit: 12000, note: "空房。月租 NT$ 6,000。不可申請租屋補助。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
@@ -5532,6 +5532,7 @@ function normalize(data) {
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
   try { applyRenewNoMarks(data); } catch {}
+  try { apply7042RentShort(data); } catch {}
   try { applyRenewal7632(data); } catch {}
   try { applyRenewal6823(data); } catch {}
   try { applyRenewedPayBanks(data); } catch {}
@@ -8096,6 +8097,22 @@ function applyRenewNoMarks(data) {
   }
   return changed;
 }
+function apply7042RentShort(data) {
+  if (!data || !Array.isArray(data.tenants)) return false;
+  try { ensureStudioTenant(data, "7042"); } catch {}
+  const found = typeof studioOccupantOfNo === "function" ? studioOccupantOfNo(data, "7042") : { tenant: null };
+  const t = found && found.tenant;
+  if (!t) return false;
+  if (!Array.isArray(t.rentShort)) t.rentShort = [];
+  const hit = t.rentShort.find(x => x && String(x.ym || "").slice(0, 7) === "2026-09" && x.plan);
+  if (hit && Number(hit.short) === 4000) return false;
+  if (hit) hit.short = 4000;
+  else t.rentShort.push({ ym: "2026-09", short: 4000, plan: true, note: "本月先繳 10,000，餘 4,000 下月補" });
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  return true;
+}
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   let dirty = false;
@@ -8457,7 +8474,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "rentShort", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -9588,6 +9605,7 @@ async function pullCloud() {
       try { applyRoom7611(state); } catch {}
       try { applyId7031(state); } catch {}
       try { applyRenewNoMarks(state); } catch {}
+      try { apply7042RentShort(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
@@ -9731,6 +9749,7 @@ async function pullCloud() {
     try { applyRoom7611(state); } catch {}
     try { applyId7031(state); } catch {}
     try { applyRenewNoMarks(state); } catch {}
+    try { apply7042RentShort(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -10292,6 +10311,7 @@ async function pushCloud() {
     try { applyRoom7611(payload); } catch {}
     try { applyId7031(payload); } catch {}
     try { applyRenewNoMarks(payload); } catch {}
+    try { apply7042RentShort(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
@@ -12257,6 +12277,15 @@ function setTenantPaidMeta(id, paid, opts) {
         x.paidVia = "app";
       }
       if (amount > 0) x.paidAmt = amount;
+      const roomNow = (state.rooms || []).find(r => r && r.id === x.roomId);
+      if (roomNow && !roomIsFactory(roomNow)) {
+        const base = (typeof tenantRentForYm === "function" ? tenantRentForYm(x, roomNow, ym) : 0) || 0;
+        const incoming = rentShortParts(x, ym).inn;
+        const planned = rentShortList(x).filter(s => s && s.plan && String(s.ym || "").slice(0, 7) === ym).reduce((n, s) => n + (Math.round(Number(s.short) || 0)), 0);
+        const expect = Math.max(0, base + incoming - planned);
+        if (amount > 0 && amount < expect) upsertRentShort(x, ym, expect - amount, true);
+        else upsertRentShort(x, ym, 0, true);
+      }
       stampPaidMark(state, x);
       upsertRentAutoBookOn(state, x);
     } else {
@@ -12265,6 +12294,7 @@ function setTenantPaidMeta(id, paid, opts) {
       x.lineProofYm = "";
       x.paidAt = "";
       x.paidAmt = 0;
+      upsertRentShort(x, ym, 0, true);
       stampPaidMark(state, x);
       dropRentAutoBookOn(state, x);
     }
@@ -14954,14 +14984,16 @@ function leasePayRows(t, r, sheet) {
   if (!start || !end) return [];
   const rows = [];
   const monthRent = (due) => tenantRentForYm(t, r, String(due).slice(0, 7)) || studioContractRent(t, r) || Number(t && t.rent) || 0;
-  const push = (due, amount) => {
+  const push = (due, amount, carry) => {
     const ym = String(due).slice(0, 7);
     const actual = paid[ym] || "";
     const past = ym < thisYm;
-    rows.push({ due, amount, actual, paid: !!actual || past });
+    const note = carry ? rentCarryNote(t, ym) : "";
+    const bill = carry ? rentBillOf(t, r, ym, amount) : amount;
+    rows.push({ due, amount: bill, actual, paid: !!actual || past, carryNote: note });
   };
   const move = leaseSheetIsRenewal(t, r, sheet) ? null : leaseMoveInBits(t, r, start);
-  push(start, move && move.total ? move.total : monthRent(start));
+  push(start, move && move.total ? move.total : monthRent(start), !(move && move.total));
   const covered = move && move.covered ? move.covered : start;
   let y = Number(covered.slice(0, 4));
   let m = Number(covered.slice(5, 7)) + 1;
@@ -14970,7 +15002,7 @@ function leasePayRows(t, r, sheet) {
     if (m > 12) { m = 1; y += 1; }
     const ymd = y + "-" + String(m).padStart(2, "0") + "-01";
     if (ymd > end) break;
-    push(ymd, monthRent(ymd));
+    push(ymd, monthRent(ymd), true);
     m += 1;
   }
   return rows;
@@ -14978,7 +15010,7 @@ function leasePayRows(t, r, sheet) {
 function leasePayTableHtml(rows) {
   const body = (rows || []).map(row => {
     const seal = row.paid ? `<span class="rent-stamp pay-seal" aria-label="已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>` : "";
-    return `<tr><td>${escapeHtml(rocSlash(row.due))}</td><td class="pay-amt">${row.amount ? escapeHtml(money(row.amount)) : "—"}</td><td>${row.actual ? escapeHtml(rocSlash(row.actual)) : "—"}</td><td class="pay-seal-cell">${seal}</td></tr>`;
+    return `<tr><td>${escapeHtml(rocSlash(row.due))}</td><td class="pay-amt">${row.amount ? escapeHtml(money(row.amount)) + (row.carryNote ? `<span class="pay-sub">${escapeHtml(row.carryNote)}</span>` : "") : "—"}</td><td>${row.actual ? escapeHtml(rocSlash(row.actual)) : "—"}</td><td class="pay-seal-cell">${seal}</td></tr>`;
   }).join("");
   return `<table class="pay-sheet"><thead><tr><th>應繳日</th><th>金額</th><th>實繳日</th><th>蓋章</th></tr></thead><tbody>${body || `<tr><td colspan="4">這份合約還沒有繳費明細</td></tr>`}</tbody></table>`;
 }
@@ -15191,7 +15223,7 @@ function thisMonthRentCardHtml(t, r) {
   const first = firstStudioPayDue(t, r);
   if (first) return money(first.total);
   if (!leaseCoversYm(t, r, payYmNow())) return `<span class="remain-wait">尚無需繳費</span>`;
-  const n = thisMonthRentOf(t, r);
+  const n = rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r));
   return n ? money(n) : "—";
 }
 function rentPaidStampHtml(t) {
@@ -15329,7 +15361,7 @@ function firstStudioPayDue(t, r) {
 }
 function thisMonthDueOf(t, r) {
   const first = firstStudioPayDue(t, r);
-  return first ? first.total : thisMonthRentOf(t, r);
+  return first ? first.total : rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r));
 }
 function thisMonthRentPart(t, r) {
   return leasePartForYm(t, r, payYmNow());
@@ -22354,7 +22386,7 @@ function homeView() {
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
-        <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(thisMonthRentOf(t, r)) : "尚無需繳費"}</span></div>
+        <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r))) : "尚無需繳費"}</span></div>
         <div class="row"><span class="k">繳費狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
         <div class="row"><span class="k">實際匯款日</span><span class="v">${dueNow ? (ymdOf(t.remitOn) ? rocSlash(t.remitOn) : (paidThisMonth(t) && ymdOf(t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")) : "—"}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">${!dueNow ? "—" : (stubNow ? "請馬上繳費" : ("每月 " + rentDueDay(t) + " 日前"))}</span></div>
@@ -26017,6 +26049,55 @@ function roomNoKeys(no) {
   }
   return keys;
 }
+function nextYmOf(ym) {
+  let y = Number(String(ym || "").slice(0, 4));
+  let m = Number(String(ym || "").slice(5, 7)) + 1;
+  if (!y || !m) return "";
+  if (m > 12) { m = 1; y += 1; }
+  return y + "-" + String(m).padStart(2, "0");
+}
+function rentShortList(t) {
+  return Array.isArray(t && t.rentShort) ? t.rentShort : [];
+}
+function rentShortParts(t, ym) {
+  const y = String(ym || "").slice(0, 7);
+  let out = 0;
+  let inn = 0;
+  rentShortList(t).forEach(x => {
+    const from = String(x && x.ym || "").slice(0, 7);
+    const n = Math.round(Number(x && x.short) || 0);
+    if (!from || n <= 0) return;
+    if (from === y) out += n;
+    if (nextYmOf(from) === y) inn += n;
+  });
+  return { out, inn };
+}
+function rentBillOf(t, r, ym, base) {
+  const b = Math.round(Number(base) || 0);
+  const p = rentShortParts(t, ym);
+  return Math.max(0, b + p.inn - p.out);
+}
+function rentCarryNote(t, ym) {
+  const p = rentShortParts(t, ym);
+  if (p.out && p.inn) return "含上月 " + money(p.inn) + "，餘 " + money(p.out) + " 下月";
+  if (p.out) return "餘 " + money(p.out) + " 下月";
+  if (p.inn) return "含上月 " + money(p.inn);
+  return "";
+}
+function upsertRentShort(t, ym, short, fromPay) {
+  if (!t) return;
+  const y = String(ym || "").slice(0, 7);
+  const n = Math.round(Number(short) || 0);
+  if (!/^\d{4}-\d{2}$/.test(y)) return;
+  if (!Array.isArray(t.rentShort)) t.rentShort = [];
+  const hit = t.rentShort.find(x => x && String(x.ym || "").slice(0, 7) === y && (fromPay ? x.fromPay : x.plan));
+  if (n <= 0) {
+    t.rentShort = t.rentShort.filter(x => !(x && String(x.ym || "").slice(0, 7) === y && x.fromPay));
+    return;
+  }
+  if (hit) hit.short = n;
+  else t.rentShort.push({ ym: y, short: n, fromPay: !!fromPay, plan: !fromPay });
+}
 function prevYmOf(ym) {
   let y = Number(String(ym || "").slice(0, 4));
   let m = Number(String(ym || "").slice(5, 7)) - 1;
@@ -27089,7 +27170,7 @@ function payPanelAmount(t, r) {
     }, 0);
     return sum || Number(t.rentUntaxed) || Number(t.rent) || 0;
   }
-  return (typeof thisMonthRentOf === "function" ? thisMonthRentOf(t, r) : 0) || Number(r && r.rent) || Number(t.rent) || 0;
+  return (typeof thisMonthRentOf === "function" ? rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r)) : 0) || Number(r && r.rent) || Number(t.rent) || 0;
 }
 function payAdminCardHtml(t, r) {
   if (!t) return "";
