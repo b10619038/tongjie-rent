@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-12-24";
-const APP_EDIT_COUNT = 1224;
+const APP_STAMP = "2026-09-24-12-38";
+const APP_EDIT_COUNT = 1225;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0774";
+const FILE_VER = "0775";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間影片開頭不再先縮小再放大"] },
+  { ver: APP_VERSION, items: ["房間列表照片立即出現"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22386,9 +22386,9 @@ function roomsView() {
   const mine = myRoom();
   return `<div class="topbar slide-right"><div><div class="eyebrow">ROOMS</div><h1>房間</h1></div></div>
     <div class="screen">
-      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1714")}
+      ${roomTile(mine, true, "room-seq", "images/studio-room-sm.jpg?v=1324")}
       <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
-        <img src="images/balcony.jpg?v=1312" alt="公共陽台" />
+        <img src="images/balcony-sm.jpg?v=1324" alt="公共陽台" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>公共陽台</strong>
           <span class="small">曬衣陽台</span>
@@ -22397,7 +22397,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s3" data-page="parking" style="margin-top:12px">
-        <img src="images/parking.jpg?v=1312" alt="停車位" />
+        <img src="images/parking-sm.jpg?v=1324" alt="停車位" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>${mine.no}</strong>
           <span class="small">停車位</span>
@@ -22406,7 +22406,7 @@ function roomsView() {
         <span class="badge rented">已配</span>
       </div>
       <div class="room-row clickable room-seq s4" data-page="trash" style="margin-top:12px">
-        <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
+        <img src="images/trash-cart-sm.jpg?v=1324" alt="子母車" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>子母車</strong>
           <span class="small">垃圾桶</span>
@@ -22487,7 +22487,7 @@ function balconyView() {
     </div>`;
 }
 function roomTile(r, clickable, extraClass, photoSrc) {
-  const img = photoSrc ? `<img src="${photoSrc}" alt="${escapeHtml(r.no)}" />` : photoEl(r.photos && r.photos[0], r.no);
+  const img = photoSrc ? `<img src="${photoSrc}" alt="${escapeHtml(r.no)}" decoding="sync" fetchpriority="high" loading="eager" />` : photoEl(r.photos && r.photos[0], r.no);
   return `<div class="room-row ${extraClass || "slide-left"}" ${clickable ? `data-room="${r.id}"` : ""}>
     ${img}
     <div class="room-row-info">
