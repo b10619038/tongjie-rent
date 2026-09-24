@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-02-08";
-const APP_EDIT_COUNT = 1342;
+const APP_STAMP = "2026-09-25-02-11";
+const APP_EDIT_COUNT = 1343;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0893";
+const FILE_VER = "0894";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["資產平面圖先不做縮放"] },
+  { ver: APP_VERSION, items: ["後台選單淺灰底色改成跟著滑"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23860,16 +23860,19 @@ function bindTabPill() {
   const y = on.offsetTop;
   const w = on.offsetWidth;
   const h = on.offsetHeight;
+  const key = x + "," + y + "," + w + "," + h;
+  if (bg.dataset.pill === key) return;
   const prev = ui.tabPill;
   const moved = !!(prev && (Math.abs(prev.x - x) > 1 || Math.abs(prev.y - y) > 1 || Math.abs(prev.w - w) > 1));
   const dest = "translate3d(" + x + "px," + y + "px,0)";
+  bg.dataset.pill = key;
   if (moved) {
     bg.style.transition = "none";
     bg.style.width = prev.w + "px";
     bg.style.height = prev.h + "px";
     bg.style.transform = "translate3d(" + prev.x + "px," + prev.y + "px,0)";
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (!bg.isConnected) return;
+      if (!bg.isConnected || bg.dataset.pill !== key) return;
       bg.style.transition = "transform .22s cubic-bezier(.22,.82,.22,1), width .22s cubic-bezier(.22,.82,.22,1), height .22s cubic-bezier(.22,.82,.22,1)";
       bg.style.width = w + "px";
       bg.style.height = h + "px";
@@ -23882,6 +23885,7 @@ function bindTabPill() {
     bg.style.transform = dest;
   }
   ui.tabPill = { x, y, w, h };
+  try { on.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" }); } catch {}
 }
 function saveTabOrder(ids) {
   try { localStorage.setItem(TAB_KEY, JSON.stringify(ids)); } catch {}
