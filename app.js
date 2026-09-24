@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-05";
-const APP_EDIT_COUNT = 1266;
+const APP_STAMP = "2026-09-24-17-08";
+const APP_EDIT_COUNT = 1267;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0816";
+const FILE_VER = "0817";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客通知名稱改成兩欄標籤"] },
+  { ver: APP_VERSION, items: ["總覽金額固定欄寬，內容沒變不再重畫"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11710,12 +11710,16 @@ function rentOverdueDays() {
   const due = new Date(todayDate().getFullYear(), todayDate().getMonth(), 1);
   return Math.max(0, Math.floor((todayDate() - due) / 86400000));
 }
-function money(n) { return "$ " + Number(n).toLocaleString("zh-TW"); }
+function moneyDigits(n) {
+  const v = Number(n);
+  const abs = Math.abs(Math.round(Number.isFinite(v) ? v : 0));
+  return String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+function money(n) { return "$ " + moneyDigits(n); }
 function moneyBox(n, cls) {
   const v = Number(n);
   const neg = Number.isFinite(v) && v < 0;
-  const abs = Math.abs(Number.isFinite(v) ? v : 0).toLocaleString("zh-TW");
-  return `<span class="money${cls ? " " + cls : ""}"><span class="money-sign">${neg ? "-$" : "$"}</span><span class="money-num">${abs}</span></span>`;
+  return `<span class="money${cls ? " " + cls : ""}"><span class="money-sign">${neg ? "-$" : "$"}</span><span class="money-num">${moneyDigits(v)}</span></span>`;
 }
 function rocDate(d) {
   d = d || new Date();
@@ -21357,24 +21361,32 @@ function paintApp() {
         t.style.transform = "";
       });
       bindTabPill();
-      sc.innerHTML = `<div class="admin-static">${adminBody()}</div>`;
-      safeBind(() => {
-        bindAdmin();
-        bindInstallSheet();
-        bindNotifyGuide();
-        bindUpdateBar();
-        bindThemePicker();
-      });
-      restoreComposeDraft();
-      if (ui.adminJump) {
+      const html = adminBody();
+      const box = sc.querySelector(":scope > .admin-static");
+      let paintKey = 0;
+      for (let i = 0; i < html.length; i++) paintKey = (paintKey * 33 + html.charCodeAt(i)) | 0;
+      const paint = html.length + ":" + paintKey;
+      const samePaint = !pageChanged && box && box.dataset.paint === paint;
+      if (!samePaint) {
+        sc.innerHTML = `<div class="admin-static" data-paint="${paint}">${html}</div>`;
+        safeBind(() => {
+          bindAdmin();
+          bindInstallSheet();
+          bindNotifyGuide();
+          bindUpdateBar();
+          bindThemePicker();
+        });
+        restoreComposeDraft();
+      }
+      if (!samePaint && ui.adminJump) {
         const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
         sc.scrollTop = Math.max(0, top);
         requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
-      } else if (!pageChanged || ui.keepScroll) {
+      } else if (!samePaint && (!pageChanged || ui.keepScroll)) {
         sc.scrollTop = oldAdmin;
         requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
-      } else {
+      } else if (!samePaint) {
         sc.scrollTop = 0;
       }
       ui.adminJump = "";
