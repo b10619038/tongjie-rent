@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-02";
-const APP_EDIT_COUNT = 1264;
+const APP_STAMP = "2026-09-24-17-04";
+const APP_EDIT_COUNT = 1265;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0814";
+const FILE_VER = "0815";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約期間中間改成箭頭"] },
+  { ver: APP_VERSION, items: ["租約日期改顯示民國年"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3236,7 +3236,7 @@ function renewAskCardHtml(t, r, opts) {
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
     if (!full && !inRenewAskWindow(t)) return "";
-    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(t.leaseEnd || "")}。請於到期日辦理正常退租。</p></div>`;
+    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。請於到期日辦理正常退租。</p></div>`;
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
@@ -3250,8 +3250,8 @@ function renewAskCardHtml(t, r, opts) {
     const moveNo = cur.wantMove ? String(cur.moveRoomNo || "") : "";
     return `<div class="handover-note renew-note">
       <div class="label">${signed ? "續約完成" : "續約申請已送出"}</div>
-      ${signed ? `<p>現場已簽約。目前合約仍至 ${escapeHtml(t.leaseEnd || cur.oldEnd || "")}，</p>` : ""}
-      <p>新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(cur.start || "")} ➜ ${escapeHtml(cur.end || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
+      ${signed ? `<p>現場已簽約。目前合約仍至 ${escapeHtml(rocSlash(t.leaseEnd || cur.oldEnd) || "")}，</p>` : ""}
+      <p>新約 ${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(rocSlash(cur.start) || "")} ➜ ${escapeHtml(rocSlash(cur.end) || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
       <p class="small" style="margin-top:8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金。</p>
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
@@ -3265,12 +3265,12 @@ function renewAskCardHtml(t, r, opts) {
   const years = Number(ui.renewYears) === 0.5 ? 0.5 : 1;
   const range = renewLeaseRange(t, years);
   const polite = windowOn
-    ? `您好，合約將於 ${t.leaseEnd} 到期（還有 ${left} 天）。若方便續住，懇請盡早確認並預約簽約日，我們好為您準備新約。`
+    ? `您好，合約將於 ${rocSlash(t.leaseEnd)} 到期（還有 ${left} 天）。若方便續住，懇請盡早確認並預約簽約日，我們好為您準備新約。`
     : `現有租客可於到期前 200 天申請續約。新約可選半年或 1 年。`;
   if (!full) {
     return `<div class="handover-note renew-note">
       <div class="label">請問您是否要續約?</div>
-      <p>合約將於 ${escapeHtml(t.leaseEnd || "")} 到期，還有 ${left} 天。請確認是否續約。</p>
+      <p>合約將於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，還有 ${left} 天。請確認是否續約。</p>
       <div class="renew-ask-actions">
         <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1">前往續約</button>
         <button type="button" class="ghost" data-renew-decline="1">不續約</button>
@@ -3299,7 +3299,7 @@ function renewAskCardHtml(t, r, opts) {
       </div>
     </div>
     <div id="renew-move-slot">${mode === "move" ? renewMovePickHtml(t, r) : ""}</div>
-    <div class="small" id="renew-range" style="margin:6px 0 8px">新約期間 ${escapeHtml(range.start)} ➜ ${escapeHtml(range.end)}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
+    <div class="small" id="renew-range" style="margin:6px 0 8px">新約期間 ${escapeHtml(rocSlash(range.start) || "")} ➜ ${escapeHtml(rocSlash(range.end) || "")}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
     <div class="small" style="margin:0 0 8px">年水費 ${money(renewWaterCashFee(t, r))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00", gcalDraft: true })}
@@ -3319,7 +3319,7 @@ function paintRenewRange() {
   const mode = ui.renewMode === "move" ? "move" : "same";
   const dest = mode === "move" ? renewMoveRoomOf(ui.renewMoveRoomId) : null;
   const destRent = dest ? (Number(dest.rent) || studioContractRent(t, dest) || 0) : studioContractRent(t, r);
-  el.textContent = "新約期間 " + (range.start || "") + " ➜ " + (range.end || "") + "　月租 " + money(destRent) + (dest ? "　換至 " + displayRoomNo(dest) : "");
+  el.textContent = "新約期間 " + (rocSlash(range.start) || "") + " ➜ " + (rocSlash(range.end) || "") + "　月租 " + money(destRent) + (dest ? "　換至 " + displayRoomNo(dest) : "");
 }
 function bindRenewPicks() {
   document.querySelectorAll("[data-renew-pick]").forEach(btn => {
@@ -15471,9 +15471,9 @@ function leasePackSummaryHtml(pack, monthly) {
   if (!pack || !pack.parts || !pack.parts.length) return "";
   return pack.parts.map(p => {
     if (p.kind === "stub") {
-      return `<div class="row wrap"><span class="k">不足月合約</span><span class="v">${escapeHtml(p.start)} ➜ ${escapeHtml(p.end)}　日拆 ${money(p.rent)}（${p.days}/${p.daysInMonth} 天）</span></div>`;
+      return `<div class="row wrap"><span class="k">不足月合約</span><span class="v">${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}　日拆 ${money(p.rent)}（${p.days}/${p.daysInMonth} 天）</span></div>`;
     }
-    return `<div class="row wrap"><span class="k">一年合約</span><span class="v lease-term-v"><span>${escapeHtml(p.start)} ➜ ${escapeHtml(p.end)}</span><span>每月 ${money(p.rent || monthly)}，每月 1 號</span></span></div>`;
+    return `<div class="row wrap"><span class="k">一年合約</span><span class="v lease-term-v"><span>${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}</span><span>每月 ${money(p.rent || monthly)}，每月 1 號</span></span></div>`;
   }).join("");
 }
 function fullYearLeaseRange(fromYmd) {
@@ -23088,20 +23088,20 @@ function leaseView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">${pending ? "目前合約（舊約）" : "承租房間"}</span><span class="v">${r.no} ${r.title}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
-        <div class="row"><span class="k">起租日</span><span class="v">${t.leaseStart || "—"}</span></div>
-        <div class="row"><span class="k">到期日</span><span class="v">${t.leaseEnd || "—"}</span></div>
+        <div class="row"><span class="k">起租日</span><span class="v">${rocSlash(t.leaseStart) || "—"}</span></div>
+        <div class="row"><span class="k">到期日</span><span class="v">${rocSlash(t.leaseEnd) || "—"}</span></div>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <div class="row"><span class="k">剩餘天數</span><span class="v">${leaseRemainHtml(t, r)}</span></div>
         <div class="row"><span class="k">押金</span><span class="v">${money(r.deposit)}</span></div>
         <div class="row wrap"><span class="k">${isStubMonthNow(t, r) ? `本月應繳<span class="rent-sub">（不足月日拆）</span>` : "每月租金"}</span><span class="v">${money(thisMonthRentOf(t, r))}</span></div>
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
-        ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(oldEnd || "")}。新約 ${escapeHtml(pending.start || "")} 起自動生效，匯款改兆豐。</p>` : ""}
+        ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。新約 ${escapeHtml(rocSlash(pending.start) || "")} 起自動生效，匯款改兆豐。</p>` : ""}
       </div>
       ${pending ? `<div class="section-title" id="renew-new-paper"><h2 class="slide-right">新約合約</h2></div>
       <div class="card card-body slide-left">
-        <div class="row"><span class="k">新約期間</span><span class="v">${escapeHtml(pending.start || "")} ➜ ${escapeHtml(pending.end || "")}</span></div>
+        <div class="row"><span class="k">新約期間</span><span class="v">${escapeHtml(rocSlash(pending.start) || "")} ➜ ${escapeHtml(rocSlash(pending.end) || "")}</span></div>
         <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">已簽署　待生效</span></div>
-        <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(pending.start || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
+        <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(rocSlash(pending.start) || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
         ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r)}
       </div>` : ""}
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
@@ -23223,7 +23223,7 @@ function leaseSignView() {
       <div class="card card-body" style="margin-top:12px">
         <div class="label">合約起迄</div>
         <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（到期固定月底）</label>
-        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${cont.start} ➜ ${cont.end}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + occ.leaseEnd + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + confirmBy + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
+        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${rocSlash(cont.start)} ➜ ${rocSlash(cont.end)}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + rocSlash(occ.leaseEnd) + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + rocSlash(confirmBy) + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
         <label class="field"><span>起始日（入住）</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
@@ -27086,9 +27086,9 @@ function renewalAdminCardHtml(x) {
     <h2 class="dash-h">${signed ? "續約完成" : (x.wantMove ? "換房續約" : "續約申請")}</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}${x.wantMove && x.moveRoomNo ? " → " + escapeHtml(x.moveRoomNo) : ""}</b>
       ${signed ? `<span class="pay-pill paid">已簽約</span>` : `<button type="button" class="ghost" data-renew-done="${x.id}" style="width:auto">完成簽約</button>`}</div>
-    <div class="small" style="margin-bottom:6px">${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(x.start || "")} ➜ ${escapeHtml(x.end || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
+    <div class="small" style="margin-bottom:6px">${years === 0.5 ? "半年" : "1 年"}　${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
     ${moveLine}
-    ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(oldEnd) : ""}。新約第一天（${escapeHtml(x.start || "")}）才換成新年合約。</div>` : ""}
+    ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(rocSlash(oldEnd)) : ""}。新約第一天（${escapeHtml(rocSlash(x.start) || "")}）才換成新年合約。</div>` : ""}
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
         ${appointOneHtml(x.appointAt || "", { attr: ` data-renew-appoint="${x.id}"`, disabled: signed, gcalId: x.id })}
