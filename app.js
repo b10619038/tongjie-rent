@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-22-46";
-const APP_EDIT_COUNT = 1305;
+const APP_STAMP = "2026-09-24-22-51";
+const APP_EDIT_COUNT = 1306;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0856";
+const FILE_VER = "0857";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6823 平面圖縮到 6822 左邊那間"] },
+  { ver: APP_VERSION, items: ["7021 平面圖縮到 6821 上面那間"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22996,7 +22996,8 @@ function floorPlanCardHtml(r) {
   const plans = {
     "6821": { focus: "0.452,0.746,0.208,0.172", dot: "55.6%,83.2%" },
     "6822": { focus: "0.235,0.746,0.219,0.172", dot: "36.0%,83.2%" },
-    "6823": { focus: "0.012,0.746,0.238,0.172", dot: "15.5%,80.5%" }
+    "6823": { focus: "0.012,0.746,0.238,0.172", dot: "15.5%,80.5%" },
+    "7021": { focus: "0.452,0.503,0.208,0.172", dot: "55.6%,58.9%", above: "3F 7021" }
   };
   const plan = plans[no];
   if (!plan) return "";
@@ -23005,7 +23006,7 @@ function floorPlanCardHtml(r) {
   const dot = plan.dot.split(",");
   return `
       <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
-      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="2F ${escapeHtml(no)}" data-zoom-focus="${plan.focus}" role="button">
+      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="${plan.above || ("2F " + escapeHtml(no))}" data-zoom-focus="${plan.focus}" role="button">
         <div class="plan-frame">
           <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
           <span class="plan-room-dot" style="left:${dot[0]};top:${dot[1]}" aria-hidden="true"></span>
