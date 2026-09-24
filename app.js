@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-19-02";
-const APP_EDIT_COUNT = 1279;
+const APP_STAMP = "2026-09-24-19-28";
+const APP_EDIT_COUNT = 1280;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0829";
+const FILE_VER = "0830";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6821、6831、6841 的 Wifi 下面可看平面圖"] },
+  { ver: APP_VERSION, items: ["統潔營收總額不再被舊帳本蓋掉而亂跳"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5651,6 +5651,7 @@ function normalize(data) {
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
+  try { syncPaidRentBooks(data); } catch {}
   try { if (purgeDroppedStudios(data)) markCloudDirty(); } catch {}
   persistLedger(data);
   try { applyDevChats(data); } catch {}
@@ -8599,9 +8600,9 @@ function pickLedgerItem(a, b) {
   if (aT !== bT) {
     keep = aT >= bT ? a : b;
     base = aT >= bT ? b : a;
-  } else if (aAmt !== bAmt) {
-    keep = aAmt >= bAmt ? a : b;
-    base = aAmt >= bAmt ? b : a;
+  } else if (aAmt !== bAmt && aT === bT) {
+    keep = a;
+    base = b;
   }
   const out = Object.assign({}, base, keep);
   if (!out.amount && (aAmt || bAmt)) out.amount = Math.max(aAmt, bAmt);
@@ -9086,7 +9087,6 @@ function ingestPaidCloud(raw) {
     }
     try { applyRoom7611(state); } catch {}
     applyPaidMarks(state);
-    if (Array.isArray(o.books) && o.books.length) mergeLedgerInto(state, { books: o.books, errands: o.errands || [], bankSlips: [], ledgerGone: o.ledgerGone || [] });
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
     const ping = Number(o.repairPing || 0);
     if (ping && ping > (ingestPaidCloud.repairPing || 0)) {
@@ -9183,17 +9183,6 @@ function moneyCloudBlob() {
       eSignAt: t.eSign && t.eSign.at || "",
       eSignTs: Number(t.eSign && t.eSign.ts) || 0
     })),
-    books: (state.books || []).map(b => {
-      const o = Object.assign({}, b);
-      delete o.media; delete o.photo; delete o.photos;
-      return o;
-    }),
-    errands: (state.errands || []).map(e => {
-      const o = Object.assign({}, e);
-      delete o.media; delete o.photo;
-      return o;
-    }),
-    ledgerGone: state.ledgerGone || [],
     repairPing: Number(state.repairPing) || 0,
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
@@ -9772,6 +9761,7 @@ async function pullCloud() {
       resetFactoryPaidMarks(state);
       applyPaidMarks(state);
       persistPaidMarks(state);
+      try { syncPaidRentBooks(state); } catch {}
       persistLedger(state);
       persistMemoDone(state);
       persistAnnMedia(state);
@@ -16211,7 +16201,32 @@ function dedupeLedger(rows) {
     seen.add(k);
     out.push(r);
   });
-  return out;
+  const rentSeen = new Set();
+  out.forEach(r => {
+    const key = studioRentClashKey(r);
+    if (key && !isAutoRentLedgerRow(r)) rentSeen.add(key);
+  });
+  return out.filter(r => {
+    const key = studioRentClashKey(r);
+    return !(key && isAutoRentLedgerRow(r) && rentSeen.has(key));
+  });
+}
+function studioRentClashKey(row) {
+  if (!row || row.type === "out" || row.type === "memo") return "";
+  const ym = String(ymdOf(row.date) || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(ym)) return "";
+  let no = String(row.roomNo || "");
+  if (!/^(68|70|72|76)\d{2}$/.test(no)) {
+    const m = String(row.note || "").match(/\b((?:68|70|72|76)\d{2})\b/);
+    no = m ? m[1] : "";
+  }
+  if (!no) return "";
+  const note = String(row.note || "");
+  if (!isAutoRentLedgerRow(row) && !/租金|房租/.test(note)) return "";
+  return ym + "|" + no;
+}
+function isAutoRentLedgerRow(row) {
+  return String(row && row.id || "").indexOf("bk-rent-") === 0;
 }
 function guessCashType(text, fallback) {
   return cellType(text, "") || fallback || "in";
