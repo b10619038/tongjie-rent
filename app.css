@@ -4406,7 +4406,7 @@ img.avatar { object-fit: cover; display: block; }
   left: 50%;
   top: calc(46% + 2cm);
   z-index: 3;
-  transform: translate(-50%, -50%) scale(.2);
+  transform: translate(-50%, -50%) scale(.1);
   opacity: 0;
   background: #dbe7f4;
   color: #28568b;
@@ -4421,12 +4421,12 @@ img.avatar { object-fit: cover; display: block; }
 }
 .plan-room-badge.on {
   opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%) scale(.5);
   transition: transform .32s cubic-bezier(.2,1.35,.36,1), opacity .22s ease;
 }
 .photo-zoom.out .plan-room-badge {
   opacity: 0;
-  transform: translate(-50%, -50%) scale(.86);
+  transform: translate(-50%, -50%) scale(.42);
   transition: transform .28s ease, opacity .22s ease;
 }
 [data-open-topup] { cursor: pointer; }
