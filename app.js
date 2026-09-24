@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-00-57";
-const APP_EDIT_COUNT = 1329;
+const APP_STAMP = "2026-09-25-01-02";
+const APP_EDIT_COUNT = 1330;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0880";
+const FILE_VER = "0881";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台選單字放大"] },
+  { ver: APP_VERSION, items: ["往下拉收起選單，往上滑再出現"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -33537,9 +33537,38 @@ document.addEventListener("pointerdown", e => {
   if (t.id === "font-scale" || t.type === "range") return;
   buzz(12);
 }, { capture: true, passive: true });
+function bindBarAutoHide(sc) {
+  if (!sc || sc.dataset.barHide === "1") return;
+  const shell = sc.closest(".shell");
+  if (!shell) return;
+  sc.dataset.barHide = "1";
+  let last = sc.scrollTop;
+  let acc = 0;
+  let hidden = false;
+  const set = (on) => {
+    if (hidden === on) return;
+    hidden = on;
+    shell.classList.toggle("bar-away", on);
+  };
+  sc.addEventListener("scroll", () => {
+    const y = sc.scrollTop;
+    const d = y - last;
+    last = y;
+    if (y <= 6 || sc.scrollHeight <= sc.clientHeight + 24) { acc = 0; set(false); return; }
+    if (Math.abs(d) < 0.5) return;
+    if (d > 0) {
+      acc = acc > 0 ? acc + d : d;
+      if (acc > 10) { set(true); acc = 0; }
+    } else {
+      acc = acc < 0 ? acc + d : d;
+      if (acc < -8) { set(false); acc = 0; }
+    }
+  }, { passive: true });
+}
 function bindPullRefresh() {
   const sc = document.querySelector(".tenant-scroll") || document.querySelector(".admin-scroll");
   if (!sc) return;
+  bindBarAutoHide(sc);
   let ptr = sc.querySelector(":scope > .ptr");
   if (!ptr) {
     ptr = document.createElement("div");

@@ -1569,11 +1569,13 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .nav {
   position: relative; z-index: 41;
   margin: 8px 12px 14px;
+  max-height: 140px;
   background: var(--card); border-radius: 999px;
   display: grid; grid-template-columns: repeat(5, 1fr);
   padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
   overflow: visible;
+  transition: transform .16s cubic-bezier(.2,.85,.2,1), max-height .16s cubic-bezier(.2,.85,.2,1), margin .16s cubic-bezier(.2,.85,.2,1), padding .16s cubic-bezier(.2,.85,.2,1), opacity .12s linear;
 }
 .nav-bg {
   position: absolute; top: 4px; bottom: 4px; left: 0;
@@ -2393,9 +2395,24 @@ button.avatar-look.is-press { transform: scale(.94); }
   z-index: 41;
   margin: 8px 12px 14px;
   padding: 8px 6px;
+  max-height: 140px;
   background: var(--card);
   border-radius: 999px;
   box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  transition: transform .16s cubic-bezier(.2,.85,.2,1), max-height .16s cubic-bezier(.2,.85,.2,1), margin .16s cubic-bezier(.2,.85,.2,1), padding .16s cubic-bezier(.2,.85,.2,1), opacity .12s linear;
+}
+.shell.bar-away .nav,
+.shell.bar-away .tabs {
+  max-height: 0 !important;
+  min-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  opacity: 0;
+  overflow: hidden !important;
+  transform: translate3d(0, 36px, 0);
+  pointer-events: none;
 }
 .shell.admin-wide .tabs-track {
   align-items: stretch;
