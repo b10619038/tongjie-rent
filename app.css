@@ -1017,25 +1017,25 @@ button.pay-pill.hand {
   display: inline-flex;
   gap: 6px;
 }
-.renew-seg {
+.seg.renew-seg {
   width: 156px;
   margin-top: 0;
   flex: 0 0 auto;
   background: #fff;
   border: 1px solid #e6dfd6;
 }
-.renew-seg .seg-bg {
-  background: #62765b;
+.seg.renew-seg .seg-bg {
+  background: var(--chip);
   box-shadow: none;
 }
 .renew-seg.is-half .seg-bg,
 .renew-seg.is-move .seg-bg { transform: translate3d(100%, 0, 0); }
-.renew-seg button {
-  color: #62765b;
+.seg.renew-seg button {
+  color: #8a9188;
   padding: 7px 8px;
   font-size: 14px;
 }
-.renew-seg button.on { color: #fff; }
+.seg.renew-seg button.on { color: #3f5a3a; }
 .renew-move-box { margin: 4px 0 8px; }
 .renew-move-list {
   display: grid;
