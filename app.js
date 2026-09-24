@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-22-23";
-const APP_EDIT_COUNT = 1299;
+const APP_STAMP = "2026-09-24-22-25";
+const APP_EDIT_COUNT = 1300;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0850";
+const FILE_VER = "0851";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖下方文字加上底色"] },
+  { ver: APP_VERSION, items: ["平面圖一次縮到藍點，不再先停在中間"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13465,8 +13465,25 @@ function openZoomPhoto(item, originEl) {
     img.style.height = th + "px";
     img.style.left = tx + "px";
     img.style.top = ty + "px";
+    const focus = item && item.focus;
+    const box = { vw, vh, tw, th, tx, ty };
+    const zoomRoom = focus && focus.w > 0 && focus.h > 0;
     let start = "none";
-    if (origin && origin.width) {
+    let endTf = "translate(0,0) scale(1)";
+    img.style.transformOrigin = "center center";
+    if (zoomRoom) {
+      const fx = focus.x + focus.w / 2;
+      const fy = focus.y + focus.h / 2;
+      const fcx = fx * tw;
+      const fcy = fy * th;
+      img.style.transformOrigin = fcx + "px " + fcy + "px";
+      const dotX = origin && origin.width ? origin.left + origin.width * fx : vw / 2;
+      const dotY = origin && origin.height ? origin.top + origin.height * fy : vh / 2;
+      const s0 = origin && origin.width ? Math.max(0.05, origin.width / tw) : 0.2;
+      start = `translate(${dotX - tx - fcx}px, ${dotY - ty - fcy}px) scale(${s0})`;
+      const zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
+      endTf = `translate(${vw / 2 - tx - fcx}px, ${vh / 2 - ty - fcy}px) scale(${zs})`;
+    } else if (origin && origin.width) {
       const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
       const dy = (origin.top + origin.height / 2) - (ty + th / 2);
       const s0 = Math.max(origin.width, origin.height) / Math.max(tw, th);
@@ -13477,20 +13494,12 @@ function openZoomPhoto(item, originEl) {
     img.getBoundingClientRect();
     requestAnimationFrame(() => {
       wrap.classList.add("on");
-      img.style.transition = "transform .42s cubic-bezier(.22,1,.36,1), border-radius .42s cubic-bezier(.22,1,.36,1)";
-      img.style.transform = "translate(0,0) scale(1)";
+      const dur = zoomRoom ? "1.15s" : ".42s";
+      img.style.transition = "transform " + dur + " cubic-bezier(.22,1,.36,1), border-radius " + dur + " cubic-bezier(.22,1,.36,1)";
+      img.style.transform = endTf;
       img.style.borderRadius = "12px";
     });
-    const focus = item && item.focus;
-    const box = { vw, vh, tw, th, tx, ty };
-    const beginRoomZoom = () => {
-      if (!wrap.isConnected || wrap.classList.contains("out") || !focus || !(focus.w > 0)) return;
-      img.style.transition = "transform 1.6s cubic-bezier(.22,1,.36,1)";
-      img.style.transform = planFocusTransform(box, focus);
-    };
-    if (focus && focus.w > 0 && focus.h > 0) {
-      setTimeout(beginRoomZoom, 460);
-    } else if (item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
+    if (!zoomRoom && item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
       setTimeout(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
         const rect = img.getBoundingClientRect();
