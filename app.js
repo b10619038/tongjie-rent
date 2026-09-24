@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-12-48";
-const APP_EDIT_COUNT = 1227;
+const APP_STAMP = "2026-09-24-12-54";
+const APP_EDIT_COUNT = 1228;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0777";
+const FILE_VER = "0778";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約滑進來後如果底部被切到會自己往上"] },
+  { ver: APP_VERSION, items: ["合約從租約剩餘天數縮放展開，並直接看完整"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -29684,15 +29684,55 @@ function bindTabPress(el) {
   el.addEventListener("pointercancel", off);
   el.addEventListener("lostpointercapture", off);
 }
+function leaseFitFrame(card) {
+  const hero = document.querySelector(".screen > .hero-card");
+  const r = hero ? hero.getBoundingClientRect() : null;
+  const left = r ? r.left : 16;
+  const width = r ? r.width : Math.max(240, window.innerWidth - 32);
+  const prefer = Math.max(12, r ? r.top : 12);
+  const pad = 20;
+  card.style.position = "fixed";
+  card.style.margin = "0";
+  card.style.left = left + "px";
+  card.style.width = width + "px";
+  card.style.maxHeight = "none";
+  card.style.overflow = "visible";
+  card.style.top = prefer + "px";
+  const h = card.offsetHeight || 0;
+  let top = prefer;
+  if (h && top + h > window.innerHeight - pad) top = Math.max(12, window.innerHeight - pad - h);
+  card.style.top = top + "px";
+  card.dataset.leaseTop = String(Math.round(top));
+  return { left, top, width, height: h };
+}
+function zoomLeaseFromButton(card, frame, open) {
+  const btn = document.getElementById("lease-remain");
+  const br = btn && btn.getBoundingClientRect ? btn.getBoundingClientRect() : null;
+  if (!br || !br.width || !frame.width) return null;
+  const dx = (br.left + br.width / 2) - (frame.left + frame.width / 2);
+  const dy = (br.top + br.height / 2) - (frame.top + frame.height / 2);
+  const s = Math.max(0.14, Math.min(br.width / frame.width, br.height / Math.max(frame.height, 1)));
+  const from = "translate(" + dx + "px," + dy + "px) scale(" + s + ")";
+  const to = "translate(0px,0px) scale(1)";
+  card.style.transformOrigin = "center center";
+  card.style.willChange = "transform";
+  try { card.getAnimations().forEach(a => a.cancel()); } catch {}
+  return card.animate(
+    open
+      ? [{ transform: from, opacity: .55 }, { transform: to, opacity: 1 }]
+      : [{ transform: to, opacity: 1 }, { transform: from, opacity: 0 }],
+    { duration: open ? 520 : 420, easing: open ? "cubic-bezier(.22,1,.36,1)" : "cubic-bezier(.4,0,1,1)", fill: "both" }
+  );
+}
 function fitLeaseSheet() {
   const mask = document.getElementById("lease-cal-mask");
   const card = mask && mask.querySelector(".lease-cal");
   if (!mask || !card) return;
   const sheet = ui.leasePane === "sheet";
   mask.classList.toggle("is-full", sheet);
-  const hero = document.querySelector(".screen > .hero-card");
-  const r = hero ? hero.getBoundingClientRect() : null;
   if (!sheet) {
+    const hero = document.querySelector(".screen > .hero-card");
+    const r = hero ? hero.getBoundingClientRect() : null;
     if (!r) return;
     card.style.position = "fixed";
     card.style.top = r.top + "px";
@@ -29704,33 +29744,7 @@ function fitLeaseSheet() {
     card.style.overflow = "auto";
     return;
   }
-  const top = r ? r.top : 12;
-  const left = r ? r.left : 16;
-  const prefer = Math.max(12, top);
-  card.style.position = "relative";
-  card.style.top = "auto";
-  card.style.left = "auto";
-  card.style.marginTop = prefer + "px";
-  card.style.marginLeft = left + "px";
-  card.style.marginBottom = "28px";
-  card.style.maxHeight = "none";
-  card.style.overflow = "visible";
-  const pad = 20;
-  const overflow = card.getBoundingClientRect().bottom - (window.innerHeight - pad);
-  const next = overflow > 2 ? Math.max(12, prefer - overflow) : prefer;
-  const prev = card.dataset.leaseTop;
-  card.dataset.leaseTop = String(Math.round(next));
-  if (Math.abs(prefer - next) <= 1) {
-    card.style.transition = "";
-    return;
-  }
-  const from = prev == null ? prefer : parseFloat(prev);
-  card.style.transition = "none";
-  card.style.marginTop = (Number.isFinite(from) ? from : prefer) + "px";
-  requestAnimationFrame(() => {
-    card.style.transition = "margin-top .48s cubic-bezier(.22,.82,.22,1)";
-    card.style.marginTop = next + "px";
-  });
+  leaseFitFrame(card);
 }
 function mountLeaseCalMask(mask) {
   if (mask && mask.parentElement !== document.body) document.body.appendChild(mask);
@@ -29738,41 +29752,39 @@ function mountLeaseCalMask(mask) {
 function placeLeaseCal(slide) {
   const mask = document.getElementById("lease-cal-mask");
   mountLeaseCalMask(mask);
-  const hero = document.querySelector(".screen > .hero-card");
   const card = mask && mask.querySelector(".lease-cal");
-  if (!hero || !card) return null;
-  const r = hero.getBoundingClientRect();
-  card.style.top = r.top + "px";
-  card.style.left = r.left + "px";
-  card.style.width = r.width + "px";
-  card.style.maxHeight = Math.max(240, window.innerHeight - r.top - 12) + "px";
-  card.style.willChange = "transform";
-  if (slide) {
-    card.style.transform = "translate3d(100%,0,0)";
-    card.style.overflow = "hidden";
+  if (!card) return null;
+  const frame = leaseFitFrame(card);
+  if (mask) mask.classList.add("is-full");
+  if (slide && card.animate) {
+    const btn = document.getElementById("lease-remain");
+    const br = btn && btn.getBoundingClientRect ? btn.getBoundingClientRect() : null;
+    if (br && br.width && frame.width) {
+      const dx = (br.left + br.width / 2) - (frame.left + frame.width / 2);
+      const dy = (br.top + br.height / 2) - (frame.top + frame.height / 2);
+      const s = Math.max(0.14, Math.min(br.width / frame.width, br.height / Math.max(frame.height, 1)));
+      card.style.transformOrigin = "center center";
+      card.style.transform = "translate(" + dx + "px," + dy + "px) scale(" + s + ")";
+      card.style.opacity = ".55";
+    }
   }
   card.classList.add("is-placed");
   if (!slide || !card.animate) {
-    card.style.transform = "translate3d(0,0,0)";
+    card.style.transform = "none";
+    card.style.opacity = "1";
     card.style.willChange = "";
-    fitLeaseSheet();
     return null;
   }
-  try { card.getAnimations().forEach(a => a.cancel()); } catch {}
-  const run = () => {
-    const anim = card.animate(
-      [{ transform: "translate3d(100%,0,0)" }, { transform: "translate3d(0,0,0)" }],
-      { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
-    );
-    const done = () => {
-      card.style.transform = "translate3d(0,0,0)";
-      card.style.willChange = "";
-      fitLeaseSheet();
-    };
-    anim.onfinish = done;
-    anim.oncancel = done;
+  const anim = zoomLeaseFromButton(card, frame, true);
+  const done = () => {
+    if (!card.isConnected) return;
+    card.style.transform = "none";
+    card.style.opacity = "1";
+    card.style.willChange = "";
   };
-  requestAnimationFrame(() => requestAnimationFrame(run));
+  if (!anim) { done(); return null; }
+  anim.onfinish = done;
+  anim.oncancel = done;
   return null;
 }
 function openLeaseCal() {
@@ -29832,16 +29844,18 @@ function closeLeaseCal() {
   const run = () => {
     if (!card) { done(); return; }
     if (mask) mask.classList.add("is-out");
-    let anim = null;
-    if (card.animate) {
+    const cr = card.getBoundingClientRect();
+    const frame = { left: cr.left, top: cr.top, width: cr.width, height: cr.height };
+    let anim = zoomLeaseFromButton(card, frame, false);
+    if (!anim && card.animate) {
       try { card.getAnimations().forEach(a => a.cancel()); } catch {}
       anim = card.animate(
-        [{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(108%,0,0)" }],
-        { duration: 900, easing: "cubic-bezier(.22,.82,.22,1)", fill: "both" }
+        [{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(0,0) scale(.9)", opacity: 0 }],
+        { duration: 280, easing: "cubic-bezier(.4,0,1,1)", fill: "both" }
       );
     }
     if (anim && anim.finished) anim.finished.then(done).catch(done);
-    else setTimeout(done, 900);
+    else setTimeout(done, 420);
   };
   ui.leaseCalClosing = true;
   if (jumped) setTimeout(run, 420);
