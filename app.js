@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-18-38";
-const APP_EDIT_COUNT = 1278;
+const APP_STAMP = "2026-09-24-19-02";
+const APP_EDIT_COUNT = 1279;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0828";
+const FILE_VER = "0829";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票總覽續約旁加備註，7042 本月先開下月再給"] },
+  { ver: APP_VERSION, items: ["6821、6831、6841 的 Wifi 下面可看平面圖"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22881,6 +22881,17 @@ function roomExtrasHtml(r) {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">帳號</span><span class="v">${escapeHtml(wifi)}</span></div>
         <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
+      </div>
+      ${floorPlanCardHtml(r)}`;
+}
+function floorPlanCardHtml(r) {
+  const no = String((r && r.no) || "");
+  if (no !== "6821" && no !== "6831" && no !== "6841") return "";
+  const src = "images/plan-6821.svg?v=" + FILE_VER;
+  return `
+      <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
+      <div class="card card-body slide-left plan-card" data-zoom-photo="${src}" data-zoom-title="平面圖" role="button">
+        <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
       </div>`;
 }
 function findRoom(id) {
