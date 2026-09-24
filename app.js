@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-23";
-const APP_EDIT_COUNT = 1252;
+const APP_STAMP = "2026-09-24-16-27";
+const APP_EDIT_COUNT = 1253;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0802";
+const FILE_VER = "0803";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["看合約時每頁固定 A4，手機和電腦都等比縮小"] },
+  { ver: APP_VERSION, items: ["發票總覽表頭備註改成房號"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14266,7 +14266,7 @@ function drawInvoiceOverviewCanvas(rows, kind, orient) {
     { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.11 },
     { k: "invoiceDate", h: "發票日期", w: 0.11, big: true },
     { k: "buyer", h: "買受人", w: 0.20, big: true },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.08, big: true },
+    { k: "room", h: "房號", w: 0.08, big: true },
     { k: "amount", h: "金額", w: 0.09, big: true },
     { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
     { k: "start", h: "合約開始", w: 0.10 },
@@ -14277,7 +14277,7 @@ function drawInvoiceOverviewCanvas(rows, kind, orient) {
     { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
     { k: "invoiceDate", h: "發票日期", w: 0.10, big: true },
     { k: "buyer", h: "買受人", w: 0.15, big: true },
-    { k: "room", h: "備註", h2: "（房號）", w: 0.10, big: true },
+    { k: "room", h: "房號", w: 0.10, big: true },
     { k: "amount", h: "金額", w: 0.10, big: true },
     { k: "bank", h: "帳戶", h2: "（農或兆）", w: 0.07 },
     { k: "start", h: "合約開始", w: 0.11 },
