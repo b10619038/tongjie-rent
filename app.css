@@ -716,21 +716,18 @@ html[data-theme="void"] .rent-stamp {
   backface-visibility: hidden;
 }
 .lease-cal-mask .hero-card.is-placed { visibility: visible; }
-.lease-gcal {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  height: 28px;
-  padding: 0 12px;
+button.lease-gcal-title {
+  display: inline;
+  width: auto;
+  margin: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: #62765b;
-  color: #fff;
+  background: transparent;
+  color: #17211f;
   font: inherit;
-  font-size: 13px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 28px;
+  line-height: 1.2;
   cursor: pointer;
 }
 .lease-cal-head {

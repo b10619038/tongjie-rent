@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-03-28";
-const APP_EDIT_COUNT = 1353;
+const APP_STAMP = "2026-09-25-03-31";
+const APP_EDIT_COUNT = 1354;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0904";
+const FILE_VER = "0905";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客橢圓選單底色改成 90%"] },
+  { ver: APP_VERSION, items: ["點合約先確認，再直接打開 Google 日曆"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -15508,66 +15508,75 @@ function leaseGcalRows(t, r) {
   });
   return out;
 }
-function leaseGcalIcs(t, rows) {
-  const esc = s => String(s || "").replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const tid = String((t && t.id) || "rent");
-  const events = (rows || []).map(row => {
-    const due = String(row.due).replace(/-/g, "");
-    const end = String(addDaysYmd(row.due, 1) || "").replace(/-/g, "");
-    const title = "統潔租金繳費 " + moneyDigits(row.amount) + "元";
-    const alarm = due + "T010000Z";
-    return [
-      "BEGIN:VEVENT",
-      "UID:tongjie-rent-" + tid + "-" + due + "@tongjie.app",
-      "DTSTAMP:" + stamp,
-      "DTSTART;VALUE=DATE:" + due,
-      "DTEND;VALUE=DATE:" + end,
-      "SUMMARY:" + esc(title),
-      "DESCRIPTION:" + esc("應繳日 " + rocSlash(row.due) + "，整天。早上 9:00 提醒。"),
-      "BEGIN:VALARM",
-      "ACTION:DISPLAY",
-      "DESCRIPTION:" + esc(title),
-      "TRIGGER;VALUE=DATE-TIME:" + alarm,
-      "END:VALARM",
-      "END:VEVENT"
-    ].join("\r\n");
-  }).join("\r\n");
-  return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Tongjie//Rent//ZH",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
-    "X-WR-CALNAME:統潔租金繳費",
-    events,
-    "END:VCALENDAR"
-  ].join("\r\n");
+function sameDayNextMonth(a, b) {
+  const ay = Number(String(a).slice(0, 4));
+  const am = Number(String(a).slice(5, 7));
+  const ad = Number(String(a).slice(8, 10));
+  const by = Number(String(b).slice(0, 4));
+  const bm = Number(String(b).slice(5, 7));
+  const bd = Number(String(b).slice(8, 10));
+  if (ad !== bd) return false;
+  const nm = am === 12 ? 1 : am + 1;
+  const ny = am === 12 ? ay + 1 : ay;
+  return by === ny && bm === nm;
 }
-async function addLeaseToGoogleCal() {
+function leaseGcalGroups(rows) {
+  const groups = [];
+  (rows || []).forEach(row => {
+    const prev = groups[groups.length - 1];
+    const last = prev && prev[prev.length - 1];
+    if (last && last.amount === row.amount && sameDayNextMonth(last.due, row.due)) prev.push(row);
+    else groups.push([row]);
+  });
+  return groups;
+}
+function leaseGoogleCalUrl(rows) {
+  const first = rows[0];
+  const start = String(first.due).replace(/-/g, "");
+  const end = String(addDaysYmd(first.due, 1) || "").replace(/-/g, "");
+  const title = "統潔租金繳費 " + moneyDigits(first.amount) + "元";
+  let url = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+    + "&text=" + encodeURIComponent(title)
+    + "&dates=" + start + "/" + end
+    + "&ctz=" + encodeURIComponent("Asia/Taipei")
+    + "&details=" + encodeURIComponent("統潔租金。整天行程。通知請設在當天早上 9:00。");
+  if (rows.length > 1) url += "&recur=" + encodeURIComponent("RRULE:FREQ=MONTHLY;COUNT=" + rows.length);
+  return url;
+}
+function openLeaseGoogleCal() {
   const who = typeof me === "function" ? me() : null;
   const room = who && (state.rooms || []).find(x => x && x.id === who.roomId);
-  const rows = leaseGcalRows(who, room);
+  const today = todayYmd();
+  let rows = leaseGcalRows(who, room).filter(x => x.due >= today);
+  if (!rows.length) rows = leaseGcalRows(who, room);
   if (!rows.length) { toast("這份合約沒有可加入的繳費日"); return; }
-  const ics = leaseGcalIcs(who, rows);
-  const name = "統潔租金繳費.ics";
-  const file = new File([ics], name, { type: "text/calendar" });
-  try {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: "統潔租金繳費" });
-      toast("請選擇 Google 日曆。每個月都是整天，當天早上 9:00 提醒。");
-      return;
-    }
-  } catch (e) {
-    if (e && e.name === "AbortError") return;
-  }
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  toast("已下載。請用 Google 日曆開啟，就會一次加入每個月。");
+  const groups = leaseGcalGroups(rows);
+  let opened = 0;
+  groups.forEach(g => {
+    const w = window.open(leaseGoogleCalUrl(g), "_blank");
+    if (w) opened += 1;
+  });
+  if (!opened) toast("沒有打開 Google 日曆。請允許彈出視窗後再點一次合約。");
+}
+function askLeaseGoogleCal() {
+  if (document.getElementById("gcal-ask")) return;
+  const host = document.getElementById("lease-cal-mask") || document.body;
+  const box = document.createElement("div");
+  box.className = "install-mask";
+  box.id = "gcal-ask";
+  box.innerHTML = `<div class="install-sheet">
+      <h2>加入 Google 日曆提醒</h2>
+      <p class="small">每個月的租金會直接打開 Google 日曆，整天行程。下一頁按儲存就加進去，不用下載。</p>
+      <button type="button" class="btn-navy" id="gcal-yes">加入</button>
+      <button type="button" class="ghost" id="gcal-no">取消</button>
+    </div>`;
+  host.appendChild(box);
+  const close = () => box.remove();
+  box.onclick = e => { if (e.target === box) close(); };
+  const no = box.querySelector("#gcal-no");
+  if (no) no.onclick = e => { e.stopPropagation(); close(); };
+  const yes = box.querySelector("#gcal-yes");
+  if (yes) yes.onclick = e => { e.stopPropagation(); close(); openLeaseGoogleCal(); };
 }
 function leasePayTableHtml(rows) {
   const body = (rows || []).map(row => {
@@ -15593,12 +15602,11 @@ function leaseCalHtml(t, r) {
   const body = `<div class="lease-sheet${dir}">${leasePayTableHtml(leasePayRows(t, r, sheet))}</div>`;
   return `<div class="lease-cal-mask" id="lease-cal-mask">
     <div class="hero-card lease-cal" role="dialog" aria-label="繳費總表">
-      <button type="button" class="lease-gcal" id="lease-gcal">日曆</button>
       <div class="lease-cal-nav">
         <button type="button" id="lease-cal-prev" aria-label="上一頁" class="${multi ? "" : "is-off"}"${atStart ? " disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="lease-cal-title">
           ${sub ? `<div class="label">${escapeHtml(sub)}</div>` : ""}
-          <div class="room-name">${escapeHtml(title)}</div>
+          <button type="button" class="room-name lease-gcal-title" id="lease-gcal-title">${escapeHtml(title)}</button>
         </div>
         <button type="button" id="lease-cal-next" aria-label="下一頁" class="${multi ? "" : "is-off"}"${atEnd ? " disabled" : ""}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
@@ -31086,8 +31094,8 @@ function wireLeaseCal(skipPlace) {
   if (prev) prev.onclick = e => { e.stopPropagation(); shiftCal(-1); };
   if (next) next.onclick = e => { e.stopPropagation(); shiftCal(1); };
   if (close) close.onclick = e => { e.stopPropagation(); closeLeaseCal(); };
-  const gcal = document.getElementById("lease-gcal");
-  if (gcal) gcal.onclick = e => { e.preventDefault(); e.stopPropagation(); addLeaseToGoogleCal(); };
+  const gcal = document.getElementById("lease-gcal-title");
+  if (gcal) gcal.onclick = e => { e.preventDefault(); e.stopPropagation(); askLeaseGoogleCal(); };
   leaseCalMask.onclick = e => { if (e.target === leaseCalMask) closeLeaseCal(); };
   if (skipPlace) {
     ui.leaseCalDir = 0;
