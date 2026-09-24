@@ -3641,6 +3641,9 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
+.nda-doc p { margin: 0 0 10px; line-height: 1.75; }
+.nda-doc p:last-child { margin-bottom: 0; }
+.nda-doc b { color: var(--ink); font-weight: 700; }
 .notify-catalog { margin-top: 4px; }
 .notify-catalog .row { align-items: flex-start; gap: 10px; }
 .notify-catalog .k { flex: 0 0 5.2em; color: var(--ink); font-weight: 700; }
