@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-23-49";
-const APP_EDIT_COUNT = 1320;
+const APP_STAMP = "2026-09-25-00-12";
+const APP_EDIT_COUNT = 1321;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0871";
+const FILE_VER = "0872";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["沒點篩選時租客依房號由小到大排列"] },
+  { ver: APP_VERSION, items: ["牛10套房資產改跟租客圖卡同一筆資料"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5553,6 +5553,7 @@ function normalize(data) {
   try { applyRoom7611(data); } catch {}
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
+  try { syncNiu10StudioAssets(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
   migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
@@ -5625,6 +5626,7 @@ function normalize(data) {
   try { applyRoom7611(data); } catch {}
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
+  try { syncNiu10StudioAssets(data); } catch {}
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
@@ -27054,6 +27056,74 @@ function roomMatchesQ(r, q) {
 function assetSearchPlaceholder(kind) {
   return kind === "factory" ? "搜尋房號、人名、公司、牛案場" : "搜尋房號、姓名、店名";
 }
+function assetTenantOf(r) {
+  if (!r) return null;
+  const list = state.tenants || [];
+  const live = list.find(x => x && x.roomId === r.id && !x.former && !x.demo && !x.placeholder && !x.incoming && String(x.name || "").trim());
+  if (live) return live;
+  const linked = list.find(x => x && x.id === r.tenantId && !x.former && !x.demo);
+  if (linked && String(linked.name || "").trim()) return linked;
+  return live || linked || null;
+}
+const NIU10_ASSET_VER = "niu10-asset-from-tenant-v1";
+function syncNiu10StudioAssets(data) {
+  if (!data || data.niu10AssetVer === NIU10_ASSET_VER) return false;
+  if (!Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return false;
+  const prefixes = { "68": 1, "70": 1, "72": 1, "76": 1 };
+  const nos = [];
+  const seen = {};
+  (STUDIO_NOS || []).forEach(no => {
+    const s = String(no || "");
+    if (!prefixes[studioPrefix(s)] || seen[s]) return;
+    seen[s] = 1;
+    nos.push(s);
+  });
+  data.rooms.forEach(r => {
+    const s = String(r && r.no || "");
+    if (!prefixes[studioPrefix(s)] || seen[s] || !/^\d{4}$/.test(s) || r.kind === "factory") return;
+    seen[s] = 1;
+    nos.push(s);
+  });
+  let changed = false;
+  nos.forEach(no => {
+    const info = TENANT_INFO[no] || {};
+    const rooms = data.rooms.filter(r => r && String(r.no) === no && r.kind !== "factory");
+    if (!rooms.length) return;
+    const live = data.tenants.filter(t => t && !t.demo && !t.placeholder && !t.former && !t.incoming && String(t.name || "").trim() && rooms.some(r => r.id === t.roomId));
+    const t = live.find(x => info.name && sameTenantName(x.name, info.name)) || live[0] || null;
+    const room = (t && rooms.find(r => r.id === t.roomId)) || rooms.find(r => r.id === "r" + no) || rooms[0];
+    if (t) {
+      if (t.roomId !== room.id) { t.roomId = room.id; changed = true; }
+      if (room.tenantId !== t.id) { room.tenantId = t.id; changed = true; }
+      if (room.status !== "repair" && room.status !== "office" && room.status !== "rented") {
+        room.status = "rented";
+        changed = true;
+      }
+      t.former = false;
+      t.incoming = false;
+      t.placeholder = false;
+    } else if (!info.name && room.status !== "repair" && room.status !== "office") {
+      if (room.status !== "vacant" || room.tenantId) {
+        room.status = "vacant";
+        room.tenantId = null;
+        changed = true;
+      }
+    }
+    const extra = rooms.filter(r => r !== room);
+    if (extra.length) {
+      const drop = {};
+      extra.forEach(r => { drop[r.id] = 1; });
+      data.tenants.forEach(x => { if (x && drop[x.roomId]) x.roomId = room.id; });
+      data.rooms = data.rooms.filter(r => !drop[r.id]);
+      changed = true;
+    }
+  });
+  data.niu10AssetVer = NIU10_ASSET_VER;
+  if (changed) {
+    try { markCloudDirty(); } catch {}
+  }
+  return changed;
+}
 function adminRoomListHtml(kind) {
   const q = normSearch(ui.assetQ);
   if (kind === "factory") {
@@ -27113,7 +27183,7 @@ function adminRoomListHtml(kind) {
     const closed = q ? false : (ui.studioFold[g.prefix] !== false);
     let lastFloor = "";
     const cards = g.rooms.map(r => {
-      const t = state.tenants.find(x => x.id === r.tenantId);
+      const t = assetTenantOf(r);
       const floor = floorNo(r.no);
       const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
       lastFloor = String(floor);
@@ -28900,7 +28970,7 @@ function field(label, name, value, type) {
 function adminRoomEdit() {
   const r = state.rooms.find(x => x.id === ui.roomId);
   if (!r) return `<div class="empty">找不到房間</div>`;
-  const t = state.tenants.find(x => x.id === r.tenantId);
+  const t = assetTenantOf(r);
   return `<div class="admin-grid list">
     <form class="card card-body" id="room-edit-form" novalidate>
       <button class="back" type="button" data-admin="rooms">← 所有資產</button>
@@ -28951,7 +29021,7 @@ function adminRoomEdit() {
         </div>`).join("")}</div>
       <div class="section-title"><h2>合約書</h2></div>
       ${(() => {
-        const ten = state.tenants.find(x => x.id === r.tenantId);
+        const ten = assetTenantOf(r);
         const st = tenantContractStatus(ten, r);
         const es = getESign(ten);
         return `<div class="card card-body" style="margin-bottom:10px">
@@ -28997,7 +29067,8 @@ function saveRoomEdit(form) {
   r.rent = formNum(form, "rent", r.rent);
   r.deposit = formNum(form, "deposit", r.deposit);
   r.status = g("status") || r.status;
-  let t = state.tenants.find(x => x.id === r.tenantId);
+  let t = assetTenantOf(r);
+  if (t && r.tenantId !== t.id) r.tenantId = t.id;
   if (!t && g("name").trim()) {
     t = { id: "t" + Date.now(), roomId: r.id, paid: true, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", dueDay: 1 };
     state.tenants.push(t); r.tenantId = t.id;
