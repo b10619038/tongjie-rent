@@ -6116,6 +6116,37 @@ html[data-theme="void"] .site-chip {
   pointer-events: none;
   user-select: none;
 }
+.map-zone {
+  position: absolute;
+  z-index: 1;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.map-zone span {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 18, 22, .86);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  opacity: 0;
+  pointer-events: none;
+}
+.map-zone.on {
+  outline: 2px solid rgba(98, 118, 91, .85);
+  outline-offset: -2px;
+  background: rgba(98, 118, 91, .08);
+}
+.map-zone.on span { opacity: 1; }
+.map-hot { z-index: 2; }
 .map-hot {
   position: absolute;
   left: 0;
