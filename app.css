@@ -2410,7 +2410,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   margin: 8px 12px 14px;
   padding: 8px 6px;
   max-height: 140px;
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) 90%, transparent);
   border-radius: 999px;
   box-shadow: 0 12px 30px rgba(0,0,0,.12);
   transition: transform .16s cubic-bezier(.2,.85,.2,1), max-height .16s cubic-bezier(.2,.85,.2,1), margin .16s cubic-bezier(.2,.85,.2,1), padding .16s cubic-bezier(.2,.85,.2,1), opacity .12s linear;
