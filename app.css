@@ -4437,18 +4437,27 @@ img.avatar { object-fit: cover; display: block; }
 .photo-zoom.out .photo-zoom-close { opacity: 0; }
 .photo-zoom-caption {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  z-index: 2;
+  left: 50%;
+  right: auto;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
   text-align: center;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.35;
   opacity: 0;
   pointer-events: none;
+  padding: 10px 22px 9px;
+  background: rgba(16, 18, 22, .88);
+  border-radius: 16px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
 }
-.photo-zoom.on .photo-zoom-caption { opacity: .9; transition: opacity .28s .08s; }
+.photo-zoom.on .photo-zoom-caption { opacity: 1; transition: opacity .28s .08s; }
 .photo-zoom.out .photo-zoom-caption { opacity: 0; }
 .photo-zoom-above {
   font-size: 15px;
