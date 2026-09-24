@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-12-10";
-const APP_EDIT_COUNT = 1223;
+const APP_STAMP = "2026-09-24-12-24";
+const APP_EDIT_COUNT = 1224;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0773";
+const FILE_VER = "0774";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間影片開頭不再縮小"] },
+  { ver: APP_VERSION, items: ["房間影片開頭不再先縮小再放大"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4825,10 +4825,10 @@ function solarIncomeBetween(start, end) {
   return solarLedgerRows().filter(x => x.date >= start && x.date <= end).reduce((s, x) => s + (Number(x.amount) || 0), 0);
 }
 const PHOTO_SET = [
-  ["images/studio-room.jpg?v=1713", "images/kitchen.jpg"],
-  ["images/studio-room.jpg?v=1713", "images/bath.jpg"],
-  ["images/studio-room.jpg?v=1713", "images/living.jpg"],
-  ["images/studio-room.jpg?v=1713", "images/bedroom.jpg"]
+  ["images/studio-room.jpg?v=1714", "images/kitchen.jpg"],
+  ["images/studio-room.jpg?v=1714", "images/bath.jpg"],
+  ["images/studio-room.jpg?v=1714", "images/living.jpg"],
+  ["images/studio-room.jpg?v=1714", "images/bedroom.jpg"]
 ];
 const FACTORY_PHOTO_SET = [
   ["images/factory-a.jpg?v=1441"],
@@ -5012,7 +5012,7 @@ function playHomeSlides() {
 }
 function amenityVideoHtml(src, poster) {
   return `<div class="photos photos-video">
-    <video class="room-hero-video" width="960" height="640" muted loop playsinline webkit-playsinline preload="auto" poster="${poster}">
+    <video class="room-hero-video" muted loop playsinline webkit-playsinline preload="auto" poster="${poster}">
       <source src="${src}" type="video/mp4">
     </video>
   </div>`;
@@ -22386,7 +22386,7 @@ function roomsView() {
   const mine = myRoom();
   return `<div class="topbar slide-right"><div><div class="eyebrow">ROOMS</div><h1>房間</h1></div></div>
     <div class="screen">
-      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1713")}
+      ${roomTile(mine, true, "room-seq", "images/studio-room.jpg?v=1714")}
       <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
         <img src="images/balcony.jpg?v=1312" alt="公共陽台" />
         <div class="room-row-info">
@@ -22551,7 +22551,7 @@ function roomDetailView(id) {
   const media = r.kind === "factory"
     ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>`
-    : amenityVideoHtml("images/studio-room.mp4?v=1322", "images/studio-room.jpg?v=1713");
+    : amenityVideoHtml("images/studio-room.mp4?v=1323", "images/studio-room.jpg?v=1714");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
@@ -26333,7 +26333,7 @@ function adminRoomListHtml(kind) {
       const head = String(floor) !== lastFloor ? `<div class="floor-h">${floor}樓</div>` : "";
       lastFloor = String(floor);
       return `${head}<div class="card item clickable" data-admin-room="${r.id}">
-        ${photoEl("images/studio-room.jpg?v=1713", r.no)}
+        ${photoEl("images/studio-room.jpg?v=1714", r.no)}
         <div><strong>${r.no}　${r.title}${r.shop ? "：" + escapeHtml(r.shop) : ""}</strong>
           <div class="small">${r.status === "office" ? ("員工使用" + (t && t.name ? " · 補助掛名 " + escapeHtml(t.name) : "")) : money(r.rent) + "／月"}${r.status === "office" ? "" : (t && t.name ? " · " + t.name : " · 尚無租客")}${roomNoSubsidy(r) ? " · 不可申請租屋補助" : ""}</div>
         </div>
