@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-10-32";
-const APP_EDIT_COUNT = 1220;
+const APP_STAMP = "2026-09-24-11-36";
+const APP_EDIT_COUNT = 1221;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0770";
+const FILE_VER = "0771";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費總表標題改回合約、原合約、新合約"] },
+  { ver: APP_VERSION, items: ["房間、曬衣、停車、子母車影片開頭不再卡頓"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4950,8 +4950,15 @@ function photoEl(src, no) {
 function playRoomHero() {
   document.querySelectorAll(".room-hero-video").forEach(v => {
     v.muted = true;
-    const p = v.play();
-    if (p && p.catch) p.catch(() => {});
+    v.defaultMuted = true;
+    v.playsInline = true;
+    const start = () => {
+      if (!v.isConnected) return;
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+    };
+    if (v.readyState >= 3) start();
+    else v.addEventListener("canplay", start, { once: true });
   });
 }
 function playHomeSlides() {
@@ -4980,8 +4987,8 @@ function playHomeSlides() {
   else setTimeout(after, 900);
 }
 function amenityVideoHtml(src, poster) {
-  return `<div class="photos photos-video slide-left">
-    <video class="room-hero-video" autoplay muted loop playsinline webkit-playsinline poster="${poster}">
+  return `<div class="photos photos-video">
+    <video class="room-hero-video" muted loop playsinline webkit-playsinline preload="auto" poster="${poster}">
       <source src="${src}" type="video/mp4">
     </video>
   </div>`;
@@ -22389,7 +22396,7 @@ function parkingView() {
       <div class="eyebrow">PARKING</div><h1>停車位</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/parking.mp4?v=1319", "images/parking.jpg?v=1312")}
+      ${amenityVideoHtml("images/parking.mp4?v=1321", "images/parking.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/parking.jpg?v=1312" alt="停車位" />
         <div class="room-row-info">
@@ -22414,7 +22421,7 @@ function trashView() {
       <div class="eyebrow">TRASH</div><h1>子母車</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/trash-cart.mp4?v=1319", "images/trash-cart.jpg?v=1312")}
+      ${amenityVideoHtml("images/trash-cart.mp4?v=1321", "images/trash-cart.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
         <div class="room-row-info">
@@ -22440,7 +22447,7 @@ function balconyView() {
       <div class="eyebrow">BALCONY</div><h1>公共陽台</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/balcony.mp4?v=1319", "images/balcony.jpg?v=1312")}
+      ${amenityVideoHtml("images/balcony.mp4?v=1321", "images/balcony.jpg?v=1312")}
       <div class="card card-body slide-left rules" style="margin-top:14px">
         <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
         <p>1. 公共陽台提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
@@ -22516,7 +22523,7 @@ function roomDetailView(id) {
   const media = r.kind === "factory"
     ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>`
-    : amenityVideoHtml("images/studio-room.mp4?v=1316", "images/studio-room.jpg?v=1713");
+    : amenityVideoHtml("images/studio-room.mp4?v=1321", "images/studio-room.jpg?v=1713");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
