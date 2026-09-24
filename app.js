@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-38";
-const APP_EDIT_COUNT = 1274;
+const APP_STAMP = "2026-09-24-18-12";
+const APP_EDIT_COUNT = 1275;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0824";
+const FILE_VER = "0825";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽不再把同一筆租金算兩次"] },
+  { ver: APP_VERSION, items: ["房間地址下方顯示坪數，有陽台另計"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3652,6 +3652,17 @@ const BALCONY_STUDIO_NOS = ["6823", "6832", "6842", "7023", "7032", "7042", "722
 function roomHasBalcony(r) {
   const no = String((r && r.no) || r || "").replace(/\D/g, "");
   return BALCONY_STUDIO_NOS.indexOf(no) >= 0;
+}
+function roomPingText(r) {
+  if (!r || roomIsFactory(r) || r.kind === "factory" || r.kind === "store" || isStoreNo(r.no) || r.status === "office") return "";
+  const no = String(r.no || "").replace(/\D/g, "");
+  if (no === "7651" || !/^(68|70|72|76)\d{2}$/.test(no)) return "";
+  if (roomHasBalcony(r)) return "5.3坪+陽台0.58坪";
+  return "4.12坪";
+}
+function roomPingRow(r) {
+  const text = roomPingText(r);
+  return text ? `<div class="row wrap"><span class="k">坪數</span><span class="v">${escapeHtml(text)}</span></div>` : "";
 }
 function balconyMarkHtml(r) {
   return roomHasBalcony(r) ? `<i class="balc-dot" title="有陽台"></i>` : "";
@@ -22825,6 +22836,7 @@ function roomDetailView(id) {
       <div class="card card-body slide-up" style="margin-top:14px">
         <div class="row"><span class="k">房號</span><span class="v">${r.no}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
+        ${roomPingRow(r)}
         ${r.note ? `<div class="row wrap"><span class="k">說明</span><span class="v">${escapeHtml(r.note)}</span></div>` : ""}
         <div class="row"><span class="k">租金</span><span class="v">${money(r.rent)}</span></div>
         ${roomNoSubsidy(r) ? `<div class="row wrap"><span class="k">租屋補助</span><span class="v">不可申請</span></div>` : ""}
@@ -23067,6 +23079,7 @@ function leaseView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">${pending ? "目前合約（舊約）" : "承租房間"}</span><span class="v">${r.no} ${r.title}</span></div>
         <div class="row wrap"><span class="k">地址</span><span class="v">${escapeHtml(r.location || roomAddress(r.no))}</span></div>
+        ${roomPingRow(r)}
         <div class="row"><span class="k">起租日</span><span class="v">${rocSlash(t.leaseStart) || "—"}</span></div>
         <div class="row"><span class="k">到期日</span><span class="v">${rocSlash(t.leaseEnd) || "—"}</span></div>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
