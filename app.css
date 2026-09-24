@@ -4463,6 +4463,8 @@ img.avatar { object-fit: cover; display: block; }
   opacity: 0;
   transition: opacity .36s ease;
 }
+.photo-zoom.plan-live { touch-action: none; }
+.photo-zoom.plan-live .photo-zoom-img { cursor: grab; touch-action: none; }
 .photo-zoom.on .photo-zoom-bg { opacity: .92; }
 .photo-zoom.out .photo-zoom-bg { opacity: 0; }
 .photo-zoom-img {

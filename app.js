@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-01-34";
-const APP_EDIT_COUNT = 1336;
+const APP_STAMP = "2026-09-25-01-42";
+const APP_EDIT_COUNT = 1337;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0887";
+const FILE_VER = "0888";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客點頭貼進入設定，底部設定選單移除"] },
+  { ver: APP_VERSION, items: ["平面圖縮放後可拖移與放大縮小"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13547,6 +13547,103 @@ function planFocusTransform(box, focus) {
   const dy = vh / 2 - ty - th / 2 - (fcy - th / 2) * zs;
   return "translate(" + dx + "px, " + dy + "px) scale(" + zs + ")";
 }
+function armPlanBrowse(wrap, img, st) {
+  if (!wrap || wrap.dataset.planLive === "1" || !wrap.isConnected) return;
+  wrap.dataset.planLive = "1";
+  wrap.classList.add("plan-live");
+  img.style.transition = "none";
+  img.style.transformOrigin = "0 0";
+  const draw = () => {
+    img.style.transform = "translate(" + st.x + "px," + st.y + "px) scale(" + st.s + ")";
+  };
+  const clamp = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const left0 = img.offsetLeft;
+    const top0 = img.offsetTop;
+    st.s = Math.max(st.min, Math.min(st.max, st.s));
+    const visW = st.w * st.s;
+    const visH = st.h * st.s;
+    const pad = 24;
+    if (visW <= vw - pad * 2) st.x = (vw - visW) / 2 - left0;
+    else {
+      const l = Math.min(pad, Math.max(vw - visW - pad, left0 + st.x));
+      st.x = l - left0;
+    }
+    if (visH <= vh - pad * 2) st.y = (vh - visH) / 2 - top0;
+    else {
+      const t = Math.min(pad, Math.max(vh - visH - pad, top0 + st.y));
+      st.y = t - top0;
+    }
+  };
+  const pts = new Map();
+  let gesture = null;
+  const alive = () => wrap.isConnected && !wrap.classList.contains("out");
+  wrap.addEventListener("pointerdown", e => {
+    if (!alive() || (e.target.closest && e.target.closest(".photo-zoom-close"))) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 1) gesture = { mode: "pan", x: st.x, y: st.y, px: e.clientX, py: e.clientY, moved: false };
+    else if (pts.size >= 2) {
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      gesture = { mode: "pinch", s: st.s, d, lx: (mx - img.offsetLeft - st.x) / st.s, ly: (my - img.offsetTop - st.y) / st.s, moved: true };
+      wrap.dataset.dragged = "1";
+    }
+    try { wrap.setPointerCapture(e.pointerId); } catch {}
+  });
+  wrap.addEventListener("pointermove", e => {
+    if (!alive() || !pts.has(e.pointerId) || !gesture) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gesture.mode === "pan" && pts.size === 1) {
+      const dx = e.clientX - gesture.px;
+      const dy = e.clientY - gesture.py;
+      if (Math.hypot(dx, dy) > 6) { gesture.moved = true; wrap.dataset.dragged = "1"; }
+      st.x = gesture.x + dx;
+      st.y = gesture.y + dy;
+    } else if (pts.size >= 2) {
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      if (gesture.mode !== "pinch") {
+        gesture = { mode: "pinch", s: st.s, d, lx: (mx - img.offsetLeft - st.x) / st.s, ly: (my - img.offsetTop - st.y) / st.s, moved: true };
+      }
+      const ns = Math.max(st.min, Math.min(st.max, gesture.s * (d / gesture.d)));
+      st.s = ns;
+      st.x = mx - img.offsetLeft - gesture.lx * ns;
+      st.y = my - img.offsetTop - gesture.ly * ns;
+      wrap.dataset.dragged = "1";
+    } else return;
+    clamp();
+    draw();
+  });
+  const endPt = e => {
+    pts.delete(e.pointerId);
+    if (!pts.size) gesture = null;
+    else if (pts.size === 1) {
+      const p = [...pts.values()][0];
+      gesture = { mode: "pan", x: st.x, y: st.y, px: p.x, py: p.y, moved: false };
+    }
+  };
+  wrap.addEventListener("pointerup", endPt);
+  wrap.addEventListener("pointercancel", endPt);
+  wrap.addEventListener("wheel", e => {
+    if (!alive()) return;
+    e.preventDefault();
+    const lx = (e.clientX - img.offsetLeft - st.x) / st.s;
+    const ly = (e.clientY - img.offsetTop - st.y) / st.s;
+    const ns = Math.max(st.min, Math.min(st.max, st.s * (e.deltaY < 0 ? 1.08 : 0.92)));
+    st.s = ns;
+    st.x = e.clientX - img.offsetLeft - lx * ns;
+    st.y = e.clientY - img.offsetTop - ly * ns;
+    clamp();
+    draw();
+  }, { passive: false });
+  clamp();
+  draw();
+}
 function openZoomPhoto(item, originEl) {
   closeMediaViewer();
   const origin = originEl && originEl.getBoundingClientRect ? originEl.getBoundingClientRect() : null;
@@ -13583,18 +13680,21 @@ function openZoomPhoto(item, originEl) {
     const zoomRoom = focus && focus.w > 0 && focus.h > 0;
     let start = "none";
     let endTf = "translate(0,0) scale(1)";
+    let fcx = 0;
+    let fcy = 0;
+    let zs = 1;
     img.style.transformOrigin = "center center";
     if (zoomRoom) {
       const fx = focus.x + focus.w / 2;
       const fy = focus.y + focus.h / 2;
-      const fcx = fx * tw;
-      const fcy = fy * th;
+      fcx = fx * tw;
+      fcy = fy * th;
       img.style.transformOrigin = fcx + "px " + fcy + "px";
       const dotX = origin && origin.width ? origin.left + origin.width * fx : vw / 2;
       const dotY = origin && origin.height ? origin.top + origin.height * fy : vh / 2;
       const s0 = origin && origin.width ? Math.max(0.05, origin.width / tw) : 0.2;
       start = `translate(${dotX - tx - fcx}px, ${dotY - ty - fcy}px) scale(${s0})`;
-      const zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
+      zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
       endTf = `translate(${vw / 2 - tx - fcx}px, ${vh / 2 - ty - fcy}px) scale(${zs})`;
     } else if (origin && origin.width) {
       const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
@@ -13613,6 +13713,30 @@ function openZoomPhoto(item, originEl) {
         img.style.transition = "transform " + dur + " cubic-bezier(.22,1,.36,1), border-radius " + dur + " cubic-bezier(.22,1,.36,1)";
         img.style.transform = endTf;
         img.style.borderRadius = "12px";
+        if (zoomRoom) {
+          const ox = fcx;
+          const oy = fcy;
+          const animTx = vw / 2 - tx - fcx;
+          const animTy = vh / 2 - ty - fcy;
+          let armed = false;
+          const arm = () => {
+            if (armed || !wrap.isConnected || wrap.classList.contains("out")) return;
+            armed = true;
+            img.removeEventListener("transitionend", onEnd);
+            armPlanBrowse(wrap, img, {
+              x: animTx + ox * (1 - zs),
+              y: animTy + oy * (1 - zs),
+              s: zs,
+              w: tw,
+              h: th,
+              min: 1,
+              max: Math.max(zs * 2.4, 5)
+            });
+          };
+          const onEnd = ev => { if (ev.propertyName === "transform") arm(); };
+          img.addEventListener("transitionend", onEnd);
+          setTimeout(arm, 1250);
+        }
       });
     });
     if (hdSrc && firstSrc && hdSrc !== firstSrc) {
@@ -13677,6 +13801,7 @@ function openZoomPhoto(item, originEl) {
   setTimeout(() => { if (wrap.isConnected) startZoom(); }, 800);
   document.getElementById("lb-close").onclick = e => { e.stopPropagation(); closeMediaViewer(); };
   wrap.addEventListener("click", e => {
+    if (wrap.dataset.dragged === "1") { wrap.dataset.dragged = ""; return; }
     if (e.target === wrap || e.target.classList.contains("photo-zoom-bg")) closeMediaViewer();
   });
 }
