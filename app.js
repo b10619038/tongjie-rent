@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-00-16";
-const APP_EDIT_COUNT = 1323;
+const APP_STAMP = "2026-09-25-00-46";
+const APP_EDIT_COUNT = 1324;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0874";
+const FILE_VER = "0875";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房資產改跟廠房租客圖卡同一筆資料"] },
+  { ver: APP_VERSION, items: ["公共陽台改成公共露臺"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11760,7 +11760,7 @@ function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
   const map = {
     home: "首頁", rooms: ui.role === "admin" ? "所有資產" : "房間",
-    "room-detail": "房間詳情", parking: "停車位", balcony: "公共陽台", trash: "子母車",
+    "room-detail": "房間詳情", parking: "停車位", balcony: "公共露臺", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
     tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
@@ -22949,9 +22949,9 @@ function roomsView() {
     <div class="screen">
       ${roomTile(mine, true, "room-seq", "images/studio-room-sm.jpg?v=1324")}
       <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
-        <img src="images/balcony-sm.jpg?v=1324" alt="公共陽台" decoding="sync" fetchpriority="high" loading="eager" />
+        <img src="images/balcony-sm.jpg?v=1324" alt="公共露臺" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
-          <strong>公共陽台</strong>
+          <strong>公共露臺</strong>
           <span class="small">曬衣陽台</span>
           <div class="price">NT$ 0 <em>/月</em></div>
         </div>
@@ -23033,13 +23033,13 @@ function trashView() {
 function balconyView() {
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 返回</button>
-      <div class="eyebrow">BALCONY</div><h1>公共陽台</h1>
+      <div class="eyebrow">BALCONY</div><h1>公共露臺</h1>
     </div></div>
     <div class="screen">
       ${amenityVideoHtml("images/balcony.mp4?v=1322", "images/balcony.jpg?v=1312")}
       <div class="card card-body slide-left rules" style="margin-top:14px">
         <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
-        <p>1. 公共陽台提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
+        <p>1. 公共露臺提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
         <p>2. 洗衣機、乾衣機需刷卡扣款，請依機台說明操作。</p>
         <p>3. 使用完畢請立即取走衣物，勿占用機台或曬衣桿。</p>
         <p>4. 請保持陽台整潔，垃圾與洗衣殘渣請自行清理。</p>
@@ -24770,7 +24770,7 @@ function howtoSections() {
       "若已續約，新約開始後的租金改匯兆豐。"
     ] },
     { id: "t-room", h: "房間與周邊", ps: [
-      "可看房間、公共陽台、機車停車空間、子母車（垃圾桶）的照片與使用方式。",
+      "可看房間、公共露臺、機車停車空間、子母車（垃圾桶）的照片與使用方式。",
       "5 樓自助儲值機可以點開實際照片。周邊景點也在這一區。"
     ] },
     { id: "t-lease", h: "租約與續約", ps: [
