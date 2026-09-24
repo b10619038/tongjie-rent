@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-15-52";
-const APP_EDIT_COUNT = 1242;
+const APP_STAMP = "2026-09-24-15-54";
+const APP_EDIT_COUNT = 1243;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0792";
+const FILE_VER = "0793";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["首頁續約提醒標題改成請問您是否要續約"] },
+  { ver: APP_VERSION, items: ["按不續約會連續跳出 3 次提醒，第 3 次確認才生效"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3397,7 +3397,7 @@ function bindRenewForm() {
   const send = document.getElementById("renew-submit");
   if (send) send.onclick = () => submitTenantRenewal();
   document.querySelectorAll("[data-renew-decline]").forEach(btn => {
-    btn.onclick = e => { e.preventDefault(); e.stopPropagation(); declineTenantRenewal(); };
+    btn.onclick = e => { e.preventDefault(); e.stopPropagation(); openRenewDeclineConfirm(); };
   });
 }
 function submitTenantRenewal() {
@@ -3459,6 +3459,54 @@ function submitTenantRenewal() {
   toast(dest ? "已送出換房續約" : "已送出續約申請");
   ui.keepScroll = true;
   render();
+}
+function openRenewDeclineConfirm() {
+  const t = typeof me === "function" ? me() : null;
+  const r = typeof myRoom === "function" ? myRoom() : null;
+  if (!t || !r) return;
+  if (isProspectPreview()) { toast("預覽中，不會送出"); return; }
+  const cur = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  if (cur && (cur.status === "done" || cur.status === "applied")) { toast("已經續約完成"); return; }
+  ui.renewDeclineStep = 1;
+  ui.keepScroll = true;
+  render();
+}
+function renewDeclineConfirmHtml() {
+  const step = Number(ui.renewDeclineStep) || 0;
+  if (step < 1 || step > 3) return "";
+  const lines = [
+    "第 1 次提醒：確定不續約嗎？合約到期後需要辦理退租。",
+    "第 2 次提醒：再確認一次，確定不續約嗎？",
+    "第 3 次提醒：這是最後一次。確認後就會標成不續約。"
+  ];
+  return `<div class="install-mask" id="renew-decline-mask">
+    <div class="install-sheet">
+      <div class="label">不續約</div>
+      <h2>請再確認</h2>
+      <p class="small">${lines[step - 1]}</p>
+      <button type="button" class="btn-navy" id="renew-decline-yes">確定不續約</button>
+      <button type="button" class="ghost" id="renew-decline-no">我再想想</button>
+    </div>
+  </div>`;
+}
+function bindRenewDeclineConfirm() {
+  const close = () => { ui.renewDeclineStep = 0; ui.keepScroll = true; render(); };
+  const mask = document.getElementById("renew-decline-mask");
+  if (mask) mask.onclick = e => { if (e.target.id === "renew-decline-mask") close(); };
+  const no = document.getElementById("renew-decline-no");
+  if (no) no.onclick = close;
+  const yes = document.getElementById("renew-decline-yes");
+  if (yes) yes.onclick = () => {
+    const step = Number(ui.renewDeclineStep) || 1;
+    if (step < 3) {
+      ui.renewDeclineStep = step + 1;
+      ui.keepScroll = true;
+      render();
+      return;
+    }
+    ui.renewDeclineStep = 0;
+    declineTenantRenewal();
+  };
 }
 function declineTenantRenewal() {
   const t = me(); const r = myRoom();
@@ -21214,7 +21262,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -21454,6 +21502,7 @@ function bindInstallSheet() {
   const tryBtn = document.getElementById("install-try");
   if (tryBtn) tryBtn.onclick = () => installApp(ui.installSheet || "desktop", true);
   try { bindVacateConfirm(); } catch {}
+  try { bindRenewDeclineConfirm(); } catch {}
 }
 const APP_HOME_URL = "https://tongjie-app.pages.dev";
 const APP_JOIN_URL = APP_HOME_URL + "/?openExternalBrowser=1&install=1";
