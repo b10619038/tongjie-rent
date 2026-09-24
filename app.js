@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-29";
-const APP_EDIT_COUNT = 1254;
+const APP_STAMP = "2026-09-24-16-31";
+const APP_EDIT_COUNT = 1255;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0804";
+const FILE_VER = "0805";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約門牌樓層室號不再加括號"] },
+  { ver: APP_VERSION, items: ["合約車位改勾有，改為地上一層摩托車停車空間"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20492,7 +20492,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
       <p>1、門牌：${u(door, "wide")}</p>
-      <p>2、車位：${ck(false)}有（現況停車空間在本標的物地下一層）${ck(true)}無。</p>
+      <p>2、車位：${ck(true)}有（現況摩托車停車空間 在本標的物地上一層）${ck(false)}無。</p>
       <p>3、${ck(false)}有${ck(true)}無設定他項權利，若有，權利種類：最高限額抵押權。</p>
       <p>4、${ck(false)}有${ck(true)}無查封登記。</p>
       <p>（二）租賃範圍：</p>
