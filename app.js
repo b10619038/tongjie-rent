@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-18-16";
-const APP_EDIT_COUNT = 1276;
+const APP_STAMP = "2026-09-24-18-32";
+const APP_EDIT_COUNT = 1277;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0826";
+const FILE_VER = "0827";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7042 周佳瑩 9/23 入帳 10,000"] },
+  { ver: APP_VERSION, items: ["7042 這個月不開發票，10月一次開兩張 14,000"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3958,7 +3958,7 @@ const TENANT_INFO = {
   "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
-  "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。" },
+  "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。發票 9月不開，10月一次開兩張 14,000：一張日期 9/23，一張 10月繳款日。" },
   "7051": { rent: 6000, deposit: 12000, note: "空房。月租 NT$ 6,000。不可申請租屋補助。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
@@ -13838,6 +13838,32 @@ function studioInvoiceRow(no, room, t, info) {
     stub: !!(part && part.kind === "stub")
   };
 }
+function invoicePushStudio(rows, no, room, t, info) {
+  if (String(no) === "7042") {
+    const ym = payYmNow();
+    if (ym === "2026-09") return;
+    if (ym === "2026-10") {
+      const base = studioInvoiceRow(no, room, t, info);
+      const sep = "2026-09-23";
+      const octPaid = !!(t && String(t.paidYm || "").slice(0, 7) === "2026-10" && (t.paid || ymdOf(t.remitOn).slice(0, 7) === "2026-10"));
+      const octRemit = octPaid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
+      const octInv = octRemit ? invoiceYmdFromRemit(octRemit, "2026-10") : "";
+      rows.push(Object.assign({}, base, {
+        amount: 14000, remitYmd: sep, remitDate: rocSlash(sep), invoiceYmd: sep, invoiceDate: rocSlash(sep), stub: false
+      }));
+      rows.push(Object.assign({}, base, {
+        amount: 14000,
+        remitYmd: octRemit,
+        remitDate: octRemit ? rocSlash(octRemit) : "",
+        invoiceYmd: octInv,
+        invoiceDate: octInv ? rocSlash(octInv) : "",
+        stub: false
+      }));
+      return;
+    }
+  }
+  rows.push(studioInvoiceRow(no, room, t, info));
+}
 function invoiceOverviewRows(kind) {
   if (kind === "factory") return factoryInvoiceOverviewRows();
   try { tickDueRenewals(); } catch {}
@@ -13853,7 +13879,7 @@ function invoiceOverviewRows(kind) {
     if (seen.has(no)) return;
     if (studioMirrorHostNo(no)) return;
     seen.add(no);
-    rows.push(studioInvoiceRow(no, room, t, TENANT_INFO[no] || {}));
+    invoicePushStudio(rows, no, room, t, TENANT_INFO[no] || {});
   });
   STUDIO_NOS.concat(["7651"]).forEach(no => {
     if (seen.has(String(no))) return;
@@ -13866,12 +13892,12 @@ function invoiceOverviewRows(kind) {
     if (live) {
       if (!studioInvoiceEligible(live, room)) return;
       seen.add(String(no));
-      rows.push(studioInvoiceRow(no, room, live, info));
+      invoicePushStudio(rows, no, room, live, info);
       return;
     }
     if (room.status === "vacant") return;
     seen.add(String(no));
-    rows.push(studioInvoiceRow(no, room, null, info));
+    invoicePushStudio(rows, no, room, null, info);
   });
   rows.sort((a, b) => {
     const da = a.remitYmd || a.invoiceYmd || "";

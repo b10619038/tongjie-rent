@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v1341";
-const BUILD = "20260924-0826";
+const CACHE = "tongjie-app-v1342";
+const BUILD = "20260924-0827";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
