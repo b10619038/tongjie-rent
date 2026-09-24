@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-00-48";
-const APP_EDIT_COUNT = 1325;
+const APP_STAMP = "2026-09-25-00-52";
+const APP_EDIT_COUNT = 1326;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0876";
+const FILE_VER = "0877";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["曬衣陽台改成曬衣露臺"] },
+  { ver: APP_VERSION, items: ["有陽台的房號多一張陽台圖卡"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -10780,6 +10780,7 @@ function navDepth() {
   const deep = {
     pay: 10,
     "room-detail": 20,
+    "own-balcony": 20,
     balcony: 20,
     parking: 20,
     trash: 20,
@@ -11760,7 +11761,7 @@ function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
   const map = {
     home: "首頁", rooms: ui.role === "admin" ? "所有資產" : "房間",
-    "room-detail": "房間詳情", parking: "停車位", balcony: "公共露臺", trash: "子母車",
+    "room-detail": "房間詳情", parking: "停車位", "own-balcony": "陽台", balcony: "公共露臺", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
     tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
@@ -22164,7 +22165,7 @@ function gateView() {
 
 function navKeyOf(page) {
   const p = page || (typeof ui !== "undefined" && ui && ui.page) || "home";
-  if (p === "room-detail" || p === "parking" || p === "balcony" || p === "trash") return "rooms";
+  if (p === "room-detail" || p === "parking" || p === "own-balcony" || p === "balcony" || p === "trash") return "rooms";
   if (p === "repair-done") return "repair";
   if (p === "pay") return "home";
   if (p === "lease-sign") return "lease";
@@ -22350,6 +22351,7 @@ function tenantView() {
   if (ui.page === "rooms") return roomsView();
   if (ui.page === "room-detail") return roomDetailView(ui.roomId || (myRoom() && myRoom().id) || "");
   if (ui.page === "parking") return parkingView();
+  if (ui.page === "own-balcony") return ownBalconyView();
   if (ui.page === "balcony") return balconyView();
   if (ui.page === "trash") return trashView();
   if (ui.page === "lease") return leaseView();
@@ -22945,10 +22947,22 @@ function payView() {
 }
 function roomsView() {
   const mine = myRoom();
+  const own = mine && roomHasBalcony(mine);
+  let seq = 2;
+  const step = () => "s" + (seq++);
   return `<div class="topbar slide-right"><div><div class="eyebrow">ROOMS</div><h1>房間</h1></div></div>
     <div class="screen">
       ${roomTile(mine, true, "room-seq", "images/studio-room-sm.jpg?v=1324")}
-      <div class="room-row clickable room-seq s2" data-page="balcony" style="margin-top:12px">
+      ${own ? `<div class="room-row clickable room-seq ${step()}" data-page="own-balcony" style="margin-top:12px">
+        <img src="images/own-balcony-sm.jpg?v=1326" alt="陽台" decoding="sync" fetchpriority="high" loading="eager" />
+        <div class="room-row-info">
+          <strong>陽台</strong>
+          <span class="small">本房專用</span>
+          <div class="price">NT$ 0 <em>/月</em></div>
+        </div>
+        <span class="badge rented">已配</span>
+      </div>` : ""}
+      <div class="room-row clickable room-seq ${step()}" data-page="balcony" style="margin-top:12px">
         <img src="images/balcony-sm.jpg?v=1324" alt="公共露臺" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>公共露臺</strong>
@@ -22957,7 +22971,7 @@ function roomsView() {
         </div>
         <span class="badge rented">已配</span>
       </div>
-      <div class="room-row clickable room-seq s3" data-page="parking" style="margin-top:12px">
+      <div class="room-row clickable room-seq ${step()}" data-page="parking" style="margin-top:12px">
         <img src="images/parking-sm.jpg?v=1324" alt="停車位" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>${mine.no}</strong>
@@ -22966,7 +22980,7 @@ function roomsView() {
         </div>
         <span class="badge rented">已配</span>
       </div>
-      <div class="room-row clickable room-seq s4" data-page="trash" style="margin-top:12px">
+      <div class="room-row clickable room-seq ${step()}" data-page="trash" style="margin-top:12px">
         <img src="images/trash-cart-sm.jpg?v=1324" alt="子母車" decoding="sync" fetchpriority="high" loading="eager" />
         <div class="room-row-info">
           <strong>子母車</strong>
@@ -23027,6 +23041,26 @@ function trashView() {
         <p>3. 請於規定清運時間再推至定點，勿提前堆放於走道或大門。</p>
         <p>4. 使用完畢請將子母車推回原位，保持整潔。</p>
         <p>5. 大型廢棄物、電池、油品等請依環保局規定另行處理，禁止投入子母車。</p>
+      </div>
+    </div>`;
+}
+function ownBalconyView() {
+  const r = myRoom();
+  return `<div class="topbar slide-right"><div>
+      <button class="back" data-page="rooms">← 返回</button>
+      <div class="eyebrow">BALCONY</div><h1>陽台</h1>
+    </div></div>
+    <div class="screen">
+      ${amenityVideoHtml("images/own-balcony.mp4?v=1326", "images/own-balcony.jpg?v=1326")}
+      <div class="card card-body slide-left rules" style="margin-top:14px">
+        <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
+        <div class="row"><span class="k">房號</span><span class="v">${escapeHtml((r && r.no) || "")}</span></div>
+        <p>1. 本房附設私人陽台，僅供本房住戶使用。</p>
+        <p>2. 請勿在陽台抽菸、燃燒、丟垃圾或傾倒污水。</p>
+        <p>3. 花盆、衣架與雜物請放穩，避免掉落。</p>
+        <p>4. 請保持排水順暢，勿堵塞落水口。</p>
+        <p>5. 夜間請放低音量，避免影響鄰戶。</p>
+        <p>6. 請勿攀爬欄杆或懸掛重物。</p>
       </div>
     </div>`;
 }
