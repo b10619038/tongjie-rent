@@ -1004,6 +1004,7 @@ button.pay-pill.hand {
   gap: 8px;
   margin-top: 10px;
   align-items: center;
+  justify-content: center;
 }
 .renew-ask-actions .btn-navy,
 .renew-ask-actions .ghost {
