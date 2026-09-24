@@ -4421,7 +4421,7 @@ img.avatar { object-fit: cover; display: block; }
 .plan-room-badge.on {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
-  transition: transform .72s cubic-bezier(.22,1,.36,1), opacity .5s ease;
+  transition: transform .32s cubic-bezier(.2,1.35,.36,1), opacity .22s ease;
 }
 .photo-zoom.out .plan-room-badge {
   opacity: 0;
