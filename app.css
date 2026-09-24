@@ -1571,7 +1571,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   margin: 8px 12px 14px;
   max-height: 140px;
   background: var(--card); border-radius: 999px;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
   overflow: visible;
@@ -4292,6 +4292,18 @@ body.rev-zooming { overflow: hidden; }
 .who-chat .who-text { pointer-events: none; }
 .who-chat .badge-dot { position: absolute; top: -4px; right: -10px; }
 .who-mini .live-pill { flex-shrink: 0; padding: 3px 7px; font-size: 10px; }
+.avatar-open {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.avatar-open .avatar { width: 52px; height: 52px; }
+.avatar-open .badge-dot-only { top: 0; right: 0; z-index: 2; box-shadow: 0 0 0 2px #fff; }
 .avatar {
   width: 52px; height: 52px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
   border: 0; padding: 0; background: #e8e8e8; cursor: pointer;
