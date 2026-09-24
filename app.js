@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-01-04";
-const APP_EDIT_COUNT = 1331;
+const APP_STAMP = "2026-09-25-01-05";
+const APP_EDIT_COUNT = 1332;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0882";
+const FILE_VER = "0883";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["所有資產改成資產"] },
+  { ver: APP_VERSION, items: ["工作助手改成助手"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11764,7 +11764,7 @@ function pageLabel() {
     "room-detail": "房間詳情", parking: "停車位", "own-balcony": "陽台", balcony: "公共露臺", trash: "子母車",
     lease: "租約", repair: "報修", "repair-done": "報修", pay: "繳費租金",
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
-    tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
+    tenants: "租客", announce: "公告", repairs: "報修", ai: "助手", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
     "tenant-login": "租客登入", "admin-login": "管理員登入",
     "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
   };
@@ -23683,7 +23683,7 @@ function adminView() {
     </div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", history: "歷史紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
+  const labels = { dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "助手", history: "歷史紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("history", "logs");
   allowed.push("settings", "firm", "food");
@@ -24828,7 +24828,7 @@ function howtoSections() {
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
     { id: "a-rooms", h: "資產", p: "套房／廠房可左右切換。點房間可改租客、租金、狀態。店面（牛10-68 等）也在套房資料裡。" },
     { id: "a-tenants", h: "租客", p: "圖卡可改資料。交接時可「登記新客」，舊客辦退租完成後會入帳並讓新客接手；舊客 App 會自動登出，LINE 請新客重綁。" },
-    { id: "a-ai", h: "工作助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。業務上傳可記現場進帳、出帳、轉帳。" },
+    { id: "a-ai", h: "助手", p: "本月工作會列出這個月要做的事，點一筆可加到日曆、編輯或完成。跟助手說「幫我記／提醒我／請紀錄」就會寫進去。業務上傳可記現場進帳、出帳、轉帳。" },
     { id: "a-fix", h: "租客報修", p: "看租客送出的報修，可填金額或「待報價」、查看照片、刪除或收合圖卡。" },
     { id: "a-ann", h: "公告", p: "發布給租客的通知，可上傳照片或影片。7651 顯示管理員，1240 顯示開發者。" },
     { id: "a-set", h: "設定", p: "帳號、快速登入、通知、精確位置、安裝、調色盤、字體、震動、鈴聲與權限說明。" },
