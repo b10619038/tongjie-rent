@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-03-52";
-const APP_EDIT_COUNT = 1363;
+const APP_STAMP = "2026-09-25-03-57";
+const APP_EDIT_COUNT = 1364;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0914";
+const FILE_VER = "0915";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["綁定LINE中間空格拿掉"] },
+  { ver: APP_VERSION, items: ["我的房間依節日布置，設定可開關"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11605,6 +11605,75 @@ function skyPrefOn() {
 }
 function setSkyPref(on) {
   try { localStorage.setItem("tongjie_sky_on", on ? "1" : "0"); } catch {}
+}
+function festPrefOn() {
+  try {
+    const v = localStorage.getItem("tongjie_fest_on");
+    if (v === "0" || v === "off" || v === "false") return false;
+  } catch {}
+  return true;
+}
+function setFestPref(on) {
+  try { localStorage.setItem("tongjie_fest_on", on ? "1" : "0"); } catch {}
+}
+const FEST_CNY = ["2026-02-17", "2027-02-06", "2028-01-26", "2029-02-13", "2030-02-03"];
+const FEST_LANTERN = ["2026-03-03", "2027-02-20", "2028-02-09", "2029-02-27", "2030-02-17"];
+const FEST_DRAGON = ["2026-06-19", "2027-06-09", "2028-05-28", "2029-06-16", "2030-06-05"];
+const FEST_QIXI = ["2026-08-19", "2027-08-08", "2028-08-26", "2029-08-16", "2030-08-05"];
+const FEST_MOON = ["2026-09-25", "2027-09-15", "2028-10-03", "2029-09-22", "2030-09-12"];
+const FEST_YANG = ["2026-10-18", "2027-10-08", "2028-10-26", "2029-10-16", "2030-10-05"];
+function festAround(days, before, after) {
+  const today = todayYmd();
+  return (days || []).some(d => {
+    const a = addDaysYmd(d, -before);
+    const b = addDaysYmd(d, after);
+    return !!(a && b && today >= a && today <= b);
+  });
+}
+function mothersDayYmd(year) {
+  const first = new Date(Date.UTC(year, 4, 1));
+  const add = (7 - first.getUTCDay()) % 7;
+  const day = 1 + add + 7;
+  return year + "-05-" + String(day).padStart(2, "0");
+}
+function roomFestKind() {
+  const today = todayYmd();
+  const md = today.slice(5);
+  if (festAround(FEST_MOON, 1, 1)) return "moon";
+  if (festAround(FEST_CNY, 1, 6)) return "cny";
+  if (festAround(FEST_LANTERN, 0, 1)) return "lantern";
+  if (festAround(FEST_DRAGON, 0, 1)) return "dragon";
+  if (festAround(FEST_QIXI, 0, 0)) return "qixi";
+  if (festAround(FEST_YANG, 0, 0)) return "yang";
+  if (md === "01-01") return "newyear";
+  if (md >= "12-24" && md <= "12-26") return "xmas";
+  if (md === "12-31") return "eve";
+  if (md >= "10-30" && md <= "10-31") return "halloween";
+  if (md === "04-04" || md === "04-05") return "qingming";
+  if (md === "08-08") return "dad";
+  if (today === mothersDayYmd(Number(today.slice(0, 4)))) return "mom";
+  return "";
+}
+function roomFestHtml() {
+  if (!festPrefOn()) return "";
+  const kind = roomFestKind();
+  const art = {
+    moon: `<svg class="a" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#f4dc78"/><circle cx="11" cy="13" r="2" fill="#e4c45a"/><circle cx="18" cy="18" r="2.5" fill="#e4c45a"/></svg><svg class="b" viewBox="0 0 36 36"><ellipse cx="22" cy="24" rx="8" ry="5.5" fill="#fff" stroke="#d7d0c2"/><circle cx="29" cy="18" r="4.6" fill="#fff" stroke="#d7d0c2"/><ellipse cx="27" cy="10" rx="1.5" ry="5" fill="#fff" stroke="#d7d0c2"/><ellipse cx="31" cy="10" rx="1.5" ry="5" fill="#fff" stroke="#d7d0c2"/><circle cx="30.6" cy="17.4" r=".6" fill="#333"/><ellipse cx="11" cy="26" rx="5" ry="2.8" fill="#c9842a"/><path d="M13 16l2 9" stroke="#8a5a22" stroke-width="1.6" stroke-linecap="round"/></svg><svg class="c" viewBox="0 0 40 22"><path d="M3 13h30" stroke="#8a5a22" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="13" r="3" fill="#c45b4a"/><circle cx="18" cy="13" r="3" fill="#a8633a"/><circle cx="26" cy="13" r="3" fill="#c45b4a"/><path d="M8 8c1 1.2 1 2 0 3M16 7c1 1.2 1 2 0 3M24 8c1 1.2 1 2 0 3" fill="none" stroke="#e07a3d" stroke-width="1.2" stroke-linecap="round"/></svg>`,
+    cny: `<svg class="a" viewBox="0 0 32 36"><path d="M10 6h12v16a6 6 0 0 1-12 0z" fill="#d4534a"/><path d="M16 4v4M12 6h8" stroke="#f2c14e" stroke-width="1.4"/><path d="M16 28v5" stroke="#f2c14e" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#d4534a"/><text x="16" y="21" text-anchor="middle" font-size="14" fill="#f6e27a" font-family="serif">福</text></svg><svg class="c" viewBox="0 0 28 32"><rect x="10" y="6" width="8" height="16" rx="2" fill="#c45b4a"/><path d="M14 22v6M11 26h6" stroke="#f2c14e" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+    lantern: `<svg class="a" viewBox="0 0 32 36"><path d="M9 8h14v14a7 7 0 0 1-14 0z" fill="#e26a3c"/><path d="M16 4v4M11 8h10M16 26v6" stroke="#f2c14e" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 32 36"><path d="M10 9h12v12a6 6 0 0 1-12 0z" fill="#d4534a"/><path d="M16 5v4M12 9h8" stroke="#f6e27a" stroke-width="1.3"/></svg>`,
+    dragon: `<svg class="a" viewBox="0 0 32 32"><path d="M16 5 27 24H5z" fill="#7d9a62"/><path d="M16 10v10" stroke="#f4e2b0" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 36 24"><path d="M4 14h20l6-4v8H8z" fill="#3d6ea8"/><path d="M8 14V8h4" stroke="#f4e2b0" stroke-width="1.3"/></svg>`,
+    qixi: `<svg class="a" viewBox="0 0 32 32"><path d="M16 26s-8-5.2-8-11a4.4 4.4 0 0 1 8-2 4.4 4.4 0 0 1 8 2c0 5.8-8 11-8 11z" fill="#d46a8a"/></svg><svg class="b" viewBox="0 0 32 32"><path d="M16 4l2 6h6l-5 4 2 6-5-4-5 4 2-6-5-4h6z" fill="#f2c14e"/></svg>`,
+    yang: `<svg class="a" viewBox="0 0 32 32"><circle cx="16" cy="16" r="5" fill="#f2c14e"/><g stroke="#c9842a" stroke-width="1.4"><path d="M16 4v5M16 23v5M4 16h5M23 16h5M7 7l3.5 3.5M21.5 21.5 25 25M25 7l-3.5 3.5M7 25l3.5-3.5"/></g></svg>`,
+    newyear: `<svg class="a" viewBox="0 0 32 32"><path d="M16 3l2 7h7l-5.5 4.2 2 7L16 18l-5.5 3.2 2-7L7 10h7z" fill="#f2c14e"/></svg><svg class="b" viewBox="0 0 32 32"><circle cx="16" cy="16" r="3" fill="#d4534a"/><path d="M16 6v4M16 22v4M6 16h4M22 16h4" stroke="#f2c14e" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+    xmas: `<svg class="a" viewBox="0 0 32 36"><path d="M16 3 26 16h-6l6 10H6l6-10H6z" fill="#3f6b45"/><rect x="13" y="26" width="6" height="6" fill="#8a5a22"/><circle cx="16" cy="12" r="1.3" fill="#f2c14e"/></svg><svg class="b" viewBox="0 0 28 28"><rect x="5" y="8" width="18" height="14" rx="2" fill="#d4534a"/><path d="M5 14h18M14 8v14" stroke="#f2c14e" stroke-width="1.6"/></svg><svg class="c" viewBox="0 0 28 28"><path d="M14 3v22M6 8l16 12M22 8 6 20" stroke="#9ec4e8" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+    eve: `<svg class="a" viewBox="0 0 32 32"><path d="M16 16 18 6l2 8 8-2-6 6 4 8-8-4-6 6 2-8-8-2 8-2z" fill="#f2c14e"/></svg><svg class="b" viewBox="0 0 32 32"><circle cx="10" cy="18" r="2" fill="#d4534a"/><circle cx="20" cy="12" r="2" fill="#3d6ea8"/><circle cx="22" cy="22" r="1.6" fill="#7d9a62"/></svg>`,
+    halloween: `<svg class="a" viewBox="0 0 32 32"><circle cx="16" cy="17" r="10" fill="#e07a3d"/><path d="M11 16l2 2-2 2M21 16l-2 2 2 2M12 22h8" stroke="#3a2a1a" stroke-width="1.3" stroke-linecap="round"/><path d="M16 5v3" stroke="#3f6b45" stroke-width="1.6"/></svg><svg class="b" viewBox="0 0 32 20"><path d="M2 12c4-8 8 0 12-8 4 8 8 0 16 0v4C26 8 22 16 16 8 10 16 6 8 2 16z" fill="#3a3a3a"/></svg>`,
+    qingming: `<svg class="a" viewBox="0 0 32 32"><path d="M16 28c0-8 8-10 8-16a8 8 0 0 0-16 0c0 6 8 8 8 16z" fill="#7d9a62"/></svg><svg class="b" viewBox="0 0 32 32"><path d="M8 24c4-10 12-10 16 0" fill="none" stroke="#8a5a22" stroke-width="1.4"/><circle cx="12" cy="14" r="3" fill="#d46a8a"/><circle cx="20" cy="12" r="2.4" fill="#f2c14e"/></svg>`,
+    mom: `<svg class="a" viewBox="0 0 32 32"><circle cx="16" cy="14" r="6" fill="#d46a8a"/><path d="M16 20v8" stroke="#3f6b45" stroke-width="1.4"/><path d="M16 26s-6-2-4-6" fill="#7d9a62"/></svg><svg class="b" viewBox="0 0 32 32"><path d="M16 26s-8-5-8-11a4.2 4.2 0 0 1 8-2 4.2 4.2 0 0 1 8 2c0 6-8 11-8 11z" fill="#e7a0b4"/></svg>`,
+    dad: `<svg class="a" viewBox="0 0 32 32"><path d="M12 6h8l-1 8H13z" fill="#3d6ea8"/><path d="M14 14h4v12h-4z" fill="#3d6ea8"/><path d="M10 8h12" stroke="#f2c14e" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 32 28"><path d="M8 10h12v12H8z" fill="#ececec" stroke="#8a5a22"/><path d="M8 12c4 4 8 4 12 0" fill="none" stroke="#c9842a" stroke-width="1.3"/></svg>`
+  }[kind];
+  if (!art) return "";
+  return `<div class="fest fest-${kind}" aria-hidden="true">${art}</div>`;
 }
 
 function ensureSkyLive() {
@@ -23006,6 +23075,7 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${handoverNote}
       <div class="hero-card">
+        ${roomFestHtml()}
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
@@ -32126,6 +32196,14 @@ function tenantSettings() {
         </div>
         <p class="small">問候區後面的晴天、飄雲與落雨。關掉後畫面較單純，這台手機會記住。</p>
       </div>
+      <div class="card card-body">
+        <div class="label">我的房間節慶布置</div>
+        <div class="pref-switch">
+          <span>${festPrefOn() ? "節日會出現小布置" : "已關閉"}</span>
+          <button type="button" class="pref-knob${festPrefOn() ? " on" : ""}" id="fest-toggle" aria-pressed="${festPrefOn() ? "true" : "false"}"></button>
+        </div>
+        <p class="small">元旦、春節、元宵、清明、端午、七夕、中秋、重陽、萬聖節、聖誕、跨年，還有母親節、父親節。到了那幾天，我的房間圖卡會加上節慶布置。這台手機會記住。</p>
+      </div>
       ${lookSettingsHtml()}
       ${tenantNdaHtml()}
       <div class="card card-body">
@@ -32149,6 +32227,19 @@ function bindLookSettings() {
       ui.keepScroll = true;
       render();
       try { applySkyDom(); } catch {}
+    };
+  }
+  const festBtn = document.getElementById("fest-toggle");
+  if (festBtn) {
+    bindIosPress(festBtn);
+    festBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = !festPrefOn();
+      setFestPref(next);
+      toast(next ? "已打開節慶布置" : "已關閉節慶布置");
+      ui.keepScroll = true;
+      render();
     };
   }
   document.querySelectorAll("#app [data-theme]").forEach(btn => {

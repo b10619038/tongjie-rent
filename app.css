@@ -571,11 +571,34 @@ input, textarea, select {
 .hint-note { margin-top: 14px; padding: 0 6px; }
 
 .hero-card {
+  position: relative;
   background: #ececec;
   color: #17211f;
   border-radius: 26px;
   padding: 20px;
   border: 1px solid #dedede;
+}
+.fest {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: 118px;
+  height: 86px;
+  pointer-events: none;
+}
+.fest svg {
+  position: absolute;
+  display: block;
+  overflow: visible;
+  animation: festFloat 3.4s ease-in-out infinite;
+}
+.fest .a { top: 8px; right: 8px; width: 34px; height: 38px; }
+.fest .b { top: 6px; right: 46px; width: 32px; height: 32px; animation-delay: -.9s; }
+.fest .c { top: 46px; right: 10px; width: 40px; height: 26px; animation-delay: -1.7s; }
+@keyframes festFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
