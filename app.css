@@ -1013,6 +1013,10 @@ button.pay-pill.hand {
   padding: 8px 16px;
   border-radius: 999px;
 }
+.renew-ask-actions .btn-navy {
+  min-width: 148px;
+  padding: 8px 28px;
+}
 .renew-years {
   display: inline-flex;
   gap: 6px;
