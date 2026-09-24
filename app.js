@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-11-36";
-const APP_EDIT_COUNT = 1221;
+const APP_STAMP = "2026-09-24-11-42";
+const APP_EDIT_COUNT = 1222;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0771";
+const FILE_VER = "0772";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間、曬衣、停車、子母車影片開頭不再卡頓"] },
+  { ver: APP_VERSION, items: ["房間影片播放中不會被重畫打斷"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4947,18 +4947,42 @@ function photoEl(src, no) {
   if (!src || String(src).length < 8) src = photosFor(no || "6821")[0];
   return `<img src="${src}" alt="${no || ""}">`;
 }
+function videoKey(v) {
+  if (!v) return "";
+  const src = v.currentSrc || (v.querySelector("source") && v.querySelector("source").getAttribute("src")) || "";
+  return String(src).split("?")[0].split("/").pop();
+}
+function parkRoomVideo() {
+  const v = document.querySelector(".room-hero-video");
+  if (!v || v.readyState < 2) return null;
+  const key = videoKey(v);
+  if (!key) return null;
+  const hold = document.createElement("div");
+  hold.hidden = true;
+  document.body.appendChild(hold);
+  hold.appendChild(v);
+  return { hold, node: v, key };
+}
+function restoreRoomVideo(parked) {
+  if (!parked) return;
+  const next = document.querySelector(".room-hero-video");
+  if (next && videoKey(next) === parked.key) next.replaceWith(parked.node);
+  else if (parked.node) parked.node.pause();
+  if (parked.hold) parked.hold.remove();
+}
 function playRoomHero() {
   document.querySelectorAll(".room-hero-video").forEach(v => {
     v.muted = true;
     v.defaultMuted = true;
     v.playsInline = true;
+    if (!v.paused && v.currentTime > 0.05) return;
     const start = () => {
-      if (!v.isConnected) return;
+      if (!v.isConnected || (!v.paused && v.currentTime > 0.05)) return;
       const p = v.play();
       if (p && p.catch) p.catch(() => {});
     };
-    if (v.readyState >= 3) start();
-    else v.addEventListener("canplay", start, { once: true });
+    if (v.readyState >= 2) start();
+    else v.addEventListener("loadeddata", start, { once: true });
   });
 }
 function playHomeSlides() {
@@ -21113,7 +21137,9 @@ function paintApp() {
     const onBtn = navKeep.querySelector("button.active");
     if (onBtn) ui.navPill = { x: Math.max(0, onBtn.offsetLeft - 3), w: onBtn.offsetWidth + 6 };
     scKeep.classList.toggle("tenant-still", !pageChanged);
+    const parked = pageChanged ? null : parkRoomVideo();
     scKeep.innerHTML = `${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
+    restoreRoomVideo(parked);
     refreshNavButtons(navKeep);
     safeBind(() => {
       bindTenant();
@@ -21142,7 +21168,9 @@ function paintApp() {
     lastRenderPage = ui.page;
     return;
   }
+  const parked = pageChanged ? null : parkRoomVideo();
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  restoreRoomVideo(parked);
   safeBind(() => {
     bindTenant();
     bindNavPill();
@@ -22396,7 +22424,7 @@ function parkingView() {
       <div class="eyebrow">PARKING</div><h1>停車位</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/parking.mp4?v=1321", "images/parking.jpg?v=1312")}
+      ${amenityVideoHtml("images/parking.mp4?v=1322", "images/parking.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/parking.jpg?v=1312" alt="停車位" />
         <div class="room-row-info">
@@ -22421,7 +22449,7 @@ function trashView() {
       <div class="eyebrow">TRASH</div><h1>子母車</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/trash-cart.mp4?v=1321", "images/trash-cart.jpg?v=1312")}
+      ${amenityVideoHtml("images/trash-cart.mp4?v=1322", "images/trash-cart.jpg?v=1312")}
       <div class="room-row slide-left" style="margin-top:14px">
         <img src="images/trash-cart.jpg?v=1312" alt="子母車" />
         <div class="room-row-info">
@@ -22447,7 +22475,7 @@ function balconyView() {
       <div class="eyebrow">BALCONY</div><h1>公共陽台</h1>
     </div></div>
     <div class="screen">
-      ${amenityVideoHtml("images/balcony.mp4?v=1321", "images/balcony.jpg?v=1312")}
+      ${amenityVideoHtml("images/balcony.mp4?v=1322", "images/balcony.jpg?v=1312")}
       <div class="card card-body slide-left rules" style="margin-top:14px">
         <div class="row"><span class="k">使用費</span><span class="v">NT$ 0 /月</span></div>
         <p>1. 公共陽台提供自助洗衣機、乾衣機與曬衣桿，供全體租客使用。</p>
@@ -22523,7 +22551,7 @@ function roomDetailView(id) {
   const media = r.kind === "factory"
     ? `<div class="photos slide-left">${photos.map(src => photoEl(src, r.no)).join("")}</div>
       <p class="small hint-note">左右滑動可看更多房間照片</p>`
-    : amenityVideoHtml("images/studio-room.mp4?v=1321", "images/studio-room.jpg?v=1713");
+    : amenityVideoHtml("images/studio-room.mp4?v=1322", "images/studio-room.jpg?v=1713");
   return `<div class="topbar slide-right"><div>
       <button class="back" data-page="rooms">← 房間</button><h1>${r.no}</h1>
     </div></div>
