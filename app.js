@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-22-10";
-const APP_EDIT_COUNT = 1296;
+const APP_STAMP = "2026-09-24-22-13";
+const APP_EDIT_COUNT = 1297;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0847";
+const FILE_VER = "0848";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6821 藍色房號圖卡移除"] },
+  { ver: APP_VERSION, items: ["平面圖標題上方加上 2F 6821"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13448,7 +13448,7 @@ function openZoomPhoto(item, originEl) {
     <div class="photo-zoom-bg"></div>
     <img class="photo-zoom-img" src="${item.src}" alt="">
     <button type="button" class="photo-zoom-close" id="lb-close">關閉</button>
-    ${item.title ? `<div class="photo-zoom-caption">${escapeHtml(item.title)}</div>` : ""}`;
+    ${item.title ? `<div class="photo-zoom-caption">${item.above ? `<div class="photo-zoom-above">${escapeHtml(item.above)}</div>` : ""}${escapeHtml(item.title)}</div>` : ""}`;
   document.body.appendChild(wrap);
   const img = wrap.querySelector(".photo-zoom-img");
   const place = () => {
@@ -22955,7 +22955,7 @@ function floorPlanCardHtml(r) {
   const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
   return `
       <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
-      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-dot="0.556,0.832" data-room-focus="0.452,0.746,0.208,0.172" data-room-label="${escapeHtml(no)}" role="button">
+      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="2F 6821" data-zoom-dot="0.556,0.832" data-room-focus="0.452,0.746,0.208,0.172" data-room-label="${escapeHtml(no)}" role="button">
         <div class="plan-frame">
           <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
           <span class="plan-room-dot" style="left:55.6%;top:83.2%" aria-hidden="true"></span>
@@ -30547,6 +30547,7 @@ function bindZoomPhotos() {
       const photo = el.dataset.zoomPhoto;
       if (!photo) return;
       const title = el.dataset.zoomTitle || "";
+      const above = el.dataset.zoomAbove || "";
       const origin = el.querySelector(".zoom-origin") || el;
       const raw = String(el.dataset.zoomFocus || "");
       const parts = raw.split(",").map(Number);
@@ -30561,7 +30562,7 @@ function bindZoomPhotos() {
         ? { x: roomParts[0], y: roomParts[1], w: roomParts[2], h: roomParts[3] }
         : null;
       const roomLabel = el.dataset.roomLabel || "";
-      openMediaViewer([{ kind: "image", src: photo, title, focus, label, dot, roomFocus, roomLabel }], 0, origin);
+      openMediaViewer([{ kind: "image", src: photo, title, above, focus, label, dot, roomFocus, roomLabel }], 0, origin);
     };
   });
 }

@@ -4450,6 +4450,13 @@ img.avatar { object-fit: cover; display: block; }
 }
 .photo-zoom.on .photo-zoom-caption { opacity: .9; transition: opacity .28s .08s; }
 .photo-zoom.out .photo-zoom-caption { opacity: 0; }
+.photo-zoom-above {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
 [data-open-topup] { cursor: pointer; }
 [data-zoom-photo] { cursor: pointer; }
 .batt-card {
