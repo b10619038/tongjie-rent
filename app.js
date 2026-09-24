@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-02-04";
-const APP_EDIT_COUNT = 1341;
+const APP_STAMP = "2026-09-25-02-08";
+const APP_EDIT_COUNT = 1342;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0892";
+const FILE_VER = "0893";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["資產平面圖點牛1會縮放並顯示牛1"] },
+  { ver: APP_VERSION, items: ["資產平面圖先不做縮放"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4110,9 +4110,6 @@ const SITE_MAP_SPOTS = [
   { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" },
   { cx:38.97, cy:89.57, w:2.51, h:2.77, rot:68.4, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" }
 ];
-const SITE_MAP_ZONES = [
-  { id: "牛1", label: "牛1", x: 56.2, y: 17.2, w: 12.8, h: 19.2 }
-];
 function findRoomByAssetNo(no) {
   const want = String(no || "");
   const alt = want.replace(/^牛5-97-/, "牛5-").replace(/^牛5-(\d{2})$/, "牛5-97-$1");
@@ -4135,26 +4132,6 @@ function assetMapSpotTone(spot) {
     return t && !paidThisMonth(t) && leaseCoversYm(t, r, payYmNow());
   });
   return unpaid ? "unpaid" : "paid";
-}
-function assetZoneSpots(zone) {
-  if (!zone) return [];
-  return SITE_MAP_SPOTS.filter(s => String(s.label || "").indexOf(zone.id + " ") === 0);
-}
-function assetMapZonePopHtml(zone) {
-  if (!zone) return "";
-  const rows = assetZoneSpots(zone).map(s => {
-    const rooms = assetMapRooms(s);
-    const r = rooms[0];
-    if (!r) return `<div class="small">${escapeHtml(s.label)}</div>`;
-    const t = (state.tenants || []).find(x => x && !x.former && !x.incoming && (x.id === r.tenantId || x.roomId === r.id));
-    const pay = t ? payLabel(t, r) : { text: r.status === "vacant" ? "空置" : "尚無租客", cls: "wait" };
-    const who = t && t.name ? t.name : (r.status === "office" ? "辦公室" : "空");
-    return `<button type="button" class="map-pop-row" data-admin-room="${escapeHtml(r.id)}">
-      <span class="map-pop-who"><b>${escapeHtml(s.label.replace(zone.id + " ", ""))}</b>　${escapeHtml(who)}</span>
-      <span class="pay-pill ${pay.cls}">${pay.text}</span>
-    </button>`;
-  }).join("");
-  return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(zone.label)}</div>${rows}</div>`;
 }
 function assetMapPopHtml(spot) {
   if (!spot) return "";
@@ -4183,7 +4160,6 @@ function assetMapHtml() {
   const z = Number(ui.assetMapZoom) > 0 ? Number(ui.assetMapZoom) : 1;
   const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
-  const zone = SITE_MAP_ZONES.find(z => z.id === ui.assetMapZone);
   return `<div class="card card-body asset-map-card">
     <div class="row"><h2 class="dash-h">資產平面圖</h2>
       <span class="row-end">
@@ -4202,12 +4178,11 @@ function assetMapHtml() {
       <div class="asset-map-turn" id="asset-map-turn"${portrait ? ` style="width:${Math.round(z * 100)}%"` : ""}>
         <div class="asset-map" id="asset-map"${portrait ? "" : ` style="width:${Math.round(z * 100)}%"`}>
           <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
-          ${SITE_MAP_ZONES.map(z => `<button type="button" class="map-zone${ui.assetMapZone === z.id ? " on" : ""}" style="left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%" data-map-zone="${escapeHtml(z.id)}" aria-label="${escapeHtml(z.label)}"><span>${escapeHtml(z.label)}</span></button>`).join("")}
           ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
         </div>
       </div>
     </div>
-    <div id="asset-map-pop">${open ? assetMapPopHtml(open) : (zone ? assetMapZonePopHtml(zone) : "")}</div>
+    <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>
   </div>`;
 }
 function bindAssetMap() {
@@ -4226,7 +4201,7 @@ function bindAssetMap() {
   const boxOf = () => turn || map;
   const applyZoomAt = (z, clientX, clientY) => {
     if (!wrap || !map) return;
-    z = Math.max(1, Math.min(5, z));
+    z = Math.max(1, Math.min(3, z));
     const rect = wrap.getBoundingClientRect();
     const box = boxOf();
     const x = clientX == null ? rect.left + rect.width / 2 : clientX;
@@ -4239,39 +4214,6 @@ function bindAssetMap() {
     wrap.scrollLeft = mx * next.offsetWidth - (x - rect.left);
     wrap.scrollTop = my * next.offsetHeight - (y - rect.top);
   };
-  document.querySelectorAll("[data-map-zone]").forEach(btn => {
-    bindIosPress(btn);
-    btn.onclick = e => {
-      if (ui.mapSkipClick) { e.preventDefault(); e.stopPropagation(); return; }
-      e.preventDefault();
-      e.stopPropagation();
-      const id = btn.dataset.mapZone;
-      const zone = SITE_MAP_ZONES.find(z => z.id === id);
-      if (!zone || !wrap) return;
-      ui.assetMapZone = id;
-      ui.assetMapSpot = -1;
-      document.querySelectorAll("[data-map-zone]").forEach(x => x.classList.toggle("on", x.dataset.mapZone === id));
-      document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.remove("on"));
-      const baseW = (boxOf().offsetWidth) / Math.max(1, ui.assetMapZoom || 1);
-      const baseH = (boxOf().offsetHeight) / Math.max(1, ui.assetMapZoom || 1);
-      const z = Math.max(1.4, Math.min(5, Math.min(
-        (wrap.clientWidth * 0.92) / Math.max(1, baseW * zone.w / 100),
-        (wrap.clientHeight * 0.86) / Math.max(1, baseH * zone.h / 100)
-      )));
-      ui.assetMapZoom = z;
-      frame();
-      const next = boxOf();
-      const cx = (zone.x + zone.w / 2) / 100 * next.offsetWidth;
-      const cy = (zone.y + zone.h / 2) / 100 * next.offsetHeight;
-      wrap.scrollLeft = cx - wrap.clientWidth / 2;
-      wrap.scrollTop = cy - wrap.clientHeight / 2;
-      if (pop) pop.innerHTML = assetMapZonePopHtml(zone);
-      if (pop) {
-        try { pop.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
-        try { bindAdminRoomItems(); } catch {}
-      }
-    };
-  });
   document.querySelectorAll("[data-map-spot]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
