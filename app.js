@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-01-42";
-const APP_EDIT_COUNT = 1337;
+const APP_STAMP = "2026-09-25-01-50";
+const APP_EDIT_COUNT = 1338;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0888";
+const FILE_VER = "0889";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖縮放後可拖移與放大縮小"] },
+  { ver: APP_VERSION, items: ["套房租客說明那句移除"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -28539,7 +28539,7 @@ function bindHandover() {
   });
 }
 function tenantKindHint(kind) {
-  return kind === "factory" ? "已套入統潔／信潔租金表。可登記新客，完成退租會入帳並交接。" : "可直接改資料。交接時先登記新客，舊客退租完成會入帳並接手。";
+  return kind === "factory" ? "已套入統潔／信潔租金表。可登記新客，完成退租會入帳並交接。" : "";
 }
 function setSegSide(seg, rightOn, leftClass, rightClass) {
   if (!seg) return;
@@ -28607,7 +28607,11 @@ function applyTenantKind(kind) {
     seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tenantKind === next));
   }
   const hint = document.getElementById("tenant-kind-hint");
-  if (hint) hint.textContent = tenantKindHint(next);
+  if (hint) {
+    const text = tenantKindHint(next);
+    hint.textContent = text;
+    hint.hidden = !text;
+  }
   const search = document.getElementById("tenant-search");
   if (search) search.placeholder = tenantSearchPlaceholder(next);
   const vacBtn = document.getElementById("tenant-vacant-btn");
@@ -29106,7 +29110,7 @@ function adminTenants() {
         <span class="k">設算息發票</span>
       </button>
     </div>
-    <p class="small" id="tenant-kind-hint" style="padding:0 4px">${tenantKindHint(kind)}</p>
+    <p class="small" id="tenant-kind-hint" style="padding:0 4px"${tenantKindHint(kind) ? "" : " hidden"}>${tenantKindHint(kind)}</p>
     <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
