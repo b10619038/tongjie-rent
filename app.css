@@ -1595,7 +1595,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   bottom: 14px;
   margin: 0;
   max-height: 140px;
-  background: var(--card); border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 90%, transparent); border-radius: 999px;
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
