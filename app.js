@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-18";
-const APP_EDIT_COUNT = 1270;
+const APP_STAMP = "2026-09-24-17-26";
+const APP_EDIT_COUNT = 1271;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0820";
+const FILE_VER = "0821";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽金額改為只讀，不再自己改數字"] },
+  { ver: APP_VERSION, items: ["開發者後台新增歷史紀錄"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23351,9 +23351,9 @@ function adminView() {
     <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
 }
 function adminPages() {
-  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
+  const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", history: "歷史紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
-  if (ui.adminCode === "1240") allowed.push("logs");
+  if (ui.adminCode === "1240") allowed.push("history", "logs");
   allowed.push("settings", "firm", "food");
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
@@ -23369,6 +23369,14 @@ function adminPages() {
       else ids.push("announce");
       localStorage.setItem(TAB_KEY, JSON.stringify(ids));
       localStorage.setItem("tongjie_tab_ann_after_rep", "1");
+    }
+    if (localStorage.getItem("tongjie_tab_history_after_ai") !== "1" && ids.includes("history")) {
+      ids = ids.filter(id => id !== "history");
+      const a = ids.indexOf("ai");
+      if (a >= 0) ids.splice(a + 1, 0, "history");
+      else ids.push("history");
+      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
+      localStorage.setItem("tongjie_tab_history_after_ai", "1");
     }
     if (localStorage.getItem("tongjie_tab_food_after_firm") !== "1") {
       ids = ids.filter(id => id !== "food");
@@ -23567,6 +23575,7 @@ function adminBody() {
     if (page === "ai") return adminAi();
     if (page === "announce") return adminAnnounce();
     if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
+    if (page === "history") return ui.adminCode === "1240" ? adminHistory() : adminDash();
     if (page === "settings") return adminSettings();
     if (page === "firm") return adminFirm();
     if (page === "food") return adminFood();
@@ -23577,6 +23586,114 @@ function adminBody() {
     try { console.error(err); } catch {}
     return `<div class="card card-body"><h2 class="dash-h">此頁載入失敗</h2><p class="small">${escapeHtml(String((err && err.message) || err || ""))}</p></div>`;
   }
+}
+function historyBookRows(re) {
+  return (state.books || []).filter(b => b && !b.demo && re.test(String(b.note || "") + " " + String(b.bank || "") + " " + String(b.company || ""))).map(b => ({
+    date: ymdOf(b.date) || "",
+    title: (b.type === "out" ? "支出" : "收入") + "　" + (b.company || ""),
+    sub: b.note || "",
+    amount: Number(b.amount) || 0
+  }));
+}
+function historyRows(cat) {
+  const roomOf = id => (state.rooms || []).find(r => r && r.id === id);
+  if (cat === "lease") {
+    return (state.tenants || []).filter(t => t && t.former && !t.demo).map(t => {
+      const r = roomOf(t.roomId);
+      return {
+        date: ymdOf(t.leftOn) || ymdOf(t.leaseEnd) || "",
+        title: (r && r.no ? r.no + "　" : "") + (t.name || "舊租客"),
+        sub: "舊約　" + (rocSlash(t.leaseStart) || "—") + " ➜ " + (rocSlash(t.leaseEnd) || "—") + (t.phone ? "　" + t.phone : "") + (t.note ? "　" + t.note : ""),
+        amount: 0
+      };
+    });
+  }
+  if (cat === "renew") {
+    return (state.renewals || []).filter(x => x && (x.status === "done" || x.status === "applied")).map(x => ({
+      date: ymdOf(x.signedAt) || ymdOf(x.appointAt) || ymdOf(x.start) || "",
+      title: (x.roomNo || "") + "　" + (x.name || "續約"),
+      sub: (x.status === "done" ? "已完成" : "已申請") + "　舊約 " + (rocSlash(x.oldStart) || "") + " ➜ " + (rocSlash(x.oldEnd) || "") + "　新約 " + (rocSlash(x.start) || "") + " ➜ " + (rocSlash(x.end) || ""),
+      amount: 0
+    }));
+  }
+  if (cat === "water") return historyBookRows(/水費|自來水/);
+  if (cat === "elec") {
+    const bills = (state.meterBills || []).map(b => ({
+      date: ymdOf(b.date) || "",
+      title: "電費單" + (b.billNo ? "　" + b.billNo : ""),
+      sub: b.note || "",
+      amount: Number(b.amount) || 0
+    }));
+    return bills.concat(historyBookRows(/電費|台電|電度/));
+  }
+  if (cat === "net") return historyBookRows(/網路費|網路|寬頻|光纖|中華電信/);
+  if (cat === "trash") return historyBookRows(/垃圾桶|清潔費/);
+  if (cat === "invoice") return historyBookRows(/發票/);
+  if (cat === "deposit") return historyBookRows(/押金/);
+  if (cat === "agent") return historyBookRows(/仲介/);
+  if (cat === "checkout") {
+    return (state.checkouts || []).map(c => ({
+      date: ymdOf(c.at) || "",
+      title: (c.roomNo || "") + "　" + (c.tenantName || "退租"),
+      sub: "退租" + (c.refund ? "　退還 " + money(c.refund) : "") + (c.note ? "　" + c.note : ""),
+      amount: Number(c.refund) || Number(c.deposit) || 0
+    }));
+  }
+  if (cat === "repair") {
+    return (state.repairs || []).filter(r => r && r.status === "done" && !r.demo).map(r => {
+      const room = roomOf(r.roomId);
+      return {
+        date: ymdOf(r.doneAt) || ymdOf(r.updatedAt) || ymdOf(r.createdAt) || "",
+        title: (room && room.no ? room.no + "　" : "") + (r.title || "報修完成"),
+        sub: r.note || r.detail || "",
+        amount: Number(r.cost) || Number(r.fee) || 0
+      };
+    });
+  }
+  if (cat === "meter") {
+    return (state.meterLogs || []).map(m => ({
+      date: ymdOf(m.date) || "",
+      title: "抄表　" + (m.unitId || ""),
+      sub: "度數 " + (m.reading != null ? m.reading : "—") + (m.usage != null ? "　本期 " + m.usage + " 度" : "") + (m.note ? "　" + m.note : ""),
+      amount: 0
+    }));
+  }
+  return [];
+}
+function adminHistory() {
+  const cats = [
+    ["lease", "舊租客合約"],
+    ["renew", "續約"],
+    ["water", "水費單"],
+    ["elec", "電費單"],
+    ["net", "網路費"],
+    ["trash", "垃圾桶"],
+    ["invoice", "發票"],
+    ["deposit", "押金"],
+    ["agent", "仲介費"],
+    ["checkout", "退租"],
+    ["repair", "報修完成"],
+    ["meter", "抄表"]
+  ];
+  const cat = cats.some(c => c[0] === ui.historyCat) ? ui.historyCat : "lease";
+  ui.historyCat = cat;
+  const rows = historyRows(cat).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const shown = rows.slice(0, 150);
+  const body = shown.length ? shown.map(row => `<div class="row wrap">
+      <span class="k">${escapeHtml(rocSlash(row.date) || row.date || "—")}</span>
+      <span class="v">${escapeHtml(row.title || "")}${row.amount ? "　" + money(row.amount) : ""}${row.sub ? `<span class="small" style="display:block">${escapeHtml(row.sub)}</span>` : ""}</span>
+    </div>`).join("") : `<div class="empty">這一類目前沒有紀錄</div>`;
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <h2 class="dash-h">歷史紀錄</h2>
+      <p class="small">開發者專用。舊租客合約、水電網路與垃圾桶、發票、押金、仲介、退租、報修完成、抄表都收在這裡。</p>
+      <div class="log-filters">
+        ${cats.map(([id, label]) => `<button type="button" class="ghost ${cat === id ? "on" : ""}" data-history-cat="${id}">${label}</button>`).join("")}
+      </div>
+      <p class="small" style="margin-top:12px">共 ${rows.length} 筆${rows.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""}</p>
+      ${body}
+    </div>
+  </div>`;
 }
 function adminLogs() {
   const filter = ui.logFilter || "all";
@@ -30613,6 +30730,16 @@ function bindAdmin() {
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => logoutToGate();
   bindAdminLogs();
+  document.querySelectorAll("[data-history-cat]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.historyCat = btn.dataset.historyCat;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   bindLunch();
   document.querySelectorAll("[data-firm-period]").forEach(btn => {
     btn.onclick = e => {
