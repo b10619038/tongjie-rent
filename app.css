@@ -717,11 +717,13 @@ html[data-theme="void"] .rent-stamp {
 }
 .lease-cal-mask .hero-card.is-placed { visibility: visible; }
 button.lease-gcal-title {
-  display: inline;
-  width: auto;
+  display: block;
+  width: 100%;
+  height: auto;
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: #17211f;
   font: inherit;
@@ -796,8 +798,8 @@ button.lease-gcal-title {
 }
 .lease-cal-title { text-align: center; min-width: 0; }
 .lease-cal-title .room-name { margin: 0; }
-.lease-cal-nav button.is-off { visibility: hidden; }
-.lease-cal-nav button {
+.lease-cal-nav button:not(.lease-gcal-title).is-off { visibility: hidden; }
+.lease-cal-nav button:not(.lease-gcal-title) {
   width: 32px;
   height: 32px;
   border: 0;
@@ -810,7 +812,7 @@ button.lease-gcal-title {
   display: grid;
   place-items: center;
 }
-.lease-cal-nav button:disabled { opacity: .28; cursor: default; }
+.lease-cal-nav button:not(.lease-gcal-title):disabled { opacity: .28; cursor: default; }
 .lease-cal-x {
   display: grid;
   place-items: center;
