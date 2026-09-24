@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-01-06";
-const APP_EDIT_COUNT = 1333;
+const APP_STAMP = "2026-09-25-01-11";
+const APP_EDIT_COUNT = 1334;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0884";
+const FILE_VER = "0885";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["歷史紀錄改成紀錄"] },
+  { ver: APP_VERSION, items: ["後台選單紅標改成紅點"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23677,7 +23677,7 @@ function adminView() {
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
-        return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
+        return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot tab-dot"></em>` : ""}</button>`;
       }).join("")}
       </div>
     </div>`;
@@ -23891,8 +23891,9 @@ function updateTabBadges() {
     const n = tabBadgeCount(tab.dataset.admin);
     let em = tab.querySelector(".badge-dot");
     if (!n) { if (em) em.remove(); return; }
-    if (!em) { em = document.createElement("em"); em.className = "badge-dot"; tab.appendChild(em); }
-    em.textContent = n > 99 ? "99+" : String(n);
+    if (!em) { em = document.createElement("em"); em.className = "badge-dot tab-dot"; tab.appendChild(em); }
+    em.textContent = "";
+    em.classList.add("tab-dot");
   });
 }
 function adminBody() {
