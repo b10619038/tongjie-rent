@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-33";
-const APP_EDIT_COUNT = 1273;
+const APP_STAMP = "2026-09-24-17-38";
+const APP_EDIT_COUNT = 1274;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0823";
+const FILE_VER = "0824";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["公司帳戶的代號帳號改到下一行"] },
+  { ver: APP_VERSION, items: ["總覽不再把同一筆租金算兩次"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -9726,8 +9726,6 @@ async function pullCloud() {
       resetFactoryPaidMarks(state);
       applyPaidMarks(state);
       persistPaidMarks(state);
-      syncPaidRentBooks(state);
-      dropFactoryRentAutos(state);
       persistLedger(state);
       persistMemoDone(state);
       persistAnnMedia(state);
@@ -9835,7 +9833,6 @@ async function pullCloud() {
     persistPaidMarks(state);
     applyAvatars(state);
     persistAvatars(state);
-    syncPaidRentBooks(state);
     persistLedger(state);
     persistMemoDone(state);
     persistAnnMedia(state);
@@ -16045,6 +16042,8 @@ function collectLedger() {
     if (e.kind === "doc") return;
     const amount = errandAmount(e);
     if (!amount) return;
+    const linked = (state.books || []).some(b => b && (b.linkedId === e.id || e.linkedId === b.id));
+    if (linked) return;
     if (e.skipLedger) {
       const day = ymdOf(e.date);
       const hasBook = (state.books || []).some(b => b && (
@@ -16062,36 +16061,6 @@ function collectLedger() {
       roomNo: "", note: ["銀行業務", e.title, e.place, e.note].filter(Boolean).join(" · "),
       company, bank: e.bank || e.place || "", place: e.place || "",
       source: "errand", canDel: true, canEdit: true
-    });
-  });
-  const takenYm = {};
-  rows.forEach(x => {
-    const no = String(x.roomNo || "");
-    const ym = String(x.date || "").slice(0, 7);
-    if (no && ym) takenYm[ym + "|" + no] = true;
-    const note = String(x.note || "");
-    const m = note.match(/牛10\s+(\d{4})/) || note.match(/\b([678]\d{3})\b/);
-    if (m && ym) takenYm[ym + "|" + m[1]] = true;
-  });
-  state.tenants.filter(t => paidThisMonth(t) && !isDemoTenant(t)).forEach(t => {
-    const room = state.rooms.find(r => r.id === t.roomId);
-    if (!room || room.status === "office" || room.demo) return;
-    if (roomIsFactory(room)) return;
-    if (studioMirrorHostNo(room.no)) return;
-    const date = ymdOf(t.paidAt) || tenantPaidOnValue(t);
-    if (!date) return;
-    const no = room ? String(room.no) : "";
-    const ym = date.slice(0, 7);
-    if (no && takenYm[ym + "|" + no]) return;
-    if (!leaseCoversYm(t, room, payYmNow())) return;
-    const stub = isStubMonthNow(t, room);
-    const amount = thisMonthRentOf(t, room) || 0;
-    if (!amount) return;
-    rows.push({
-      id: "rent-" + t.id, type: "in", date, amount,
-      roomNo: no, note: (t.name || "") + (stub ? " 不足月租金" : " 租金"), company: t.payCompany || roomCompany(room || {}),
-      bank: tenantPayBankKey(t, room) || "",
-      source: "rent", canDel: false, canEdit: false
     });
   });
   return (_ledgerCache = attachMemoRows(dedupeLedger(rows)));
