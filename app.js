@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-23-36";
-const APP_EDIT_COUNT = 1314;
+const APP_STAMP = "2026-09-24-23-38";
+const APP_EDIT_COUNT = 1315;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0865";
+const FILE_VER = "0866";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7221、7222、7223 平面圖樓層改成 2F"] },
+  { ver: APP_VERSION, items: ["7621 租客改為王俊典、曾郁庭"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5551,6 +5551,7 @@ function normalize(data) {
   applyTenantRoster(data);
   try { applyRoom7051(data); } catch {}
   try { applyRoom7611(data); } catch {}
+  try { applyRoom7621(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
   migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
@@ -5621,6 +5622,7 @@ function normalize(data) {
   applyTenantRoster(data);
   try { applyRoom7051(data); } catch {}
   try { applyRoom7611(data); } catch {}
+  try { applyRoom7621(data); } catch {}
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
@@ -6045,6 +6047,47 @@ function applyRoom7611(data) {
     try { markCloudDirty(); } catch {}
   }
   data.room7611Ver = ROOM_7611_VER;
+}
+const ROOM_7621_VER = "7621-wang-zeng-v1";
+function applyRoom7621(data) {
+  if (!data || !Array.isArray(data.rooms)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7621");
+  if (!room) return;
+  const info = TENANT_INFO["7621"] || {};
+  if (!info.name) return;
+  if (!Array.isArray(data.tenants)) data.tenants = [];
+  if (Array.isArray(data.goneTenants)) data.goneTenants = data.goneTenants.filter(id => id !== "t7621");
+  let t = data.tenants.find(x => x && !x.demo && !x.incoming && (x.id === "t7621" || (x.roomId === room.id && sameTenantName(x.name, info.name))));
+  if (!t) t = data.tenants.find(x => x && !x.demo && !x.incoming && !x.former && x.roomId === room.id);
+  if (!t) {
+    t = { id: "t7621", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
+    data.tenants.push(t);
+  }
+  const need = data.room7621Ver !== ROOM_7621_VER || t.name !== info.name || room.tenantId !== t.id || (room.status !== "repair" && room.status !== "office" && room.status !== "rented");
+  t.name = info.name;
+  t.phone = info.phone || t.phone || "";
+  t.leaseStart = info.leaseStart || t.leaseStart;
+  t.leaseEnd = info.leaseEnd || t.leaseEnd;
+  if (info.note) t.note = info.note;
+  if (!t.payBankLock) t.payBank = info.payBank || t.payBank || "農會";
+  t.deposit = info.deposit != null ? info.deposit : t.deposit;
+  t.former = false;
+  t.incoming = false;
+  t.placeholder = false;
+  t.loginRevoked = false;
+  t.roomId = room.id;
+  room.tenantId = t.id;
+  room.rent = studioRentOf("7621") || 7000;
+  if (info.deposit != null) room.deposit = info.deposit;
+  if (room.status !== "repair" && room.status !== "office") room.status = "rented";
+  if (need) {
+    t.edited = true;
+    t.editedAt = Date.now();
+    room.edited = true;
+    room.editedAt = Date.now();
+    data.room7621Ver = ROOM_7621_VER;
+    try { markCloudDirty(); } catch {}
+  }
 }
 const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v2";
 function applyLuWuSepUnpaid(data) {
