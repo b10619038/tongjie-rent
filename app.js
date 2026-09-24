@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-00-14";
-const APP_EDIT_COUNT = 1322;
+const APP_STAMP = "2026-09-25-00-16";
+const APP_EDIT_COUNT = 1323;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0873";
+const FILE_VER = "0874";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台選單改到畫面下方"] },
+  { ver: APP_VERSION, items: ["廠房資產改跟廠房租客圖卡同一筆資料"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5554,6 +5554,7 @@ function normalize(data) {
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
   try { syncNiu10StudioAssets(data); } catch {}
+  try { syncFactoryAssets(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
   migrateNiu5Nos(data);
   if (data.factoryRosterVer !== FACTORY_ROSTER_VER) {
@@ -5627,6 +5628,7 @@ function normalize(data) {
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
   try { syncNiu10StudioAssets(data); } catch {}
+  try { syncFactoryAssets(data); } catch {}
   applyStudioRemitOn(data);
   applyOfficeSubsidyTenant(data);
   reviveStudioMirrorGuests(data);
@@ -27124,6 +27126,54 @@ function syncNiu10StudioAssets(data) {
   }
   return changed;
 }
+const FACTORY_ASSET_VER = "factory-asset-from-tenant-v1";
+function syncFactoryAssets(data) {
+  if (!data || data.factoryAssetVer === FACTORY_ASSET_VER) return false;
+  if (!Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return false;
+  const byNo = {};
+  data.rooms.forEach(r => {
+    if (!r || r.kind !== "factory" || isDemoRoom(r) || isDemoFactoryRoom(r) || r.group === "測試") return;
+    const no = String(r.no || "");
+    if (!no) return;
+    if (!byNo[no]) byNo[no] = [];
+    byNo[no].push(r);
+  });
+  let changed = false;
+  Object.keys(byNo).forEach(no => {
+    const group = byNo[no];
+    const info = FACTORY_TENANT_INFO[no] || {};
+    const live = data.tenants.filter(t => t && !t.demo && !t.placeholder && !t.former && !t.incoming && String(t.name || "").trim() && group.some(r => r.id === t.roomId));
+    const t = live.find(x => info.name && sameTenantName(x.name, info.name)) || live[0] || null;
+    const room = (t && group.find(r => r.id === t.roomId)) || group[0];
+    if (t) {
+      if (t.roomId !== room.id) { t.roomId = room.id; changed = true; }
+      if (room.tenantId !== t.id) { room.tenantId = t.id; changed = true; }
+      if (room.status !== "repair" && room.status !== "rented") { room.status = "rented"; changed = true; }
+      t.former = false;
+      t.incoming = false;
+      t.placeholder = false;
+    } else if (!info.name && room.status !== "repair") {
+      if (room.status !== "vacant" || room.tenantId) {
+        room.status = "vacant";
+        room.tenantId = null;
+        changed = true;
+      }
+    }
+    const extra = group.filter(r => r !== room);
+    if (extra.length) {
+      const drop = {};
+      extra.forEach(r => { drop[r.id] = 1; });
+      data.tenants.forEach(x => { if (x && drop[x.roomId]) x.roomId = room.id; });
+      data.rooms = data.rooms.filter(r => !drop[r.id]);
+      changed = true;
+    }
+  });
+  data.factoryAssetVer = FACTORY_ASSET_VER;
+  if (changed) {
+    try { markCloudDirty(); } catch {}
+  }
+  return changed;
+}
 function adminRoomListHtml(kind) {
   const q = normSearch(ui.assetQ);
   if (kind === "factory") {
@@ -27150,7 +27200,7 @@ function adminRoomListHtml(kind) {
     return bar + groups.map(g => {
       const closed = q ? false : (ui.factoryFold[g.group] !== false);
       const cards = g.rooms.map(r => {
-        const t = state.tenants.find(x => x.id === r.tenantId);
+        const t = assetTenantOf(r);
         return `<div class="card item clickable" data-admin-room="${r.id}">
         ${photoEl(r.photos && r.photos[0], r.no)}
         <div><strong>${r.no}</strong>
