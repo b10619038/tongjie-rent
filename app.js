@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-03-57";
-const APP_EDIT_COUNT = 1364;
+const APP_STAMP = "2026-09-25-04-04";
+const APP_EDIT_COUNT = 1365;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0915";
+const FILE_VER = "0916";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["我的房間依節日布置，設定可開關"] },
+  { ver: APP_VERSION, items: ["中秋布置放大並加上更多會動的元素"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11658,7 +11658,7 @@ function roomFestHtml() {
   if (!festPrefOn()) return "";
   const kind = roomFestKind();
   const art = {
-    moon: `<svg class="a" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#f4dc78"/><circle cx="11" cy="13" r="2" fill="#e4c45a"/><circle cx="18" cy="18" r="2.5" fill="#e4c45a"/></svg><svg class="b" viewBox="0 0 36 36"><ellipse cx="22" cy="24" rx="8" ry="5.5" fill="#fff" stroke="#d7d0c2"/><circle cx="29" cy="18" r="4.6" fill="#fff" stroke="#d7d0c2"/><ellipse cx="27" cy="10" rx="1.5" ry="5" fill="#fff" stroke="#d7d0c2"/><ellipse cx="31" cy="10" rx="1.5" ry="5" fill="#fff" stroke="#d7d0c2"/><circle cx="30.6" cy="17.4" r=".6" fill="#333"/><ellipse cx="11" cy="26" rx="5" ry="2.8" fill="#c9842a"/><path d="M13 16l2 9" stroke="#8a5a22" stroke-width="1.6" stroke-linecap="round"/></svg><svg class="c" viewBox="0 0 40 22"><path d="M3 13h30" stroke="#8a5a22" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="13" r="3" fill="#c45b4a"/><circle cx="18" cy="13" r="3" fill="#a8633a"/><circle cx="26" cy="13" r="3" fill="#c45b4a"/><path d="M8 8c1 1.2 1 2 0 3M16 7c1 1.2 1 2 0 3M24 8c1 1.2 1 2 0 3" fill="none" stroke="#e07a3d" stroke-width="1.2" stroke-linecap="round"/></svg>`,
+    moon: `<svg class="a" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="#ffe58a"/><circle cx="13" cy="16" r="2.6" fill="#f0cc62"/><circle cx="24" cy="24" r="3.2" fill="#f0cc62"/><circle cx="18" cy="26" r="1.5" fill="#fff6cf"/></svg><svg class="b" viewBox="0 0 48 48"><ellipse cx="31" cy="34" rx="11" ry="7" fill="#fff"/><circle cx="39" cy="25" r="7" fill="#fff"/><ellipse cx="36" cy="11" rx="2.3" ry="8" fill="#fff"/><ellipse cx="42" cy="11" rx="2.3" ry="8" fill="#fff"/><ellipse cx="36" cy="12" rx="1.1" ry="5" fill="#f7c1cf"/><ellipse cx="42" cy="12" rx="1.1" ry="5" fill="#f7c1cf"/><circle cx="41" cy="24.4" r="1" fill="#333"/><circle cx="43.2" cy="27.2" r="1.2" fill="#f7c1cf"/><ellipse cx="15" cy="36" rx="6.2" ry="3.2" fill="#e0b56a"/><ellipse cx="15" cy="36" rx="3.2" ry="1.5" fill="#f6e2b4"/><g class="pestle"><path d="M18 18l3 12" stroke="#8a5a22" stroke-width="2" stroke-linecap="round"/><ellipse cx="21.2" cy="31" rx="2.4" ry="1.5" fill="#6e471c"/></g></svg><svg class="c" viewBox="0 0 56 30"><path class="smoke" d="M12 8c1.4 1.6 1.4 2.8 0 4.4M26 6c1.4 1.6 1.4 2.8 0 4.4M40 8c1.4 1.6 1.4 2.8 0 4.4" fill="none" stroke="#e07a3d" stroke-width="1.5" stroke-linecap="round"/><path d="M4 20h48" stroke="#8a5a22" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="20" r="4.2" fill="#d25b4a"/><circle cx="28" cy="20" r="4.2" fill="#c9842a"/><circle cx="40" cy="20" r="4.2" fill="#d25b4a"/></svg><svg class="d" viewBox="0 0 28 28"><circle cx="14" cy="14" r="11" fill="#e7b15a"/><circle cx="14" cy="14" r="6" fill="none" stroke="#c9842a" stroke-width="1.3"/><path d="M14 9.2v9.6M9.2 14h9.6" stroke="#c9842a" stroke-width="1.1"/></svg><svg class="e" viewBox="0 0 24 24"><g fill="#f6d56a"><circle cx="12" cy="5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><circle cx="18" cy="16" r="2.2"/><circle cx="12" cy="19" r="2.2"/><circle cx="6" cy="16" r="2.2"/><circle cx="6" cy="8" r="2.2"/></g><circle cx="12" cy="12" r="3" fill="#f2c14e"/></svg><svg class="f" viewBox="0 0 16 16"><path d="M8 1l1.2 4.2H14L10.4 8l1.3 4.2L8 10.2 4.3 12.2 5.6 8 2 5.2h4.8z" fill="#f2c14e"/></svg><svg class="g" viewBox="0 0 12 12"><path d="M6 .6 7 4h3.4L7.8 6.2l.8 3.2L6 7.6 3.4 9.4l.8-3.2L1.6 4H5z" fill="#fff6c8"/></svg>`,
     cny: `<svg class="a" viewBox="0 0 32 36"><path d="M10 6h12v16a6 6 0 0 1-12 0z" fill="#d4534a"/><path d="M16 4v4M12 6h8" stroke="#f2c14e" stroke-width="1.4"/><path d="M16 28v5" stroke="#f2c14e" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="#d4534a"/><text x="16" y="21" text-anchor="middle" font-size="14" fill="#f6e27a" font-family="serif">福</text></svg><svg class="c" viewBox="0 0 28 32"><rect x="10" y="6" width="8" height="16" rx="2" fill="#c45b4a"/><path d="M14 22v6M11 26h6" stroke="#f2c14e" stroke-width="1.4" stroke-linecap="round"/></svg>`,
     lantern: `<svg class="a" viewBox="0 0 32 36"><path d="M9 8h14v14a7 7 0 0 1-14 0z" fill="#e26a3c"/><path d="M16 4v4M11 8h10M16 26v6" stroke="#f2c14e" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 32 36"><path d="M10 9h12v12a6 6 0 0 1-12 0z" fill="#d4534a"/><path d="M16 5v4M12 9h8" stroke="#f6e27a" stroke-width="1.3"/></svg>`,
     dragon: `<svg class="a" viewBox="0 0 32 32"><path d="M16 5 27 24H5z" fill="#7d9a62"/><path d="M16 10v10" stroke="#f4e2b0" stroke-width="1.4"/></svg><svg class="b" viewBox="0 0 36 24"><path d="M4 14h20l6-4v8H8z" fill="#3d6ea8"/><path d="M8 14V8h4" stroke="#f4e2b0" stroke-width="1.3"/></svg>`,

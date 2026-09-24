@@ -583,8 +583,8 @@ input, textarea, select {
   z-index: 2;
   top: 0;
   right: 0;
-  width: 118px;
-  height: 86px;
+  width: 132px;
+  height: 96px;
   pointer-events: none;
 }
 .fest svg {
@@ -593,12 +593,47 @@ input, textarea, select {
   overflow: visible;
   animation: festFloat 3.4s ease-in-out infinite;
 }
-.fest .a { top: 8px; right: 8px; width: 34px; height: 38px; }
-.fest .b { top: 6px; right: 46px; width: 32px; height: 32px; animation-delay: -.9s; }
-.fest .c { top: 46px; right: 10px; width: 40px; height: 26px; animation-delay: -1.7s; }
+.fest .a { top: 6px; right: 6px; width: 42px; height: 42px; }
+.fest .b { top: 4px; right: 52px; width: 40px; height: 40px; animation-delay: -.9s; }
+.fest .c { top: 52px; right: 8px; width: 48px; height: 30px; animation-delay: -1.7s; }
+.fest-moon { width: 158px; height: 108px; }
+.fest-moon .a { top: 2px; right: 4px; width: 48px; height: 48px; animation: moonGlow 2.8s ease-in-out infinite; }
+.fest-moon .b { top: 6px; right: 52px; width: 48px; height: 48px; animation: rabbitHop 1.5s ease-in-out infinite; }
+.fest-moon .b .pestle { transform-origin: 20px 30px; animation: pound .7s ease-in-out infinite; }
+.fest-moon .c { top: 64px; right: 4px; width: 58px; height: 32px; animation: festFloat 2.4s ease-in-out infinite; }
+.fest-moon .d { top: 68px; right: 68px; width: 26px; height: 26px; animation-delay: -1.2s; }
+.fest-moon .e { top: 10px; right: 104px; width: 22px; height: 22px; animation: sway 2.6s ease-in-out infinite; }
+.fest-moon .f { top: 0; right: 102px; width: 14px; height: 14px; animation: twinkle 1.6s ease-in-out infinite; }
+.fest-moon .g { top: 34px; right: 124px; width: 11px; height: 11px; animation: twinkle 2.1s ease-in-out infinite; }
+.fest-moon .smoke { animation: smoke 1.5s ease-in-out infinite; }
 @keyframes festFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
+}
+@keyframes moonGlow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255,229,138,0)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 6px rgba(255,214,102,.85)); }
+}
+@keyframes rabbitHop {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-4px); }
+  60% { transform: translateY(0); }
+}
+@keyframes pound {
+  0%, 100% { transform: rotate(-16deg); }
+  50% { transform: rotate(10deg) translateY(3px); }
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: .3; transform: scale(.75); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes smoke {
+  0%, 100% { opacity: .25; transform: translateY(2px); }
+  50% { opacity: 1; transform: translateY(-3px); }
 }
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
