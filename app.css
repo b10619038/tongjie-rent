@@ -2391,11 +2391,25 @@ button.avatar-look.is-press { transform: scale(.94); }
 }
 .shell.admin-wide .tabs {
   z-index: 41;
-  margin: 0 12px calc(18px + var(--safe-b));
-  padding: 8px;
+  margin: 8px 12px 14px;
+  padding: 8px 6px;
   background: var(--card);
   border-radius: 999px;
   box-shadow: 0 12px 30px rgba(0,0,0,.12);
+}
+.shell.admin-wide .tabs-track {
+  align-items: stretch;
+  min-height: 59px;
+}
+.shell.admin-wide .tab {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  padding: 0 12px;
+  min-height: 59px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .admin-wide .toast { bottom: calc(96px + var(--safe-b, 0px)); }
 .admin-wide ~ .theme-fab { bottom: calc(92px + var(--safe-b)); }
