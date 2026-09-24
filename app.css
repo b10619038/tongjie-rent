@@ -196,7 +196,7 @@ input, textarea, select {
   overflow-anchor: none;
   touch-action: pan-y;
 }
-.admin-scroll { padding: 8px 0 calc(72px + var(--safe-b)); }
+.admin-scroll { padding: 8px 0 16px; }
 .admin-static { min-width: 0; max-width: 100%; overflow-x: hidden; }
 .tenant-scroll { padding-bottom: calc(88px + var(--safe-b)); }
 
@@ -2388,7 +2388,16 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-bg {
   display: none;
 }
-.tabs::-webkit-scrollbar { display: none; }
+.shell.admin-wide .tabs {
+  z-index: 41;
+  margin: 0 12px calc(18px + var(--safe-b));
+  padding: 8px;
+  background: var(--card);
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+}
+.admin-wide .toast { bottom: calc(96px + var(--safe-b, 0px)); }
+.admin-wide ~ .theme-fab { bottom: calc(92px + var(--safe-b)); }
 .tab {
   position: relative; z-index: 1; flex: 0 0 auto; scroll-snap-align: start;
   border: 0; background: transparent; border-radius: 999px; padding: 8px 14px;
@@ -2638,9 +2647,9 @@ button.avatar-look.is-press { transform: scale(.94); }
   .admin-bar { padding: 12px 16px 4px; gap: 8px; }
   .admin-bar h1 { font-size: 22px; margin-top: 4px; }
   .switch-tile { min-width: 56px; padding: 8px 12px; }
-  .tabs { padding: 8px 12px 14px; }
-  .dash { padding: 0 18px calc(88px + var(--safe-b)); overflow-x: hidden; }
-  .admin-scroll { padding-bottom: calc(88px + var(--safe-b)); padding-top: 8px; overflow-x: hidden; }
+  .tabs { padding: 8px; }
+  .dash { padding: 0 18px 16px; overflow-x: hidden; }
+  .admin-scroll { padding-bottom: 16px; padding-top: 8px; overflow-x: hidden; }
   .firm-card { padding: 14px; overflow: hidden; max-width: 100%; }
   .pie-wrap { width: 52px; height: 52px; flex: 0 0 52px; }
   .pie-center { inset: 12px; }

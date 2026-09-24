@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-00-12";
-const APP_EDIT_COUNT = 1321;
+const APP_STAMP = "2026-09-25-00-14";
+const APP_EDIT_COUNT = 1322;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0872";
+const FILE_VER = "0873";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["牛10套房資產改跟租客圖卡同一筆資料"] },
+  { ver: APP_VERSION, items: ["後台選單改到畫面下方"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23634,6 +23634,7 @@ function adminView() {
       </div>
       <button class="ghost" id="logout" style="width:auto">登出</button>
     </div>
+    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>
     <div class="tabs">
       <div class="tabs-track">
       <div class="tab-bg"></div>
@@ -23643,8 +23644,7 @@ function adminView() {
         return `<button class="tab ${on ? "on" : ""}" data-admin="${id}">${label}${count ? `<em class="badge-dot">${count > 99 ? "99+" : count}</em>` : ""}</button>`;
       }).join("")}
       </div>
-    </div>
-    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
+    </div>`;
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "所有資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "工作助手", history: "歷史紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
