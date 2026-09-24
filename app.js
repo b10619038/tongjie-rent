@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-14-14";
-const APP_EDIT_COUNT = 1231;
+const APP_STAMP = "2026-09-24-15-32";
+const APP_EDIT_COUNT = 1232;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0781";
+const FILE_VER = "0782";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6823 顏家蓁標為已續約 1 年，新約 115/11/1～116/10/31"] },
+  { ver: APP_VERSION, items: ["我要續約改剩100天才出現；剩30天未回覆會在首頁房間圖卡上提醒"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3242,6 +3242,7 @@ function renewAskCardHtml(t, r, opts) {
   const left = daysLeft(ymdOf(t.leaseEnd));
   const windowOn = inRenewAskWindow(t);
   if (!full && !windowOn && !cur) return "";
+  if (full && !cur && !inRenewFormWindow(t)) return "";
   if (cur) {
     const years = renewYearsOf(cur);
     const signDay = isRenewSignDay(cur);
@@ -3268,8 +3269,8 @@ function renewAskCardHtml(t, r, opts) {
     : `現有租客可於到期前 30 天確認續約。新約預設 1 年。`;
   if (!full) {
     return `<div class="handover-note renew-note">
-      <div class="label">續約確認</div>
-      <p>${escapeHtml(polite)}</p>
+      <div class="label">是否續約</div>
+      <p>合約將於 ${escapeHtml(t.leaseEnd || "")} 到期，還有 ${left} 天。請確認是否續約。</p>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1">前往續約</button>
         <button type="button" class="ghost" data-renew-decline="1" style="width:auto">不續約</button>
@@ -3282,7 +3283,7 @@ function renewAskCardHtml(t, r, opts) {
   const dest = mode === "move" ? renewMoveRoomOf(ui.renewMoveRoomId) : null;
   const destRent = dest ? (Number(dest.rent) || studioContractRent(t, dest) || 0) : studioContractRent(t, r);
   return `<div class="handover-note renew-note" id="renew-box">
-    ${windowOn ? `<div class="label">續約確認</div><p>${escapeHtml(polite)}</p>` : `<div class="label">我要續約</div><p>請預約實際簽約日期。</p>`}
+    ${windowOn ? `<div class="label">我要續約</div><p>${escapeHtml(polite)}</p>` : `<div class="label">我要續約</div><p>請預約實際簽約日期。</p>`}
     <div class="row" style="margin-top:10px"><span class="k">新約年限</span>
       <span class="renew-years">
         <button type="button" class="ghost on" data-renew-years="1">1 年</button>
@@ -15491,6 +15492,10 @@ function earliestSignYmd(room, t) {
 function renewConfirmYmd(t) {
   const end = ymdOf(t && t.leaseEnd);
   return end ? addDaysYmd(end, -30) : "";
+}
+function inRenewFormWindow(t) {
+  const left = daysLeft(ymdOf(t && t.leaseEnd));
+  return left != null && left >= 0 && left <= 100;
 }
 function inRenewAskWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
