@@ -999,7 +999,20 @@ button.pay-pill.hand {
   background: var(--chip);
   border: 1px solid #efe2d4;
 }
-.renew-note .label { color: #3f5a3a; }
+.renew-ask-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+.renew-ask-actions .btn-navy,
+.renew-ask-actions .ghost {
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 999px;
+}
 .renew-years {
   display: inline-flex;
   gap: 6px;
