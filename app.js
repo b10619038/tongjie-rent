@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-12-54";
-const APP_EDIT_COUNT = 1228;
+const APP_STAMP = "2026-09-24-13-20";
+const APP_EDIT_COUNT = 1229;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0778";
+const FILE_VER = "0779";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約從租約剩餘天數縮放展開，並直接看完整"] },
+  { ver: APP_VERSION, items: ["合約過去月份補蓋已繳章，實繳日留空；App 繳費才寫入當天"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14841,6 +14841,7 @@ function leaseMoveInBits(t, r, start) {
 }
 function leasePayRows(t, r, sheet) {
   const paid = leasePaidMap(t, r);
+  const thisYm = payYmNow();
   const start = ymdOf(sheet && sheet.start);
   const end = ymdOf(sheet && sheet.end);
   if (!start || !end) return [];
@@ -14849,7 +14850,8 @@ function leasePayRows(t, r, sheet) {
   const push = (due, amount) => {
     const ym = String(due).slice(0, 7);
     const actual = paid[ym] || "";
-    rows.push({ due, amount, actual, paid: !!actual });
+    const past = ym < thisYm;
+    rows.push({ due, amount, actual, paid: !!actual || past });
   };
   const move = leaseSheetIsRenewal(t, r, sheet) ? null : leaseMoveInBits(t, r, start);
   push(start, move && move.total ? move.total : monthRent(start));
@@ -22278,7 +22280,7 @@ function markTenantPaid(via) {
   t.paidAt = nowStamp();
   t.paidTouched = true;
   t.paidYm = payYmNow();
-  if (!t.remitOn) t.remitOn = ymdOf(t.paidAt);
+  t.remitOn = ymdOf(t.paidAt);
   if (via === "line") {
     t.lineNotified = true;
     t.lineProofYm = payYmNow();
