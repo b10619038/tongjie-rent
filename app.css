@@ -3641,8 +3641,26 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
-.notify-names { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.notify-names span { display: block; text-align: left; font-weight: 700; color: var(--ink); line-height: 1.4; }
+.notify-names {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.notify-names span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--ok-soft);
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.3;
+}
 .howto-fig {
   width: 100%;
   height: auto;
