@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-46";
-const APP_EDIT_COUNT = 1256;
+const APP_STAMP = "2026-09-24-16-47";
+const APP_EDIT_COUNT = 1257;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0806";
+const FILE_VER = "0807";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客設定的通知列出全部會收到的種類"] },
+  { ver: APP_VERSION, items: ["租客設定移除更改密碼"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -31173,13 +31173,6 @@ function tenantSettings() {
         <p class="small">點頭像可更換大頭貼。</p>
       </div>
       ${bioSettingsHtml()}
-      <form class="card card-body" id="set-pass-form" autocomplete="off">
-        <div class="label">更改密碼</div>
-        <label class="field"><span>目前密碼</span><input name="old" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
-        <label class="field"><span>新密碼</span><input name="n1" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
-        <label class="field"><span>再輸入一次</span><input name="n2" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" /></label>
-        <button class="btn-navy" type="submit">儲存密碼</button>
-      </form>
       <div class="card card-body">
         <div class="label">綁定 LINE</div>
         <div class="row"><span class="k">狀態</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>
@@ -31343,22 +31336,6 @@ function bindTenantSettings() {
     if (isTenantLook()) { exitTenantLook(); return; }
     if (isDevPreview()) { exitDevPreview(); return; }
     logoutToGate();
-  };
-  const form = document.getElementById("set-pass-form");
-  if (form) form.onsubmit = e => {
-    e.preventDefault();
-    const t = me();
-    if (!t) return;
-    const old = String(form.old.value || "");
-    const n1 = String(form.n1.value || "").trim();
-    const n2 = String(form.n2.value || "").trim();
-    if (t.loginPass && old !== String(t.loginPass)) { toast("目前密碼不正確"); return; }
-    if (!n1 || n1.length < 4) { toast("新密碼至少 4 碼"); return; }
-    if (n1 !== n2) { toast("兩次新密碼不一致"); return; }
-    t.loginPass = n1;
-    save();
-    form.reset();
-    toast("登入密碼已更新");
   };
 }
 function bindAdminSettings() {
