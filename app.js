@@ -41,9 +41,9 @@ const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-09-24-16-58";
-const APP_EDIT_COUNT = 1262;
+const APP_EDIT_COUNT = 1263;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0812";
+const FILE_VER = "0813";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客設定保留通知名稱，不再顯示說明"] },
+  { ver: APP_VERSION, items: ["操作教學移除圖片，只留文字"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24331,30 +24331,30 @@ function howtoTitle() {
 function howtoSections() {
   const kind = howtoKind();
   const tenant = [
-    { id: "t-home", h: "首頁", imgs: ["images/guide/home.jpg?v=0811", "images/guide/notice.jpg?v=0811"], ps: [
+    { id: "t-home", h: "首頁", ps: [
       "打開就是我的房間：剩餘天數、本月租金，繳過會蓋上本月已繳。",
       "管理員公告可以按愛心、讚、花朵、星星或笑臉。長按可換圖案，只看得到房號，不會顯示姓名。其他住戶也能互相看到。",
       "有新公告或使用規範更新時，下方圖塊會出現紅點，看過就消失。",
       "合約剩下 100 天、你還沒回覆要不要續約，首頁我的房間上方會出現「請問您是否要續約?」，可選前往續約或不續約。",
       "右下角可以和管理員傳訊息。關掉 App 後若收到訊息，點通知會直接打開聊天。"
     ] },
-    { id: "t-pay", h: "繳費租金", imgs: ["images/guide/pay.jpg?v=0811"], ps: [
+    { id: "t-pay", h: "繳費租金", ps: [
       "這裡看這次要匯的銀行、帳號與金額。請照畫面轉帳。",
       "繳費總表會列出整份合約：應繳日、金額、實繳日。已經繳的日子會蓋上本月已繳。",
       "到了應繳日還沒繳，手機會收到租金通知；還沒繳就會每天再提醒。已經繳清就不會再通知。",
       "若已續約，新約開始後的租金改匯兆豐。"
     ] },
-    { id: "t-room", h: "房間與周邊", imgs: ["images/guide/rooms.jpg?v=0811"], ps: [
+    { id: "t-room", h: "房間與周邊", ps: [
       "可看房間、公共陽台、機車停車空間、子母車（垃圾桶）的照片與使用方式。",
       "5 樓自助儲值機可以點開實際照片。周邊景點也在這一區。"
     ] },
-    { id: "t-lease", h: "租約與續約", imgs: ["images/guide/lease.jpg?v=0811"], ps: [
+    { id: "t-lease", h: "租約與續約", ps: [
       "租約頁看剩餘天數與租金。點剩餘天數可打開合約，手機和電腦都是一張張 A4，依畫面等比縮小。",
       "合約到期前 200 天內，才會出現我要續約。可選 1 年或半年、同間或換房，再預約實際簽約時間。",
       "送出申請後可以線上簽署新約，身分證、電話、緊急聯絡人、戶籍地址會先帶入上次的資料。現場蓋章仍到 5 樓 7651 簽約室。",
       "若選不續約，會連續確認 3 次才會記下。新約要到開始的第一天才生效，在那之前仍是現在這份合約。"
     ] },
-    { id: "t-fix", h: "報修", imgs: ["images/guide/repair.jpg?v=0811"], ps: [
+    { id: "t-fix", h: "報修", ps: [
       "選類型，寫下問題，可以附照片或影片再送出。",
       "處理中、已完成，或管理員約了維修時間，都會通知你。"
     ] },
@@ -24405,7 +24405,7 @@ function howtoBody() {
     <div class="card card-body" style="margin-bottom:12px">
       <div class="eyebrow">GUIDE</div>
       <h2 class="dash-h" style="margin:0">${escapeHtml(howtoTitle())}</h2>
-      <p class="small" style="margin-top:8px">點各項可展開。圖是示意，實際按鈕與文字以畫面為準。</p>
+      <p class="small" style="margin-top:8px">點各項可展開說明。這份教學會依你現在的身分顯示。</p>
     </div>
     <div class="settings-stack">${items}</div>
   </div>`;
