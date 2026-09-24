@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-18-12";
-const APP_EDIT_COUNT = 1275;
+const APP_STAMP = "2026-09-24-18-16";
+const APP_EDIT_COUNT = 1276;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0825";
+const FILE_VER = "0826";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["房間地址下方顯示坪數，有陽台另計"] },
+  { ver: APP_VERSION, items: ["7042 周佳瑩 9/23 入帳 10,000"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5641,6 +5641,7 @@ function normalize(data) {
   try { applyFixLeaseSegments(data); } catch {}
   try { applyRenewNoMarks(data); } catch {}
   try { apply7042RentShort(data); } catch {}
+  try { apply7042SepPaid(data); } catch {}
   try { applyRenewal7632(data); } catch {}
   try { applyRenewal6823(data); } catch {}
   try { applyRenewedPayBanks(data); } catch {}
@@ -8221,6 +8222,39 @@ function apply7042RentShort(data) {
   try { markCloudDirty(); } catch {}
   return true;
 }
+function apply7042SepPaid(data) {
+  if (!data || data.pay7042SepVer === "7042-sep23-10000") return false;
+  try { ensureStudioTenant(data, "7042"); } catch {}
+  const found = typeof studioOccupantOfNo === "function" ? studioOccupantOfNo(data, "7042") : { tenant: null };
+  const t = found && found.tenant;
+  if (!t || t.former) return false;
+  t.paid = true;
+  t.paidTouched = true;
+  t.paidYm = "2026-09";
+  t.remitOn = "2026-09-23";
+  t.paidAt = "2026-09-23 10:00";
+  t.paidVia = "remit";
+  t.paidAmt = 10000;
+  t.payBank = "兆豐";
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { stampPaidMark(data, t); } catch {}
+  try { dropRentAutoBookOn(data, t); } catch {}
+  if (!Array.isArray(data.books)) data.books = [];
+  const id = "bk-7042-20260923";
+  const hit = data.books.find(b => b && (b.id === id || (String(b.roomNo || "") === "7042" && ymdOf(b.date) === "2026-09-23" && Number(b.amount) === 10000)));
+  if (!hit) {
+    data.books.push({
+      id, type: "in", date: "2026-09-23", amount: 10000,
+      company: "統潔", bank: "兆豐", roomNo: "7042",
+      note: "牛10　7042 周佳瑩　9月租金先繳 10,000",
+      importTag: "7042sep23", editedAt: Date.now()
+    });
+  }
+  data.pay7042SepVer = "7042-sep23-10000";
+  try { markCloudDirty(); } catch {}
+  return true;
+}
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   let dirty = false;
@@ -9714,6 +9748,7 @@ async function pullCloud() {
       try { applyId7031(state); } catch {}
       try { applyRenewNoMarks(state); } catch {}
       try { apply7042RentShort(state); } catch {}
+      try { apply7042SepPaid(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
@@ -9855,6 +9890,7 @@ async function pullCloud() {
     try { applyId7031(state); } catch {}
     try { applyRenewNoMarks(state); } catch {}
     try { apply7042RentShort(state); } catch {}
+    try { apply7042SepPaid(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -10417,6 +10453,7 @@ async function pushCloud() {
     try { applyId7031(payload); } catch {}
     try { applyRenewNoMarks(payload); } catch {}
     try { apply7042RentShort(payload); } catch {}
+    try { apply7042SepPaid(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
