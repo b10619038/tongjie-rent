@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-15-58";
-const APP_EDIT_COUNT = 1245;
+const APP_STAMP = "2026-09-24-16-02";
+const APP_EDIT_COUNT = 1246;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0795";
+const FILE_VER = "0796";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["按不續約會跳出 3 次確認，不再沒反應"] },
+  { ver: APP_VERSION, items: ["續約確定後下載合約會有原合約和新合約，新約第一天起原合約消失"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20421,7 +20421,7 @@ function leaseU(v, cls) {
   const s = v == null || v === "" ? "　" : String(v);
   return `<span class="lease-u${cls ? " " + cls : ""}">${escapeHtml(s)}</span>`;
 }
-function studioLeasePaperHtml(t, r, leasePart) {
+function studioLeasePaperHtml(t, r, leasePart, banner) {
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
   const listed = studioContractRent(t, r);
   const startYmd = (leasePart && leasePart.start) || (t && t.leaseStart) || "";
@@ -20461,7 +20461,7 @@ function studioLeasePaperHtml(t, r, leasePart) {
   return `<div class="studio-lease-paper" id="studio-lease-paper">
     <section class="lease-pg cover">
       <div class="lease-cover-mid">
-        <h3>房屋租賃契約書</h3>
+        <h3>房屋租賃契約書${banner ? `<span class="lease-sub">${escapeHtml(banner)}</span>` : ""}</h3>
         <p class="lease-cover-addr">${escapeHtml(door)}</p>
       </div>
       <div class="lease-cover-dates">
@@ -20601,20 +20601,63 @@ function studioLeasePaperHtml(t, r, leasePart) {
     </section>
   </div>`;
 }
+function upcomingLeaseRenewal(t, r) {
+  const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
+  const roomNo = r ? String(r.no || "") : "";
+  const hits = (list || []).filter(x => {
+    if (!x || x.status === "cancelled" || x.status === "applied") return false;
+    if (x.status !== "open" && x.status !== "done") return false;
+    if (!ymdOf(x.start) || !ymdOf(x.end)) return false;
+    return !!(t && (x.tenantId === t.id || (r && x.roomId === r.id) || (roomNo && String(x.roomNo) === roomNo)));
+  });
+  return hits.length ? hits[hits.length - 1] : null;
+}
+function renewalPrintRoom(r, item) {
+  if (item && item.wantMove && (item.moveRoomId || item.moveRoomNo)) {
+    const dest = (state.rooms || []).find(x => x && (x.id === item.moveRoomId || String(x.no) === String(item.moveRoomNo)));
+    if (dest) return dest;
+  }
+  return r;
+}
+function leasePrintJobs(t, r) {
+  const item = upcomingLeaseRenewal(t, r);
+  if (!item) return [{ label: "", tenant: t, room: r }];
+  const start = ymdOf(item.start);
+  const dest = renewalPrintRoom(r, item);
+  const nextT = tenantForRenewPrint(t, dest, item);
+  if (start && todayYmd() >= start) return [{ label: "", tenant: ymdOf(t.leaseStart) === start ? t : nextT, room: dest }];
+  return [
+    { label: "原合約", tenant: t, room: r },
+    { label: "新合約", tenant: nextT, room: dest }
+  ];
+}
+function leaseDownloadSuffix(t, r) {
+  const item = upcomingLeaseRenewal(t, r);
+  const start = ymdOf(item && item.start);
+  if (item && start && todayYmd() < start) return "（原合約＋新合約）";
+  return tenantLeaseParts(t, r).length > 1 ? "（兩份）" : "";
+}
 function studioLeasePapersHtml(t, r, preview) {
-  const parts = tenantLeaseParts(t, r);
-  const list = parts.length ? parts : [null];
-  return list.map((part, i) => {
-    let html = studioLeasePaperHtml(t, r, part);
-    if (preview) {
-      html = html
-        .replace('id="studio-lease-paper"', `id="lease-preview-paper-${i}"`)
-        .replace('class="studio-lease-paper"', "class=\"studio-lease-paper lease-preview\"");
-    } else if (i) {
-      html = html.replace('id="studio-lease-paper"', `id="studio-lease-paper-${i}"`);
-    }
-    return html;
-  }).join("");
+  const jobs = leasePrintJobs(t, r);
+  const out = [];
+  let i = 0;
+  jobs.forEach(job => {
+    const parts = tenantLeaseParts(job.tenant, job.room);
+    const list = parts.length ? parts : [null];
+    list.forEach(part => {
+      let html = studioLeasePaperHtml(job.tenant, job.room, part, job.label);
+      if (preview) {
+        html = html
+          .replace('id="studio-lease-paper"', `id="lease-preview-paper-${i}"`)
+          .replace('class="studio-lease-paper"', "class=\"studio-lease-paper lease-preview\"");
+      } else if (i) {
+        html = html.replace('id="studio-lease-paper"', `id="studio-lease-paper-${i}"`);
+      }
+      out.push(html);
+      i += 1;
+    });
+  });
+  return out.join("");
 }
 function studioLeasePreviewHtml(t, r) {
   return studioLeasePapersHtml(t, r, true);
@@ -27437,7 +27480,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         const list = kind === "factory" ? tenants.slice(0, 1) : tenants;
         return list.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId) || r;
-        return `${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(tt, rr).length > 1 ? "（兩份）" : ""}</button>` : ""}
+        return `${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${leaseDownloadSuffix(tt, rr)}</button>` : ""}
       <button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
@@ -28446,7 +28489,7 @@ function adminRoomEdit() {
           <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
           ${ten && ten.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(ten.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
           ${st === "signed" && es && es.sig && String(es.sig).startsWith("data:") ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}　列印後只蓋章</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署套房合約。" : "已有紙本合約圖檔。"}</p>`}
-          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(ten, r).length > 1 ? "（兩份）" : ""}</button>` : ""}
+          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}${leaseDownloadSuffix(ten, r)}</button>` : ""}
         </div>`;
       })()}
       <label class="upload">上傳合約書圖檔<input id="contract-upload" type="file" accept="image/*" multiple hidden /></label>
