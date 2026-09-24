@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-26";
-const APP_EDIT_COUNT = 1271;
+const APP_STAMP = "2026-09-24-17-28";
+const APP_EDIT_COUNT = 1272;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0821";
+const FILE_VER = "0822";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者後台新增歷史紀錄"] },
+  { ver: APP_VERSION, items: ["開發者公司帳戶補上三組銀行密碼"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -2741,11 +2741,11 @@ function stampPlaceOf(r) {
   return STAMP_OFFICE;
 }
 const COMPANY_BANKS = [
-  { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦" },
+  { company: "統潔", bank: "聯邦銀行", code: "803", account: "010100035909", holder: "統潔開發有限公司", key: "聯邦", pass: "6218" },
   { company: "統潔", bank: "聯邦銀行支存", code: "803", account: "010300019225", holder: "統潔開發有限公司", key: "聯邦支存" },
   { company: "統潔", bank: "鳳山區農會", code: "619", account: "00897210912150", holder: "統潔開發有限公司", key: "農會", note: "套房舊客匯款" },
-  { company: "統潔", bank: "兆豐銀行", code: "017", account: "04009039686", holder: "統潔開發有限公司", key: "兆豐", note: "套房新客匯款" },
-  { company: "信潔", bank: "聯邦銀行", code: "803", account: "010100034775", holder: "信潔開發有限公司", key: "聯邦" }
+  { company: "統潔", bank: "兆豐銀行", code: "017", account: "04009039686", holder: "統潔開發有限公司", key: "兆豐", note: "套房新客匯款", pass: "292611" },
+  { company: "信潔", bank: "聯邦銀行", code: "803", account: "010100034775", holder: "信潔開發有限公司", key: "聯邦", pass: "8056" }
 ];
 const NEW_TENANT_PAY_BANK = "兆豐";
 const NEW_TENANT_SINCE = "2026-06-01";
@@ -23766,7 +23766,7 @@ function adminFirm() {
     <div class="card card-body">
       <div class="label">公司帳戶</div>
       <p class="small">套房舊客匯農會、新客匯兆豐。晚點合約名單到齊後會套進每位租客的匯款資料。</p>
-      ${COMPANY_BANKS.map(b => `<div class="row wrap"><span class="k">${escapeHtml(b.company)}　${escapeHtml(b.bank)}${b.note ? "　" + escapeHtml(b.note) : ""}</span><span class="v">${escapeHtml(b.code ? b.code + "　" : "")}${escapeHtml(b.account)}</span></div>`).join("")}
+      ${COMPANY_BANKS.map(b => `<div class="row wrap"><span class="k">${escapeHtml(b.company)}　${escapeHtml(b.bank)}${b.note ? "　" + escapeHtml(b.note) : ""}</span><span class="v">${escapeHtml(b.code ? b.code + "　" : "")}${escapeHtml(b.account)}${b.pass && ui.adminCode === "1240" ? "　密碼 " + escapeHtml(b.pass) : ""}</span></div>`).join("")}
     </div>
     <div class="card card-body">
       <div class="label">相關帳戶</div>
