@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-08";
-const APP_EDIT_COUNT = 1248;
+const APP_STAMP = "2026-09-24-16-10";
+const APP_EDIT_COUNT = 1249;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0798";
+const FILE_VER = "0799";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客資料頁的下載合約、發票、退租等按鈕可以再按"] },
+  { ver: APP_VERSION, items: ["原合約和新合約分開下載，新合約內不再印新合約三字"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20632,21 +20632,29 @@ function leasePrintJobs(t, r) {
     { label: "新合約", tenant: nextT, room: dest }
   ];
 }
-function leaseDownloadSuffix(t, r) {
-  const item = upcomingLeaseRenewal(t, r);
-  const start = ymdOf(item && item.start);
-  if (item && start && todayYmd() < start) return "（原合約＋新合約）";
-  return tenantLeaseParts(t, r).length > 1 ? "（兩份）" : "";
-}
-function studioLeasePapersHtml(t, r, preview) {
+function leaseDownloadButtons(t, r) {
+  const id = t && t.id || "";
   const jobs = leasePrintJobs(t, r);
+  const both = jobs.some(j => j.label === "原合約") && jobs.some(j => j.label === "新合約");
+  if (both) {
+    return `<button type="button" class="ghost" data-print-lease="${id}" data-print-which="old" style="margin-top:8px">下載原合約</button><button type="button" class="ghost" data-print-lease="${id}" data-print-which="new" style="margin-top:8px">下載新合約</button>`;
+  }
+  const signed = tenantContractStatus(t, r) === "signed";
+  return `<button type="button" class="ghost" data-print-lease="${id}" style="margin-top:8px">${signed ? "列印已簽署合約" : "下載合約"}${tenantLeaseParts(t, r).length > 1 ? "（兩份）" : ""}</button>`;
+}
+function studioLeasePapersHtml(t, r, preview, which) {
+  let jobs = leasePrintJobs(t, r);
+  if (which === "old") jobs = jobs.filter(j => j.label === "原合約");
+  if (which === "new") jobs = jobs.filter(j => j.label === "新合約");
+  if (!jobs.length) jobs = [{ label: "", tenant: t, room: r }];
   const out = [];
   let i = 0;
   jobs.forEach(job => {
+    const banner = job.label === "新合約" ? "" : job.label;
     const parts = tenantLeaseParts(job.tenant, job.room);
     const list = parts.length ? parts : [null];
     list.forEach(part => {
-      let html = studioLeasePaperHtml(job.tenant, job.room, part, job.label);
+      let html = studioLeasePaperHtml(job.tenant, job.room, part, banner);
       if (preview) {
         html = html
           .replace('id="studio-lease-paper"', `id="lease-preview-paper-${i}"`)
@@ -20804,17 +20812,18 @@ function closeLeasePrintPreview() {
   const el = document.getElementById("lease-preview-box");
   if (el) el.remove();
 }
-function showLeasePrintPreview(t, r) {
+function showLeasePrintPreview(t, r, which) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
   if (es && es.sig) t.eSign = es;
-  const html = studioLeasePapersHtml(t, r, true);
+  const html = studioLeasePapersHtml(t, r, true, which);
   if (!html) { toast("合約無法產生"); return; }
   closeLeasePrintPreview();
   const wrap = document.createElement("div");
   wrap.className = "lightbox lease-print-preview";
   wrap.id = "lease-preview-box";
-  const title = "房屋租賃契約書　" + (r.no || "") + (t.name ? "　" + t.name : "");
+  const kind = which === "old" ? "原合約　" : (which === "new" ? "新合約　" : "");
+  const title = kind + "房屋租賃契約書　" + (r.no || "") + (t.name ? "　" + t.name : "");
   wrap.innerHTML = `
     <div class="lightbox-bar">
       <button type="button" id="lease-prev-close">關閉</button>
@@ -20829,11 +20838,11 @@ function showLeasePrintPreview(t, r) {
     e.preventDefault();
     e.stopPropagation();
     const hold = document.querySelector("#lease-preview-box .lease-preview-scroll");
-    printLeaseIframe(hold ? hold.innerHTML : studioLeasePapersHtml(t, r, true));
+    printLeaseIframe(hold ? hold.innerHTML : studioLeasePapersHtml(t, r, true, which));
   };
 }
-function printStudioLease(t, r) {
-  showLeasePrintPreview(t, r);
+function printStudioLease(t, r, which) {
+  showLeasePrintPreview(t, r, which);
 }
 function printRenewalById(id) {
   const item = (state.renewals || []).find(x => x && x.id === id);
@@ -27481,7 +27490,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         const list = kind === "factory" ? tenants.slice(0, 1) : tenants;
         return list.map(tt => {
         const rr = state.rooms.find(x => x.id === tt.roomId) || r;
-        return `${kind !== "factory" ? `<button class="ghost" data-print-lease="${tt.id}" style="margin-top:8px">${tenantContractStatus(tt, rr) === "signed" ? "列印已簽署合約" : "下載合約"}${leaseDownloadSuffix(tt, rr)}</button>` : ""}
+        return `${kind !== "factory" ? leaseDownloadButtons(tt, rr) : ""}
       <button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
@@ -27745,7 +27754,7 @@ function bindHandover() {
       const t = (state.tenants || []).find(x => x.id === btn.dataset.printLease);
       const r = t && (state.rooms || []).find(x => x.id === t.roomId);
       if (!t || !r) { toast("找不到租客"); return; }
-      printStudioLease(t, r);
+      printStudioLease(t, r, btn.dataset.printWhich || "");
     };
   });
   document.querySelectorAll("[data-print-renew]").forEach(btn => {
@@ -28490,7 +28499,7 @@ function adminRoomEdit() {
           <div class="row"><span class="k">電子合約</span><span class="pay-pill ${st === "unsigned" ? "unpaid" : "paid"}">${contractStatusLabel(ten, r)}</span></div>
           ${ten && ten.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(ten.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
           ${st === "signed" && es && es.sig && String(es.sig).startsWith("data:") ? `<img src="${es.sig}" alt="簽名" style="width:100%;max-height:120px;object-fit:contain;background:#fff;border-radius:12px;margin-top:8px"><p class="small">簽署時間 ${escapeHtml(formatDateTime12(es.at))}　列印後只蓋章</p>` : `<p class="small" style="margin-top:8px">${st === "unsigned" ? "租客可在 App「租約」頁線上簽署套房合約。" : "已有紙本合約圖檔。"}</p>`}
-          ${ten && r && r.kind !== "factory" ? `<button type="button" class="ghost" data-print-lease="${ten.id}" style="margin-top:8px">${st === "signed" ? "列印已簽署合約" : "下載合約"}${leaseDownloadSuffix(ten, r)}</button>` : ""}
+          ${ten && r && r.kind !== "factory" ? leaseDownloadButtons(ten, r) : ""}
         </div>`;
       })()}
       <label class="upload">上傳合約書圖檔<input id="contract-upload" type="file" accept="image/*" multiple hidden /></label>
