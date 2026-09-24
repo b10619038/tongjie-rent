@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-17-28";
-const APP_EDIT_COUNT = 1272;
+const APP_STAMP = "2026-09-24-17-33";
+const APP_EDIT_COUNT = 1273;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0822";
+const FILE_VER = "0823";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者公司帳戶補上三組銀行密碼"] },
+  { ver: APP_VERSION, items: ["公司帳戶的代號帳號改到下一行"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23766,7 +23766,7 @@ function adminFirm() {
     <div class="card card-body">
       <div class="label">公司帳戶</div>
       <p class="small">套房舊客匯農會、新客匯兆豐。晚點合約名單到齊後會套進每位租客的匯款資料。</p>
-      ${COMPANY_BANKS.map(b => `<div class="row wrap"><span class="k">${escapeHtml(b.company)}　${escapeHtml(b.bank)}${b.note ? "　" + escapeHtml(b.note) : ""}</span><span class="v">${escapeHtml(b.code ? b.code + "　" : "")}${escapeHtml(b.account)}${b.pass && ui.adminCode === "1240" ? "　密碼 " + escapeHtml(b.pass) : ""}</span></div>`).join("")}
+      ${COMPANY_BANKS.map(b => `<div class="bank-acc"><div>${escapeHtml(b.company)}　${escapeHtml(b.bank)}${b.note ? "　" + escapeHtml(b.note) : ""}</div><div class="small">${escapeHtml(b.code ? b.code + "　" : "")}${escapeHtml(b.account)}${b.pass && ui.adminCode === "1240" ? "　密碼 " + escapeHtml(b.pass) : ""}</div></div>`).join("")}
     </div>
     <div class="card card-body">
       <div class="label">相關帳戶</div>

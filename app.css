@@ -1439,6 +1439,9 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .invoice-overview-btn .k { font-weight: 800; font-size: 14px; white-space: nowrap; }
 .invoice-overview-btn .small { color: var(--muted); }
+.bank-acc { padding: 8px 0; }
+.bank-acc + .bank-acc { border-top: 1px solid var(--line); }
+.bank-acc .small { margin-top: 4px; letter-spacing: 0.02em; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
 .te-row { align-items: center; }
 .v-edit {
