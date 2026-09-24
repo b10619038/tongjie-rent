@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-10";
-const APP_EDIT_COUNT = 1249;
+const APP_STAMP = "2026-09-24-16-14";
+const APP_EDIT_COUNT = 1250;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0799";
+const FILE_VER = "0800";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["原合約和新合約分開下載，新合約內不再印新合約三字"] },
+  { ver: APP_VERSION, items: ["不續約連續 3 次提醒會依序出現"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3471,19 +3471,22 @@ function openRenewDeclineConfirm() {
   ui.keepScroll = true;
   render();
 }
-function renewDeclineConfirmHtml() {
-  const step = Number(ui.renewDeclineStep) || 0;
-  if (step < 1 || step > 3) return "";
-  const lines = [
+function renewDeclineLines() {
+  return [
     "第 1 次提醒：確定不續約嗎？合約到期後需要辦理退租。",
     "第 2 次提醒：再確認一次，確定不續約嗎？",
     "第 3 次提醒：這是最後一次。確認後就會標成不續約。"
   ];
+}
+function renewDeclineConfirmHtml() {
+  const step = Number(ui.renewDeclineStep) || 0;
+  if (step < 1 || step > 3) return "";
+  const lines = renewDeclineLines();
   return `<div class="install-mask" id="renew-decline-mask">
-    <div class="install-sheet">
+    <div class="install-sheet" id="renew-decline-sheet">
       <div class="label">不續約</div>
-      <h2>請再確認</h2>
-      <p class="small">${lines[step - 1]}</p>
+      <h2 id="renew-decline-title">請再確認 ${step}/3</h2>
+      <p class="small" id="renew-decline-text">${lines[step - 1]}</p>
       <button type="button" class="btn-navy" id="renew-decline-yes">確定不續約</button>
       <button type="button" class="ghost" id="renew-decline-no">我再想想</button>
     </div>
@@ -3492,19 +3495,27 @@ function renewDeclineConfirmHtml() {
 function bindRenewDeclineConfirm() {
   const close = () => { ui.renewDeclineStep = 0; ui.keepScroll = true; render(); };
   const mask = document.getElementById("renew-decline-mask");
+  const sheet = document.getElementById("renew-decline-sheet");
+  if (sheet) sheet.onclick = e => e.stopPropagation();
   if (mask) mask.onclick = e => { if (e.target.id === "renew-decline-mask") close(); };
   const no = document.getElementById("renew-decline-no");
-  if (no) no.onclick = close;
+  if (no) no.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
   const yes = document.getElementById("renew-decline-yes");
-  if (yes) yes.onclick = () => {
+  if (yes) yes.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
     const step = Number(ui.renewDeclineStep) || 1;
     if (step < 3) {
       ui.renewDeclineStep = step + 1;
-      ui.keepScroll = true;
-      render();
+      const title = document.getElementById("renew-decline-title");
+      const text = document.getElementById("renew-decline-text");
+      const lines = renewDeclineLines();
+      if (title) title.textContent = "請再確認 " + ui.renewDeclineStep + "/3";
+      if (text) text.textContent = lines[ui.renewDeclineStep - 1] || "";
       return;
     }
     ui.renewDeclineStep = 0;
+    if (mask) mask.remove();
     declineTenantRenewal();
   };
 }
