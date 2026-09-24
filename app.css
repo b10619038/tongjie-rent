@@ -3641,6 +3641,16 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
+.howto-fig {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #f3efe6;
+}
+.howto-p { margin: 10px 0 0; line-height: 1.7; }
 .nda-doc p { margin: 0 0 10px; line-height: 1.75; }
 .nda-doc p:last-child { margin-bottom: 0; }
 .nda-doc b { color: var(--ink); font-weight: 700; }

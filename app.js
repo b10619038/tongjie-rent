@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-52";
-const APP_EDIT_COUNT = 1260;
+const APP_STAMP = "2026-09-24-16-56";
+const APP_EDIT_COUNT = 1261;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0810";
+const FILE_VER = "0811";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客設定不再列出通知種類"] },
+  { ver: APP_VERSION, items: ["租客操作教學改成圖文，並依目前功能改寫"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24331,12 +24331,39 @@ function howtoTitle() {
 function howtoSections() {
   const kind = howtoKind();
   const tenant = [
-    { id: "t-home", h: "首頁", p: "看本月租金、繳費狀態與管理員公告。若房間正在交接，會顯示「交接中」。點交完成後舊客會自動登出，新客用房號設自己的密碼，並重新綁定 LINE。" },
-    { id: "t-pay", h: "繳費租金", p: "依畫面上的匯款帳戶轉帳，再上傳收據或轉帳明細。狀態會同步到後台，管理員可看到是否已繳。" },
-    { id: "t-room", h: "房間", p: "房間、公共陽台、停車位、子母車（垃圾桶）都可點進去看使用規範。5 樓有自助儲值機，可點開看實際照片。" },
-    { id: "t-lease", h: "租約", p: "看租約剩餘天數與本月租金。若尚未簽約，可在線上閱讀後勾選同意並簽名。" },
-    { id: "t-fix", h: "報修", p: "選類型、填「請描述問題」，可上傳照片或影片後送出。處理進度會回到這裡，也會通知你。" },
-    { id: "t-set", h: "設定", p: "可改密碼、頭像、開啟通知、綁定 LINE，以及調色盤與字體大小。操作教學也在這一頁。" }
+    { id: "t-home", h: "首頁", imgs: ["images/guide/home.jpg?v=0811", "images/guide/notice.jpg?v=0811"], ps: [
+      "打開就是我的房間：剩餘天數、本月租金，繳過會蓋上本月已繳。",
+      "管理員公告可以按愛心、讚、花朵、星星或笑臉。長按可換圖案，只看得到房號，不會顯示姓名。其他住戶也能互相看到。",
+      "有新公告或使用規範更新時，下方圖塊會出現紅點，看過就消失。",
+      "合約剩下 100 天、你還沒回覆要不要續約，首頁我的房間上方會出現「請問您是否要續約?」，可選前往續約或不續約。",
+      "右下角可以和管理員傳訊息。關掉 App 後若收到訊息，點通知會直接打開聊天。"
+    ] },
+    { id: "t-pay", h: "繳費租金", imgs: ["images/guide/pay.jpg?v=0811"], ps: [
+      "這裡看這次要匯的銀行、帳號與金額。請照畫面轉帳。",
+      "繳費總表會列出整份合約：應繳日、金額、實繳日。已經繳的日子會蓋上本月已繳。",
+      "到了應繳日還沒繳，手機會收到租金通知；還沒繳就會每天再提醒。已經繳清就不會再通知。",
+      "若已續約，新約開始後的租金改匯兆豐。"
+    ] },
+    { id: "t-room", h: "房間與周邊", imgs: ["images/guide/rooms.jpg?v=0811"], ps: [
+      "可看房間、公共陽台、機車停車空間、子母車（垃圾桶）的照片與使用方式。",
+      "5 樓自助儲值機可以點開實際照片。周邊景點也在這一區。"
+    ] },
+    { id: "t-lease", h: "租約與續約", imgs: ["images/guide/lease.jpg?v=0811"], ps: [
+      "租約頁看剩餘天數與租金。點剩餘天數可打開合約，手機和電腦都是一張張 A4，依畫面等比縮小。",
+      "合約到期前 200 天內，才會出現我要續約。可選 1 年或半年、同間或換房，再預約實際簽約時間。",
+      "送出申請後可以線上簽署新約，身分證、電話、緊急聯絡人、戶籍地址會先帶入上次的資料。現場蓋章仍到 5 樓 7651 簽約室。",
+      "若選不續約，會連續確認 3 次才會記下。新約要到開始的第一天才生效，在那之前仍是現在這份合約。"
+    ] },
+    { id: "t-fix", h: "報修", imgs: ["images/guide/repair.jpg?v=0811"], ps: [
+      "選類型，寫下問題，可以附照片或影片再送出。",
+      "處理中、已完成，或管理員約了維修時間，都會通知你。"
+    ] },
+    { id: "t-set", h: "設定", ps: [
+      "可換大頭貼。綁定官方 LINE 後，頭像可以跟著 LINE 更新。",
+      "開啟系統通知後，公告、繳費、報修、續約和訊息才會出現在手機上。",
+      "可開關首頁天氣圖，也可調顏色、字體、震動與鈴聲。",
+      "最下面、登出的上方是保密協定。登入並繼續使用，即表示已閱讀。"
+    ] }
   ];
   const admin = [
     { id: "a-dash", h: "總覽", p: "看四戶營收、收租率、出租率。點日曆日期可看當天進出帳；可圈選整月、搜尋、匯出或列印。點統潔／信潔／個人戶／現金可只看該戶。" },
@@ -24362,6 +24389,8 @@ function howtoBody() {
   if (!ui.howtoFold) ui.howtoFold = {};
   const items = howtoSections().map(s => {
     const on = !!ui.howtoFold[s.id];
+    const paras = (s.ps || [s.p]).filter(Boolean).map(p => `<p class="small howto-p">${escapeHtml(p)}</p>`).join("");
+    const figs = (s.imgs || []).map(src => `<img class="howto-fig" src="${escapeHtml(src)}" alt="${escapeHtml(s.h)}">`).join("");
     return `<div class="card card-body tenant-slim${on ? " open" : ""}" data-howto-fold="${s.id}">
       <div class="row tenant-slim-head">
         <button type="button" class="fold-head howto-fold">
@@ -24369,14 +24398,14 @@ function howtoBody() {
           <span class="row-end"><span class="fold-caret"></span></span>
         </button>
       </div>
-      <div class="tenant-slim-body"><div class="tenant-slim-inner"><p class="small" style="margin-top:10px">${escapeHtml(s.p)}</p></div></div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner">${figs}${paras}</div></div>
     </div>`;
   }).join("");
   return `<div class="guide-slide">
     <div class="card card-body" style="margin-bottom:12px">
       <div class="eyebrow">GUIDE</div>
       <h2 class="dash-h" style="margin:0">${escapeHtml(howtoTitle())}</h2>
-      <p class="small" style="margin-top:8px">點各項可展開說明。這份教學會依你現在的身分顯示。</p>
+      <p class="small" style="margin-top:8px">點各項可展開。圖是示意，實際按鈕與文字以畫面為準。</p>
     </div>
     <div class="settings-stack">${items}</div>
   </div>`;
