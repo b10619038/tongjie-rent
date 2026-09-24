@@ -3641,6 +3641,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .studio-lease-paper { display: none; }
 body.print-lease .studio-lease-paper { display: block; }
+.notify-names { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.notify-names span { display: block; text-align: left; font-weight: 700; color: var(--ink); line-height: 1.4; }
 .howto-fig {
   width: 100%;
   height: auto;
