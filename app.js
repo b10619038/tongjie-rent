@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-24-16-31";
-const APP_EDIT_COUNT = 1255;
+const APP_STAMP = "2026-09-24-16-46";
+const APP_EDIT_COUNT = 1256;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0805";
+const FILE_VER = "0806";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約車位改勾有，改為地上一層摩托車停車空間"] },
+  { ver: APP_VERSION, items: ["租客設定的通知列出全部會收到的種類"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -31127,6 +31127,26 @@ function lookSettingsHtml() {
       <div class="row"><span class="k">目前音量</span><span class="v" id="ring-val">${currentRing() === 0 ? "關閉" : currentRing() + "%"}</span></div>
     </div>`;
 }
+const TENANT_NOTIFY_CATALOG = [
+  ["管理員公告", "後台發布新公告"],
+  ["使用規範", "使用規範有更新"],
+  ["租金繳費", "到了應繳日還沒繳，當天通知；還沒繳就每天提醒"],
+  ["屋主催繳", "管理員催繳租金"],
+  ["租金入帳", "本月或不足月租金已入帳"],
+  ["報修進度", "報修改為處理中或已完成"],
+  ["報修預約", "已安排維修時間"],
+  ["續約確認", "合約快到期，請確認是否續約"],
+  ["續約簽約", "預約或更改簽約時間"],
+  ["新訊息", "管理員傳來訊息"],
+  ["入住確認", "申請入住已核准"],
+  ["租約結束", "已辦理退租"],
+  ["年度水費", "水費到期前 30 天提醒"]
+];
+function tenantNotifyCatalogHtml() {
+  return `<div class="notify-catalog">${TENANT_NOTIFY_CATALOG.map(([name, when]) =>
+    `<div class="row wrap"><span class="k">${escapeHtml(name)}</span><span class="v">${escapeHtml(when)}</span></div>`
+  ).join("")}</div>`;
+}
 function tenantSettings() {
   const t = me() || {};
   const r = myRoom() || {};
@@ -31170,6 +31190,8 @@ function tenantSettings() {
         <div class="label">通知</div>
         <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
         <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
+        <div class="label" style="margin-top:16px">會收到這些通知</div>
+        ${tenantNotifyCatalogHtml()}
       </div>
       ${geoSettingsHtml()}
       <div class="card card-body clickable" data-page="howto">
