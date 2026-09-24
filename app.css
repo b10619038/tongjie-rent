@@ -4400,6 +4400,34 @@ img.avatar { object-fit: cover; display: block; }
 }
 .photo-zoom.on .photo-zoom-caption { opacity: .9; transition: opacity .28s .08s; }
 .photo-zoom.out .photo-zoom-caption { opacity: 0; }
+.plan-room-badge {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 3;
+  transform: translate(-50%, -50%) scale(.2);
+  opacity: 0;
+  background: #dbe7f4;
+  color: #28568b;
+  font-weight: 800;
+  font-size: 46px;
+  letter-spacing: .04em;
+  line-height: 1;
+  padding: 18px 34px;
+  border-radius: 999px;
+  pointer-events: none;
+  box-shadow: 0 12px 28px rgba(30, 60, 100, .16);
+}
+.plan-room-badge.on {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition: transform .72s cubic-bezier(.22,1,.36,1), opacity .5s ease;
+}
+.photo-zoom.out .plan-room-badge {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.86);
+  transition: transform .28s ease, opacity .22s ease;
+}
 [data-open-topup] { cursor: pointer; }
 [data-zoom-photo] { cursor: pointer; }
 .batt-card {
