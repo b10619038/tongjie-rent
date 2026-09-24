@@ -1218,7 +1218,9 @@ button.pay-toggle {
   pointer-events: auto;
   transform: scale(1);
   transform-origin: center center;
-  transition: transform .2s cubic-bezier(.2, 1.6, .3, 1), background-color .18s ease, color .18s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: transform .2s cubic-bezier(.2, 1.6, .3, 1);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
