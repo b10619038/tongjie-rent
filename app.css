@@ -4453,7 +4453,7 @@ img.avatar { object-fit: cover; display: block; }
 .plan-room-badge {
   position: absolute;
   left: 50%;
-  top: calc(46% + 2cm);
+  top: calc(46% + 4cm);
   z-index: 3;
   transform: translate(-50%, -50%) scale(.1);
   opacity: 0;
