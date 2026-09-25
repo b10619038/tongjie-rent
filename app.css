@@ -2609,8 +2609,8 @@ button.avatar-look.is-press { transform: scale(.94); }
   mask-size: 100% 100%;
 }
 .tab-ic.ic-dash { width: 22px; }
-.tab-ic.ic-rooms { width: 34px; }
-.tab-ic.ic-tenants { width: 38px; }
+.tab-ic.ic-rooms { width: 30.6px; }
+.tab-ic.ic-tenants { width: 34.2px; }
 .tab-ic.ic-ai { width: 24px; }
 @media (max-width: 820px) {
   .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
