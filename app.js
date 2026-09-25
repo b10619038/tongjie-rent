@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-23-05";
-const APP_EDIT_COUNT = 1447;
+const APP_STAMP = "2026-09-25-23-08";
+const APP_EDIT_COUNT = 1448;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0998";
+const FILE_VER = "0999";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台助手選單加上日曆圖示"] },
+  { ver: APP_VERSION, items: ["後台選單長滑一次換四個圖示"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24691,6 +24691,48 @@ function bindTabReorder() {
   bar.addEventListener("pointerup", onEnd);
   bar.addEventListener("pointercancel", onEnd);
 }
+function bindTabPage() {
+  const sc = document.querySelector(".shell.admin-wide .tabs");
+  if (!sc || sc.dataset.pageBound === "1") return;
+  sc.dataset.pageBound = "1";
+  let x0 = 0, y0 = 0, left0 = 0, lock = "";
+  const pageW = () => Math.max(1, sc.clientWidth);
+  const maxLeft = () => Math.max(0, sc.scrollWidth - sc.clientWidth);
+  const pageOf = left => Math.round(left / pageW());
+  const go = page => {
+    const maxP = Math.round(maxLeft() / pageW());
+    const p = Math.max(0, Math.min(maxP, page));
+    sc.scrollTo({ left: Math.min(maxLeft(), p * pageW()), behavior: "smooth" });
+  };
+  sc.addEventListener("touchstart", e => {
+    if (window.innerWidth > 820 || e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    left0 = sc.scrollLeft;
+    lock = "";
+  }, { passive: true });
+  sc.addEventListener("touchmove", e => {
+    if (window.innerWidth > 820 || !e.touches[0] || sc.classList.contains("sorting")) return;
+    const dx = e.touches[0].clientX - x0;
+    const dy = e.touches[0].clientY - y0;
+    if (!lock) {
+      if (Math.hypot(dx, dy) < 8) return;
+      lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (lock !== "x") return;
+    if (e.cancelable) e.preventDefault();
+    sc.scrollLeft = Math.max(0, Math.min(maxLeft(), left0 - dx));
+  }, { passive: false });
+  sc.addEventListener("touchend", e => {
+    if (window.innerWidth > 820 || lock !== "x") { lock = ""; return; }
+    const t = e.changedTouches && e.changedTouches[0];
+    const dx = t ? t.clientX - x0 : 0;
+    lock = "";
+    const cur = pageOf(left0);
+    go(Math.abs(dx) >= 64 ? cur + (dx < 0 ? 1 : -1) : cur);
+  }, { passive: true });
+  sc.addEventListener("touchcancel", () => { lock = ""; });
+}
 function bindAdminPageSwipe() {
   const sc = document.querySelector(".admin-scroll");
   if (!sc || sc.dataset.swipeBound === "1") return;
@@ -32139,6 +32181,7 @@ function bindAdmin() {
     };
   });
   bindTabReorder();
+  bindTabPage();
   bindTabPill();
   document.querySelectorAll(".tabs .tab").forEach(bindTabPress);
   bindAdminPageSwipe();
