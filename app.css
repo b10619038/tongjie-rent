@@ -2590,21 +2590,21 @@ button.avatar-look.is-press { transform: scale(.94); }
 }
 .tab.tab-with-ic {
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   line-height: normal;
 }
 .tab-ic,
 .tab-ic.sq {
   display: block;
   width: 26px;
-  height: 28px;
-  flex: 0 0 28px;
-  margin: 0 auto;
+  height: 26px;
+  flex: 0 0 26px;
+  margin: 1px auto 3px;
   background: currentColor;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  -webkit-mask-position: center bottom;
+  mask-position: center bottom;
   -webkit-mask-size: contain;
   mask-size: contain;
 }
