@@ -4880,9 +4880,9 @@ html.preview-zoom body {
 }
 .fold-caret.go-right { transform: rotate(-45deg); margin-top: -2px; }
 .tenant-sheet-page { animation: none; }
-.tenant-sheet-page.admin-grid:has(.sheet-head) { padding-top: 0; gap: 8px; }
+.tenant-sheet-page.admin-grid:has(.sheet-head) { padding-top: 0; gap: 0; }
 .tenant-sheet-page .sheet-head { padding: 0; }
-.tenant-sheet-page .sheet-head .back { margin: 0; }
+.tenant-sheet-page .sheet-head .back { margin: 0; line-height: 1; display: block; }
 .tenant-sheet-page.tenant-sheet-enter { animation: sheetIn .34s cubic-bezier(.22,.82,.22,1) both; }
 .tenant-sheet-page .slide-left,
 .tenant-sheet-page .slide-right,
