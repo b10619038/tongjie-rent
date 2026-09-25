@@ -1656,6 +1656,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   margin: 0;
   max-height: 140px;
   background: color-mix(in srgb, var(--card) 90%, transparent); border-radius: 999px;
+  border: 1px solid #e3e3e3;
   display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 8px 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); flex: 0 0 auto;
   isolation: isolate;
