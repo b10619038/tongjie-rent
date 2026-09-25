@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-14-06";
-const APP_EDIT_COUNT = 1386;
+const APP_STAMP = "2026-09-25-14-18";
+const APP_EDIT_COUNT = 1387;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0937";
+const FILE_VER = "0938";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客合約頁可看現有合約，有新約時舊約也還在"] },
+  { ver: APP_VERSION, items: ["原合約不再混入新約，7632 舊約維持到 115/9/30"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -21364,6 +21364,16 @@ function renewalPrintRoom(r, item) {
   }
   return r;
 }
+function tenantForOldPrint(t, r, item) {
+  const start = ymdOf(item && item.oldStart) || ymdOf(t && t.leaseStart);
+  const end = ymdOf(item && item.oldEnd) || ymdOf(t && t.leaseEnd);
+  const monthly = studioContractRent(t, r);
+  const pack = start ? studioLeasePack(start, monthly) : null;
+  let parts = (pack && pack.parts) || [];
+  if (end) parts = parts.filter(p => p && ymdOf(p.start) && ymdOf(p.start) <= end && (!ymdOf(p.end) || ymdOf(p.end) <= end));
+  if (!parts.length && start && end) parts = [{ kind: "year", start, end, rent: monthly }];
+  return Object.assign({}, t, { leaseStart: start, leaseEnd: end, leases: parts });
+}
 function leasePrintJobs(t, r) {
   const item = upcomingLeaseRenewal(t, r);
   if (!item) return [{ label: "", tenant: t, room: r }];
@@ -21372,7 +21382,7 @@ function leasePrintJobs(t, r) {
   const nextT = tenantForRenewPrint(t, dest, item);
   if (start && todayYmd() >= start) return [{ label: "", tenant: ymdOf(t.leaseStart) === start ? t : nextT, room: dest }];
   return [
-    { label: "原合約", tenant: t, room: r },
+    { label: "原合約", tenant: tenantForOldPrint(t, r, item), room: r },
     { label: "新合約", tenant: nextT, room: dest }
   ];
 }
@@ -21412,8 +21422,8 @@ function studioLeasePapersHtml(t, r, preview, which) {
   });
   return out.join("");
 }
-function studioLeasePreviewHtml(t, r) {
-  return studioLeasePapersHtml(t, r, true);
+function studioLeasePreviewHtml(t, r, which) {
+  return studioLeasePapersHtml(t, r, true, which || "");
 }
 function isStudioLeaseRoom(r) {
   return !!(r && r.kind !== "factory" && !isStoreNo(r.no));
@@ -23934,17 +23944,17 @@ function leaseView() {
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
         ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。新約 ${escapeHtml(rocSlash(pending.start) || "")} 起自動生效，匯款改兆豐。</p>` : ""}
       </div>
-      ${pending ? `<div class="section-title" id="renew-current-paper"><h2 class="slide-right">現有合約</h2></div>
+      ${pending ? `<div class="section-title" id="renew-current-paper"><h2 class="slide-right">原合約</h2></div>
       <div class="card card-body slide-left">
         <p class="small" style="margin:0 0 8px">目前這份仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。</p>
-        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
+        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old") : eContractDocHtml(t, r)}
       </div>
-      <div class="section-title" id="renew-new-paper"><h2 class="slide-right">新約合約</h2></div>
+      <div class="section-title" id="renew-new-paper"><h2 class="slide-right">新合約</h2></div>
       <div class="card card-body slide-left">
         <div class="row"><span class="k">新約期間</span><span class="v">${escapeHtml(rocSlash(pending.start) || "")} ➜ ${escapeHtml(rocSlash(pending.end) || "")}</span></div>
         <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">已簽署　待生效</span></div>
         <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(rocSlash(pending.start) || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
-        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r)}
+        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, "new") : eContractDocHtml(paperT, r)}
       </div>` : ""}
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
       <div class="card card-body slide-left rules">${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>
@@ -23972,13 +23982,13 @@ function leaseView() {
               : "你已完成藍字簽名，兩份合約都已套入。管理員列印後只蓋公司章。"}</p>
             ${wait && canPickSignRoom(t) ? `<button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:8px">改選其他房</button>` : ""}
             ${t.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
-            ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r) : eContractDocHtml(t, r)}
+            ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old") : eContractDocHtml(t, r)}
           </div>`;
         }
         return (r.contractImages && r.contractImages.length)
           ? `<div class="contract-list">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
           : (isStudioLeaseRoom(r)
-            ? `<div class="card card-body">${studioLeasePreviewHtml(t, r)}</div>`
+            ? `<div class="card card-body">${studioLeasePreviewHtml(t, r, "old")}</div>`
             : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`);
       })()}`}
       ${pending ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}
@@ -23992,7 +24002,8 @@ function leaseSignView() {
   const es = getESign(t);
   const renewItem = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const paperT = renewItem ? tenantForRenewPrint(t, r, renewItem) : t;
-  const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r);
+  const paperWhich = renewItem ? "new" : "old";
+  const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, paperWhich) : eContractDocHtml(paperT, r);
   if (es && es.status === "signed" && !ui.resignRenew) {
     return `<div class="topbar"><div>
       <button class="back" data-page="lease">← 返回</button>
@@ -24036,7 +24047,7 @@ function leaseSignView() {
   const fastSlot = nextSignSlots(1, t && t.signAppointAt, win.min, "", win.maxFast)[0];
   const occ = roomCurrentTenant(r);
   const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
-  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r) : eContractDocHtml(paperT, r);
+  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, renewItem ? "new" : "old") : eContractDocHtml(paperT, r);
   const roomOpts = rooms.map(x => {
     const m = moveRoomMeta(x, t);
     const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ("現約至 " + (m.end || "—") + "　最快可入住 " + m.start));
