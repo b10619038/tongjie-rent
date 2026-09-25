@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-18-50";
-const APP_EDIT_COUNT = 1426;
+const APP_STAMP = "2026-09-25-18-55";
+const APP_EDIT_COUNT = 1427;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0977";
+const FILE_VER = "0978";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖藍點房間加上淺灰底塊"] },
+  { ver: APP_VERSION, items: ["平面圖改用淺灰房間底塊，藍點拿掉"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14144,31 +14144,6 @@ function openZoomPhoto(item, originEl) {
       const mark = () => { moved = true; swap(); };
       setTimeout(mark, zoomRoom ? 1250 : 520);
     }
-    if (!zoomRoom && item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
-      setTimeout(() => {
-        if (!wrap.isConnected || wrap.classList.contains("out")) return;
-        const dot = document.createElement("button");
-        dot.type = "button";
-        dot.className = "plan-zoom-dot";
-        dot.setAttribute("aria-label", item.roomLabel || "房間");
-        wrap.appendChild(dot);
-        const focus = item.roomFocus;
-        const fcx = (focus.x + focus.w / 2) * tw;
-        const fcy = (focus.y + focus.h / 2) * th;
-        const zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
-        armPlanBrowse(wrap, img, {
-          x: 0, y: 0, s: 1, w: tw, h: th,
-          min: 1,
-          max: Math.max(zs * 2.4, 5)
-        }, {
-          dot,
-          dx: item.dot.x,
-          dy: item.dot.y,
-          target: { x: vw / 2 - tx - fcx * zs, y: vh / 2 - ty - fcy * zs, s: zs }
-        });
-        requestAnimationFrame(() => dot.classList.add("on"));
-      }, 720);
-    }
     wrap._zoomBack = () => {
       wrap.classList.remove("on");
       wrap.classList.add("out");
@@ -22797,7 +22772,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-dot="${plan.dot}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : `<span class="move-pick-slot"></span>`;
     return `<div class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       ${planBtn}
@@ -23965,7 +23940,6 @@ function floorPlanCardHtml(r) {
   if (!plan) return "";
   const src = "images/plan-6821.png?v=" + FILE_VER;
   const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
-  const dot = plan.dot.split(",");
   const box = String(plan.focus || "").split(",").map(Number);
   const pad = box.length === 4 && box.every(Number.isFinite)
     ? `<span class="plan-room-pad" style="left:${(box[0]*100).toFixed(2)}%;top:${(box[1]*100).toFixed(2)}%;width:${(box[2]*100).toFixed(2)}%;height:${(box[3]*100).toFixed(2)}%" aria-hidden="true"></span>`
@@ -23976,7 +23950,6 @@ function floorPlanCardHtml(r) {
         <div class="plan-frame">
           <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
           ${pad}
-          <span class="plan-room-dot" style="left:${dot[0]};top:${dot[1]}" aria-hidden="true"></span>
         </div>
       </div>`;
 }
@@ -30776,20 +30749,15 @@ function openPickPlan(el) {
   const photo = el.dataset.zoomPhoto;
   if (!photo) return;
   const parts = String(el.dataset.zoomFocus || "").split(",").map(Number);
-  const roomFocus = parts.length === 4 && parts.every(n => Number.isFinite(n))
+  const focus = parts.length === 4 && parts.every(n => Number.isFinite(n))
     ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
-    : null;
-  const dotParts = String(el.dataset.zoomDot || "").split(",").map(s => parseFloat(s));
-  const dot = dotParts.length === 2 && dotParts.every(n => Number.isFinite(n))
-    ? { x: dotParts[0] / 100, y: dotParts[1] / 100 }
     : null;
   openMediaViewer([{
     kind: "image",
     src: photo,
     title: "平面圖",
     above: el.dataset.zoomAbove || "",
-    dot,
-    roomFocus,
+    focus,
     roomLabel: el.dataset.zoomAbove || "房間"
   }], 0, el);
 }
