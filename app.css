@@ -2576,29 +2576,29 @@ button.avatar-look.is-press { transform: scale(.94); }
 }
 .shell.admin-wide .tabs-track {
   align-items: stretch;
-  min-height: 59px;
+  min-height: 0;
 }
 .shell.admin-wide .tab {
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.15;
-  padding: 0 14px;
-  min-height: 59px;
+  line-height: normal;
+  padding: 10px 0;
+  min-height: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 .tab.tab-with-ic {
   flex-direction: column;
-  gap: 1px;
-  line-height: 1.05;
+  gap: 2px;
+  line-height: normal;
 }
 .tab-ic,
 .tab-ic.sq {
   display: block;
   width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  height: 28px;
+  flex: 0 0 28px;
   margin: 0 auto;
   background: currentColor;
   -webkit-mask-repeat: no-repeat;
@@ -2616,7 +2616,7 @@ button.avatar-look.is-press { transform: scale(.94); }
     width: 25cqi;
     min-width: 25cqi;
     max-width: 25cqi;
-    padding: 0;
+    padding: 10px 0;
     box-sizing: border-box;
     scroll-snap-align: none;
   }
