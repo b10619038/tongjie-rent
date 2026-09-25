@@ -1747,11 +1747,20 @@ html[data-theme="void"] .nav-ic img.nav-tool {
 .nav button { overflow: visible; }
 .nav button.active .nav-ic { transform: scale(1.34); }
 .nav button.land .nav-ic { animation: none; }
-.nav.nav-text { padding: 4px 8px; }
+.nav.nav-text {
+  padding: 8px 6px;
+  align-items: stretch;
+}
 .nav.nav-text button {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  padding: 16px 0;
+  line-height: 1.15;
+  padding: 0;
+  margin: 0;
+  min-height: 59px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .zoom-page { animation: none; transform: none; contain: layout style; }
 .zoom-page.keep-still { animation: none !important; transform: none !important; }
