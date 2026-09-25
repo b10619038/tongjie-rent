@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-14-18";
-const APP_EDIT_COUNT = 1387;
+const APP_STAMP = "2026-09-25-14-28";
+const APP_EDIT_COUNT = 1388;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0938";
+const FILE_VER = "0939";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["原合約不再混入新約，7632 舊約維持到 115/9/30"] },
+  { ver: APP_VERSION, items: ["7231 十月租金實繳日改回 115/9/8，不再寫成 10/1"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -15581,6 +15581,8 @@ function leaseCalMarks(t, r) {
     put(ymdOf(x.appointAt), "sign", "續約");
   });
   const paid = {};
+  const paidOn = {};
+  const today = todayYmd();
   const stampDay = (raw) => {
     const d = ymdOf(raw);
     if (!d) return;
@@ -15589,17 +15591,27 @@ function leaseCalMarks(t, r) {
     paid[d] = true;
   };
   const stamped = new Set();
+  const remember = (ym, day) => {
+    if (!ym || !day || paidOn[ym] || day > today) return;
+    paidOn[ym] = day;
+  };
   const stampExact = (raw) => {
     const d = ymdOf(raw);
     if (!d || stamped.has(d.slice(0, 7))) return;
     stamped.add(d.slice(0, 7));
+    remember(d.slice(0, 7), d);
     stampDay(d);
   };
   const stampMonthFirst = (raw) => {
     const d = ymdOf(raw);
-    if (!d || stamped.has(d.slice(0, 7))) return;
-    stamped.add(d.slice(0, 7));
-    stampDay(d.slice(0, 7) + "-01");
+    if (!d) return;
+    const ym = d.slice(0, 7);
+    if (stamped.has(ym)) return;
+    const day = ym + "-01";
+    if (day > today) return;
+    stamped.add(ym);
+    remember(ym, day);
+    stampDay(day);
   };
   const remit = ymdOf(t && t.remitOn) || ymdOf(t && t.paidAt);
   const thisYm = payYmNow();
@@ -15607,7 +15619,18 @@ function leaseCalMarks(t, r) {
     if (remit && remit.slice(0, 7) === thisYm) stampExact(remit);
     else stampMonthFirst(thisYm + "-01");
   }
-  (t && t.prepaidYm || []).forEach(ym => stampMonthFirst(String(ym || "").slice(0, 7) + "-01"));
+  (t && t.prepaidYm || []).forEach(ym => {
+    const month = String(ym || "").slice(0, 7);
+    if (!month) return;
+    if (remit && remit <= today) {
+      if (stamped.has(month)) return;
+      stamped.add(month);
+      remember(month, remit);
+      if (remit.slice(0, 7) === month) stampDay(remit);
+      return;
+    }
+    stampMonthFirst(month + "-01");
+  });
   const no = String((r && r.no) || "");
   (state.books || []).forEach(b => {
     if (!b || b.type === "out") return;
@@ -15623,7 +15646,7 @@ function leaseCalMarks(t, r) {
     if (remit && remit.slice(0, 7) === ym) stampExact(remit);
     else stampMonthFirst(ym + "-01");
   });
-  return { due, paid };
+  return { due, paid, paidOn };
 }
 function leaseCalGridHtml(ym, marks) {
   const y = Number(String(ym).slice(0, 4));
@@ -15688,6 +15711,7 @@ function leasePaySheets(t, r) {
 }
 function leasePaidMap(t, r) {
   const marks = leaseCalMarks(t, r);
+  if (marks && marks.paidOn) return marks.paidOn;
   const map = {};
   Object.keys((marks && marks.paid) || {}).forEach(d => { map[String(d).slice(0, 7)] = d; });
   return map;
