@@ -2650,7 +2650,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   transform: none;
 }
 .shell.admin-wide .tab-ic {
-  transform-origin: center bottom;
+  transform-origin: center center;
   transition: transform .2s cubic-bezier(.22,.82,.22,1);
   background: var(--muted);
 }
