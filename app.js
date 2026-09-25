@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-12-08";
-const APP_EDIT_COUNT = 1372;
+const APP_STAMP = "2026-09-25-12-14";
+const APP_EDIT_COUNT = 1373;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0923";
+const FILE_VER = "0924";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員訊息會送到租客，並補送避免漏收"] },
+  { ver: APP_VERSION, items: ["點通知進聊天室會帶上管理員剛傳的那句話"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1540,6 +1540,8 @@ if ("serviceWorker" in navigator) {
       if (e.data.chat) {
         ui.pendingChatOpen = true;
         if (e.data.tid) ui.pendingChatTid = String(e.data.tid);
+        if (e.data.mtxt) ui.pendingChatText = String(e.data.mtxt);
+        if (e.data.mid) ui.pendingChatMid = String(e.data.mid);
         try { consumeChatOpen(); } catch {}
         try { armChatOpen(); } catch {}
       } else if (e.data.page) ui.page = e.data.page;
@@ -1771,9 +1773,6 @@ async function markChatRead(tid) {
   th.updatedAt = Math.max(Number(th.updatedAt) || 0, now);
   saveLocalChats(chatStore());
   persistChatsToState();
-  chatPostRemote({ tenantId: tid, read: who, roomNo: th.roomNo, name: th.name }).catch(() => {});
-  try { save(true); } catch {}
-  try { pushCloud(); } catch {}
   try { refreshChatBadges(); } catch {}
 }
 function threadUnread(th, who) {
@@ -1834,8 +1833,12 @@ function takeChatOpenQuery() {
     if (q.get("open") !== "chat") return;
     ui.pendingChatOpen = true;
     if (q.get("tid")) ui.pendingChatTid = q.get("tid");
+    if (q.get("mtxt")) ui.pendingChatText = q.get("mtxt");
+    if (q.get("mid")) ui.pendingChatMid = q.get("mid");
     q.delete("open");
     q.delete("tid");
+    q.delete("mtxt");
+    q.delete("mid");
     const left = q.toString();
     history.replaceState({}, "", location.pathname + (left ? "?" + left : "") + location.hash);
   } catch {}
@@ -1845,8 +1848,31 @@ function chatOpenReady() {
   if (ui.role === "tenant" && !me()) return false;
   return true;
 }
+function textFromNotify(raw) {
+  const s = String(raw || "").trim();
+  if (s.indexOf("管理員：") === 0) return s.slice("管理員：".length).trim();
+  const i = s.indexOf("：");
+  if (i >= 0 && i <= 24) return s.slice(i + 1).trim();
+  return s;
+}
+function ensureNotifyChat(tid) {
+  const text = textFromNotify(ui.pendingChatText).slice(0, 400);
+  const id = String(ui.pendingChatMid || "");
+  ui.pendingChatText = "";
+  ui.pendingChatMid = "";
+  if (!tid || !text) return;
+  const from = ui.role === "tenant" ? "dev" : "tenant";
+  const th = chatThreadOf(tid);
+  if (!th) return;
+  if ((th.msgs || []).some(m => m && ((id && m.id === id) || (m.text === text && m.from === from)))) return;
+  const msg = { id: id || ("n" + Date.now()), from, text, at: Date.now() };
+  th.msgs = (th.msgs || []).concat(msg).slice(-80);
+  th.updatedAt = msg.at;
+  persistChatsToState();
+  chatPostRemote({ tenantId: tid, roomNo: th.roomNo || "", name: th.name || "", from, text, id: msg.id, at: msg.at }).catch(() => {});
+}
 function consumeChatOpen() {
-  if (!ui.pendingChatOpen || ui.chatOpen) {
+  if (!ui.pendingChatOpen && !ui.pendingChatText) {
     if (ui.chatOpen) ui.pendingChatOpen = false;
     return;
   }
@@ -1856,6 +1882,11 @@ function consumeChatOpen() {
   if (!tid) return;
   ui.pendingChatOpen = false;
   ui.pendingChatTid = "";
+  ensureNotifyChat(tid);
+  if (ui.chatOpen && ui.chatTid === tid) {
+    try { drawChatBox(); } catch {}
+    return;
+  }
   if (ui.role === "tenant" && ui.page !== "home") ui.page = "home";
   if (ui.role === "admin") ui.page = "tenants";
   try { render(); } catch {}

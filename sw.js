@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v1438";
-const BUILD = "20260925-0923";
+const CACHE = "tongjie-app-v1439";
+const BUILD = "20260925-0924";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -118,12 +118,19 @@ self.addEventListener("notificationclick", event => {
   const chat = !!(data.chat || tag.indexOf("chat-") === 0 || title === "新訊息");
   const tid = String(data.tid || "");
   const page = String(data.page || "");
+  const rawBody = String(data.body || note.body || "");
+  const mid = String(data.mid || (tag.indexOf("chat-") === 0 ? tag.slice(5) : ""));
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: "window", includeUncontrolled: true });
     if (tag === "tongjie-update") all.forEach(c => c.postMessage({ type: "SHOW_CHANGELOG" }));
-    const msg = { type: "OPEN", page: chat ? "home" : page, chat, tid };
+    const msg = { type: "OPEN", page: chat ? "home" : page, chat, tid, mid, mtxt: rawBody };
     let url = new URL("./", self.registration.scope).href;
-    if (chat) url += "?open=chat" + (tid ? "&tid=" + encodeURIComponent(tid) : "");
+    if (chat) {
+      url += "?open=chat"
+        + (tid ? "&tid=" + encodeURIComponent(tid) : "")
+        + (mid ? "&mid=" + encodeURIComponent(mid) : "")
+        + (rawBody ? "&mtxt=" + encodeURIComponent(rawBody) : "");
+    }
     const mine = all.find(c => String(c.url || "").indexOf(self.registration.scope) === 0) || all[0];
     if (mine) {
       try { await mine.focus(); } catch {}
