@@ -1762,6 +1762,18 @@ html[data-theme="void"] .nav-ic img.nav-tool {
   align-items: center;
   justify-content: center;
 }
+.nav.nav-icon button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 8px 0;
+}
+.nav.nav-icon .nav-ic { margin: 0 auto; }
+.seg.seg-3 { grid-template-columns: 1fr 1fr 1fr; }
+.seg.seg-3 .seg-bg { width: calc((100% - 8px) / 3); }
+.seg.seg-3.is-2 .seg-bg { transform: translate3d(100%, 0, 0); }
+.seg.seg-3.is-3 .seg-bg { transform: translate3d(200%, 0, 0); }
 .zoom-page { animation: none; transform: none; contain: layout style; }
 .zoom-page.keep-still { animation: none !important; transform: none !important; }
 .tenant-still .slide-left,
