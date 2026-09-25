@@ -2595,7 +2595,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 }
 .tab-ic {
   display: block;
-  width: 38px;
+  width: 30px;
   height: 26px;
   flex: 0 0 26px;
   background: currentColor;
@@ -2603,10 +2603,16 @@ button.avatar-look.is-press { transform: scale(.94); }
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
+  -webkit-mask-size: 28px 19px;
+  mask-size: 28px 19px;
+}
+.tab-ic.sq {
+  width: 26px;
+  height: 26px;
+  flex-basis: 26px;
   -webkit-mask-size: contain;
   mask-size: contain;
 }
-.tab-ic.sq { width: 26px; height: 26px; flex-basis: 26px; }
 @media (max-width: 820px) {
   .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
   .shell.admin-wide .tabs-track { gap: 0; }
