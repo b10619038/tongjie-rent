@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-22-24";
-const APP_EDIT_COUNT = 1439;
+const APP_STAMP = "2026-09-25-22-35";
+const APP_EDIT_COUNT = 1440;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0990";
+const FILE_VER = "0991";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["首頁房子改回原本尖角"] },
+  { ver: APP_VERSION, items: ["設定可關閉主選單圖示，只留文字"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11878,6 +11878,8 @@ function countFxOn() { return prefFlagOn("tongjie_count_fx"); }
 function setCountFx(on) { setPrefFlag("tongjie_count_fx", on); }
 function stampFxOn() { return prefFlagOn("tongjie_stamp_fx"); }
 function setStampFx(on) { setPrefFlag("tongjie_stamp_fx", on); }
+function navArtOn() { return prefFlagOn("tongjie_nav_art"); }
+function setNavArt(on) { setPrefFlag("tongjie_nav_art", on); }
 const FEST_CNY = ["2026-02-17", "2027-02-06", "2028-01-26", "2029-02-13", "2030-02-03"];
 const FEST_LANTERN = ["2026-03-03", "2027-02-20", "2028-02-09", "2029-02-27", "2030-02-17"];
 const FEST_DRAGON = ["2026-06-19", "2027-06-09", "2028-05-28", "2029-06-16", "2030-06-05"];
@@ -23064,11 +23066,12 @@ function navUnread(id) {
 function nav() {
   const items = [["home", "home", "首頁"], ["rooms", "room", "房間"], ["lease", "lease", "租約"], ["repair", "fix", "報修"]];
   const tab = navKeyOf();
-  return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
+  const art = navArtOn();
+  return `<nav class="nav${art ? "" : " nav-text"}"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = navUnread(id);
     const on = tab === id;
     const svg = id === "rooms" ? icon(on ? "room-open" : "room-shut") : id === "repair" ? icon(on ? "fix" : "fix-box") : icon(ic);
-    return `<button type="button" data-page="${id}" class="${on ? "active" : ""}"><span class="nav-ic">${svg}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
+    return `<button type="button" data-page="${id}" class="${on ? "active" : ""}">${art ? `<span class="nav-ic">${svg}</span>` : ""}${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
 function refreshNavButtons(bar) {
@@ -32771,6 +32774,14 @@ function tenantSettings() {
         </div>
         <p class="small">打開時，租約剩餘天數會從合約總天數倒數到現在；本月已繳的印章會蓋下去。關掉就直接顯示數字和印章，這台手機會記住。</p>
       </div>
+      <div class="card card-body">
+        <div class="label">主選單插圖</div>
+        <div class="pref-switch">
+          <span>${navArtOn() ? "圖示和文字都顯示" : "只顯示文字"}</span>
+          <button type="button" class="pref-knob${navArtOn() ? " on" : ""}" id="nav-art-toggle" aria-pressed="${navArtOn() ? "true" : "false"}"></button>
+        </div>
+        <p class="small">打開時，下方主選單會顯示圖示和文字。關掉就只留首頁、房間、租約、報修這幾個字，這台手機會記住。</p>
+      </div>
       ${lookSettingsHtml()}
       ${tenantNdaHtml()}
       <div class="card card-body">
@@ -32833,6 +32844,19 @@ function bindLookSettings() {
       const next = !stampFxOn();
       setStampFx(next);
       toast(next ? "已打開印章特效" : "印章改成直接出現");
+      ui.keepScroll = true;
+      render();
+    };
+  }
+  const navArtBtn = document.getElementById("nav-art-toggle");
+  if (navArtBtn) {
+    bindIosPress(navArtBtn);
+    navArtBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = !navArtOn();
+      setNavArt(next);
+      toast(next ? "主選單顯示圖示" : "主選單只留文字");
       ui.keepScroll = true;
       render();
     };
