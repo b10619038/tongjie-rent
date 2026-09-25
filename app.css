@@ -1332,6 +1332,13 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 .plan-card { padding: 10px; cursor: pointer; }
 .plan-card img { width: 100%; height: auto; display: block; background: #fff; border-radius: 14px; }
 .plan-frame { position: relative; }
+.plan-room-pad {
+  position: absolute;
+  background: rgba(168, 168, 168, .28);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1;
+}
 .plan-room-dot {
   position: absolute;
   width: 11px;
