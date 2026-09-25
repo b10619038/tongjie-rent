@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-14-46";
-const APP_EDIT_COUNT = 1390;
+const APP_STAMP = "2026-09-25-14-52";
+const APP_EDIT_COUNT = 1391;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0941";
+const FILE_VER = "0942";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["林安安 10/1 還沒到，實繳日和本月已繳印章拿掉"] },
+  { ver: APP_VERSION, items: ["新客選房改看已續約到期日，不再停在舊約"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -16342,25 +16342,49 @@ function studioSignRooms(currentRoom) {
     return String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true });
   });
 }
+function renewalHoldEnd(room, exceptId) {
+  if (!room) return "";
+  const list = (typeof isDevPreview === "function" && isDevPreview() ? (ui.devRenewals || []) : ((state && state.renewals) || []));
+  const roomNo = String(room.no || "");
+  let end = "";
+  (list || []).forEach(x => {
+    if (!x || (x.status !== "done" && x.status !== "applied")) return;
+    const e = ymdOf(x.end);
+    if (!e) return;
+    const fromHere = x.roomId === room.id || String(x.roomNo) === roomNo;
+    const toHere = !!(x.wantMove && (x.moveRoomId === room.id || String(x.moveRoomNo) === roomNo));
+    if (x.wantMove && fromHere && !toHere) return;
+    if (!fromHere && !toHere) return;
+    if (exceptId && x.tenantId === exceptId && !toHere) return;
+    if (!end || e > end) end = e;
+  });
+  return end;
+}
+function occupiedUntilYmd(t, r) {
+  let end = (t && typeof tenantOccupancyEnd === "function" ? tenantOccupancyEnd(t, r) : "") || ymdOf(t && t.leaseEnd) || "";
+  const hold = renewalHoldEnd(r, "");
+  if (hold && (!end || hold > ymdOf(end))) end = hold;
+  return end || "";
+}
 function roomSoonestStart(room, t) {
   const today = todayYmd();
   const selfId = t && t.id;
   const occ = roomCurrentTenant(room);
   let after = "";
-  if (occ && occ.leaseEnd) {
-    const same = !!(t && occ.id === t.id);
+  const bump = end => {
+    if (!end) return;
+    const nxt = addDaysYmd(end, 1);
+    if (nxt && nxt > (after || "")) after = nxt;
+  };
+  if (occ) {
+    const same = !!(selfId && occ.id === selfId);
     if (!same || tenantContractStatus(t, room) === "signed" || tenantContractStatus(t, room) === "paper") {
-      after = addDaysYmd(occ.leaseEnd, 1);
+      bump(occupiedUntilYmd(occ, room));
     }
   }
+  bump(renewalHoldEnd(room, selfId));
   const holder = roomSignedHolder(room, selfId);
-  if (holder && holder.id !== selfId) {
-    const end = tenantOccupancyEnd(holder, room) || holder.leaseEnd;
-    if (end) {
-      const nxt = addDaysYmd(end, 1);
-      if (nxt && nxt > (after || "")) after = nxt;
-    }
-  }
+  if (holder && holder.id !== selfId) bump(tenantOccupancyEnd(holder, room) || holder.leaseEnd);
   if (after && after > today) return after;
   return today;
 }
@@ -22437,9 +22461,12 @@ function moveRoomMeta(x, dummy) {
   const start = roomSoonestStart(x, dummy || { incoming: true });
   const signed = !!(holder && holder.incoming && tenantContractStatus(holder, x) === "signed");
   const rent = studioContractRent(dummy, x);
+  const curEnd = ymdOf((o && (tenantOccupancyEnd(o, x) || o.leaseEnd)) || "");
+  const hold = (o ? occupiedUntilYmd(o, x) : "") || renewalHoldEnd(x, dummy && dummy.id);
   return {
-    vacant: !o && !signed,
-    end: signed ? (tenantOccupancyEnd(holder, x) || holder.leaseEnd || "") : ((o && o.leaseEnd) || ""),
+    vacant: !o && !signed && !hold,
+    end: signed ? (tenantOccupancyEnd(holder, x) || holder.leaseEnd || "") : (hold || ""),
+    renewed: !!(hold && curEnd && ymdOf(hold) > curEnd),
     start,
     no: x.no || "",
     rent,
@@ -22523,7 +22550,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
       <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
-      <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : "現約至 " + escapeHtml(m.end || "—"))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
+      <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : ((m.renewed ? "已續約至 " : "現約至 ") + escapeHtml(m.end || "—")))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
   const pickSheet = ui.moveRoomPick ? `<div class="move-pick-mask${pickEnter ? " move-pick-enter" : ""}" id="move-pick-mask">
@@ -22549,7 +22576,7 @@ function moveInView() {
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn" id="move-room-open">
           ${selMeta
-            ? `<span class="move-pick-no"><span class="move-pick-line">${escapeHtml(selMeta.no)} 套房${studioPickMarksHtml(r)}</span>${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : "現約至 " + escapeHtml(selMeta.end || "—"))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
+            ? `<span class="move-pick-no"><span class="move-pick-line">${escapeHtml(selMeta.no)} 套房${studioPickMarksHtml(r)}</span>${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : ((selMeta.renewed ? "已續約至 " : "現約至 ") + escapeHtml(selMeta.end || "—")))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}
         </button>
       </div>
@@ -22571,7 +22598,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
       <div class="label">合約起迄</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ && occ.leaseEnd ? "（現約至 " + occ.leaseEnd + "，不可早於截止後）" : "（不可早於今天）") + "。到期固定該月最後一天。入住不是 1 號時會開不足月＋一年兩份合約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
+      <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ ? ("（" + ((occupiedUntilYmd(occ, r) > ymdOf(occ.leaseEnd)) ? "已續約至 " : "現約至 ") + (occupiedUntilYmd(occ, r) || occ.leaseEnd || "—") + "，不可早於截止後）") : "（不可早於今天）") + "。到期固定該月最後一天。入住不是 1 號時會開不足月＋一年兩份合約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
       ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
     </div>
@@ -24075,7 +24102,7 @@ function leaseSignView() {
   const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, renewItem ? "new" : "old") : eContractDocHtml(paperT, r);
   const roomOpts = rooms.map(x => {
     const m = moveRoomMeta(x, t);
-    const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ("現約至 " + (m.end || "—") + "　最快可入住 " + m.start));
+    const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : ((m.renewed ? "已續約至 " : "現約至 ") + (m.end || "—") + "　最快可入住 " + m.start));
     return `<option value="${escapeHtml(x.id)}" ${r && x.id === r.id ? "selected" : ""}>${escapeHtml(x.no)}${m.rentText ? "　" + m.rentText : ""}　${hint}</option>`;
   }).join("");
   return `<div class="topbar"><div>
@@ -24103,7 +24130,7 @@ function leaseSignView() {
       <div class="card card-body" style="margin-top:12px">
         <div class="label">合約起迄</div>
         <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（到期固定月底）</label>
-        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${rocSlash(cont.start)} ➜ ${rocSlash(cont.end)}${occ && occ.leaseEnd && (!t || occ.id !== t.id) ? "（現約 " + rocSlash(occ.leaseEnd) + " 截止）" : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + rocSlash(confirmBy) + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
+        <p class="small" style="margin:8px 0 6px">最快可入住／延續　${rocSlash(cont.start)} ➜ ${rocSlash(cont.end)}${occ && (!t || occ.id !== t.id) ? ("（" + ((occupiedUntilYmd(occ, r) > ymdOf(occ.leaseEnd)) ? "已續約至 " : "現約至 ") + rocSlash(occupiedUntilYmd(occ, r) || occ.leaseEnd) + " 截止）") : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + rocSlash(confirmBy) + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
         <label class="field"><span>起始日（入住）</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
