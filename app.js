@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-17-08";
-const APP_EDIT_COUNT = 1423;
+const APP_STAMP = "2026-09-25-17-16";
+const APP_EDIT_COUNT = 1424;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0974";
+const FILE_VER = "0975";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -129,7 +129,9 @@ const NONGHUI_SEP_PAID = {
   "7611": ["2026-09-05", 42000],
   "7621": ["2026-09-04", 7000],
   "7623": ["2026-09-05", 10000],
-  "7642": ["2026-09-04", 14000]
+  "7642": ["2026-09-04", 14000],
+  "7651": ["2026-09-05", 5000],
+  "7232": ["2026-08-27", 14000]
 };
 const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
@@ -510,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7232 林紜亦 9/25 預繳 10/1 租金 14000"] },
+  { ver: APP_VERSION, items: ["9月租金的發票匯款日和合約實繳日改成同一天"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6473,6 +6475,7 @@ function applyNonghuiSepPaid(data) {
     if (!on) return;
     t.paid = true;
     t.paidAt = on + " 10:00";
+    t.remitOn = on;
     t.paidVia = t.paidVia || "nonghui";
     t.paidYm = "2026-09";
     t.paidTouched = true;
@@ -14500,16 +14503,61 @@ function invoiceRenewChecked(t, room, item, note, no, invNo) {
     || (rno && String(x.roomNo) === String(rno))
   ));
 }
+function rentPayDateFor(t, r, ym) {
+  ym = String(ym || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(ym)) return "";
+  const pre = ymdOf(t && t.prepaidOn && t.prepaidOn[ym]);
+  if (pre) return pre;
+  const no = String((r && r.no) || "");
+  const known = no && NONGHUI_SEP_PAID[no];
+  if (ym === "2026-09" && known && ymdOf(known[0])) return ymdOf(known[0]);
+  let best = "";
+  let bestAuto = true;
+  (state.books || []).forEach(b => {
+    if (!b || b.type === "out") return;
+    const linked = !!(b.linkedTenantId && t && b.linkedTenantId === t.id);
+    const roomHit = no && (String(b.roomNo || "") === no || String(b.note || "").indexOf(no) >= 0);
+    if (!linked && !roomHit) return;
+    const tag = String(b.importTag || "");
+    const blob = String(b.note || "") + " " + tag;
+    if (!/租金|房租|rent-auto|rent-prepaid/.test(blob)) return;
+    const auto = tag.indexOf("rent-auto-") === 0 ? tag.slice(10, 17) : "";
+    const prepaid = tag.indexOf("rent-prepaid-") === 0 ? tag.slice(13, 20) : "";
+    const payDate = ymdOf(b.date);
+    if (!payDate) return;
+    let bill = /^\d{4}-\d{2}$/.test(prepaid) ? prepaid : (/^\d{4}-\d{2}$/.test(auto) ? auto : "");
+    if (!bill && known && ymdOf(known[0]) === payDate) bill = "2026-09";
+    if (!bill) bill = payDate.slice(0, 7);
+    if (bill !== ym) return;
+    const isAuto = tag.indexOf("rent-auto-") === 0;
+    if (!best || (bestAuto && !isAuto) || (bestAuto === isAuto && payDate > best)) {
+      best = payDate;
+      bestAuto = isAuto;
+    }
+  });
+  if (best && !bestAuto) return best;
+  const paidAt = ymdOf(t && t.paidAt);
+  const remit = ymdOf(t && t.remitOn);
+  const covers = d => {
+    if (!d) return false;
+    if (d.slice(0, 7) === ym) return true;
+    const prev = prevYmOf(ym);
+    return !!(prev && d.slice(0, 7) === prev && Number(d.slice(8, 10)) >= 28);
+  };
+  if (String(t && t.paidYm || "").slice(0, 7) === ym && covers(paidAt)) return paidAt;
+  if (covers(remit)) return remit;
+  return best || "";
+}
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const item = t ? renewalForInvoice(t, room) : null;
-  const billYm = (t && paidThisMonth(t) && t.paidYm) || payYmNow();
+  const billYm = String((t && paidThisMonth(t) && t.paidYm) || payYmNow()).slice(0, 7);
   const onNew = !!(item && renewalActiveOnYm(item, billYm));
   const invRoom = onNew ? invoiceRenewalRoom(item, room) : room;
   const invNo = onNew ? String((invRoom && invRoom.no) || item.moveRoomNo || no) : String(no);
   const invT = onNew && t ? tenantForRenewPrint(t, invRoom || room, item) : t;
   const paid = !!(t && paidThisMonth(t));
-  const remitYmd = paid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
+  const remitYmd = paid ? (rentPayDateFor(t, room, billYm) || (billYm + "-01")) : "";
   const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
   const bankKey = onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
@@ -15738,20 +15786,24 @@ function leaseCalMarks(t, r) {
     remember(ym, day);
     stampDay(day);
   };
-  const remit = ymdOf(t && t.remitOn) || ymdOf(t && t.paidAt);
   const thisYm = payYmNow();
   if (t && paidThisMonth(t)) {
-    if (remit && remit.slice(0, 7) === thisYm) stampExact(remit);
-    else stampMonthFirst(thisYm + "-01");
+    const exact = rentPayDateFor(t, r, thisYm);
+    if (exact) {
+      stamped.add(thisYm);
+      remember(thisYm, exact);
+      if (exact.slice(0, 7) === thisYm) stampDay(exact);
+    } else stampMonthFirst(thisYm + "-01");
   }
   (t && t.prepaidYm || []).forEach(ym => {
     const month = String(ym || "").slice(0, 7);
     if (!month || month > today.slice(0, 7)) return;
-    if (remit && remit <= today) {
-      if (stamped.has(month)) return;
+    if (stamped.has(month)) return;
+    const exact = rentPayDateFor(t, r, month);
+    if (exact) {
       stamped.add(month);
-      remember(month, remit);
-      if (remit.slice(0, 7) === month) stampDay(remit);
+      remember(month, exact);
+      if (exact.slice(0, 7) === month) stampDay(exact);
       return;
     }
     stampMonthFirst(month + "-01");
@@ -15764,12 +15816,21 @@ function leaseCalMarks(t, r) {
     if (!/租金|房租|rent-auto/.test(String(b.note || "") + " " + String(b.importTag || ""))) return;
     const tag = String(b.importTag || "");
     const auto = tag.indexOf("rent-auto-") === 0 ? tag.slice(10, 17) : "";
-    const src = /^\d{4}-\d{2}$/.test(auto) ? auto + "-01" : b.date;
-    const d = ymdOf(src);
-    if (!d) return;
-    const ym = d.slice(0, 7);
-    if (remit && remit.slice(0, 7) === ym) stampExact(remit);
-    else stampMonthFirst(ym + "-01");
+    const prepaid = tag.indexOf("rent-prepaid-") === 0 ? tag.slice(13, 20) : "";
+    const payDate = ymdOf(b.date);
+    if (!payDate) return;
+    let billYm = /^\d{4}-\d{2}$/.test(prepaid) ? prepaid : (/^\d{4}-\d{2}$/.test(auto) ? auto : "");
+    const sep = NONGHUI_SEP_PAID[no];
+    if (!billYm && sep && ymdOf(sep[0]) === payDate) billYm = "2026-09";
+    if (!billYm) billYm = payDate.slice(0, 7);
+    if (stamped.has(billYm)) return;
+    if (tag.indexOf("rent-auto-") === 0) {
+      stampMonthFirst(billYm + "-01");
+      return;
+    }
+    stamped.add(billYm);
+    remember(billYm, payDate);
+    if (payDate.slice(0, 7) === billYm) stampDay(payDate);
   });
   return { due, paid, paidOn };
 }
