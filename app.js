@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-19-22";
-const APP_EDIT_COUNT = 1432;
+const APP_STAMP = "2026-09-25-19-29";
+const APP_EDIT_COUNT = 1433;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0983";
+const FILE_VER = "0984";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["2樓有陽台房間用同一種平面圖灰底"] },
+  { ver: APP_VERSION, items: ["平面圖放大時灰色房間底一起跟著放大"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14031,12 +14031,25 @@ function openZoomPhoto(item, originEl) {
   wrap.id = "media-box";
   wrap.innerHTML = `
     <div class="photo-zoom-bg"></div>
-    <img class="photo-zoom-img" alt="">
+    <div class="photo-zoom-stage">
+      <img class="photo-zoom-img" alt="">
+    </div>
     <button type="button" class="photo-zoom-close" id="lb-close">關閉</button>
     ${item.title ? `<div class="photo-zoom-caption">${item.above ? `<div class="photo-zoom-above">${escapeHtml(item.above)}</div>` : ""}${escapeHtml(item.title)}</div>` : ""}`;
   document.body.appendChild(wrap);
   const img = wrap.querySelector(".photo-zoom-img");
-  img.style.opacity = "0";
+  const stage = wrap.querySelector(".photo-zoom-stage") || img;
+  const pad = item && item.pad;
+  if (pad && pad.w > 0 && pad.h > 0) {
+    const padEl = document.createElement("span");
+    padEl.className = "plan-room-pad plan-zoom-pad";
+    padEl.style.left = (pad.x * 100).toFixed(2) + "%";
+    padEl.style.top = (pad.y * 100).toFixed(2) + "%";
+    padEl.style.width = (pad.w * 100).toFixed(2) + "%";
+    padEl.style.height = (pad.h * 100).toFixed(2) + "%";
+    stage.appendChild(padEl);
+  }
+  stage.style.opacity = "0";
   const planOverview = !!(item && item.dot && !(item.focus && item.focus.w > 0));
   if (planOverview) requestAnimationFrame(() => { if (wrap.isConnected) wrap.classList.add("on"); });
   img.src = firstSrc;
@@ -14053,10 +14066,10 @@ function openZoomPhoto(item, originEl) {
     const th = Math.max(8, Math.round(nh * s));
     const tx = (vw - tw) / 2;
     const ty = (vh - th) / 2;
-    img.style.width = tw + "px";
-    img.style.height = th + "px";
-    img.style.left = tx + "px";
-    img.style.top = ty + "px";
+    stage.style.width = tw + "px";
+    stage.style.height = th + "px";
+    stage.style.left = tx + "px";
+    stage.style.top = ty + "px";
     const box = { vw, vh, tw, th, tx, ty };
     let start = "none";
     let endTf = "translate(0,0) scale(1)";
@@ -14064,13 +14077,13 @@ function openZoomPhoto(item, originEl) {
     let fcx = 0;
     let fcy = 0;
     let zs = 1;
-    img.style.transformOrigin = "center center";
+    stage.style.transformOrigin = "center center";
     if (zoomRoom) {
       const fx = focus.x + focus.w / 2;
       const fy = focus.y + focus.h / 2;
       fcx = fx * tw;
       fcy = fy * th;
-      img.style.transformOrigin = fcx + "px " + fcy + "px";
+      stage.style.transformOrigin = fcx + "px " + fcy + "px";
       const dotX = origin && origin.width ? origin.left + origin.width * fx : vw / 2;
       const dotY = origin && origin.height ? origin.top + origin.height * fy : vh / 2;
       const s0 = origin && origin.width ? Math.max(0.05, origin.width / tw) : 0.2;
@@ -14090,20 +14103,20 @@ function openZoomPhoto(item, originEl) {
       const s0 = Math.max(origin.width, origin.height) / Math.max(tw, th);
       start = `translate(${dx}px, ${dy}px) scale(${s0})`;
     }
-    img.style.transition = "none";
-    img.style.transform = start === "none" ? "scale(.92)" : start;
-    img.style.opacity = "1";
-    img.getBoundingClientRect();
+    stage.style.transition = "none";
+    stage.style.transform = start === "none" ? "scale(.92)" : start;
+    stage.style.opacity = "1";
+    stage.getBoundingClientRect();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
         wrap.classList.add("on");
         const dur = zoomRoom ? "1.15s" : (planFit ? ".62s" : ".42s");
         const ease = planFit ? "cubic-bezier(.16,1,.3,1)" : "cubic-bezier(.22,1,.36,1)";
-        img.style.transition = "transform " + dur + " " + ease + ", opacity .24s ease, border-radius " + dur + " " + ease;
-        img.style.opacity = "1";
-        img.style.transform = endTf;
-        img.style.borderRadius = "12px";
+        stage.style.transition = "transform " + dur + " " + ease + ", opacity .24s ease, border-radius " + dur + " " + ease;
+        stage.style.opacity = "1";
+        stage.style.transform = endTf;
+        stage.style.borderRadius = "12px";
         if (zoomRoom) {
           const ox = fcx;
           const oy = fcy;
@@ -14113,8 +14126,8 @@ function openZoomPhoto(item, originEl) {
           const arm = () => {
             if (armed || !wrap.isConnected || wrap.classList.contains("out")) return;
             armed = true;
-            img.removeEventListener("transitionend", onEnd);
-            armPlanBrowse(wrap, img, {
+            stage.removeEventListener("transitionend", onEnd);
+            armPlanBrowse(wrap, stage, {
               x: animTx + ox * (1 - zs),
               y: animTy + oy * (1 - zs),
               s: zs,
@@ -14125,7 +14138,7 @@ function openZoomPhoto(item, originEl) {
             });
           };
           const onEnd = ev => { if (ev.propertyName === "transform") arm(); };
-          img.addEventListener("transitionend", onEnd);
+          stage.addEventListener("transitionend", onEnd);
           setTimeout(arm, 1250);
         }
       });
@@ -14150,15 +14163,15 @@ function openZoomPhoto(item, originEl) {
       if (planFrom && wrap.dataset.planLive === "1") {
         const x = planFrom.dx + (planFrom.tw / 2) * (1 - planFrom.s0);
         const y = planFrom.dy + (planFrom.th / 2) * (1 - planFrom.s0);
-        img.style.transition = "transform .5s cubic-bezier(.4,0,.2,1), border-radius .5s cubic-bezier(.4,0,.2,1)";
-        img.style.transformOrigin = "0 0";
-        img.style.transform = "translate(" + x + "px," + y + "px) scale(" + planFrom.s0 + ")";
-        img.style.borderRadius = "16px";
+        stage.style.transition = "transform .5s cubic-bezier(.4,0,.2,1), border-radius .5s cubic-bezier(.4,0,.2,1)";
+        stage.style.transformOrigin = "0 0";
+        stage.style.transform = "translate(" + x + "px," + y + "px) scale(" + planFrom.s0 + ")";
+        stage.style.borderRadius = "16px";
         return;
       }
-      img.style.transition = "transform .48s cubic-bezier(.4,0,.2,1), border-radius .48s cubic-bezier(.4,0,.2,1)";
-      img.style.transform = start === "none" ? "scale(.92)" : start;
-      img.style.borderRadius = "16px";
+      stage.style.transition = "transform .48s cubic-bezier(.4,0,.2,1), border-radius .48s cubic-bezier(.4,0,.2,1)";
+      stage.style.transform = start === "none" ? "scale(.92)" : start;
+      stage.style.borderRadius = "16px";
     };
   };
   const startZoom = () => {
@@ -22772,7 +22785,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : `<span class="move-pick-slot"></span>`;
     return `<div class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       ${planBtn}
@@ -23948,7 +23961,7 @@ function floorPlanCardHtml(r) {
   const pad = padBox(plan.pad || plan.focus, "plan-room-pad");
   return `
       <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
-      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="${plan.above || ("2F " + escapeHtml(no))}" data-zoom-focus="${plan.focus}" role="button">
+      <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="${plan.above || ("2F " + escapeHtml(no))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" role="button">
         <div class="plan-frame">
           <img class="zoom-origin" src="${src}" alt="${no} 平面圖" />
           ${pad}
@@ -30754,12 +30767,17 @@ function openPickPlan(el) {
   const focus = parts.length === 4 && parts.every(n => Number.isFinite(n))
     ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
     : null;
+  const padParts = String(el.dataset.zoomPad || "").split(",").map(Number);
+  const pad = padParts.length === 4 && padParts.every(n => Number.isFinite(n))
+    ? { x: padParts[0], y: padParts[1], w: padParts[2], h: padParts[3] }
+    : null;
   openMediaViewer([{
     kind: "image",
     src: photo,
     title: "平面圖",
     above: el.dataset.zoomAbove || "",
     focus,
+    pad,
     roomLabel: el.dataset.zoomAbove || "房間"
   }], 0, el);
 }
@@ -31742,7 +31760,11 @@ function bindZoomPhotos() {
         ? { x: roomParts[0], y: roomParts[1], w: roomParts[2], h: roomParts[3] }
         : null;
       const roomLabel = el.dataset.roomLabel || "";
-      openMediaViewer([{ kind: "image", src: photo, title, above, focus, label, dot, roomFocus, roomLabel }], 0, origin);
+      const padParts = String(el.dataset.zoomPad || "").split(",").map(Number);
+      const pad = padParts.length === 4 && padParts.every(n => Number.isFinite(n))
+        ? { x: padParts[0], y: padParts[1], w: padParts[2], h: padParts[3] }
+        : null;
+      openMediaViewer([{ kind: "image", src: photo, title, above, focus, label, dot, roomFocus, roomLabel, pad }], 0, origin);
     };
   });
 }
