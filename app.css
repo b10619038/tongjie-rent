@@ -2615,6 +2615,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-announce { width: 30px; }
 .tab-ic.ic-history { width: 33px; }
 .tab-ic.ic-food { width: 25px; }
+.tab-ic.ic-logs { width: 25px; }
 .tab-repair {
   display: grid;
   place-items: center;
