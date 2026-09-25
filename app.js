@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-04";
-const APP_EDIT_COUNT = 1393;
+const APP_STAMP = "2026-09-25-15-10";
+const APP_EDIT_COUNT = 1394;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0944";
+const FILE_VER = "0945";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客選房點 2 樓房號可看平面圖，縮放和租客一樣"] },
+  { ver: APP_VERSION, items: ["續約綠色天數從 0 往上數，和紅色倒數同時結束"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -15978,8 +15978,15 @@ function leaseRemainHtml(t, r) {
   const shown = live ? live.value : (canRoll ? total : n);
   const warn = Number(shown) < 100;
   const days = `<span class="lease-count${warn ? " remain-warn" : ""}"${canRoll ? ` data-lease-count="${escapeHtml(key)}" data-from="${total}" data-to="${n}"` : ""}>${shown} 天</span>`;
-  if (renewed) return days + `<span class="remain-plus">+${extra}</span>`;
-  return days;
+  if (!renewed) return days;
+  let plusShown = extra;
+  if (canRoll) {
+    if (live && live.t0) {
+      const p = Math.min(1, (performance.now() - live.t0) / 1000);
+      plusShown = p >= 1 ? extra : Math.min(Math.max(0, extra - 1), Math.floor(extra * stampEase(p)));
+    } else plusShown = 0;
+  }
+  return days + `<span class="remain-plus"${canRoll ? ` data-lease-plus="${escapeHtml(key)}" data-to="${extra}"` : ""}>+${plusShown}</span>`;
 }
 let leaseCountRaf = 0;
 function stampEase(t) {
@@ -15995,6 +16002,14 @@ function stampEase(t) {
   }
   return sample(u, ay, by, cy);
 }
+function paintLeasePlus(key, value) {
+  document.querySelectorAll("[data-lease-plus]").forEach(el => {
+    if (key && (el.dataset.leasePlus || "") !== key) return;
+    const to = Number(el.dataset.to);
+    const n = Number.isFinite(value) ? value : (Number.isFinite(to) ? to : 0);
+    el.textContent = "+" + n;
+  });
+}
 function playLeaseCountdown() {
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const nodes = document.querySelectorAll("[data-lease-count]");
@@ -16003,6 +16018,7 @@ function playLeaseCountdown() {
     nodes.forEach(el => {
       el.textContent = (el.dataset.to || "") + " 天";
       el.classList.toggle("remain-warn", Number(el.dataset.to) < 100);
+      paintLeasePlus(el.dataset.leaseCount || "");
       ui.leaseCountKey = el.dataset.leaseCount || "";
     });
     ui.leaseCountLive = null;
@@ -16017,6 +16033,7 @@ function playLeaseCountdown() {
     if (!Number.isFinite(from) || !Number.isFinite(to) || from <= to) {
       el.textContent = (Number.isFinite(to) ? to : from) + " 天";
       el.classList.toggle("remain-warn", Number.isFinite(to) && to < 100);
+      paintLeasePlus(key);
       ui.leaseCountKey = key;
       return;
     }
@@ -16026,6 +16043,13 @@ function playLeaseCountdown() {
       ui.leaseCountLive = live;
     }
     el.textContent = live.value + " 天";
+    const plusEl = document.querySelector(`[data-lease-plus="${key}"]`);
+    const plusTo = plusEl ? Number(plusEl.dataset.to) : 0;
+    if (plusEl && plusTo > 0 && live.t0) {
+      const p0 = Math.min(1, (performance.now() - live.t0) / 1000);
+      const up0 = p0 >= 1 ? plusTo : Math.min(Math.max(0, plusTo - 1), Math.floor(plusTo * stampEase(p0)));
+      plusEl.textContent = "+" + up0;
+    }
   });
   if (leaseCountRaf) return;
   const ms = 1000;
@@ -16047,11 +16071,18 @@ function playLeaseCountdown() {
         el.textContent = value + " 天";
         el.classList.toggle("remain-warn", value < 100);
       }
+      const plusEl = document.querySelector(`[data-lease-plus="${key}"]`);
+      const plusTo = plusEl ? Number(plusEl.dataset.to) : 0;
+      if (plusEl && plusTo > 0) {
+        const up = p >= 1 ? plusTo : Math.min(Math.max(0, plusTo - 1), Math.floor(plusTo * stampEase(p)));
+        plusEl.textContent = "+" + up;
+      }
       if (p >= 1) {
         live.done = true;
         live.value = live.to;
         el.textContent = live.to + " 天";
         el.classList.toggle("remain-warn", live.to < 100);
+        if (plusEl && plusTo > 0) plusEl.textContent = "+" + plusTo;
         ui.leaseCountKey = key;
         ui.leaseCountLive = null;
       } else running = true;
