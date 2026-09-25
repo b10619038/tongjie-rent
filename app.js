@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-16-10";
-const APP_EDIT_COUNT = 1412;
+const APP_STAMP = "2026-09-25-16-16";
+const APP_EDIT_COUNT = 1413;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0963";
+const FILE_VER = "0964";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["同一版本的更新通知不再一直留在畫面上"] },
+  { ver: APP_VERSION, items: ["報修沒選時是工具箱，點下去才是扳手"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13729,6 +13729,7 @@ function icon(name) {
     "room-open": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M3.1 4.7 11.2 2.3 13.2 3.1 13.2 20.9 11.1 21.8 3.1 19.1zM6.05 11.05a1.15 1.15 0 1 0 .02 0z"/><path fill="currentColor" d="M14.5 2.1h7.2v19.8h-7.2v-2.3h4.9V4.4h-4.9z"/></svg>',
     lease: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 3.2h8.4L17.2 8v12.4a1.1 1.1 0 0 1-1.1 1.1H5.3a1.1 1.1 0 0 1-1.1-1.1V4.3a1.1 1.1 0 0 1 1.1-1.1z"/><path d="M12.6 3.3V8h4.6"/><path d="M7 8.6h5.2M7 11.2h4"/><path d="M6.4 16.2c.9-.8 1.6.6 2.4-.2.8-.8 1.2.9 2.1 0 .7-.7 1.3.5 2-.1"/><path d="m14.8 14.2 5.4-5.2a.9.9 0 0 1 1.3 0l.7.7a.9.9 0 0 1 0 1.3l-5.4 5.2-2.2.5z"/><path d="m19.2 9.8 1.6 1.6"/></svg>',
     fix: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    "fix-box": '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="11.5" width="18.8" height="9.3" rx=".5"/><path d="M2.6 14.6h18.8M2.6 17.7h18.8"/><circle cx="4.8" cy="13" r=".5" fill="currentColor" stroke="none"/><circle cx="19.2" cy="13" r=".5" fill="currentColor" stroke="none"/><circle cx="4.8" cy="19.2" r=".5" fill="currentColor" stroke="none"/><circle cx="19.2" cy="19.2" r=".5" fill="currentColor" stroke="none"/><path d="M4.7 5.1h3.3v2H4.7z"/><path d="M6.3 7.1 8.2 11.3"/><path d="M12 3.1v6.4"/><path d="M10.7 3.1h2.6"/><path d="M11.2 9.3h1.6V11h-1.6z"/><path d="M16.1 4.3a1.8 1.8 0 0 1 2.5 2.3L16.5 8.8"/><path d="M16.1 7.3 18.5 11.3"/></svg>',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
     line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 5.2h13.2a2.6 2.6 0 0 1 2.6 2.6v5.6a2.6 2.6 0 0 1-2.6 2.6H9.6L5.6 19.6V16H5.2a2.6 2.6 0 0 1-2.6-2.6V7.8a2.6 2.6 0 0 1 2.6-2.6z"/><circle cx="8.4" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="15.6" cy="10.6" r="1" fill="currentColor" stroke="none"/></svg>',
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4s5.8-6 5.8-10.2A5.8 5.8 0 0 0 6.2 10.2c0 4.2 5.8 10.2 5.8 10.2z"/><circle cx="12" cy="10.1" r="2"/></svg>',
@@ -22926,7 +22927,7 @@ function nav() {
   return `<nav class="nav"><div class="nav-bg"><i></i></div>${items.map(([id, ic, label]) => {
     const unread = navUnread(id);
     const on = tab === id;
-    const svg = id === "rooms" ? icon(on ? "room-open" : "room-shut") : icon(ic);
+    const svg = id === "rooms" ? icon(on ? "room-open" : "room-shut") : id === "repair" ? icon(on ? "fix" : "fix-box") : icon(ic);
     return `<button type="button" data-page="${id}" class="${on ? "active" : ""}"><span class="nav-ic">${svg}</span>${label}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
@@ -22944,6 +22945,7 @@ function refreshNavButtons(bar) {
       ic.style.transform = "";
       ic.style.transition = "";
       if (id === "rooms") ic.innerHTML = icon(tab === "rooms" ? "room-open" : "room-shut");
+      if (id === "repair") ic.innerHTML = icon(tab === "repair" ? "fix" : "fix-box");
     }
     const unread = navUnread(id);
     let dot = btn.querySelector(".badge-dot");
