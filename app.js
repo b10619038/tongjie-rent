@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-12-03";
-const APP_EDIT_COUNT = 1371;
+const APP_STAMP = "2026-09-25-12-08";
+const APP_EDIT_COUNT = 1372;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0922";
+const FILE_VER = "0923";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點訊息通知直接打開該房號聊天室"] },
+  { ver: APP_VERSION, items: ["管理員訊息會送到租客，並補送避免漏收"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1750,9 +1750,13 @@ async function sendDevChat(tid, text, image) {
     if (posted && posted.threads) {
       ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
       persistChatsToState();
-    } else setTimeout(() => { chatPostRemote(body).catch(() => {}); }, 350);
-  }).catch(() => setTimeout(() => { chatPostRemote(body).catch(() => {}); }, 350));
+      if (ui.chatOpen && ui.chatTid === tid) drawChatBox();
+    }
+    return posted;
+  }).catch(() => null);
   deliver();
+  setTimeout(deliver, 800);
+  setTimeout(deliver, 1700);
   try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
   try { save(true); } catch {}
   pushCloud().catch(() => {});
@@ -2247,12 +2251,21 @@ function lastChatIncoming() {
   return best;
 }
 function pingChatNotify(from, tid, roomNo, name, text, msgId) {
-  if (!text) return;
+  if (!text || isDevPreview()) return;
   const who = [roomNo, name].filter(Boolean).join(" ");
-  const body = (who ? who + "：" : "") + String(text).slice(0, 80);
+  const body = from === "dev"
+    ? "管理員：" + String(text).slice(0, 80)
+    : (who ? who + "：" : "") + String(text).slice(0, 80);
   const extra = { tag: "chat-" + (msgId || Date.now()), page: from === "tenant" ? "tenants" : "home", chat: true, tid: String(tid || "") };
-  const target = from === "tenant" ? "1240" : (roomNo || "tenants");
-  if (!isDevPreview()) sendRemoteNotify(target, "新訊息", body, extra);
+  if (from === "tenant") {
+    sendRemoteNotify("1240", "新訊息", body, extra);
+    return;
+  }
+  const targets = [];
+  if (roomNo) targets.push(String(roomNo));
+  if (tid) targets.push(String(tid));
+  if (!targets.length) targets.push("tenants");
+  targets.forEach(t => sendRemoteNotify(t, "新訊息", body, extra));
 }
 function startChatPoll() {
   if (window.__tjChatPoll) return;
