@@ -2613,7 +2613,12 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-tenants { width: 22.8px; }
 .tab-ic.ic-ai { width: 24px; }
 .tab-ic.ic-announce { width: 30px; }
-.tab-ic.ic-history { width: 33px; }
+.tab-ic.ic-history {
+  width: 26px;
+  height: 20px;
+  flex: 0 0 20px;
+  margin: 7px auto 3px;
+}
 .tab-repair {
   display: grid;
   place-items: center;
