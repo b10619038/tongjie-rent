@@ -4569,7 +4569,7 @@ img.avatar { object-fit: cover; display: block; }
 .photo-zoom {
   position: fixed;
   inset: 0;
-  z-index: 130;
+  z-index: 400;
 }
 .photo-zoom-bg {
   position: absolute;
@@ -5838,15 +5838,29 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   flex-wrap: nowrap;
   white-space: nowrap;
 }
+.move-pick-row.has-plan {
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+}
 .move-pick-plan {
-  font: inherit;
-  font-weight: inherit;
-  color: inherit;
-  cursor: pointer;
-  background: none;
-  border: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid #d5e4f7;
+  background: #eef5fd;
+  color: #2b7de9;
+  display: grid;
+  place-items: center;
+  justify-self: center;
   padding: 0;
-  text-align: left;
+  cursor: pointer;
+}
+.move-pick-plan svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
 }
 .move-pick-dates {
   text-align: right;

@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-12";
-const APP_EDIT_COUNT = 1395;
+const APP_STAMP = "2026-09-25-15-18";
+const APP_EDIT_COUNT = 1396;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0946";
+const FILE_VER = "0947";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房點 2 樓房號會打開平面圖，不再被整列按鈕吃掉"] },
+  { ver: APP_VERSION, items: ["選房列中間加平面圖符號，點它才打開"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22584,11 +22584,12 @@ function moveInView() {
     const m = moveRoomMeta(x, dummy);
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
-    const roomName = plan
-      ? `<button type="button" class="move-pick-plan" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-title="平面圖" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}">${escapeHtml(m.no)} 套房</button>`
-      : `${escapeHtml(m.no)} 套房`;
-    return `<div class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
-      <span class="move-pick-no"><span class="move-pick-line">${roomName}${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
+    const planBtn = plan
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="1.6"/><path d="M3.2 12h8.2V20.8M11.4 3.2V12h9.4"/></svg></button>`
+      : "";
+    return `<div class="move-pick-row${on}${plan ? " has-plan" : ""}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
+      <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
+      ${planBtn}
       <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : ((m.renewed ? "已續約至 " : "現約至 ") + escapeHtml(m.end || "—")))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </div>`;
   }).join("");
@@ -30555,6 +30556,16 @@ function captureMoveInDraft() {
   if (document.getElementById("move-pay-cash")) d.payCash = Number(val("move-pay-cash") || 0) || 0;
   if (document.getElementById("move-pay-mega")) d.payMega = Number(val("move-pay-mega") || 0) || 0;
 }
+function openPickPlan(el) {
+  if (!el) return;
+  const photo = el.dataset.zoomPhoto;
+  if (!photo) return;
+  const parts = String(el.dataset.zoomFocus || "").split(",").map(Number);
+  const focus = parts.length === 4 && parts.every(n => Number.isFinite(n))
+    ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
+    : null;
+  openMediaViewer([{ kind: "image", src: photo, title: "平面圖", above: el.dataset.zoomAbove || "", focus }], 0, el);
+}
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
   const openBtn = document.getElementById("move-room-open");
@@ -30580,10 +30591,23 @@ function bindMoveInForm() {
   };
   document.querySelectorAll("[data-move-room]").forEach(btn => {
     btn.onclick = e => {
-      if (e.target.closest && e.target.closest(".move-pick-plan")) return;
+      const plan = e.target.closest && e.target.closest(".move-pick-plan");
+      if (plan) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPickPlan(plan);
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       applyMoveRoom(btn.dataset.moveRoom || "");
+    };
+  });
+  document.querySelectorAll(".move-pick-plan").forEach(el => {
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openPickPlan(el);
     };
   });
   const agentEl = document.getElementById("move-agent");
@@ -31499,7 +31523,7 @@ function bindZoomPhotos() {
       const pre = new Image();
       pre.src = src;
     }
-    if (el.classList.contains("move-pick-plan")) el.addEventListener("pointerdown", e => e.stopPropagation());
+    if (el.classList.contains("move-pick-plan")) return;
     el.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
