@@ -414,6 +414,13 @@ export default {
           if (body.name) th.name = String(body.name).slice(0, 40);
           if (body.read === "dev") { th.unreadDev = 0; th.readDevAt = Date.now(); }
           if (body.read === "tenant") { th.unreadTenant = 0; th.readTenantAt = Date.now(); }
+          if (body.recall) {
+            const rid = String(body.recall);
+            (th.msgs || []).forEach(m => {
+              if (m && m.id === rid) { m.recalled = true; m.text = ""; m.image = ""; }
+            });
+            th.updatedAt = Date.now();
+          }
           if (text && !(th.msgs || []).some(m => m && m.id === id)) {
             th.msgs = (th.msgs || []).concat([{ id, from, text, at: Number(body.at) || Date.now() }]).slice(-80);
             if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
