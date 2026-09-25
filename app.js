@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-18-55";
-const APP_EDIT_COUNT = 1427;
+const APP_STAMP = "2026-09-25-19-02";
+const APP_EDIT_COUNT = 1428;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0978";
+const FILE_VER = "0979";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖改用淺灰房間底塊，藍點拿掉"] },
+  { ver: APP_VERSION, items: ["2樓有陽台的房間在平面圖標出陽台範圍"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23919,18 +23919,18 @@ function floorPlanOf(no) {
   const n = String(no || "");
   if (n.length < 4 || n.charAt(2) !== "2") return null;
   const plans = {
-    "6821": { focus: "0.452,0.746,0.208,0.172", dot: "55.6%,83.2%" },
-    "6822": { focus: "0.235,0.746,0.219,0.172", dot: "36.0%,83.2%" },
-    "6823": { focus: "0.012,0.746,0.238,0.172", dot: "15.5%,80.5%" },
-    "7021": { focus: "0.452,0.503,0.208,0.172", dot: "55.6%,58.9%", above: "2F 7021" },
-    "7022": { focus: "0.235,0.503,0.219,0.172", dot: "36.0%,58.9%", above: "2F 7022" },
-    "7023": { focus: "0.012,0.503,0.238,0.172", dot: "15.5%,56.2%", above: "2F 7023" },
-    "7221": { focus: "0.452,0.255,0.208,0.180", dot: "55.6%,34.5%", above: "2F 7221" },
-    "7222": { focus: "0.235,0.255,0.219,0.180", dot: "36.0%,34.5%", above: "2F 7222" },
-    "7223": { focus: "0.012,0.255,0.238,0.180", dot: "15.5%,31.8%", above: "2F 7223" },
-    "7621": { focus: "0.452,0.006,0.208,0.201", dot: "55.6%,7.6%", above: "2F 7621" },
-    "7622": { focus: "0.235,0.006,0.219,0.201", dot: "36.0%,7.6%", above: "2F 7622" },
-    "7623": { focus: "0.012,0.006,0.238,0.201", dot: "15.5%,7.6%", above: "2F 7623" }
+    "6821": { focus: "0.452,0.746,0.208,0.172" },
+    "6822": { focus: "0.235,0.746,0.219,0.172" },
+    "6823": { focus: "0.012,0.746,0.238,0.172", balc: "0.013,0.746,0.102,0.113" },
+    "7021": { focus: "0.452,0.503,0.208,0.172", above: "2F 7021" },
+    "7022": { focus: "0.235,0.503,0.219,0.172", above: "2F 7022" },
+    "7023": { focus: "0.012,0.503,0.238,0.172", balc: "0.013,0.503,0.102,0.113", above: "2F 7023" },
+    "7221": { focus: "0.452,0.255,0.208,0.180", above: "2F 7221" },
+    "7222": { focus: "0.235,0.255,0.219,0.180", above: "2F 7222" },
+    "7223": { focus: "0.012,0.255,0.238,0.180", balc: "0.013,0.255,0.102,0.118", above: "2F 7223" },
+    "7621": { focus: "0.452,0.006,0.208,0.201", above: "2F 7621" },
+    "7622": { focus: "0.235,0.006,0.219,0.201", above: "2F 7622" },
+    "7623": { focus: "0.012,0.006,0.238,0.201", balc: "0.013,0.034,0.102,0.118", above: "2F 7623" }
   };
   return plans[n] || null;
 }
@@ -23940,10 +23940,12 @@ function floorPlanCardHtml(r) {
   if (!plan) return "";
   const src = "images/plan-6821.png?v=" + FILE_VER;
   const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
-  const box = String(plan.focus || "").split(",").map(Number);
-  const pad = box.length === 4 && box.every(Number.isFinite)
-    ? `<span class="plan-room-pad" style="left:${(box[0]*100).toFixed(2)}%;top:${(box[1]*100).toFixed(2)}%;width:${(box[2]*100).toFixed(2)}%;height:${(box[3]*100).toFixed(2)}%" aria-hidden="true"></span>`
-    : "";
+  const padBox = (raw, cls) => {
+    const box = String(raw || "").split(",").map(Number);
+    if (box.length !== 4 || !box.every(Number.isFinite)) return "";
+    return `<span class="${cls}" style="left:${(box[0]*100).toFixed(2)}%;top:${(box[1]*100).toFixed(2)}%;width:${(box[2]*100).toFixed(2)}%;height:${(box[3]*100).toFixed(2)}%" aria-hidden="true"></span>`;
+  };
+  const pad = padBox(plan.focus, "plan-room-pad") + padBox(plan.balc, "plan-balc-pad");
   return `
       <div class="section-title"><h2 class="slide-right">平面圖</h2></div>
       <div class="card card-body slide-left plan-card" data-zoom-photo="${hd}" data-zoom-title="平面圖" data-zoom-above="${plan.above || ("2F " + escapeHtml(no))}" data-zoom-focus="${plan.focus}" role="button">

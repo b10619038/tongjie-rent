@@ -1339,6 +1339,13 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   pointer-events: none;
   z-index: 1;
 }
+.plan-balc-pad {
+  position: absolute;
+  background: rgba(232, 196, 86, .34);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
 .plan-room-dot {
   position: absolute;
   width: 11px;
