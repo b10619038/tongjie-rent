@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-22-19";
-const APP_EDIT_COUNT = 1437;
+const APP_STAMP = "2026-09-25-22-22";
+const APP_EDIT_COUNT = 1438;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0988";
+const FILE_VER = "0989";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["首頁圖示改成實心房子，和其他選單份量接近"] },
+  { ver: APP_VERSION, items: ["首頁房子屋頂三個尖角改圓"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13813,7 +13813,7 @@ function notifyCloudChanges(before) {
 
 function icon(name) {
   const map = {
-    home: '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M12 1.9 2.7 10.4v11.3h18.6V10.4L12 1.9zM4.9 11.05 12 4.55l7.1 6.5v8.65h-4.2v-6.3H9.1v6.3H4.9z"/></svg>',
+    home: '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M4.7 11.2 10.9 4.7q1.1-1.15 2.2 0l6.2 6.5q.9.85-.25.85h-1.2V21.6H6.15V12.05H4.95q-1.15 0-.25-.85zM9.2 12.4h5.6V21.6H9.2z"/></svg>',
     room: '<svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.2" width="14" height="17.6" rx="1.2"/><path d="M6.6 4.8v14.4L13.6 18V6z"/><path d="M12.2 11.2v1.8"/></svg>',
     "room-shut": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M5 1.5h14a1.4 1.4 0 0 1 1.4 1.4v18.2a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4V2.9A1.4 1.4 0 0 1 5 1.5zM6.7 3.5h10.6v17H6.7zM7.7 4.6h8.6v14.8H7.7zM15.35 11.05a1.15 1.15 0 1 0 .02 0z"/></svg>',
     "room-open": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M3.1 4.7 11.2 2.3 13.2 3.1 13.2 20.9 11.1 21.8 3.1 19.1zM6.05 11.05a1.15 1.15 0 1 0 .02 0z"/><path fill="currentColor" d="M14.5 2.1h7.2v19.8h-7.2v-2.3h4.9V4.4h-4.9z"/></svg>',
