@@ -1710,6 +1710,12 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   aspect-ratio: 1;
   flex: none;
 }
+.nav-ic img.nav-tool {
+  width: 30px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
 .nav button { overflow: visible; }
 .nav button.active .nav-ic { transform: scale(1.34); }
 .nav button.land .nav-ic { animation: none; }
