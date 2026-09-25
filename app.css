@@ -5836,6 +5836,12 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   flex-wrap: nowrap;
   white-space: nowrap;
 }
+.move-pick-plan {
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+}
 .move-pick-dates {
   text-align: right;
   font-size: 13px;

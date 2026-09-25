@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-14-56";
-const APP_EDIT_COUNT = 1392;
+const APP_STAMP = "2026-09-25-15-04";
+const APP_EDIT_COUNT = 1393;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0943";
+const FILE_VER = "0944";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租約剩餘天數低於 100 天顯示紅色"] },
+  { ver: APP_VERSION, items: ["新客選房點 2 樓房號可看平面圖，縮放和租客一樣"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22552,8 +22552,12 @@ function moveInView() {
   const pickRows = rooms.map(x => {
     const m = moveRoomMeta(x, dummy);
     const on = d.roomId === x.id ? " on" : "";
+    const plan = floorPlanOf(m.no);
+    const roomName = plan
+      ? `<span class="move-pick-plan" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-title="平面圖" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}">${escapeHtml(m.no)} 套房</span>`
+      : `${escapeHtml(m.no)} 套房`;
     return `<button type="button" class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}">
-      <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
+      <span class="move-pick-no"><span class="move-pick-line">${roomName}${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
       <span class="move-pick-dates"><span>${m.taken ? "已被簽約至 " + escapeHtml(m.end || "—") : (m.vacant ? "空套房" : ((m.renewed ? "已續約至 " : "現約至 ") + escapeHtml(m.end || "—")))}</span><span>${m.taken ? "最快可排 " + escapeHtml(m.start) : "最快可入住 " + escapeHtml(m.start)}</span></span>
     </button>`;
   }).join("");
@@ -23694,8 +23698,9 @@ function roomExtrasHtml(r) {
       </div>
       ${floorPlanCardHtml(r)}`;
 }
-function floorPlanCardHtml(r) {
-  const no = String((r && r.no) || "");
+function floorPlanOf(no) {
+  const n = String(no || "");
+  if (n.length < 4 || n.charAt(2) !== "2") return null;
   const plans = {
     "6821": { focus: "0.452,0.746,0.208,0.172", dot: "55.6%,83.2%" },
     "6822": { focus: "0.235,0.746,0.219,0.172", dot: "36.0%,83.2%" },
@@ -23710,7 +23715,11 @@ function floorPlanCardHtml(r) {
     "7622": { focus: "0.235,0.006,0.219,0.201", dot: "36.0%,7.6%", above: "2F 7622" },
     "7623": { focus: "0.012,0.006,0.238,0.201", dot: "15.5%,7.6%", above: "2F 7623" }
   };
-  const plan = plans[no];
+  return plans[n] || null;
+}
+function floorPlanCardHtml(r) {
+  const no = String((r && r.no) || "");
+  const plan = floorPlanOf(no);
   if (!plan) return "";
   const src = "images/plan-6821.png?v=" + FILE_VER;
   const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
@@ -30540,6 +30549,7 @@ function bindMoveInForm() {
   };
   document.querySelectorAll("[data-move-room]").forEach(btn => {
     btn.onclick = e => {
+      if (e.target.closest && e.target.closest(".move-pick-plan")) return;
       e.preventDefault();
       e.stopPropagation();
       applyMoveRoom(btn.dataset.moveRoom || "");
@@ -31458,6 +31468,7 @@ function bindZoomPhotos() {
       const pre = new Image();
       pre.src = src;
     }
+    if (el.classList.contains("move-pick-plan")) el.addEventListener("pointerdown", e => e.stopPropagation());
     el.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
