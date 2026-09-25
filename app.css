@@ -2494,6 +2494,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   background: color-mix(in srgb, var(--card) 90%, transparent);
   border-radius: 999px;
   box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  overflow-anchor: none;
   transition: transform .16s cubic-bezier(.2,.85,.2,1), max-height .16s cubic-bezier(.2,.85,.2,1), margin .16s cubic-bezier(.2,.85,.2,1), padding .16s cubic-bezier(.2,.85,.2,1), opacity .12s linear;
 }
 .shell.bar-away .nav,
@@ -2524,7 +2525,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   justify-content: center;
 }
 @media (max-width: 820px) {
-  .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: x mandatory; }
+  .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
   .shell.admin-wide .tabs-track { gap: 0; }
   .shell.admin-wide .tab {
     flex: 0 0 25cqi;
@@ -2533,7 +2534,7 @@ button.avatar-look.is-press { transform: scale(.94); }
     max-width: 25cqi;
     padding: 0;
     box-sizing: border-box;
-    scroll-snap-align: start;
+    scroll-snap-align: none;
   }
 }
 .admin-wide .toast { bottom: calc(96px + var(--safe-b, 0px)); }
