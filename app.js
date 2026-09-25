@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-22-44";
-const APP_EDIT_COUNT = 1442;
+const APP_STAMP = "2026-09-25-22-47";
+const APP_EDIT_COUNT = 1443;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0993";
+const FILE_VER = "0994";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["主選單可選圖和字、只留字、只留圖"] },
+  { ver: APP_VERSION, items: ["整體報表窄螢幕不再把中文擠成直排"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -17651,12 +17651,12 @@ function siteAccountChipsHtml(site, start, end) {
     if (a.banks.length) {
       return a.banks.map(bk => `<button type="button" class="acct-bank${ui.calFilter === site && ui.calFirm === a.name && ui.calBank === bk.name ? " on" : ""}" data-filter-acct="${escapeHtml(site)}" data-filter-firm="${escapeHtml(a.name)}" data-filter-bank="${escapeHtml(bk.name)}">
               <span>${escapeHtml(a.name)}　${escapeHtml(bk.name)}</span>
-              <span>收 ${money(bk.inn)}　支 ${money(bk.out)}</span>
+              <span class="bk-lines"><b>收 ${money(bk.inn)}</b><b>支 ${money(bk.out)}</b></span>
             </button>`).join("");
     }
     return `<button type="button" class="acct-bank${ui.calFilter === site && ui.calFirm === a.name && !ui.calBank ? " on" : ""}" data-filter-acct="${escapeHtml(site)}" data-filter-firm="${escapeHtml(a.name)}">
               <span>${escapeHtml(a.name)}</span>
-              <span>收 ${money(a.inn)}　支 ${money(a.out)}</span>
+              <span class="bk-lines"><b>收 ${money(a.inn)}</b><b>支 ${money(a.out)}</b></span>
             </button>`;
   }).join("")}</div>`;
 }
@@ -17691,7 +17691,7 @@ function overallReportBodyHtml() {
           ${banksOf(s.name).length ? `<div class="acct-banks">${bankPeriodBits(s.name, b.start, b.end).map(bk => `
             <button type="button" class="acct-bank${ui.calFilter === s.name && ui.calBank === bk.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" data-filter-bank="${escapeHtml(bk.name)}">
               <span>${escapeHtml(bk.name)}</span>
-              <span>收 ${money(bk.inn)}　支 ${money(bk.out)}　餘 ${money(bk.bal)}</span>
+              <span class="bk-lines"><b>收 ${money(bk.inn)}</b><b>支 ${money(bk.out)}</b><b>餘 ${money(bk.bal)}</b></span>
             </button>`).join("")}</div>` : ""}
           ${s.name === "個人戶" ? `<button type="button" class="acct-drop-btn" id="acct-person-pick">請下拉選擇</button>` : ""}
           <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}"><span>營收總額</span>${moneyBox(s.bal, s.bal < 0 ? "led-out" : "")}</button>
