@@ -6417,17 +6417,28 @@ html[data-theme="void"] .site-chip {
   user-select: none;
   -webkit-touch-callout: none;
 }
+.chat-row:not(.mine) .chat-bubble::before,
 .chat-row:not(.mine) .chat-bubble::after {
   content: "";
   position: absolute;
-  left: -5px;
-  top: 9px;
-  width: 13px;
-  height: 12px;
-  background: #fff;
-  border-bottom-right-radius: 12px 10px;
-  transform: rotate(38deg);
-  box-shadow: -1px 1px 0 var(--line);
+  top: 11px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left: 0;
+}
+.chat-row:not(.mine) .chat-bubble::before {
+  left: -8px;
+  border-width: 7px 9px 7px 0;
+  border-right-color: var(--line);
+}
+.chat-row:not(.mine) .chat-bubble::after {
+  left: -6px;
+  top: 12px;
+  border-width: 6px 8px 6px 0;
+  border-right-color: #fff;
 }
 .chat-row.mine .chat-bubble {
   background: #62765b;
@@ -6438,13 +6449,13 @@ html[data-theme="void"] .site-chip {
 .chat-row.mine .chat-bubble::after {
   content: "";
   position: absolute;
-  top: 9px;
-  right: -5px;
-  width: 13px;
-  height: 12px;
-  background: #62765b;
-  border-bottom-left-radius: 12px 10px;
-  transform: rotate(-38deg);
+  top: 11px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 7px 0 7px 9px;
+  border-color: transparent transparent transparent #62765b;
 }
 .chat-col em {
   display: block;
