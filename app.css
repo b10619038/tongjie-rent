@@ -2655,7 +2655,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   background: var(--muted);
 }
 .shell.admin-wide .tab.on .tab-ic {
-  transform: scale(1.34);
+  transform: scale(1.2);
   background: var(--teal);
 }
 html[data-theme="void"] .shell.admin-wide .tab-ic,
