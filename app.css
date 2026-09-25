@@ -5843,6 +5843,10 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   font-weight: inherit;
   color: inherit;
   cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
 }
 .move-pick-dates {
   text-align: right;
@@ -5891,6 +5895,7 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   border-bottom: 1px solid var(--line);
   background: transparent;
   color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
