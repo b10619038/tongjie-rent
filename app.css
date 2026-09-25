@@ -2614,7 +2614,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-ai { width: 24px; }
 .tab-ic.ic-announce { width: 30px; }
 .tab-ic.ic-history { width: 33px; }
-.tab-ic.ic-food { width: 27px; }
+.tab-ic.ic-food { width: 25px; }
 .tab-repair {
   display: grid;
   place-items: center;
