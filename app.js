@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-17-16";
-const APP_EDIT_COUNT = 1424;
+const APP_STAMP = "2026-09-25-18-36";
+const APP_EDIT_COUNT = 1425;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0975";
+const FILE_VER = "0976";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9月租金的發票匯款日和合約實繳日改成同一天"] },
+  { ver: APP_VERSION, items: ["設定可開關剩餘天數倒數和已繳印章特效"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11864,6 +11864,20 @@ function festPrefOn() {
 function setFestPref(on) {
   try { localStorage.setItem("tongjie_fest_on", on ? "1" : "0"); } catch {}
 }
+function prefFlagOn(key) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === "0" || v === "off" || v === "false") return false;
+  } catch {}
+  return true;
+}
+function setPrefFlag(key, on) {
+  try { localStorage.setItem(key, on ? "1" : "0"); } catch {}
+}
+function countFxOn() { return prefFlagOn("tongjie_count_fx"); }
+function setCountFx(on) { setPrefFlag("tongjie_count_fx", on); }
+function stampFxOn() { return prefFlagOn("tongjie_stamp_fx"); }
+function setStampFx(on) { setPrefFlag("tongjie_stamp_fx", on); }
 const FEST_CNY = ["2026-02-17", "2027-02-06", "2028-01-26", "2029-02-13", "2030-02-03"];
 const FEST_LANTERN = ["2026-03-03", "2027-02-20", "2028-02-09", "2029-02-27", "2030-02-17"];
 const FEST_DRAGON = ["2026-06-19", "2027-06-09", "2028-05-28", "2029-06-16", "2030-06-05"];
@@ -16163,7 +16177,7 @@ function leaseRemainHtml(t, r) {
   const total = leaseSpanDays(start, end);
   const key = (t && t.id || "") + ":" + (ui.page || "") + ":" + end + ":" + n;
   const live = ui.leaseCountLive && ui.leaseCountLive.key === key && !ui.leaseCountLive.done ? ui.leaseCountLive : null;
-  const canRoll = total != null && total > n && (live || ui.leaseCountKey !== key);
+  const canRoll = countFxOn() && total != null && total > n && (live || ui.leaseCountKey !== key);
   const shown = live ? live.value : (canRoll ? total : n);
   const warn = Number(shown) < 100;
   const days = `<span class="lease-count${warn ? " remain-warn" : ""}"${canRoll ? ` data-lease-count="${escapeHtml(key)}" data-from="${total}" data-to="${n}"` : ""}>${shown} 天</span>`;
@@ -16200,7 +16214,7 @@ function paintLeasePlus(key, value) {
   });
 }
 function playLeaseCountdown() {
-  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduce = !countFxOn() || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const nodes = document.querySelectorAll("[data-lease-count]");
   if (!nodes.length) return;
   if (reduce) {
@@ -16306,7 +16320,7 @@ function thisMonthRentCardHtml(t, r) {
 }
 function rentPaidStampHtml(t) {
   if (!t || !paidThisMonth(t)) return "";
-  return `<span class="rent-stamp${ui.stampChop ? " chop-wait" : ""}" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>`;
+  return `<span class="rent-stamp${ui.stampChop && stampFxOn() ? " chop-wait" : ""}" aria-label="本月已繳"><i>本</i><i>月</i><i>已</i><i>繳</i></span>`;
 }
 function leasePartForYm(t, r, ym) {
   const y = String(ym || payYmNow()).slice(0, 7);
@@ -22335,7 +22349,7 @@ function paintApp() {
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
-  ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged;
+  ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
     ui.slideLockPending = true;
@@ -32748,6 +32762,18 @@ function tenantSettings() {
         </div>
         <p class="small">元旦、春節、元宵、清明、端午、七夕、中秋、重陽、萬聖節、聖誕、跨年，還有母親節、父親節。到了那幾天，我的房間圖卡會加上節慶布置。這台手機會記住。</p>
       </div>
+      <div class="card card-body">
+        <div class="label">日期倒數與印章特效</div>
+        <div class="pref-switch">
+          <span>${countFxOn() ? "剩餘天數會倒數" : "剩餘天數直接顯示"}</span>
+          <button type="button" class="pref-knob${countFxOn() ? " on" : ""}" id="count-fx-toggle" aria-pressed="${countFxOn() ? "true" : "false"}"></button>
+        </div>
+        <div class="pref-switch">
+          <span>${stampFxOn() ? "已繳印章會蓋下去" : "已繳印章直接出現"}</span>
+          <button type="button" class="pref-knob${stampFxOn() ? " on" : ""}" id="stamp-fx-toggle" aria-pressed="${stampFxOn() ? "true" : "false"}"></button>
+        </div>
+        <p class="small">打開時，租約剩餘天數會從合約總天數倒數到現在；本月已繳的印章會蓋下去。關掉就直接顯示數字和印章，這台手機會記住。</p>
+      </div>
       ${lookSettingsHtml()}
       ${tenantNdaHtml()}
       <div class="card card-body">
@@ -32782,6 +32808,34 @@ function bindLookSettings() {
       const next = !festPrefOn();
       setFestPref(next);
       toast(next ? "已打開節慶布置" : "已關閉節慶布置");
+      ui.keepScroll = true;
+      render();
+    };
+  }
+  const countBtn = document.getElementById("count-fx-toggle");
+  if (countBtn) {
+    bindIosPress(countBtn);
+    countBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = !countFxOn();
+      setCountFx(next);
+      ui.leaseCountKey = "";
+      ui.leaseCountLive = null;
+      toast(next ? "已打開剩餘天數倒數" : "剩餘天數改成直接顯示");
+      ui.keepScroll = true;
+      render();
+    };
+  }
+  const stampBtn = document.getElementById("stamp-fx-toggle");
+  if (stampBtn) {
+    bindIosPress(stampBtn);
+    stampBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = !stampFxOn();
+      setStampFx(next);
+      toast(next ? "已打開印章特效" : "印章改成直接出現");
       ui.keepScroll = true;
       render();
     };
