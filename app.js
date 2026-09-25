@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-16-54";
-const APP_EDIT_COUNT = 1421;
+const APP_STAMP = "2026-09-25-17-00";
+const APP_EDIT_COUNT = 1422;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0972";
+const FILE_VER = "0973";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["極黑模式的聊天室改成深灰"] },
+  { ver: APP_VERSION, items: ["主題改成每人各自記住，代操不會改到開發者"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1234,8 +1234,38 @@ const THEMES = [
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
   { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" }
 ];
+function themeScope() {
+  try {
+    if (typeof ui !== "undefined" && ui && ui.role === "tenant" && ui.tenantId) return "t:" + ui.tenantId;
+    if (typeof ui !== "undefined" && ui && ui.adminCode) return "a:" + ui.adminCode;
+  } catch {}
+  return "a";
+}
+function themeStorageKey() {
+  return THEME_KEY + ":" + themeScope();
+}
 function currentThemeId() {
-  try { return localStorage.getItem(THEME_KEY) || "sage"; } catch { return "sage"; }
+  try {
+    const own = localStorage.getItem(themeStorageKey());
+    if (own) return own;
+    const looking = typeof ui !== "undefined" && ui && (ui.tenantLook || ui.devPreview);
+    if (!looking) {
+      const legacy = localStorage.getItem(THEME_KEY);
+      const mark = THEME_KEY + ":migrated:" + themeScope();
+      if (legacy && !localStorage.getItem(mark)) {
+        localStorage.setItem(themeStorageKey(), legacy);
+        localStorage.setItem(mark, "1");
+        return legacy;
+      }
+    }
+  } catch {}
+  return "sage";
+}
+function syncThemeForWho() {
+  const id = currentThemeId();
+  const root = document.documentElement;
+  if (root.dataset.theme === id && root.dataset.themeScope === themeScope()) return;
+  applyTheme(id);
 }
 function applyTheme(id) {
   const t = THEMES.find(x => x.id === id) || THEMES[0];
@@ -1260,7 +1290,7 @@ function applyTheme(id) {
   r.style.setProperty("--press", dark ? "#343434" : "#f3f3f3");
   r.style.setProperty("--press-on", dark ? "#484848" : "#d8e2d4");
   try { r.style.colorScheme = dark ? "dark" : "light"; } catch {}
-  try { if (r.dataset) r.dataset.theme = t.id; } catch {}
+  try { if (r.dataset) { r.dataset.theme = t.id; r.dataset.themeScope = themeScope(); } } catch {}
   r.style.backgroundColor = bar;
   if (document.body) document.body.style.backgroundColor = bar;
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
@@ -1270,7 +1300,7 @@ function applyTheme(id) {
   document.head.appendChild(meta);
   const apple = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
   if (apple) apple.setAttribute("content", dark ? "black" : (t.id === "snow" || t.id === "mist") ? "default" : "black-translucent");
-  try { localStorage.setItem(THEME_KEY, t.id); } catch {}
+  try { localStorage.setItem(themeStorageKey(), t.id); } catch {}
 }
 function currentFontScale() {
   try {
@@ -22147,6 +22177,7 @@ let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
   _ledgerCache = null;
+  try { syncThemeForWho(); } catch {}
   try { tickDueRenewals(); } catch {}
   try {
     paintApp();
