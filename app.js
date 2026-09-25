@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-18";
-const APP_EDIT_COUNT = 1396;
+const APP_STAMP = "2026-09-25-15-20";
+const APP_EDIT_COUNT = 1397;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0947";
+const FILE_VER = "0948";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房列中間加平面圖符號，點它才打開"] },
+  { ver: APP_VERSION, items: ["選房平面圖符號改成小小的圖片"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22585,7 +22585,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="1.6"/><path d="M3.2 12h8.2V20.8M11.4 3.2V12h9.4"/></svg></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : "";
     return `<div class="move-pick-row${on}${plan ? " has-plan" : ""}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
