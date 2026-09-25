@@ -2593,23 +2593,18 @@ button.avatar-look.is-press { transform: scale(.94); }
   gap: 1px;
   line-height: 1.05;
 }
-.tab-ic {
+.tab-ic,
+.tab-ic.sq {
   display: block;
-  width: 30px;
-  height: 26px;
-  flex: 0 0 26px;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  margin: 0 auto;
   background: currentColor;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
   mask-position: center;
-  -webkit-mask-size: 28px 19px;
-  mask-size: 28px 19px;
-}
-.tab-ic.sq {
-  width: 26px;
-  height: 26px;
-  flex-basis: 26px;
   -webkit-mask-size: contain;
   mask-size: contain;
 }
