@@ -2611,6 +2611,11 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic:not(.sq) {
   width: 37px;
 }
+.tab-ic.house {
+  width: 46px;
+  height: 26px;
+  flex-basis: 26px;
+}
 @media (max-width: 820px) {
   .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
   .shell.admin-wide .tabs-track { gap: 0; }
