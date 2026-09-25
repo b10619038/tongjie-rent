@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-22";
-const APP_EDIT_COUNT = 1398;
+const APP_STAMP = "2026-09-25-15-26";
+const APP_EDIT_COUNT = 1399;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0949";
+const FILE_VER = "0950";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房平面圖小圖改到房號和金額右邊"] },
+  { ver: APP_VERSION, items: ["選房平面圖先看整張和小藍點，點藍點才放大，也可自己縮放"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13807,7 +13807,7 @@ function planFocusTransform(box, focus) {
   const dy = vh / 2 - ty - th / 2 - (fcy - th / 2) * zs;
   return "translate(" + dx + "px, " + dy + "px) scale(" + zs + ")";
 }
-function armPlanBrowse(wrap, img, st) {
+function armPlanBrowse(wrap, img, st, extra) {
   if (!wrap || wrap.dataset.planLive === "1" || !wrap.isConnected) return;
   wrap.dataset.planLive = "1";
   wrap.classList.add("plan-live");
@@ -13815,6 +13815,11 @@ function armPlanBrowse(wrap, img, st) {
   img.style.transformOrigin = "0 0";
   const draw = () => {
     img.style.transform = "translate(" + st.x + "px," + st.y + "px) scale(" + st.s + ")";
+    if (extra && extra.dot && extra.dot.isConnected) {
+      const rect = img.getBoundingClientRect();
+      extra.dot.style.left = (rect.left + rect.width * extra.dx) + "px";
+      extra.dot.style.top = (rect.top + rect.height * extra.dy) + "px";
+    }
   };
   const clamp = () => {
     const vw = window.innerWidth;
@@ -13840,7 +13845,7 @@ function armPlanBrowse(wrap, img, st) {
   let gesture = null;
   const alive = () => wrap.isConnected && !wrap.classList.contains("out");
   wrap.addEventListener("pointerdown", e => {
-    if (!alive() || (e.target.closest && e.target.closest(".photo-zoom-close"))) return;
+    if (!alive() || (e.target.closest && e.target.closest(".photo-zoom-close, .plan-zoom-dot"))) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 1) gesture = { mode: "pan", x: st.x, y: st.y, px: e.clientX, py: e.clientY, moved: false };
     else if (pts.size >= 2) {
@@ -13852,6 +13857,7 @@ function armPlanBrowse(wrap, img, st) {
       wrap.dataset.dragged = "1";
     }
     try { wrap.setPointerCapture(e.pointerId); } catch {}
+    anim = null;
   });
   wrap.addEventListener("pointermove", e => {
     if (!alive() || !pts.has(e.pointerId) || !gesture) return;
@@ -13903,6 +13909,35 @@ function armPlanBrowse(wrap, img, st) {
   }, { passive: false });
   clamp();
   draw();
+  let anim = null;
+  const step = now => {
+    if (!anim || !alive()) { anim = null; return; }
+    const p = Math.min(1, (now - anim.t0) / anim.ms);
+    const e = stampEase(p);
+    st.x = anim.x0 + (anim.x1 - anim.x0) * e;
+    st.y = anim.y0 + (anim.y1 - anim.y0) * e;
+    st.s = anim.s0 + (anim.s1 - anim.s0) * e;
+    if (p >= 1) clamp();
+    draw();
+    if (p < 1) requestAnimationFrame(step);
+    else anim = null;
+  };
+  if (extra && extra.dot && extra.target) {
+    extra.dot.onclick = ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (extra.dot.dataset.used) return;
+      extra.dot.dataset.used = "1";
+      extra.dot.classList.add("off");
+      anim = {
+        t0: performance.now(),
+        ms: 1150,
+        x0: st.x, y0: st.y, s0: st.s,
+        x1: extra.target.x, y1: extra.target.y, s1: extra.target.s
+      };
+      requestAnimationFrame(step);
+    };
+  }
 }
 function openZoomPhoto(item, originEl) {
   closeMediaViewer();
@@ -14016,25 +14051,27 @@ function openZoomPhoto(item, originEl) {
     if (!zoomRoom && item && item.dot && item.roomFocus && item.roomFocus.w > 0) {
       setTimeout(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
-        const rect = img.getBoundingClientRect();
         const dot = document.createElement("button");
         dot.type = "button";
         dot.className = "plan-zoom-dot";
         dot.setAttribute("aria-label", item.roomLabel || "房間");
-        dot.style.left = (rect.left + rect.width * item.dot.x) + "px";
-        dot.style.top = (rect.top + rect.height * item.dot.y) + "px";
-        dot.onclick = ev => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          if (dot.dataset.used) return;
-          dot.dataset.used = "1";
-          dot.classList.add("off");
-          img.style.transition = "transform 1.6s cubic-bezier(.22,1,.36,1)";
-          img.style.transform = planFocusTransform(box, item.roomFocus);
-        };
         wrap.appendChild(dot);
+        const focus = item.roomFocus;
+        const fcx = (focus.x + focus.w / 2) * tw;
+        const fcy = (focus.y + focus.h / 2) * th;
+        const zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
+        armPlanBrowse(wrap, img, {
+          x: 0, y: 0, s: 1, w: tw, h: th,
+          min: 1,
+          max: Math.max(zs * 2.4, 5)
+        }, {
+          dot,
+          dx: item.dot.x,
+          dy: item.dot.y,
+          target: { x: vw / 2 - tx - fcx * zs, y: vh / 2 - ty - fcy * zs, s: zs }
+        });
         requestAnimationFrame(() => dot.classList.add("on"));
-      }, 460);
+      }, 520);
     }
     wrap._zoomBack = () => {
       wrap.classList.remove("on");
@@ -22585,7 +22622,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-dot="${plan.dot}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : "";
     return `<div class="move-pick-row${on}${plan ? " has-plan" : ""}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       <span class="move-pick-no"><span class="move-pick-line">${escapeHtml(m.no)} 套房${studioPickMarksHtml(x)}</span>${m.rentText ? `<span class="move-pick-rent">${escapeHtml(m.rentText)}</span>` : ""}</span>
@@ -30561,10 +30598,22 @@ function openPickPlan(el) {
   const photo = el.dataset.zoomPhoto;
   if (!photo) return;
   const parts = String(el.dataset.zoomFocus || "").split(",").map(Number);
-  const focus = parts.length === 4 && parts.every(n => Number.isFinite(n))
+  const roomFocus = parts.length === 4 && parts.every(n => Number.isFinite(n))
     ? { x: parts[0], y: parts[1], w: parts[2], h: parts[3] }
     : null;
-  openMediaViewer([{ kind: "image", src: photo, title: "平面圖", above: el.dataset.zoomAbove || "", focus }], 0, el);
+  const dotParts = String(el.dataset.zoomDot || "").split(",").map(s => parseFloat(s));
+  const dot = dotParts.length === 2 && dotParts.every(n => Number.isFinite(n))
+    ? { x: dotParts[0] / 100, y: dotParts[1] / 100 }
+    : null;
+  openMediaViewer([{
+    kind: "image",
+    src: photo,
+    title: "平面圖",
+    above: el.dataset.zoomAbove || "",
+    dot,
+    roomFocus,
+    roomLabel: el.dataset.zoomAbove || "房間"
+  }], 0, el);
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
