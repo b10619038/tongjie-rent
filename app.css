@@ -5899,8 +5899,18 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 .move-pick-title {
   font-size: 22px;
   font-weight: 800;
-  padding: 4px 14px 18px;
+  padding: 4px 14px 10px;
 }
+.move-pick-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 14px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+.move-pick-legend .balc-dot { margin-left: 0; }
 .move-pick-row {
   width: 100%;
   display: grid;
