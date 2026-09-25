@@ -2612,6 +2612,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-rooms { width: 30.6px; }
 .tab-ic.ic-tenants { width: 22.8px; }
 .tab-ic.ic-ai { width: 24px; }
+.tab-ic.ic-announce { width: 30px; }
 .tab-repair {
   display: grid;
   place-items: center;
