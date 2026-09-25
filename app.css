@@ -5855,6 +5855,7 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   align-items: center;
   flex-wrap: nowrap;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .move-pick-slot {
   width: 22px;
@@ -5920,15 +5921,16 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   padding: 4px 14px 10px;
 }
 .move-pick-legend {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px max-content minmax(0, 1fr);
+  gap: 8px 12px;
   align-items: center;
-  gap: 8px;
   padding: 0 14px 14px;
   color: var(--ink-soft);
-  font-size: 14px;
   font-weight: 700;
 }
-.move-pick-legend .balc-dot { margin-left: 0; }
+.move-pick-ghost { visibility: hidden; }
+.move-pick-legend-txt { margin-left: 8px; }
 .move-pick-row {
   width: 100%;
   display: grid;
