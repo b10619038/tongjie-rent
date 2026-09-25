@@ -4384,6 +4384,8 @@ body.rev-zooming { overflow: hidden; }
 .who-mini .k { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who-text { display: flex; flex-direction: column-reverse; align-items: flex-start; justify-content: center; min-width: 0; gap: 1px; }
 .who-text .k { line-height: 1.25; }
+#tenant-sheet .who-room { font-size: 16px; }
+#tenant-sheet .who-text .k { font-size: 20px; color: var(--ink); font-weight: 800; }
 .who-room { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0; line-height: 1.2; margin-left: 0; }
 .who-chat {
   position: relative;
