@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-16-49";
-const APP_EDIT_COUNT = 1419;
+const APP_STAMP = "2026-09-25-16-52";
+const APP_EDIT_COUNT = 1420;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0970";
+const FILE_VER = "0971";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["極黑模式修好報修圖示、房間邊線和設備白字"] },
+  { ver: APP_VERSION, items: ["極黑底色從純黑改成 90% 黑"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1232,7 +1232,7 @@ const THEMES = [
   { id: "wine", name: "酒紅", teal: "#7a3e48", mid: "#8f515b", soft: "#f3e4e6", chip: "#f7eef0", ink: "#2a1518" },
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
-  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#1e1e1e", chip: "#242424", ink: "#f5f5f5", paper: "#000000", card: "#111111", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#000000" }
+  { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" }
 ];
 function currentThemeId() {
   try { return localStorage.getItem(THEME_KEY) || "sage"; } catch { return "sage"; }
@@ -1255,10 +1255,10 @@ function applyTheme(id) {
   r.style.setProperty("--card", t.card || "#ffffff");
   r.style.setProperty("--on-teal", t.onTeal || "#ffffff");
   r.style.setProperty("--bar", bar);
-  r.style.setProperty("--mask", t.bar === "#000000" ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
   const dark = t.id === "void" || t.paper === "#000000";
-  r.style.setProperty("--press", dark ? "#262626" : "#f3f3f3");
-  r.style.setProperty("--press-on", dark ? "#3a3a3a" : "#d8e2d4");
+  r.style.setProperty("--mask", dark ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
+  r.style.setProperty("--press", dark ? "#343434" : "#f3f3f3");
+  r.style.setProperty("--press-on", dark ? "#484848" : "#d8e2d4");
   try { r.style.colorScheme = dark ? "dark" : "light"; } catch {}
   try { if (r.dataset) r.dataset.theme = t.id; } catch {}
   r.style.backgroundColor = bar;

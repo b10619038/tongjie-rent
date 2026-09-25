@@ -745,8 +745,8 @@ input, textarea, select {
 html[data-theme="void"] .hero-card,
 html[data-theme="void"] .screen > .hero-card,
 html[data-theme="void"] .screen > .hero-card:hover {
-  background: #161616 !important;
-  background-color: #161616 !important;
+  background: #303030 !important;
+  background-color: #303030 !important;
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
@@ -754,7 +754,7 @@ html[data-theme="void"] .hero-card .label,
 html[data-theme="void"] .hero-card .small { color: #a3a3a3; }
 html[data-theme="void"] .hero-card .room-name { color: #f7f7f7; }
 html[data-theme="void"] .stat {
-  background: #101010;
+  background: #2a2a2a;
   color: #f5f5f5;
   border-color: #3a3a3a;
 }
@@ -1018,7 +1018,7 @@ button.lease-gcal-title {
 .lc-legend i.is-back { background: #5e7a55; }
 .lc-legend i.is-sign { background: #3d6ea8; }
 html[data-theme="void"] .lc-day,
-html[data-theme="void"] .lease-cal-nav button { background: #101010; color: #f5f5f5; }
+html[data-theme="void"] .lease-cal-nav button { background: #2a2a2a; color: #f5f5f5; }
 .pay-pill {
   display: inline-flex; align-items: center; gap: 6px;
   border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700;
@@ -3419,7 +3419,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   padding-bottom: 2px;
   flex-shrink: 0;
 }
-html[data-theme="void"] .ai-log { background: #141414; }
+html[data-theme="void"] .ai-log { background: #2e2e2e; }
 html[data-theme="void"] .ai-row.ai .ai-bubble { background: #2a2a2a; color: #f5f5f5; }
 html[data-theme="void"] .ai-ava { background: #2a2a2a; color: #d6d6d6; }
 html[data-theme="void"] .ai-who,
