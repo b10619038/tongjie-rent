@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-19-29";
-const APP_EDIT_COUNT = 1433;
+const APP_STAMP = "2026-09-25-22-07";
+const APP_EDIT_COUNT = 1434;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0984";
+const FILE_VER = "0985";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖放大時灰色房間底一起跟著放大"] },
+  { ver: APP_VERSION, items: ["租約選單圖示換成文件加星星"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13817,7 +13817,7 @@ function icon(name) {
     room: '<svg viewBox="0 0 24 24" width="22" height="22" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.2" width="14" height="17.6" rx="1.2"/><path d="M6.6 4.8v14.4L13.6 18V6z"/><path d="M12.2 11.2v1.8"/></svg>',
     "room-shut": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M5 1.5h14a1.4 1.4 0 0 1 1.4 1.4v18.2a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4V2.9A1.4 1.4 0 0 1 5 1.5zM6.7 3.5h10.6v17H6.7zM7.7 4.6h8.6v14.8H7.7zM15.35 11.05a1.15 1.15 0 1 0 .02 0z"/></svg>',
     "room-open": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M3.1 4.7 11.2 2.3 13.2 3.1 13.2 20.9 11.1 21.8 3.1 19.1zM6.05 11.05a1.15 1.15 0 1 0 .02 0z"/><path fill="currentColor" d="M14.5 2.1h7.2v19.8h-7.2v-2.3h4.9V4.4h-4.9z"/></svg>',
-    lease: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.2 3.2h8.4L17.2 8v12.4a1.1 1.1 0 0 1-1.1 1.1H5.3a1.1 1.1 0 0 1-1.1-1.1V4.3a1.1 1.1 0 0 1 1.1-1.1z"/><path d="M12.6 3.3V8h4.6"/><path d="M7 8.6h5.2M7 11.2h4"/><path d="M6.4 16.2c.9-.8 1.6.6 2.4-.2.8-.8 1.2.9 2.1 0 .7-.7 1.3.5 2-.1"/><path d="m14.8 14.2 5.4-5.2a.9.9 0 0 1 1.3 0l.7.7a.9.9 0 0 1 0 1.3l-5.4 5.2-2.2.5z"/><path d="m19.2 9.8 1.6 1.6"/></svg>',
+    lease: '<img class="nav-tool" src="images/lease-spark.png?v=' + FILE_VER + '" alt="" />',
     fix: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     "fix-box": '<img class="nav-tool" src="images/repair-box.png?v=' + FILE_VER + '" alt="" />',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',

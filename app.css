@@ -1737,6 +1737,10 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   object-fit: contain;
   display: block;
 }
+.nav-ic img.nav-tool[src*="lease-spark"] {
+  width: 26px;
+  height: 26px;
+}
 html[data-theme="void"] .nav-ic img.nav-tool {
   filter: brightness(0) invert(0.72);
 }
