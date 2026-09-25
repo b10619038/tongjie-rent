@@ -662,7 +662,8 @@ input, textarea, select {
   white-space: nowrap;
 }
 .stat b .remain-wait { font-size: 16px; font-weight: 800; letter-spacing: 0; }
-.stat b .remain-warn { color: #c45b4a; }
+.stat b .remain-warn,
+.v .remain-warn { color: #c45b4a; }
 .lease-count {
   font-variant-numeric: tabular-nums;
   display: inline-block;
