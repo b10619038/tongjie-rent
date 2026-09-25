@@ -1,5 +1,5 @@
-const CACHE = "tongjie-app-v1433";
-const BUILD = "20260925-0918";
+const CACHE = "tongjie-app-v1434";
+const BUILD = "20260925-0919";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -121,14 +121,18 @@ self.addEventListener("notificationclick", event => {
   event.waitUntil((async () => {
     const all = await clients.matchAll({ type: "window", includeUncontrolled: true });
     if (tag === "tongjie-update") all.forEach(c => c.postMessage({ type: "SHOW_CHANGELOG" }));
-    const msg = { type: "OPEN", page: chat ? (page || "home") : page, chat, tid };
-    all.forEach(c => { try { c.postMessage(msg); } catch {} });
+    const msg = { type: "OPEN", page: chat ? "home" : page, chat, tid };
     let url = new URL("./", self.registration.scope).href;
     if (chat) url += "?open=chat" + (tid ? "&tid=" + encodeURIComponent(tid) : "");
-    if (all[0]) {
-      try { await all[0].focus(); } catch {}
+    const mine = all.find(c => String(c.url || "").indexOf(self.registration.scope) === 0) || all[0];
+    if (mine) {
+      try { await mine.focus(); } catch {}
+      try { mine.postMessage(msg); } catch {}
+      if (chat && typeof mine.navigate === "function") {
+        try { await mine.navigate(url); } catch {}
+      }
       return;
     }
-    if (clients.openWindow) return clients.openWindow(url);
+    if (clients.openWindow) return clients.openWindow(chat ? url : new URL("./", self.registration.scope).href);
   })());
 });

@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-11-50";
-const APP_EDIT_COUNT = 1367;
+const APP_STAMP = "2026-09-25-11-53";
+const APP_EDIT_COUNT = 1368;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0918";
+const FILE_VER = "0919";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["聊天訊息立刻送出，對方約 0.6 秒內收到"] },
+  { ver: APP_VERSION, items: ["點訊息通知直接打開聊天室"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -1540,6 +1540,7 @@ if ("serviceWorker" in navigator) {
       if (e.data.chat) {
         ui.pendingChatOpen = true;
         if (e.data.tid) ui.pendingChatTid = String(e.data.tid);
+        try { consumeChatOpen(); } catch {}
         try { armChatOpen(); } catch {}
       } else if (e.data.page) ui.page = e.data.page;
       try { persistUi(); render(); } catch {}
@@ -1841,17 +1842,14 @@ function consumeChatOpen() {
     return;
   }
   if (!ui.role || !canUseDevChat() || !me()) return;
+  const last = lastChatIncoming();
+  const tid = ui.role === "tenant" ? me().id : (ui.pendingChatTid || (last && last.tid) || "");
+  if (!tid) return;
   ui.pendingChatOpen = false;
-  const go = () => {
-    const last = lastChatIncoming();
-    const tid = ui.role === "tenant" ? me().id : (ui.pendingChatTid || (last && last.tid) || "");
-    ui.pendingChatTid = "";
-    if (!tid) return;
-    if (ui.role === "tenant" && ui.page !== "home") ui.page = "home";
-    try { render(); } catch {}
-    openDevChat(tid);
-  };
-  try { pullChat(false).then(go).catch(go); } catch (e) { go(); }
+  ui.pendingChatTid = "";
+  if (ui.role === "tenant" && ui.page !== "home") ui.page = "home";
+  try { render(); } catch {}
+  openDevChat(tid);
 }
 function armChatOpen() {
   if (!ui.pendingChatOpen || window.__tjChatOpenArm) return;
@@ -13320,7 +13318,7 @@ function canOsNotify() {
   if (!isInstalledApp()) return false;
   return true;
 }
-function showOsBanner(title, body, tag) {
+function showOsBanner(title, body, tag, extra) {
   if (!canOsNotify()) return;
   const fp = osBannerFp(title, body, tag);
   if (!osBannerRepeatable(tag, title)) {
@@ -13328,7 +13326,8 @@ function showOsBanner(title, body, tag) {
     markOsBannerSeen(fp);
   }
   const text = String(body || "").slice(0, 180);
-  const chat = String(tag || "").indexOf("chat-") === 0 || title === "新訊息";
+  const chat = String(tag || "").indexOf("chat-") === 0 || title === "新訊息" || !!(extra && extra.chat);
+  const tid = String((extra && extra.tid) || "");
   const opts = {
     body: text,
     badge: "/icon-192.png",
@@ -13338,7 +13337,7 @@ function showOsBanner(title, body, tag) {
     tag: String(tag || ("tongjie-" + title)).replace(/-\d{10,}$/, ""),
     renotify: false,
     silent: false,
-    data: { title, tag: String(tag || ""), chat, page: chat ? "home" : "" }
+    data: { title, tag: String(tag || ""), chat, tid, page: chat ? "home" : "" }
   };
   const viaSw = () => navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opts));
   const viaPage = () => {
@@ -13347,7 +13346,12 @@ function showOsBanner(title, body, tag) {
       n.onclick = () => {
         try { window.focus(); } catch {}
         n.close();
-        if (chat) { ui.pendingChatOpen = true; try { armChatOpen(); } catch {} }
+        if (chat) {
+          ui.pendingChatOpen = true;
+          if (opts.data && opts.data.tid) ui.pendingChatTid = opts.data.tid;
+          try { consumeChatOpen(); } catch {}
+          try { armChatOpen(); } catch {}
+        }
       };
     } catch {}
   };
@@ -13531,7 +13535,7 @@ function notifyCloudChanges(before) {
     if (last && last.id && last.id !== before.chatLast && !(ui.chatOpen && ui.chatTid === last.tid)) {
       const th = chatThreadOf(last.tid) || {};
       const who = [th.roomNo, th.name].filter(Boolean).join(" ");
-      showOsBanner("新訊息", (who ? who + "：" : "") + String(last.text || (last.image ? "傳了一張照片" : "")), "chat-" + last.id);
+      showOsBanner("新訊息", (who ? who + "：" : "") + String(last.text || (last.image ? "傳了一張照片" : "")), "chat-" + last.id, { chat: true, tid: last.tid });
     }
   }
 }
