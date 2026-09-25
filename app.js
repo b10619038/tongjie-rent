@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-16-09";
-const APP_EDIT_COUNT = 1411;
+const APP_STAMP = "2026-09-25-16-10";
+const APP_EDIT_COUNT = 1412;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0962";
+const FILE_VER = "0963";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["底部選單透明度改成 95%"] },
+  { ver: APP_VERSION, items: ["同一版本的更新通知不再一直留在畫面上"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -2411,10 +2411,8 @@ function seedSeenVersion() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
 }
 function hasUnseenUpdate() {
-  const last = lastSeenVersion();
-  if (ui.pendingFileVer && isNewerBuild(ui.pendingFileVer) && !isDismissed(ui.pendingFileVer)) return true;
-  if (!last || last === "pending-reload") return false;
-  return last !== APP_VERSION;
+  const remote = String(ui.pendingFileVer || "");
+  return !!(remote && isNewerBuild(remote) && !isDismissed(remote));
 }
 function markVersionSeen() {
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
@@ -2560,7 +2558,7 @@ function ensureUpdateBar() {
   }
   const remote = String(ui.pendingFileVer || "");
   const newer = !!(remote && isNewerBuild(remote) && !isDismissed(remote));
-  const need = !ui.updateNotes && (newer || hasUnseenUpdate() || ui.updateReady);
+  const need = newer;
   let el = document.getElementById("apply-update");
   if (!need) {
     if (el) el.remove();
@@ -2579,7 +2577,7 @@ function ensureUpdateBar() {
   el.className = "home-upd" + (lift ? " lift" : "");
   el.setAttribute("role", "button");
   el.textContent = text;
-  el.onclick = () => { openUpdateNotes(); };
+  el.onclick = () => { applyAppUpdate(); };
   document.body.appendChild(el);
 }
 async function wipeClientCache() {
@@ -34406,7 +34404,7 @@ async function boot() {
     applyFont(currentFontScale());
     seedSeenVersion();
     try { sessionStorage.removeItem("tj-sw-reload"); } catch {}
-    if (hasUnseenUpdate()) ui.updateReady = true;
+    markVersionSeen();
     try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
