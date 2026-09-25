@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-42";
-const APP_EDIT_COUNT = 1404;
+const APP_STAMP = "2026-09-25-15-50";
+const APP_EDIT_COUNT = 1405;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0955";
+const FILE_VER = "0956";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["選房平面圖改用清楚的圖，打開更順"] },
+  { ver: APP_VERSION, items: ["選房平面圖從小圖放大，關閉縮回小圖"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13791,7 +13791,8 @@ function closeMediaViewer() {
   el.querySelectorAll("video").forEach(v => { v.pause(); v.src = ""; });
   if (typeof el._zoomBack === "function" && !el.classList.contains("out")) {
     el._zoomBack();
-    setTimeout(() => { if (el.parentNode) el.remove(); }, 400);
+    const wait = el.dataset.planBack === "1" ? 540 : 400;
+    setTimeout(() => { if (el.parentNode) el.remove(); }, wait);
     return;
   }
   el.remove();
@@ -13979,6 +13980,7 @@ function openZoomPhoto(item, originEl) {
     const box = { vw, vh, tw, th, tx, ty };
     let start = "none";
     let endTf = "translate(0,0) scale(1)";
+    let planFrom = null;
     let fcx = 0;
     let fcy = 0;
     let zs = 1;
@@ -13995,8 +13997,13 @@ function openZoomPhoto(item, originEl) {
       start = `translate(${dotX - tx - fcx}px, ${dotY - ty - fcy}px) scale(${s0})`;
       zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
       endTf = `translate(${vw / 2 - tx - fcx}px, ${vh / 2 - ty - fcy}px) scale(${zs})`;
-    } else if (planFit) {
-      start = "translate(0,0) scale(.9)";
+    } else if (planFit && origin && origin.width) {
+      const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
+      const dy = (origin.top + origin.height / 2) - (ty + th / 2);
+      const s0 = Math.max(origin.width, origin.height) / Math.max(tw, th);
+      start = `translate(${dx}px, ${dy}px) scale(${s0})`;
+      planFrom = { dx, dy, s0, tw, th };
+      wrap.dataset.planBack = "1";
     } else if (origin && origin.width) {
       const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
       const dy = (origin.top + origin.height / 2) - (ty + th / 2);
@@ -14005,13 +14012,13 @@ function openZoomPhoto(item, originEl) {
     }
     img.style.transition = "none";
     img.style.transform = start === "none" ? "scale(.92)" : start;
-    if (!planFit) img.style.opacity = "1";
+    img.style.opacity = "1";
     img.getBoundingClientRect();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
         wrap.classList.add("on");
-        const dur = zoomRoom ? "1.15s" : (planFit ? ".52s" : ".42s");
+        const dur = zoomRoom ? "1.15s" : (planFit ? ".62s" : ".42s");
         const ease = planFit ? "cubic-bezier(.16,1,.3,1)" : "cubic-bezier(.22,1,.36,1)";
         img.style.transition = "transform " + dur + " " + ease + ", opacity .24s ease, border-radius " + dur + " " + ease;
         img.style.opacity = "1";
@@ -14080,12 +14087,21 @@ function openZoomPhoto(item, originEl) {
           target: { x: vw / 2 - tx - fcx * zs, y: vh / 2 - ty - fcy * zs, s: zs }
         });
         requestAnimationFrame(() => dot.classList.add("on"));
-      }, 640);
+      }, 720);
     }
     wrap._zoomBack = () => {
       wrap.classList.remove("on");
       wrap.classList.add("out");
-      img.style.transition = "transform .42s cubic-bezier(.22,1,.36,1), border-radius .42s cubic-bezier(.22,1,.36,1)";
+      if (planFrom && wrap.dataset.planLive === "1") {
+        const x = planFrom.dx + (planFrom.tw / 2) * (1 - planFrom.s0);
+        const y = planFrom.dy + (planFrom.th / 2) * (1 - planFrom.s0);
+        img.style.transition = "transform .5s cubic-bezier(.4,0,.2,1), border-radius .5s cubic-bezier(.4,0,.2,1)";
+        img.style.transformOrigin = "0 0";
+        img.style.transform = "translate(" + x + "px," + y + "px) scale(" + planFrom.s0 + ")";
+        img.style.borderRadius = "16px";
+        return;
+      }
+      img.style.transition = "transform .48s cubic-bezier(.4,0,.2,1), border-radius .48s cubic-bezier(.4,0,.2,1)";
       img.style.transform = start === "none" ? "scale(.92)" : start;
       img.style.borderRadius = "16px";
     };
