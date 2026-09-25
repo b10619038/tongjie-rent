@@ -2579,8 +2579,8 @@ button.avatar-look.is-press { transform: scale(.94); }
   min-height: 59px;
 }
 .shell.admin-wide .tab {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1.15;
   padding: 0 14px;
   min-height: 59px;
