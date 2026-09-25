@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-12-52";
-const APP_EDIT_COUNT = 1382;
+const APP_STAMP = "2026-09-25-13-12";
+const APP_EDIT_COUNT = 1383;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0933";
+const FILE_VER = "0934";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["返回到圖卡的距離，改成和上面到開發者後台一樣"] },
+  { ver: APP_VERSION, items: ["兩人簽約時身分證、戶籍、緊急聯絡人、電話都可用斜線填兩筆"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -20142,12 +20142,12 @@ function ensureMoveIn() {
   return ui.moveIn;
 }
 function phonePassOf(phone) {
-  const first = normalizeMobile(phone).split("、")[0] || "";
+  const first = normalizeMobile(phone).split(/[、／]/)[0] || "";
   const d = String(first || "").replace(/\D/g, "");
   return /^09\d{8}$/.test(d) ? d : "";
 }
 function tenantMobilesOf(phone) {
-  return normalizeMobile(phone || "").split("、").map(x => String(x || "").replace(/\D/g, "")).filter(x => /^09\d{8}$/.test(x));
+  return normalizeMobile(phone || "").split(/[、／]/).map(x => String(x || "").replace(/\D/g, "")).filter(x => /^09\d{8}$/.test(x));
 }
 function isPhoneDerivedPass(pass, phone) {
   const p = String(pass || "").replace(/\D/g, "");
@@ -20210,10 +20210,10 @@ function normalizeMobile(s, soft) {
       if (b.startsWith("886")) b = "0" + b.slice(3);
       if (b.length === 9 && b.startsWith("9")) b = "0" + b;
       b = b.slice(0, 10);
-      return b ? a + "、" + b : a + "、";
+      return b ? a + "／" + b : a + "／";
     }
     const b = oneMobile(rest);
-    return b ? a + "、" + b : a;
+    return b ? a + "／" + b : a;
   }
   let d = raw.replace(/\D/g, "");
   if (d.startsWith("886")) d = "0" + d.slice(3);
@@ -20222,13 +20222,13 @@ function normalizeMobile(s, soft) {
     let b = d.slice(10, 20);
     if (b.length === 9 && b.startsWith("9")) b = "0" + b;
     b = b.slice(0, 10);
-    if (soft) return b ? a + "、" + b : a + "、";
-    return b ? a + "、" + oneMobile(b) : a;
+    if (soft) return b ? a + "／" + b : a + "／";
+    return b ? a + "／" + oneMobile(b) : a;
   }
   return oneMobile(d);
 }
 function mobileOk(s) {
-  const parts = normalizeMobile(s).split("、").filter(Boolean);
+  const parts = normalizeMobile(s).split(/[、／]/).filter(Boolean);
   return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^09\d{8}$/.test(p));
 }
 function oneIdNo(s) {
@@ -20250,22 +20250,22 @@ function normalizeIdNo(s, soft) {
     const a = oneIdNo(chunks[0]);
     const rest = chunks.slice(1).join("");
     const b = oneIdNo(rest);
-    if (soft) return b ? a + "、" + b : a + "、";
-    return b ? a + "、" + b : a;
+    if (soft) return b ? a + "／" + b : a + "／";
+    return b ? a + "／" + b : a;
   }
   const packed = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (packed.length > 10) {
     const a = oneIdNo(packed.slice(0, 10));
     const b = oneIdNo(packed.slice(10, 20));
-    if (soft) return b ? a + "、" + b : a + "、";
-    return b ? a + "、" + b : a;
+    if (soft) return b ? a + "／" + b : a + "／";
+    return b ? a + "／" + b : a;
   }
   return oneIdNo(packed);
 }
 function idNoOk(s) {
   const v = normalizeIdNo(s);
   if (!v) return true;
-  const parts = v.split("、").filter(Boolean);
+  const parts = v.split(/[、／]/).filter(Boolean);
   return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[A-Z]\d{9}$/.test(p));
 }
 function bindFormatField(el, kind) {
@@ -21026,6 +21026,10 @@ function checkoutPickHtml(t, r) {
 function cnAmt(n) {
   const s = moneyCN(n).replace(/^新臺幣/, "").replace(/元整$/, "");
   return s || "";
+}
+function slashPair(s) {
+  const parts = String(s || "").split(/[／/、]+/).map(x => x.trim()).filter(Boolean);
+  return parts.slice(0, 2).join("／");
 }
 function paperPeople(s) {
   return String(s || "").replace(/[／/、,，]+/g, "　").replace(/\s+/g, " ").trim();
@@ -24052,11 +24056,11 @@ function leaseSignView() {
       </div>`}
       <div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（藍字印在合約上）</div>
-        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml((t && t.idNo) || (es && es.idNo) || "")}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
-        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml((t && t.phone) || (es && es.phone) || "")}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
-        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml((t && t.emergencyName) || (es && es.emergencyName) || "")}" placeholder="姓名" autocomplete="off" /></label>
-        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")}" placeholder="手機號碼" autocomplete="off" /></label>
-        <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(tenantHouseholdAddress(t, r))}" placeholder="請填身分證上的戶籍地址" autocomplete="street-address" /></label>
+        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml(slashPair((t && t.idNo) || (es && es.idNo) || ""))}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
+        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml(slashPair((t && t.phone) || (es && es.phone) || ""))}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml(slashPair((t && t.emergencyName) || (es && es.emergencyName) || ""))}" placeholder="${two ? "兩人請用／分開" : "姓名"}" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml(slashPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || ""))}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
+        <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(slashPair(tenantHouseholdAddress(t, r)))}" placeholder="${two ? "兩人請用／分開" : "請填身分證上的戶籍地址"}" autocomplete="street-address" /></label>
       </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -28562,8 +28566,8 @@ function tenantEntryDetailsHtml(kind, entry) {
         const bound = r && lineBindForRoom(r.no);
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
-      ${teField("電話", "phone", t.id, r && r.id, t.phone || "", "tel", "手機號碼")}
-      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, t.idNo || "") + teField("戶籍地址", "address", t.id, r && r.id, t.address || "", "text", "身分證上的戶籍地址") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, t.emergencyName || "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, t.emergencyPhone || "", "tel") : ""}
+      ${teField("電話", "phone", t.id, r && r.id, kind === "factory" ? (t.phone || "") : slashPair(normalizeMobile(t.phone || "")), "tel", splitPair(t.name).length > 1 ? "兩人請用／分開" : "手機號碼")}
+      ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, slashPair(t.idNo || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") + teField("戶籍地址", "address", t.id, r && r.id, slashPair(t.address || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "身分證上的戶籍地址") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, slashPair(t.emergencyName || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, slashPair(normalizeMobile(t.emergencyPhone || "")), "tel", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") : ""}
       ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
       ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
       ${t.bankLast5 ? teField("帳戶後五碼", "bankLast5", t.id, r && r.id, t.bankLast5 || "") : ""}
@@ -28690,17 +28694,17 @@ function applyLiveTenantEdit(el) {
   }
   else if (key === "phone" && t) {
     const oldPhone = t.phone;
-    t.phone = val;
+    t.phone = r && r.kind === "factory" ? val : normalizeMobile(val);
     if (isPhoneDerivedPass(t.loginPass, oldPhone)) {
       const next = phonePassOf(val);
       if (next) t.loginPass = next;
     }
   }
   else if (key === "loginPass" && t) t.loginPass = val || phonePassOf(t.phone) || "";
-  else if (key === "idNo" && t) t.idNo = val;
-  else if (key === "address" && t) t.address = val;
-  else if (key === "emergencyName" && t) t.emergencyName = val;
-  else if (key === "emergencyPhone" && t) t.emergencyPhone = val;
+  else if (key === "idNo" && t) t.idNo = normalizeIdNo(val);
+  else if (key === "address" && t) t.address = slashPair(val);
+  else if (key === "emergencyName" && t) t.emergencyName = slashPair(val);
+  else if (key === "emergencyPhone" && t) t.emergencyPhone = normalizeMobile(val);
   else if (key === "contactName" && t) t.contactName = val;
   else if (key === "taxId" && t) t.taxId = val;
   else if (key === "bankLast5" && t) t.bankLast5 = val;
@@ -29763,7 +29767,7 @@ function enterTenant(room, tenant) {
 }
 function tenantPassHint(t) {
   const names = String((t && t.name) || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
-  const phones = normalizeMobile((t && t.phone) || "").split("、").filter(Boolean);
+  const phones = normalizeMobile((t && t.phone) || "").split(/[、／]/).filter(Boolean);
   const bits = [...names, ...phones];
   return bits.length ? bits.join("　或　") : "";
 }
@@ -29783,7 +29787,7 @@ function tenantPassKeys(t) {
     add(names.join(""));
     add(names.join("、"));
   }
-  const phones = normalizeMobile((t && t.phone) || "").split("、").filter(Boolean);
+  const phones = normalizeMobile((t && t.phone) || "").split(/[、／]/).filter(Boolean);
   phones.forEach(p => {
     add(p);
     const d = p.replace(/\D/g, "");
@@ -30844,9 +30848,9 @@ function bindSignPad() {
     if (t) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
       if (phone) t.phone = normalizeMobile(phone);
-      if (emName) t.emergencyName = normalizePersonName(emName);
+      if (emName) t.emergencyName = slashPair(emName);
       if (emPhone) t.emergencyPhone = normalizeMobile(emPhone);
-      if (addr) t.address = addr;
+      if (addr) t.address = slashPair(addr);
       captureSignDraft();
       t.edited = true;
       t.editedAt = Date.now();
