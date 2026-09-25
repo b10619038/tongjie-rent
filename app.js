@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-13-12";
-const APP_EDIT_COUNT = 1383;
+const APP_STAMP = "2026-09-25-13-22";
+const APP_EDIT_COUNT = 1384;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0934";
+const FILE_VER = "0935";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人簽約時身分證、戶籍、緊急聯絡人、電話都可用斜線填兩筆"] },
+  { ver: APP_VERSION, items: ["強制退租改到辦理退租裡，放在中途退租下面"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -21019,6 +21019,8 @@ function checkoutPickHtml(t, r) {
       <p class="small">租期屆滿或依原約辦理。填電水表、鑰匙與押金。</p>
       <button type="button" class="btn-navy co-kind-btn" id="co-kind-early">中途退租</button>
       <p class="small">租期未滿提前終止。開立終止租賃契約。</p>
+      ${roomIsFactory(r) ? "" : `<button type="button" class="ghost" id="co-kind-force" style="margin-top:8px">強制退租</button>
+      <p class="small">立刻退租，無法再登入，房間改為空房。已入帳的繳費紀錄會保留。</p>`}
       <button type="button" class="ghost" id="checkout-close" style="margin-top:10px">取消</button>
     </div>
   </div>`;
@@ -21867,6 +21869,15 @@ function bindOps() {
   if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
   const pickEarly = document.getElementById("co-kind-early");
   if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
+  const pickForce = document.getElementById("co-kind-force");
+  if (pickForce) pickForce.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = ui.checkoutTenantId;
+    ui.checkoutTenantId = "";
+    ui.checkoutKind = "pick";
+    askForceVacate(id);
+  };
   const resetKind = document.getElementById("co-kind-reset");
   if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
   const printTerm = document.getElementById("co-print-term");
@@ -28613,7 +28624,6 @@ function tenantEntryDetailsHtml(kind, entry) {
       <button type="button" class="ghost" data-invoice="${tt.roomId}" style="margin-top:8px">產出發票</button>
       ${tt.paid ? "" : `<button class="ghost" data-nudge-pay="${tt.id}" style="margin-top:8px">催繳</button>`}
       <button class="ghost" data-checkout-open="${tt.id}" style="margin-top:8px">${checkoutBtnLabel(tt)}</button>
-      ${kind !== "factory" ? `<button class="ghost" data-force-vacate="${tt.id}" style="margin-top:8px">強制退租</button>` : ""}
       <button class="ghost" data-admin-room="${tt.roomId}" style="margin-top:8px">編輯更多</button>
       ${tt.incoming ? "" : handoverBoxHtml(tt, rr)}`;
         }).join("");
