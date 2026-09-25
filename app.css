@@ -2596,9 +2596,9 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic,
 .tab-ic.sq {
   display: block;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   margin: 0 auto;
   background: currentColor;
   -webkit-mask-repeat: no-repeat;
@@ -2607,6 +2607,9 @@ button.avatar-look.is-press { transform: scale(.94); }
   mask-position: center;
   -webkit-mask-size: contain;
   mask-size: contain;
+}
+.tab-ic:not(.sq) {
+  width: 37px;
 }
 @media (max-width: 820px) {
   .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
