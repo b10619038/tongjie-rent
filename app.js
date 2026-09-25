@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-00-50";
-const APP_EDIT_COUNT = 1466;
+const APP_STAMP = "2026-09-26-00-51";
+const APP_EDIT_COUNT = 1467;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1016";
+const FILE_VER = "1017";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台選單圖示高度改成跟租客選單一樣 26px"] },
+  { ver: APP_VERSION, items: ["後台選單大滑到下一頁時，四個項目左右平均"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24696,13 +24696,23 @@ function bindTabPage() {
   if (!sc || sc.dataset.pageBound === "1") return;
   sc.dataset.pageBound = "1";
   let x0 = 0, y0 = 0, left0 = 0, lock = "";
-  const pageW = () => Math.max(1, sc.clientWidth);
+  const pageW = () => {
+    const tab = sc.querySelector(".tab");
+    return Math.max(1, tab ? tab.offsetWidth * 4 : sc.clientWidth);
+  };
   const maxLeft = () => Math.max(0, sc.scrollWidth - sc.clientWidth);
   const pageOf = left => Math.round(left / pageW());
   const go = page => {
-    const maxP = Math.round(maxLeft() / pageW());
+    const tabs = [...sc.querySelectorAll(".tab")];
+    const maxP = Math.max(0, Math.ceil(tabs.length / 4) - 1);
     const p = Math.max(0, Math.min(maxP, page));
-    sc.scrollTo({ left: Math.min(maxLeft(), p * pageW()), behavior: "smooth" });
+    let left = p * pageW();
+    const tab = tabs[p * 4];
+    if (tab && p > 0) {
+      const pad = parseFloat(getComputedStyle(sc).paddingLeft) || 0;
+      left = sc.scrollLeft + tab.getBoundingClientRect().left - sc.getBoundingClientRect().left - pad;
+    }
+    sc.scrollTo({ left: Math.max(0, Math.min(maxLeft(), left)), behavior: "smooth" });
   };
   sc.addEventListener("touchstart", e => {
     if (window.innerWidth > 820 || e.touches.length !== 1) return;
