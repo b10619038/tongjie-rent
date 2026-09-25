@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-15-38";
-const APP_EDIT_COUNT = 1403;
+const APP_STAMP = "2026-09-25-15-42";
+const APP_EDIT_COUNT = 1404;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0954";
+const FILE_VER = "0955";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["不可申請租補改成不可租補"] },
+  { ver: APP_VERSION, items: ["選房平面圖改用清楚的圖，打開更順"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13955,24 +13955,28 @@ function openZoomPhoto(item, originEl) {
     ${item.title ? `<div class="photo-zoom-caption">${item.above ? `<div class="photo-zoom-above">${escapeHtml(item.above)}</div>` : ""}${escapeHtml(item.title)}</div>` : ""}`;
   document.body.appendChild(wrap);
   const img = wrap.querySelector(".photo-zoom-img");
+  img.style.opacity = "0";
+  const planOverview = !!(item && item.dot && !(item.focus && item.focus.w > 0));
+  if (planOverview) requestAnimationFrame(() => { if (wrap.isConnected) wrap.classList.add("on"); });
   img.src = firstSrc;
   const place = () => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const nw = img.naturalWidth || 1200;
     const nh = img.naturalHeight || 900;
-    const s = Math.min((vw * 0.92) / nw, (vh * 0.78) / nh);
-    const tw = Math.max(8, nw * s);
-    const th = Math.max(8, nh * s);
+    const focus = item && item.focus;
+    const zoomRoom = focus && focus.w > 0 && focus.h > 0;
+    const planFit = !!(item && item.dot && !zoomRoom);
+    const s = Math.min((vw * (planFit ? 0.96 : 0.92)) / nw, (vh * (planFit ? 0.9 : 0.78)) / nh);
+    const tw = Math.max(8, Math.round(nw * s));
+    const th = Math.max(8, Math.round(nh * s));
     const tx = (vw - tw) / 2;
     const ty = (vh - th) / 2;
     img.style.width = tw + "px";
     img.style.height = th + "px";
     img.style.left = tx + "px";
     img.style.top = ty + "px";
-    const focus = item && item.focus;
     const box = { vw, vh, tw, th, tx, ty };
-    const zoomRoom = focus && focus.w > 0 && focus.h > 0;
     let start = "none";
     let endTf = "translate(0,0) scale(1)";
     let fcx = 0;
@@ -13991,6 +13995,8 @@ function openZoomPhoto(item, originEl) {
       start = `translate(${dotX - tx - fcx}px, ${dotY - ty - fcy}px) scale(${s0})`;
       zs = Math.min((vw * 0.9) / (focus.w * tw), (vh * 0.78) / (focus.h * th));
       endTf = `translate(${vw / 2 - tx - fcx}px, ${vh / 2 - ty - fcy}px) scale(${zs})`;
+    } else if (planFit) {
+      start = "translate(0,0) scale(.9)";
     } else if (origin && origin.width) {
       const dx = (origin.left + origin.width / 2) - (tx + tw / 2);
       const dy = (origin.top + origin.height / 2) - (ty + th / 2);
@@ -13999,13 +14005,16 @@ function openZoomPhoto(item, originEl) {
     }
     img.style.transition = "none";
     img.style.transform = start === "none" ? "scale(.92)" : start;
+    if (!planFit) img.style.opacity = "1";
     img.getBoundingClientRect();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!wrap.isConnected || wrap.classList.contains("out")) return;
         wrap.classList.add("on");
-        const dur = zoomRoom ? "1.15s" : ".42s";
-        img.style.transition = "transform " + dur + " cubic-bezier(.22,1,.36,1), border-radius " + dur + " cubic-bezier(.22,1,.36,1)";
+        const dur = zoomRoom ? "1.15s" : (planFit ? ".52s" : ".42s");
+        const ease = planFit ? "cubic-bezier(.16,1,.3,1)" : "cubic-bezier(.22,1,.36,1)";
+        img.style.transition = "transform " + dur + " " + ease + ", opacity .24s ease, border-radius " + dur + " " + ease;
+        img.style.opacity = "1";
         img.style.transform = endTf;
         img.style.borderRadius = "12px";
         if (zoomRoom) {
@@ -14071,7 +14080,7 @@ function openZoomPhoto(item, originEl) {
           target: { x: vw / 2 - tx - fcx * zs, y: vh / 2 - ty - fcy * zs, s: zs }
         });
         requestAnimationFrame(() => dot.classList.add("on"));
-      }, 520);
+      }, 640);
     }
     wrap._zoomBack = () => {
       wrap.classList.remove("on");
@@ -22584,6 +22593,13 @@ function closeMoveRoomPick() {
   ui.moveRoomPick = false;
   render();
 }
+function preloadPlanView() {
+  if (preloadPlanView.done) return;
+  preloadPlanView.done = true;
+  const im = new Image();
+  im.decoding = "async";
+  im.src = "images/plan-6821-view.webp?v=" + FILE_VER;
+}
 function moveInView() {
   const d = ensureMoveIn();
   const rooms = moveInRooms();
@@ -22618,11 +22634,12 @@ function moveInView() {
   ui.movePickEnter = false;
   const selMeta = r ? moveRoomMeta(r, dummy) : null;
   const pickRows = rooms.map(x => {
+    preloadPlanView();
     const m = moveRoomMeta(x, dummy);
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-hd.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-dot="${plan.dot}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-dot="${plan.dot}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : `<span class="move-pick-slot"></span>`;
     return `<div class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       ${planBtn}
