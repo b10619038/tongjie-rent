@@ -5839,16 +5839,18 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   white-space: nowrap;
 }
 .move-pick-row.has-plan {
-  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  grid-template-columns: max-content auto minmax(0, 1fr);
 }
 .move-pick-plan {
   width: 28px;
   height: 22px;
+  margin-left: 8px;
   border: 0;
   background: transparent;
   display: grid;
   place-items: center;
-  justify-self: center;
+  justify-self: start;
+  align-self: center;
   padding: 0;
   cursor: pointer;
 }
