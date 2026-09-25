@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-25-12-24";
-const APP_EDIT_COUNT = 1375;
+const APP_STAMP = "2026-09-25-12-32";
+const APP_EDIT_COUNT = 1376;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "0926";
+const FILE_VER = "0927";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -510,7 +510,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回訊息改走聊天同步，約 0.2 秒對方就會消失"] },
+  { ver: APP_VERSION, items: ["租客同一帳戶最多同時登入 2 台，開發者後台不限"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -8994,6 +8994,100 @@ function liveDeviceId() {
   }
   return liveSelfId;
 }
+function seatMap() {
+  if (!state.loginSeats || typeof state.loginSeats !== "object") state.loginSeats = {};
+  return state.loginSeats;
+}
+function capSeats(list) {
+  const rows = (Array.isArray(list) ? list : []).filter(s => s && s.id).map(s => ({
+    id: String(s.id),
+    at: Number(s.at) || 0,
+    since: Number(s.since) || Number(s.at) || 0
+  }));
+  const map = new Map();
+  rows.forEach(s => {
+    const prev = map.get(s.id);
+    if (!prev || s.at >= prev.at) map.set(s.id, prev ? { id: s.id, at: s.at, since: prev.since || s.since } : s);
+  });
+  return [...map.values()].sort((a, b) => a.since - b.since || a.at - b.at).slice(0, 2);
+}
+function mergeLoginSeats(local, remote) {
+  const out = {};
+  const keys = new Set([].concat(Object.keys(local || {}), Object.keys(remote || {})));
+  keys.forEach(id => {
+    const merged = capSeats([].concat((local && local[id]) || [], (remote && remote[id]) || []));
+    if (merged.length) out[id] = merged;
+  });
+  return out;
+}
+function seatExempt() {
+  if (isDevPreview() || isTenantLook()) return true;
+  if (ui.role === "admin" || ui.adminCode === "1240") return true;
+  return false;
+}
+function claimTenantSeat(tid) {
+  if (!tid || seatExempt()) return true;
+  const id = liveDeviceId();
+  const now = Date.now();
+  const cur = capSeats(seatMap()[tid]);
+  const mine = cur.find(s => s.id === id);
+  if (mine) {
+    mine.at = now;
+    state.loginSeats[tid] = cur;
+    return true;
+  }
+  if (cur.length >= 2) return false;
+  cur.push({ id, at: now, since: now });
+  state.loginSeats[tid] = capSeats(cur);
+  return true;
+}
+function releaseTenantSeat(tid) {
+  if (!tid || !state.loginSeats) return;
+  const id = liveDeviceId();
+  const cur = capSeats(state.loginSeats[tid]).filter(s => s.id !== id);
+  if (cur.length) state.loginSeats[tid] = cur;
+  else delete state.loginSeats[tid];
+}
+function tenantSeatHeld(tid) {
+  if (!tid || seatExempt()) return true;
+  return capSeats(seatMap()[tid]).some(s => s.id === liveDeviceId());
+}
+function enforceSeatLimit() {
+  if (ui.role !== "tenant" || seatExempt() || !ui.tenantId) return;
+  const tid = ui.tenantId;
+  if (tenantSeatHeld(tid)) return;
+  const full = capSeats(seatMap()[tid]).length >= 2;
+  if (!full) {
+    claimTenantSeat(tid);
+    markCloudDirty();
+    return;
+  }
+  const no = ui.roomNo || "";
+  clearSession();
+  ui.loginError = "此帳戶已有 2 台裝置登入，請先在其中一台登出";
+  ui.loginRoom = no;
+  ui.page = "tenant-login";
+  try { render(); } catch {}
+}
+async function guardTenantSeat(tenant) {
+  if (!tenant || !tenant.id || isDemoTenant(tenant) || seatExempt()) return true;
+  try { await pullCloud(); } catch {}
+  if (!claimTenantSeat(tenant.id)) return false;
+  markCloudDirty();
+  try { await pushCloud(); } catch {}
+  return tenantSeatHeld(tenant.id);
+}
+async function enterTenantGuarded(room, tenant) {
+  if (!(await guardTenantSeat(tenant))) {
+    ui.loginError = "此帳戶已有 2 台裝置登入，請先在其中一台登出";
+    ui.loginRoom = (room && room.no) || "";
+    try { audit("登入失敗", "房號 " + ((room && room.no) || "") + " 已滿 2 台"); } catch {}
+    render();
+    return;
+  }
+  if (tenant.incoming || tenant.prospect) enterProspect(tenant, room);
+  else enterTenant(room, tenant);
+}
 function ingestFileCloud(raw) {
   try {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -9861,6 +9955,7 @@ async function pullCloud() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    const mineSeats = state.loginSeats;
     const mineSnap = {
       tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
@@ -9952,6 +10047,8 @@ async function pullCloud() {
       try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
       try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+      state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
+      try { enforceSeatLimit(); } catch {}
       if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
       ui.cloudOk = true;
       return data.updatedAt === state.updatedAt ? "same" : "local-newer";
@@ -9965,6 +10062,7 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
+    state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
     mergeDevChatsInto(state, mineSnap);
     state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
@@ -10066,6 +10164,7 @@ async function pullCloud() {
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
+    try { enforceSeatLimit(); } catch {}
     ui.cloudOk = true;
     return true;
   } catch {
@@ -10455,6 +10554,8 @@ async function pushPresence() {
     mergeLedgerInto(state, data);
     if (!state.presence) state.presence = {};
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
+    state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
+    try { enforceSeatLimit(); } catch {}
     persistLedger(state);
     persistMemoDone(state);
     persistAnnMedia(state);
@@ -10583,7 +10684,8 @@ async function pushCloud() {
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
       bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
       bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))),
-      devChats: mergeChatStores(remote && remote.devChats, state.devChats || chatStore())
+      devChats: mergeChatStores(remote && remote.devChats, state.devChats || chatStore()),
+      loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats)
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -10616,6 +10718,8 @@ async function pushCloud() {
       ui.chats = mergeChatStores(chatStore(), payload.devChats);
       saveLocalChats(ui.chats);
     }
+    if (payload.loginSeats) state.loginSeats = payload.loginSeats;
+    try { enforceSeatLimit(); } catch {}
     applyBookVaultGone(state);
     stripCloudMedia(payload);
     applyESigns(payload);
@@ -11134,6 +11238,11 @@ function clearSession() {
   } catch {}
 }
 function logoutToGate() {
+  if (ui.role === "tenant" && !isDevPreview() && !isTenantLook() && ui.adminCode !== "1240" && ui.tenantId) {
+    releaseTenantSeat(ui.tenantId);
+    markCloudDirty();
+    pushCloud().catch(() => {});
+  }
   audit("登出", "登出");
   ui.playIntro = true;
   try { sessionStorage.removeItem("tj-intro-seen"); } catch {}
@@ -11376,7 +11485,7 @@ async function biometricLogin() {
     const found = tenantByRoomNo(rec.roomNo);
     if (found.room && found.tenant) {
       audit("登入", "快速登入房號 " + found.room.no);
-      enterTenant(found.room, found.tenant);
+      enterTenantGuarded(found.room, found.tenant);
       return;
     }
   }
@@ -29764,11 +29873,7 @@ function tryLogin() {
     render(); return;
   }
   ui.loginRoom = room.no;
-  if (tenant.incoming || tenant.prospect) {
-    enterProspect(tenant, room);
-    return;
-  }
-  enterTenant(room, tenant);
+  enterTenantGuarded(room, tenant);
 }
 function trySetPass() {
   const p1 = String((document.getElementById("set-pass") || {}).value || "").trim();
