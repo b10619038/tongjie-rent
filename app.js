@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-18-02";
-const APP_EDIT_COUNT = 1520;
+const APP_STAMP = "2026-09-26-18-12";
+const APP_EDIT_COUNT = 1521;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1070";
+const FILE_VER = "1071";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紅綠燈可切紅燈停車、綠燈放行，摩托車繼續走"] },
+  { ver: APP_VERSION, items: ["紅綠燈任何位置可切換，紅燈時車子停在燈前"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24607,42 +24607,90 @@ function bindRepairDelete() {
       render();
     };
   });
-  document.querySelectorAll(".fix-run.is-stop").forEach(snapFixStop);
+  document.querySelectorAll(".fix-run.is-stop").forEach(holdFixCars);
+  ensureFixStopLoop();
   document.querySelectorAll("[data-fix-light]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       const run = btn.closest(".fix-run");
       if (!run) return;
+      const x = e.clientX - run.getBoundingClientRect().left;
+      const lights = fixLightLefts(run);
+      const hit = !lights.length || lights.some(left => x >= left - 18 && x <= left + 62);
+      if (!hit) return;
       if (!ui.repairStop) ui.repairStop = {};
       const on = !run.classList.contains("is-stop");
       run.classList.toggle("is-stop", on);
       ui.repairStop[btn.dataset.fixLight] = on;
-      if (on) snapFixStop(run);
-      else {
-        run.querySelectorAll(".fix-poles,.fix-car,.fix-van,.fix-truck,.fix-light").forEach(el => {
-          el.style.backgroundPosition = "";
-          el.style.transform = "";
-        });
+      if (on) {
+        holdFixCars(run);
+        ensureFixStopLoop();
+      } else {
+        ui.repairGoAt = Date.now();
+        run.querySelectorAll(".fix-car,.fix-van,.fix-truck").forEach(el => { el.style.backgroundPosition = ""; });
       }
     };
   });
+  armRandomFixRed();
 }
-function snapFixStop(run) {
+function armRandomFixRed() {
+  if (armRandomFixRed.timer) return;
+  const wait = 9000 + Math.random() * 11000;
+  armRandomFixRed.timer = setTimeout(() => {
+    armRandomFixRed.timer = 0;
+    const calm = Date.now() - (Number(ui.repairGoAt) || 0);
+    const runs = Array.from(document.querySelectorAll(".fix-run")).filter(r => !r.classList.contains("is-stop") && r.dataset.done !== "1");
+    if (runs.length && calm > 7000) {
+      const run = runs[Math.floor(Math.random() * runs.length)];
+      const btn = run.querySelector("[data-fix-light]");
+      run.classList.add("is-stop");
+      if (!ui.repairStop) ui.repairStop = {};
+      if (btn) ui.repairStop[btn.dataset.fixLight] = true;
+      holdFixCars(run);
+      ensureFixStopLoop();
+    }
+    if (document.querySelector(".fix-run")) armRandomFixRed();
+  }, wait);
+}
+function fixLightLefts(run) {
+  const poles = run && run.querySelector(".fix-poles");
+  if (!poles) return [];
+  const w = run.clientWidth || 0;
+  const tile = 420;
+  let bx = parseFloat(getComputedStyle(poles).backgroundPositionX);
+  if (!Number.isFinite(bx)) bx = 0;
+  const out = [];
+  for (let n = -2; n < 6; n++) {
+    const left = bx + n * tile + 16;
+    if (left < w + 30 && left > -50) out.push(left);
+  }
+  return out;
+}
+let fixStopLoop = false;
+function ensureFixStopLoop() {
+  if (fixStopLoop) return;
+  if (!document.querySelector(".fix-run.is-stop")) return;
+  fixStopLoop = true;
+  const step = () => {
+    const runs = document.querySelectorAll(".fix-run.is-stop");
+    if (!runs.length) { fixStopLoop = false; return; }
+    runs.forEach(holdFixCars);
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function holdFixCars(run) {
   if (!run) return;
-  const w = run.clientWidth || 320;
-  const light = Math.round(Math.max(150, Math.min(w - 36, w * 0.72)));
-  const poles = run.querySelector(".fix-poles");
-  const btn = run.querySelector(".fix-light");
+  const lights = fixLightLefts(run).filter(x => x > 72);
+  const light = lights.length ? Math.min.apply(null, lights) : 128;
+  const gap = 8;
   const car = run.querySelector(".fix-car");
   const van = run.querySelector(".fix-van");
   const truck = run.querySelector(".fix-truck");
-  if (poles) poles.style.backgroundPosition = (light - 16) + "px bottom";
-  if (btn) btn.style.transform = "translateX(" + (light - 10) + "px)";
-  const gap = 8;
-  if (car) car.style.backgroundPosition = (light - 8 - 45) + "px bottom";
-  if (van) van.style.backgroundPosition = (light - 8 - 41 - gap - 189) + "px bottom";
-  if (truck) truck.style.backgroundPosition = (light - 8 - 41 - gap - 41 - gap - 301) + "px bottom";
+  if (car) car.style.backgroundPosition = (light - 10 - 45) + "px bottom";
+  if (van) van.style.backgroundPosition = (light - 10 - 41 - gap - 189) + "px bottom";
+  if (truck) truck.style.backgroundPosition = (light - 10 - 41 - gap - 41 - gap - 301) + "px bottom";
 }
 function parseStampMs(value) {
   const text = String(value || "").trim();
