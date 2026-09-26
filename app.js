@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-17-55";
-const APP_EDIT_COUNT = 1519;
+const APP_STAMP = "2026-09-26-18-02";
+const APP_EDIT_COUNT = 1520;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1069";
+const FILE_VER = "1070";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修進度的車子改成淡灰色，摩托車不變"] },
+  { ver: APP_VERSION, items: ["紅綠燈可切紅燈停車、綠燈放行，摩托車繼續走"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24607,6 +24607,42 @@ function bindRepairDelete() {
       render();
     };
   });
+  document.querySelectorAll(".fix-run.is-stop").forEach(snapFixStop);
+  document.querySelectorAll("[data-fix-light]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const run = btn.closest(".fix-run");
+      if (!run) return;
+      if (!ui.repairStop) ui.repairStop = {};
+      const on = !run.classList.contains("is-stop");
+      run.classList.toggle("is-stop", on);
+      ui.repairStop[btn.dataset.fixLight] = on;
+      if (on) snapFixStop(run);
+      else {
+        run.querySelectorAll(".fix-poles,.fix-car,.fix-van,.fix-truck,.fix-light").forEach(el => {
+          el.style.backgroundPosition = "";
+          el.style.transform = "";
+        });
+      }
+    };
+  });
+}
+function snapFixStop(run) {
+  if (!run) return;
+  const w = run.clientWidth || 320;
+  const light = Math.round(Math.max(150, Math.min(w - 36, w * 0.72)));
+  const poles = run.querySelector(".fix-poles");
+  const btn = run.querySelector(".fix-light");
+  const car = run.querySelector(".fix-car");
+  const van = run.querySelector(".fix-van");
+  const truck = run.querySelector(".fix-truck");
+  if (poles) poles.style.backgroundPosition = (light - 16) + "px bottom";
+  if (btn) btn.style.transform = "translateX(" + (light - 10) + "px)";
+  const gap = 8;
+  if (car) car.style.backgroundPosition = (light - 8 - 45) + "px bottom";
+  if (van) van.style.backgroundPosition = (light - 8 - 41 - gap - 189) + "px bottom";
+  if (truck) truck.style.backgroundPosition = (light - 8 - 41 - gap - 41 - gap - 301) + "px bottom";
 }
 function parseStampMs(value) {
   const text = String(value || "").trim();
@@ -24635,11 +24671,12 @@ function repairRunHtml(rep) {
   const pct = repairRunPct(rep);
   const start = parseStampMs(rep.createdAt);
   const end = parseStampMs(rep.appointAt);
-  return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
+  return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}${ui.repairStop && ui.repairStop[rep.id] ? " is-stop" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
     <div class="fix-truck"></div>
     <div class="fix-van"></div>
     <div class="fix-car"></div>
     <div class="fix-poles"></div>
+    <button type="button" class="fix-light" data-fix-light="${escapeHtml(rep.id)}" aria-label="紅綠燈"></button>
     <div class="fix-line"><i></i></div>
     <div class="fix-rider" aria-hidden="true">
       <img src="images/fix-rider.png?v=${FILE_VER}" alt="" />
