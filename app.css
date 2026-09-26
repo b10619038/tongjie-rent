@@ -2851,10 +2851,10 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
 .fix-truck {
-  height: 26px; z-index: 1;
-  background-image: url("images/fix-truck.png?v=1086");
-  background-size: 280px 26px;
-  animation: fix-truck 9s linear infinite;
+  height: 36px; z-index: 1;
+  background-image: url("images/fix-truck.png?v=1087");
+  background-size: 388px 36px;
+  animation: fix-truck 16s linear infinite;
 }
 .fix-van {
   height: 22px; z-index: 2;
@@ -2903,7 +2903,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 @keyframes fix-car { to { background-position: -160px bottom; } }
 @keyframes fix-van { to { background-position: -183px bottom; } }
-@keyframes fix-truck { to { background-position: -280px bottom; } }
+@keyframes fix-truck { to { background-position: -388px bottom; } }
 @keyframes fix-poles { to { background-position: -420px bottom; } }
 @keyframes fix-town { to { background-position: -640px bottom; } }
 @keyframes fix-tree { to { background-position: -755px bottom; } }
