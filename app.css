@@ -2797,6 +2797,13 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .row-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 .ann-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; position: relative; z-index: 4; }
 .ann-actions .ghost { width: 100%; pointer-events: auto !important; }
+.repair-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.repair-actions .ghost { margin-top: 0; width: 100%; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
 .appoint-one {
   position: relative;
