@@ -2852,7 +2852,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
 .fix-truck {
   height: 36px; z-index: 1;
-  background-image: url("images/fix-truck.png?v=1087");
+  background-image: url("images/fix-truck.png?v=1088");
   background-size: 388px 36px;
   animation: fix-truck 16s linear infinite;
 }
