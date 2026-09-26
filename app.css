@@ -2838,7 +2838,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-town {
   height: 62px; z-index: 0; bottom: 8px;
-  background-image: url("images/fix-town.png?v=1078");
+  background-image: url("images/fix-town.png?v=1079");
   background-size: 640px 62px;
   animation: fix-town 28s linear infinite;
 }
