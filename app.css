@@ -2799,9 +2799,9 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .appoint-week { margin-left: 0.35em; }
 .appoint-time { margin-left: 0.45em; }
-.fix-run { position: relative; height: 64px; margin: 2px 2px 6px; }
+.fix-run { position: relative; height: 36px; margin: 2px 2px 4px; }
 .fix-line {
-  position: absolute; left: 32px; right: 32px; bottom: 7px; height: 5px;
+  position: absolute; left: 16px; right: 16px; bottom: 4px; height: 4px;
   background: #e7e2da; border-radius: 99px; overflow: hidden;
 }
 .fix-line i {
@@ -2809,9 +2809,9 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   background: var(--teal); border-radius: 99px;
 }
 .fix-rider {
-  position: absolute; bottom: 4px; width: 58px; height: 52px;
-  left: calc(32px + (100% - 64px) * var(--p));
-  margin-left: -29px;
+  position: absolute; bottom: 2px; width: 29px; height: 26px;
+  left: calc(16px + (100% - 32px) * var(--p));
+  margin-left: -14px;
   animation: fix-bob .55s ease-in-out infinite;
 }
 .fix-rider img { width: 100%; height: 100%; display: block; object-fit: contain; }
