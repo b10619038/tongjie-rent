@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-17-51";
-const APP_EDIT_COUNT = 1517;
+const APP_STAMP = "2026-09-26-17-54";
+const APP_EDIT_COUNT = 1518;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1067";
+const FILE_VER = "1068";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紀錄拿掉趙文榮、歐玉珠、小芬"] },
+  { ver: APP_VERSION, items: ["租客可編輯報修，後台同步更新"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24536,6 +24536,77 @@ function bindRepairDelete() {
   });
   tickRepairRuns();
   if (!tickRepairRuns.timer) tickRepairRuns.timer = setInterval(tickRepairRuns, 30000);
+  document.querySelectorAll("[data-edit-repair]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rep = (state.repairs || []).find(x => x && x.id === btn.dataset.editRepair);
+      if (!rep) return;
+      ui.repairEditId = rep.id;
+      ui.repairEditType = rep.type || "冷氣";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-edit-type]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.repairEditType = btn.dataset.editType || ui.repairEditType;
+      const grid = btn.closest(".issue-grid");
+      if (grid) grid.querySelectorAll("[data-edit-type]").forEach(b => b.classList.toggle("selected", b === btn));
+      const title = btn.closest(".card") && btn.closest(".card").querySelector(".row .k");
+      if (title) title.textContent = ui.repairEditType;
+    };
+  });
+  document.querySelectorAll("[data-edit-note]").forEach(box => {
+    box.onpointerdown = e => e.stopPropagation();
+    box.onclick = e => { e.stopPropagation(); try { box.focus(); } catch {} };
+  });
+  document.querySelectorAll("[data-cancel-repair]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.repairEditId = "";
+      ui.repairEditType = "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-save-repair]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rep = (state.repairs || []).find(x => x && x.id === btn.dataset.saveRepair);
+      if (!rep) return;
+      const noteEl = document.querySelector('[data-edit-note="' + String(rep.id).replace(/"/g, "") + '"]');
+      const note = String((noteEl && noteEl.value) || "").trim();
+      if (!note) { toast("請先描述問題"); return; }
+      rep.type = ui.repairEditType || rep.type;
+      rep.note = note;
+      stampRepair(rep);
+      if (Array.isArray(state.notices)) {
+        state.notices.forEach(n => {
+          if (n && n.repairId === rep.id) n.text = (rep.roomNo || "") + " " + rep.type + "報修";
+        });
+      }
+      const room = (state.rooms || []).find(x => x && x.id === rep.roomId);
+      state.repairNotice = { at: Date.now(), id: rep.id, roomNo: (room && room.no) || rep.roomNo || "", name: (me() && me().name) || "", type: rep.type || "", note, edited: true };
+      persistRepairMedia(state);
+      persistRepairStat(state);
+      save();
+      try { pushCloud(); } catch {}
+      pushPhoneNotify("報修已更新", `${(room && room.no) || ""} ${rep.type}　${note}`, "admin");
+      ui.repairEditId = "";
+      ui.repairEditType = "";
+      ui.keepScroll = true;
+      toast("已更新，後台會同步");
+      render();
+    };
+  });
 }
 function parseStampMs(value) {
   const text = String(value || "").trim();
@@ -24592,16 +24663,27 @@ function tickRepairRuns() {
   });
 }
 function repairCard(rep, extraClass) {
+  const editing = ui.repairEditId === rep.id;
+  const types = ["冷氣", "馬桶", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具", "公共設施", "地板"];
+  const picked = editing ? (ui.repairEditType || rep.type) : rep.type;
+  const editBox = editing ? `<div class="repair-edit">
+      <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${picked === tp ? "selected" : ""}" data-edit-type="${escapeHtml(tp)}">${tp}</button>`).join("")}</div>
+      <div class="repair-note-box"><textarea class="repair-note" data-edit-note="${escapeHtml(rep.id)}" rows="4" maxlength="800" autocomplete="off">${escapeHtml(rep.note || "")}</textarea></div>
+      <button type="button" class="btn-navy" data-save-repair="${escapeHtml(rep.id)}" style="margin-top:8px">儲存修改</button>
+      <button type="button" class="ghost" data-cancel-repair="1" style="margin-top:8px">取消</button>
+    </div>` : "";
   return `<div class="card card-body ${extraClass || ""}">
-    <div class="row"><span class="k">${rep.type}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
+    <div class="row"><span class="k">${escapeHtml(editing ? picked : rep.type)}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
     <div class="small">${formatDateTime12(rep.createdAt)}</div>
-    <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
+    ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
+    ${editBox}
     ${appointLabel(rep)}
     ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
     ${repairRunHtml(rep)}
     ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${escapeHtml(repairCostLabel(rep.cost))}</span></div>` : ""}
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
+    ${editing ? "" : `<button type="button" class="ghost" data-edit-repair="${escapeHtml(rep.id)}" style="margin-top:8px">編輯報修</button>`}
     <button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>
   </div>`;
 }
