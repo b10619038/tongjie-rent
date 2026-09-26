@@ -2797,7 +2797,8 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   color: var(--ink);
   z-index: 1;
 }
-.appoint-time { margin-left: 0.2cm; }
+.appoint-week { margin-left: 0.35em; }
+.appoint-time { margin-left: 0.45em; }
 .appoint-face-empty { color: var(--muted); font-weight: 600; }
 .appoint-native {
   position: absolute;

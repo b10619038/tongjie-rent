@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-48";
-const APP_EDIT_COUNT = 1495;
+const APP_STAMP = "2026-09-26-11-52";
+const APP_EDIT_COUNT = 1496;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1045";
+const FILE_VER = "1046";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["查看照片可以左右滑，不用只按上一則下一則"] },
+  { ver: APP_VERSION, items: ["預約日期右邊顯示星期幾"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11644,17 +11644,21 @@ function escapeHtml(s) {
     .replace(/\"/g, "\u0026quot;")
     .replace(/'/g, "\u0026#39;");
 }
-function appointFaceHtml(at) {
+function weekLabel(y, m, d) {
+  const dt = new Date(Number(y), Number(m) - 1, Number(d));
+  return ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][dt.getDay()] || "";
+}
+function appointFaceHtml(at, emptyText) {
   const s = String(at || "").replace(" ", "T");
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/);
-  if (!m) return `<span class="appoint-face-empty">選擇簽約時間</span>`;
+  if (!m) return `<span class="appoint-face-empty">${escapeHtml(emptyText || "選擇簽約時間")}</span>`;
   const hh = String(m[4]).padStart(2, "0");
-  return `<span class="appoint-date">${m[1]}/${m[2]}/${m[3]}</span><span class="appoint-time">${hh}:${m[5]}</span>`;
+  return `<span class="appoint-date">${m[1]}/${m[2]}/${m[3]}</span><span class="appoint-week">${weekLabel(m[1], m[2], m[3])}</span><span class="appoint-time">${hh}:${m[5]}</span>`;
 }
 function paintAppointFace(inp) {
   const wrap = inp && inp.closest(".appoint-one");
   const face = wrap && wrap.querySelector(".appoint-face");
-  if (face) face.innerHTML = appointFaceHtml(inp.value);
+  if (face) face.innerHTML = appointFaceHtml(inp.value, wrap.dataset.empty || "");
 }
 function openAppointPicker(inp) {
   if (!inp || inp.disabled) return;
@@ -11695,8 +11699,9 @@ function bindAppointPicker(inp) {
 }
 function appointOneHtml(at, extra) {
   const x = extra || {};
-  return `<div class="appoint-one">
-    <span class="appoint-face">${appointFaceHtml(at)}</span>
+  const empty = x.empty || "選擇簽約時間";
+  return `<div class="appoint-one" data-empty="${escapeHtml(empty)}">
+    <span class="appoint-face">${appointFaceHtml(at, empty)}</span>
     <input type="datetime-local" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""} value="${escapeHtml(at || "")}" ${x.disabled ? "disabled" : ""}${x.min ? ` min="${escapeHtml(x.min)}"` : ""}${x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
     ${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : "")}
   </div>`;
@@ -22364,7 +22369,7 @@ function appointLabel(rep) {
 function appointBlock(rep) {
   return `<div class="appoint-box">
     <label class="field"><span>預約日期</span>
-      <input type="datetime-local" data-appoint="${rep.id}" value="${rep.appointAt || ""}" />
+      ${appointOneHtml(rep.appointAt || "", { attr: ` data-appoint="${escapeHtml(rep.id)}"`, empty: "選擇維修時間" })}
     </label>
     <div class="small appoint-shown">${rep.appointAt ? "已預約 " + formatDateTime12(String(rep.appointAt).replace("T", " ")) : "選擇完成維修的時間"}</div>
   </div>`;
@@ -32577,11 +32582,12 @@ function bindAdmin() {
     };
   });
   document.querySelectorAll("[data-appoint]").forEach(inp => {
-    inp.onclick = e => e.stopPropagation();
+    bindAppointPicker(inp);
     inp.onchange = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.appoint);
       if (!rep) return;
       rep.appointAt = inp.value; rep.appointRead = !inp.value; stampRepair(rep); save();
+      paintAppointFace(inp);
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
       if (inp.value) {
