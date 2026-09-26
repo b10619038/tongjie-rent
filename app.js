@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-17-49";
-const APP_EDIT_COUNT = 1516;
+const APP_STAMP = "2026-09-26-17-51";
+const APP_EDIT_COUNT = 1517;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1066";
+const FILE_VER = "1067";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修加入日曆按下去會打開 Google 日曆"] },
+  { ver: APP_VERSION, items: ["紀錄拿掉趙文榮、歐玉珠、小芬"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5758,6 +5758,7 @@ function normalize(data) {
   mergeLedgerInto(data, loadLedgerBackup());
   try { syncPaidRentBooks(data); } catch {}
   try { if (purgeDroppedStudios(data)) markCloudDirty(); } catch {}
+  try { if (scrubPracticePeople(data)) markCloudDirty(); } catch {}
   persistLedger(data);
   try { applyDevChats(data); } catch {}
   return data;
@@ -10113,6 +10114,7 @@ async function pullCloud() {
       persistRepairMedia(state); persistRepairStat(state);
       persistAvatars(state);
       try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
+      try { if (scrubPracticePeople(state)) markCloudDirty(); } catch {}
       try { ensurePhoneLoginPasses(state); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
@@ -10224,6 +10226,7 @@ async function pullCloud() {
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
     try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
+    try { if (scrubPracticePeople(state)) markCloudDirty(); } catch {}
     try { ensurePhoneLoginPasses(state); } catch {}
     try { applyRoom7611(state); } catch {}
     try { applyId7031(state); } catch {}
@@ -24986,6 +24989,28 @@ function historyBookRows(re) {
     amount: Number(b.amount) || 0
   }));
 }
+function historyRowDrop(row) {
+  const text = String((row && row.title) || "") + " " + String((row && row.sub) || "");
+  if (/歐玉珠|小芬/.test(text)) return true;
+  if (/趙文榮/.test(text) && !/個人戶|薪資|伙食|綜所稅/.test(text)) return true;
+  return false;
+}
+function scrubPracticePeople(data) {
+  if (!data) return false;
+  const dropT = t => !!(t && /趙文榮|歐玉珠|小芬/.test(String(t.name || "")));
+  const ids = new Set();
+  (data.tenants || []).forEach(t => { if (dropT(t) && t.id) ids.add(String(t.id)); });
+  const before = (data.tenants || []).length + ((data.checkouts || []).length) + ((data.renewals || []).length);
+  data.tenants = (data.tenants || []).filter(t => t && !ids.has(String(t.id)) && !/趙文榮|歐玉珠|小芬/.test(String(t.name || "")));
+  data.goneTenants = [...new Set([].concat(data.goneTenants || [], [...ids]).map(String))];
+  if (Array.isArray(data.checkouts)) data.checkouts = data.checkouts.filter(c => c && !/趙文榮|歐玉珠|小芬/.test(String(c.tenantName || "")) && !ids.has(String(c.tenantId || "")));
+  if (Array.isArray(data.renewals)) data.renewals = data.renewals.filter(x => x && !/趙文榮|歐玉珠|小芬/.test(String(x.name || "")) && !ids.has(String(x.tenantId || "")));
+  if (data.eSigns && typeof data.eSigns === "object") ids.forEach(id => { try { delete data.eSigns[id]; } catch {} });
+  const after = (data.tenants || []).length + ((data.checkouts || []).length) + ((data.renewals || []).length);
+  const dirty = after !== before || data.practicePeopleVer !== "20260926-drop-names";
+  data.practicePeopleVer = "20260926-drop-names";
+  return dirty;
+}
 function historyRows(cat) {
   const roomOf = id => (state.rooms || []).find(r => r && r.id === id);
   if (cat === "lease") {
@@ -25068,7 +25093,7 @@ function adminHistory() {
   ];
   const cat = cats.some(c => c[0] === ui.historyCat) ? ui.historyCat : "lease";
   ui.historyCat = cat;
-  const rows = historyRows(cat).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const rows = historyRows(cat).filter(row => !historyRowDrop(row)).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const shown = rows.slice(0, 150);
   const body = shown.length ? shown.map(row => `<div class="row wrap">
       <span class="k">${escapeHtml(rocSlash(row.date) || row.date || "—")}</span>
