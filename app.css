@@ -1290,11 +1290,35 @@ button.pay-toggle.paid.on {
   background: #eef3ea;
 }
 .renew-alert .dash-h { color: #3f4f3a; }
-.renew-hit {
+.mini.renew-hit {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   background: #eef3ea;
   border-radius: 12px;
   padding: 10px 12px 10px calc(12px + 0.3cm);
   margin: 0 0 4px;
+}
+.renew-hit b {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.renew-hit > .ghost,
+.renew-hit > .pay-pill {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 46%;
+  margin: 0 0 0 auto;
+  padding: 7px 12px;
+  font-size: clamp(12px, 3.2vw, 15px);
+  line-height: 1.2;
+  white-space: nowrap;
+  border-radius: 999px;
 }
 .pay-pill[data-page] { cursor: pointer; }
 button.pay-toggle {
