@@ -2800,18 +2800,12 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .appoint-week { margin-left: 0.35em; }
 .appoint-time { margin-left: 0.45em; }
 .fix-run { position: relative; height: 74px; margin: 2px 2px 4px; overflow: hidden; }
-.fix-bus, .fix-car, .fix-van, .fix-truck, .fix-poles {
+.fix-car, .fix-van, .fix-truck, .fix-poles {
   position: absolute; left: 0; right: 0; bottom: 6px;
   background-repeat: repeat-x; background-position: left bottom;
   pointer-events: none;
 }
-.fix-bus, .fix-car, .fix-van, .fix-truck { opacity: .9; }
-.fix-bus {
-  height: 22px; z-index: 1;
-  background-image: url("images/fix-bus.png?v=1054");
-  background-size: 355px 22px;
-  animation: fix-bus 12s linear infinite;
-}
+.fix-car, .fix-van, .fix-truck { opacity: .9; }
 .fix-truck {
   height: 24px; z-index: 1;
   background-image: url("images/fix-truck.png?v=1056");
@@ -2853,7 +2847,6 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-rider img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .fix-run.is-in .fix-rider,
-.fix-run.is-in .fix-bus,
 .fix-run.is-in .fix-truck,
 .fix-run.is-in .fix-van,
 .fix-run.is-in .fix-car,
@@ -2865,7 +2858,6 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 @keyframes fix-car { to { background-position: -153px bottom; } }
 @keyframes fix-van { to { background-position: -196px bottom; } }
 @keyframes fix-truck { to { background-position: -309px bottom; } }
-@keyframes fix-bus { to { background-position: -355px bottom; } }
 @keyframes fix-poles { to { background-position: -420px bottom; } }
 .appoint-face-empty { color: var(--muted); font-weight: 600; }
 .appoint-native {
