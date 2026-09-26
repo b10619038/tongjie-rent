@@ -2889,7 +2889,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   left: 0;
   top: 0;
   bottom: 0;
-  width: calc(100% - 86px);
+  width: calc(100% - 92px);
   height: 100%;
   opacity: 0;
   border: 0 !important;
@@ -2916,7 +2916,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .gcal-in {
   position: relative;
-  z-index: 3;
+  z-index: 4;
   margin-left: auto;
   flex: 0 0 auto;
   width: auto !important;
@@ -2927,7 +2927,8 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  padding: 0 2px 0 8px;
+  padding: 10px 4px 10px 8px;
+  pointer-events: auto;
 }
 .gcal-in.is-press,
 .gcal-in:active { transform: scale(0.94); }

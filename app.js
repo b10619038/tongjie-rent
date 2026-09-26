@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-17-45";
-const APP_EDIT_COUNT = 1515;
+const APP_STAMP = "2026-09-26-17-49";
+const APP_EDIT_COUNT = 1516;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1065";
+const FILE_VER = "1066";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修預約時間右邊可以加入日曆"] },
+  { ver: APP_VERSION, items: ["報修加入日曆按下去會打開 Google 日曆"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -32656,10 +32656,24 @@ function bindAdmin() {
       paintAppointFace(inp);
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
+      const cal = inp.closest(".appoint-one") && inp.closest(".appoint-one").querySelector("[data-gcal]");
+      if (cal) cal.hidden = !inp.value;
       if (inp.value) {
         const room = state.rooms.find(x => x.id === rep.roomId);
         pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
       }
+    };
+  });
+  document.querySelectorAll("[data-gcal]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const item = (state.repairs || []).find(x => x && x.id === btn.dataset.gcal);
+      if (!item || !item.appointAt) { toast("請先選擇維修時間"); return; }
+      item.appointRead = true;
+      save();
+      openGoogleCalendar(item, "repair");
     };
   });
   document.querySelectorAll("[data-rep-vendor]").forEach(inp => {
