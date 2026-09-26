@@ -2850,7 +2850,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-poles {
   height: 58px; z-index: 3;
-  background-image: url("images/fix-pole.png?v=1071");
+  background-image: url("images/fix-pole.png?v=1072");
   background-size: 420px 58px;
   animation: fix-poles 18s linear infinite;
 }
@@ -2868,7 +2868,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   -webkit-tap-highlight-color: transparent;
 }
 .fix-run.is-stop .fix-poles {
-  background-image: url("images/fix-pole-red.png?v=1071");
+  background-image: url("images/fix-pole-red.png?v=1072");
 }
 .fix-run.is-stop .fix-car,
 .fix-run.is-stop .fix-van,
