@@ -2843,10 +2843,10 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   animation: fix-town 28s linear infinite;
 }
 .fix-tree {
-  height: 44px; z-index: 1; bottom: 8px;
-  background-image: url("images/fix-tree.png?v=1080");
-  background-size: 520px 44px;
-  animation: fix-tree 22s linear infinite;
+  height: 56px; z-index: 1; bottom: 7px;
+  background-image: url("images/fix-tree.png?v=1081");
+  background-size: 250px 56px;
+  animation: fix-tree 18s linear infinite;
 }
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
 .fix-truck {
@@ -2905,7 +2905,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 @keyframes fix-truck { to { background-position: -309px bottom; } }
 @keyframes fix-poles { to { background-position: -420px bottom; } }
 @keyframes fix-town { to { background-position: -640px bottom; } }
-@keyframes fix-tree { to { background-position: -520px bottom; } }
+@keyframes fix-tree { to { background-position: -250px bottom; } }
 .appoint-face-empty { color: var(--muted); font-weight: 600; }
 .appoint-native {
   position: absolute;
