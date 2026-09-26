@@ -2807,7 +2807,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-bus {
   height: 22px; z-index: 1;
-  background-image: url("images/fix-bus.png?v=1051");
+  background-image: url("images/fix-bus.png?v=1054");
   background-size: 355px 22px;
   animation: fix-bus 12s linear infinite;
 }
