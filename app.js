@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-14";
-const APP_EDIT_COUNT = 1486;
+const APP_STAMP = "2026-09-26-11-19";
+const APP_EDIT_COUNT = 1487;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1036";
+const FILE_VER = "1037";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修選項熱水器改成馬桶"] },
+  { ver: APP_VERSION, items: ["報修照片最多 5 張，可左右滑動查看"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13866,16 +13866,16 @@ function repairMediaButtons(rep) {
     ${videos ? `<button type="button" class="ghost" data-view-media="${rep.id}|video">查看影片${videos > 1 ? "（" + videos + "）" : ""}</button>` : ""}
   </div>`;
 }
-function mediaPreviewHtml(list, delAttr) {
+function mediaPreviewHtml(list, delAttr, extraClass) {
   if (!list || !list.length) return "";
-  return `<div class="media-preview">${list.map((m, i) => `
+  return `<div class="media-preview${extraClass ? " " + extraClass : ""}">${list.map((m, i) => `
     <div class="media-thumb">
       ${m.kind === "video" ? `<video src="${m.src}" muted playsinline></video>` : `<img src="${m.src}" alt="">`}
       <span>${m.kind === "video" ? "影片" : "照片"}</span>
       <button type="button" class="ghost" ${delAttr}="${i}">刪除</button>
     </div>`).join("")}</div>`;
 }
-function pendingPreviewHtml() { return mediaPreviewHtml(ui.repairMedia, "data-del-pending"); }
+function pendingPreviewHtml() { return mediaPreviewHtml(ui.repairMedia, "data-del-pending", "media-swipe"); }
 
 function closeContractViewer() { const el = document.getElementById("contract-box"); if (el) el.remove(); }
 function closeMediaViewer() {
@@ -30742,15 +30742,19 @@ function bindTenant() {
   const mediaIn = document.getElementById("repair-media");
   const addRepairFiles = async (files) => {
     if (!ui.repairMedia) ui.repairMedia = [];
+    let photos = ui.repairMedia.filter(m => m.kind === "image").length;
+    let capped = false;
     for (const file of files) {
       const video = /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name || "");
       if (video) {
         if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
         ui.repairMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
       } else {
-        try { ui.repairMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); } catch {}
+        if (photos >= 5) { capped = true; continue; }
+        try { ui.repairMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); photos++; } catch {}
       }
     }
+    if (capped) toast("照片最多 5 張");
     const box = document.getElementById("media-preview");
     if (box) box.innerHTML = pendingPreviewHtml();
     bindPendingMedia();
