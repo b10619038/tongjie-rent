@@ -2831,10 +2831,16 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .appoint-week { margin-left: 0.35em; }
 .appoint-time { margin-left: 0.45em; }
 .fix-run { position: relative; height: 74px; margin: 2px 2px 4px; overflow: hidden; }
-.fix-car, .fix-van, .fix-truck, .fix-poles {
+.fix-town, .fix-car, .fix-van, .fix-truck, .fix-poles {
   position: absolute; left: 0; right: 0; bottom: 6px;
   background-repeat: repeat-x; background-position: left bottom;
   pointer-events: none;
+}
+.fix-town {
+  height: 62px; z-index: 0; bottom: 8px;
+  background-image: url("images/fix-town.png?v=1077");
+  background-size: 560px 62px;
+  animation: fix-town 28s linear infinite;
 }
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
 .fix-truck {
@@ -2881,6 +2887,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .fix-run.is-in .fix-truck,
 .fix-run.is-in .fix-van,
 .fix-run.is-in .fix-car,
+.fix-run.is-in .fix-town,
 .fix-run.is-in .fix-poles { animation: none; }
 @keyframes fix-bob {
   0%, 100% { transform: translateY(0); }
@@ -2890,6 +2897,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 @keyframes fix-van { to { background-position: -196px bottom; } }
 @keyframes fix-truck { to { background-position: -309px bottom; } }
 @keyframes fix-poles { to { background-position: -420px bottom; } }
+@keyframes fix-town { to { background-position: -560px bottom; } }
 .appoint-face-empty { color: var(--muted); font-weight: 600; }
 .appoint-native {
   position: absolute;
