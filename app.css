@@ -2813,13 +2813,13 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-truck {
   height: 24px; z-index: 1;
-  background-image: url("images/fix-truck.png?v=1055");
+  background-image: url("images/fix-truck.png?v=1056");
   background-size: 309px 24px;
   animation: fix-truck 9s linear infinite;
 }
 .fix-van {
   height: 18px; z-index: 2;
-  background-image: url("images/fix-van.png?v=1055");
+  background-image: url("images/fix-van.png?v=1056");
   background-size: 196px 18px;
   animation: fix-van 5.4s linear infinite;
 }
