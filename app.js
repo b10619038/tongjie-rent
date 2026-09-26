@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-29";
-const APP_EDIT_COUNT = 1491;
+const APP_STAMP = "2026-09-26-11-32";
+const APP_EDIT_COUNT = 1492;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1041";
+const FILE_VER = "1042";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -496,8 +496,9 @@ function isDemoTenant(t) {
 }
 function isDemoRepair(r) {
   if (!r) return false;
-  if (r.demo || r.id === "rep-demo" || r.id === "rep1") return true;
+  if (r.id === "rep-demo" || r.id === "rep1") return true;
   if (r.roomId === "r-demo" || r.roomId === "r-demo-f" || r.roomId === "r-dev-preview" || r.roomNo === "DEMO" || r.roomNo === "0000" || r.roomNo === "F0000") return true;
+  if (r.demo && !/^\d{4}$/.test(String(r.roomNo || ""))) return true;
   if (/開發者/.test(String(r.note || "")) || /開發者/.test(String(r.type || ""))) return true;
   try {
     const room = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === r.roomId);
@@ -512,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7622 平面圖灰色底塊往右縮小三分之一"] },
+  { ver: APP_VERSION, items: ["租客送出報修後，後台會收到通知"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -9431,9 +9432,11 @@ function ingestPaidCloud(raw) {
     if (ping && ping > (ingestPaidCloud.repairPing || 0)) {
       ingestPaidCloud.repairPing = ping;
       stampPing("repairPing", ping);
+      const known = new Set((state.repairs || []).map(r => r && r.id));
       pullCloud().then(() => {
         applyRepairMedia(state);
         if (ui.role === "admin") {
+          announceAdminRepairs((state.repairs || []).filter(r => r && !known.has(r.id)));
           ui.keepScroll = true;
           try { render(); } catch {}
         }
@@ -9523,6 +9526,7 @@ function moneyCloudBlob() {
       eSignTs: Number(t.eSign && t.eSign.ts) || 0
     })),
     repairPing: Number(state.repairPing) || 0,
+    repairNotice: state.repairNotice || null,
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
     eSignPing: state.eSignPing || null
@@ -13689,6 +13693,21 @@ function notifyExtra(title, target) {
     "新訊息": { tag: "tongjie-chat", page: "home", chat: true }
   };
   return map[title] || { tag: "tongjie-" + String(title || "msg"), page: target === "admin" ? "tenants" : "home" };
+}
+function announceAdminRepairs(list) {
+  if (!ui || ui.role !== "admin") return;
+  (list || []).forEach(r => {
+    if (!r || isDemoRepair(r) || r.status === "done") return;
+    const key = "tj-repair-said-" + r.id;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch { return; }
+    const line = `${r.roomNo || ""} ${r.type || "報修"}`.trim();
+    const body = line + (r.note ? "　" + String(r.note).slice(0, 40) : "");
+    try { showOsBanner("新報修", body, "repair-" + r.id); } catch {}
+    toast("新報修　" + line);
+  });
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
@@ -22365,6 +22384,13 @@ function paintApp() {
   persistUi();
   enforceTenantSession();
   maybeAuditBrowse();
+  if (ui.role === "admin") {
+    const fresh = (state.repairs || []).filter(r => {
+      const at = Number(r && r.editedAt) || 0;
+      return at && Date.now() - at < 2 * 60 * 60 * 1000;
+    });
+    announceAdminRepairs(fresh);
+  }
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
@@ -30805,13 +30831,14 @@ function bindTenant() {
       const rec = {
         id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, note,
         photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp,
-        roomNo: room.no || "", demo: !!(isDevPreview() || (room && room.demo)), editedAt: Date.now()
+        roomNo: room.no || "", demo: !!((room && (room.demo || isDemoRoom(room)))), editedAt: Date.now()
       };
       state.repairs.push(rec);
       if (!state.notices) state.notices = [];
       state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
-      state.repairPing = Date.now();
+      state.repairNotice = { at: Date.now(), id: rid, roomNo: room.no || "", name: (me() && me().name) || "", type: ui.repairType || "", note };
+      state.repairPing = state.repairNotice.at;
       persistRepairMedia(state); persistRepairStat(state);
       try { save(true); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
@@ -30819,6 +30846,9 @@ function bindTenant() {
       try { publishPaidCloud(); } catch {}
       try { pushCloud(); } catch {}
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
+      if (isDevPreview() && room && !isDemoRoom(room) && !room.demo) {
+        sendRemoteNotify("admin", "新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, notifyExtra("新報修", "admin"));
+      }
       const noteEl = document.getElementById("repair-note");
       if (noteEl) noteEl.value = "";
       ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = [];
