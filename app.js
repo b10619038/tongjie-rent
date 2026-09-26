@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-18-14";
-const APP_EDIT_COUNT = 1522;
+const APP_STAMP = "2026-09-26-18-18";
+const APP_EDIT_COUNT = 1523;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1072";
+const FILE_VER = "1073";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紅綠燈的黑色調成 80% 透明度"] },
+  { ver: APP_VERSION, items: ["紅燈時紅綠燈會停住，綠燈再繼續走"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24607,7 +24607,14 @@ function bindRepairDelete() {
       render();
     };
   });
-  document.querySelectorAll(".fix-run.is-stop").forEach(holdFixCars);
+  document.querySelectorAll(".fix-run.is-stop").forEach(run => {
+    const btn = run.querySelector("[data-fix-light]");
+    const id = btn && btn.dataset.fixLight;
+    const bx = id && ui.repairLightX ? ui.repairLightX[id] : null;
+    const poles = run.querySelector(".fix-poles");
+    if (poles && bx != null) poles.style.backgroundPosition = bx + "px bottom";
+    holdFixCars(run);
+  });
   ensureFixStopLoop();
   document.querySelectorAll("[data-fix-light]").forEach(btn => {
     btn.onclick = e => {
@@ -24621,18 +24628,37 @@ function bindRepairDelete() {
       if (!hit) return;
       if (!ui.repairStop) ui.repairStop = {};
       const on = !run.classList.contains("is-stop");
-      run.classList.toggle("is-stop", on);
-      ui.repairStop[btn.dataset.fixLight] = on;
-      if (on) {
-        holdFixCars(run);
-        ensureFixStopLoop();
-      } else {
-        ui.repairGoAt = Date.now();
-        run.querySelectorAll(".fix-car,.fix-van,.fix-truck").forEach(el => { el.style.backgroundPosition = ""; });
-      }
+      if (on) freezeFixLight(run, btn.dataset.fixLight);
+      else releaseFixLight(run, btn.dataset.fixLight);
     };
   });
   armRandomFixRed();
+}
+function freezeFixLight(run, id) {
+  const poles = run.querySelector(".fix-poles");
+  const bx = poles ? (parseFloat(getComputedStyle(poles).backgroundPositionX) || 0) : 0;
+  if (!ui.repairStop) ui.repairStop = {};
+  if (!ui.repairLightX) ui.repairLightX = {};
+  if (id) {
+    ui.repairStop[id] = true;
+    ui.repairLightX[id] = bx;
+  }
+  run.classList.add("is-stop");
+  if (poles) poles.style.backgroundPosition = bx + "px bottom";
+  holdFixCars(run);
+  ensureFixStopLoop();
+}
+function releaseFixLight(run, id) {
+  const poles = run.querySelector(".fix-poles");
+  const bx = id && ui.repairLightX ? Number(ui.repairLightX[id]) : 0;
+  if (ui.repairStop && id) ui.repairStop[id] = false;
+  ui.repairGoAt = Date.now();
+  run.classList.remove("is-stop");
+  if (poles) {
+    poles.style.backgroundPosition = "";
+    poles.style.animationDelay = (bx / 420) * 18 + "s";
+  }
+  run.querySelectorAll(".fix-car,.fix-van,.fix-truck").forEach(el => { el.style.backgroundPosition = ""; });
 }
 function armRandomFixRed() {
   if (armRandomFixRed.timer) return;
@@ -24644,11 +24670,7 @@ function armRandomFixRed() {
     if (runs.length && calm > 7000) {
       const run = runs[Math.floor(Math.random() * runs.length)];
       const btn = run.querySelector("[data-fix-light]");
-      run.classList.add("is-stop");
-      if (!ui.repairStop) ui.repairStop = {};
-      if (btn) ui.repairStop[btn.dataset.fixLight] = true;
-      holdFixCars(run);
-      ensureFixStopLoop();
+      freezeFixLight(run, btn && btn.dataset.fixLight);
     }
     if (document.querySelector(".fix-run")) armRandomFixRed();
   }, wait);
