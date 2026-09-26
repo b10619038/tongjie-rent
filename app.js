@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-32";
-const APP_EDIT_COUNT = 1492;
+const APP_STAMP = "2026-09-26-11-34";
+const APP_EDIT_COUNT = 1493;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1042";
+const FILE_VER = "1043";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客送出報修後，後台會收到通知"] },
+  { ver: APP_VERSION, items: ["7622 平面圖灰色底塊往左拉出十分之一"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24003,7 +24003,7 @@ function floorPlanOf(no) {
     "7222": { focus: "0.235,0.255,0.219,0.180", pad: "0.173,0.256,0.282,0.183", above: "2F 7222" },
     "7223": { focus: "0.012,0.255,0.238,0.180", pad: "0.011,0.256,0.243,0.258", above: "2F 7223" },
     "7621": { focus: "0.452,0.006,0.208,0.201", pad: "0.455,0.012,0.206,0.183", above: "2F 7621" },
-    "7622": { focus: "0.235,0.006,0.219,0.201", pad: "0.267,0.012,0.188,0.183", above: "2F 7622" },
+    "7622": { focus: "0.235,0.006,0.219,0.201", pad: "0.248,0.012,0.207,0.183", above: "2F 7622" },
     "7623": { focus: "0.012,0.006,0.238,0.201", pad: "0.011,0.012,0.243,0.258", above: "2F 7623" }
   };
   return plans[n] || null;
