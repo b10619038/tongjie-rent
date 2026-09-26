@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-19-02";
-const APP_EDIT_COUNT = 1532;
+const APP_STAMP = "2026-09-26-20-38";
+const APP_EDIT_COUNT = 1533;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1082";
+const FILE_VER = "1083";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["樹拉寬間距，顏色更淡也更透明"] },
+  { ver: APP_VERSION, items: ["報修進度動畫不會重頭重播"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24630,18 +24630,21 @@ function repairRunPct(rep) {
   if (!start || !end || end <= start) return Date.now() >= end && end ? 1 : 0;
   return Math.max(0, Math.min(1, (Date.now() - start) / (end - start)));
 }
+function fixPhase(ms) {
+  return (-((Date.now() % ms) / 1000)).toFixed(3) + "s";
+}
 function repairRunHtml(rep) {
   if (!rep || !String(rep.vendor || "").trim() || !rep.appointAt) return "";
   const pct = repairRunPct(rep);
   const start = parseStampMs(rep.createdAt);
   const end = parseStampMs(rep.appointAt);
   return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
-    <div class="fix-town"></div>
-    <div class="fix-tree"></div>
-    <div class="fix-truck"></div>
-    <div class="fix-van"></div>
-    <div class="fix-car"></div>
-    <div class="fix-poles"></div>
+    <div class="fix-town" style="animation-delay:${fixPhase(28000)}"></div>
+    <div class="fix-tree" style="animation-delay:${fixPhase(26000)}"></div>
+    <div class="fix-truck" style="animation-delay:${fixPhase(9000)}"></div>
+    <div class="fix-van" style="animation-delay:${fixPhase(5400)}"></div>
+    <div class="fix-car" style="animation-delay:${fixPhase(3200)}"></div>
+    <div class="fix-poles" style="animation-delay:${fixPhase(18000)}"></div>
     <div class="fix-line"><i></i></div>
     <div class="fix-rider" aria-hidden="true">
       <img src="images/fix-rider.png?v=${FILE_VER}" alt="" />
