@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-22";
-const APP_EDIT_COUNT = 1488;
+const APP_STAMP = "2026-09-26-11-24";
+const APP_EDIT_COUNT = 1489;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1038";
+const FILE_VER = "1039";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修一次選多張照片會全部留下，可左右滑"] },
+  { ver: APP_VERSION, items: ["報修影片只能 1 支，且不能超過 60 秒"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14383,6 +14383,24 @@ function readFileDataUrl(file) {
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+function videoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    const done = (n) => { URL.revokeObjectURL(url); resolve(n); };
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      if (v.duration === Infinity) {
+        v.ontimeupdate = () => { v.ontimeupdate = null; v.currentTime = 0; done(v.duration); };
+        v.currentTime = 1e101;
+        return;
+      }
+      done(v.duration);
+    };
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("video")); };
+    v.src = url;
   });
 }
 
@@ -30743,18 +30761,25 @@ function bindTenant() {
   const addRepairFiles = async (files) => {
     if (!ui.repairMedia) ui.repairMedia = [];
     let photos = ui.repairMedia.filter(m => m.kind === "image").length;
-    let capped = false;
+    let hasVideo = ui.repairMedia.some(m => m.kind === "video");
+    let capped = false, extraVideo = false, tooLong = false;
     for (const file of files) {
       const video = /^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name || "");
       if (video) {
-        if (file.size > 8 * 1024 * 1024) { toast("影片請小於 8MB"); continue; }
+        if (hasVideo) { extraVideo = true; continue; }
+        let dur = 0;
+        try { dur = await videoDuration(file); } catch { toast("無法讀取這支影片"); continue; }
+        if (!Number.isFinite(dur) || dur > 60.4) { tooLong = true; continue; }
         ui.repairMedia.push({ kind: "video", src: await readFileDataUrl(file), name: file.name });
+        hasVideo = true;
       } else {
         if (photos >= 5) { capped = true; continue; }
         try { ui.repairMedia.push({ kind: "image", src: await compressImage(file, 1100), name: file.name }); photos++; } catch {}
       }
     }
-    if (capped) toast("照片最多 5 張");
+    if (tooLong) toast("影片不能超過 60 秒");
+    else if (extraVideo) toast("影片只能上傳 1 支");
+    else if (capped) toast("照片最多 5 張");
     const box = document.getElementById("media-preview");
     if (box) box.innerHTML = pendingPreviewHtml();
     bindPendingMedia();
