@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-24";
-const APP_EDIT_COUNT = 1489;
+const APP_STAMP = "2026-09-26-11-28";
+const APP_EDIT_COUNT = 1490;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1039";
+const FILE_VER = "1040";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修影片只能 1 支，且不能超過 60 秒"] },
+  { ver: APP_VERSION, items: ["送出報修後，說明文字不再留在輸入框"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24498,7 +24498,7 @@ function repairView() {
       <div id="repair-form">
         <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}</div>
         <div class="repair-note-box">
-          <textarea id="repair-note" name="repair-note" class="repair-note" rows="5" maxlength="800" autocapitalize="sentences" autocomplete="on" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
+          <textarea id="repair-note" name="repair-note" class="repair-note" rows="5" maxlength="800" autocapitalize="sentences" autocomplete="off" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
         </div>
         <label class="upload">上傳照片/影片<input id="repair-media" type="file" accept="image/*,video/*" multiple hidden /></label>
         <div id="media-preview">${pendingPreviewHtml()}</div>
@@ -30819,7 +30819,11 @@ function bindTenant() {
       try { publishPaidCloud(); } catch {}
       try { pushCloud(); } catch {}
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
-      ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = []; ui.page = "repair-done";
+      const noteEl = document.getElementById("repair-note");
+      if (noteEl) noteEl.value = "";
+      ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = [];
+      if (ui.composeFocus && ui.composeFocus.id === "repair-note") ui.composeFocus = null;
+      ui.page = "repair-done";
       toast(isDevPreview() ? "已提交報修，後台可查看" : "已提交報修");
       render();
     };
