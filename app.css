@@ -2805,6 +2805,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   background-repeat: repeat-x; background-position: left bottom;
   pointer-events: none;
 }
+.fix-bus, .fix-car, .fix-van, .fix-truck { opacity: .9; }
 .fix-bus {
   height: 22px; z-index: 1;
   background-image: url("images/fix-bus.png?v=1054");
