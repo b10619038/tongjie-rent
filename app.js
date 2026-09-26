@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-52";
-const APP_EDIT_COUNT = 1496;
+const APP_STAMP = "2026-09-26-12-02";
+const APP_EDIT_COUNT = 1497;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1046";
+const FILE_VER = "1047";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["預約日期右邊顯示星期幾"] },
+  { ver: APP_VERSION, items: ["報修填了師傅和預約時間後，顯示騎車進度"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24528,6 +24528,65 @@ function bindRepairDelete() {
       setTimeout(() => deleteRepair(btn.dataset.delRepair), 80);
     };
   });
+  tickRepairRuns();
+  if (!tickRepairRuns.timer) tickRepairRuns.timer = setInterval(tickRepairRuns, 30000);
+}
+function parseStampMs(value) {
+  const text = String(value || "").trim();
+  if (!text) return 0;
+  const m12 = text.match(/^(\d{4})-(\d{2})-(\d{2})\s*(上午|下午)\s*(\d{1,2}):(\d{2})/);
+  if (m12) {
+    let h = Number(m12[5]) % 12;
+    if (m12[4] === "下午") h += 12;
+    return new Date(Number(m12[1]), Number(m12[2]) - 1, Number(m12[3]), h, Number(m12[6])).getTime();
+  }
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])).getTime();
+  const t = Date.parse(text);
+  return Number.isFinite(t) ? t : 0;
+}
+function repairRunPct(rep) {
+  if (!rep) return 0;
+  if (rep.status === "done") return 1;
+  const start = parseStampMs(rep.createdAt);
+  const end = parseStampMs(rep.appointAt);
+  if (!start || !end || end <= start) return Date.now() >= end && end ? 1 : 0;
+  return Math.max(0, Math.min(1, (Date.now() - start) / (end - start)));
+}
+function repairRunHtml(rep) {
+  if (!rep || !String(rep.vendor || "").trim() || !rep.appointAt) return "";
+  const pct = repairRunPct(rep);
+  const start = parseStampMs(rep.createdAt);
+  const end = parseStampMs(rep.appointAt);
+  return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
+    <div class="fix-line"><i></i></div>
+    <div class="fix-rider" aria-hidden="true">
+      <svg viewBox="0 0 78 42" width="62" height="34">
+        <circle cx="34" cy="8" r="4.2" fill="#2c3330"/>
+        <path d="M30 13c1.4 2.4 6.6 2.4 8 0" fill="#2c3330"/>
+        <path d="M32 14.5 l1.5 7 -7 2.2 M33.5 17.5 h9.5 l7 8" fill="none" stroke="#2c3330" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 33 h30 l9-10 h12" fill="none" stroke="#3e7a6c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="fix-wheel"><circle cx="24" cy="34" r="5" fill="#fff" stroke="#24302c" stroke-width="2"/><path d="M24 29.4 v9.2 M19.4 34 h9.2" stroke="#24302c" stroke-width="1.2"/></g>
+        <g class="fix-wheel"><circle cx="58" cy="34" r="5" fill="#fff" stroke="#24302c" stroke-width="2"/><path d="M58 29.4 v9.2 M53.4 34 h9.2" stroke="#24302c" stroke-width="1.2"/></g>
+      </svg>
+    </div>
+  </div>`;
+}
+function tickRepairRuns() {
+  document.querySelectorAll(".fix-run").forEach(el => {
+    if (el.dataset.done === "1") {
+      el.style.setProperty("--p", "1");
+      el.classList.add("is-in");
+      return;
+    }
+    const start = Number(el.dataset.start) || 0;
+    const end = Number(el.dataset.end) || 0;
+    let pct = 0;
+    if (start && end > start) pct = Math.max(0, Math.min(1, (Date.now() - start) / (end - start)));
+    else if (end && Date.now() >= end) pct = 1;
+    el.style.setProperty("--p", pct.toFixed(4));
+    el.classList.toggle("is-in", pct >= 0.995);
+  });
 }
 function repairCard(rep, extraClass) {
   return `<div class="card card-body ${extraClass || ""}">
@@ -24536,6 +24595,7 @@ function repairCard(rep, extraClass) {
     <p style="margin-top:8px">${escapeHtml(rep.note)}</p>
     ${appointLabel(rep)}
     ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
+    ${repairRunHtml(rep)}
     ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${escapeHtml(repairCostLabel(rep.cost))}</span></div>` : ""}
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
