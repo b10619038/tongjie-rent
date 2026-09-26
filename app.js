@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-01-31";
-const APP_EDIT_COUNT = 1485;
+const APP_STAMP = "2026-09-26-11-14";
+const APP_EDIT_COUNT = 1486;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1035";
+const FILE_VER = "1036";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -512,7 +512,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台日誌圖示改成文件和鉛筆"] },
+  { ver: APP_VERSION, items: ["報修選項熱水器改成馬桶"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24470,7 +24470,7 @@ function repairView() {
         ${mine.map((rep, i) => repairCard(rep, i === 0 ? "slide-up-card" : "")).join("")}
       </div>`;
   }
-  const types = ["冷氣", "熱水器", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具", "公共設施", "地板"];
+  const types = ["冷氣", "馬桶", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具", "公共設施", "地板"];
   return `<div class="topbar slide-right"><div>
       <div class="eyebrow">REPAIR</div>
       <h1>報修</h1>
@@ -26707,7 +26707,7 @@ function aiAnswer(q) {
     if (!unpaid.length) bits.push("租金這塊目前都齊了，沒有未繳的戶。");
     else bits.push("還沒繳的有 " + unpaid.length + " 戶：\n" + unpaid.map(tenantLine).join("\n"));
   }
-  if (/報修|維修|冷氣|熱水器|電燈/.test(text)) {
+  if (/報修|維修|冷氣|馬桶|熱水器|電燈/.test(text)) {
     if (!open.length) bits.push("報修現在沒有待辦，都處理完了。");
     else {
       bits.push("報修還有 " + wait.length + " 件待處理、" + doing.length + " 件處理中。");
