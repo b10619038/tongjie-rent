@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-12-02";
-const APP_EDIT_COUNT = 1497;
+const APP_STAMP = "2026-09-26-12-09";
+const APP_EDIT_COUNT = 1498;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1047";
+const FILE_VER = "1048";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修填了師傅和預約時間後，顯示騎車進度"] },
+  { ver: APP_VERSION, items: ["報修進度的騎車圖改成深綠色機車"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24561,14 +24561,7 @@ function repairRunHtml(rep) {
   return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
     <div class="fix-line"><i></i></div>
     <div class="fix-rider" aria-hidden="true">
-      <svg viewBox="0 0 78 42" width="62" height="34">
-        <circle cx="34" cy="8" r="4.2" fill="#2c3330"/>
-        <path d="M30 13c1.4 2.4 6.6 2.4 8 0" fill="#2c3330"/>
-        <path d="M32 14.5 l1.5 7 -7 2.2 M33.5 17.5 h9.5 l7 8" fill="none" stroke="#2c3330" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M14 33 h30 l9-10 h12" fill="none" stroke="#3e7a6c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <g class="fix-wheel"><circle cx="24" cy="34" r="5" fill="#fff" stroke="#24302c" stroke-width="2"/><path d="M24 29.4 v9.2 M19.4 34 h9.2" stroke="#24302c" stroke-width="1.2"/></g>
-        <g class="fix-wheel"><circle cx="58" cy="34" r="5" fill="#fff" stroke="#24302c" stroke-width="2"/><path d="M58 29.4 v9.2 M53.4 34 h9.2" stroke="#24302c" stroke-width="1.2"/></g>
-      </svg>
+      <img src="images/fix-rider.png?v=${FILE_VER}" alt="" />
     </div>
   </div>`;
 }
