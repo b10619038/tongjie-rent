@@ -2433,6 +2433,7 @@ input[type="file"] {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scrollbar-width: none;
 }
 .media-preview.media-swipe::-webkit-scrollbar { display: none; }
