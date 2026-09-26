@@ -1,6 +1,6 @@
 .move-pick-plan {
   background-color: #62765b;
-  -webkit-mask: url("images/plan-mark.png?v=1044") center / 20px 20px no-repeat;
-  mask: url("images/plan-mark.png?v=1044") center / 20px 20px no-repeat;
+  -webkit-mask: url("images/plan-mark.png?v=1045") center / 20px 20px no-repeat;
+  mask: url("images/plan-mark.png?v=1045") center / 20px 20px no-repeat;
 }
 .move-pick-plan img { opacity: 0; }

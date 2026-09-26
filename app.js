@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-26-11-36";
-const APP_EDIT_COUNT = 1494;
+const APP_STAMP = "2026-09-26-11-48";
+const APP_EDIT_COUNT = 1495;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1044";
+const FILE_VER = "1045";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["二樓平面圖灰色底塊左邊對齊房間左牆"] },
+  { ver: APP_VERSION, items: ["查看照片可以左右滑，不用只按上一則下一則"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -14247,10 +14247,48 @@ function openMediaViewer(list, index, originEl) {
   document.body.appendChild(wrap);
   document.getElementById("lb-close").onclick = closeMediaViewer;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeMediaViewer(); });
+  let at = index;
+  const showAt = (nextAt) => {
+    if (nextAt < 0 || nextAt >= list.length || nextAt === at) return;
+    at = nextAt;
+    const cur = list[at];
+    wrap.querySelectorAll("video").forEach(v => { try { v.pause(); } catch {} });
+    const old = wrap.querySelector("img,video");
+    const node = document.createElement(cur.kind === "video" ? "video" : "img");
+    node.src = cur.src;
+    node.alt = "";
+    if (cur.kind === "video") { node.controls = true; node.autoplay = true; node.playsInline = true; }
+    if (old) old.replaceWith(node);
+    const label = wrap.querySelector(".lightbox-bar span");
+    if (label) label.textContent = `${cur.title || (cur.kind === "video" ? "影片" : "照片")} ${at + 1} / ${list.length}`;
+    const prevBtn = document.getElementById("lb-prev");
+    const nextBtn = document.getElementById("lb-next");
+    if (prevBtn) prevBtn.disabled = at === 0;
+    if (nextBtn) nextBtn.disabled = at === list.length - 1;
+  };
   const prev = document.getElementById("lb-prev");
   const next = document.getElementById("lb-next");
-  if (prev) prev.onclick = () => { if (index > 0) openMediaViewer(list, index - 1); };
-  if (next) next.onclick = () => { if (index < list.length - 1) openMediaViewer(list, index + 1); };
+  if (prev) prev.onclick = e => { e.stopPropagation(); showAt(at - 1); };
+  if (next) next.onclick = e => { e.stopPropagation(); showAt(at + 1); };
+  if (list.length > 1) {
+    let x0 = 0, y0 = 0, tracking = false;
+    wrap.addEventListener("touchstart", e => {
+      if (e.touches.length !== 1 || e.target.closest("button")) { tracking = false; return; }
+      tracking = true;
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+    }, { passive: true });
+    wrap.addEventListener("touchend", e => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - x0;
+      const dy = t.clientY - y0;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      showAt(dx < 0 ? at + 1 : at - 1);
+    }, { passive: true });
+  }
 }
 function bindMediaViewers() {
   document.querySelectorAll("[data-view-media]").forEach(btn => {
