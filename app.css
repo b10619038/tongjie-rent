@@ -2819,7 +2819,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .fix-poles {
   height: 58px; z-index: 3;
-  background-image: url("images/fix-pole.png?v=1052");
+  background-image: url("images/fix-pole.png?v=1053");
   background-size: 420px 58px;
   animation: fix-poles 18s linear infinite;
 }
