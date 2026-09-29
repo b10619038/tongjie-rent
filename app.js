@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-42";
-const APP_EDIT_COUNT = 1603;
+const APP_STAMP = "2026-09-29-23-48";
+const APP_EDIT_COUNT = 1604;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1154";
+const FILE_VER = "1155";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["資產平面圖改成較小圖檔，打開會比較快"] },
+  { ver: APP_VERSION, items: ["點最左或最右選單會滑開，也會進入那一頁"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25888,6 +25888,7 @@ function revealNextTabs(btn) {
     const left = Math.max(0, Math.min(maxLeft, sc.scrollLeft + step));
     if (left <= sc.scrollLeft + 4) return false;
     sc.scrollTo({ left, behavior: "smooth" });
+    ui.tabScroll = left;
     return true;
   }
   if (btn === visible[0]) {
@@ -25896,6 +25897,7 @@ function revealNextTabs(btn) {
     const left = Math.max(0, sc.scrollLeft - step);
     if (left >= sc.scrollLeft - 4) return false;
     sc.scrollTo({ left, behavior: "smooth" });
+    ui.tabScroll = left;
     return true;
   }
   return false;
@@ -25904,6 +25906,7 @@ function bindTabPage() {
   const sc = document.querySelector(".shell.admin-wide .tabs");
   if (!sc || sc.dataset.pageBound === "1") return;
   sc.dataset.pageBound = "1";
+  if (typeof ui.tabScroll === "number") sc.scrollLeft = ui.tabScroll;
   let x0 = 0, y0 = 0, left0 = 0, lock = "";
   const pageW = () => {
     const tab = sc.querySelector(".tab");
@@ -33468,9 +33471,10 @@ function bindAdmin() {
         e.preventDefault();
         return;
       }
-      if (btn.classList.contains("tab") && revealNextTabs(btn)) {
-        e.preventDefault();
-        return;
+      if (btn.classList.contains("tab")) {
+        const sc = btn.closest(".tabs");
+        const moved = revealNextTabs(btn);
+        if (!moved && sc) ui.tabScroll = sc.scrollLeft;
       }
       const id = btn.dataset.admin;
       if (btn.classList.contains("tab") && splitOn()) {
