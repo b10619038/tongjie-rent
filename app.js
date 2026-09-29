@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-10-28";
-const APP_EDIT_COUNT = 1543;
+const APP_STAMP = "2026-09-29-11-38";
+const APP_EDIT_COUNT = 1544;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1093";
+const FILE_VER = "1094";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約每人分開選年或月，7222只留廖晉億續3個月"] },
+  { ver: APP_VERSION, items: ["7222續約改成廖晉億3個月，年月標在數字右邊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3419,13 +3419,13 @@ function renewPeopleFormHtml(people) {
         <button type="button" class="${on ? "" : "on"}" data-renew-person="${i}" data-renew-on="0">不續約</button>
       </div>
       <div class="renew-span" data-renew-span="${i}" style="${on ? "" : "display:none"}">
-        <span>年</span>
         <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
         <b>${Number(p.years) || 0}</b>
+        <span>年</span>
         <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
-        <span>月</span>
         <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
         <b>${Number(p.months) || 0}</b>
+        <span>月</span>
         <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
       </div>
     </div>`;
@@ -7238,15 +7238,20 @@ function studioOccupantOfNo(data, no) {
   ));
   return { room, tenant: t || null };
 }
-const RENEW_7222_VER = "one-feb-v2";
-function applyRenewal7222(data) {
-  if (!data || !Array.isArray(data.renewals)) return;
-  if (data.renew7222Ver === RENEW_7222_VER) {
-    if (typeof state !== "undefined" && data === state && data.renew7222NeedPush && typeof flushSeededRenewal === "function") flushSeededRenewal();
-    return;
-  }
-  const row = data.renewals.find(x => x && String(x.roomNo) === "7222" && x.status !== "cancelled" && x.status !== "done" && x.status !== "applied");
-  if (!row) return;
+const RENEW_7222_VER = "one-feb-v3";
+function renewal7222Open(data, x) {
+  if (!x || x.status === "cancelled" || x.status === "done" || x.status === "applied") return false;
+  if (String(x.roomNo) === "7222") return true;
+  const name = String(x.name || "");
+  if (name.includes("廖晉億") || name.includes("林呈澔")) return true;
+  const tenant = (data.tenants || []).find(t => t && t.id === x.tenantId);
+  if (tenant && /廖晉億|林呈澔/.test(String(tenant.name || ""))) return true;
+  const room = (data.rooms || []).find(r => r && (r.id === x.roomId || String(r.no) === String(x.roomNo || "")));
+  return !!(room && String(room.no) === "7222");
+}
+function patchRenewal7222(row) {
+  const peopleOk = Array.isArray(row.people) && row.people.some(p => p && p.name === "廖晉億" && p.renew !== false && Number(p.months) === 3 && !Number(p.years));
+  if (row.end === "2027-02-28" && Number(row.waterFee) === 450 && peopleOk && Number(row.years) === 0) return false;
   row.years = 0;
   row.extraMonths = 3;
   row.start = "2026-12-01";
@@ -7259,7 +7264,16 @@ function applyRenewal7222(data) {
     { name: "林呈澔", renew: false, years: 0, months: 0 },
     { name: "廖晉億", renew: true, years: 0, months: 3, start: "2026-12-01", end: "2027-02-28", water: 450 }
   ];
+  return true;
+}
+function applyRenewal7222(data) {
+  if (!data || !Array.isArray(data.renewals)) return;
+  const rows = data.renewals.filter(x => renewal7222Open(data, x));
+  if (!rows.length) return;
+  let changed = false;
+  rows.forEach(row => { if (patchRenewal7222(row)) changed = true; });
   data.renew7222Ver = RENEW_7222_VER;
+  if (!changed) return;
   data.renew7222NeedPush = true;
   if (typeof state !== "undefined" && data === state && typeof flushSeededRenewal === "function") flushSeededRenewal();
 }
@@ -9840,6 +9854,7 @@ function mergeSharedInto(target, other) {
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = unionById(target.renewals, other.renewals);
+  try { applyRenewal7222(target); } catch {}
   if (Number(other.renewPing && other.renewPing.at) > Number(target.renewPing && target.renewPing.at)) {
     target.renewPing = other.renewPing;
   }

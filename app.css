@@ -1124,8 +1124,8 @@ button.pay-pill.hand {
   font-size: 14px;
 }
 .renew-year-picks button.on {
-  background: var(--chip);
-  color: #3f5a3a;
+  background: var(--teal);
+  color: #fff;
   border-color: transparent;
 }
 .renew-extra {
