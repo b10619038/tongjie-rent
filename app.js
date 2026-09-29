@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-01-52";
-const APP_EDIT_COUNT = 1615;
+const APP_STAMP = "2026-09-30-01-54";
+const APP_EDIT_COUNT = 1616;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1166";
+const FILE_VER = "1167";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["App 圖示只移除左上角小圓點，房子不再被擦到"] },
+  { ver: APP_VERSION, items: ["通知已經打開就不再跳出開啟通知"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13836,16 +13836,48 @@ function notifyStatus() {
 function notifySnoozed() {
   try { return sessionStorage.getItem("tj-notify-snooze") === "1"; } catch { return false; }
 }
+function notifyDismissed() {
+  try { return localStorage.getItem("tj-notify-dismissed") === "1"; } catch { return false; }
+}
 function snoozeNotifyGuide() {
+  try { localStorage.setItem("tj-notify-dismissed", "1"); } catch {}
   try { sessionStorage.setItem("tj-notify-snooze", "1"); } catch {}
   ui.notifyGuide = false;
 }
+function notifyPermissionGranted() {
+  if (ui.notifyKnownOn) return true;
+  try {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") return true;
+  } catch {}
+  return false;
+}
 function needsNotifyGuide() {
-  if (!isInstalledApp()) return false;
+  if (notifyPermissionGranted()) return false;
+  if (!ui.notifyChecked) return false;
+  if (!isStandalone()) return false;
+  if (notifyDismissed() && ui.notifyGuide !== true) return false;
   if (ui.notifyGuide === true) return true;
   if (notifySnoozed() && ui.notifyGuide !== true) return false;
-  const st = notifyStatus();
-  return st === "default" || st === "denied" || st === "unsupported";
+  return notifyStatus() === "default";
+}
+async function detectNotifyOn() {
+  if (notifyPermissionGranted()) return true;
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const p = await navigator.permissions.query({ name: "notifications" });
+      if (p && p.state === "granted") return true;
+    }
+  } catch {}
+  try {
+    if (navigator.serviceWorker) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.pushManager) {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) return true;
+      }
+    }
+  } catch {}
+  return false;
 }
 function notifyOsSteps() {
   if (isIOS()) return [
@@ -13887,10 +13919,10 @@ function notifyGuideHtml() {
   </div>`;
 }
 function notifyChipHtml() {
-  if (!isInstalledApp() || needsNotifyGuide()) return "";
+  if (!ui.notifyChecked || notifyPermissionGranted() || notifyDismissed()) return "";
+  if (!isStandalone() || needsNotifyGuide()) return "";
   const st = notifyStatus();
-  if (st === "granted") return "";
-  if (st === "need-install") return "";
+  if (st === "granted" || st === "need-install") return "";
   return `<button type="button" class="notify-chip" id="open-notify-guide">尚未開啟通知，點此設定</button>`;
 }
 function bindNotifyGuide() {
@@ -13904,6 +13936,8 @@ function bindNotifyGuide() {
     const ok = await enablePush(true);
     if (ok) {
       try { sessionStorage.removeItem("tj-notify-snooze"); } catch {}
+      try { localStorage.removeItem("tj-notify-dismissed"); } catch {}
+      ui.notifyKnownOn = true;
       ui.notifyGuide = false;
       toast("通知已開啟");
       showOsBanner("統潔開發", "通知已開啟，之後重要訊息會顯示在螢幕上方", "notify-on");
@@ -36117,9 +36151,21 @@ async function boot() {
     if (ui.role || isInstalledApp()) {
       try { seedOldEventNotifies(); } catch {}
       try { nudgeRenewAsk(); } catch {}
+      Promise.race([
+        detectNotifyOn(),
+        new Promise(resolve => setTimeout(() => resolve(notifyPermissionGranted()), 1800))
+      ]).then(on => {
+        ui.notifyChecked = true;
+        if (on) {
+          ui.notifyKnownOn = true;
+          ui.notifyGuide = false;
+        }
+        if (document.getElementById("notify-mask") || on) render();
+        else if (needsNotifyGuide()) render();
+      }).catch(() => { ui.notifyChecked = true; });
       enablePush().then(() => maybeNudgeNotifies()).catch(() => {});
       armPushAsk();
-    }
+    } else ui.notifyChecked = true;
   } catch (err) {
     try { console.error(err); } catch {}
     try { render(); } catch {}
