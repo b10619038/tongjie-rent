@@ -4228,6 +4228,14 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     padding: 0 !important;
     overflow: visible !important;
   }
+  body.print-term .hand-a4-fit {
+    width: auto;
+    max-width: none;
+    height: auto;
+    aspect-ratio: auto;
+    overflow: visible;
+    margin: 0;
+  }
   body.print-term .term-lease-paper,
   body.print-term .term-handover-paper {
     border: 0;
@@ -4239,6 +4247,10 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     min-height: 260mm;
     page-break-after: always;
     break-after: page;
+    position: static;
+    transform: none;
+    width: auto;
+    height: auto;
   }
   body.print-term .term-handover-paper { page-break-before: always; break-before: page; }
   body.print-term .term-lease-paper h3,
@@ -6081,6 +6093,14 @@ html.embed-pane .home-upd { display: none !important; }
   font-family: inherit;
   letter-spacing: 0;
 }
+.hand-a4-fit {
+  width: min(100%, 794px);
+  margin: 18px auto 0;
+  aspect-ratio: 210 / 297;
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
 .term-handover-paper {
   margin-top: 18px;
   padding: 32px 26px 36px;
@@ -6091,6 +6111,20 @@ html.embed-pane .home-upd { display: none !important; }
   font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", "PMingLiU", serif;
   font-size: 16px;
   line-height: 2;
+}
+.hand-a4-fit .term-handover-paper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 794px;
+  height: 1123px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 54px 48px 48px;
+  border-radius: 0;
+  border: 1px solid #d9d9d9;
+  transform: scale(calc(100cqw / 794px));
+  transform-origin: top left;
 }
 .term-handover-paper h3 {
   text-align: center;
@@ -6117,19 +6151,25 @@ html.embed-pane .home-upd { display: none !important; }
   min-width: 1.4em;
   text-align: center;
 }
+.hand-list li.hand-fee {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+}
+.hand-list li.hand-fee .hand-elec {
+  grid-column: 2;
+  text-align: center;
+  white-space: nowrap;
+}
 .hand-signs {
   display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  margin: 18px 0 22px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 28px 0 18px;
   padding: 0 8px;
 }
 .hand-signs p { margin: 0; }
-.hand-note {
-  min-height: 3.2em;
-  border-bottom: 1px solid #111;
-  margin-bottom: 28px !important;
-}
 
 .errand-ball {
   position: fixed;
