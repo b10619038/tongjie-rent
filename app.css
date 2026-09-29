@@ -3125,26 +3125,29 @@ html.embed-pane .shell.admin-wide .desk-third {
   margin: 0 auto 2px;
 }
 .split-drop {
-  position: absolute;
+  position: fixed;
   z-index: 40;
-  left: 0;
+  left: 12px;
+  right: 12px;
   top: 72px;
   bottom: 120px;
-  width: calc(50% - 18px);
-  border-radius: 24px;
-  background: rgba(160, 160, 160, .38);
-  color: #fff;
-  font-weight: 800;
-  font-size: 16px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  gap: 8px;
   pointer-events: none;
-  transform: translate3d(12px, 0, 0);
-  transition: none;
-  will-change: transform;
+  opacity: 0;
 }
-.split-drop.is-slot { width: calc(33.333% - 16px); }
-.split-drop.is-full { width: calc(100% - 24px); }
+.split-drop.on { opacity: 1; }
+.split-drop i {
+  flex: 1 1 0;
+  border-radius: 24px;
+  background: rgba(160, 160, 160, .16);
+  border: 2px solid transparent;
+}
+.split-drop i.hot {
+  background: rgba(120, 120, 120, .4);
+  border-color: rgba(255, 255, 255, .72);
+}
+.split-drop.is-full { display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 16px; background: rgba(160, 160, 160, .38); border-radius: 24px; }
 .shell.admin-wide.split-dragging .split-frame { pointer-events: none; }
 @media (max-width: 820px) {
   html[data-device="phone"] .split-stage { flex-direction: column; }

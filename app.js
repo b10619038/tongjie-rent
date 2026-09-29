@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-02-40";
-const APP_EDIT_COUNT = 1622;
+const APP_STAMP = "2026-09-30-02-42";
+const APP_EDIT_COUNT = 1623;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1173";
+const FILE_VER = "1174";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版 App 圖示綠色背景改成圓角"] },
+  { ver: APP_VERSION, items: ["已經兩個畫面時，拖第三個選單選位置不再卡頓"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25556,11 +25556,12 @@ function bindSplitDrag() {
     }
   });
   let startX = 0, startY = 0, mode = "", id = "", ghost = null, tab = null, drop = null, shell = null;
-  let side = "", slots = 2, full = false, barTop = 0, raf = 0, px = 0, py = 0;
+  let side = "", slots = 2, full = false, barTop = 0, raf = 0, px = 0, py = 0, vw = 1, armedOn = false;
   const clear = () => {
     mode = "";
     id = "";
     side = "";
+    armedOn = false;
     window.__splitDragging = false;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (ghost) { ghost.remove(); ghost = null; }
@@ -25577,22 +25578,24 @@ function bindSplitDrag() {
     raf = 0;
     if (ghost) ghost.style.transform = "translate3d(" + px + "px," + py + "px,0) translate(-50%,-72%)";
     if (!drop) return;
-    const armed = py < barTop - 12;
-    if (shell) shell.classList.toggle("split-arm", armed);
-    if (!armed || full) {
-      drop.style.opacity = armed && full ? "1" : "0";
-      if (!armed) side = "";
-      if (shell) shell.dataset.splitSide = "";
-      return;
+    const armed = py < barTop - 28;
+    if (armed !== armedOn) {
+      armedOn = armed;
+      drop.classList.toggle("on", armed && !full ? true : armed);
+      if (!armed) {
+        side = "";
+        drop.querySelectorAll("i.hot").forEach(n => n.classList.remove("hot"));
+        if (shell) shell.dataset.splitSide = "";
+      }
     }
-    drop.style.opacity = "1";
-    const w = window.innerWidth || 1;
-    const ratio = px / w;
+    if (!armed || full) return;
+    const ratio = px / vw;
     const next = slots === 3 ? (ratio < 0.34 ? "left" : ratio < 0.67 ? "mid" : "right") : (ratio < 0.5 ? "left" : "right");
     if (next === side) return;
     side = next;
-    const x = next === "left" ? 12 : next === "mid" ? w * 0.333 + 4 : slots === 3 ? w * 0.666 + 2 : w * 0.5 + 6;
-    drop.style.transform = "translate3d(" + x + "px,0,0)";
+    const names = slots === 3 ? ["left", "mid", "right"] : ["left", "right"];
+    const cells = drop.querySelectorAll("i");
+    cells.forEach((el, i) => el.classList.toggle("hot", names[i] === next));
     if (shell) shell.dataset.splitSide = next;
   };
   const queueDrag = () => { if (!raf) raf = requestAnimationFrame(paintDrag); };
@@ -25627,6 +25630,7 @@ function bindSplitDrag() {
       const have = splitOn() ? ui.splitPages.length : 1;
       slots = have >= 2 && splitCap() >= 3 ? 3 : 2;
       full = have >= splitCap();
+      vw = window.innerWidth || 1;
       document.querySelectorAll(".tabs .tab").forEach(t => {
         t.style.transform = "";
         t.classList.remove("dragging");
@@ -25638,10 +25642,15 @@ function bindSplitDrag() {
       ghost.querySelectorAll(".badge-dot, .tab-dot").forEach(n => n.remove());
       document.body.appendChild(ghost);
       drop = document.createElement("div");
-      drop.className = "split-drop" + (slots === 3 && !full ? " is-slot" : "") + (full ? " is-full" : "");
-      drop.style.opacity = "0";
+      drop.className = "split-drop" + (full ? " is-full" : "");
       if (full) drop.textContent = splitCap() === 2 ? "已經兩個畫面" : "已經三個畫面";
-      if (shell) shell.appendChild(drop);
+      else {
+        const n = slots === 3 ? 3 : 2;
+        let html = "";
+        for (let i = 0; i < n; i++) html += "<i></i>";
+        drop.innerHTML = html;
+      }
+      document.body.appendChild(drop);
     }
     if (mode !== "split") return;
     if (e.cancelable) e.preventDefault();
