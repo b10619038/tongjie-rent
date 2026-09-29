@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-19-44";
-const APP_EDIT_COUNT = 1560;
+const APP_STAMP = "2026-09-29-19-48";
+const APP_EDIT_COUNT = 1561;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1110";
+const FILE_VER = "1111";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新通知只留正下方一條，寬度三分之一"] },
+  { ver: APP_VERSION, items: ["拖拉第二、第三個畫面時不再卡頓，預覽跟著手指滑"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22730,6 +22730,7 @@ function paintApp() {
     return;
   }
   if (ui.role === "admin") {
+    if (window.__splitDragging) return;
     const splitKey = Array.isArray(ui.splitPages) && ui.splitPages.length >= 2 ? ui.splitPages.join("|") : "";
     const splitEl = document.querySelector(".split-stage");
     const splitNow = splitEl ? (splitEl.dataset.key || "") : "";
@@ -25164,57 +25165,47 @@ function bindSplitDrag() {
       render();
     }
   });
-  let startX = 0, startY = 0, mode = "", id = "", ghost = null, tab = null;
+  let startX = 0, startY = 0, mode = "", id = "", ghost = null, tab = null, drop = null, shell = null;
+  let side = "", slots = 2, full = false, barTop = 0, raf = 0, px = 0, py = 0;
   const clear = () => {
     mode = "";
     id = "";
+    side = "";
+    window.__splitDragging = false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (ghost) { ghost.remove(); ghost = null; }
+    if (drop) { drop.remove(); drop = null; }
     document.querySelectorAll(".split-drop").forEach(n => n.remove());
-    const shell = document.querySelector(".shell.admin-wide");
-    if (shell) shell.classList.remove("split-arm", "split-dragging");
-    if (shell) delete shell.dataset.splitSide;
+    if (shell) {
+      shell.classList.remove("split-arm", "split-dragging");
+      delete shell.dataset.splitSide;
+    }
+    shell = null;
     tab = null;
   };
-  const ghostAt = (x, y) => {
-    if (!ghost && tab) {
-      ghost = document.createElement("div");
-      ghost.className = "split-ghost";
-      ghost.innerHTML = tab.innerHTML;
-      ghost.querySelectorAll(".badge-dot, .tab-dot").forEach(n => n.remove());
-      document.body.appendChild(ghost);
+  const paintDrag = () => {
+    raf = 0;
+    if (ghost) ghost.style.transform = "translate3d(" + px + "px," + py + "px,0) translate(-50%,-72%)";
+    if (!drop) return;
+    const armed = py < barTop - 12;
+    if (shell) shell.classList.toggle("split-arm", armed);
+    if (!armed || full) {
+      drop.style.opacity = armed && full ? "1" : "0";
+      if (!armed) side = "";
+      if (shell) shell.dataset.splitSide = "";
+      return;
     }
-    if (!ghost) return;
-    ghost.style.left = x + "px";
-    ghost.style.top = y + "px";
+    drop.style.opacity = "1";
+    const w = window.innerWidth || 1;
+    const ratio = px / w;
+    const next = slots === 3 ? (ratio < 0.34 ? "left" : ratio < 0.67 ? "mid" : "right") : (ratio < 0.5 ? "left" : "right");
+    if (next === side) return;
+    side = next;
+    const x = next === "left" ? 12 : next === "mid" ? w * 0.333 + 4 : slots === 3 ? w * 0.666 + 2 : w * 0.5 + 6;
+    drop.style.transform = "translate3d(" + x + "px,0,0)";
+    if (shell) shell.dataset.splitSide = next;
   };
-  const placeDrop = (shell, x, y) => {
-    const tabs = document.querySelector(".shell.admin-wide .tabs");
-    const barTop = tabs ? tabs.getBoundingClientRect().top : window.innerHeight * 0.82;
-    const armed = y < barTop - 12;
-    shell.classList.toggle("split-arm", armed);
-    let drop = document.querySelector(".split-drop");
-    if (!armed) {
-      if (drop) drop.remove();
-      return "";
-    }
-    const have = splitOn() ? ui.splitPages.length : 1;
-    const slots = have >= 2 && splitCap() >= 3 ? 3 : 2;
-    const full = have >= splitCap();
-    const ratio = window.innerWidth ? x / window.innerWidth : 0.5;
-    const side = full ? "" : slots === 3 ? (ratio < 0.34 ? "left" : ratio < 0.67 ? "mid" : "right") : (ratio < 0.5 ? "left" : "right");
-    if (!drop) {
-      drop = document.createElement("div");
-      drop.className = "split-drop";
-      shell.appendChild(drop);
-    }
-    drop.classList.toggle("is-left", side === "left");
-    drop.classList.toggle("is-mid", side === "mid");
-    drop.classList.toggle("is-right", side === "right");
-    drop.classList.toggle("is-slot", slots === 3 && !full);
-    drop.classList.toggle("is-full", full);
-    drop.textContent = full ? (splitCap() === 2 ? "已經兩個畫面" : "已經三個畫面") : "";
-    return side;
-  };
+  const queueDrag = () => { if (!raf) raf = requestAnimationFrame(paintDrag); };
   document.addEventListener("pointerdown", e => {
     if (EMBED_PAGE || ui.role !== "admin") return;
     const hit = e.target && e.target.closest && e.target.closest(".tabs .tab");
@@ -25231,37 +25222,51 @@ function bindSplitDrag() {
     const dy = e.clientY - startY;
     if (!mode) {
       if (Math.hypot(dx, dy) < 14) return;
-      if (dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15) {
-        mode = "split";
-        window.__splitLift = true;
-        const shell = document.querySelector(".shell.admin-wide");
-        if (shell) shell.classList.add("split-dragging");
-        document.querySelectorAll(".tabs .tab").forEach(t => {
-          t.style.transform = "";
-          t.classList.remove("dragging");
-        });
-        document.querySelectorAll(".tabs, .tabs-track").forEach(n => n.classList.remove("sorting"));
-      }
-      else { tab = null; id = ""; return; }
+      if (!(dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15)) { tab = null; id = ""; return; }
+      mode = "split";
+      window.__splitLift = true;
+      window.__splitDragging = true;
+      shell = document.querySelector(".shell.admin-wide");
+      if (shell) shell.classList.add("split-dragging");
+      const tabs = shell && shell.querySelector(".tabs");
+      barTop = tabs ? tabs.getBoundingClientRect().top : window.innerHeight * 0.82;
+      const have = splitOn() ? ui.splitPages.length : 1;
+      slots = have >= 2 && splitCap() >= 3 ? 3 : 2;
+      full = have >= splitCap();
+      document.querySelectorAll(".tabs .tab").forEach(t => {
+        t.style.transform = "";
+        t.classList.remove("dragging");
+      });
+      document.querySelectorAll(".tabs, .tabs-track").forEach(n => n.classList.remove("sorting"));
+      ghost = document.createElement("div");
+      ghost.className = "split-ghost";
+      ghost.innerHTML = tab.innerHTML;
+      ghost.querySelectorAll(".badge-dot, .tab-dot").forEach(n => n.remove());
+      document.body.appendChild(ghost);
+      drop = document.createElement("div");
+      drop.className = "split-drop" + (slots === 3 && !full ? " is-slot" : "") + (full ? " is-full" : "");
+      drop.style.opacity = "0";
+      if (full) drop.textContent = splitCap() === 2 ? "已經兩個畫面" : "已經三個畫面";
+      if (shell) shell.appendChild(drop);
     }
     if (mode !== "split") return;
     if (e.cancelable) e.preventDefault();
-    ghostAt(e.clientX, e.clientY);
-    const shell = document.querySelector(".shell.admin-wide");
-    if (shell) shell.dataset.splitSide = placeDrop(shell, e.clientX, e.clientY);
-  }, { passive: false });
+    px = e.clientX;
+    py = e.clientY;
+    queueDrag();
+  }, { passive: false, capture: true });
   document.addEventListener("pointerup", e => {
     if (mode === "split" && id) {
       window.__splitLift = true;
+      window.__splitDragging = false;
       if (tab) tab.dataset.dragged = "1";
-      const shell = document.querySelector(".shell.admin-wide");
-      const side = shell && shell.dataset.splitSide;
-      if (side === "left" || side === "right" || side === "mid") openSplit(id, side);
+      const picked = shell && shell.dataset.splitSide;
+      if (picked === "left" || picked === "right" || picked === "mid") openSplit(id, picked);
     }
     clear();
     setTimeout(() => { window.__splitLift = false; }, 0);
-  });
-  document.addEventListener("pointercancel", clear);
+  }, true);
+  document.addEventListener("pointercancel", clear, true);
 }
 function adminView() {
   const pages = adminPages();
