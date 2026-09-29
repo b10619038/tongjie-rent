@@ -80,12 +80,41 @@ function payProofReply(p) {
 
 export async function getBinds() {
   const hit = await caches.default.match(BIND_URL);
-  return hit ? hit.json() : { byRoom: {}, byUser: {}, payProofs: {} };
+  if (hit) {
+    try { return await hit.json(); } catch {}
+  }
+  try {
+    const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
+    if (res.ok) {
+      const state = await res.json();
+      if (state && state.lineBinds && state.lineBinds.byRoom) return state.lineBinds;
+    }
+  } catch {}
+  return { byRoom: {}, byUser: {}, payProofs: {} };
 }
 export async function saveBinds(data) {
-  await caches.default.put(BIND_URL, new Response(JSON.stringify(data), {
-    headers: { "Cache-Control": "max-age=31536000" }
+  const body = JSON.stringify(data || {});
+  await caches.default.put(BIND_URL, new Response(body, {
+    headers: { "Cache-Control": "max-age=31536000", "Content-Type": "application/json" }
   }));
+  try {
+    const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
+    if (!res.ok) return;
+    const state = await res.json();
+    if (!state || typeof state !== "object") return;
+    state.lineBinds = {
+      byRoom: (data && data.byRoom) || {},
+      byUser: (data && data.byUser) || {},
+      payProofs: (data && data.payProofs) || {},
+      payUsers: (data && data.payUsers) || {}
+    };
+    state.updatedAt = Date.now();
+    await fetch(STATE_HOOK + "/api/state", {
+      method: "PUT",
+      headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(state)
+    });
+  } catch {}
 }
 
 async function lineToken() {
@@ -118,6 +147,22 @@ function bytesToB64(bytes) {
   }
   return btoa(s);
 }
+async function shrinkAvatar(buf, type) {
+  try {
+    const bmp = await createImageBitmap(new Blob([buf], { type: type || "image/jpeg" }));
+    const size = 128;
+    const canvas = new OffscreenCanvas(size, size);
+    const ctx = canvas.getContext("2d");
+    const side = Math.max(1, Math.min(bmp.width, bmp.height));
+    const sx = Math.max(0, (bmp.width - side) / 2);
+    const sy = Math.max(0, (bmp.height - side) / 2);
+    ctx.drawImage(bmp, sx, sy, side, side, 0, 0, size, size);
+    const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.72 });
+    const out = new Uint8Array(await blob.arrayBuffer());
+    if (out.byteLength > 80 && out.byteLength < 80000) return out;
+  } catch {}
+  return null;
+}
 export async function lineAvatarData(userId) {
   if (!userId) return "";
   const token = await lineToken();
@@ -131,11 +176,15 @@ export async function lineAvatarData(userId) {
   if (!url) return "";
   const img = await fetch(url);
   if (!img.ok) return "";
-  const buf = await img.arrayBuffer();
-  if (!buf || buf.byteLength < 80 || buf.byteLength > 180000) return "";
+  const raw = new Uint8Array(await img.arrayBuffer());
+  if (!raw.byteLength || raw.byteLength < 80) return "";
   const type = String(img.headers.get("content-type") || "image/jpeg").split(";")[0];
   if (!/^image\//.test(type)) return "";
-  return "data:" + type + ";base64," + bytesToB64(new Uint8Array(buf));
+  const small = await shrinkAvatar(raw, type);
+  const bytes = small || (raw.byteLength <= 90000 ? raw : null);
+  if (!bytes) return "";
+  const mime = small ? "image/jpeg" : type;
+  return "data:" + mime + ";base64," + bytesToB64(bytes);
 }
 async function loadFaceCache() {
   const hit = await caches.default.match(FACE_URL);
@@ -294,7 +343,10 @@ export async function handleLineEvents(request) {
       }
       continue;
     }
-    if (bound) continue;
+    if (bound) {
+      if (userId) justBound.push({ room: bound, userId });
+      continue;
+    }
     if (replyToken) await reply(replyToken, HINT);
   }
   if (dirty) await saveBinds(data);

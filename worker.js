@@ -168,13 +168,24 @@ async function sendWebPush(sub, payload, signKey) {
   return res.status;
 }
 
+let KV = null;
 async function getBinds() {
+  if (KV) {
+    try {
+      const raw = await KV.get("line-binds");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+  }
   const hit = await caches.default.match(BIND_URL);
   return hit ? hit.json() : { byRoom: {}, byUser: {} };
 }
 async function saveBinds(data) {
-  await caches.default.put(BIND_URL, new Response(JSON.stringify(data), {
-    headers: { "Cache-Control": "max-age=31536000" }
+  const body = JSON.stringify(data || {});
+  if (KV) {
+    try { await KV.put("line-binds", body); } catch {}
+  }
+  await caches.default.put(BIND_URL, new Response(body, {
+    headers: { "Cache-Control": "max-age=31536000", "Content-Type": "application/json" }
   }));
 }
 async function getState(env) {
@@ -258,6 +269,22 @@ function bytesToB64(bytes) {
   }
   return btoa(s);
 }
+async function shrinkAvatar(buf, type) {
+  try {
+    const bmp = await createImageBitmap(new Blob([buf], { type: type || "image/jpeg" }));
+    const size = 128;
+    const canvas = new OffscreenCanvas(size, size);
+    const ctx = canvas.getContext("2d");
+    const side = Math.max(1, Math.min(bmp.width, bmp.height));
+    const sx = Math.max(0, (bmp.width - side) / 2);
+    const sy = Math.max(0, (bmp.height - side) / 2);
+    ctx.drawImage(bmp, sx, sy, side, side, 0, 0, size, size);
+    const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.72 });
+    const out = new Uint8Array(await blob.arrayBuffer());
+    if (out.byteLength > 80 && out.byteLength < 80000) return out;
+  } catch {}
+  return null;
+}
 async function lineAvatarData(userId) {
   if (!userId) return "";
   const token = await lineToken();
@@ -271,11 +298,15 @@ async function lineAvatarData(userId) {
   if (!url) return "";
   const img = await fetch(url);
   if (!img.ok) return "";
-  const buf = await img.arrayBuffer();
-  if (!buf || buf.byteLength < 80 || buf.byteLength > 180000) return "";
+  const raw = new Uint8Array(await img.arrayBuffer());
+  if (!raw.byteLength || raw.byteLength < 80) return "";
   const type = String(img.headers.get("content-type") || "image/jpeg").split(";")[0];
   if (!/^image\//.test(type)) return "";
-  return "data:" + type + ";base64," + bytesToB64(new Uint8Array(buf));
+  const small = await shrinkAvatar(raw, type);
+  const bytes = small || (raw.byteLength <= 90000 ? raw : null);
+  if (!bytes) return "";
+  const mime = small ? "image/jpeg" : type;
+  return "data:" + mime + ";base64," + bytesToB64(bytes);
 }
 async function saveLineAvatar(env, userId, room) {
   const src = await lineAvatarData(userId);
@@ -309,6 +340,7 @@ function matchSub(sub, target) {
 
 export default {
   async fetch(request, env, ctx) {
+    KV = env && env.DATA || null;
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors("", 204);
 
@@ -605,6 +637,10 @@ export default {
         continue;
       }
       const bound = boundRoomOf(data, userId);
+      if (userId && bound) {
+        const job = saveLineAvatar(env, userId, bound);
+        if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+      }
       const isImg = msg.type === "image" || msg.type === "video" || msg.type === "file";
       const isPayText = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
       const fromText = roomFromPayText(text);
