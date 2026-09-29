@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-22-52";
-const APP_EDIT_COUNT = 1596;
+const APP_STAMP = "2026-09-29-22-58";
+const APP_EDIT_COUNT = 1597;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1146";
+const FILE_VER = "1147";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["登入名單移除不存在的 7652 趙文榮"] },
+  { ver: APP_VERSION, items: ["租客登入圖卡新增在線上"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -10965,13 +10965,14 @@ function tenantAccountHtml() {
   const rows = tenantAccountRows();
   const nIn = rows.filter(x => x.ever).length;
   const nApp = rows.filter(x => x.installed).length;
+  const nOn = rows.filter(x => x.on).length;
   if (!rows.length) return `<div class="small">目前沒有租客</div>`;
-  return `<div class="small" style="margin-bottom:8px">已登入 ${nIn}　未登入 ${rows.length - nIn}　已安裝 ${nApp}　未安裝 ${rows.length - nApp}</div>` + rows.map(x => {
-    const pill = x.on ? "在線中" : (x.ever ? "已登入" : "未登入");
-    const cls = x.on ? " on" : (x.ever ? " been" : "");
+  return `<div class="small" style="margin-bottom:8px">已登入 ${nIn}　未登入 ${rows.length - nIn}　已安裝 ${nApp}　未安裝 ${rows.length - nApp}　在線上 ${nOn}</div>` + rows.map(x => {
+    const pill = x.ever ? "已登入" : "未登入";
+    const cls = x.ever ? " been" : "";
     const when = x.ever && x.at ? tenantAccountStamp(x.at) : "";
     const extra = [when, x.seats ? x.seats + " 台" : ""].filter(Boolean).join(" · ");
-    return `<div class="online-row"><span class="k">${escapeHtml(x.no + "　" + x.name)}</span><span class="row-end">${extra ? `<span class="small">${escapeHtml(extra)}</span>` : ""}<span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}" data-online="${escapeHtml(x.id)}">${pill}</span></span></div>`;
+    return `<div class="online-row"><span class="k">${escapeHtml(x.no + "　" + x.name)}</span><span class="row-end">${extra ? `<span class="small">${escapeHtml(extra)}</span>` : ""}<span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}">${pill}</span><span class="live-pill${x.on ? " on" : ""}" data-online="${escapeHtml(x.id)}">${x.on ? "在線上" : "離線"}</span></span></div>`;
   }).join("");
 }
 function onlineTenantLinesHtml() {
@@ -26061,7 +26062,7 @@ function adminLogs() {
     </div>
     <div class="card card-body">
       <h2 class="dash-h">租客登入</h2>
-      <p class="small">每位租客有沒有登入過帳戶，以及有沒有成功安裝 App。在線中是現在開著，已登入是登入過但目前離線。</p>
+      <p class="small">每位租客有沒有登入過帳戶、有沒有安裝 App，以及現在在不在線上。</p>
       <div class="online-board" id="tenant-accounts">${tenantAccountHtml()}</div>
     </div>
     <div class="card card-body">
