@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-48";
-const APP_EDIT_COUNT = 1604;
+const APP_STAMP = "2026-09-29-23-56";
+const APP_EDIT_COUNT = 1605;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1155";
+const FILE_VER = "1156";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點最左或最右選單會滑開，也會進入那一頁"] },
+  { ver: APP_VERSION, items: ["立即公告和預約時間改到發布公告右邊，打開才看得到"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -28003,20 +28003,23 @@ function adminAnnounce() {
   const open = !!ui.announceOpen || !!(ui.annTitle || ui.annBody);
   return `<div class="admin-grid list">
     <form class="card card-body tenant-slim${open ? " open" : ""}" id="announce-form" autocomplete="off">
-      <button type="button" class="row tenant-slim-head" id="announce-fold">
-        <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">發布公告</span></span>
-        <span class="row-end"><span class="fold-caret"></span></span>
-      </button>
+      <div class="row tenant-slim-head" id="announce-head">
+        <button type="button" id="announce-fold">
+          <span class="who-mini">${staffAvatarHtml("sm", who)}<span class="k">發布公告</span></span>
+        </button>
+        <div class="seg ann-when-mini${ui.annWhen === "later" ? " is-later" : ""}" id="ann-when">
+          <i class="seg-bg"></i>
+          <button type="button" class="${ui.annWhen === "later" ? "" : "on"}" data-ann-when="now">立即公告</button>
+          <button type="button" class="${ui.annWhen === "later" ? "on" : ""}" data-ann-when="later">預約時間</button>
+        </div>
+        <button type="button" class="ann-caret" id="announce-caret" aria-label="展開公告"><span class="fold-caret"></span></button>
+      </div>
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
           <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${escapeHtml(ui.annTitle || "")}" /></label>
           <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容">${escapeHtml(ui.annBody || "")}</textarea></label>
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
-          <div class="seg" id="ann-when">
-            <button type="button" class="${ui.annWhen === "later" ? "" : "on"}" data-ann-when="now">立即公告</button>
-            <button type="button" class="${ui.annWhen === "later" ? "on" : ""}" data-ann-when="later">預約時間</button>
-          </div>
           <label class="field" id="ann-later-field" style="${ui.annWhen === "later" ? "" : "display:none"}"><span>公告時間</span><input id="ann-at" name="publishAt" type="datetime-local" value="${escapeHtml(ui.annAt || "")}" /></label>
           <button class="btn-navy" type="submit">${ui.annWhen === "later" ? "預約公告" : "立即公告"}</button>
         </div>
@@ -33867,7 +33870,7 @@ function bindAdmin() {
   const af = document.getElementById("announce-form");
   if (af) {
     const fold = document.getElementById("announce-fold");
-    if (fold) fold.onclick = e => {
+    const toggleAnn = e => {
       e.preventDefault();
       e.stopPropagation();
       ui.announceOpen = !af.classList.contains("open");
@@ -33877,9 +33880,10 @@ function bindAdmin() {
         if (ui.announceOpen) body.removeAttribute("inert");
         else body.setAttribute("inert", "");
       }
-      const hint = fold.querySelector(".small");
-      if (hint) hint.textContent = ui.announceOpen ? "點擊收起" : "點擊展開";
     };
+    if (fold) fold.onclick = toggleAnn;
+    const caret = document.getElementById("announce-caret");
+    if (caret) caret.onclick = toggleAnn;
     const addAnnFiles = async (files) => {
       if (!ui.announceMedia) ui.announceMedia = [];
       for (const file of files) {
