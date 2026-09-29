@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-19-58";
-const APP_EDIT_COUNT = 1564;
+const APP_STAMP = "2026-09-29-20-02";
+const APP_EDIT_COUNT = 1565;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1114";
+const FILE_VER = "1115";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -97,7 +97,7 @@ const NONGHUI_0909_BOOKS = [
   ["2026-09-01", "in", 7000, "統潔", "牛10　7221 張智傑", "農會", "7221"],
   ["2026-09-01", "in", 7000, "統潔", "牛10　6822 吳孟書黃莉晏", "農會", "6822"],
   ["2026-09-02", "in", 7000, "統潔", "牛10　7021 陳信安", "農會", "7021"],
-  ["2026-09-03", "in", 9000, "統潔", "牛10　7031 朱甫晟", "農會", "7031"],
+  ["2026-09-07", "in", 9000, "統潔", "牛10　7031 朱甫晟　9月租金（9/7匯）", "農會", "7031"],
   ["2026-09-04", "in", 10000, "統潔", "牛10　6823 顏家蓁　現金", "農會", "6823"],
   ["2026-09-04", "in", 14000, "統潔", "牛10　7642 陳智泓　現金", "農會", "7642"],
   ["2026-09-04", "out", 100000, "統潔", "牛10　76號　退押金　現金", "農會", "7611"],
@@ -121,14 +121,17 @@ const NONGHUI_SEP_PAID = {
   "6831": ["2026-09-01", 9000],
   "7021": ["2026-09-02", 7000],
   "7023": ["2026-09-04", 10000],
-  "7031": ["2026-09-03", 9000],
+  "7031": ["2026-09-07", 9000],
   "7032": ["2026-09-05", 12000],
   "7041": ["2026-08-31", 9000],
   "7221": ["2026-09-01", 7000],
   "7222": ["2026-09-01", 7000],
+  "7223": ["2026-08-31", 10000],
   "7241": ["2026-09-09", 8000],
+  "7242": ["2026-08-29", 14000],
   "7611": ["2026-09-05", 42000],
   "7621": ["2026-09-04", 7000],
+  "7622": ["2026-09-10", 7000],
   "7623": ["2026-09-05", 10000],
   "7642": ["2026-09-04", 14000],
   "7651": ["2026-09-05", 5000],
@@ -514,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7041 劉恩彤簽約1人、實際2人同住，水費年固定 3,600"] },
+  { ver: APP_VERSION, items: ["9月匯款日：7223為8/31、7242為8/29、7031為9/7、7622為9/10；7632本月不開發票，10月開28,000（9、10月租金）"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5816,6 +5819,7 @@ function normalize(data) {
   try { apply7232OctPrepaid(data); } catch {}
   repairTrashNotes(data);
   applyNonghuiSepPaid(data);
+  try { applySepRemitBooks(data); } catch {}
   applyXinjie0909(data);
   applyXinjieSepPaid(data);
   applyTongjieFed0909(data);
@@ -6583,6 +6587,21 @@ function repairTrashNotes(data) {
       b.note = "垃圾清運　合吉　牛10 1桶　算桶";
     }
   });
+}
+function applySepRemitBooks(data) {
+  if (!data || data.sepRemitBookVer === "20260929-sep-remit") return;
+  let changed = false;
+  (data.books || []).forEach(b => {
+    if (!b || b.type === "out") return;
+    const blob = String(b.roomNo || "") + " " + String(b.note || "");
+    if (Number(b.amount) === 9000 && /7031/.test(blob) && ymdOf(b.date) === "2026-09-03") {
+      b.date = "2026-09-07";
+      if (!/9\/7/.test(String(b.note || ""))) b.note = String(b.note || "牛10　7031 朱甫晟").replace(/9月租金.*/, "") + "　9月租金（9/7匯）";
+      changed = true;
+    }
+  });
+  data.sepRemitBookVer = "20260929-sep-remit";
+  if (changed) { try { markCloudDirty(); } catch {} }
 }
 function applyNonghuiSepPaid(data) {
   if (!data || payYmNow() !== "2026-09") return;
@@ -10252,6 +10271,7 @@ async function pullCloud() {
       try { apply7232OctPrepaid(state); } catch {}
       repairTrashNotes(state);
       applyNonghuiSepPaid(state);
+      try { applySepRemitBooks(state); } catch {}
       applyXinjie0909(state);
       applyXinjieSepPaid(state);
       applyTongjieFed0909(state);
@@ -10350,6 +10370,7 @@ async function pullCloud() {
     try { apply7232OctPrepaid(state); } catch {}
     repairTrashNotes(state);
     applyNonghuiSepPaid(state);
+    try { applySepRemitBooks(state); } catch {}
     applyXinjie0909(state);
     applyXinjieSepPaid(state);
     applyTongjieFed0909(state);
@@ -14918,6 +14939,26 @@ function invoicePushStudio(rows, no, room, t, info) {
         invoiceDate: octInv ? rocSlash(octInv) : "",
         stub: false,
         remark: "連同9月發票一併交付"
+      }));
+      return;
+    }
+  }
+  if (String(no) === "7632") {
+    const ym = payYmNow();
+    if (ym === "2026-09") return;
+    if (ym === "2026-10") {
+      const base = studioInvoiceRow(no, room, t, info);
+      const octPaid = !!(t && String(t.paidYm || "").slice(0, 7) === "2026-10" && (t.paid || ymdOf(t.remitOn).slice(0, 7) === "2026-10"));
+      const octRemit = octPaid ? (rentPayDateFor(t, room, "2026-10") || ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
+      const octInv = octRemit ? invoiceYmdFromRemit(octRemit, "2026-10") : "";
+      rows.push(Object.assign({}, base, {
+        amount: 28000,
+        remitYmd: octRemit,
+        remitDate: octRemit ? rocSlash(octRemit) : "",
+        invoiceYmd: octInv,
+        invoiceDate: octInv ? rocSlash(octInv) : "",
+        stub: false,
+        remark: "9、10月租金收入"
       }));
       return;
     }
