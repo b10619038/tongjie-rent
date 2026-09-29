@@ -1110,10 +1110,40 @@ button.pay-pill.hand {
   min-width: 148px;
   padding: 8px 28px;
 }
-.renew-years {
-  display: inline-flex;
+.renew-year-picks {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
+.renew-year-picks button {
+  border: 1px solid #e6dfd6;
+  background: #fff;
+  color: #8a9188;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 14px;
+}
+.renew-year-picks button.on {
+  background: var(--chip);
+  color: #3f5a3a;
+  border-color: transparent;
+}
+.renew-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.renew-extra button {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #e6dfd6;
+  background: #fff;
+  color: #3f5a3a;
+  font-size: 18px;
+  line-height: 1;
+}
+.renew-extra b { min-width: 1.2em; text-align: center; }
 .seg.renew-seg {
   width: 156px;
   margin-top: 0;
