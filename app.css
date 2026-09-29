@@ -2651,6 +2651,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   border-radius: 999px;
   box-shadow: 0 12px 30px rgba(0,0,0,.12);
   overflow-anchor: none;
+  touch-action: none;
   transition: transform .16s cubic-bezier(.2,.85,.2,1), max-height .16s cubic-bezier(.2,.85,.2,1), margin .16s cubic-bezier(.2,.85,.2,1), padding .16s cubic-bezier(.2,.85,.2,1), opacity .12s linear;
 }
 .shell.bar-away .nav,
@@ -2679,6 +2680,7 @@ button.avatar-look.is-press { transform: scale(.94); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  touch-action: none;
 }
 .tab.tab-with-ic {
   flex-direction: column;
