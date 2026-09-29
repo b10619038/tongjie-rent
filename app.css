@@ -4505,10 +4505,16 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   display: flex;
   flex-direction: column;
 }
-.lease-fill {
+.lease-pg.lease-spread .lease-fill {
   flex: 1 1 auto;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   min-height: 0;
+}
+.lease-pg.lease-spread .lease-fill > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 .lease-fill > p,
 .lease-fill > .lease-sign-block,
