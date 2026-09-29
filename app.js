@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-02";
-const APP_EDIT_COUNT = 1565;
+const APP_STAMP = "2026-09-29-20-06";
+const APP_EDIT_COUNT = 1566;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1115";
+const FILE_VER = "1116";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9月匯款日：7223為8/31、7242為8/29、7031為9/7、7622為9/10；7632本月不開發票，10月開28,000（9、10月租金）"] },
+  { ver: APP_VERSION, items: ["7241 陳逸仁房租固定現金交給二姑，不匯銀行，只有他是特例"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -2901,8 +2901,13 @@ function renewalMegaReady(t, r, data) {
   const start = renewedLeaseStart(t, r, data);
   return !!(start && todayYmd() >= start);
 }
+function cashAuntRent(t, r) {
+  if (t && t.payCashAunt) return true;
+  return String((r && r.no) || "") === "7241";
+}
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
+  if (cashAuntRent(t, r)) return "現金";
   const saved = t && t.payBank;
   const picked = saved === "兆豐" || saved === "農會" || saved === "聯邦";
   if (t && t.payBankLock && picked) return saved;
@@ -2922,6 +2927,9 @@ function tenantPayBankKey(t, r) {
 function tenantPayAccounts(t, r) {
   const firm = (r && r.company) || "統潔";
   const key = tenantPayBankKey(t, r);
+  if (key === "現金" && cashAuntRent(t, r)) {
+    return { key, primary: { bank: "現金", holder: "二姑", account: "", note: "每月房租固定現金交給二姑，不匯銀行。" }, extra: [] };
+  }
   const primary = companyBankByKey(key, firm) || companyBankByKey("農會", "統潔");
   return { key, primary, extra: [] };
 }
@@ -4188,7 +4196,7 @@ const TENANT_INFO = {
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
   "7231": { name: "林安安", leaseStart: "2026-09-13", leaseEnd: "2027-09-30", deposit: 18000, rent: 9000, payBank: "兆豐", hasAgent: true, agentFee: 9000, payCash: 30000, payMega: 5200, note: "仲介。115/9/8 房間現場簽約。2押1租 27,000＋不足月 9/13–9/30 5,400＋水費年 1,800＋電儲值 1,000＝35,200（現金 30,000＋兆豐 5,200）。仲介費 9,000 現金含稅。仲介代印合約蓋章，租客未登入 App。" },
   "7232": { name: "林紜亦", phone: "0981-248-775", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 28000, payBank: "農會", note: "無仲介；2押1租 42,000；水費年 1,800；電儲值 1,000" },
-  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "農會", note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000。文21；幫忙收聯廣合4桶垃圾桶錢（老司機、莊記、大姑、自己）" },
+  "7241": { name: "陳逸仁", phone: "0972-118-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 16000, payBank: "現金", payCashAunt: true, note: "無仲介；2押1租 24,000；水費年 1,800；電儲值 2,000。房租固定現金交給二姑，不匯農會、不匯兆豐，只有他是特例。文21；幫忙收聯廣合4桶垃圾桶錢（老司機、莊記、大姑、自己）" },
   "7242": { name: "張育慈、周聖傑", phone: "0939-434-303／0908-333-466", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任陳智泓於 114/11/30 換房至 7642" },
   "7251": { name: "呂佳芸", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "實際住在 7251。本人無法申請租屋補助，租約與繳費跟 7651 吳慧青同步；補助掛吳慧青 7651。金流以 7651 入帳，不重複計。" },
   "7611": { name: "波波波奇", phone: "0938-550-265", contactName: "曾郁翔", leaseStart: "2026-09-01", leaseEnd: "2031-12-31", payBank: "農會", shop: "波波奇夏威夷拌飯", note: "店面。合約 115/9/1～120/12/31。7、8月農會已收 50,000；9/1 起月租 42,000，9/5 農會 42,000。9/7 兆豐押金 80,000。聯絡曾郁翔。" },
@@ -5884,6 +5892,7 @@ function normalize(data) {
   try { applyRenewal7632(data); } catch {}
   try { applyRenewal6823(data); } catch {}
   try { applyRenewedPayBanks(data); } catch {}
+  try { apply7241CashAunt(data); } catch {}
   try { applyClearForgottenHearts(data); } catch {}
   try { applyClearRecentHearts(data); } catch {}
   try { applyClearStarPair(data); } catch {}
@@ -6602,6 +6611,25 @@ function applySepRemitBooks(data) {
   });
   data.sepRemitBookVer = "20260929-sep-remit";
   if (changed) { try { markCloudDirty(); } catch {} }
+}
+function apply7241CashAunt(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7241");
+  const t = room && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room.id);
+  if (!t) return;
+  let changed = false;
+  if (!t.payCashAunt) { t.payCashAunt = true; changed = true; }
+  if (t.payBank !== "現金") { t.payBank = "現金"; changed = true; }
+  if (!t.payBankLock) { t.payBankLock = true; changed = true; }
+  const mark = "房租固定現金交給二姑";
+  if (String(t.note || "").indexOf(mark) < 0) {
+    t.note = (t.note ? String(t.note).trim() + "　" : "") + "房租固定現金交給二姑，不匯農會、不匯兆豐，只有他是特例。";
+    changed = true;
+  }
+  if (!changed) return;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
 }
 function applyNonghuiSepPaid(data) {
   if (!data || payYmNow() !== "2026-09") return;
@@ -8549,6 +8577,7 @@ function foldStudioRoommateCards(data) {
     try { markCloudDirty(); } catch {}
   }
   try { apply7041Household(data); } catch {}
+  try { apply7241CashAunt(data); } catch {}
 }
 function apply7041Household(data) {
   if (!data) return;
@@ -10304,6 +10333,7 @@ async function pullCloud() {
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
       try { applyRenewedPayBanks(state); } catch {}
+      try { apply7241CashAunt(state); } catch {}
       try { applyClearForgottenHearts(state); } catch {}
       try { applyClearRecentHearts(state); } catch {}
       try { applyClearStarPair(state); } catch {}
@@ -10398,6 +10428,7 @@ async function pullCloud() {
     try { applyRenewal7632(state); } catch {}
     try { applyRenewal6823(state); } catch {}
     try { applyRenewedPayBanks(state); } catch {}
+    try { apply7241CashAunt(state); } catch {}
     try { applyClearForgottenHearts(state); } catch {}
     try { applyClearRecentHearts(state); } catch {}
     try { applyClearStarPair(state); } catch {}
@@ -11024,6 +11055,7 @@ async function pushCloud() {
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
     try { applyRenewedPayBanks(payload); } catch {}
+    try { apply7241CashAunt(payload); } catch {}
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
@@ -14887,8 +14919,9 @@ function studioInvoiceRow(no, room, t, info) {
   const paid = !!(t && paidThisMonth(t));
   const remitYmd = paid ? (rentPayDateFor(t, room, billYm) || (billYm + "-01")) : "";
   const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
-  const bankKey = onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room);
-  const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey || ""));
+  const aunt = cashAuntRent(t, room) || String(no) === "7241";
+  const bankKey = aunt ? "現金" : (onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room));
+  const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
   const part = leasePartForYm(invT, invRoom || room, billYm);
   const listed = (typeof studioContractRent === "function" ? studioContractRent(invT || t, invRoom || room) : 0) || Number((invRoom || room) && (invRoom || room).rent) || 0;
   const rent = (part && part.kind === "stub" && Number(part.rent) > 0)
@@ -14912,7 +14945,8 @@ function studioInvoiceRow(no, room, t, info) {
     renew: ((renewDecisionOf(no) || renewDecisionOf(invNo) || renewDecisionOf(room && room.no)) === "no" || (t && t.renewChoice === "no"))
       ? "no"
       : invoiceRenewChecked(t, room, item, note, no, invNo),
-    stub: !!(part && part.kind === "stub")
+    stub: !!(part && part.kind === "stub"),
+    remark: aunt ? "房租現金交二姑" : ""
   };
 }
 function invoicePushStudio(rows, no, room, t, info) {
@@ -24174,9 +24208,12 @@ function payView() {
   const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const megaSoon = !!(renew && (renew.status === "done" || renew.status === "applied") && renew.start && !(typeof renewalStartReached === "function" && renewalStartReached(renew)));
   const megaNow = pack.key === "兆豐";
+  const cashAunt = pack.key === "現金" && cashAuntRent(t, r);
   const acctTitle = firstPay
     ? null
-    : megaNow
+    : cashAunt
+      ? "房租現金交給二姑"
+      : megaNow
       ? "請匯兆豐銀行（統潔）"
       : pack.key === "農會"
         ? "請匯統潔　鳳山區農會"
@@ -24223,7 +24260,8 @@ function payView() {
       ${firstPay && split && split.way !== "cash" ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, split.way === "split" ? ("現金 " + money(split.cash) + "，其餘轉兆豐 " + money(split.mega)) : "第一次請匯兆豐銀行（統潔）")}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}` : ""}
-      ${!firstPay ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
+      ${!firstPay && cashAunt ? `<div class="card card-body slide-left" style="margin-top:12px"><div style="font-weight:800">每月房租現金交給二姑</div><div class="small" style="margin-top:6px">不匯農會、不匯兆豐。只有 7241 陳逸仁是這個特例。</div></div>` : ""}
+      ${!firstPay && !cashAunt ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, acctTitle)}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}${megaHint}` : ""}
       ${firstPay && split && split.way === "cash" ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>`}
