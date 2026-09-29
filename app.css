@@ -1143,7 +1143,26 @@ button.pay-pill.hand {
   font-size: 18px;
   line-height: 1;
 }
-.renew-extra b { min-width: 1.2em; text-align: center; }
+#renew-range { white-space: pre-line; }
+.renew-person { margin-top: 10px; }
+.renew-person-name { font-weight: 700; margin-bottom: 6px; }
+.renew-span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.renew-span button {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #e6dfd6;
+  background: #fff;
+  color: #3f5a3a;
+  font-size: 18px;
+  line-height: 1;
+}
+.renew-span b { min-width: 1.2em; text-align: center; }
 .seg.renew-seg {
   width: 156px;
   margin-top: 0;

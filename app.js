@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-10-12";
-const APP_EDIT_COUNT = 1542;
+const APP_STAMP = "2026-09-29-10-28";
+const APP_EDIT_COUNT = 1543;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1092";
+const FILE_VER = "1093";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約可選 1 年又幾個月，7222 續到 2 月底"] },
+  { ver: APP_VERSION, items: ["續約每人分開選年或月，7222只留廖晉億續3個月"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3348,8 +3348,9 @@ function renewAskCardHtml(t, r, opts) {
     return `<div class="handover-note renew-note">
       <div class="label">${signed ? "續約完成" : "續約申請已送出"}</div>
       ${signed ? `<p>現場已簽約。目前合約仍至 ${escapeHtml(rocSlash(t.leaseEnd || cur.oldEnd) || "")}，</p>` : ""}
-      <p>新約 ${renewTermLabel(years, extra)}　${escapeHtml(rocSlash(cur.start) || "")} ➜ ${escapeHtml(rocSlash(cur.end) || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>
-      <p class="small" style="margin-top:8px">${extra ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}，簽約現場只收現金。</p>
+      ${Array.isArray(cur.people) && cur.people.length ? renewPeopleCardHtml(cur) : `<p>新約 ${renewTermLabel(years, extra)}　${escapeHtml(rocSlash(cur.start) || "")} ➜ ${escapeHtml(rocSlash(cur.end) || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>`}
+      ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
+      <p class="small" style="margin-top:8px">${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}，簽約現場只收現金。</p>
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">線上簽署新約</button>` : ""}
@@ -3359,12 +3360,12 @@ function renewAskCardHtml(t, r, opts) {
     </div>`;
   }
   if (!windowOn && !full) return "";
-  const pick = renewTermPick();
-  const years = pick.years;
-  const range = renewLeaseRange(t, years, pick.extra);
+  const people = renewPeopleState(t);
+  ui.renewPeople = people;
+  const plan = renewPeoplePlan(t, people);
   const polite = windowOn
     ? `您好，合約將於 ${rocSlash(t.leaseEnd)} 到期（還有 ${left} 天）。若方便續住，懇請盡早確認並預約簽約日，我們好為您準備新約。`
-    : `現有租客可於到期前 200 天申請續約。新約可選半年或 1 年。`;
+    : `現有租客可於到期前 200 天申請續約。兩人要各自選年、月，可以只選年、只選月，或年加月。`;
   if (!full) {
     return `<div class="handover-note renew-note">
       <div class="label">請問您是否要續約?</div>
@@ -3382,20 +3383,7 @@ function renewAskCardHtml(t, r, opts) {
   const destRent = dest ? (Number(dest.rent) || studioContractRent(t, dest) || 0) : studioContractRent(t, r);
   return `<div class="handover-note renew-note" id="renew-box">
     ${windowOn ? `<div class="label">我要續約</div><p>${escapeHtml(polite)}</p>` : `<div class="label">我要續約</div><p>請預約實際簽約日期。</p>`}
-    <div class="row" style="margin-top:10px"><span class="k">新約年限</span>
-      <div class="renew-year-picks" id="renew-years-picks">
-        <button type="button" class="${ui.renewYears !== "plus" && years === 1 ? "on" : ""}" data-renew-years="1">1 年</button>
-        <button type="button" class="${years === 0.5 ? "on" : ""}" data-renew-years="0.5">半年</button>
-        <button type="button" class="${ui.renewYears === "plus" ? "on" : ""}" data-renew-years="plus">1年又幾月</button>
-      </div>
-    </div>
-    <div class="row" id="renew-extra-row" style="margin-top:8px${ui.renewYears === "plus" ? "" : ";display:none"}"><span class="k">再加幾個月</span>
-      <div class="renew-extra">
-        <button type="button" data-renew-extra="-1" aria-label="減少">－</button>
-        <b id="renew-extra-n">${pick.extra || 3}</b>
-        <button type="button" data-renew-extra="1" aria-label="增加">＋</button>
-      </div>
-    </div>
+    <div class="renew-people" id="renew-people">${renewPeopleFormHtml(people)}</div>
     <div class="row" style="margin-top:8px"><span class="k">續約方式</span>
       <div class="seg renew-seg${mode === "move" ? " is-move" : ""}" id="renew-mode-seg">
         <i class="seg-bg"></i>
@@ -3404,8 +3392,8 @@ function renewAskCardHtml(t, r, opts) {
       </div>
     </div>
     <div id="renew-move-slot">${mode === "move" ? renewMovePickHtml(t, r) : ""}</div>
-    <div class="small" id="renew-range" style="margin:6px 0 8px">新約期間 ${escapeHtml(rocSlash(range.start) || "")} ➜ ${escapeHtml(rocSlash(range.end) || "")}　月租 ${money(destRent)}${dest ? "　換至 " + escapeHtml(displayRoomNo(dest)) : ""}</div>
-    <div class="small" id="renew-water-line" style="margin:0 0 8px">${pick.extra ? "水費" : "年水費"} ${money(renewWaterAmount(t, r, pick.extra))}，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。</div>
+    <div class="small" id="renew-range" style="margin:6px 0 8px">${escapeHtml(plan.text)}</div>
+    <div class="small" id="renew-water-line" style="margin:0 0 8px">${plan.waterText}</div>
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
@@ -3414,21 +3402,83 @@ function renewAskCardHtml(t, r, opts) {
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
   </div>`;
 }
+function renewPeopleCardHtml(item) {
+  return (item.people || []).map(p => {
+    if (!p) return "";
+    if (p.renew === false) return `<p>${escapeHtml(p.name)}　不續約</p>`;
+    return `<p>${escapeHtml(p.name)}　${escapeHtml(renewSpanLabel(p.years, p.months))}　${escapeHtml(rocSlash(p.start || item.start) || "")} ➜ ${escapeHtml(rocSlash(p.end || item.end) || "")}</p>`;
+  }).join("");
+}
+function renewPeopleFormHtml(people) {
+  return (people || []).map((p, i) => {
+    const on = p.renew !== false;
+    return `<div class="renew-person">
+      <div class="renew-person-name">${escapeHtml(p.name)}</div>
+      <div class="renew-year-picks">
+        <button type="button" class="${on ? "on" : ""}" data-renew-person="${i}" data-renew-on="1">續約</button>
+        <button type="button" class="${on ? "" : "on"}" data-renew-person="${i}" data-renew-on="0">不續約</button>
+      </div>
+      <div class="renew-span" data-renew-span="${i}" style="${on ? "" : "display:none"}">
+        <span>年</span>
+        <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
+        <b>${Number(p.years) || 0}</b>
+        <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
+        <span>月</span>
+        <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
+        <b>${Number(p.months) || 0}</b>
+        <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function renewPeoplePlan(t, people) {
+  const start = ymdOf(t && t.leaseEnd) ? addDaysYmd(ymdOf(t.leaseEnd), 1) : todayYmd();
+  const stay = [];
+  const lines = [];
+  let water = 0;
+  let end = "";
+  (people || []).forEach(p => {
+    if (!p) return;
+    if (p.renew === false) {
+      lines.push((p.name || "") + "　不續約");
+      return;
+    }
+    const years = Math.max(0, Math.min(5, Math.round(Number(p.years) || 0)));
+    const months = Math.max(0, Math.min(11, Math.round(Number(p.months) || 0)));
+    if (!years && !months) {
+      lines.push((p.name || "") + "　請選年或月");
+      return;
+    }
+    const personEnd = addTermEnd(start, years, months);
+    const fee = renewPersonWater(years, months);
+    water += fee;
+    stay.push({ name: p.name, renew: true, years, months, start, end: personEnd, water: fee });
+    if (!end || String(personEnd) > String(end)) end = personEnd;
+    lines.push((p.name || "") + "　" + renewSpanLabel(years, months) + "　" + (rocSlash(start) || "") + " ➜ " + (rocSlash(personEnd) || "") + "　水費 " + money(fee));
+  });
+  const longest = stay.slice().sort((a, b) => String(b.end).localeCompare(String(a.end)))[0] || null;
+  return {
+    stay,
+    start,
+    end,
+    years: longest ? longest.years : 0,
+    extra: longest ? longest.months : 0,
+    water,
+    text: lines.join("\n") || "請選擇續約的人",
+    waterText: stay.length
+      ? "水費 " + money(water) + "，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。"
+      : "請至少一位選擇續約，並選年或月。"
+  };
+}
 function paintRenewRange() {
   const el = document.getElementById("renew-range");
   const t = typeof me === "function" ? me() : null;
   const r = typeof myRoom === "function" ? myRoom() : null;
   if (!el || !t || !r) return;
-  const pick = renewTermPick();
-  const range = renewLeaseRange(t, pick.years, pick.extra);
-  const mode = ui.renewMode === "move" ? "move" : "same";
-  const dest = mode === "move" ? renewMoveRoomOf(ui.renewMoveRoomId) : null;
-  const destRent = dest ? (Number(dest.rent) || studioContractRent(t, dest) || 0) : studioContractRent(t, r);
-  el.textContent = "新約期間 " + (rocSlash(range.start) || "") + " ➜ " + (rocSlash(range.end) || "") + "　月租 " + money(destRent) + (dest ? "　換至 " + displayRoomNo(dest) : "");
+  const plan = renewPeoplePlan(t, ui.renewPeople || renewPeopleState(t));
+  el.textContent = plan.text;
   const water = document.getElementById("renew-water-line");
-  if (water) water.textContent = (pick.extra ? "水費 " : "年水費 ") + money(renewWaterAmount(t, r, pick.extra)) + "，簽約現場只收現金（不轉帳）。新約租金改匯兆豐。換房不重收 2 押 1 租，押金差額現場處理。";
-  const n = document.getElementById("renew-extra-n");
-  if (n) n.textContent = String(pick.extra || 3);
+  if (water) water.textContent = plan.waterText;
 }
 function bindRenewPicks() {
   document.querySelectorAll("[data-renew-pick]").forEach(btn => {
@@ -3449,38 +3499,40 @@ function bindRenewForm() {
     const inp = document.getElementById("renew-appoint");
     if (inp) ui.renewAppoint = inp.value;
   };
-  const setYears = kind => {
+  const setPerson = (index, patch) => {
     keepAppoint();
-    if (kind === "plus") {
-      ui.renewYears = "plus";
-      if (!ui.renewExtraMonths) ui.renewExtraMonths = 3;
-    } else {
-      ui.renewYears = kind === 0.5 || kind === "0.5" ? 0.5 : 1;
+    const t = typeof me === "function" ? me() : null;
+    const people = (ui.renewPeople || renewPeopleState(t)).map(p => Object.assign({}, p));
+    const row = people[index];
+    if (!row) return;
+    if (patch.on != null) row.renew = !!patch.on;
+    if (patch.part) {
+      const dir = Number(patch.dir) || 0;
+      const cur = Math.round(Number(row[patch.part]) || 0);
+      const next = cur + dir;
+      row[patch.part] = patch.part === "years" ? Math.max(0, Math.min(5, next)) : Math.max(0, Math.min(11, next));
     }
-    document.querySelectorAll("[data-renew-years]").forEach(b => {
-      const k = b.dataset.renewYears;
-      const on = k === "plus" ? ui.renewYears === "plus" : k === "0.5" ? ui.renewYears === 0.5 : ui.renewYears === 1;
-      b.classList.toggle("on", on);
-    });
-    const extraRow = document.getElementById("renew-extra-row");
-    if (extraRow) extraRow.style.display = ui.renewYears === "plus" ? "" : "none";
+    ui.renewPeople = people;
+    const box = document.getElementById("renew-people");
+    if (box) box.innerHTML = renewPeopleFormHtml(people);
+    bindRenewPeople();
     paintRenewRange();
   };
-  document.querySelectorAll("[data-renew-years]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      setYears(btn.dataset.renewYears === "plus" ? "plus" : btn.dataset.renewYears === "0.5" ? 0.5 : 1);
-    };
-  });
-  document.querySelectorAll("[data-renew-extra]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      const step = Number(btn.dataset.renewExtra) || 0;
-      ui.renewYears = "plus";
-      ui.renewExtraMonths = Math.max(1, Math.min(11, (Number(ui.renewExtraMonths) || 3) + step));
-      paintRenewRange();
-    };
-  });
+  const bindRenewPeople = () => {
+    document.querySelectorAll("[data-renew-person]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        setPerson(Number(btn.dataset.renewPerson), { on: btn.dataset.renewOn === "1" });
+      };
+    });
+    document.querySelectorAll("[data-renew-step]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        setPerson(Number(btn.dataset.renewStep), { part: btn.dataset.part, dir: btn.dataset.dir });
+      };
+    });
+  };
+  bindRenewPeople();
   const modeSeg = document.getElementById("renew-mode-seg");
   const setMode = mode => {
     keepAppoint();
@@ -3535,10 +3587,12 @@ function submitTenantRenewal() {
   const inp = document.getElementById("renew-appoint");
   const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
   if (!at) { toast("請先預約實際簽約日期"); return; }
-  const pick = renewTermPick();
-  const years = pick.years;
-  const range = renewLeaseRange(t, years, pick.extra);
-  const water = renewWaterAmount(t, r, pick.extra);
+  const people = renewPeopleState(t);
+  const plan = renewPeoplePlan(t, people);
+  if (!plan.stay.length) { toast("請至少一位選擇續約，並選年或月"); return; }
+  const years = plan.years;
+  const range = { start: plan.start, end: plan.end };
+  const water = plan.water;
   const wantMove = ui.renewMode === "move";
   let dest = null;
   if (wantMove) {
@@ -3555,7 +3609,12 @@ function submitTenantRenewal() {
     name: t.name || "",
     status: "open",
     years,
-    extraMonths: pick.extra,
+    extraMonths: plan.extra,
+    people: (people || []).map(p => {
+      const hit = plan.stay.find(s => s.name === p.name);
+      return hit || { name: p.name, renew: false, years: 0, months: 0 };
+    }),
+    renewNames: plan.stay.map(p => p.name).join("、"),
     start: range.start,
     end: range.end,
     waterFee: water,
@@ -3584,7 +3643,7 @@ function submitTenantRenewal() {
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("續約申請", `${r.no} ${t.name || ""}${dest ? "　換至 " + dest.no : ""}　${renewTermLabel(years, pick.extra)}　${pick.extra ? "水費" : "年水費"} ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
+  pushPhoneNotify("續約申請", `${r.no} ${plan.stay.map(p => p.name).join("、")}${dest ? "　換至 " + dest.no : ""}　${plan.stay.map(p => p.name + renewSpanLabel(p.years, p.months)).join("、")}　水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
   toast(dest ? "已送出換房續約" : "已送出續約申請");
   ui.keepScroll = true;
   render();
@@ -7179,7 +7238,7 @@ function studioOccupantOfNo(data, no) {
   ));
   return { room, tenant: t || null };
 }
-const RENEW_7222_VER = "feb-end-v1";
+const RENEW_7222_VER = "one-feb-v2";
 function applyRenewal7222(data) {
   if (!data || !Array.isArray(data.renewals)) return;
   if (data.renew7222Ver === RENEW_7222_VER) {
@@ -7188,12 +7247,18 @@ function applyRenewal7222(data) {
   }
   const row = data.renewals.find(x => x && String(x.roomNo) === "7222" && x.status !== "cancelled" && x.status !== "done" && x.status !== "applied");
   if (!row) return;
-  row.years = 1;
+  row.years = 0;
   row.extraMonths = 3;
   row.start = "2026-12-01";
-  row.end = "2028-02-29";
-  row.waterFee = 4500;
+  row.end = "2027-02-28";
+  row.waterFee = 450;
   row.waterCash = true;
+  row.name = "廖晉億";
+  row.renewNames = "廖晉億";
+  row.people = [
+    { name: "林呈澔", renew: false, years: 0, months: 0 },
+    { name: "廖晉億", renew: true, years: 0, months: 3, start: "2026-12-01", end: "2027-02-28", water: 450 }
+  ];
   data.renew7222Ver = RENEW_7222_VER;
   data.renew7222NeedPush = true;
   if (typeof state !== "undefined" && data === state && typeof flushSeededRenewal === "function") flushSeededRenewal();
@@ -16899,6 +16964,11 @@ function applySignedRenewalLease(t, r, item) {
     }
   }
   if (!/已續約/.test(String(t.note || ""))) t.note = (t.note ? String(t.note).trim() + "　" : "") + "已續約";
+  const stay = Array.isArray(item.people) ? item.people.filter(p => p && p.renew !== false && p.name) : [];
+  if (stay.length) {
+    t.name = stay.map(p => p.name).join("、");
+    if (stay.length === 1) t.note = String(t.note || "").replace(/水費年\s*[\d,]+（\d+人）/, "水費年 1,800");
+  } else if (item.renewNames) t.name = item.renewNames;
   t.payBank = NEW_TENANT_PAY_BANK;
   t.edited = true;
   t.editedAt = Date.now();
@@ -16910,7 +16980,7 @@ function applySignedRenewalLease(t, r, item) {
   t.editedAt = Date.now();
   if (r.kind !== "factory") {
     try { applyStudioLeasePack(t, r, item.start); } catch {}
-    if (item.end && Number(item.years) === 0.5) {
+    if (item.end && (Number(item.years) === 0.5 || Number(item.years) === 0 || renewExtraMonthsOf(item) || stay.length)) {
       t.leaseEnd = item.end;
       t.leases = clone.leases;
     }
@@ -16929,28 +16999,67 @@ function applyDueRenewals(data) {
   });
 }
 function renewYearsOf(item) {
-  return Number(item && item.years) === 0.5 ? 0.5 : 1;
+  const n = Number(item && item.years);
+  if (n === 0.5) return 0.5;
+  if (Number.isFinite(n) && n >= 0) return n;
+  return 1;
 }
 function renewExtraMonthsOf(item) {
   const n = Number(item && item.extraMonths) || 0;
   if (n <= 0) return 0;
   return Math.max(1, Math.min(11, Math.round(n)));
 }
+function renewSpanLabel(years, months) {
+  if (Number(years) === 0.5 && !(Number(months) || 0)) return "半年";
+  const y = Math.max(0, Math.round(Number(years) || 0));
+  const m = Math.max(0, Math.round(Number(months) || 0));
+  if (y && m) return y + " 年又 " + m + " 個月";
+  if (y) return y + " 年";
+  if (m) return m + " 個月";
+  return "未選期間";
+}
 function renewTermLabel(years, extra) {
-  const n = Number(extra) || 0;
-  if (n > 0) return "1 年又 " + n + " 個月";
-  return Number(years) === 0.5 ? "半年" : "1 年";
+  return renewSpanLabel(years, extra);
 }
-function renewTermPick() {
-  const extra = Math.max(1, Math.min(11, Number(ui.renewExtraMonths) || 3));
-  if (ui.renewYears === "plus") return { years: 1, extra };
-  if (Number(ui.renewYears) === 0.5) return { years: 0.5, extra: 0 };
-  return { years: 1, extra: 0 };
+function tenantRenewNames(t) {
+  return String((t && t.name) || "").split(/[、,，與和\/]/).map(s => s.trim()).filter(Boolean);
 }
-function renewWaterAmount(t, r, extra) {
-  const n = (typeof studioWaterYearFee === "function" ? studioWaterYearFee(t, r) : 0) || 1800;
+function defaultRenewPeople(t) {
+  const names = tenantRenewNames(t);
+  const list = names.length ? names : [String((t && t.name) || "").trim() || "租客"];
+  return list.map(name => ({ name, renew: true, years: 1, months: 0 }));
+}
+function renewPeopleState(t) {
+  const base = defaultRenewPeople(t);
+  const prev = Array.isArray(ui.renewPeople) ? ui.renewPeople : [];
+  if (prev.length !== base.length || prev.some((p, i) => !p || p.name !== base[i].name)) return base;
+  return prev.map(p => ({
+    name: p.name,
+    renew: p.renew !== false,
+    years: Math.max(0, Math.min(5, Math.round(Number(p.years) || 0))),
+    months: Math.max(0, Math.min(11, Math.round(Number(p.months) || 0)))
+  }));
+}
+function renewPersonWater(years, months) {
+  const total = Math.round((Number(years) || 0) * 12 + (Number(months) || 0));
+  if (total <= 0) return 0;
+  return Math.round(1800 * total / 12);
+}
+function addTermEnd(start, years, months) {
+  const s = ymdOf(start);
+  if (!s) return "";
+  const total = Math.round((Number(years) || 0) * 12 + (Number(months) || 0));
+  if (total <= 0) return "";
+  const y0 = Number(s.slice(0, 4));
+  const m0 = Number(s.slice(5, 7));
+  return ymdFromDate(new Date(y0, m0 - 1 + total, 0));
+}
+function renewWaterAmount(t, r, extra, years) {
+  const y = Number(years);
   const add = Number(extra) || 0;
-  if (add > 0) return Math.round(n * (12 + add) / 12);
+  if ((Number.isFinite(y) && y !== 1 && y !== 0.5) || add > 0 && y === 0) return renewPersonWater(y || 0, add);
+  if (add > 0) return renewPersonWater(y || 1, add) * Math.max(1, tenantRenewNames(t).length || tenantHeadcount(t));
+  const n = (typeof studioWaterYearFee === "function" ? studioWaterYearFee(t, r) : 0) || 1800;
   return n;
 }
 function renewWaterCashFee(t, r, item) {
@@ -16965,20 +17074,25 @@ function renewWaterLine(t, r, item) {
 function renewLeaseRange(t, years, extraMonths) {
   const end = ymdOf(t && t.leaseEnd);
   const start = end ? addDaysYmd(end, 1) : todayYmd();
-  const extra = Math.max(0, Math.min(11, Number(extraMonths) || 0));
-  const y = Number(years) === 0.5 ? 0.5 : 1;
-  if (y === 0.5 && !extra) {
+  const extra = Math.max(0, Math.min(11, Math.round(Number(extraMonths) || 0)));
+  const yNum = Number(years);
+  if (yNum === 0.5 && !extra) {
     const first = String(start).slice(8, 10) === "01" ? start : nextMonthFirstYmd(start);
     return { start, end: monthLastYmd(addMonthsFirstYmd(first, 5)), years: 0.5, extraMonths: 0 };
   }
+  const y = yNum === 0.5 ? 0 : Math.max(0, Math.round(Number.isFinite(yNum) ? yNum : 1));
+  if (String(start).slice(8, 10) === "01" || y === 0) {
+    return { start, end: addTermEnd(start, y, extra), years: y, extraMonths: extra };
+  }
   const pack = studioLeasePack(start, 0);
   let occEnd = pack.occupancyEnd;
-  if (extra > 0 && occEnd) {
-    const y0 = Number(occEnd.slice(0, 4));
-    const m0 = Number(occEnd.slice(5, 7));
-    occEnd = ymdFromDate(new Date(y0, m0 + extra, 0));
+  const more = Math.max(0, (Math.max(y, 1) - 1) * 12) + extra;
+  if (more > 0 && occEnd) {
+    const y0 = Number(String(occEnd).slice(0, 4));
+    const m0 = Number(String(occEnd).slice(5, 7));
+    occEnd = ymdFromDate(new Date(y0, m0 + more, 0));
   }
-  return { start: pack.occupancyStart || start, end: occEnd, years: 1, extraMonths: extra };
+  return { start: pack.occupancyStart || start, end: occEnd, years: y || 1, extraMonths: extra };
 }
 function tenantForRenewPrint(t, r, item) {
   if (!t) return t;
@@ -28931,7 +29045,7 @@ function renewalAdminCardHtml(x) {
     <h2 class="dash-h">${signed ? "續約完成" : (x.wantMove ? "換房續約" : "續約申請")}</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}${x.wantMove && x.moveRoomNo ? " → " + escapeHtml(x.moveRoomNo) : ""}</b>
       ${signed ? `<span class="pay-pill paid">已簽約</span>` : `<button type="button" class="ghost" data-renew-done="${x.id}" style="width:auto">完成簽約</button>`}</div>
-    <div class="small" style="margin-bottom:6px">${renewTermLabel(years, renewExtraMonthsOf(x))}　${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
+    <div class="small" style="margin-bottom:6px">${Array.isArray(x.people) && x.people.length ? x.people.map(p => p && p.renew === false ? escapeHtml(p.name) + "不續約" : escapeHtml((p && p.name) || "") + "　" + renewSpanLabel(p && p.years, p && p.months)).join("　") : renewTermLabel(years, renewExtraMonthsOf(x))}　${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
     ${moveLine}
     ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(rocSlash(oldEnd)) : ""}。新約第一天（${escapeHtml(rocSlash(x.start) || "")}）才換成新年合約。</div>` : ""}
     <div class="appoint-box">
