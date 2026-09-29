@@ -4383,7 +4383,7 @@ body.print-lease .studio-lease-paper { display: block; }
 .lease-preview .lease-pg.cover { min-height: 297mm; }
 .lease-preview .lease-cover-mid h3 { font-size: 42px; padding: 14px 28px; letter-spacing: .28em; }
 .lease-preview .lease-cover-addr { font-size: 28px; }
-.lease-preview .lease-cover-dates { font-size: 26px; }
+.lease-preview .lease-cover-dates { font-size: 20px; }
 .lease-preview .lease-pg h4 { font-size: 20px; }
 .lease-preview .lease-pgno {
   position: absolute;
@@ -4499,7 +4499,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   margin-top: 8px;
 }
 .lease-cover-addr { font-size: 28px; letter-spacing: .04em; }
-.lease-cover-dates { margin-top: auto; text-align: right; padding: 0 12px 8px; font-size: 26px; }
+.lease-cover-dates { margin-top: auto; text-align: right; padding: 0 12px 8px; font-size: 20px; }
 .lease-pg h4 { text-align: center; font-size: 20px; margin: 0 0 8px; letter-spacing: .16em; }
 .lease-pg:not(.cover) {
   display: flex;
