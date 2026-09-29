@@ -3130,8 +3130,11 @@ html.embed-pane .shell.admin-wide .desk-third {
   transition: none;
 }
 @media (max-width: 820px) {
-  .split-stage { flex-direction: column; }
+  html[data-device="phone"] .split-stage { flex-direction: column; }
 }
+html[data-device="fold"] .split-stage,
+html[data-device="tablet"] .split-stage,
+html[data-device="desktop"] .split-stage { flex-direction: row; }
 .admin-grid { display: grid; gap: 12px; padding: 8px 20px 30px; }
 @media (min-width: 860px) {
   .admin-grid.cards { grid-template-columns: repeat(4, 1fr); }

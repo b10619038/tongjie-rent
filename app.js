@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-45";
-const APP_EDIT_COUNT = 1556;
+const APP_STAMP = "2026-09-29-18-48";
+const APP_EDIT_COUNT = 1557;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1106";
+const FILE_VER = "1107";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["分割拖移改為圖示加文字，黑色預覽跟著左右半邊"] },
+  { ver: APP_VERSION, items: ["摺疊機左右分割最多兩個畫面，並分開直板、平板、電腦"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22616,6 +22616,7 @@ function appointBlock(rep) {
 let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
+  markDevice();
   if (EMBED_PAGE) {
     ui.embed = EMBED_PAGE;
     if (ui.role === "admin") ui.page = EMBED_PAGE;
@@ -24998,6 +24999,36 @@ function repairView() {
 function splitOn() {
   return Array.isArray(ui.splitPages) && ui.splitPages.length >= 2;
 }
+function deviceKind() {
+  const w = window.innerWidth || 0;
+  const h = window.innerHeight || 0;
+  const short = Math.min(w, h);
+  const long = Math.max(w, h);
+  const ratio = long / Math.max(1, short);
+  const touch = (navigator.maxTouchPoints || 0) > 0;
+  let fine = false;
+  let spanning = false;
+  try { fine = matchMedia("(hover: hover) and (pointer: fine)").matches; } catch {}
+  try {
+    spanning = matchMedia("(horizontal-viewport-segments: 2), (vertical-viewport-segments: 2)").matches;
+    const segs = window.visualViewport && window.visualViewport.segments;
+    if (segs && segs.length >= 2) spanning = true;
+  } catch {}
+  const ua = navigator.userAgent || "";
+  const foldName = /Fold|Flip|Flex|SM-F\d|Find\s*N|Pixel Fold|Mate\s*X|Mix Fold|Surface Duo/i.test(ua);
+  const square = touch && !fine && short >= 640 && ratio <= 1.28;
+  if (spanning || square || (foldName && short >= 600 && ratio <= 1.45)) return "fold";
+  if ((fine && w >= 1024) || (!touch && w >= 1100)) return "desktop";
+  if (touch && short >= 680) return "tablet";
+  return "phone";
+}
+function splitCap() {
+  const k = deviceKind();
+  return k === "fold" || k === "phone" ? 2 : 3;
+}
+function markDevice() {
+  try { document.documentElement.dataset.device = deviceKind(); } catch {}
+}
 function splitLabel(id) {
   return ({ dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "助手", history: "紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" })[id] || id;
 }
@@ -25022,8 +25053,8 @@ function openSplit(id, side) {
     toast("這個畫面已經開著");
     return;
   }
-  if (pages.length >= 3) {
-    toast("最多三個畫面");
+  if (pages.length >= splitCap()) {
+    toast(splitCap() === 2 ? "最多兩個畫面" : "最多三個畫面");
     return;
   }
   const onLeft = side === "left";
@@ -25066,6 +25097,18 @@ function bindSplitChrome() {
 function bindSplitDrag() {
   if (window.__splitDrag || EMBED_PAGE) return;
   window.__splitDrag = 1;
+  window.addEventListener("resize", () => {
+    const prev = document.documentElement.dataset.device || "";
+    markDevice();
+    const now = document.documentElement.dataset.device || "";
+    if (prev === now || ui.role !== "admin" || !splitOn()) return;
+    if (ui.splitPages.length > splitCap()) {
+      ui.splitPages = ui.splitPages.slice(0, splitCap());
+      ui.splitFocus = 0;
+      ui.page = ui.splitPages[0];
+      render();
+    }
+  });
   let startX = 0, startY = 0, mode = "", id = "", ghost = null, tab = null;
   const clear = () => {
     mode = "";
@@ -25099,7 +25142,7 @@ function bindSplitDrag() {
       if (drop) drop.remove();
       return "";
     }
-    const full = splitOn() && ui.splitPages.length >= 3;
+    const full = splitOn() && ui.splitPages.length >= splitCap();
     const side = x < window.innerWidth / 2 ? "left" : "right";
     if (!drop) {
       drop = document.createElement("div");
@@ -25109,7 +25152,7 @@ function bindSplitDrag() {
     drop.classList.toggle("is-left", !full && side === "left");
     drop.classList.toggle("is-right", !full && side === "right");
     drop.classList.toggle("is-full", full);
-    drop.textContent = full ? "已經三個畫面" : "";
+    drop.textContent = full ? (splitCap() === 2 ? "已經兩個畫面" : "已經三個畫面") : "";
     return full ? "" : side;
   };
   document.addEventListener("pointerdown", e => {
