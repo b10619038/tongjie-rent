@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-19-54";
-const APP_EDIT_COUNT = 1563;
+const APP_STAMP = "2026-09-29-19-58";
+const APP_EDIT_COUNT = 1564;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1113";
+const FILE_VER = "1114";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已續約但新約未到，發票帳戶先留農會，新約第一天才改兆豐"] },
+  { ver: APP_VERSION, items: ["7041 劉恩彤簽約1人、實際2人同住，水費年固定 3,600"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4177,7 +4177,7 @@ const TENANT_INFO = {
   "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
-  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
+  "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", waterYear: 3600, residents: 2, note: "簽約1人（男友當時未簽名），實際2人同住。2押1租 27,000；水費年 3,600；電儲值 2,000；仲介 9,000；發票 RT35173361" },
   "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。發票本月先開 14,000、先不交付，10月連同10月發票一併給。" },
   "7051": { rent: 6000, deposit: 12000, note: "空房。月租 NT$ 6,000。不可申請租屋補助。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
@@ -8410,6 +8410,8 @@ function applyTenantRoster(data) {
       if (info.bankLast5) t.bankLast5 = info.bankLast5;
       if (info.note) t.note = info.note;
       else if (info.shop && !t.note) t.note = "店面：" + info.shop;
+      if (info.waterYear) t.waterYear = Number(info.waterYear);
+      if (info.residents) t.residents = Number(info.residents);
       if (!t.payBankLock) {
         if (info.payBank && !t.payBank) t.payBank = info.payBank;
         else if (!t.payBank) t.payBank = tenantPayBankKey(t, room);
@@ -8511,6 +8513,8 @@ function foldStudioRoommateCards(data) {
     if (info.leaseEnd) keep.leaseEnd = info.leaseEnd;
     if (info.payBank && !keep.payBankLock && !keep.payBank) keep.payBank = info.payBank;
     if (info.note) keep.note = info.note;
+    if (info.waterYear) keep.waterYear = Number(info.waterYear);
+    if (info.residents) keep.residents = Number(info.residents);
     if (info.deposit != null) keep.deposit = info.deposit;
     room.tenantId = keep.id;
     delete room.incomingTenantId;
@@ -8525,6 +8529,27 @@ function foldStudioRoommateCards(data) {
     data.tenants = data.tenants.filter(x => x && drop.indexOf(x.id) < 0);
     try { markCloudDirty(); } catch {}
   }
+  try { apply7041Household(data); } catch {}
+}
+function apply7041Household(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7041");
+  const t = room && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room.id);
+  let changed = false;
+  if (t) {
+    if (Number(t.waterYear) !== 3600) { t.waterYear = 3600; changed = true; }
+    if (Number(t.residents) !== 2) { t.residents = 2; changed = true; }
+  }
+  (data.renewals || []).forEach(row => {
+    if (!row) return;
+    const hit = String(row.roomNo) === "7041" || (t && row.tenantId === t.id) || (room && row.roomId === room.id);
+    if (!hit || Number(row.waterFee) === 3600) return;
+    row.waterFee = 3600;
+    changed = true;
+  });
+  if (!changed) return;
+  if (t) { t.edited = true; t.editedAt = Date.now(); }
+  try { markCloudDirty(); } catch {}
 }
 function ensureStudioTenant(data, no) {
   if (!data) return;
@@ -21408,7 +21433,10 @@ function tenantHeadcount(t) {
   return Math.max(1, parts.length);
 }
 function studioWaterYearFee(t, r) {
-  const note = String((t && t.note) || "") + " " + String((r && TENANT_INFO[r.no] || {}).note || "");
+  const info = r && TENANT_INFO[String(r.no || "")];
+  const fixed = Number(t && t.waterYear) || Number(info && info.waterYear) || 0;
+  if (fixed > 0) return fixed;
+  const note = String((t && t.note) || "") + " " + String((info && info.note) || "");
   const m = note.match(/水費年\s*([\d,]+)/);
   if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
   return tenantHeadcount(t) * 1800;
