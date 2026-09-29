@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-21-58";
-const APP_EDIT_COUNT = 1589;
+const APP_STAMP = "2026-09-29-22-16";
+const APP_EDIT_COUNT = 1590;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1139";
+const FILE_VER = "1140";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約第2頁租賃期間改成同一行"] },
+  { ver: APP_VERSION, items: ["完成簽約後續約圖卡會收起來"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -7846,8 +7846,7 @@ function completeRenewal(item) {
   try { _ledgerCache = null; } catch {}
   save();
   try { pushCloud(); } catch {}
-  if (!ui.renewOpen) ui.renewOpen = {};
-  ui.renewOpen[item.id] = true;
+  if (ui.renewOpen) ui.renewOpen[item.id] = false;
   const until = item.oldEnd || (t && t.leaseEnd) || "";
   toast(item.status === "applied"
     ? ("已完成續約" + (water ? "，年水費 " + money(water) + " 已記入現金" : ""))
@@ -29762,7 +29761,7 @@ function bindNewSheet(wrap) {
       const item = (state.renewals || []).find(x => x && x.id === btn.dataset.renewDone);
       if (!item) { toast("找不到這筆續約"); return; }
       completeRenewal(item);
-      refreshTenantList();
+      closeRenewSheet(item.id, refreshTenantList);
     };
   });
 }
@@ -30614,7 +30613,7 @@ function bindTenantFold() {
         const item = (state.renewals || []).find(x => x && x.id === doneBtn.dataset.renewDone);
         if (!item) { toast("找不到這筆續約"); return; }
         completeRenewal(item);
-        refreshTenantList();
+        closeRenewSheet(item.id, refreshTenantList);
         return;
       }
       const gcalBtn = e.target.closest("[data-gcal-renew]");
@@ -30891,14 +30890,7 @@ function bindTenantListTools() {
       const item = (state.renewals || []).find(x => x.id === btn.dataset.renewDone);
       if (!item) return;
       completeRenewal(item);
-      const box = document.getElementById("tenant-list");
-      if (box) {
-        box.innerHTML = tenantListInnerHtml(ui.tenantKind === "factory" ? "factory" : "studio");
-        bindAdminRoomItems();
-        bindLineSwipe();
-        bindTenantListTools();
-        bindTenantFold();
-      } else render();
+      closeRenewSheet(item.id, refreshTenantList);
     };
   });
   document.querySelectorAll("#tenant-list [data-renew-appoint]").forEach(inp => {
@@ -33528,7 +33520,7 @@ function bindAdmin() {
       const item = (state.renewals || []).find(x => x.id === btn.dataset.renewDone);
       if (!item) return;
       completeRenewal(item);
-      render();
+      closeRenewSheet(item.id, () => render());
     };
   });
   document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
