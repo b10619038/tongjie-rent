@@ -3076,7 +3076,11 @@ html.embed-pane .shell.admin-wide .desk-third {
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0,0,0,.06);
 }
-.split-pane.focus { border-color: var(--teal); }
+.split-pane.focus { border-color: var(--line); }
+.split-pane:focus,
+.split-pane:focus-visible,
+.split-frame:focus,
+.split-frame:focus-visible { outline: none; }
 .split-cap {
   display: flex;
   align-items: center;

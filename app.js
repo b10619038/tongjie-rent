@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-02-42";
-const APP_EDIT_COUNT = 1623;
+const APP_STAMP = "2026-09-30-02-50";
+const APP_EDIT_COUNT = 1624;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1174";
+const FILE_VER = "1175";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已經兩個畫面時，拖第三個選單選位置不再卡頓"] },
+  { ver: APP_VERSION, items: ["分頁點擊不再出現黑框，拖選單可換掉左中右的畫面"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25476,6 +25476,19 @@ function splitStageHtml() {
     </section>`).join("")}
   </div>`;
 }
+function placeSplit(id, side) {
+  const pages = splitOn() ? ui.splitPages.slice() : null;
+  const have = pages ? pages.length : 1;
+  const index = side === "left" ? 0 : side === "mid" ? 1 : (pages ? pages.length - 1 : 1);
+  const canReplace = pages && index < pages.length && (have >= splitCap() || side !== "mid" || have >= 3);
+  if (canReplace) {
+    if (pages[index] === id) return;
+    if (pages.includes(id)) { toast("這個畫面已經開著"); return; }
+    swapSplitPane(index, id);
+    return;
+  }
+  openSplit(id, side);
+}
 function openSplit(id, side) {
   const cur = ui.page === "home" || !ui.page ? "dash" : (ui.page === "solar" ? "dash" : ui.page);
   const base = ["room-edit", "invoice", "tenant-sheet", "howto"].includes(cur) ? ({ "room-edit": "rooms", invoice: "tenants", "tenant-sheet": "tenants", howto: "settings" }[cur] || cur) : cur;
@@ -25628,8 +25641,8 @@ function bindSplitDrag() {
       const tabs = shell && shell.querySelector(".tabs");
       barTop = tabs ? tabs.getBoundingClientRect().top : window.innerHeight * 0.82;
       const have = splitOn() ? ui.splitPages.length : 1;
-      slots = have >= 2 && splitCap() >= 3 ? 3 : 2;
-      full = have >= splitCap();
+      slots = have >= 3 ? 3 : (have >= 2 && splitCap() >= 3 ? 3 : 2);
+      full = false;
       vw = window.innerWidth || 1;
       document.querySelectorAll(".tabs .tab").forEach(t => {
         t.style.transform = "";
@@ -25664,7 +25677,7 @@ function bindSplitDrag() {
       window.__splitDragging = false;
       if (tab) tab.dataset.dragged = "1";
       const picked = shell && shell.dataset.splitSide;
-      if (picked === "left" || picked === "right" || picked === "mid") openSplit(id, picked);
+      if (picked === "left" || picked === "right" || picked === "mid") placeSplit(id, picked);
     }
     clear();
     setTimeout(() => { window.__splitLift = false; }, 0);
