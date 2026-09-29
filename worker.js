@@ -665,14 +665,10 @@ export default {
         } else {
           notePendingImage(data, userId, imgRoom);
           dirty = true;
-          if (replyToken && !bound) {
-            await reply(replyToken, "已收到圖片。若是繳費截圖，請再傳送回報文字（可從 App 點上方按鈕帶入）");
-          }
         }
         continue;
       }
       if (bound) continue;
-      if (replyToken) await reply(replyToken, HINT);
     }
     if (dirty) await saveBinds(data);
     return new Response("OK", { status: 200 });
