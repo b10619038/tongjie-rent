@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-19-50";
-const APP_EDIT_COUNT = 1562;
+const APP_STAMP = "2026-09-29-19-54";
+const APP_EDIT_COUNT = 1563;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1112";
+const FILE_VER = "1113";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["畫面縮小時，更新通知維持原本寬度"] },
+  { ver: APP_VERSION, items: ["已續約但新約未到，發票帳戶先留農會，新約第一天才改兆豐"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -2878,13 +2878,38 @@ function studioRenewedForMega(t, r) {
     x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
   ));
 }
+function renewedLeaseStart(t, r, data) {
+  const list = (data && data.renewals) || (typeof state !== "undefined" && state && state.renewals) || [];
+  const no = r && r.no;
+  const hits = list.filter(x => x && (x.status === "done" || x.status === "applied") && t && (
+    x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === String(no))
+  ));
+  const item = hits[hits.length - 1];
+  const start = ymdOf(item && item.start);
+  if (start) return start;
+  const end = ymdOf(t && t.leaseEnd);
+  if (!end) return "";
+  const d = new Date(end + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function renewalMegaReady(t, r, data) {
+  const start = renewedLeaseStart(t, r, data);
+  return !!(start && todayYmd() >= start);
+}
 function tenantPayBankKey(t, r) {
   if (r && roomIsFactory(r)) return (t && t.payBank) || "聯邦";
   const saved = t && t.payBank;
   const picked = saved === "兆豐" || saved === "農會" || saved === "聯邦";
   if (t && t.payBankLock && picked) return saved;
   if (t && t.incoming) return NEW_TENANT_PAY_BANK;
-  if (studioRenewedForMega(t, r)) return NEW_TENANT_PAY_BANK;
+  if (studioRenewedForMega(t, r)) {
+    if (renewalMegaReady(t, r)) return NEW_TENANT_PAY_BANK;
+    const born = ymdOf(t && t.leaseStart);
+    if (born && born >= NEW_TENANT_SINCE) return NEW_TENANT_PAY_BANK;
+    return "農會";
+  }
   if (picked) return saved;
   const start = ymdOf((t && t.leaseStart) || "");
   if (start && start >= NEW_TENANT_SINCE) return (t && t.payBank) || NEW_TENANT_PAY_BANK;
@@ -16939,7 +16964,20 @@ function applyRenewedPayBanks(data) {
       || (data.renewals || []).some(x => x && (x.status === "done" || x.status === "applied") && (
         x.tenantId === t.id || x.roomId === room.id || String(x.roomNo) === no
       ));
-    if (!signed || t.payBankLock || t.payBank === "兆豐") return;
+    if (!signed || t.payBankLock) return;
+    const ready = renewalMegaReady(t, room, data);
+    const born = ymdOf(t.leaseStart || "");
+    const bornNew = !!(born && born >= NEW_TENANT_SINCE);
+    if (!ready) {
+      if (!bornNew && t.payBank === "兆豐") {
+        t.payBank = "農會";
+        t.edited = true;
+        t.editedAt = Date.now();
+        changed = true;
+      }
+      return;
+    }
+    if (t.payBank === "兆豐") return;
     t.payBank = "兆豐";
     t.edited = true;
     t.editedAt = Date.now();
