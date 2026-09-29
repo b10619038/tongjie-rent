@@ -3027,7 +3027,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 
 @media (min-width: 821px) {
   .shell.admin-wide .desk-third {
-    width: 33.333%;
+    width: 66.666%;
     margin-left: auto;
     margin-right: auto;
   }
