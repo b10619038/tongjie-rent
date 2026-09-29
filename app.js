@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-16";
-const APP_EDIT_COUNT = 1567;
+const APP_STAMP = "2026-09-29-20-18";
+const APP_EDIT_COUNT = 1568;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1117";
+const FILE_VER = "1118";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["交接確認書電費置中、承租人改到下一行、移除備註，手機維持 A4 比例"] },
+  { ver: APP_VERSION, items: ["交接確認書「元整」靠最右邊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -21896,7 +21896,7 @@ function handoverConfirmPaperHtml(t, r, co) {
     <ol class="hand-list">
       ${items.map(x => `<li><span>${x}</span><span class="hand-ck">□</span></li>`).join("")}
       <li><span>鑰匙　<span class="term-fill amt">${escapeHtml(keys)}</span>　把　磁扣　<span class="term-fill amt">${escapeHtml(ic)}</span>　顆</span><span class="hand-ck">□</span></li>
-      <li class="hand-fee"><span>水費：<span class="term-fill amt">${escapeHtml(water)}</span></span><span class="hand-elec">電費：<span class="term-fill amt">${escapeHtml(elec)}</span>　元整</span></li>
+      <li class="hand-fee"><span>水費：<span class="term-fill amt">${escapeHtml(water)}</span></span><span class="hand-elec">電費：<span class="term-fill amt">${escapeHtml(elec)}</span></span><span class="hand-yuan">元整</span></li>
     </ol>
     <div class="hand-signs">
       <p>出租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>

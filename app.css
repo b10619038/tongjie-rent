@@ -6161,6 +6161,11 @@ html.embed-pane .home-upd { display: none !important; }
   text-align: center;
   white-space: nowrap;
 }
+.hand-list li.hand-fee .hand-yuan {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
+}
 .hand-signs {
   display: flex;
   flex-direction: column;
