@@ -3026,6 +3026,15 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .appoint-link { color: var(--teal-mid); font-weight: 700; text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
 
 @media (min-width: 821px) {
+  .shell.dev-look .tenant-scroll {
+    align-self: center;
+    width: 33.333%;
+    max-width: 33.333%;
+  }
+  .shell.dev-look .nav {
+    left: 33.333%;
+    right: 33.333%;
+  }
   .shell.admin-wide .desk-third {
     width: 66.666%;
     margin-left: auto;
