@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-04";
-const APP_EDIT_COUNT = 1598;
+const APP_STAMP = "2026-09-29-23-12";
+const APP_EDIT_COUNT = 1599;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1148";
+const FILE_VER = "1149";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["小視窗點最右邊選單會滑出後面三個"] },
+  { ver: APP_VERSION, items: ["公告可立即發布或預約時間自動公告"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11062,7 +11062,7 @@ async function pushCloud() {
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
       repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]),
-      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media"]),
+      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
       applyPing: state.applyPing || (remote && remote.applyPing) || null,
@@ -23956,6 +23956,22 @@ function saveAnnounceEdit() {
   a.title = title;
   a.body = body;
   a.media = (ui.editAnnounceMedia || []).slice();
+  const atEl = document.getElementById("ann-edit-at");
+  if (atEl) {
+    const v = String(atEl.value || "").trim();
+    const ms = v ? Date.parse(v) : 0;
+    if (v && Number.isFinite(ms) && ms > Date.now()) {
+      a.publishAt = v;
+      a.annSent = false;
+    } else {
+      a.publishAt = "";
+      if (!a.annSent) {
+        a.annSent = true;
+        a.createdAt = nowStamp();
+        try { pushPhoneNotify("管理員公告", title + "\n" + body, "tenants"); } catch {}
+      }
+    }
+  }
   a.updatedAt = nowStamp();
   a.editedAt = Date.now();
   ui.announceEditId = null;
@@ -24070,8 +24086,30 @@ function persistHideAnnounce(id) {
   save();
   try { pushCloud(); } catch {}
 }
+function annPublishMs(a) {
+  if (!a || !a.publishAt) return 0;
+  const t = Date.parse(String(a.publishAt));
+  return Number.isFinite(t) ? t : 0;
+}
+function annIsLive(a) {
+  const t = annPublishMs(a);
+  return !t || t <= Date.now();
+}
+function releaseDueAnnouncements() {
+  if (!state || !Array.isArray(state.announcements)) return;
+  const due = state.announcements.filter(a => a && a.publishAt && !a.annSent && annIsLive(a));
+  if (!due.length) return;
+  due.forEach(a => {
+    a.annSent = true;
+    a.createdAt = formatDateTime12(String(a.publishAt).replace("T", " ")) || nowStamp();
+    try { pushPhoneNotify("管理員公告", (a.title || "") + (a.body ? "\n" + a.body : ""), "tenants"); } catch {}
+  });
+  save();
+  try { pushCloud(); } catch {}
+  try { if (ui.role === "tenant" || ui.page === "announce") render(); } catch {}
+}
 function tenantAnnounceList() {
-  return (state.announcements || []).filter(a => a);
+  return (state.announcements || []).filter(a => a && annIsLive(a));
 }
 function shownAnnouncements() {
   const all = tenantAnnounceList();
@@ -27904,7 +27942,12 @@ function adminAnnounce() {
           <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容">${escapeHtml(ui.annBody || "")}</textarea></label>
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
-          <button class="btn-navy" type="submit">發布公告</button>
+          <div class="seg" id="ann-when">
+            <button type="button" class="${ui.annWhen === "later" ? "" : "on"}" data-ann-when="now">立即公告</button>
+            <button type="button" class="${ui.annWhen === "later" ? "on" : ""}" data-ann-when="later">預約時間</button>
+          </div>
+          <label class="field" id="ann-later-field" style="${ui.annWhen === "later" ? "" : "display:none"}"><span>公告時間</span><input id="ann-at" name="publishAt" type="datetime-local" value="${escapeHtml(ui.annAt || "")}" /></label>
+          <button class="btn-navy" type="submit">${ui.annWhen === "later" ? "預約公告" : "立即公告"}</button>
         </div>
       </div>
     </form>
@@ -27920,6 +27963,7 @@ function adminAnnounce() {
           <form id="ann-edit-form" autocomplete="off">
             <label class="field"><span>標題</span><input id="ann-edit-title" name="title" type="text" value="${escapeHtml(a.title)}" /></label>
             <label class="field"><span>內容</span><textarea id="ann-edit-body" name="body">${escapeHtml(a.body)}</textarea></label>
+            ${a.publishAt && !annIsLive(a) ? `<label class="field"><span>公告時間</span><input id="ann-edit-at" type="datetime-local" value="${escapeHtml(a.publishAt || "")}" /></label><p class="small">還沒發布。改到現在以前會立刻公告。</p>` : ""}
             <label class="upload">上傳照片/影片<input id="ann-edit-media" type="file" accept="image/*,video/*" multiple hidden /></label>
             <div id="ann-edit-preview">${mediaPreviewHtml(ui.editAnnounceMedia || [], "data-del-edit-ann-media")}</div>
             <div class="ann-actions">
@@ -27930,6 +27974,7 @@ function adminAnnounce() {
         </div>`;
       }
       return `<div class="card card-body ann-admin-card">
+        ${a.publishAt && !annIsLive(a) ? `<div class="small" style="margin-bottom:8px">預約公告　${escapeHtml(formatDateTime12(String(a.publishAt).replace("T", " ")))}　到時間自動發布</div>` : ""}
         ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
             <button type="button" class="ghost" data-del-announce="${a.id}">刪除</button></div>`)}
       </div>`;
@@ -33790,23 +33835,50 @@ function bindAdmin() {
         ui.announceOpen = true;
       });
     });
+    document.querySelectorAll("#announce-form [data-ann-when]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        ui.annWhen = btn.dataset.annWhen === "later" ? "later" : "now";
+        ui.announceOpen = true;
+        render();
+      };
+    });
+    const annAt = document.getElementById("ann-at");
+    if (annAt) {
+      annAt.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => annAt.focus(), 0); });
+      annAt.addEventListener("input", () => { ui.annAt = annAt.value; ui.annWhen = "later"; ui.announceOpen = true; });
+    }
     af.onsubmit = e => {
       e.preventDefault();
       const title = formVal(af, "title").trim();
       const body = formVal(af, "body").trim();
       if (!title || !body) { toast("請填寫標題與內容"); return; }
+      const later = ui.annWhen === "later";
+      let publishAt = "";
+      if (later) {
+        publishAt = String((document.getElementById("ann-at") || {}).value || ui.annAt || "").trim();
+        const ms = Date.parse(publishAt);
+        if (!publishAt || !Number.isFinite(ms)) { toast("請選擇公告時間"); return; }
+        if (ms <= Date.now()) { toast("預約時間要在現在之後"); return; }
+      }
       if (!state.announcements) state.announcements = [];
       const media = (ui.announceMedia || []).slice();
-      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "", editedAt: Date.now() });
+      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "", editedAt: Date.now(), publishAt, annSent: !later });
       ui.announceMedia = [];
       ui.announceOpen = false;
       ui.annTitle = "";
       ui.annBody = "";
+      ui.annWhen = "now";
+      ui.annAt = "";
       persistAnnMedia(state);
       save();
       try { pushCloud(); } catch {}
-      pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
-      toast("已發布公告");
+      if (later) toast("已預約，到時間會自動公告");
+      else {
+        pushPhoneNotify("管理員公告", title + "\n" + body, "tenants");
+        toast("已發布公告");
+      }
       render();
     };
   }
@@ -35952,6 +36024,7 @@ async function boot() {
     if (syncTick.busy) return;
     syncTick.busy = true;
     try {
+      try { releaseDueAnnouncements(); } catch {}
       if (rollRentMonthIfNeeded()) {
         ui.keepScroll = true;
         render();
