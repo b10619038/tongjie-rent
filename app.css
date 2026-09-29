@@ -4372,9 +4372,9 @@ body.print-lease .studio-lease-paper { display: block; }
   max-width: none;
   overflow: hidden;
   box-sizing: border-box;
-  padding: 16mm 14mm 18mm;
-  font-size: 15px;
-  line-height: 1.65;
+  padding: 14mm 14mm 16mm;
+  font-size: 17px;
+  line-height: 1.7;
   border: 0;
   margin: 0 auto 10px;
   zoom: min(1, calc(100cqi / 210mm));
@@ -4463,8 +4463,8 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   background: #fff;
   color: #111;
   font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", serif;
-  font-size: 15px;
-  line-height: 1.65;
+  font-size: 17px;
+  line-height: 1.7;
   margin: 0 auto 12px;
 }
 .lease-pg::before {
@@ -4500,7 +4500,22 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-cover-addr { font-size: 18px; letter-spacing: .04em; }
 .lease-cover-dates { margin-top: auto; text-align: right; padding: 0 12px 8px; }
 .lease-pg h4 { text-align: center; font-size: 20px; margin: 0 0 16px; letter-spacing: .2em; }
-.lease-pg p { margin: 0 0 6px; }
+.lease-pg:not(.cover) {
+  display: flex;
+  flex-direction: column;
+}
+.lease-fill {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 0;
+}
+.lease-fill > p,
+.lease-fill > .lease-sign-block,
+.lease-fill > .term-date,
+.lease-fill > .term-hint { margin: 0; }
+.lease-fill .lease-art { margin-top: 0 !important; }
 .lease-pg .indent { padding-left: 1.6em; }
 .lease-art { font-weight: 800; margin-top: 10px !important; }
 .lease-u {
