@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-18";
-const APP_EDIT_COUNT = 1568;
+const APP_STAMP = "2026-09-29-20-22";
+const APP_EDIT_COUNT = 1569;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1118";
+const FILE_VER = "1119";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["交接確認書「元整」靠最右邊"] },
+  { ver: APP_VERSION, items: ["7041 續約年水費改為 3,600，與兩人同住同步"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3476,6 +3476,9 @@ function renewPeopleFormHtml(people) {
 }
 function renewPeoplePlan(t, people) {
   const start = ymdOf(t && t.leaseEnd) ? addDaysYmd(ymdOf(t.leaseEnd), 1) : todayYmd();
+  const room = (typeof state !== "undefined" && state && (state.rooms || []).find(x => x && t && x.id === t.roomId)) || null;
+  const info = room && TENANT_INFO[String(room.no || "")];
+  const fixed = Number(t && t.waterYear) || Number(info && info.waterYear) || 0;
   const stay = [];
   const lines = [];
   let water = 0;
@@ -3493,13 +3496,17 @@ function renewPeoplePlan(t, people) {
       return;
     }
     const personEnd = addTermEnd(start, years, months);
-    const fee = renewPersonWater(years, months);
+    const fee = fixed > 0 ? 0 : renewPersonWater(years, months);
     water += fee;
     stay.push({ name: p.name, renew: true, years, months, start, end: personEnd, water: fee });
     if (!end || String(personEnd) > String(end)) end = personEnd;
-    lines.push((p.name || "") + "　" + renewSpanLabel(years, months) + "　" + (rocSlash(start) || "") + " ➜ " + (rocSlash(personEnd) || "") + "　水費 " + money(fee));
+    lines.push((p.name || "") + "　" + renewSpanLabel(years, months) + "　" + (rocSlash(start) || "") + " ➜ " + (rocSlash(personEnd) || "") + (fixed > 0 ? "" : "　水費 " + money(fee)));
   });
   const longest = stay.slice().sort((a, b) => String(b.end).localeCompare(String(a.end)))[0] || null;
+  if (fixed > 0 && stay.length) {
+    const months = Math.max.apply(null, stay.map(s => Math.round((Number(s.years) || 0) * 12 + (Number(s.months) || 0))));
+    water = Math.round(fixed * (months || 12) / 12);
+  }
   return {
     stay,
     start,
@@ -17240,6 +17247,19 @@ function renewWaterAmount(t, r, extra, years) {
   return n;
 }
 function renewWaterCashFee(t, r, item) {
+  if (!r && t && typeof state !== "undefined" && state) {
+    r = (state.rooms || []).find(x => x && x.id === t.roomId) || r;
+  }
+  const info = r && TENANT_INFO[String(r.no || "")];
+  const fixed = Number(t && t.waterYear) || Number(info && info.waterYear) || 0;
+  if (fixed > 0) {
+    const years = Number(typeof renewYearsOf === "function" ? renewYearsOf(item) : (item && item.years)) || 0;
+    const extra = Number(typeof renewExtraMonthsOf === "function" ? renewExtraMonthsOf(item) : (item && item.extraMonths)) || 0;
+    const months = Math.round(years * 12 + extra) || 12;
+    const fee = Math.round(fixed * months / 12);
+    if (item && Number(item.waterFee) !== fee) item.waterFee = fee;
+    return fee;
+  }
   const fromItem = Number(item && item.waterFee);
   if (fromItem > 0) return fromItem;
   return renewWaterAmount(t, r, renewExtraMonthsOf(item));
