@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-22-58";
-const APP_EDIT_COUNT = 1597;
+const APP_STAMP = "2026-09-29-23-04";
+const APP_EDIT_COUNT = 1598;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1147";
+const FILE_VER = "1148";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客登入圖卡新增在線上"] },
+  { ver: APP_VERSION, items: ["小視窗點最右邊選單會滑出後面三個"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25775,6 +25775,25 @@ function bindTabReorder() {
   bar.addEventListener("pointerup", onEnd);
   bar.addEventListener("pointercancel", onEnd);
 }
+function revealNextTabs(btn) {
+  const sc = btn && btn.closest && btn.closest(".shell.admin-wide .tabs");
+  if (!sc || sc.scrollWidth <= sc.clientWidth + 12) return false;
+  const tabs = [...sc.querySelectorAll(".tab")];
+  const box = sc.getBoundingClientRect();
+  const visible = tabs.filter(t => {
+    const r = t.getBoundingClientRect();
+    const seen = Math.min(r.right, box.right) - Math.max(r.left, box.left);
+    return seen > r.width * 0.72;
+  });
+  if (!visible.length || btn !== visible[visible.length - 1]) return false;
+  const idx = tabs.indexOf(btn);
+  if (idx < 0 || idx >= tabs.length - 1) return false;
+  const step = (btn.offsetWidth || 72) * 3;
+  const left = Math.max(0, Math.min(sc.scrollWidth - sc.clientWidth, sc.scrollLeft + step));
+  if (left <= sc.scrollLeft + 4) return false;
+  sc.scrollTo({ left, behavior: "smooth" });
+  return true;
+}
 function bindTabPage() {
   const sc = document.querySelector(".shell.admin-wide .tabs");
   if (!sc || sc.dataset.pageBound === "1") return;
@@ -33333,6 +33352,10 @@ function bindAdmin() {
     btn.onclick = e => {
       if (btn.classList.contains("tab") && btn.dataset.dragged === "1") {
         delete btn.dataset.dragged;
+        e.preventDefault();
+        return;
+      }
+      if (btn.classList.contains("tab") && revealNextTabs(btn)) {
         e.preventDefault();
         return;
       }
