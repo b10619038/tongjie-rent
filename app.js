@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-26";
-const APP_EDIT_COUNT = 1570;
+const APP_STAMP = "2026-09-29-20-28";
+const APP_EDIT_COUNT = 1571;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1120";
+const FILE_VER = "1121";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約出租人與簽章欄，公司名稱右邊都加上趙正賢"] },
+  { ver: APP_VERSION, items: ["合約房屋部分改寫完整門牌地址，所有合約同步"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5213,9 +5213,7 @@ function contractDoorplate(no) {
   return `高雄市鳳山區文龍東路 ${s.slice(0, 2)} 號${s.charAt(2)}樓之${s.charAt(3)}室`;
 }
 function contractRoomPart(no) {
-  const s = String(no || "").replace(/\D/g, "");
-  if (s.length < 4) return String(no || "");
-  return `${s.slice(0, 2)}號${s.charAt(2)}樓之${s.charAt(3)}室`;
+  return contractDoorplate(no);
 }
 const NEARBY_AREAS = {
   wenlong: {
@@ -22000,7 +21998,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>3、${ck(false)}有${ck(true)}無設定他項權利，若有，權利種類：最高限額抵押權。</p>
       <p>4、${ck(false)}有${ck(true)}無查封登記。</p>
       <p>（二）租賃範圍：</p>
-      <p>1、房屋${ck(false)}全部${ck(true)}部分：${u(part)}</p>
+      <p>1、房屋${ck(false)}全部${ck(true)}部分：${u(part, "wide")}</p>
       <p class="indent">（1）車位種類及編號：地下　　層${ck(false)}平面式停車位${ck(false)}機械式停車位，編號第　　號。</p>
       <p class="indent">（2）機車停車位：一樓空間對號停車。</p>
       <p class="indent">（3）使用時間：${ck(true)}全日${ck(false)}日間${ck(false)}夜間${ck(false)}其他。</p>
