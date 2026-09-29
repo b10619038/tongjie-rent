@@ -3120,13 +3120,18 @@ html.embed-pane .shell.admin-wide .desk-third {
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: left .16s ease, right .16s ease, width .16s ease, transform .16s ease;
+  left: 12px;
+  width: calc(50% - 18px);
+  transition: left .18s ease, width .18s ease;
 }
-.split-drop.is-left { left: 12px; right: auto; transform: none; }
-.split-drop.is-right { right: 12px; left: auto; transform: none; }
-.split-drop.is-mid { left: 50%; right: auto; transform: translateX(-50%); }
+.split-drop.is-left { left: 12px; }
+.split-drop.is-right { left: calc(50% + 6px); }
+.split-drop.is-mid { left: calc(33.333% + 6px); }
 .split-drop.is-slot { width: calc(33.333% - 16px); }
-.split-drop.is-full { left: 12px; right: 12px; width: auto; transform: none; }
+.split-drop.is-slot.is-mid { left: calc(33.333% + 4px); }
+.split-drop.is-slot.is-right { left: calc(66.666% + 2px); }
+.split-drop.is-full { left: 12px; right: 12px; width: auto; }
+.shell.admin-wide.split-dragging .split-frame { pointer-events: none; }
 .shell.admin-wide.split-arm .admin-scroll,
 .shell.admin-wide.split-arm .split-stage {
   transition: none;

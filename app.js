@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-19-36";
-const APP_EDIT_COUNT = 1558;
+const APP_STAMP = "2026-09-29-19-42";
+const APP_EDIT_COUNT = 1559;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1108";
+const FILE_VER = "1109";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩個畫面時可再拖到左、中、右，預覽改灰色"] },
+  { ver: APP_VERSION, items: ["分畫面只刷新被替換的那一側，第三格預覽不再卡住"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25032,6 +25032,44 @@ function markDevice() {
 function splitLabel(id) {
   return ({ dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "助手", history: "紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" })[id] || id;
 }
+function splitPaneNode(id, i, focus) {
+  const node = document.createElement("section");
+  node.className = "split-pane" + (focus ? " focus" : "");
+  node.dataset.splitPane = String(i);
+  node.innerHTML = `<div class="split-cap"><b>${splitLabel(id)}</b><button type="button" class="split-x" data-split-close="${i}" aria-label="關閉">✕</button></div>
+    <iframe class="split-frame" src="index.html?embed=${encodeURIComponent(id)}&v=${FILE_VER}" title="${splitLabel(id)}"></iframe>`;
+  return node;
+}
+function retitleSplit() {
+  const stage = document.querySelector(".split-stage");
+  if (!stage || !ui.splitPages) return;
+  stage.dataset.key = ui.splitPages.join("|");
+  stage.querySelectorAll(".split-pane").forEach((pane, i) => {
+    pane.dataset.splitPane = String(i);
+    pane.classList.toggle("focus", i === (ui.splitFocus || 0));
+    const btn = pane.querySelector("[data-split-close]");
+    if (btn) btn.dataset.splitClose = String(i);
+  });
+  bindSplitChrome();
+}
+function swapSplitPane(index, id) {
+  const panes = [...document.querySelectorAll(".split-stage .split-pane")];
+  const pane = panes[index];
+  if (!pane) { render(); return; }
+  const pages = ui.splitPages.slice();
+  pages[index] = id;
+  ui.splitPages = pages;
+  ui.splitFocus = index;
+  ui.page = pages[0];
+  const cap = pane.querySelector(".split-cap b");
+  if (cap) cap.textContent = splitLabel(id);
+  const frame = pane.querySelector(".split-frame");
+  if (frame) {
+    frame.title = splitLabel(id);
+    frame.src = "index.html?embed=" + encodeURIComponent(id) + "&v=" + FILE_VER;
+  }
+  retitleSplit();
+}
 function splitStageHtml() {
   const pages = ui.splitPages || [];
   return `<div class="split-stage" data-key="${pages.join("|")}">
@@ -25065,6 +25103,15 @@ function openSplit(id, side) {
   ui.splitPages = pages;
   ui.splitFocus = onLeft ? 0 : onMid ? Math.min(1, pages.length - 1) : pages.length - 1;
   ui.page = pages[0];
+  const stage = document.querySelector(".split-stage");
+  if (stage) {
+    const panes = [...stage.querySelectorAll(".split-pane")];
+    const node = splitPaneNode(id, ui.splitFocus, true);
+    if (panes[ui.splitFocus]) stage.insertBefore(node, panes[ui.splitFocus]);
+    else stage.appendChild(node);
+    retitleSplit();
+    return;
+  }
   render();
 }
 function closeSplitPane(i) {
@@ -25118,7 +25165,7 @@ function bindSplitDrag() {
     if (ghost) { ghost.remove(); ghost = null; }
     document.querySelectorAll(".split-drop").forEach(n => n.remove());
     const shell = document.querySelector(".shell.admin-wide");
-    if (shell) shell.classList.remove("split-arm");
+    if (shell) shell.classList.remove("split-arm", "split-dragging");
     if (shell) delete shell.dataset.splitSide;
     tab = null;
   };
@@ -25181,6 +25228,8 @@ function bindSplitDrag() {
       if (dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15) {
         mode = "split";
         window.__splitLift = true;
+        const shell = document.querySelector(".shell.admin-wide");
+        if (shell) shell.classList.add("split-dragging");
         document.querySelectorAll(".tabs .tab").forEach(t => {
           t.style.transform = "";
           t.classList.remove("dragging");
@@ -33028,7 +33077,8 @@ function bindAdmin() {
         pages[focus] = id;
         ui.splitPages = pages;
         ui.page = pages[0];
-        render();
+        ui.splitFocus = focus;
+        swapSplitPane(focus, id);
         return;
       }
       const cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
