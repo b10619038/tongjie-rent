@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-30";
-const APP_EDIT_COUNT = 1554;
+const APP_STAMP = "2026-09-29-18-36";
+const APP_EDIT_COUNT = 1555;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1104";
+const FILE_VER = "1105";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版可把下方選單往上拖到畫面中間分割，最多三個畫面"] },
+  { ver: APP_VERSION, items: ["往上拉出選單分割時，下方選單不再左右跟著移動"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25100,7 +25100,15 @@ function bindSplitDrag() {
     const dy = e.clientY - startY;
     if (!mode) {
       if (Math.hypot(dx, dy) < 14) return;
-      if (dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15) mode = "split";
+      if (dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15) {
+        mode = "split";
+        window.__splitLift = true;
+        document.querySelectorAll(".tabs .tab").forEach(t => {
+          t.style.transform = "";
+          t.classList.remove("dragging");
+        });
+        document.querySelectorAll(".tabs, .tabs-track").forEach(n => n.classList.remove("sorting"));
+      }
       else { tab = null; id = ""; return; }
     }
     if (mode !== "split") return;
@@ -25120,10 +25128,12 @@ function bindSplitDrag() {
   }, { passive: false });
   document.addEventListener("pointerup", e => {
     if (mode === "split" && id) {
+      window.__splitLift = true;
       if (tab) tab.dataset.dragged = "1";
       if (e.clientY < window.innerHeight * 0.62) openSplit(id);
     }
     clear();
+    setTimeout(() => { window.__splitLift = false; }, 0);
   });
   document.addEventListener("pointercancel", clear);
 }
@@ -25241,20 +25251,44 @@ function bindTabReorder() {
   const bar = document.querySelector(".tabs-track") || document.querySelector(".tabs");
   if (!bar || bar.dataset.reorderBound === "1") return;
   bar.dataset.reorderBound = "1";
-  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0;
+  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0, orderSnap = [], lifted = false;
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
   const pt = e => {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
     return { x: e.clientX, y: e.clientY };
   };
+  const freezeBar = () => {
+    lifted = true;
+    window.__splitLift = true;
+    if (orderSnap.length) {
+      orderSnap.forEach(id => {
+        const el = bar.querySelector('.tab[data-admin="' + id + '"]');
+        if (el) bar.appendChild(el);
+      });
+    }
+    bar.querySelectorAll(".tab").forEach(t => {
+      t.style.transform = "";
+      t.classList.remove("dragging");
+    });
+    bar.classList.remove("sorting");
+    const sc = bar.closest(".tabs");
+    if (sc) sc.classList.remove("sorting");
+    try { if (dragEl && pid) dragEl.releasePointerCapture(pid); } catch {}
+  };
   const follow = x => {
-    if (!dragEl) return;
+    if (!dragEl || lifted || window.__splitLift) return;
     dragEl.style.transform = "translate3d(" + (x - startX) + "px,0,0) scale(1.08)";
   };
   const onMove = e => {
     if (!dragEl) return;
     const p = pt(e);
+    const top = bar.getBoundingClientRect().top;
+    if (!lifted && (window.__splitLift || p.y < top - 6)) freezeBar();
+    if (lifted || window.__splitLift) {
+      if (dragEl) dragEl.style.transform = "";
+      return;
+    }
     if (!armed) {
       if (Math.hypot(p.x - startX, p.y - holdY) > 30) { clear(); dragEl = null; }
       return;
@@ -25295,7 +25329,7 @@ function bindTabReorder() {
     if (dragEl) {
       dragEl.style.transform = "";
       dragEl.classList.remove("dragging");
-      if (armed && moved) {
+      if (armed && moved && !lifted && !window.__splitLift) {
         dragEl.dataset.dragged = "1";
         saveTabOrder([...bar.querySelectorAll(".tab")].map(t => t.dataset.admin));
       }
@@ -25304,9 +25338,10 @@ function bindTabReorder() {
     armed = false;
     dragEl = null;
     moved = false;
+    lifted = false;
   };
   const arm = () => {
-    if (!dragEl) return;
+    if (!dragEl || lifted || window.__splitLift) return;
     armed = true;
     bar.classList.add("sorting");
     dragEl.classList.add("dragging");
@@ -25324,13 +25359,24 @@ function bindTabReorder() {
     if (!tab) return;
     const p = pt(e);
     startX = p.x; holdY = p.y; pid = e.pointerId;
-    armed = false; moved = false; dragEl = tab;
+    armed = false; moved = false; dragEl = tab; lifted = false;
+    orderSnap = [...bar.querySelectorAll(".tab")].map(t => t.dataset.admin);
     clear();
     timer = setTimeout(arm, 320);
   });
   bar.addEventListener("pointermove", e => {
+    if (window.__splitLift || lifted) {
+      if (dragEl) { dragEl.style.transform = ""; dragEl.classList.remove("dragging"); }
+      clear();
+      return;
+    }
     if (armed || !dragEl) return;
     const p = pt(e);
+    if (p.y < holdY - 12 && Math.abs(p.y - holdY) > Math.abs(p.x - startX)) {
+      clear();
+      dragEl = null;
+      return;
+    }
     if (Math.hypot(p.x - startX, p.y - holdY) > 16) { clear(); dragEl = null; }
   }, { passive: true });
   bar.addEventListener("pointerup", onEnd);
