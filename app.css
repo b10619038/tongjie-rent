@@ -1716,6 +1716,8 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
 }
 .live-pill.on { background: #e6f4ea; color: #1b7a3a; }
 .live-pill.on::before { background: #22a34a; box-shadow: 0 0 0 3px rgba(34,163,74,.18); }
+.live-pill.been { background: #e8f0ea; color: #3d6b4f; }
+.live-pill.been::before { background: #7aa88a; }
 .live-dot {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;
   background: #e24b4b; flex-shrink: 0; padding: 0;

@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-22-22";
-const APP_EDIT_COUNT = 1591;
+const APP_STAMP = "2026-09-29-22-28";
+const APP_EDIT_COUNT = 1592;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1141";
+const FILE_VER = "1142";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者代操租客畫面在電腦寬視窗收成三分之一"] },
+  { ver: APP_VERSION, items: ["日誌可看每位租客有沒有登入過帳戶"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -10916,6 +10916,53 @@ function onlineStaffHtml() {
     return `<div class="online-row"><span class="k">${label}（${code}）</span><span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${id}">${on ? "在線中" : "離線中"}</span></span></div>`;
   }).join("");
 }
+function tenantAccountRows() {
+  const rows = [];
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.id === "t-demo" || t.id === "t-dev-preview") return;
+    const room = (state.rooms || []).find(r => r && (r.id === t.roomId || r.tenantId === t.id));
+    if (!room || room.demo || room.status === "office") return;
+    const p = (state.presence || {})[t.id] || {};
+    const seats = capSeats((state.loginSeats || {})[t.id] || []);
+    const on = isOnline(t.id);
+    const ever = on || seats.length > 0 || !!(p && p.at);
+    rows.push({
+      id: t.id,
+      no: String(room.no || ""),
+      name: t.name || "",
+      on,
+      ever,
+      at: Number(p.at) || 0,
+      device: p.device || "",
+      seats: seats.length
+    });
+  });
+  rows.sort((a, b) => a.no.localeCompare(b.no, "zh"));
+  return rows;
+}
+function tenantAccountStamp(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = n => String(n).padStart(2, "0");
+  const h = d.getHours();
+  const period = h >= 12 ? "下午" : "上午";
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + period + " " + h12 + ":" + p(d.getMinutes());
+}
+function tenantAccountHtml() {
+  const rows = tenantAccountRows();
+  const nIn = rows.filter(x => x.ever).length;
+  if (!rows.length) return `<div class="small">目前沒有租客</div>`;
+  return `<div class="small" style="margin-bottom:8px">已登入 ${nIn}　未登入 ${rows.length - nIn}</div>` + rows.map(x => {
+    const pill = x.on ? "在線中" : (x.ever ? "已登入" : "未登入");
+    const cls = x.on ? " on" : (x.ever ? " been" : "");
+    const when = x.ever && x.at ? tenantAccountStamp(x.at) : "";
+    const extra = [when, x.on && x.device ? x.device : "", x.seats ? x.seats + " 台" : ""].filter(Boolean).join(" · ");
+    return `<div class="online-row"><span class="k">${escapeHtml(x.no + "　" + x.name)}</span><span class="row-end">${extra ? `<span class="small">${escapeHtml(extra)}</span>` : ""}<span class="live-pill${cls}" data-online="${escapeHtml(x.id)}">${pill}</span></span></div>`;
+  }).join("");
+}
 function onlineTenantLinesHtml() {
   const now = Date.now();
   const rows = Object.keys(state.presence || {}).map(id => {
@@ -10933,12 +10980,15 @@ function onlineTenantLinesHtml() {
 }
 function refreshOnlineBadges() {
   document.querySelectorAll("[data-online]").forEach(el => {
+    if (el.closest("#tenant-accounts")) return;
     const on = isOnline(el.dataset.online);
     el.classList.toggle("on", on);
     if (!el.classList.contains("live-dot")) el.textContent = on ? "在線中" : "離線中";
   });
   const box = document.getElementById("online-tenants");
   if (box) box.innerHTML = onlineTenantLinesHtml();
+  const accounts = document.getElementById("tenant-accounts");
+  if (accounts) accounts.innerHTML = tenantAccountHtml();
 }
 function factoryNamedCount(data) {
   const rooms = (data && data.rooms) || [];
@@ -25993,6 +26043,11 @@ function adminLogs() {
         <div class="online-h">租客</div>
         <div id="online-tenants">${onlineTenantLinesHtml()}</div>
       </div>
+    </div>
+    <div class="card card-body">
+      <h2 class="dash-h">租客登入</h2>
+      <p class="small">每位租客有沒有登入過自己的帳戶。在線中是現在開著 App，已登入是登入過但目前離線。</p>
+      <div class="online-board" id="tenant-accounts">${tenantAccountHtml()}</div>
     </div>
     <div class="card card-body">
       <h2 class="dash-h">操作日誌</h2>
