@@ -40,10 +40,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-20";
-const APP_EDIT_COUNT = 1552;
+const APP_STAMP = "2026-09-29-18-21";
+const APP_EDIT_COUNT = 1553;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1102";
+const FILE_VER = "1103";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +513,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版報修頁也改為三分之二寬並置中"] },
+  { ver: APP_VERSION, items: ["電腦版除總覽外，選單內容都改為三分之二寬並置中"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25261,22 +25261,25 @@ function updateTabBadges() {
 function adminBody() {
   try {
     const page = ui.page === "home" ? "dash" : ui.page;
-    if (page === "rooms") return adminRooms();
-    if (page === "room-edit") return adminRoomEdit();
-    if (page === "invoice") return adminInvoice();
-    if (page === "tenants") return adminTenants();
-    if (page === "tenant-sheet") return tenantSheetView();
-    if (page === "repairs") return adminRepairs();
-    if (page === "ai") return adminAi();
-    if (page === "announce") return adminAnnounce();
-    if (page === "logs") return ui.adminCode === "1240" ? adminLogs() : adminDash();
-    if (page === "history") return ui.adminCode === "1240" ? adminHistory() : adminDash();
-    if (page === "settings") return adminSettings();
-    if (page === "firm") return adminFirm();
-    if (page === "food") return adminFood();
-    if (page === "howto") return adminHowto();
-    if (page === "solar") return adminSolar();
-    return adminDash();
+    let html = "";
+    if (page === "rooms") html = adminRooms();
+    else if (page === "room-edit") html = adminRoomEdit();
+    else if (page === "invoice") html = adminInvoice();
+    else if (page === "tenants") html = adminTenants();
+    else if (page === "tenant-sheet") html = tenantSheetView();
+    else if (page === "repairs") html = adminRepairs();
+    else if (page === "ai") html = adminAi();
+    else if (page === "announce") html = adminAnnounce();
+    else if (page === "logs") html = ui.adminCode === "1240" ? adminLogs() : adminDash();
+    else if (page === "history") html = ui.adminCode === "1240" ? adminHistory() : adminDash();
+    else if (page === "settings") html = adminSettings();
+    else if (page === "firm") html = adminFirm();
+    else if (page === "food") html = adminFood();
+    else if (page === "howto") html = adminHowto();
+    else if (page === "solar") html = adminSolar();
+    else html = adminDash();
+    if (page === "dash" || page === "solar" || page === "home") return html;
+    return `<div class="desk-third">${html}</div>`;
   } catch (err) {
     try { console.error(err); } catch {}
     return `<div class="card card-body"><h2 class="dash-h">此頁載入失敗</h2><p class="small">${escapeHtml(String((err && err.message) || err || ""))}</p></div>`;
@@ -25400,7 +25403,7 @@ function adminHistory() {
       <span class="k">${escapeHtml(rocSlash(row.date) || row.date || "—")}</span>
       <span class="v">${escapeHtml(row.title || "")}${row.amount ? "　" + money(row.amount) : ""}${row.sub ? `<span class="small" style="display:block">${escapeHtml(row.sub)}</span>` : ""}</span>
     </div>`).join("") : `<div class="empty">這一類目前沒有紀錄</div>`;
-  return `<div class="admin-grid list desk-third">
+  return `<div class="admin-grid list">
     <div class="card card-body">
       <h2 class="dash-h">紀錄</h2>
       <p class="small">開發者專用。舊租客合約、水電網路與垃圾桶、發票、押金、仲介、退租、報修完成、抄表都收在這裡。</p>
@@ -26655,7 +26658,7 @@ function adminAi() {
       </div>
     </div>`
   };
-  return `<div class="admin-grid list desk-third" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
+  return `<div class="admin-grid list" id="ai-blocks">${loadAiBlockOrder().map(id => `<div class="ai-block" data-ai-block="${id}">${parts[id] || ""}</div>`).join("")}</div>`;
 }
 function parseErrandDay(e) {
   const m = String(e.date || e.createdAt || "").match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -28675,7 +28678,7 @@ function adminRoomListHtml(kind) {
 }
 function adminRooms() {
   const kind = ui.assetKind === "factory" ? "factory" : "studio";
-  return `<div class="admin-grid list desk-third">
+  return `<div class="admin-grid list">
     ${assetMapHtml()}
     <div class="card card-body">
       <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="asset-kind-seg">
@@ -30361,7 +30364,7 @@ function bindTenantListTools() {
 }
 function adminTenants() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
-  return `<div class="admin-grid list desk-third">
+  return `<div class="admin-grid list">
     <div class="card card-body">
       <div class="seg ${kind === "factory" ? "is-factory" : "is-studio"}" id="tenant-kind-seg">
         <i class="seg-bg"></i>
@@ -30413,7 +30416,7 @@ function adminRepairs() {
   const list = adminRepairList();
   if (!list.length) return `<div class="empty">目前沒有報修</div>`;
   if (!ui.repairOpen) ui.repairOpen = {};
-  return `<div class="admin-grid list desk-third">${list.slice().reverse().map(rep => {
+  return `<div class="admin-grid list">${list.slice().reverse().map(rep => {
     const r = state.rooms.find(x => x.id === rep.roomId);
     const t = state.tenants.find(x => x.id === rep.tenantId);
     const open = !!ui.repairOpen[rep.id];
