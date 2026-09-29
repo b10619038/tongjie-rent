@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-56";
-const APP_EDIT_COUNT = 1605;
+const APP_STAMP = "2026-09-30-00-02";
+const APP_EDIT_COUNT = 1606;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1156";
+const FILE_VER = "1157";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["立即公告和預約時間改到發布公告右邊，打開才看得到"] },
+  { ver: APP_VERSION, items: ["立即公告和預約時間的白塊改成左右滑過去"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -28021,7 +28021,7 @@ function adminAnnounce() {
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
           <div id="ann-media-preview">${mediaPreviewHtml(ui.announceMedia, "data-del-ann-media")}</div>
           <label class="field" id="ann-later-field" style="${ui.annWhen === "later" ? "" : "display:none"}"><span>公告時間</span><input id="ann-at" name="publishAt" type="datetime-local" value="${escapeHtml(ui.annAt || "")}" /></label>
-          <button class="btn-navy" type="submit">${ui.annWhen === "later" ? "預約公告" : "立即公告"}</button>
+          <button class="btn-navy" type="submit" id="ann-submit">${ui.annWhen === "later" ? "預約公告" : "立即公告"}</button>
         </div>
       </div>
     </form>
@@ -33911,15 +33911,24 @@ function bindAdmin() {
         ui.announceOpen = true;
       });
     });
+    const applyAnnWhen = later => {
+      ui.annWhen = later ? "later" : "now";
+      ui.announceOpen = true;
+      const seg = document.getElementById("ann-when");
+      if (seg) setSegSide(seg, later, "", "is-later");
+      const field = document.getElementById("ann-later-field");
+      if (field) field.style.display = later ? "" : "none";
+      const submit = document.getElementById("ann-submit");
+      if (submit) submit.textContent = later ? "預約公告" : "立即公告";
+    };
     document.querySelectorAll("#announce-form [data-ann-when]").forEach(btn => {
       btn.onclick = e => {
         e.preventDefault();
         e.stopPropagation();
-        ui.annWhen = btn.dataset.annWhen === "later" ? "later" : "now";
-        ui.announceOpen = true;
-        render();
+        applyAnnWhen(btn.dataset.annWhen === "later");
       };
     });
+    bindSegSwipe(document.getElementById("ann-when"), () => applyAnnWhen(false), () => applyAnnWhen(true));
     const annAt = document.getElementById("ann-at");
     if (annAt) {
       annAt.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => annAt.focus(), 0); });
