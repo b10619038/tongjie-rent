@@ -1,6 +1,6 @@
-const CACHE = "tongjie-app-v1668";
-const BUILD = "20260929-1153";
-const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png"];
+const CACHE = "tongjie-app-v1669";
+const BUILD = "20260929-1154";
+const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));
@@ -21,6 +21,19 @@ self.addEventListener("fetch", e => {
   if (url.origin !== self.location.origin) return;
   const path = url.pathname;
   if (path.endsWith("/sw.js") || path.endsWith("sw.js")) return;
+  if (path.endsWith("/images/asset-map.webp")) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match("/images/asset-map.webp");
+      const fresh = fetch(e.request).then(res => {
+        if (res && res.ok) cache.put("/images/asset-map.webp", res.clone()).catch(() => {});
+        return res;
+      }).catch(() => null);
+      if (cached) return cached;
+      return (await fresh) || new Response("", { status: 504 });
+    })());
+    return;
+  }
   const bust = url.search.includes("t=") || url.search.includes("nocache=") || url.search.includes("v=");
   const live = bust || path === "/" || path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css");
   e.respondWith((async () => {
