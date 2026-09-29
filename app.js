@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-30";
-const APP_EDIT_COUNT = 1572;
+const APP_STAMP = "2026-09-29-20-32";
+const APP_EDIT_COUNT = 1573;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1122";
+const FILE_VER = "1123";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["水費說明拿掉「優惠」，合約與其他畫面同步"] },
+  { ver: APP_VERSION, items: ["合約第十一條改為「房屋之一部分滅失」"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22059,7 +22059,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="lease-art">第十條　承租人之責任</p>
       <p>承租人應以善良管理人之注意義務保管或使用房屋，如違反此項義務，致房屋毀損或滅失者，應負損害賠償責任。但依約定之方法或依房屋之性質使用、收益，致房屋有變更、毀損或滅失者，不在此限。</p>
       <p class="lease-art">第十一條　房屋部分滅失</p>
-      <p>租賃關係存續中，因不可歸責於承租人之事由，致房屋之一部滅失者，承租人得按滅失之部分，請求減少租金。</p>
+      <p>租賃關係存續中，因不可歸責於承租人之事由，致房屋之一部分滅失者，承租人得按滅失之部分，請求減少租金。</p>
       <p class="lease-art">第十二條　提前終止租約</p>
       <p>（一）本契約於期限屆滿前，租賃雙方${ck(false)}得${ck(true)}不得終止租約。</p>
       <p>（二）依約定得終止租約者，租賃之一方應於${ck(true)}一個月前${ck(false)}　　個月前通知他方。一方未為先期通知而逕行終止租約者，應賠償他方　壹　個月租金額之違約金。</p>
