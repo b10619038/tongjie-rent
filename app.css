@@ -6671,6 +6671,13 @@ html[data-theme="void"] .tab.on { color: #ffffff !important; }
 html[data-theme="void"] .cal-cell { color: #e8e8e8; border-color: #5e5e5e; }
 html[data-theme="void"] .handover-box { background: #2a2218; }
 html[data-theme="void"] .handover-box .label { color: #efc89a; }
+html[data-theme="void"] .mini.renew-hit b,
+html[data-theme="void"] .tenant-slim.renew-hit,
+html[data-theme="void"] .tenant-slim.renew-hit .k,
+html[data-theme="void"] .tenant-slim.renew-hit .who-mini,
+html[data-theme="void"] .tenant-slim.renew-hit .who-text .k {
+  color: #1a2a1c;
+}
 html[data-theme="void"] .led-trip { color: #8ab4ff; }
 html[data-theme="void"] .move-room-btn { color: #f5f5f5; border-color: #5e5e5e; }
 html[data-theme="void"] .card,
