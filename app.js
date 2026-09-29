@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-48";
-const APP_EDIT_COUNT = 1577;
+const APP_STAMP = "2026-09-29-20-52";
+const APP_EDIT_COUNT = 1578;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1127";
+const FILE_VER = "1128";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人合約改成上下排列，第二位欄位與第一位相同"] },
+  { ver: APP_VERSION, items: ["合約第2頁起字級改15px，並改在條文結束才換頁"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22025,22 +22025,19 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>租賃期間，使用房屋所生之相關費用如下：</p>
       <p>（一）管理費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}無。</p>
       <p>（二）水費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每人每月 NT$ 150，一年 NT$ 1,800。</p>
-      <div class="lease-pgno">3</div>
-    </section>
-    <section class="lease-pg">
       <p>（三）電費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(true)}其他：每度 NT$ 5.5 元整。</p>
       <p>（四）瓦斯費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}其他：無。</p>
       <p>（五）網路費：${ck(true)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}其他：　　。</p>
       <p>（六）其他費用及其支付方式：　　。</p>
+      <div class="lease-pgno">3</div>
+    </section>
+    <section class="lease-pg">
       <p class="lease-art">第七條　稅費負擔之約定</p>
       <p>本租賃契約有關稅費、代辦費，依下列約定辦理：</p>
       <p>（一）租賃住宅之房屋稅、地價稅由出租人負擔。</p>
       <p>（二）出租人收取現金者，其銀錢收據應貼用之印花稅票由出租人負擔。</p>
       <p>（三）簽約代辦費　無　元整。${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}由租賃雙方平均負擔。</p>
       <p>（四）公證費　無　元整。${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}由租賃雙方平均負擔。</p>
-      <div class="lease-pgno">4</div>
-    </section>
-    <section class="lease-pg">
       <p>（五）公證代辦費　無　元整。</p>
       <p>（六）其他稅費及其支付方式：　　。</p>
       <p class="lease-art">第八條　使用租賃住宅之限制</p>
@@ -22048,18 +22045,21 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（二）承租人同意遵守住戶規約，不得違法使用、存放有爆炸性或易燃性物品，影響公共安全、公共衛生或居住安寧。</p>
       <p>（三）出租人${ck(false)}同意${ck(true)}不同意承租人將本租賃標的之全部或一部分轉租、出借或以其他方式供他人使用，或將租賃權轉讓於他人。</p>
       <p>（四）前項出租人同意轉租者，承租人應提示出租人同意轉租之證明文件。</p>
+      <div class="lease-pgno">4</div>
+    </section>
+    <section class="lease-pg">
       <p class="lease-art">第九條　修繕及改裝</p>
       <p>（一）房屋或附屬設備損壞而有修繕之必要時，應由出租人負責修繕。但租賃雙方另有約定、習慣或因可歸責於承租人之事由者，不在此限。</p>
       <p>（二）前項由出租人負責修繕者，如出租人未於承租人所定相當期限內修繕時，承租人得自行修繕，並請求出租人償還其費用或於第四條約定之租金中扣除。</p>
       <p>（三）房屋有改裝設施之必要，承租人應經出租人同意，始得依相關法令自行裝設，但不得損害原有建築之結構安全。</p>
       <p>（四）前項情形承租人返還租賃住宅時，${ck(true)}應負責回復原狀${ck(false)}現況返還${ck(false)}其他。</p>
-      <div class="lease-pgno">5</div>
-    </section>
-    <section class="lease-pg">
       <p class="lease-art">第十條　承租人之責任</p>
       <p>承租人應以善良管理人之注意義務保管或使用房屋，如違反此項義務，致房屋毀損或滅失者，應負損害賠償責任。但依約定之方法或依房屋之性質使用、收益，致房屋有變更、毀損或滅失者，不在此限。</p>
       <p class="lease-art">第十一條　房屋部分滅失</p>
       <p>租賃關係存續中，因不可歸責於承租人之事由，致房屋之一部分滅失者，承租人得按滅失之部分，請求減少租金。</p>
+      <div class="lease-pgno">5</div>
+    </section>
+    <section class="lease-pg">
       <p class="lease-art">第十二條　提前終止租約</p>
       <p>（一）本契約於期限屆滿前，租賃雙方${ck(false)}得${ck(true)}不得終止租約。</p>
       <p>（二）依約定得終止租約者，租賃之一方應於${ck(true)}一個月前${ck(false)}　　個月前通知他方。一方未為先期通知而逕行終止租約者，應賠償他方　壹　個月租金額之違約金。</p>
@@ -22073,10 +22073,10 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="lease-art">第十四條　房屋所有權之讓與</p>
       <p>（一）出租人於房屋交付後，承租人占有中，縱將其所有權讓與第三人，本契約對於受讓人仍繼續存在。</p>
       <p>（二）前項情形，出租人應移交擔保金（押金）及已預收之租金與受讓人，並以書面通知承租人。</p>
+      <p>（三）本契約如未經公證，其期限逾五年或未定期限者，不適用第二項之約定。</p>
       <div class="lease-pgno">6</div>
     </section>
     <section class="lease-pg">
-      <p>（三）本契約如未經公證，其期限逾五年或未定期限者，不適用第二項之約定。</p>
       <p class="lease-art">第十五條　出租人提前終止租約</p>
       <p>承租人有下列情形之一者，出租人得提前終止租約，且承租人不得要求任何賠償：</p>
       <p>（一）承租人遲付租金之總額達二個月之金額，並經出租人定相當期限催告，承租人仍不為支付。</p>
@@ -22094,11 +22094,11 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>下列事項應逕受強制執行：</p>
       <p>${ck(true)}（一）承租人如於租期屆滿後不返還租賃住宅。</p>
       <p>${ck(true)}（二）承租人未依約給付之欠繳租金、費用及出租人或租賃標的所有權人代繳之違約時應支付之金額。</p>
+      <p>${ck(true)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
+      <p>${ck(true)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
       <div class="lease-pgno">7</div>
     </section>
     <section class="lease-pg">
-      <p>${ck(true)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
-      <p>${ck(true)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
       <p class="lease-art">第十九條　契約及其相關附件效力</p>
       <p>（一）本契約自簽約日起生效，租賃雙方各執一份契約正本。</p>
       <p>（二）本契約廣告及相關附件視為本契約之一部分。</p>

@@ -4373,8 +4373,8 @@ body.print-lease .studio-lease-paper { display: block; }
   overflow: hidden;
   box-sizing: border-box;
   padding: 16mm 14mm 18mm;
-  font-size: 13px;
-  line-height: 1.85;
+  font-size: 15px;
+  line-height: 1.65;
   border: 0;
   margin: 0 auto 10px;
   zoom: min(1, calc(100cqi / 210mm));
@@ -4463,8 +4463,8 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   background: #fff;
   color: #111;
   font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", serif;
-  font-size: 13px;
-  line-height: 1.85;
+  font-size: 15px;
+  line-height: 1.65;
   margin: 0 auto 12px;
 }
 .lease-pg::before {
