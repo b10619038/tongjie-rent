@@ -4534,6 +4534,8 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 }
 .lease-u.wide { min-width: 12em; }
 .lease-u.amt { min-width: 2.6em; text-align: center; }
+.lease-oneline { white-space: nowrap; }
+.lease-oneline .lease-u.amt { min-width: 1.7em; padding: 0 3px 1px; }
 .lease-ck { display: inline-block; width: 1.05em; text-align: center; font-weight: 800; }
 .lease-ck.on { color: #111; }
 .lease-who { margin: 0 4px 0 10px; }
