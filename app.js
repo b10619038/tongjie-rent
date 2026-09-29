@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-00-36";
-const APP_EDIT_COUNT = 1608;
+const APP_STAMP = "2026-09-30-00-42";
+const APP_EDIT_COUNT = 1609;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1159";
+const FILE_VER = "1160";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約或簽約加入日曆，房號前面會寫牛10"] },
+  { ver: APP_VERSION, items: ["手機點租客登入，還沒安裝會先提醒裝 App"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23271,18 +23271,20 @@ function installSheetHtml() {
   return `<div class="install-mask" id="install-mask">
     <div class="install-sheet">
       <div class="label">${mobile ? "下載 App" : "電腦版"}</div>
-      <h2>${mobile ? "安裝到手機" : "安裝到電腦"}</h2>
+      <h2>${ui.installForLogin ? "請先安裝 App" : (mobile ? "安裝到手機" : "安裝到電腦")}</h2>
+      ${ui.installForLogin ? `<p class="small">用網頁登入收不到手機通知。請先安裝到主畫面，再用那個圖示打開登入。</p>` : ""}
       ${body ? `<p class="small">${escapeHtml(body)}</p>` : ""}
       ${extra}
       <p class="small">網址：https://tongjie-app.pages.dev</p>
       ${tryBtn}
-      <button class="ghost" id="install-close" type="button">關閉</button>
+      <button class="ghost" id="install-close" type="button">${ui.installForLogin ? (ui.role === "tenant" ? "稍後再說" : "先登入，稍後再裝") : "關閉"}</button>
     </div>
   </div>`;
 }
 function bindInstallSheet() {
   const close = () => {
     ui.installSheet = "";
+    ui.installForLogin = false;
     try { localStorage.setItem("tongjie_install_offer", "skip"); } catch {}
     render();
   };
@@ -31592,13 +31594,14 @@ function fitGateTitle() {
 }
 function goGatePage(page) {
   if (!page || ui.role) return;
-  if (ui.page === page) return;
+  if (ui.page === page && !(page === "tenant-login" && ui.installForLogin)) return;
   if (ui.gateNavLock) return;
   ui.gateNavLock = true;
   ui.page = page;
   ui.loginError = "";
   ui.foundPass = null;
   if (page === "move-in") ui.moveEnter = true;
+  if (page === "tenant-login") remindInstallBeforeTenantLogin();
   persistGatePage();
   try { render(); } finally {
     requestAnimationFrame(() => { ui.gateNavLock = false; });
@@ -35849,10 +35852,23 @@ function shouldOfferPhoneInstall() {
   try { if (localStorage.getItem("tongjie_install_offer") === "skip") return false; } catch {}
   return true;
 }
+function remindInstallBeforeTenantLogin() {
+  if (!isPhone() || isStandalone()) return false;
+  try { if (sessionStorage.getItem("tj-login-install") === "1") return false; } catch {}
+  if (ui.installOffered) {
+    try { sessionStorage.setItem("tj-login-install", "1"); } catch {}
+    return false;
+  }
+  try { sessionStorage.setItem("tj-login-install", "1"); } catch {}
+  ui.installSheet = "mobile";
+  ui.installForLogin = true;
+  return true;
+}
 function offerPhoneInstall() {
   if (!shouldOfferPhoneInstall()) return false;
   if (ui.installSheet === "mobile") return false;
   ui.installSheet = "mobile";
+  ui.installOffered = true;
   if (!installQueryOn()) {
     try { localStorage.setItem("tongjie_install_offer", "skip"); } catch {}
   }
@@ -36091,7 +36107,10 @@ async function boot() {
     beatPresence();
     render();
     try { armChatOpen(); } catch {}
-    if (offerPhoneInstall()) render();
+    let offered = false;
+    if (ui.role === "tenant" || (!ui.role && ui.page === "tenant-login")) offered = remindInstallBeforeTenantLogin();
+    else if (!ui.role) offered = offerPhoneInstall();
+    if (offered) render();
     refreshSky(true).then(() => {
       if (ui.role === "tenant") applySkyDom();
     }).catch(() => {});
