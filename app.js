@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-09-29-23-12";
 const APP_EDIT_COUNT = 1599;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1149";
+const FILE_VER = "1150";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -24101,6 +24101,7 @@ function releaseDueAnnouncements() {
   if (!due.length) return;
   due.forEach(a => {
     a.annSent = true;
+    a.editedAt = Date.now();
     a.createdAt = formatDateTime12(String(a.publishAt).replace("T", " ")) || nowStamp();
     try { pushPhoneNotify("管理員公告", (a.title || "") + (a.body ? "\n" + a.body : ""), "tenants"); } catch {}
   });
