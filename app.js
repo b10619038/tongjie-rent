@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-36";
-const APP_EDIT_COUNT = 1555;
+const APP_STAMP = "2026-09-29-18-45";
+const APP_EDIT_COUNT = 1556;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1105";
+const FILE_VER = "1106";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["往上拉出選單分割時，下方選單不再左右跟著移動"] },
+  { ver: APP_VERSION, items: ["分割拖移改為圖示加文字，黑色預覽跟著左右半邊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25010,7 +25010,7 @@ function splitStageHtml() {
     </section>`).join("")}
   </div>`;
 }
-function openSplit(id) {
+function openSplit(id, side) {
   const cur = ui.page === "home" || !ui.page ? "dash" : (ui.page === "solar" ? "dash" : ui.page);
   const base = ["room-edit", "invoice", "tenant-sheet", "howto"].includes(cur) ? ({ "room-edit": "rooms", invoice: "tenants", "tenant-sheet": "tenants", howto: "settings" }[cur] || cur) : cur;
   let pages = splitOn() ? ui.splitPages.slice() : [base];
@@ -25026,9 +25026,11 @@ function openSplit(id) {
     toast("最多三個畫面");
     return;
   }
-  pages.push(id);
+  const onLeft = side === "left";
+  if (onLeft) pages.unshift(id);
+  else pages.push(id);
   ui.splitPages = pages;
-  ui.splitFocus = pages.length - 1;
+  ui.splitFocus = onLeft ? 0 : pages.length - 1;
   ui.page = pages[0];
   render();
 }
@@ -25072,17 +25074,43 @@ function bindSplitDrag() {
     document.querySelectorAll(".split-drop").forEach(n => n.remove());
     const shell = document.querySelector(".shell.admin-wide");
     if (shell) shell.classList.remove("split-arm");
+    if (shell) delete shell.dataset.splitSide;
     tab = null;
   };
-  const ghostAt = (x, y, name) => {
-    if (!ghost) {
+  const ghostAt = (x, y) => {
+    if (!ghost && tab) {
       ghost = document.createElement("div");
       ghost.className = "split-ghost";
+      ghost.innerHTML = tab.innerHTML;
+      ghost.querySelectorAll(".badge-dot, .tab-dot").forEach(n => n.remove());
       document.body.appendChild(ghost);
     }
-    ghost.textContent = name;
+    if (!ghost) return;
     ghost.style.left = x + "px";
     ghost.style.top = y + "px";
+  };
+  const placeDrop = (shell, x, y) => {
+    const tabs = document.querySelector(".shell.admin-wide .tabs");
+    const barTop = tabs ? tabs.getBoundingClientRect().top : window.innerHeight * 0.82;
+    const armed = y < barTop - 12;
+    shell.classList.toggle("split-arm", armed);
+    let drop = document.querySelector(".split-drop");
+    if (!armed) {
+      if (drop) drop.remove();
+      return "";
+    }
+    const full = splitOn() && ui.splitPages.length >= 3;
+    const side = x < window.innerWidth / 2 ? "left" : "right";
+    if (!drop) {
+      drop = document.createElement("div");
+      drop.className = "split-drop";
+      shell.appendChild(drop);
+    }
+    drop.classList.toggle("is-left", !full && side === "left");
+    drop.classList.toggle("is-right", !full && side === "right");
+    drop.classList.toggle("is-full", full);
+    drop.textContent = full ? "已經三個畫面" : "";
+    return full ? "" : side;
   };
   document.addEventListener("pointerdown", e => {
     if (EMBED_PAGE || ui.role !== "admin") return;
@@ -25113,24 +25141,17 @@ function bindSplitDrag() {
     }
     if (mode !== "split") return;
     if (e.cancelable) e.preventDefault();
-    ghostAt(e.clientX, e.clientY, splitLabel(id));
+    ghostAt(e.clientX, e.clientY);
     const shell = document.querySelector(".shell.admin-wide");
-    const armed = e.clientY < window.innerHeight * 0.62;
-    if (shell) shell.classList.toggle("split-arm", armed);
-    let drop = document.querySelector(".split-drop");
-    if (armed && !drop && shell) {
-      drop = document.createElement("div");
-      drop.className = "split-drop";
-      drop.textContent = splitOn() && ui.splitPages.length >= 3 ? "已經三個畫面" : "放開即可分割";
-      shell.appendChild(drop);
-    }
-    if (!armed && drop) drop.remove();
+    if (shell) shell.dataset.splitSide = placeDrop(shell, e.clientX, e.clientY);
   }, { passive: false });
   document.addEventListener("pointerup", e => {
     if (mode === "split" && id) {
       window.__splitLift = true;
       if (tab) tab.dataset.dragged = "1";
-      if (e.clientY < window.innerHeight * 0.62) openSplit(id);
+      const shell = document.querySelector(".shell.admin-wide");
+      const side = shell && shell.dataset.splitSide;
+      if (side === "left" || side === "right") openSplit(id, side);
     }
     clear();
     setTimeout(() => { window.__splitLift = false; }, 0);

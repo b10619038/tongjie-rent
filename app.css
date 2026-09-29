@@ -3084,36 +3084,50 @@ html.embed-pane .shell.admin-wide .desk-third {
 .split-ghost {
   position: fixed;
   z-index: 80;
-  transform: translate(-50%, -120%);
-  padding: 10px 16px;
-  border-radius: 16px;
+  transform: translate(-50%, -70%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 76px;
+  padding: 8px 14px 10px;
+  border-radius: 18px;
   background: var(--card);
   color: var(--ink);
   font-weight: 700;
-  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  font-size: 13px;
+  line-height: 1.2;
+  box-shadow: 0 14px 32px rgba(0,0,0,.28);
   pointer-events: none;
+}
+.split-ghost .tab-ic,
+.split-ghost .tab-repair {
+  color: inherit;
+  margin: 0 auto 2px;
 }
 .split-drop {
   position: absolute;
   z-index: 30;
-  left: 12px;
-  right: 12px;
   top: 72px;
   bottom: 120px;
+  width: calc(50% - 18px);
+  border-radius: 24px;
+  background: rgba(20, 20, 20, .78);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
   display: grid;
   place-items: center;
-  border-radius: 24px;
-  border: 2px dashed var(--teal);
-  background: color-mix(in srgb, var(--teal) 8%, transparent);
-  color: var(--teal);
-  font-weight: 800;
-  font-size: 18px;
   pointer-events: none;
+  transition: left .16s ease, right .16s ease, width .16s ease;
 }
+.split-drop.is-left { left: 12px; right: auto; }
+.split-drop.is-right { right: 12px; left: auto; }
+.split-drop.is-full { left: 12px; right: 12px; width: auto; }
 .shell.admin-wide.split-arm .admin-scroll,
 .shell.admin-wide.split-arm .split-stage {
-  transform: scale(.985);
-  transition: transform .2s ease;
+  transition: none;
 }
 @media (max-width: 820px) {
   .split-stage { flex-direction: column; }
