@@ -2721,6 +2721,24 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-repair img.nav-tool { width: 30px; height: 26px; object-fit: contain; display: block; }
 .shell.admin-wide .tab.on .tab-repair { transform: scale(1.2); color: var(--teal); }
 html[data-theme="void"] .tab-repair img.nav-tool { filter: brightness(0) invert(0.72); }
+@media (min-width: 821px) {
+  .shell.admin-wide .tabs {
+    overflow-x: hidden;
+    scroll-snap-type: none;
+  }
+  .shell.admin-wide .tabs-track {
+    width: 100%;
+    gap: 0;
+  }
+  .shell.admin-wide .tab {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 10px 0;
+    box-sizing: border-box;
+  }
+}
 @media (max-width: 820px) {
   .shell.admin-wide .tabs { container-type: inline-size; scroll-snap-type: none; }
   .shell.admin-wide .tabs-track { gap: 0; }
