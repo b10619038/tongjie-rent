@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-21-32";
-const APP_EDIT_COUNT = 1584;
+const APP_STAMP = "2026-09-29-21-36";
+const APP_EDIT_COUNT = 1585;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1134";
+const FILE_VER = "1135";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約封面右下角日期改為 20px"] },
+  { ver: APP_VERSION, items: ["合約第2頁行距平均拉開"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22344,6 +22344,21 @@ function fitLeasePages(root) {
     const cs = getComputedStyle(page);
     const available = page.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
     if (available < 120) return;
+    const no = page.querySelector(".lease-pgno");
+    if (no && String(no.textContent || "").trim() === "2") {
+      fill.style.display = "flex";
+      fill.style.flexDirection = "column";
+      fill.style.justifyContent = "space-between";
+      fill.style.flex = "1 1 auto";
+      fill.style.height = available + "px";
+      fill.style.fontSize = "16.5px";
+      fill.style.lineHeight = "1.45";
+      fill.querySelectorAll(":scope > *").forEach(el => {
+        el.style.setProperty("margin-top", "0", "important");
+        el.style.setProperty("margin-bottom", "0", "important");
+      });
+      return;
+    }
     fill.style.flex = "0 0 auto";
     fill.style.height = "auto";
     fill.style.display = "block";
