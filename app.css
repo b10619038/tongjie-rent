@@ -4520,6 +4520,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-fill > .lease-sign-block,
 .lease-fill > .term-date,
 .lease-fill > .term-hint { margin: 0 0 1px; }
+.lease-fill > .term-date { text-align: center; width: 100%; }
 .lease-fill .lease-art { margin-top: 6px !important; }
 .lease-pg .indent { padding-left: 1.6em; }
 .lease-art { font-weight: 800; margin-top: 10px !important; }
