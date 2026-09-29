@@ -1,4 +1,5 @@
 const KEY = "tongjie_rent_app_v8";
+const EMBED_PAGE = (() => { try { return new URLSearchParams(location.search).get("embed") || ""; } catch { return ""; } })();
 const LEDGER_KEY = "tongjie_ledger_v1";
 const ANN_MEDIA_KEY = "tongjie_ann_media_v1";
 const HIDDEN_ANN_KEY = "tj-hidden-anns";
@@ -40,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-21";
-const APP_EDIT_COUNT = 1553;
+const APP_STAMP = "2026-09-29-18-30";
+const APP_EDIT_COUNT = 1554;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1103";
+const FILE_VER = "1104";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -513,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版除總覽外，選單內容都改為三分之二寬並置中"] },
+  { ver: APP_VERSION, items: ["電腦版可把下方選單往上拖到畫面中間分割，最多三個畫面"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -2751,7 +2752,7 @@ function watchAppUpdate(reg) {
   setInterval(pollRemoteBuild, 20000);
 }
 let __reloading = false;
-if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller && !EMBED_PAGE) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
     try {
@@ -5614,6 +5615,11 @@ let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", l
   ui.prospectPreview = !!s.prospectPreview;
   ui.tenantLook = !!s.tenantLook;
   ui.lookBack = s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
+  if (EMBED_PAGE && s.role === "admin") {
+    ui.embed = EMBED_PAGE;
+    ui.page = EMBED_PAGE;
+    try { document.documentElement.classList.add("embed-pane"); } catch {}
+  }
   if (ui.page === "tenant-login" || ui.page === "admin-login" || ui.page === "home") {
     ui.page = s.role === "admin" ? "dash" : "home";
   }
@@ -11064,7 +11070,19 @@ function save(force) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(pushCloud, 120);
 }
+window.addEventListener("storage", e => {
+  if (!e || e.key !== KEY || !EMBED_PAGE) return;
+  try {
+    const next = loadLocal();
+    if (!next) return;
+    state = next;
+    normalize(state);
+    ui.keepScroll = true;
+    render();
+  } catch {}
+});
 function persistLogin() {
+  if (EMBED_PAGE) return;
   if (!ui || !ui.role) return;
   const snap = JSON.stringify({
     role: ui.role,
@@ -22598,6 +22616,11 @@ function appointBlock(rep) {
 let lastRenderPage = "";
 let lastRenderRole = "";
 function render() {
+  if (EMBED_PAGE) {
+    ui.embed = EMBED_PAGE;
+    if (ui.role === "admin") ui.page = EMBED_PAGE;
+    try { document.documentElement.classList.add("embed-pane"); } catch {}
+  }
   _ledgerCache = null;
   try { syncThemeForWho(); } catch {}
   try { tickDueRenewals(); } catch {}
@@ -22700,13 +22723,42 @@ function paintApp() {
     return;
   }
   if (ui.role === "admin") {
-    const track = document.querySelector(".tabs-track");
-    const sc = document.querySelector(".admin-scroll");
-    const overlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
+    const splitKey = Array.isArray(ui.splitPages) && ui.splitPages.length >= 2 ? ui.splitPages.join("|") : "";
+    const splitEl = document.querySelector(".split-stage");
+    const splitNow = splitEl ? (splitEl.dataset.key || "") : "";
+    const splitOverlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || ui.aiAvatarSheet
       || ui.checkoutTenantId
       || ui.vacateConfirmId
       || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
-    if (lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
+    if (splitKey && splitKey === splitNow && lastRenderRole === "admin" && document.querySelector(".shell.admin-wide") && !splitOverlays) {
+      document.querySelectorAll(".tabs .tab").forEach(t => {
+        const id = t.dataset.admin;
+        const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
+        t.classList.toggle("on", on);
+        t.classList.remove("land");
+        t.style.transform = "";
+      });
+      document.querySelectorAll(".split-pane").forEach((pane, i) => pane.classList.toggle("focus", i === (ui.splitFocus || 0)));
+      const shell = document.querySelector(".shell.admin-wide");
+      let note = shell && shell.querySelector(":scope > .toast");
+      if (ui.toast && shell) {
+        if (!note) {
+          note = document.createElement("div");
+          note.className = "toast";
+          shell.insertBefore(note, shell.firstChild);
+        }
+        note.textContent = ui.toast;
+      } else if (note) note.remove();
+      bindTabPill();
+      lastRenderRole = ui.role;
+      lastRenderPage = ui.page;
+      ui.keepScroll = false;
+      return;
+    }
+    const track = document.querySelector(".tabs-track");
+    const sc = document.querySelector(".admin-scroll");
+    const overlays = splitOverlays || toastHtml;
+    if (!splitKey && !splitNow && lastRenderRole === "admin" && track && sc && document.querySelector(".shell.admin-wide") && !overlays) {
       document.querySelectorAll(".tabs .tab").forEach(t => {
         const id = t.dataset.admin;
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
@@ -24943,15 +24995,150 @@ function repairView() {
     </div>`;
 }
 
+function splitOn() {
+  return Array.isArray(ui.splitPages) && ui.splitPages.length >= 2;
+}
+function splitLabel(id) {
+  return ({ dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "助手", history: "紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" })[id] || id;
+}
+function splitStageHtml() {
+  const pages = ui.splitPages || [];
+  return `<div class="split-stage" data-key="${pages.join("|")}">
+    ${pages.map((id, i) => `<section class="split-pane${(ui.splitFocus || 0) === i ? " focus" : ""}" data-split-pane="${i}">
+      <div class="split-cap"><b>${splitLabel(id)}</b><button type="button" class="split-x" data-split-close="${i}" aria-label="關閉">✕</button></div>
+      <iframe class="split-frame" src="index.html?embed=${encodeURIComponent(id)}&v=${FILE_VER}" title="${splitLabel(id)}"></iframe>
+    </section>`).join("")}
+  </div>`;
+}
+function openSplit(id) {
+  const cur = ui.page === "home" || !ui.page ? "dash" : (ui.page === "solar" ? "dash" : ui.page);
+  const base = ["room-edit", "invoice", "tenant-sheet", "howto"].includes(cur) ? ({ "room-edit": "rooms", invoice: "tenants", "tenant-sheet": "tenants", howto: "settings" }[cur] || cur) : cur;
+  let pages = splitOn() ? ui.splitPages.slice() : [base];
+  if (pages.includes(id)) {
+    ui.splitFocus = pages.indexOf(id);
+    if (splitOn()) {
+      document.querySelectorAll(".split-pane").forEach((pane, i) => pane.classList.toggle("focus", i === ui.splitFocus));
+    }
+    toast("這個畫面已經開著");
+    return;
+  }
+  if (pages.length >= 3) {
+    toast("最多三個畫面");
+    return;
+  }
+  pages.push(id);
+  ui.splitPages = pages;
+  ui.splitFocus = pages.length - 1;
+  ui.page = pages[0];
+  render();
+}
+function closeSplitPane(i) {
+  const pages = (ui.splitPages || []).slice();
+  pages.splice(i, 1);
+  if (pages.length < 2) {
+    ui.page = pages[0] || "dash";
+    ui.splitPages = null;
+    ui.splitFocus = 0;
+  } else {
+    ui.splitPages = pages;
+    ui.page = pages[0];
+    ui.splitFocus = Math.max(0, Math.min(ui.splitFocus || 0, pages.length - 1));
+  }
+  render();
+}
+function bindSplitChrome() {
+  document.querySelectorAll("[data-split-pane]").forEach(pane => {
+    pane.onpointerdown = () => {
+      ui.splitFocus = Number(pane.dataset.splitPane) || 0;
+      document.querySelectorAll(".split-pane").forEach((p, n) => p.classList.toggle("focus", n === ui.splitFocus));
+    };
+  });
+  document.querySelectorAll("[data-split-close]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeSplitPane(Number(btn.dataset.splitClose) || 0);
+    };
+  });
+}
+function bindSplitDrag() {
+  if (window.__splitDrag || EMBED_PAGE) return;
+  window.__splitDrag = 1;
+  let startX = 0, startY = 0, mode = "", id = "", ghost = null, tab = null;
+  const clear = () => {
+    mode = "";
+    id = "";
+    if (ghost) { ghost.remove(); ghost = null; }
+    document.querySelectorAll(".split-drop").forEach(n => n.remove());
+    const shell = document.querySelector(".shell.admin-wide");
+    if (shell) shell.classList.remove("split-arm");
+    tab = null;
+  };
+  const ghostAt = (x, y, name) => {
+    if (!ghost) {
+      ghost = document.createElement("div");
+      ghost.className = "split-ghost";
+      document.body.appendChild(ghost);
+    }
+    ghost.textContent = name;
+    ghost.style.left = x + "px";
+    ghost.style.top = y + "px";
+  };
+  document.addEventListener("pointerdown", e => {
+    if (EMBED_PAGE || ui.role !== "admin") return;
+    const hit = e.target && e.target.closest && e.target.closest(".tabs .tab");
+    if (!hit) return;
+    tab = hit;
+    id = hit.dataset.admin || "";
+    startX = e.clientX;
+    startY = e.clientY;
+    mode = "";
+  }, true);
+  document.addEventListener("pointermove", e => {
+    if (!tab || !id) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!mode) {
+      if (Math.hypot(dx, dy) < 14) return;
+      if (dy < -16 && Math.abs(dy) > Math.abs(dx) * 1.15) mode = "split";
+      else { tab = null; id = ""; return; }
+    }
+    if (mode !== "split") return;
+    if (e.cancelable) e.preventDefault();
+    ghostAt(e.clientX, e.clientY, splitLabel(id));
+    const shell = document.querySelector(".shell.admin-wide");
+    const armed = e.clientY < window.innerHeight * 0.62;
+    if (shell) shell.classList.toggle("split-arm", armed);
+    let drop = document.querySelector(".split-drop");
+    if (armed && !drop && shell) {
+      drop = document.createElement("div");
+      drop.className = "split-drop";
+      drop.textContent = splitOn() && ui.splitPages.length >= 3 ? "已經三個畫面" : "放開即可分割";
+      shell.appendChild(drop);
+    }
+    if (!armed && drop) drop.remove();
+  }, { passive: false });
+  document.addEventListener("pointerup", e => {
+    if (mode === "split" && id) {
+      if (tab) tab.dataset.dragged = "1";
+      if (e.clientY < window.innerHeight * 0.62) openSplit(id);
+    }
+    clear();
+  });
+  document.addEventListener("pointercancel", clear);
+}
 function adminView() {
   const pages = adminPages();
+  const body = splitOn()
+    ? splitStageHtml()
+    : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
   return `
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
       </div>
       <button class="ghost" id="logout" style="width:auto">登出</button>
     </div>
-    <div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>
+    ${body}
     <div class="tabs">
       <div class="tabs-track">
       <div class="tab-bg"></div>
@@ -32713,6 +32900,20 @@ function bindAdmin() {
         return;
       }
       const id = btn.dataset.admin;
+      if (btn.classList.contains("tab") && splitOn()) {
+        const pages = ui.splitPages.slice();
+        if (pages.includes(id)) {
+          ui.splitFocus = pages.indexOf(id);
+          document.querySelectorAll(".split-pane").forEach((pane, i) => pane.classList.toggle("focus", i === ui.splitFocus));
+          return;
+        }
+        const focus = Math.max(0, Math.min(ui.splitFocus || 0, pages.length - 1));
+        pages[focus] = id;
+        ui.splitPages = pages;
+        ui.page = pages[0];
+        render();
+        return;
+      }
       const cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
       if (btn.classList.contains("tab") && cur === id) return;
       const on = document.querySelector(".tabs .tab.on");
@@ -32725,6 +32926,8 @@ function bindAdmin() {
   bindTabReorder();
   bindTabPage();
   bindTabPill();
+  bindSplitDrag();
+  bindSplitChrome();
   document.querySelectorAll(".tabs .tab").forEach(bindTabPress);
   bindAdminPageSwipe();
   bindSegPills();
@@ -35330,6 +35533,7 @@ async function boot() {
       syncTick.busy = false;
     }
   };
+  if (!EMBED_PAGE) {
   setInterval(syncTick, 1500);
   setTimeout(syncTick, 200);
   setInterval(beatPresence, 25000);
@@ -35341,6 +35545,7 @@ async function boot() {
       if (locPrefOn()) askPreciseLocation(false);
     }
   });
+  }
 }
 window.addEventListener("pagehide", persistLogin);
 window.addEventListener("beforeunload", persistLogin);
