@@ -1817,7 +1817,7 @@ button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
   height: 26px;
 }
 html[data-theme="void"] .nav-ic img.nav-tool {
-  filter: brightness(0) invert(0.72);
+  filter: brightness(0) invert(1);
 }
 .nav button { overflow: visible; }
 .nav button.active .nav-ic { transform: scale(1.34); }
@@ -2724,7 +2724,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-repair svg { width: 26px; height: 26px; display: block; }
 .tab-repair img.nav-tool { width: 30px; height: 26px; object-fit: contain; display: block; }
 .shell.admin-wide .tab.on .tab-repair { transform: scale(1.2); color: var(--teal); }
-html[data-theme="void"] .tab-repair img.nav-tool { filter: brightness(0) invert(0.72); }
+html[data-theme="void"] .tab-repair img.nav-tool { filter: brightness(0) invert(1); }
 @media (min-width: 821px) {
   .shell.admin-wide .tabs {
     overflow-x: hidden;
@@ -2791,7 +2791,10 @@ html[data-theme="void"] .tab-repair img.nav-tool { filter: brightness(0) invert(
 }
 html[data-theme="void"] .shell.admin-wide .tab-ic,
 html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
-  background: currentColor;
+  background: #f4f4f4;
+}
+html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
+  background: #ffffff;
 }
 .tab:active,
 .tab.is-press {
@@ -6642,10 +6645,10 @@ html[data-theme="void"] .mini span,
 html[data-theme="void"] .role-btn span,
 html[data-theme="void"] .theme-panel .label,
 html[data-theme="void"] .move-pick-dates,
-html[data-theme="void"] .who-room,
-html[data-theme="void"] .nav button {
+html[data-theme="void"] .who-room {
   color: #b4b4b4;
 }
+html[data-theme="void"] .nav button { color: #f0f0f0; }
 html[data-theme="void"] .nav button.active { color: #ffffff; }
 html[data-theme="void"] .theme-swatch {
   background: #171717;
@@ -6660,8 +6663,8 @@ html[data-theme="void"] .pay-pill.paid,
 html[data-theme="void"] button.pay-toggle.paid { background: #243028; color: #d8f0dc; border-color: #3d5a44; }
 html[data-theme="void"] .pay-pill.unpaid,
 html[data-theme="void"] button.pay-toggle.unpaid { background: #3a1c1c; color: #ffb4ae; border-color: #6a3333; }
-html[data-theme="void"] .tab { color: #c8c8c8; }
-html[data-theme="void"] .tab.on { color: #111111 !important; }
+html[data-theme="void"] .tab { color: #f0f0f0; }
+html[data-theme="void"] .tab.on { color: #ffffff !important; }
 html[data-theme="void"] .cal-cell { color: #e8e8e8; border-color: #5e5e5e; }
 html[data-theme="void"] .handover-box { background: #2a2218; }
 html[data-theme="void"] .handover-box .label,
