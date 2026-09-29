@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-21-05";
-const APP_EDIT_COUNT = 1579;
+const APP_STAMP = "2026-09-29-21-12";
+const APP_EDIT_COUNT = 1580;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1129";
+const FILE_VER = "1130";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約內文放大到17px，每頁內容往下排滿，減少底部留白"] },
+  { ver: APP_VERSION, items: ["合約收成6頁，行距改緊，不再把字距撐開"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22009,11 +22009,6 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>4、其他：${u("")}</p>
       <p class="lease-art">第三條　租賃期間</p>
       <p>租賃期間自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止。</p>
-      </div>
-      <div class="lease-pgno">2</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第四條　租金約定及支付</p>
       ${isStub
         ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(cnAmt(listed) || "零")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(cnAmt(rent) || "零")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
@@ -22021,6 +22016,11 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
       <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
       <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
+      </div>
+      <div class="lease-pgno">2</div>
+    </section>
+    <section class="lease-pg">
+      <div class="lease-fill">
       <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
       <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(cnAmt(deposit) || "零")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
       <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
@@ -22032,11 +22032,6 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（四）瓦斯費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}其他：無。</p>
       <p>（五）網路費：${ck(true)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}其他：　　。</p>
       <p>（六）其他費用及其支付方式：　　。</p>
-      </div>
-      <div class="lease-pgno">3</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第七條　稅費負擔之約定</p>
       <p>本租賃契約有關稅費、代辦費，依下列約定辦理：</p>
       <p>（一）租賃住宅之房屋稅、地價稅由出租人負擔。</p>
@@ -22051,7 +22046,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（三）出租人${ck(false)}同意${ck(true)}不同意承租人將本租賃標的之全部或一部分轉租、出借或以其他方式供他人使用，或將租賃權轉讓於他人。</p>
       <p>（四）前項出租人同意轉租者，承租人應提示出租人同意轉租之證明文件。</p>
       </div>
-      <div class="lease-pgno">4</div>
+      <div class="lease-pgno">3</div>
     </section>
     <section class="lease-pg">
       <div class="lease-fill">
@@ -22064,11 +22059,6 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>承租人應以善良管理人之注意義務保管或使用房屋，如違反此項義務，致房屋毀損或滅失者，應負損害賠償責任。但依約定之方法或依房屋之性質使用、收益，致房屋有變更、毀損或滅失者，不在此限。</p>
       <p class="lease-art">第十一條　房屋部分滅失</p>
       <p>租賃關係存續中，因不可歸責於承租人之事由，致房屋之一部分滅失者，承租人得按滅失之部分，請求減少租金。</p>
-      </div>
-      <div class="lease-pgno">5</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第十二條　提前終止租約</p>
       <p>（一）本契約於期限屆滿前，租賃雙方${ck(false)}得${ck(true)}不得終止租約。</p>
       <p>（二）依約定得終止租約者，租賃之一方應於${ck(true)}一個月前${ck(false)}　　個月前通知他方。一方未為先期通知而逕行終止租約者，應賠償他方　壹　個月租金額之違約金。</p>
@@ -22079,15 +22069,15 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（二）前項房屋之返還，應由租賃雙方共同完成屋況及附屬設備之點交手續。租賃之一方未會同點交，經他方定相當期限催告仍不會同者，視為完成點交。</p>
       <p>（三）承租人未依第一項規定返還房屋時，出租人得向承租人請求未返還房屋期間之相當月租金額外，並得請求相當月租金額一倍（未足一個月者，以日租金折算）之違約金至返還為止。</p>
       <p>（四）前項金額及承租人未繳清之相關費用，出租人得由第五條之擔保金（押金）中扣抵。</p>
+      </div>
+      <div class="lease-pgno">4</div>
+    </section>
+    <section class="lease-pg">
+      <div class="lease-fill">
       <p class="lease-art">第十四條　房屋所有權之讓與</p>
       <p>（一）出租人於房屋交付後，承租人占有中，縱將其所有權讓與第三人，本契約對於受讓人仍繼續存在。</p>
       <p>（二）前項情形，出租人應移交擔保金（押金）及已預收之租金與受讓人，並以書面通知承租人。</p>
       <p>（三）本契約如未經公證，其期限逾五年或未定期限者，不適用第二項之約定。</p>
-      </div>
-      <div class="lease-pgno">6</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第十五條　出租人提前終止租約</p>
       <p>承租人有下列情形之一者，出租人得提前終止租約，且承租人不得要求任何賠償：</p>
       <p>（一）承租人遲付租金之總額達二個月之金額，並經出租人定相當期限催告，承租人仍不為支付。</p>
@@ -22108,7 +22098,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>${ck(true)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
       <p>${ck(true)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
       </div>
-      <div class="lease-pgno">7</div>
+      <div class="lease-pgno">5</div>
     </section>
     <section class="lease-pg">
       <div class="lease-fill">
@@ -22127,7 +22117,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
       <p class="term-hint">承租人簽名以 App 手寫為準。身分證、電話、緊急聯絡人與戶籍地址請先填齊。列印後於紅色框蓋公司章與私章，系統不套印印章。</p>
       </div>
-      <div class="lease-pgno">8</div>
+      <div class="lease-pgno">6</div>
     </section>
   </div>`;
 }
