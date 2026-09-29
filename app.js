@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-18-48";
-const APP_EDIT_COUNT = 1557;
+const APP_STAMP = "2026-09-29-19-36";
+const APP_EDIT_COUNT = 1558;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1107";
+const FILE_VER = "1108";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -514,7 +514,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["摺疊機左右分割最多兩個畫面，並分開直板、平板、電腦"] },
+  { ver: APP_VERSION, items: ["兩個畫面時可再拖到左、中、右，預覽改灰色"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25058,10 +25058,12 @@ function openSplit(id, side) {
     return;
   }
   const onLeft = side === "left";
+  const onMid = side === "mid";
   if (onLeft) pages.unshift(id);
+  else if (onMid) pages.splice(Math.min(1, pages.length), 0, id);
   else pages.push(id);
   ui.splitPages = pages;
-  ui.splitFocus = onLeft ? 0 : pages.length - 1;
+  ui.splitFocus = onLeft ? 0 : onMid ? Math.min(1, pages.length - 1) : pages.length - 1;
   ui.page = pages[0];
   render();
 }
@@ -25142,18 +25144,23 @@ function bindSplitDrag() {
       if (drop) drop.remove();
       return "";
     }
-    const full = splitOn() && ui.splitPages.length >= splitCap();
-    const side = x < window.innerWidth / 2 ? "left" : "right";
+    const have = splitOn() ? ui.splitPages.length : 1;
+    const slots = have >= 2 && splitCap() >= 3 ? 3 : 2;
+    const full = have >= splitCap();
+    const ratio = window.innerWidth ? x / window.innerWidth : 0.5;
+    const side = full ? "" : slots === 3 ? (ratio < 0.34 ? "left" : ratio < 0.67 ? "mid" : "right") : (ratio < 0.5 ? "left" : "right");
     if (!drop) {
       drop = document.createElement("div");
       drop.className = "split-drop";
       shell.appendChild(drop);
     }
-    drop.classList.toggle("is-left", !full && side === "left");
-    drop.classList.toggle("is-right", !full && side === "right");
+    drop.classList.toggle("is-left", side === "left");
+    drop.classList.toggle("is-mid", side === "mid");
+    drop.classList.toggle("is-right", side === "right");
+    drop.classList.toggle("is-slot", slots === 3 && !full);
     drop.classList.toggle("is-full", full);
     drop.textContent = full ? (splitCap() === 2 ? "已經兩個畫面" : "已經三個畫面") : "";
-    return full ? "" : side;
+    return side;
   };
   document.addEventListener("pointerdown", e => {
     if (EMBED_PAGE || ui.role !== "admin") return;
@@ -25194,7 +25201,7 @@ function bindSplitDrag() {
       if (tab) tab.dataset.dragged = "1";
       const shell = document.querySelector(".shell.admin-wide");
       const side = shell && shell.dataset.splitSide;
-      if (side === "left" || side === "right") openSplit(id, side);
+      if (side === "left" || side === "right" || side === "mid") openSplit(id, side);
     }
     clear();
     setTimeout(() => { window.__splitLift = false; }, 0);

@@ -3113,18 +3113,20 @@ html.embed-pane .shell.admin-wide .desk-third {
   bottom: 120px;
   width: calc(50% - 18px);
   border-radius: 24px;
-  background: rgba(20, 20, 20, .78);
+  background: rgba(160, 160, 160, .38);
   color: #fff;
   font-weight: 800;
   font-size: 16px;
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: left .16s ease, right .16s ease, width .16s ease;
+  transition: left .16s ease, right .16s ease, width .16s ease, transform .16s ease;
 }
-.split-drop.is-left { left: 12px; right: auto; }
-.split-drop.is-right { right: 12px; left: auto; }
-.split-drop.is-full { left: 12px; right: 12px; width: auto; }
+.split-drop.is-left { left: 12px; right: auto; transform: none; }
+.split-drop.is-right { right: 12px; left: auto; transform: none; }
+.split-drop.is-mid { left: 50%; right: auto; transform: translateX(-50%); }
+.split-drop.is-slot { width: calc(33.333% - 16px); }
+.split-drop.is-full { left: 12px; right: 12px; width: auto; transform: none; }
 .shell.admin-wide.split-arm .admin-scroll,
 .shell.admin-wide.split-arm .split-stage {
   transition: none;
