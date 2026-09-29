@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-20-28";
-const APP_EDIT_COUNT = 1571;
+const APP_STAMP = "2026-09-29-20-30";
+const APP_EDIT_COUNT = 1572;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1121";
+const FILE_VER = "1122";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約房屋部分改寫完整門牌地址，所有合約同步"] },
+  { ver: APP_VERSION, items: ["水費說明拿掉「優惠」，合約與其他畫面同步"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3869,7 +3869,7 @@ const DEFAULT_RULES = `1. 每月租金請於每月 1 日前完成，逾期將依
 3. 垃圾請分類並依規定時間放置，勿堆放在走廊或樓梯間。
 4. 房間內禁止抽菸、開伙（簡易加熱除外）。
 5. 冷氣、熱水器等設備請正常使用，損壞請從 App 報修，勿自行拆修。
-6. 電費每度 NT$ 5.5，請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。
+6. 電費每度 NT$ 5.5，請至 5 樓自助儲值機刷卡儲值；水費為每人每月 NT$ 150，一年 NT$ 1,800。
 7. 訪客請由承租人陪同，勿將房間轉租或借給他人長期居住。
 8. 退租時請恢復原狀並交還鑰匙，押金於點交無誤後退還。
 9. 樓層走道請保持整潔，勿堆放過多雜物，以免影響他人通行。
@@ -3936,7 +3936,7 @@ function roomNoSubsidy(r) {
 function subsidyHint(r) {
   return roomNoSubsidy(r) ? "不可申請租屋補助" : "";
 }
-const WATER_FEE_TEXT = "每人每月 NT$ 150，一年優惠 NT$ 1,800";
+const WATER_FEE_TEXT = "每人每月 NT$ 150，一年 NT$ 1,800";
 const STUDIO_ELEC_RATE = 5.5;
 const ELEC_FEE_TEXT = "每度 NT$ 5.5，請至 5 樓自助儲值機儲值";
 const STUDIO_MONTH_PAY = {
@@ -5729,8 +5729,10 @@ function normalize(data) {
   if (!data.houseRules) data.houseRules = DEFAULT_RULES;
   else {
     let rules = String(data.houseRules)
-      .replace(/水費為每月定額[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。")
-      .replace(/水費為一年固定 \$1,800[。]?/, "水費為每人每月 NT$ 150，一年優惠 NT$ 1,800。");
+      .replace(/水費為每月定額[。]?/, "水費為每人每月 NT$ 150，一年 NT$ 1,800。")
+      .replace(/水費為一年固定 \$1,800[。]?/, "水費為每人每月 NT$ 150，一年 NT$ 1,800。")
+      .replace(/一年優惠\s*NT\$\s*1,800/g, "一年 NT$ 1,800")
+      .replace(/年優惠\s*NT\$\s*1,?800/g, "一年 NT$ 1,800");
     if (!/樓層走道/.test(rules)) rules = rules.replace(/\s*$/, "") + "\n9. 樓層走道請保持整潔，勿堆放過多雜物，以免影響他人通行。";
     if (!/飼養寵物/.test(rules)) rules = rules.replace(/\s*$/, "") + "\n10. 若有飼養寵物，請維持環境整潔，並降低音量，避免影響鄰戶安寧。";
     if (rules !== data.houseRules) {
@@ -22022,7 +22024,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="lease-art">第六條　租賃期間相關費用之支付</p>
       <p>租賃期間，使用房屋所生之相關費用如下：</p>
       <p>（一）管理費：${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(true)}無。</p>
-      <p>（二）水費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每人每月 NT$ 150，一年優惠 NT$ 1,800。</p>
+      <p>（二）水費：${ck(false)}由出租人負擔。${ck(true)}由承租人負擔。${ck(false)}其他：每人每月 NT$ 150，一年 NT$ 1,800。</p>
       <div class="lease-pgno">3</div>
     </section>
     <section class="lease-pg">
@@ -24464,7 +24466,7 @@ function roomExtrasHtml(r) {
             return escapeHtml(s.slice(0, i)) + `<span class="topup-origin">儲值機</span>` + escapeHtml(s.slice(i + 3));
           })(util.electric)}</span>
         </div>
-        <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>年優惠NT$1800</span></span></div>
+        <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>一年 NT$ 1,800</span></span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">
