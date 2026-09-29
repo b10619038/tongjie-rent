@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-12";
-const APP_EDIT_COUNT = 1599;
+const APP_STAMP = "2026-09-29-23-18";
+const APP_EDIT_COUNT = 1600;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1150";
+const FILE_VER = "1151";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["公告可立即發布或預約時間自動公告"] },
+  { ver: APP_VERSION, items: ["小視窗點最左邊選單會滑出前面三個"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25824,14 +25824,26 @@ function revealNextTabs(btn) {
     const seen = Math.min(r.right, box.right) - Math.max(r.left, box.left);
     return seen > r.width * 0.72;
   });
-  if (!visible.length || btn !== visible[visible.length - 1]) return false;
-  const idx = tabs.indexOf(btn);
-  if (idx < 0 || idx >= tabs.length - 1) return false;
+  if (!visible.length) return false;
   const step = (btn.offsetWidth || 72) * 3;
-  const left = Math.max(0, Math.min(sc.scrollWidth - sc.clientWidth, sc.scrollLeft + step));
-  if (left <= sc.scrollLeft + 4) return false;
-  sc.scrollTo({ left, behavior: "smooth" });
-  return true;
+  const maxLeft = Math.max(0, sc.scrollWidth - sc.clientWidth);
+  if (btn === visible[visible.length - 1]) {
+    const idx = tabs.indexOf(btn);
+    if (idx < 0 || idx >= tabs.length - 1) return false;
+    const left = Math.max(0, Math.min(maxLeft, sc.scrollLeft + step));
+    if (left <= sc.scrollLeft + 4) return false;
+    sc.scrollTo({ left, behavior: "smooth" });
+    return true;
+  }
+  if (btn === visible[0]) {
+    const idx = tabs.indexOf(btn);
+    if (idx <= 0) return false;
+    const left = Math.max(0, sc.scrollLeft - step);
+    if (left >= sc.scrollLeft - 4) return false;
+    sc.scrollTo({ left, behavior: "smooth" });
+    return true;
+  }
+  return false;
 }
 function bindTabPage() {
   const sc = document.querySelector(".shell.admin-wide .tabs");
