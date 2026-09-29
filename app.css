@@ -6671,6 +6671,16 @@ html[data-theme="void"] .tab.on { color: #ffffff !important; }
 html[data-theme="void"] .cal-cell { color: #e8e8e8; border-color: #5e5e5e; }
 html[data-theme="void"] .handover-box { background: #2a2218; }
 html[data-theme="void"] .handover-box .label { color: #efc89a; }
+html[data-theme="void"] .tenant-slim.pay-hit .who-text .k,
+html[data-theme="void"] .tenant-slim.pay-hit .who-mini,
+html[data-theme="void"] .tenant-slim.pay-hit .who-room,
+html[data-theme="void"] .tenant-slim.renew-hit .who-room {
+  color: #1a2a1c;
+}
+html[data-theme="void"] .pay-alert.paid .dash-h { color: #1e4d32; }
+html[data-theme="void"] .pay-alert.paid .small,
+html[data-theme="void"] .pay-alert.paid .k { color: #5c6b62; }
+html[data-theme="void"] .pay-alert.paid .row .v { color: #17211f; }
 html[data-theme="void"] .mini.renew-hit b,
 html[data-theme="void"] .tenant-slim.renew-hit,
 html[data-theme="void"] .tenant-slim.renew-hit .k,
