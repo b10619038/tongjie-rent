@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-21-12";
-const APP_EDIT_COUNT = 1580;
+const APP_STAMP = "2026-09-29-21-20";
+const APP_EDIT_COUNT = 1581;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1130";
+const FILE_VER = "1131";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約收成6頁，行距改緊，不再把字距撐開"] },
+  { ver: APP_VERSION, items: ["合約仍為6頁，字放大，行距依每頁剩餘高度排滿"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22009,6 +22009,11 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>4、其他：${u("")}</p>
       <p class="lease-art">第三條　租賃期間</p>
       <p>租賃期間自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止。</p>
+      </div>
+      <div class="lease-pgno">2</div>
+    </section>
+    <section class="lease-pg">
+      <div class="lease-fill">
       <p class="lease-art">第四條　租金約定及支付</p>
       ${isStub
         ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(cnAmt(listed) || "零")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(cnAmt(rent) || "零")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
@@ -22016,11 +22021,6 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
       <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
       <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
-      </div>
-      <div class="lease-pgno">2</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
       <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(cnAmt(deposit) || "零")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
       <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
@@ -22040,16 +22040,16 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（四）公證費　無　元整。${ck(false)}由出租人負擔。${ck(false)}由承租人負擔。${ck(false)}由租賃雙方平均負擔。</p>
       <p>（五）公證代辦費　無　元整。</p>
       <p>（六）其他稅費及其支付方式：　　。</p>
-      <p class="lease-art">第八條　使用租賃住宅之限制</p>
-      <p>（一）本租賃標的係宿舍使用，承租人得變更用途。</p>
-      <p>（二）承租人同意遵守住戶規約，不得違法使用、存放有爆炸性或易燃性物品，影響公共安全、公共衛生或居住安寧。</p>
-      <p>（三）出租人${ck(false)}同意${ck(true)}不同意承租人將本租賃標的之全部或一部分轉租、出借或以其他方式供他人使用，或將租賃權轉讓於他人。</p>
-      <p>（四）前項出租人同意轉租者，承租人應提示出租人同意轉租之證明文件。</p>
       </div>
       <div class="lease-pgno">3</div>
     </section>
     <section class="lease-pg">
       <div class="lease-fill">
+      <p class="lease-art">第八條　使用租賃住宅之限制</p>
+      <p>（一）本租賃標的係宿舍使用，承租人得變更用途。</p>
+      <p>（二）承租人同意遵守住戶規約，不得違法使用、存放有爆炸性或易燃性物品，影響公共安全、公共衛生或居住安寧。</p>
+      <p>（三）出租人${ck(false)}同意${ck(true)}不同意承租人將本租賃標的之全部或一部分轉租、出借或以其他方式供他人使用，或將租賃權轉讓於他人。</p>
+      <p>（四）前項出租人同意轉租者，承租人應提示出租人同意轉租之證明文件。</p>
       <p class="lease-art">第九條　修繕及改裝</p>
       <p>（一）房屋或附屬設備損壞而有修繕之必要時，應由出租人負責修繕。但租賃雙方另有約定、習慣或因可歸責於承租人之事由者，不在此限。</p>
       <p>（二）前項由出租人負責修繕者，如出租人未於承租人所定相當期限內修繕時，承租人得自行修繕，並請求出租人償還其費用或於第四條約定之租金中扣除。</p>
@@ -22064,16 +22064,16 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（二）依約定得終止租約者，租賃之一方應於${ck(true)}一個月前${ck(false)}　　個月前通知他方。一方未為先期通知而逕行終止租約者，應賠償他方　壹　個月租金額之違約金。</p>
       <p>（三）前項承租人應賠償之違約金得由第五條之押金中扣抵。</p>
       <p>（四）租期屆滿前，依第二項終止租約者，出租人已預收之租金應返還予承租人。</p>
-      <p class="lease-art">第十三條　房屋之返還</p>
-      <p>（一）租期屆滿或租賃契約終止時，承租人應立即將房屋返還出租人並遷出戶籍或其他登記。</p>
-      <p>（二）前項房屋之返還，應由租賃雙方共同完成屋況及附屬設備之點交手續。租賃之一方未會同點交，經他方定相當期限催告仍不會同者，視為完成點交。</p>
-      <p>（三）承租人未依第一項規定返還房屋時，出租人得向承租人請求未返還房屋期間之相當月租金額外，並得請求相當月租金額一倍（未足一個月者，以日租金折算）之違約金至返還為止。</p>
-      <p>（四）前項金額及承租人未繳清之相關費用，出租人得由第五條之擔保金（押金）中扣抵。</p>
       </div>
       <div class="lease-pgno">4</div>
     </section>
     <section class="lease-pg">
       <div class="lease-fill">
+      <p class="lease-art">第十三條　房屋之返還</p>
+      <p>（一）租期屆滿或租賃契約終止時，承租人應立即將房屋返還出租人並遷出戶籍或其他登記。</p>
+      <p>（二）前項房屋之返還，應由租賃雙方共同完成屋況及附屬設備之點交手續。租賃之一方未會同點交，經他方定相當期限催告仍不會同者，視為完成點交。</p>
+      <p>（三）承租人未依第一項規定返還房屋時，出租人得向承租人請求未返還房屋期間之相當月租金額外，並得請求相當月租金額一倍（未足一個月者，以日租金折算）之違約金至返還為止。</p>
+      <p>（四）前項金額及承租人未繳清之相關費用，出租人得由第五條之擔保金（押金）中扣抵。</p>
       <p class="lease-art">第十四條　房屋所有權之讓與</p>
       <p>（一）出租人於房屋交付後，承租人占有中，縱將其所有權讓與第三人，本契約對於受讓人仍繼續存在。</p>
       <p>（二）前項情形，出租人應移交擔保金（押金）及已預收之租金與受讓人，並以書面通知承租人。</p>
@@ -22090,6 +22090,11 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（三）房屋有危及承租人或其同居人之安全或健康之瑕疵時。</p>
       <p class="lease-art">第十七條　通知送達及寄送</p>
       <p>除本契約另有約定外，租賃雙方相互間之通知，以郵寄為之者，應以本契約所記載之地址為準；並得以${ck(true)}電子郵件${ck(true)}簡訊${ck(true)}通訊軟體（例如 Line、WhatsApp 等文字顯示）${ck(false)}其他　　方式為之；如因地址變更未通知他方或因相關原因導致通知無法到達他方時（包括拒收），以他方第一次郵遞或通知之日期推定為到達日。</p>
+      </div>
+      <div class="lease-pgno">5</div>
+    </section>
+    <section class="lease-pg">
+      <div class="lease-fill">
       <p class="lease-art">第十八條　其他約定</p>
       <p>本契約租賃雙方${ck(false)}同意辦理公證${ck(true)}不同意辦理公證。</p>
       <p>下列事項應逕受強制執行：</p>
@@ -22097,11 +22102,6 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>${ck(true)}（二）承租人未依約給付之欠繳租金、費用及出租人或租賃標的所有權人代繳之違約時應支付之金額。</p>
       <p>${ck(true)}（三）出租人如於租期屆滿或本契約終止時，應返還之全部或一部擔保金（押金）。</p>
       <p>${ck(true)}（四）出租人若提前收回房屋，須負擔賠償所有承租方之裝潢及費用。</p>
-      </div>
-      <div class="lease-pgno">5</div>
-    </section>
-    <section class="lease-pg">
-      <div class="lease-fill">
       <p class="lease-art">第十九條　契約及其相關附件效力</p>
       <p>（一）本契約自簽約日起生效，租賃雙方各執一份契約正本。</p>
       <p>（二）本契約廣告及相關附件視為本契約之一部分。</p>
@@ -22337,6 +22337,34 @@ function printLeaseIframe(html) {
   iframe.srcdoc = doc;
   setTimeout(go, 5000);
 }
+function fitLeasePages(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll(".lease-pg:not(.cover)").forEach(page => {
+    const fill = page.querySelector(".lease-fill");
+    if (!fill) return;
+    const cs = getComputedStyle(page);
+    const available = page.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+    if (available < 120) return;
+    fill.style.flex = "0 0 auto";
+    fill.style.height = "auto";
+    fill.style.display = "block";
+    fill.style.fontSize = "16.5px";
+    let lo = 1.5;
+    let hi = 1.82;
+    let best = lo;
+    for (let i = 0; i < 10; i++) {
+      const mid = (lo + hi) / 2;
+      fill.style.lineHeight = String(mid);
+      if (fill.scrollHeight > available - 4) hi = mid;
+      else { best = mid; lo = mid; }
+    }
+    fill.style.lineHeight = String(best);
+    if (fill.scrollHeight > available - 2) {
+      fill.style.fontSize = "15.5px";
+      fill.style.lineHeight = "1.52";
+    }
+  });
+}
 function closeLeasePrintPreview() {
   const el = document.getElementById("lease-preview-box");
   if (el) el.remove();
@@ -22361,11 +22389,14 @@ function showLeasePrintPreview(t, r, which) {
     </div>
     <div class="lease-preview-scroll">${html}</div>`;
   document.body.appendChild(wrap);
+  const fit = () => fitLeasePages(wrap);
+  requestAnimationFrame(() => requestAnimationFrame(fit));
   document.getElementById("lease-prev-close").onclick = closeLeasePrintPreview;
   wrap.addEventListener("click", e => { if (e.target === wrap) closeLeasePrintPreview(); });
   document.getElementById("lease-prev-print").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    fit();
     const hold = document.querySelector("#lease-preview-box .lease-preview-scroll");
     printLeaseIframe(hold ? hold.innerHTML : studioLeasePapersHtml(t, r, true, which));
   };
