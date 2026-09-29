@@ -6811,42 +6811,34 @@ html[data-theme="void"] .site-chip {
 .asset-map-card .dash-h { margin: 0; }
 .asset-map-card .seg { margin: 0 0 10px; }
 .asset-map-wrap {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  max-height: 70vh;
+  overflow: hidden;
+  position: relative;
   border-radius: 16px;
   background: #f4f4f2;
   touch-action: none;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
+  overscroll-behavior: none;
+  height: min(62vh, 560px);
 }
-.asset-map-wrap::-webkit-scrollbar { width: 0; height: 0; display: none; }
-.asset-map-wrap.is-portrait { max-height: 78vh; }
-.asset-map-turn { position: relative; }
-.asset-map-wrap.is-portrait .asset-map-turn {
-  height: 0;
-  padding-top: 141.803%;
+.asset-map-wrap.is-portrait { height: min(74vh, 760px); }
+.asset-map-turn {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
 }
 .asset-map {
-  position: relative;
-  min-width: 100%;
-}
-.asset-map-wrap.is-portrait .asset-map {
   position: absolute;
-  top: 0;
-  left: 100%;
-  width: 141.803%;
+  left: 50%;
+  top: 50%;
   min-width: 0;
-  height: auto;
-  transform: rotate(90deg);
-  transform-origin: top left;
 }
 .asset-map img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill;
   display: block;
   pointer-events: none;
   user-select: none;
+  -webkit-user-drag: none;
 }
 .map-hot {
   position: absolute;

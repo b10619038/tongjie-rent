@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-29-23-28";
-const APP_EDIT_COUNT = 1601;
+const APP_STAMP = "2026-09-29-23-36";
+const APP_EDIT_COUNT = 1602;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1152";
+const FILE_VER = "1153";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["LINE 綁定改存正式資料，頭貼才不會一起不見"] },
+  { ver: APP_VERSION, items: ["資產平面圖固定在框裡，放大後拖移，不再用滾輪捲動"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4396,7 +4396,6 @@ function assetMapPopHtml(spot) {
   return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div>${rows}</div>`;
 }
 function assetMapHtml() {
-  const z = Number(ui.assetMapZoom) > 0 ? Number(ui.assetMapZoom) : 1;
   const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
   return `<div class="card card-body asset-map-card">
@@ -4406,7 +4405,7 @@ function assetMapHtml() {
         <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
       </span>
     </div>
-    <div class="small" style="margin-bottom:8px">雙指開合放大，單指拖移。點灰色建物看出租與繳費。大樹不在這張圖。</div>
+    <div class="small" style="margin-bottom:8px">整張先固定在框裡。滾輪或雙指放大，再拖移看細節。點建物看出租與繳費。大樹不在這張圖。</div>
     <div class="map-legend"><span class="map-dot paid"></span>已繳　<span class="map-dot unpaid"></span>未繳　<span class="map-dot vacant"></span>空置</div>
     <div class="seg ${portrait ? "" : "is-land"}" id="map-paper-seg">
       <i class="seg-bg"></i>
@@ -4414,8 +4413,8 @@ function assetMapHtml() {
       <button type="button" class="${portrait ? "" : "on"}" data-map-paper="landscape">橫式</button>
     </div>
     <div class="asset-map-wrap${portrait ? " is-portrait" : ""}" id="asset-map-wrap">
-      <div class="asset-map-turn" id="asset-map-turn"${portrait ? ` style="width:${Math.round(z * 100)}%"` : ""}>
-        <div class="asset-map" id="asset-map"${portrait ? "" : ` style="width:${Math.round(z * 100)}%"`}>
+      <div class="asset-map-turn" id="asset-map-turn">
+        <div class="asset-map" id="asset-map">
           <img src="images/asset-map.png?v=${FILE_VER}" alt="資產平面圖" draggable="false" />
           ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
         </div>
@@ -4429,29 +4428,53 @@ function bindAssetMap() {
   const turn = document.getElementById("asset-map-turn");
   const map = document.getElementById("asset-map");
   const pop = document.getElementById("asset-map-pop");
-  const frame = () => {
-    if (!wrap || !map) return;
+  const img = map && map.querySelector("img");
+  const nat = () => ({
+    w: (img && img.naturalWidth) || 1557,
+    h: (img && img.naturalHeight) || 1098
+  });
+  const layout = () => {
+    if (!wrap || !map || !turn) return;
     const portrait = ui.assetMapPaper === "portrait";
-    const z = ui.assetMapZoom || 1;
-    wrap.classList.toggle("is-portrait", portrait);
-    if (turn) turn.style.width = portrait ? (z * 100) + "%" : "";
-    map.style.width = portrait ? "" : (z * 100) + "%";
-  };
-  const boxOf = () => turn || map;
-  const applyZoomAt = (z, clientX, clientY) => {
-    if (!wrap || !map) return;
-    z = Math.max(1, Math.min(3, z));
-    const rect = wrap.getBoundingClientRect();
-    const box = boxOf();
-    const x = clientX == null ? rect.left + rect.width / 2 : clientX;
-    const y = clientY == null ? rect.top + rect.height / 2 : clientY;
-    const mx = (x - rect.left + wrap.scrollLeft) / Math.max(1, box.offsetWidth);
-    const my = (y - rect.top + wrap.scrollTop) / Math.max(1, box.offsetHeight);
+    const z = Math.max(1, Math.min(3, Number(ui.assetMapZoom) || 1));
     ui.assetMapZoom = z;
-    frame();
-    const next = boxOf();
-    wrap.scrollLeft = mx * next.offsetWidth - (x - rect.left);
-    wrap.scrollTop = my * next.offsetHeight - (y - rect.top);
+    wrap.classList.toggle("is-portrait", portrait);
+    const fw = wrap.clientWidth || 320;
+    const { w: iw, h: ih } = nat();
+    const cap = Math.min(window.innerHeight * (portrait ? 0.74 : 0.62), portrait ? 760 : 560);
+    const viewAspect = portrait ? iw / ih : ih / iw;
+    let fh = fw * viewAspect;
+    if (fh > cap) fh = cap;
+    wrap.style.height = Math.max(180, fh) + "px";
+    const boxW = wrap.clientWidth || fw;
+    const boxH = wrap.clientHeight || fh;
+    const fit = portrait ? Math.min(boxW / ih, boxH / iw) : Math.min(boxW / iw, boxH / ih);
+    const mapW = iw * fit;
+    const mapH = ih * fit;
+    map.style.width = mapW + "px";
+    map.style.height = mapH + "px";
+    map.style.transform = portrait ? "translate(-50%, -50%) rotate(90deg)" : "translate(-50%, -50%)";
+    const visW = portrait ? mapH : mapW;
+    const visH = portrait ? mapW : mapH;
+    const maxX = Math.max(0, (visW * z - boxW) / 2);
+    const maxY = Math.max(0, (visH * z - boxH) / 2);
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+    ui.assetMapX = clamp(Number(ui.assetMapX) || 0, -maxX, maxX);
+    ui.assetMapY = clamp(Number(ui.assetMapY) || 0, -maxY, maxY);
+    turn.style.transform = "translate(" + ui.assetMapX + "px," + ui.assetMapY + "px) scale(" + z + ")";
+  };
+  const zoomAt = (next, clientX, clientY) => {
+    if (!wrap) return;
+    const z0 = Math.max(1, Number(ui.assetMapZoom) || 1);
+    const z1 = Math.max(1, Math.min(3, next));
+    const rect = wrap.getBoundingClientRect();
+    const cx = (clientX == null ? rect.left + rect.width / 2 : clientX) - rect.left - rect.width / 2;
+    const cy = (clientY == null ? rect.top + rect.height / 2 : clientY) - rect.top - rect.height / 2;
+    const k = z1 / z0;
+    ui.assetMapX = (Number(ui.assetMapX) || 0) * k + cx * (1 - k);
+    ui.assetMapY = (Number(ui.assetMapY) || 0) * k + cy * (1 - k);
+    ui.assetMapZoom = z1;
+    layout();
   };
   document.querySelectorAll("[data-map-spot]").forEach(btn => {
     bindIosPress(btn);
@@ -4469,7 +4492,7 @@ function bindAssetMap() {
       }
     };
   });
-  const setZ = next => applyZoomAt(next);
+  const setZ = next => zoomAt(next);
   const zin = document.getElementById("map-zoom-in");
   const zout = document.getElementById("map-zoom-out");
   if (zin) { bindIosPress(zin); zin.onclick = e => { e.preventDefault(); setZ((ui.assetMapZoom || 1) + 0.35); }; }
@@ -4483,62 +4506,93 @@ function bindAssetMap() {
         const next = b.dataset.mapPaper === "portrait" ? "portrait" : "landscape";
         if ((ui.assetMapPaper || "landscape") === next) return;
         ui.assetMapPaper = next;
+        ui.assetMapX = 0;
+        ui.assetMapY = 0;
+        ui.assetMapZoom = 1;
         setSegSide(paperSeg, next === "landscape", "", "is-land");
-        frame();
-        if (wrap) { wrap.scrollLeft = 0; wrap.scrollTop = 0; }
+        layout();
       };
     });
   }
+  layout();
+  ui.mapLayout = layout;
+  if (img && !img.complete) img.addEventListener("load", layout, { once: true });
+  if (!ui.mapResizeBound) {
+    ui.mapResizeBound = true;
+    window.addEventListener("resize", () => { if (typeof ui.mapLayout === "function") ui.mapLayout(); });
+  }
   if (!wrap || !map || wrap.dataset.mapPinch === "1") return;
   wrap.dataset.mapPinch = "1";
-  let startDist = 0, startZ = 1, pinching = false, panning = false, panX = 0, panY = 0, sl = 0, st = 0;
-  const distOf = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  const midOf = (a, b) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
+  const pointers = new Map();
+  let mode = "", startDist = 1, startZ = 1, panX = 0, panY = 0, ox = 0, oy = 0;
+  const distOf = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const midOf = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const skipClick = () => {
     ui.mapSkipClick = true;
     clearTimeout(ui.mapSkipTimer);
-    ui.mapSkipTimer = setTimeout(() => { ui.mapSkipClick = false; }, 350);
+    ui.mapSkipTimer = setTimeout(() => { ui.mapSkipClick = false; }, 280);
   };
-  wrap.addEventListener("touchstart", e => {
-    if (e.touches.length >= 2) {
-      pinching = true;
-      panning = false;
-      startDist = distOf(e.touches[0], e.touches[1]) || 1;
+  const onDown = e => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      startDist = distOf(a, b) || 1;
       startZ = ui.assetMapZoom || 1;
+      mode = "pinch";
+      skipClick();
+    } else {
+      mode = "pan";
+      panX = e.clientX;
+      panY = e.clientY;
+      ox = Number(ui.assetMapX) || 0;
+      oy = Number(ui.assetMapY) || 0;
+    }
+  };
+  const onMove = e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const m = midOf(a, b);
+      zoomAt(startZ * ((distOf(a, b) || 1) / startDist), m.x, m.y);
       skipClick();
       e.preventDefault();
-    } else if (e.touches.length === 1) {
-      panning = true;
-      panX = e.touches[0].clientX;
-      panY = e.touches[0].clientY;
-      sl = wrap.scrollLeft;
-      st = wrap.scrollTop;
+      return;
     }
-  }, { passive: false });
-  wrap.addEventListener("touchmove", e => {
-    if (pinching && e.touches.length >= 2) {
-      e.preventDefault();
-      const d = distOf(e.touches[0], e.touches[1]) || 1;
-      const m = midOf(e.touches[0], e.touches[1]);
-      applyZoomAt(startZ * (d / startDist), m.x, m.y);
-      skipClick();
-    } else if (!pinching && panning && e.touches.length === 1) {
-      const dx = e.touches[0].clientX - panX;
-      const dy = e.touches[0].clientY - panY;
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) skipClick();
-      wrap.scrollLeft = sl - dx;
-      wrap.scrollTop = st - dy;
-      e.preventDefault();
-    }
-  }, { passive: false });
-  wrap.addEventListener("touchend", e => {
-    if (e.touches.length < 2) pinching = false;
-    if (e.touches.length === 0) panning = false;
-  });
+    if (mode !== "pan") return;
+    const dx = e.clientX - panX;
+    const dy = e.clientY - panY;
+    if (Math.hypot(dx, dy) > 5) skipClick();
+    ui.assetMapX = ox + dx;
+    ui.assetMapY = oy + dy;
+    layout();
+    e.preventDefault();
+  };
+  const onUp = e => {
+    pointers.delete(e.pointerId);
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      startDist = distOf(a, b) || 1;
+      startZ = ui.assetMapZoom || 1;
+      mode = "pinch";
+    } else if (pointers.size === 1) {
+      const p = [...pointers.values()][0];
+      mode = "pan";
+      panX = p.x;
+      panY = p.y;
+      ox = Number(ui.assetMapX) || 0;
+      oy = Number(ui.assetMapY) || 0;
+    } else mode = "";
+  };
+  wrap.addEventListener("pointerdown", onDown);
+  wrap.addEventListener("pointermove", onMove);
+  wrap.addEventListener("pointerup", onUp);
+  wrap.addEventListener("pointercancel", onUp);
   wrap.addEventListener("wheel", e => {
     e.preventDefault();
     const z = ui.assetMapZoom || 1;
-    applyZoomAt(z * (e.deltaY > 0 ? 0.9 : 1.12), e.clientX, e.clientY);
+    zoomAt(z * (e.deltaY > 0 ? 0.9 : 1.12), e.clientX, e.clientY);
   }, { passive: false });
 }
 const FACTORY_TENANT_INFO = {
