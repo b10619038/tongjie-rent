@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-13-32";
-const APP_EDIT_COUNT = 1644;
+const APP_STAMP = "2026-09-30-14-02";
+const APP_EDIT_COUNT = 1645;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1195";
+const FILE_VER = "1196";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["完成簽約後不會被舊資料蓋回去"] },
+  { ver: APP_VERSION, items: ["續約簽署前承租人資料五項都要填完"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22176,6 +22176,27 @@ function slashPair(s) {
   const parts = String(s || "").split(/[／/、]+/).map(x => x.trim()).filter(Boolean);
   return parts.slice(0, 2).join("／");
 }
+function signPairBits(s) {
+  return String(s || "").split(/[／/、,，]+/).map(x => x.trim()).filter(Boolean);
+}
+function signProfileGap(two, idNo, phone, emName, emPhone, addr) {
+  const hint = /請用|分開|請填/;
+  const check = (id, label, value, kind) => {
+    const raw = String(value || "").trim();
+    if (!raw || hint.test(raw)) return { id, msg: "請先填" + label + "，才能簽署" };
+    const parts = signPairBits(raw);
+    if (two && parts.length < 2) return { id, msg: label + "兩人都要填，中間用／分開" };
+    if (kind === "id" && !parts.every(p => /^[A-Z]\d{9}$/.test(normalizeIdNo(p)))) return { id, msg: "請填正確身分證字號" };
+    if (kind === "phone" && !parts.every(p => /^09\d{8}$/.test(oneMobile(p)))) return { id, msg: "請填正確電話" };
+    return null;
+  };
+  return check("sign-idno", "身分證字號", idNo, "id")
+    || check("sign-phone", "聯絡電話", phone, "phone")
+    || check("sign-emname", "緊急聯絡人", emName)
+    || check("sign-emphone", "緊急電話", emPhone, "phone")
+    || check("sign-addr", "戶籍地址", addr)
+    || null;
+}
 function paperPeople(s) {
   return String(s || "").replace(/[／/、,，]+/g, "　").replace(/\s+/g, " ").trim();
 }
@@ -25359,7 +25380,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約請核對資料並用手寫簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、緊急聯絡人、戶籍地址可沿用上次，空白請補齊。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
+      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約簽署前，下面承租人資料五項都要填完才能簽名。兩人請用／分開。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -25385,7 +25406,8 @@ function leaseSignView() {
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
       </div>`}
       <div class="card card-body" style="margin-top:12px">
-        <div class="label">承租人資料（藍字印在合約上）</div>
+        <div class="label">承租人資料（必填，藍字印在合約上）</div>
+        <p class="small" style="margin:0 0 8px">${renewItem ? "這五項沒填完不能確認簽署。" : "這五項都要填，才印得上合約。"}${two ? "兩人中間用／分開。" : ""}</p>
         <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml(slashPair((t && t.idNo) || (es && es.idNo) || ""))}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
         <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml(slashPair((t && t.phone) || (es && es.phone) || ""))}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
         <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml(slashPair((t && t.emergencyName) || (es && es.emergencyName) || ""))}" placeholder="${two ? "兩人請用／分開" : "姓名"}" autocomplete="off" /></label>
@@ -32855,12 +32877,14 @@ function bindSignPad() {
     const emName = val("sign-emname");
     const emPhone = val("sign-emphone");
     const addr = val("sign-addr");
-    if (!idNo) { toast("請填身分證字號"); return; }
-    if (!idNoOk(idNo)) { toast("請填正確身分證字號"); return; }
-    if (!phone) { toast("請填聯絡電話"); return; }
-    if (!emName) { toast("請填緊急聯絡人"); return; }
-    if (!emPhone) { toast("請填緊急聯絡電話"); return; }
-    if (!addr) { toast("請填身分證上的戶籍地址"); return; }
+    const two = splitPair((t && t.name) || "").length > 1;
+    const gap = signProfileGap(two, idNo, phone, emName, emPhone, addr);
+    if (gap) {
+      toast(gap.msg);
+      const el = document.getElementById(gap.id);
+      if (el) { try { el.focus(); } catch {} }
+      return;
+    }
     if (t) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
       if (phone) t.phone = normalizeMobile(phone);
