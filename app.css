@@ -4582,8 +4582,18 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   margin-top: 8px;
   padding-left: 1em;
 }
+.lease-people.side {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding-left: 0;
+}
 .lease-person { min-width: 12em; }
+.lease-people.side .lease-person { flex: 1 1 0; min-width: 0; }
 .lease-person p { margin: 0 0 2px; }
+.lease-people.side .lease-ink { min-width: 2.4em; max-width: 100%; }
+.lease-people.side .lease-esig { height: 32px; max-width: 88px; }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;
