@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-16-52";
-const APP_EDIT_COUNT = 1647;
+const APP_STAMP = "2026-09-30-16-54";
+const APP_EDIT_COUNT = 1648;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1198";
+const FILE_VER = "1199";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["窄畫面租客姓名換行，拿掉線上離線"] },
+  { ver: APP_VERSION, items: ["管理員分成趙洪漳、許喻涵"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11079,7 +11079,11 @@ function coreSig(d) {
 const ONLINE_MS = 90000;
 function presenceKey() {
   if (ui.role === "tenant" && ui.tenantId) return ui.tenantId;
-  if (ui.role === "admin" && ui.adminCode) return "admin-" + ui.adminCode;
+  if (ui.role === "admin" && ui.adminCode) {
+    const name = normAdminName(ui.adminName);
+    if (ui.adminCode === "7651" && (name === "許喻涵" || name === "趙洪漳")) return "admin-7651-" + name;
+    return "admin-" + ui.adminCode;
+  }
   return "";
 }
 function presenceKindOf(id, p) {
@@ -11171,17 +11175,26 @@ function logPresenceId(x) {
   const t = state.tenants.find(n => n.roomId === room.id || n.id === room.tenantId);
   return t ? t.id : "";
 }
+function staffPresenceOn(name) {
+  const id = "admin-7651-" + name;
+  if (isOnline(id)) return true;
+  const legacy = (state.presence || {})["admin-7651"];
+  return !!(legacy && isOnline("admin-7651") && normAdminName(legacy.name) === name);
+}
 function onlineStaffHtml() {
   const slots = [
-    ["admin-1240", "開發者", "1240"],
-    ["admin-1976", "管理員", "1976"],
-    ["admin-7651", "管理員", "7651"]
+    ["admin-1240", "開發者（1240）"],
+    ["admin-1976", "管理員（1976）"],
+    ["admin-7651-趙洪漳", "趙洪漳"],
+    ["admin-7651-許喻涵", "許喻涵"]
   ];
-  return slots.map(([id, label, code]) => {
-    const on = isOnline(id);
-    const p = (state.presence || {})[id] || {};
-    const extra = on && p.device ? `<span class="small">${escapeHtml(p.device)}</span>` : "";
-    return `<div class="online-row"><span class="k">${label}（${code}）</span><span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${id}">${on ? "在線中" : "離線中"}</span></span></div>`;
+  return slots.map(([id, label]) => {
+    const name = String(id).indexOf("admin-7651-") === 0 ? label : "";
+    const on = name ? staffPresenceOn(name) : isOnline(id);
+    const p = (state.presence || {})[id] || (name ? ((state.presence || {})["admin-7651"] || {}) : {});
+    const showDevice = on && p.device && (!name || normAdminName(p.name) === name);
+    const extra = showDevice ? `<span class="small">${escapeHtml(p.device)}</span>` : "";
+    return `<div class="online-row"><span class="k">${escapeHtml(label)}</span><span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${escapeHtml(id)}">${on ? "在線中" : "離線中"}</span></span></div>`;
   }).join("");
 }
 function tenantAccountRows() {
@@ -11256,7 +11269,9 @@ function onlineTenantLinesHtml() {
 function refreshOnlineBadges() {
   document.querySelectorAll("[data-online]").forEach(el => {
     if (el.closest("#tenant-accounts")) return;
-    const on = isOnline(el.dataset.online);
+    const id = el.dataset.online || "";
+    const named = id.indexOf("admin-7651-") === 0 ? id.slice("admin-7651-".length) : "";
+    const on = named ? staffPresenceOn(named) : isOnline(id);
     el.classList.toggle("on", on);
     if (!el.classList.contains("live-dot")) el.textContent = on ? "在線中" : "離線中";
   });
