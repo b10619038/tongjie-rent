@@ -6158,15 +6158,7 @@ html.embed-pane .home-upd { display: none !important; }
 }
 .term-lease-paper .term-parties { margin-top: 22px; }
 .term-lease-paper .term-party { margin: 16px 0 0; padding-left: 1.5em; }
-.term-lease-paper .term-chop {
-  display: inline-block;
-  width: 56px;
-  height: 56px;
-  margin-left: 14px;
-  border: 1px dashed #c45;
-  vertical-align: middle;
-  background: transparent;
-}
+.term-lease-paper .term-chop { display: none; }
 .term-lease-paper .term-date {
   margin-top: 36px;
   text-align: center;

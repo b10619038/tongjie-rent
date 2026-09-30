@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-44";
-const APP_EDIT_COUNT = 1641;
+const APP_STAMP = "2026-09-30-12-48";
+const APP_EDIT_COUNT = 1642;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1192";
+const FILE_VER = "1193";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請改成先送小封包，後台立刻顯示"] },
+  { ver: APP_VERSION, items: ["終止契約的紅色蓋章框先拿掉"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22222,19 +22222,19 @@ function termLeasePaperHtml(t, r, co) {
     <p>一、甲方退還乙方</p>
     <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
-    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
     <p>備註：</p>
     <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
     <p>二、乙方將房屋恢復原狀交給甲方。</p>
     <div class="term-parties">
       <div class="term-party">
-        <p>立約人（甲方）：　${escapeHtml(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span></p>
+        <p>立約人（甲方）：　${escapeHtml(firm.name || "統潔開發有限公司")}</p>
         <p>統一編號：　${escapeHtml(firm.taxId || "82934388")}</p>
         <p>代表人：　趙正賢</p>
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
       </div>
       <div class="term-party">
-        <p>立約人（乙方）：　${escapeHtml(party)}<span class="term-chop" title="蓋章"></span></p>
+        <p>立約人（乙方）：　${escapeHtml(party)}</p>
         ${taxId ? `<p>統一編號：　${escapeHtml(taxId)}</p>` : ""}
         ${factoryPaper ? "" : `<p>身分證字號：　${escapeHtml(idNo)}</p>`}
         <p>電話：　${escapeHtml(phone)}</p>
