@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-34";
-const APP_EDIT_COUNT = 1640;
+const APP_STAMP = "2026-09-30-12-44";
+const APP_EDIT_COUNT = 1641;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1191";
+const FILE_VER = "1192";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請即時同步，斷線也會補送"] },
+  { ver: APP_VERSION, items: ["續約申請改成先送小封包，後台立刻顯示"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3695,6 +3695,7 @@ function submitTenantRenewal() {
   t.edited = true;
   t.editedAt = Date.now();
   save();
+  try { publishRenewNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   pushPhoneNotify("續約申請", `${r.no} ${plan.stay.map(p => p.name).join("、")}${dest ? "　換至 " + dest.no : ""}　${plan.stay.map(p => p.name + renewSpanLabel(p.years, p.months)).join("、")}　水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
@@ -9588,8 +9589,25 @@ function ingestLiveCloud(raw) {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || o.device === liveDeviceId()) return;
     const at = Number(o.at) || 0;
-    if (at && at <= lastLiveAt) return;
-    lastLiveAt = at;
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length)) return;
+    if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
+    if (Array.isArray(o.renewals) && o.renewals.length) {
+      state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
+      if (o.renewPing) state.renewPing = o.renewPing;
+      o.renewals.forEach(x => {
+        if (!x || !x.tenantId || x.status === "cancelled") return;
+        const t = (state.tenants || []).find(n => n && n.id === x.tenantId);
+        if (t && t.renewChoice !== "no") t.renewChoice = x.status === "open" ? "yes" : (t.renewChoice || "yes");
+      });
+      if (ui.role === "admin" && o.renewPing && o.renewPing.name && !renewPingAlreadySeen(o.renewPing)) {
+        markRenewPingSeen(o.renewPing);
+        const line = `${o.renewPing.roomNo || ""} ${o.renewPing.name} 申請續約`.trim();
+        try { showOsBanner("續約申請", line, "renew-" + (o.renewPing.id || o.renewPing.roomNo || "")); } catch {}
+        toast("續約申請　" + line);
+      }
+      ui.keepScroll = true;
+      try { render(); } catch {}
+    }
     clearTimeout(livePullTimer);
     livePullTimer = setTimeout(async () => {
       const prev = coreSig(state);
@@ -9600,7 +9618,25 @@ function ingestLiveCloud(raw) {
       } else {
         try { enforceTenantSession(); } catch {}
       }
-    }, 60);
+    }, 800);
+  } catch {}
+}
+let pendingRenewPkt = null;
+function publishRenewNow(row) {
+  if (!row || !row.id) return;
+  pendingRenewPkt = {
+    at: Date.now(),
+    device: liveDeviceId(),
+    renewals: [row],
+    renewPing: state.renewPing || null
+  };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRenewPkt), false));
+    pendingRenewPkt = null;
   } catch {}
 }
 function publishLiveCloud() {
@@ -9997,6 +10033,7 @@ function connectPaidCloud() {
           try { if (paidWs && paidWs.readyState === 1) paidWs.send(new Uint8Array([0xC0, 0x00])); } catch {}
         }, 20000);
         if (moneyPubWait) publishPaidCloud();
+        if (pendingRenewPkt) publishRenewNow(pendingRenewPkt.renewals && pendingRenewPkt.renewals[0]);
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
