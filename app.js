@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-22-45";
-const APP_EDIT_COUNT = 1707;
+const APP_STAMP = "2026-09-30-23-12";
+const APP_EDIT_COUNT = 1708;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1258";
+const FILE_VER = "1259";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["4樓平面圖，比照3樓"] },
+  { ver: APP_VERSION, items: ["7041 劉恩彤 9/30 繳 10月租金 9,000"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5892,6 +5892,7 @@ function normalize(data) {
   applyAug31Docs(data);
   applyNonghui0909(data);
   try { apply7232OctPrepaid(data); } catch {}
+  try { apply7041OctPrepaid(data); } catch {}
   repairTrashNotes(data);
   applyNonghuiSepPaid(data);
   try { applySepRemitBooks(data); } catch {}
@@ -6653,6 +6654,44 @@ function apply7232OctPrepaid(data) {
     changed = true;
   }
   t.oct26Prepaid = on;
+  if (!changed) return;
+  try { persistLedger(data); } catch {}
+  try { markCloudDirty(); } catch {}
+}
+function apply7041OctPrepaid(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7041");
+  if (!room) return;
+  const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  const ym = "2026-10";
+  const on = "2026-09-30";
+  if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  if (t.prepaidYm.indexOf(ym) < 0) t.prepaidYm.push(ym);
+  if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+  if (t.prepaidOn[ym] !== on) t.prepaidOn[ym] = on;
+  if (!Array.isArray(data.books)) data.books = [];
+  const id = "bk-7041-202610-prepaid";
+  const gone = data.ledgerGone || [];
+  const exists = (data.books || []).some(b => b && (b.id === id || (b.type === "in" && String(b.roomNo || "") === "7041" && ymdOf(b.date) === on && Number(b.amount) === 9000)));
+  let changed = t.oct26Prepaid7041 !== on;
+  if (!exists && gone.indexOf(id) < 0) {
+    data.books.push({
+      id,
+      type: "in",
+      date: on,
+      amount: 9000,
+      company: "統潔",
+      note: "牛10　7041 劉恩彤　10月租金",
+      bank: "農會",
+      roomNo: "7041",
+      importTag: "rent-prepaid-2026-10",
+      linkedTenantId: t.id,
+      createdAt: "2026-09-30 23:11"
+    });
+    changed = true;
+  }
+  t.oct26Prepaid7041 = on;
   if (!changed) return;
   try { persistLedger(data); } catch {}
   try { markCloudDirty(); } catch {}
@@ -10549,6 +10588,7 @@ async function pullCloud() {
       applyAug31Docs(state);
       applyNonghui0909(state);
       try { apply7232OctPrepaid(state); } catch {}
+      try { apply7041OctPrepaid(state); } catch {}
       repairTrashNotes(state);
       applyNonghuiSepPaid(state);
       try { applySepRemitBooks(state); } catch {}
@@ -10652,6 +10692,7 @@ async function pullCloud() {
     applyAug31Docs(state);
     applyNonghui0909(state);
     try { apply7232OctPrepaid(state); } catch {}
+    try { apply7041OctPrepaid(state); } catch {}
     repairTrashNotes(state);
     applyNonghuiSepPaid(state);
     try { applySepRemitBooks(state); } catch {}
