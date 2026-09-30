@@ -4610,6 +4610,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-tight p { margin: 0 0 2px !important; line-height: 1.42; }
 .lease-tight .lease-art { margin-top: 8px !important; }
 .lease-fill > .lease-people { margin-bottom: 36px !important; }
+.lease-fill > .lease-firm { transform: translateY(40px); }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;
