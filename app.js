@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-26";
-const APP_EDIT_COUNT = 1638;
+const APP_STAMP = "2026-09-30-12-30";
+const APP_EDIT_COUNT = 1639;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1189";
+const FILE_VER = "1190";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請改成一定會傳到後台"] },
+  { ver: APP_VERSION, items: ["續約申請送出後後台立即同步"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -9698,6 +9698,28 @@ function tenantViewSig() {
   const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
 }
+function mergeLiveRenewals(local, incoming) {
+  const map = new Map();
+  (local || []).forEach(x => { if (x && x.id) map.set(x.id, x); });
+  (incoming || []).forEach(x => {
+    if (!x || !x.id) return;
+    const cur = map.get(x.id);
+    if (!cur) { map.set(x.id, x); return; }
+    const rank = s => (s === "done" || s === "applied") ? 3 : (s === "cancelled" ? 2 : 1);
+    if (rank(x.status) >= rank(cur.status)) map.set(x.id, Object.assign({}, cur, x));
+  });
+  return [...map.values()];
+}
+function liveRenewalPayload() {
+  return (state.renewals || []).filter(x => x && x.id && x.status !== "cancelled").map(x => ({
+    id: x.id, roomId: x.roomId || "", tenantId: x.tenantId || "", roomNo: x.roomNo || "", name: x.name || "",
+    status: x.status || "open", years: x.years || 0, extraMonths: x.extraMonths || 0,
+    people: x.people || [], renewNames: x.renewNames || "", start: x.start || "", end: x.end || "",
+    waterFee: x.waterFee || 0, waterCash: x.waterCash !== false, appointAt: x.appointAt || "",
+    createdAt: x.createdAt || "", wantMove: !!x.wantMove, moveRoomId: x.moveRoomId || "", moveRoomNo: x.moveRoomNo || "",
+    oldStart: x.oldStart || "", oldEnd: x.oldEnd || ""
+  }));
+}
 function ingestPaidCloud(raw) {
   try {
     if (!ingestPaidCloud.ready) {
@@ -9844,6 +9866,17 @@ function ingestPaidCloud(raw) {
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     const renewAt = Number(o.renewPing && o.renewPing.at) || 0;
+    let renewRowsChanged = false;
+    if (Array.isArray(o.renewals) && o.renewals.length) {
+      const beforeRn = (state.renewals || []).map(x => x && (x.id + ":" + x.status + ":" + (x.appointAt || ""))).join("|");
+      state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
+      o.renewals.forEach(x => {
+        if (!x || !x.tenantId || x.status === "cancelled") return;
+        const t = (state.tenants || []).find(n => n && n.id === x.tenantId);
+        if (t && t.renewChoice !== "no" && t.renewChoice !== "yes") t.renewChoice = "yes";
+      });
+      renewRowsChanged = beforeRn !== (state.renewals || []).map(x => x && (x.id + ":" + x.status + ":" + (x.appointAt || ""))).join("|");
+    }
     if (renewAt && renewAt > (ingestPaidCloud.renewPing || 0)) {
       ingestPaidCloud.renewPing = renewAt;
       stampPing("renewPing", renewAt);
@@ -9863,10 +9896,10 @@ function ingestPaidCloud(raw) {
       stampPing("eSignPing", signAt);
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
-    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
+    if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt && !renewRowsChanged) return;
     if (composingNow()) return;
     if (typeof sheetLocked === "function" && sheetLocked()) return;
-    if (tenantViewSig() === viewBefore && !ping && !(o.applyPing && o.applyPing.at) && !signAt) return;
+    if (tenantViewSig() === viewBefore && !ping && !(o.applyPing && o.applyPing.at) && !signAt && !renewRowsChanged) return;
     ui.keepScroll = true;
     try { render(); } catch {}
   } catch {}
@@ -9915,6 +9948,7 @@ function moneyCloudBlob() {
     repairNotice: state.repairNotice || null,
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
+    renewals: liveRenewalPayload(),
     eSignPing: state.eSignPing || null
   });
 }
