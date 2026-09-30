@@ -1398,6 +1398,8 @@ button.pay-toggle.is-pop { transform: scale(1.14); }
   color: var(--teal-mid); font-size: 13px; font-weight: 600; cursor: pointer;
 }
 button.linkish { background: none; border: 0; padding: 4px 2px; font: inherit; }
+a.addr-nav { color: var(--teal); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .admin-scroll .room-row { content-visibility: auto; contain-intrinsic-size: 96px; }

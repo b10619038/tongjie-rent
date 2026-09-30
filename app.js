@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-10-55";
-const APP_EDIT_COUNT = 1626;
+const APP_STAMP = "2026-09-30-11-40";
+const APP_EDIT_COUNT = 1627;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1177";
+const FILE_VER = "1178";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7041 劉恩彤男友不續住，續約年水費改 1,800"] },
+  { ver: APP_VERSION, items: ["廠房租客地址可點，直接開地圖導航"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -12817,6 +12817,18 @@ function liveInvoiceNote(r, t) {
     return head.replace(/號$/g, "").replace(/(\d+)之(\d+[A-Za-z]?)/g, "$1-$2");
   }
   return factoryDoorNote(r);
+}
+function mapNavUrl(addr) {
+  const q = encodeURIComponent(String(addr || "").trim());
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  return ios
+    ? "https://maps.apple.com/?daddr=" + q + "&dirflg=d"
+    : "https://www.google.com/maps/dir/?api=1&destination=" + q + "&travelmode=driving";
+}
+function mapNavLink(addr) {
+  const text = String(addr || "").trim();
+  if (!text) return "";
+  return `<a class="addr-nav" href="${mapNavUrl(text)}">${escapeHtml(text)}</a>`;
 }
 function factoryAddress(r) {
   if (!r) return "";
@@ -30304,7 +30316,7 @@ function tenantEntryDetailsHtml(kind, entry) {
       ${(() => {
         if (kind !== "factory") return "";
         const addrs = [...new Set((rooms.length ? rooms : [r]).map(factoryAddress).filter(Boolean))];
-        return `<div class="row wrap"><span class="k">地址</span><span class="v">${addrs.map(a => escapeHtml(a)).join("<br>")}</span></div>`;
+        return `<div class="row wrap"><span class="k">地址</span><span class="v">${addrs.map(a => mapNavLink(a)).join("<br>")}</span></div>`;
       })()}
       ${kind === "factory" ? teField("承租人", "name", t.id, r && r.id, t.name)
       + teField("實際匯款日", "remitOn", t.id, r && r.id, ymdOf(t.remitOn) || "", "date")
