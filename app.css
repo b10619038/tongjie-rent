@@ -4491,7 +4491,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .chop-mark {
   position: absolute;
   box-sizing: border-box;
-  border: 2.6px dashed rgba(193, 18, 31, 0.55);
+  border: 4px dashed rgba(193, 18, 31, 0.5);
   border-radius: 3px;
   background: transparent;
   pointer-events: none;
