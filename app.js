@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-14";
-const APP_EDIT_COUNT = 1631;
+const APP_STAMP = "2026-09-30-12-16";
+const APP_EDIT_COUNT = 1632;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1182";
+const FILE_VER = "1183";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["大樹-18 終止契約押金改為玖萬貳仟元整"] },
+  { ver: APP_VERSION, items: ["終止契約拿掉月份租金那一行"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -8130,12 +8130,13 @@ function ensureDashu18Term(data) {
   room.deposit = deposit;
   const hit = data.checkouts.find(c => c && (c.id === id || (String(c.roomNo) === "大樹-18" && c.kind === "early" && c.status !== "done")));
   if (hit) {
-    if (!Number(hit.deposit)) {
-      hit.deposit = deposit;
-      hit.deduct = Number(hit.deduct) || 0;
-      hit.prorate = Number(hit.prorate) || 0;
-      hit.refund = Math.max(0, deposit - hit.deduct + hit.prorate);
-      hit.updatedAt = "2026-09-30 12:14";
+    let dirty = false;
+    if (!Number(hit.deposit)) { hit.deposit = deposit; dirty = true; }
+    if (Number(hit.prorate)) { hit.prorate = 0; dirty = true; }
+    const nextRefund = Math.max(0, (Number(hit.deposit) || deposit) - (Number(hit.deduct) || 0));
+    if (Number(hit.refund) !== nextRefund) { hit.refund = nextRefund; dirty = true; }
+    if (dirty) {
+      hit.updatedAt = "2026-09-30 12:16";
       try { markCloudDirty(); } catch {}
     }
     return;
@@ -22105,7 +22106,6 @@ function termLeasePaperHtml(t, r, co) {
   let person = String((info && info.contactName) || (t && t.contactName) || "").trim();
   if (!person || person === String(t.name || "").trim() || String(t.name || "").indexOf(person) >= 0) person = "";
   const party = names + (person ? "　" + person : "");
-  const remain = monthRemainRange(co.at || today);
   const amt = n => cnAmt(n) || "　";
   return `<div class="hand-a4-fit"><div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
@@ -22119,7 +22119,6 @@ function termLeasePaperHtml(t, r, co) {
     <p>退還費用：</p>
     <p>一、甲方退還乙方</p>
     <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
-    <p class="term-indent">${escapeHtml(remain.label)}　<span class="term-fill amt">${prorate ? escapeHtml(amt(prorate)) : ""}</span>　元整。${prorate ? "（" + escapeHtml(remain.range) + "）" : ""}</p>
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
     <p class="term-sign">乙方簽收：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
     <p>備註：</p>
