@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-20";
-const APP_EDIT_COUNT = 1636;
+const APP_STAMP = "2026-09-30-12-24";
+const APP_EDIT_COUNT = 1637;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1187";
+const FILE_VER = "1188";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約乙方統編改為統一編號"] },
+  { ver: APP_VERSION, items: ["租客用瀏覽器登入也會記到後台"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -10937,6 +10937,12 @@ function scrollAiLogEnd() {
 function stripDevLogsFromState() {
   migrateDevLocalInto(state);
 }
+function mergedPresence(remote, local) {
+  const box = { presence: {} };
+  mergePresenceInto(box, { presence: remote || {} });
+  mergePresenceInto(box, { presence: local || {} });
+  return box.presence || {};
+}
 function mergePresenceInto(target, other) {
   if (!target.presence || typeof target.presence !== "object") target.presence = {};
   const src = (other && other.presence) || {};
@@ -11003,6 +11009,14 @@ function beatPresence() {
   if (prev && prev.installed) beat.installed = true;
   state.presence[id] = beat;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  const stale = !prev || !prev.cloudAt || (Date.now() - Number(prev.cloudAt) > 120000);
+  if (stale) {
+    state.presence[id].cloudAt = Date.now();
+    markCloudDirty();
+    clearTimeout(presenceTimer);
+    presenceTimer = setTimeout(() => { try { pushCloud(); } catch {} }, 700);
+    return;
+  }
   clearTimeout(presenceTimer);
   presenceTimer = setTimeout(pushPresence, 700);
 }
@@ -11213,7 +11227,8 @@ async function pushCloud() {
       bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
       bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))),
       devChats: mergeChatStores(remote && remote.devChats, state.devChats || chatStore()),
-      loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats)
+      loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
+      presence: mergedPresence(remote && remote.presence, state.presence)
     });
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
@@ -11302,7 +11317,9 @@ async function pushCloud() {
         company: payload.company,
         bookVault: payload.bookVault,
         bookVaultGone: payload.bookVaultGone,
-        devChats: payload.devChats
+        devChats: payload.devChats,
+        loginSeats: payload.loginSeats,
+        presence: payload.presence
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
