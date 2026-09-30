@@ -4274,8 +4274,11 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     break-after: page;
     position: static;
     transform: none;
+    zoom: 1;
     width: auto;
     height: auto;
+    max-height: none;
+    overflow: visible;
   }
   body.print-term .term-handover-paper { page-break-before: always; break-before: page; }
   body.print-term .term-lease-paper h3,
@@ -6178,11 +6181,8 @@ html.embed-pane .home-upd { display: none !important; }
   letter-spacing: 0;
 }
 .hand-a4-fit {
-  width: min(100%, 794px);
-  margin: 18px auto 0;
-  aspect-ratio: 210 / 297;
-  position: relative;
-  overflow: hidden;
+  width: min(100%, 210mm);
+  margin: 14px auto 0;
   container-type: inline-size;
 }
 .term-handover-paper {
@@ -6196,19 +6196,20 @@ html.embed-pane .home-upd { display: none !important; }
   font-size: 16px;
   line-height: 2;
 }
-.hand-a4-fit .term-handover-paper {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 794px;
-  height: 1123px;
-  margin: 0;
+.hand-a4-fit .term-handover-paper,
+.hand-a4-fit .term-lease-paper {
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  margin: 0 auto 12px;
   box-sizing: border-box;
-  padding: 54px 48px 48px;
+  padding: 14mm 16mm 16mm;
   border-radius: 0;
   border: 1px solid #d9d9d9;
-  transform: scale(calc(100cqw / 794px));
-  transform-origin: top left;
+  overflow: hidden;
+  zoom: min(1, calc(100cqi / 210mm));
+  box-shadow: 0 6px 22px rgba(0,0,0,.12);
 }
 .term-handover-paper h3 {
   text-align: center;
