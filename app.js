@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-21-33";
-const APP_EDIT_COUNT = 1695;
+const APP_STAMP = "2026-09-30-21-44";
+const APP_EDIT_COUNT = 1696;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1246";
+const FILE_VER = "1247";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["單人下方個人章左移對齊上方"] },
+  { ver: APP_VERSION, items: ["3樓 6831 平面圖"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -23747,6 +23747,9 @@ function preloadPlanView() {
   const im = new Image();
   im.decoding = "async";
   im.src = "images/plan-6821-view.webp?v=" + FILE_VER;
+  const im3 = new Image();
+  im3.decoding = "async";
+  im3.src = "images/plan-6831-view.webp?v=" + FILE_VER;
 }
 function moveInView() {
   const d = ensureMoveIn();
@@ -23787,7 +23790,7 @@ function moveInView() {
     const on = d.roomId === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
-      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="images/plan-6821-view.webp?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+      ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="${(plan.view || plan.hd || "images/plan-6821-view.webp")}?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
       : `<span class="move-pick-slot"></span>`;
     return `<div class="move-pick-row${on}" data-move-room="${escapeHtml(x.id)}" role="button" tabindex="0">
       ${planBtn}
@@ -24980,20 +24983,31 @@ function roomExtrasHtml(r) {
 }
 function floorPlanOf(no) {
   const n = String(no || "");
-  if (n.length < 4 || n.charAt(2) !== "2") return null;
+  if (n.length < 4) return null;
+  const plan2 = {
+    src: "images/plan-6821.png",
+    hd: "images/plan-6821-hd.webp",
+    view: "images/plan-6821-view.webp"
+  };
+  const plan3 = {
+    src: "images/plan-6831.png",
+    hd: "images/plan-6831-hd.webp",
+    view: "images/plan-6831-view.webp"
+  };
   const plans = {
-    "6821": { focus: "0.452,0.746,0.208,0.172", pad: "0.460,0.740,0.201,0.183" },
-    "6822": { focus: "0.235,0.746,0.219,0.172", pad: "0.251,0.740,0.204,0.183" },
-    "6823": { focus: "0.012,0.746,0.238,0.172", pad: "0.016,0.740,0.238,0.258" },
-    "7021": { focus: "0.452,0.503,0.208,0.172", pad: "0.460,0.498,0.201,0.183", above: "2F 7021" },
-    "7022": { focus: "0.235,0.503,0.219,0.172", pad: "0.251,0.498,0.204,0.183", above: "2F 7022" },
-    "7023": { focus: "0.012,0.503,0.238,0.172", pad: "0.016,0.498,0.238,0.258", above: "2F 7023" },
-    "7221": { focus: "0.452,0.255,0.208,0.180", pad: "0.460,0.256,0.201,0.183", above: "2F 7221" },
-    "7222": { focus: "0.235,0.255,0.219,0.180", pad: "0.251,0.256,0.204,0.183", above: "2F 7222" },
-    "7223": { focus: "0.012,0.255,0.238,0.180", pad: "0.016,0.256,0.238,0.258", above: "2F 7223" },
-    "7621": { focus: "0.452,0.006,0.208,0.201", pad: "0.460,0.012,0.201,0.183", above: "2F 7621" },
-    "7622": { focus: "0.235,0.006,0.219,0.201", pad: "0.251,0.012,0.204,0.183", above: "2F 7622" },
-    "7623": { focus: "0.012,0.006,0.238,0.201", pad: "0.016,0.012,0.238,0.258", above: "2F 7623" }
+    "6821": Object.assign({ focus: "0.452,0.746,0.208,0.172", pad: "0.460,0.740,0.201,0.183" }, plan2),
+    "6822": Object.assign({ focus: "0.235,0.746,0.219,0.172", pad: "0.251,0.740,0.204,0.183" }, plan2),
+    "6823": Object.assign({ focus: "0.012,0.746,0.238,0.172", pad: "0.016,0.740,0.238,0.258" }, plan2),
+    "7021": Object.assign({ focus: "0.452,0.503,0.208,0.172", pad: "0.460,0.498,0.201,0.183", above: "2F 7021" }, plan2),
+    "7022": Object.assign({ focus: "0.235,0.503,0.219,0.172", pad: "0.251,0.498,0.204,0.183", above: "2F 7022" }, plan2),
+    "7023": Object.assign({ focus: "0.012,0.503,0.238,0.172", pad: "0.016,0.498,0.238,0.258", above: "2F 7023" }, plan2),
+    "7221": Object.assign({ focus: "0.452,0.255,0.208,0.180", pad: "0.460,0.256,0.201,0.183", above: "2F 7221" }, plan2),
+    "7222": Object.assign({ focus: "0.235,0.255,0.219,0.180", pad: "0.251,0.256,0.204,0.183", above: "2F 7222" }, plan2),
+    "7223": Object.assign({ focus: "0.012,0.255,0.238,0.180", pad: "0.016,0.256,0.238,0.258", above: "2F 7223" }, plan2),
+    "7621": Object.assign({ focus: "0.452,0.006,0.208,0.201", pad: "0.460,0.012,0.201,0.183", above: "2F 7621" }, plan2),
+    "7622": Object.assign({ focus: "0.235,0.006,0.219,0.201", pad: "0.251,0.012,0.204,0.183", above: "2F 7622" }, plan2),
+    "7623": Object.assign({ focus: "0.012,0.006,0.238,0.201", pad: "0.016,0.012,0.238,0.258", above: "2F 7623" }, plan2),
+    "6831": Object.assign({ focus: "0.329,0.748,0.253,0.173", pad: "0.337,0.754,0.238,0.162", above: "3F 6831" }, plan3)
   };
   return plans[n] || null;
 }
@@ -25001,8 +25015,8 @@ function floorPlanCardHtml(r) {
   const no = String((r && r.no) || "");
   const plan = floorPlanOf(no);
   if (!plan) return "";
-  const src = "images/plan-6821.png?v=" + FILE_VER;
-  const hd = "images/plan-6821-hd.webp?v=" + FILE_VER;
+  const src = (plan.src || "images/plan-6821.png") + "?v=" + FILE_VER;
+  const hd = (plan.hd || "images/plan-6821-hd.webp") + "?v=" + FILE_VER;
   const padBox = (raw, cls) => {
     const box = String(raw || "").split(",").map(Number);
     if (box.length !== 4 || !box.every(Number.isFinite)) return "";
