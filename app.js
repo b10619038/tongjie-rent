@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-16";
-const APP_EDIT_COUNT = 1632;
+const APP_STAMP = "2026-09-30-12-17";
+const APP_EDIT_COUNT = 1633;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1183";
+const FILE_VER = "1184";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約拿掉月份租金那一行"] },
+  { ver: APP_VERSION, items: ["大樹-18 總退還費用改為肆萬陸仟元整"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -8133,7 +8133,7 @@ function ensureDashu18Term(data) {
     let dirty = false;
     if (!Number(hit.deposit)) { hit.deposit = deposit; dirty = true; }
     if (Number(hit.prorate)) { hit.prorate = 0; dirty = true; }
-    const nextRefund = Math.max(0, (Number(hit.deposit) || deposit) - (Number(hit.deduct) || 0));
+    const nextRefund = 46000;
     if (Number(hit.refund) !== nextRefund) { hit.refund = nextRefund; dirty = true; }
     if (dirty) {
       hit.updatedAt = "2026-09-30 12:16";
@@ -8153,7 +8153,7 @@ function ensureDashu18Term(data) {
     deposit,
     deduct: 0,
     prorate: 0,
-    refund: deposit,
+    refund: 46000,
     property: factoryAddress(room) || "高雄市大樹區九曲路5巷32弄18號",
     phone: t.phone || "0939-153-975",
     idNo: t.idNo || "",
@@ -22096,7 +22096,8 @@ function termLeasePaperHtml(t, r, co) {
   const depositRaw = Number(co.deposit != null ? co.deposit : (r && r.deposit)) || 0;
   const deposit = depositRaw || (r && String(r.no || "") === "大樹-18" ? 92000 : 0);
   const prorate = Number(co.prorate) || 0;
-  const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0) + prorate);
+  let refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0) + prorate);
+  if (r && String(r.no || "") === "大樹-18") refund = 46000;
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
   const prop = co.property || termPropLabel(r);
   const idNo = paperPeople(co.idNo || t.idNo || "");
@@ -22685,7 +22686,8 @@ function checkoutFormHtml() {
   const deduct = Number(co.deduct) || 0;
   const today = ymdOf(nowStamp());
   const prorate = co.prorate != null && co.prorate !== "" ? Number(co.prorate) : (kind === "early" ? defaultProrateRent(t, r, co.at || today) : 0);
-  const refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct) + prorate;
+  let refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct) + prorate;
+  if (String(r.no || "") === "大樹-18") refund = 46000;
   const switcher = `<button type="button" class="ghost" id="co-kind-reset" style="width:auto">改選退租方式</button>`;
   const paperCo = Object.assign({}, co, {
     at: co.at || today, deposit, deduct, prorate, refund,
