@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-19-23";
-const APP_EDIT_COUNT = 1680;
+const APP_STAMP = "2026-09-30-19-31";
+const APP_EDIT_COUNT = 1681;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1231";
+const FILE_VER = "1232";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["末頁大章左線對齊個人章"] },
+  { ver: APP_VERSION, items: ["出租人簽章大小章底線對齊黑線"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22411,7 +22411,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="chop-host">承租人　${headerTenants}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:56mm;top:1.7em"></span>` : ""}</p>
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
-      <p class="chop-host">出租人簽章：${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span><span class="chop-mark chop-lg" style="top:-14mm;right:62mm"></span><span class="chop-mark chop-sm" style="top:-1mm;right:44mm"></span></p>
+      <p class="chop-host">出租人簽章：${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span><span class="chop-mark chop-lg" style="bottom:0.6mm;right:62mm"></span><span class="chop-mark chop-sm" style="bottom:0.6mm;right:44mm"></span></p>
       <p class="chop-host">承租人簽章：${tenantSignRow}${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:56mm;top:-1mm"></span>` : ""}</p>
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
