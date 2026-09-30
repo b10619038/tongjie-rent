@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-50";
-const APP_EDIT_COUNT = 1643;
+const APP_STAMP = "2026-09-30-13-32";
+const APP_EDIT_COUNT = 1644;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1194";
+const FILE_VER = "1195";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約下方乙方只留公司名稱"] },
+  { ver: APP_VERSION, items: ["完成簽約後不會被舊資料蓋回去"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5800,6 +5800,7 @@ function normalize(data) {
     }
   }
   if (!Array.isArray(data.renewals)) data.renewals = [];
+  try { if (healRenewalStatus(data)) markCloudDirty(); } catch {}
   if (!Array.isArray(data.bankSlips)) data.bankSlips = [];
   if (!Array.isArray(data.aiLogs)) data.aiLogs = [];
   if (!Array.isArray(data.aiMemos)) data.aiMemos = [];
@@ -7905,6 +7906,7 @@ function completeRenewal(item) {
   if (renewalStartReached(item) && t && r) applySignedRenewalLease(t, r, item);
   try { _ledgerCache = null; } catch {}
   save();
+  try { publishRenewNow(item); } catch {}
   try { pushCloud(); } catch {}
   if (ui.renewOpen) ui.renewOpen[item.id] = false;
   const until = item.oldEnd || (t && t.leaseEnd) || "";
@@ -9214,6 +9216,36 @@ function unionById(a, b) {
   });
   return [...map.values()];
 }
+function renewalStatusRank(s) {
+  if (s === "done" || s === "applied") return 3;
+  if (s === "cancelled") return 2;
+  return 1;
+}
+function mergeRenewalList(a, b) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    const cur = map.get(x.id);
+    if (!cur) { map.set(x.id, Object.assign({}, x)); return; }
+    const win = renewalStatusRank(x.status) > renewalStatusRank(cur.status) ? x : cur;
+    const lose = win === x ? cur : x;
+    const out = Object.assign({}, lose, win);
+    if (!out.doneAt) out.doneAt = (cur && cur.doneAt) || (x && x.doneAt) || "";
+    if (out.doneAt && renewalStatusRank(out.status) < 3 && out.status !== "cancelled") out.status = "done";
+    map.set(x.id, out);
+  });
+  return [...map.values()];
+}
+function healRenewalStatus(data) {
+  if (!data || !Array.isArray(data.renewals)) return false;
+  let changed = false;
+  data.renewals.forEach(x => {
+    if (!x || !x.doneAt || x.status === "done" || x.status === "applied" || x.status === "cancelled") return;
+    x.status = "done";
+    changed = true;
+  });
+  return changed;
+}
 function ledgerStamp(x) {
   if (!x) return 0;
   const n = Number(x.editedAt || x.updatedAt || 0);
@@ -9735,16 +9767,7 @@ function tenantViewSig() {
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
 }
 function mergeLiveRenewals(local, incoming) {
-  const map = new Map();
-  (local || []).forEach(x => { if (x && x.id) map.set(x.id, x); });
-  (incoming || []).forEach(x => {
-    if (!x || !x.id) return;
-    const cur = map.get(x.id);
-    if (!cur) { map.set(x.id, x); return; }
-    const rank = s => (s === "done" || s === "applied") ? 3 : (s === "cancelled" ? 2 : 1);
-    if (rank(x.status) >= rank(cur.status)) map.set(x.id, Object.assign({}, cur, x));
-  });
-  return [...map.values()];
+  return mergeRenewalList(local, incoming);
 }
 function liveRenewalPayload() {
   return (state.renewals || []).filter(x => x && x.id && x.status !== "cancelled").map(x => ({
@@ -9752,6 +9775,7 @@ function liveRenewalPayload() {
     status: x.status || "open", years: x.years || 0, extraMonths: x.extraMonths || 0,
     people: x.people || [], renewNames: x.renewNames || "", start: x.start || "", end: x.end || "",
     waterFee: x.waterFee || 0, waterCash: x.waterCash !== false, appointAt: x.appointAt || "",
+    doneAt: x.doneAt || "",
     createdAt: x.createdAt || "", wantMove: !!x.wantMove, moveRoomId: x.moveRoomId || "", moveRoomNo: x.moveRoomNo || "",
     oldStart: x.oldStart || "", oldEnd: x.oldEnd || ""
   }));
@@ -10181,7 +10205,7 @@ function mergeSharedInto(target, other) {
   target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
-  target.renewals = unionById(target.renewals, other.renewals);
+  target.renewals = mergeRenewalList(target.renewals, other.renewals);
   try { applyRenewal7222(target); } catch {}
   if (Number(other.renewPing && other.renewPing.at) > Number(target.renewPing && target.renewPing.at)) {
     target.renewPing = other.renewPing;
@@ -11300,7 +11324,7 @@ async function pushCloud() {
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
       applyPing: state.applyPing || (remote && remote.applyPing) || null,
       renewPing: (Number(state.renewPing && state.renewPing.at) >= Number(remote && remote.renewPing && remote.renewPing.at) ? state.renewPing : (remote && remote.renewPing)) || null,
-      renewals: unionById(remote && remote.renewals, state.renewals),
+      renewals: mergeRenewalList(remote && remote.renewals, state.renewals),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
       docsImportVer: state.docsImportVer || (remote && remote.docsImportVer),
