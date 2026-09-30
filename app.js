@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-00-55";
-const APP_EDIT_COUNT = 1718;
+const APP_STAMP = "2026-10-01-01-04";
+const APP_EDIT_COUNT = 1719;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1269";
+const FILE_VER = "1270";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7231 十月發票匯款日改 9/8"] },
+  { ver: APP_VERSION, items: ["7231 十月實繳日改 9/8"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -16849,7 +16849,8 @@ function leaseCalMarks(t, r) {
   };
   const thisYm = payYmNow();
   if (t && paidThisMonth(t)) {
-    const exact = rentPayDateFor(t, r, thisYm);
+    let exact = rentPayDateFor(t, r, thisYm);
+    if (String(r && r.no) === "7231" && thisYm === "2026-10") exact = "2026-09-08";
     if (exact) {
       stamped.add(thisYm);
       remember(thisYm, exact);
@@ -16860,7 +16861,7 @@ function leaseCalMarks(t, r) {
     const month = String(ym || "").slice(0, 7);
     if (!month || month > today.slice(0, 7)) return;
     if (stamped.has(month)) return;
-    const exact = rentPayDateFor(t, r, month);
+    const exact = (String(r && r.no) === "7231" && month === "2026-10") ? "2026-09-08" : rentPayDateFor(t, r, month);
     if (exact) {
       stamped.add(month);
       remember(month, exact);
@@ -17002,7 +17003,8 @@ function leasePayRows(t, r, sheet) {
   const monthRent = (due) => tenantRentForYm(t, r, String(due).slice(0, 7)) || studioContractRent(t, r) || Number(t && t.rent) || 0;
   const push = (due, amount, carry) => {
     const ym = String(due).slice(0, 7);
-    const pre = ymdOf(t && t.prepaidOn && t.prepaidOn[ym]);
+    let pre = ymdOf(t && t.prepaidOn && t.prepaidOn[ym]);
+    if (String(r && r.no) === "7231" && ym === "2026-10") pre = "2026-09-08";
     const prepaid = (t && t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym);
     const early = !!(pre || prepaid);
     const future = ym > thisYm && !early;
