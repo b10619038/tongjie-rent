@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-24";
-const APP_EDIT_COUNT = 1637;
+const APP_STAMP = "2026-09-30-12-26";
+const APP_EDIT_COUNT = 1638;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1188";
+const FILE_VER = "1189";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客用瀏覽器登入也會記到後台"] },
+  { ver: APP_VERSION, items: ["續約申請改成一定會傳到後台"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3693,6 +3693,7 @@ function submitTenantRenewal() {
   if (Array.isArray(t.inbox)) t.inbox.forEach(n => { if (n && n.id === tag) n.read = true; });
   t.renewChoice = "yes";
   t.edited = true;
+  t.editedAt = Date.now();
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
@@ -10420,7 +10421,9 @@ async function pullCloud() {
       bookVaultGone: state.bookVaultGone,
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
       paidMarks: state.paidMarks,
-      devChats: state.devChats || chatStore()
+      devChats: state.devChats || chatStore(),
+      renewals: state.renewals,
+      renewPing: state.renewPing
     };
     mergePresenceInto(state, data);
     mergeMemosInto(state, data);
@@ -10523,6 +10526,8 @@ async function pullCloud() {
     state = normalize(data);
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
+    const remoteRn = new Set((data.renewals || []).map(x => x && x.id).filter(Boolean));
+    if ((mineSnap.renewals || []).some(x => x && x.id && !remoteRn.has(x.id))) markCloudDirty();
     mergeDevChatsInto(state, mineSnap);
     state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
     state.extraMeters = unionById(state.extraMeters, mineSnap.extraMeters);
@@ -11319,7 +11324,9 @@ async function pushCloud() {
         bookVaultGone: payload.bookVaultGone,
         devChats: payload.devChats,
         loginSeats: payload.loginSeats,
-        presence: payload.presence
+        presence: payload.presence,
+        renewals: payload.renewals,
+        renewPing: payload.renewPing
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
