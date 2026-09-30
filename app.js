@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-00-16";
-const APP_EDIT_COUNT = 1715;
+const APP_STAMP = "2026-10-01-00-28";
+const APP_EDIT_COUNT = 1716;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1266";
+const FILE_VER = "1267";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7222 林呈澔廖晉億 10/1 繳 10月租金 7,000"] },
+  { ver: APP_VERSION, items: ["開立發票總覽可左右滑看其他月份"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -15238,12 +15238,12 @@ function rocSlash(ymd) {
   const p = rocPartsOf(s);
   return p.y + "/" + p.m + "/" + p.d;
 }
-function leaseDaysLeft(end) {
+function leaseDaysLeft(end, asOf) {
   const s = ymdOf(end);
   if (!s) return "";
   const t = new Date(s + "T00:00:00");
   if (isNaN(t.getTime())) return "";
-  const n = new Date();
+  const n = asOf ? dateFromYmd(asOf) : new Date();
   n.setHours(0, 0, 0, 0);
   return Math.round((t - n) / 86400000);
 }
@@ -15270,13 +15270,46 @@ function invoiceRenewalRoom(item, room) {
   ));
   return dest || room;
 }
+let invoiceSheetYm = "";
+function sheetYm() {
+  const y = String(invoiceSheetYm || "").slice(0, 7);
+  return /^\d{4}-\d{2}$/.test(y) ? y : payYmNow();
+}
+function monthEndYmd(ym) {
+  const y = Number(String(ym || "").slice(0, 4));
+  const m = Number(String(ym || "").slice(5, 7));
+  if (!y || !m) return "";
+  const d = new Date(y, m, 0).getDate();
+  return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+}
+function paidInYm(t, r, ym) {
+  ym = String(ym || "").slice(0, 7);
+  if (!t || !/^\d{4}-\d{2}$/.test(ym)) return false;
+  if (ym === payYmNow()) return paidThisMonth(t);
+  if ((t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym)) return true;
+  return !!rentPayDateFor(t, r, ym);
+}
+function invoiceBankKey(t, r, ym, onNew) {
+  if (cashAuntRent(t, r)) return "現金";
+  if (onNew) return NEW_TENANT_PAY_BANK;
+  ym = String(ym || payYmNow()).slice(0, 7);
+  if (ym === payYmNow()) return tenantPayBankKey(t, r);
+  const start = renewedLeaseStart(t, r);
+  if (start && ym < String(start).slice(0, 7)) {
+    const born = ymdOf(t && t.leaseStart);
+    if (born && born >= NEW_TENANT_SINCE) return NEW_TENANT_PAY_BANK;
+    return "農會";
+  }
+  return tenantPayBankKey(t, r);
+}
 function studioInvoiceEligible(t, room) {
   if (!t || t.former || t.demo || t.placeholder || t.loginRevoked || t.sessionEnded) return false;
   if (!String(t.name || "").trim()) return false;
   if (t.applyPending || t.incoming || t.prospect) return false;
+  const ym = sheetYm();
   const item = renewalForInvoice(t, room);
-  if (item && renewalActiveOnYm(item, payYmNow())) return true;
-  if (room && !leaseCoversYm(t, room, payYmNow())) return false;
+  if (item && renewalActiveOnYm(item, ym)) return true;
+  if (room && !leaseCoversYm(t, room, ym)) return false;
   return true;
 }
 function openInvoiceForRoom(roomId, from) {
@@ -15400,18 +15433,21 @@ function rentPayDateFor(t, r, ym) {
 function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const item = t ? renewalForInvoice(t, room) : null;
-  const nowYm = payYmNow();
-  const prepaidNow = !!((t && t.prepaidYm) || []).some(y => String(y).slice(0, 7) === nowYm);
-  const billYm = String(prepaidNow ? nowYm : ((t && paidThisMonth(t) && t.paidYm) || nowYm)).slice(0, 7);
+  const nowYm = sheetYm();
+  const viewingNow = nowYm === payYmNow();
+  const prepaidNow = viewingNow && !!((t && t.prepaidYm) || []).some(y => String(y).slice(0, 7) === nowYm);
+  const paid = viewingNow ? !!(t && paidThisMonth(t)) : !!(t && paidInYm(t, room, nowYm));
+  const billYm = viewingNow
+    ? String(prepaidNow ? nowYm : ((t && paid && t.paidYm) || nowYm)).slice(0, 7)
+    : nowYm;
   const onNew = !!(item && renewalActiveOnYm(item, billYm));
   const invRoom = onNew ? invoiceRenewalRoom(item, room) : room;
   const invNo = onNew ? String((invRoom && invRoom.no) || item.moveRoomNo || no) : String(no);
   const invT = onNew && t ? tenantForRenewPrint(t, invRoom || room, item) : t;
-  const paid = !!(t && paidThisMonth(t));
-  const remitYmd = paid ? (rentPayDateFor(t, room, billYm) || (billYm + "-01")) : "";
+  const remitYmd = paid ? (rentPayDateFor(t, room, billYm) || (viewingNow ? (billYm + "-01") : "")) : "";
   const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
   const aunt = cashAuntRent(t, room) || String(no) === "7241";
-  const bankKey = aunt ? "現金" : (onNew ? NEW_TENANT_PAY_BANK : tenantPayBankKey(invT || t || info, invRoom || room));
+  const bankKey = invoiceBankKey(invT || t || info, invRoom || room, billYm, onNew);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
   const part = leasePartForYm(invT, invRoom || room, billYm);
   const listed = (typeof studioContractRent === "function" ? studioContractRent(invT || t, invRoom || room) : 0) || Number((invRoom || room) && (invRoom || room).rent) || 0;
@@ -15432,7 +15468,7 @@ function studioInvoiceRow(no, room, t, info) {
     bank,
     start: rocSlash(start),
     end: rocSlash(end),
-    left: leaseDaysLeft(end),
+    left: leaseDaysLeft(end, viewingNow ? "" : monthEndYmd(billYm)),
     renew: ((renewDecisionOf(no) || renewDecisionOf(invNo) || renewDecisionOf(room && room.no)) === "no" || (t && t.renewChoice === "no"))
       ? "no"
       : invoiceRenewChecked(t, room, item, note, no, invNo),
@@ -15442,7 +15478,7 @@ function studioInvoiceRow(no, room, t, info) {
 }
 function invoicePushStudio(rows, no, room, t, info) {
   if (String(no) === "7042") {
-    const ym = payYmNow();
+    const ym = sheetYm();
     const base = studioInvoiceRow(no, room, t, info);
     if (ym === "2026-09") {
       const sep = "2026-09-23";
@@ -15469,7 +15505,7 @@ function invoicePushStudio(rows, no, room, t, info) {
     }
   }
   if (String(no) === "7632") {
-    const ym = payYmNow();
+    const ym = sheetYm();
     if (ym === "2026-09") return;
     if (ym === "2026-10") {
       const base = studioInvoiceRow(no, room, t, info);
@@ -15549,19 +15585,20 @@ function factoryInvoiceOverviewRows() {
     const rooms = (entry.rooms || []).filter(Boolean);
     if (!tenants.length || !rooms.length) return;
     const t = tenants[0];
-    const paidT = tenants.find(x => paidThisMonth(x));
+    const ym = sheetYm();
+    const paidT = tenants.find(x => paidInYm(x, rooms[0], ym));
     const paid = !!paidT;
     const src = paidT || t;
-    if (src && src.leaseStart && String(src.leaseStart).slice(0, 7) > payYmNow()) return;
+    if (src && src.leaseStart && String(src.leaseStart).slice(0, 7) > ym) return;
     const every = Number(src.invoiceEveryMonths) || 1;
     if (every > 1) {
-      const billYm = String((invoiceRentYmd() || todayYmd()).slice(0, 7) || payYmNow());
+      const billYm = ym;
       const m = Number(billYm.slice(5, 7));
       const anchor = Number(String(src.invoiceOn || "2026-09-09").slice(5, 7)) || 9;
       if (((m - anchor) % every + every) % every !== 0) return;
     }
-    const remitYmd = paid ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "";
-    const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, src.paidYm || payYmNow(), src.invoiceOn) : "";
+    const remitYmd = paid ? (rentPayDateFor(src, rooms[0], ym) || (ym === payYmNow() ? (ymdOf(src.remitOn) || ymdOf(src.paidAt) || "") : "")) : "";
+    const invoiceYmd = paid && remitYmd ? invoiceYmdFromRemit(remitYmd, ym, src.invoiceOn) : "";
     const room = rooms[0];
     const bankKey = tenantPayBankKey(src, room);
     const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
@@ -15588,7 +15625,7 @@ function factoryInvoiceOverviewRows() {
       bank,
       start: rocSlash(src.leaseStart),
       end: rocSlash(src.leaseEnd),
-      left: leaseDaysLeft(src.leaseEnd),
+      left: leaseDaysLeft(src.leaseEnd, ym === payYmNow() ? "" : monthEndYmd(ym)),
       renew: /已續約/.test(note)
     });
   });
@@ -15927,7 +15964,7 @@ function showDepositImputedPreview() {
   };
   paint();
 }
-function drawInvoiceOverviewCanvas(rows, kind, orient) {
+function drawInvoiceOverviewCanvas(rows, kind, orient, ym) {
   const portrait = orient !== "landscape";
   const W = portrait ? 1754 : 2480;
   const H = portrait ? 2480 : 1754;
@@ -15949,9 +15986,13 @@ function drawInvoiceOverviewCanvas(rows, kind, orient) {
   ctx.fillText(kind === "factory" ? "統潔開發有限公司　廠房開立發票總覽" : "統潔開發有限公司　開立發票總覽", pad, 28);
   ctx.font = font("600 " + dateSize + "px");
   ctx.fillStyle = "#5b6b62";
+  const sheet = String(ym || payYmNow()).slice(0, 7);
   const now = new Date();
+  const stamp = sheet === payYmNow()
+    ? rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新"
+    : rocMonthTitle(sheet);
   ctx.textAlign = "right";
-  ctx.fillText(rocSlash(now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")) + " 更新", W - pad, portrait ? 36 : 38);
+  ctx.fillText(stamp, W - pad, portrait ? 36 : 38);
   ctx.textAlign = "left";
   const cols = portrait ? [
     { k: "remitDate", h: "匯款日期", h2: "（年月日）", w: 0.10 },
@@ -16103,17 +16144,18 @@ async function downloadJpegPagesPdf(pages, filename, landscape) {
   let o = 0; out.forEach(a => { buf.set(a, o); o += a.length; });
   triggerDownload(new Blob([buf], { type: "application/pdf" }), filename || "下載.pdf");
 }
-async function downloadInvoiceOverviewPdf(page, kind) {
+async function downloadInvoiceOverviewPdf(page, kind, ym) {
+  ym = String(ym || ui.invoiceYm || payYmNow()).slice(0, 7);
   if (!page) {
+    invoiceSheetYm = ym;
     const rows = invoiceOverviewRows(kind || (ui.tenantKind === "factory" ? "factory" : "studio"));
+    invoiceSheetYm = "";
     if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
-    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper || "portrait");
+    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper || "portrait", ym);
   }
-  const n = new Date();
-  const ymd = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
   const tag = kind === "factory" ? "廠房" : "套房";
   try {
-    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ymd}.pdf`, page.w > page.h);
+    await downloadJpegPagesPdf([page], `統潔-${tag}開立發票總覽-${ym}.pdf`, page.w > page.h);
     toast("已下載開立發票總覽");
   } catch (err) {
     try { console.error(err); } catch {}
@@ -16177,16 +16219,20 @@ function bindInvoicePreviewZoom(sc) {
     const maxY = Math.max(0, (img.clientHeight * scale - sc.clientHeight) / 2 + 24);
     tx = Math.min(maxX, Math.max(-maxX, tx));
     ty = Math.min(maxY, Math.max(-maxY, ty));
+    img.style.transition = "none";
     img.style.transform = "translate3d(" + tx + "px," + ty + "px,0) scale(" + scale + ")";
   };
-  sc.resetZoom = () => { scale = 1; tx = 0; ty = 0; paint(); };
+  sc.resetZoom = () => { scale = 1; tx = 0; ty = 0; sc._monthDx = 0; paint(); };
   img.style.transformOrigin = "center center";
   img.style.willChange = "transform";
   sc.style.touchAction = "none";
+  let swipeX = 0, swipeY = 0, swipeOn = false;
   sc.addEventListener("pointerdown", e => {
     try { sc.setPointerCapture(e.pointerId); } catch {}
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    sc._monthDx = 0;
     if (pts.size === 2) {
+      swipeOn = false;
       const a = [...pts.values()];
       pinch0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
       scale0 = scale;
@@ -16194,18 +16240,31 @@ function bindInvoicePreviewZoom(sc) {
       tx0 = tx; ty0 = ty;
     } else if (pts.size === 1) {
       pan0 = { x: e.clientX - tx, y: e.clientY - ty };
+      swipeX = e.clientX;
+      swipeY = e.clientY;
+      swipeOn = scale <= 1.02 && !!sc.onMonthSwipe;
     }
   });
   sc.addEventListener("pointermove", e => {
     if (!pts.has(e.pointerId)) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size >= 2) {
+      swipeOn = false;
+      sc._monthDx = 0;
       const a = [...pts.values()];
       const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
       scale = scale0 * (d / pinch0);
       const mid = { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
       if (mid0) { tx = tx0 + (mid.x - mid0.x); ty = ty0 + (mid.y - mid0.y); }
       paint();
+    } else if (swipeOn && pts.size === 1 && scale <= 1.02) {
+      const dx = e.clientX - swipeX;
+      const dy = e.clientY - swipeY;
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        sc._monthDx = dx;
+        img.style.transition = "none";
+        img.style.transform = "translate3d(" + dx + "px,0,0)";
+      }
     } else if (pts.size === 1 && scale > 1.02 && pan0) {
       tx = e.clientX - pan0.x;
       ty = e.clientY - pan0.y;
@@ -16219,6 +16278,17 @@ function bindInvoicePreviewZoom(sc) {
       const p = [...pts.values()][0];
       pan0 = { x: p.x - tx, y: p.y - ty };
     } else pan0 = null;
+    const dx = Number(sc._monthDx) || 0;
+    if (pts.size === 0 && swipeOn && Math.abs(dx) > 8) {
+      sc._monthDx = 0;
+      swipeOn = false;
+      if (Math.abs(dx) > 64 && sc.onMonthSwipe) sc.onMonthSwipe(dx > 0 ? -1 : 1);
+      else {
+        img.style.transition = "transform .35s cubic-bezier(.22,.82,.22,1)";
+        img.style.transform = "translate3d(0,0,0)";
+      }
+      return;
+    }
     paint();
   };
   sc.addEventListener("pointerup", up);
@@ -16256,30 +16326,73 @@ function openInvoicePreviewBox(html) {
 }
 function showInvoiceOverviewPreview() {
   const kind = ui.tenantKind === "factory" ? "factory" : "studio";
-  const rows = invoiceOverviewRows(kind);
-  if (!rows.length) { toast(kind === "factory" ? "目前沒有可開立發票的廠房" : "目前沒有可開立發票的套房"); return; }
   ui.invoicePaper = "portrait";
+  ui.invoiceYm = payYmNow();
+  const minYm = "2026-01";
   let page = null;
-  const paint = () => {
-    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper);
+  let busy = false;
+  const paint = (enterFrom) => {
+    invoiceSheetYm = ui.invoiceYm || payYmNow();
+    const rows = invoiceOverviewRows(kind);
+    invoiceSheetYm = "";
+    page = drawInvoiceOverviewCanvas(rows, kind, ui.invoicePaper, ui.invoiceYm);
     const img = document.querySelector("#invoice-preview-box .invoice-preview-scroll img");
     const sc = document.querySelector("#invoice-preview-box .invoice-preview-scroll");
+    const lab = document.getElementById("inv-ym-label");
+    if (lab) lab.textContent = rocMonthTitle(ui.invoiceYm);
     if (img) img.src = page.dataUrl;
-    if (sc && sc.resetZoom) sc.resetZoom();
+    if (enterFrom && img && sc) {
+      const w = sc.clientWidth || 280;
+      img.style.transition = "none";
+      img.style.transform = "translate3d(" + (enterFrom * w) + "px,0,0)";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        img.style.transition = "transform .42s cubic-bezier(.22,.82,.22,1)";
+        img.style.transform = "translate3d(0,0,0)";
+      }));
+    } else if (sc && sc.resetZoom) sc.resetZoom();
     markInvoicePaper();
+  };
+  const snapBack = sc => {
+    const img = sc && sc.querySelector("img");
+    if (!img) return;
+    img.style.transition = "transform .35s cubic-bezier(.22,.82,.22,1)";
+    img.style.transform = "translate3d(0,0,0)";
   };
   openInvoicePreviewBox(`
     <div class="lightbox-bar">
       <button type="button" id="inv-prev-close">關閉</button>
+      <span class="inv-ym" id="inv-ym-label"></span>
       ${invoicePaperBarHtml()}
       <button type="button" class="btn-navy" id="inv-prev-pdf" style="width:auto;padding:8px 14px">下載 PDF</button>
     </div>
     <div class="invoice-preview-scroll"><img src="" alt="開立發票總覽預覽"></div>`);
+  const sc = document.querySelector("#invoice-preview-box .invoice-preview-scroll");
+  if (sc) sc.onMonthSwipe = dir => {
+    if (busy) return;
+    const cur = ui.invoiceYm || payYmNow();
+    const next = shiftYm(cur, dir);
+    if ((dir > 0 && next > payYmNow()) || (dir < 0 && next < minYm)) {
+      snapBack(sc);
+      return;
+    }
+    busy = true;
+    const img = sc.querySelector("img");
+    const w = sc.clientWidth || 280;
+    if (img) {
+      img.style.transition = "transform .28s cubic-bezier(.22,.82,.22,1)";
+      img.style.transform = "translate3d(" + (dir < 0 ? w : -w) + "px,0,0)";
+    }
+    setTimeout(() => {
+      ui.invoiceYm = next;
+      paint(dir);
+      busy = false;
+    }, 240);
+  };
   bindInvoicePaper(paint);
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
-    downloadInvoiceOverviewPdf(page, kind);
+    downloadInvoiceOverviewPdf(page, kind, ui.invoiceYm);
   };
   paint();
 }

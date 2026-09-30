@@ -5288,6 +5288,13 @@ img.avatar { object-fit: cover; display: block; }
   border-radius: 8px;
   transform-origin: center center;
 }
+.lightbox-bar .inv-ym {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
 .lightbox-bar .inv-paper {
   position: relative;
   display: grid;
