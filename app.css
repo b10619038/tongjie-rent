@@ -2705,8 +2705,8 @@ button.avatar-look.is-press { transform: scale(.94); }
   mask-size: 100% 100%;
 }
 .tab-ic.ic-dash { width: 22px; }
-.tab-ic.ic-rooms { width: 30.6px; }
-.tab-ic.ic-tenants { width: 22.8px; }
+.tab-ic.ic-rooms { width: 27.54px; height: 23.4px; flex-basis: 23.4px; }
+.tab-ic.ic-tenants { width: 20.52px; height: 23.4px; flex-basis: 23.4px; }
 .tab-ic.ic-ai { width: 24px; }
 .tab-ic.ic-announce { width: 30px; }
 .tab-ic.ic-history { width: 33px; }
