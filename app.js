@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-16-54";
-const APP_EDIT_COUNT = 1648;
+const APP_STAMP = "2026-09-30-16-56";
+const APP_EDIT_COUNT = 1649;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1199";
+const FILE_VER = "1200";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員分成趙洪漳、許喻涵"] },
+  { ver: APP_VERSION, items: ["登入時間在房號右邊，狀態在姓名右邊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11248,7 +11248,7 @@ function tenantAccountHtml() {
     const cls = x.ever ? " been" : "";
     const when = x.ever && x.at ? tenantAccountStamp(x.at) : "";
     const extra = [when, x.seats ? x.seats + " 台" : ""].filter(Boolean).join(" · ");
-    return `<div class="online-row acct-row"><span class="k acct-who"><b>${escapeHtml(x.no)}</b><span>${escapeHtml(x.name)}</span></span><span class="row-end">${extra ? `<span class="small">${escapeHtml(extra)}</span>` : ""}<span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}">${pill}</span></span></div>`;
+    return `<div class="acct-card"><div class="acct-line"><b class="acct-no">${escapeHtml(x.no)}</b>${extra ? `<span class="small acct-when">${escapeHtml(extra)}</span>` : ""}</div><div class="acct-line"><span class="acct-name">${escapeHtml(x.name)}</span><span class="acct-pills"><span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}">${pill}</span></span></div></div>`;
   }).join("");
 }
 function onlineTenantLinesHtml() {

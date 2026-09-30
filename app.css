@@ -2848,14 +2848,12 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .log-check input { width: 18px; height: 18px; accent-color: var(--teal); pointer-events: auto !important; }
 .online-board { display: grid; gap: 2px; margin-top: 8px; }
 .online-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; }
-.acct-who { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; min-width: 0; }
-.acct-who b { font-weight: 700; color: var(--ink); white-space: nowrap; }
-.acct-who span { min-width: 0; }
-@media (max-width: 1280px) {
-  .acct-row { align-items: flex-start; }
-  .acct-who { flex-direction: column; align-items: flex-start; gap: 2px; }
-  .acct-who span { white-space: normal; word-break: keep-all; line-height: 1.35; }
-}
+.acct-card { display: grid; gap: 4px; padding: 8px 0; }
+.acct-line { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.acct-no { font-weight: 700; color: var(--ink); white-space: nowrap; }
+.acct-name { min-width: 0; color: var(--muted); line-height: 1.35; word-break: keep-all; }
+.acct-when { white-space: nowrap; text-align: right; margin-left: auto; }
+.acct-pills { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .online-h { margin-top: 10px; font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
 #online-tenants { display: grid; gap: 0; }
 .badge-dot {
