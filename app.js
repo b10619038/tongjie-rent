@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-11-46";
-const APP_EDIT_COUNT = 1628;
+const APP_STAMP = "2026-09-30-11-58";
+const APP_EDIT_COUNT = 1629;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1179";
+const FILE_VER = "1180";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房退租文件跟套房一樣，用 A4 比例縮放"] },
+  { ver: APP_VERSION, items: ["大樹-18 廣永隆今天終止契約；廠房退租文件收成一頁"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5943,6 +5943,7 @@ function normalize(data) {
   try { apply6841RenewLai(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
+  try { ensureDashu18Term(data); } catch {}
   ensureDemoTenant(data);
   ensureDemoRepair(data);
   try { ensurePhoneLoginPasses(data); } catch {}
@@ -8116,6 +8117,37 @@ function applyLinanan7231(data) {
     });
   });
   data.linananVer = LINANAN_VER;
+}
+function ensureDashu18Term(data) {
+  if (!data) return;
+  if (!Array.isArray(data.checkouts)) data.checkouts = [];
+  const room = (data.rooms || []).find(r => r && String(r.no) === "大樹-18");
+  const t = room && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room.id);
+  if (!room || !t) return;
+  const id = "co-dashu18-20260930";
+  if (data.checkouts.some(c => c && (c.id === id || (String(c.roomNo) === "大樹-18" && c.kind === "early")))) return;
+  const deposit = Number(t.deposit || room.deposit) || 92000;
+  data.checkouts.push({
+    id,
+    tenantId: t.id,
+    tenantName: t.name || "廣永隆生物科技有限公司",
+    roomId: room.id,
+    roomNo: "大樹-18",
+    kind: "early",
+    at: "2026-09-30",
+    signedAt: "2026-09-30",
+    deposit,
+    deduct: 0,
+    prorate: 0,
+    refund: deposit,
+    property: factoryAddress(room) || "高雄市大樹區九曲路5巷32弄18號",
+    phone: t.phone || "0939-153-975",
+    idNo: t.idNo || "",
+    status: "draft",
+    note: "115/9/30 終止租賃契約",
+    updatedAt: "2026-09-30 12:00"
+  });
+  try { markCloudDirty(); } catch {}
 }
 function ensureCheckout6832(data) {
   if (!data) return;
@@ -10536,6 +10568,7 @@ async function pullCloud() {
     applyFactorySepPaidFromBooks(state);
     applyYushengElec(state);
     ensureCheckout6832(state);
+    try { ensureDashu18Term(state); } catch {}
     mergePresenceInto(state, { presence: mine });
     mergeMemosInto(state, { aiMemos: mineAdmin });
     mergeDevBundle(state, { devMemos: mineDevMemos, devLogs: mineDevLogs, aiLogs: mineAiLogs });
@@ -22018,6 +22051,7 @@ function splitPair(s) {
   return bySpace.length >= 2 ? bySpace : (parts.length ? parts : [raw]);
 }
 function termPropLabel(r) {
+  if (r && typeof roomIsFactory === "function" && roomIsFactory(r)) return factoryAddress(r) || String(r.no || "");
   const no = String((r && r.no) || "");
   const s = no.replace(/\D/g, "");
   if (s.length >= 4) return `高雄市鳳山區文龍東路${s.slice(0, 2)}號${s.charAt(2)}樓之${s.charAt(3)}室(${no})`;
@@ -22087,7 +22121,6 @@ function termLeasePaperHtml(t, r, co) {
       </div>
     </div>
     <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
-    <p class="term-hint">列印後於簽收欄與蓋章框蓋印，系統不套印印章。</p>
   </div></div>`;
 }
 function handoverConfirmPaperHtml(t, r, co) {
@@ -22123,10 +22156,11 @@ function handoverConfirmPaperHtml(t, r, co) {
       <p>承租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
     </div>
     <p class="term-date">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
-    <p class="term-hint">列印後於出租人／承租人欄蓋印，系統不套印印章。點交項目請現場勾選。</p>
   </div></div>`;
 }
 function termPrintPackHtml(t, r, co, kind) {
+  const factory = !!(r && typeof roomIsFactory === "function" && roomIsFactory(r));
+  if (factory) return `<div id="term-print-pack">${termLeasePaperHtml(t, r, co)}</div>`;
   return `<div id="term-print-pack">${kind === "early" ? termLeasePaperHtml(t, r, co) : ""}${handoverConfirmPaperHtml(t, r, co)}</div>`;
 }
 function leaseCk(on) {
@@ -22705,7 +22739,7 @@ function checkoutFormHtml() {
     <label class="field"><span>備註</span><textarea id="co-note" rows="2">${escapeHtml(co.note || "")}</textarea></label>
     <div class="unpaid-tools">
       <button type="button" class="ghost" id="co-save">儲存草稿</button>
-      <button type="button" class="btn-navy" id="co-print-term">列印交接確認書</button>
+      <button type="button" class="btn-navy" id="co-print-term">${roomIsFactory(r) ? "列印終止契約" : "列印交接確認書"}</button>
       <button type="button" class="btn-navy" id="co-done">完成退租</button>
       ${co.status === "done" && r.tenantId === t.id ? `<button type="button" class="ghost" id="co-vacate">房間改為空置</button>` : `<button type="button" class="ghost" id="co-discard">取消退租單</button>`}
     </div>
@@ -22785,7 +22819,7 @@ function openCheckout(tenantId) {
   const room = (state.rooms || []).find(r => r.id === t.roomId);
   const prev = lastCheckout(t.id);
   ui.checkoutTenantId = t.id;
-  ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : "pick";
+  ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : (room && roomIsFactory(room) ? "early" : "pick");
   if (!ui.tenantOpen) ui.tenantOpen = {};
   ui.tenantOpen[t.id] = true;
   ui.adminJump = "checkout-form-card";

@@ -6204,13 +6204,17 @@ html.embed-pane .home-upd { display: none !important; }
   max-height: 297mm;
   margin: 0 auto 12px;
   box-sizing: border-box;
-  padding: 14mm 16mm 16mm;
+  padding: 12mm 14mm 12mm;
   border-radius: 0;
   border: 1px solid #d9d9d9;
   overflow: hidden;
+  font-size: 15px;
+  line-height: 1.65;
   zoom: min(1, calc(100cqi / 210mm));
   box-shadow: 0 6px 22px rgba(0,0,0,.12);
 }
+.hand-a4-fit .term-lease-paper h3,
+.hand-a4-fit .term-handover-paper h3 { margin-bottom: 14px; font-size: 22px; }
 .term-handover-paper h3 {
   text-align: center;
   letter-spacing: .28em;
