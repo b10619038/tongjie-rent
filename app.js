@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-23-20";
-const APP_EDIT_COUNT = 1710;
+const APP_STAMP = "2026-09-30-23-22";
+const APP_EDIT_COUNT = 1711;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1261";
+const FILE_VER = "1262";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["預繳租金：下個月發票總覽匯款日用實際匯款日"] },
+  { ver: APP_VERSION, items: ["我要報修和繳費租金對調位置"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24697,11 +24697,11 @@ function homeView() {
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
-        <button class="ghost" data-page="pay"><span class="btn-ic">${icon("pay")}</span>繳費租金</button>
+        <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
         <button class="ghost" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
-        <button class="btn-navy" data-page="repair">我要報修</button>
+        <button class="btn-navy" data-page="pay">繳費租金</button>
       </div>
       ${roomExtrasHtml(r)}
     </div>`;
