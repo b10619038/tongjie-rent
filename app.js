@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-23-12";
-const APP_EDIT_COUNT = 1708;
+const APP_STAMP = "2026-09-30-23-14";
+const APP_EDIT_COUNT = 1709;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1259";
+const FILE_VER = "1260";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7041 劉恩彤 9/30 繳 10月租金 9,000"] },
+  { ver: APP_VERSION, items: ["繳費狀態：到期日改為應繳日期"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -24691,7 +24691,7 @@ function homeView() {
         <div class="row"><span class="k">繳費狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
         <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r))) : "尚無需繳費"}</span></div>
         <div class="row"><span class="k">實際匯款日</span><span class="v">${dueNow ? (ymdOf(t.remitOn) ? rocSlash(t.remitOn) : (paidThisMonth(t) && ymdOf(t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")) : "—"}</span></div>
-        <div class="row"><span class="k">到期日</span><span class="v">${!dueNow ? "—" : (stubNow ? "請馬上繳費" : ("每月" + rentDueDay(t) + "號"))}</span></div>
+        <div class="row"><span class="k">應繳日期</span><span class="v">${!dueNow ? "—" : (stubNow ? "請馬上繳費" : ("每月" + rentDueDay(t) + "號"))}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
