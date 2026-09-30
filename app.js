@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-00-28";
-const APP_EDIT_COUNT = 1716;
+const APP_STAMP = "2026-10-01-00-42";
+const APP_EDIT_COUNT = 1717;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1267";
+const FILE_VER = "1268";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽可左右滑看其他月份"] },
+  { ver: APP_VERSION, items: ["7042 10月改回未繳，7231 10月實繳日改 9/8"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5960,6 +5960,7 @@ function normalize(data) {
   try { applyRenewNoMarks(data); } catch {}
   try { apply7042RentShort(data); } catch {}
   try { apply7042SepPaid(data); } catch {}
+  try { apply7042OctUnpaid(data); } catch {}
   try { applyRenewal7632(data); } catch {}
   try { applyRenewal6823(data); } catch {}
   try { applyRenewedPayBanks(data); } catch {}
@@ -8168,12 +8169,15 @@ function applyLinanan7231(data) {
   t.agentPrints = true;
   t.dueDay = 1;
   t.paid = true;
-  t.paidYm = "2026-09";
-  t.prepaidYm = ["2026-09"];
   t.paidTouched = true;
-  t.paidAt = "2026-09-08 15:00";
   t.paidVia = "cash";
+  t.paidAt = "2026-09-08 15:00";
   t.remitOn = "2026-09-08";
+  if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  ["2026-09", "2026-10"].forEach(y => { if (t.prepaidYm.indexOf(y) < 0) t.prepaidYm.push(y); });
+  if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+  t.prepaidOn["2026-10"] = "2026-09-08";
+  t.paidYm = payYmNow() === "2026-10" ? "2026-10" : "2026-09";
   t.signAppointAt = "2026-09-08T15:00";
   t.note = (TENANT_INFO[no] && TENANT_INFO[no].note) || t.note || "";
   try { applyStudioLeasePack(t, room, t.leaseStart); } catch {}
@@ -8184,7 +8188,7 @@ function applyLinanan7231(data) {
   room.edited = true;
   if (!data.paidMarks) data.paidMarks = {};
   data.paidMarks.t7231 = {
-    paid: true, paidAt: "2026-09-08 15:00", paidVia: "cash", paidYm: "2026-09",
+    paid: true, paidAt: "2026-09-08 15:00", paidVia: "cash", paidYm: t.paidYm,
     editedAt: Date.now(), name: "林安安"
   };
   try { persistPaidMarks(data); } catch {}
@@ -8977,6 +8981,53 @@ function apply7042SepPaid(data) {
   data.pay7042SepVer = "7042-sep23-10000";
   try { markCloudDirty(); } catch {}
   return true;
+}
+function apply7042OctUnpaid(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7042");
+  if (!room) return;
+  const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  const ym = "2026-10";
+  const real = (data.books || []).some(b => {
+    if (!b || b.type === "out" || isRentAutoBook(b)) return false;
+    const hit = String(b.roomNo || "") === "7042" || String(b.note || "").indexOf("7042") >= 0;
+    if (!hit) return false;
+    const d = ymdOf(b.date);
+    if (!d || d.slice(0, 7) !== ym) return false;
+    return /租金|房租/.test(String(b.note || "") + String(b.importTag || "")) && Number(b.amount) >= 14000;
+  });
+  if (real) return;
+  const remit = ymdOf(t.remitOn);
+  const carried = data.pay7042OctClear !== "unpaid-v1" || remit === "2026-09-23" || (remit && remit.slice(0, 7) === "2026-09");
+  if (!carried) return;
+  if (Array.isArray(t.prepaidYm)) t.prepaidYm = t.prepaidYm.filter(y => String(y).slice(0, 7) !== ym);
+  if (t.prepaidOn && t.prepaidOn[ym]) delete t.prepaidOn[ym];
+  if (payYmNow() === ym) {
+    t.paid = false;
+    t.paidYm = ym;
+    t.paidTouched = true;
+    t.paidAt = "";
+    t.paidVia = "";
+    if (!remit || remit >= ym + "-01") t.remitOn = "2026-09-23";
+  }
+  if (!data.paidMarks) data.paidMarks = {};
+  data.paidMarks[t.id] = {
+    paid: false, paidAt: "", paidVia: "", paidYm: ym, editedAt: Date.now(), name: t.name || "周佳瑩"
+  };
+  try { persistPaidMarks(data); } catch {}
+  const gone = [];
+  (data.books || []).forEach(b => {
+    if (!b || !isRentAutoBook(b)) return;
+    if (String(b.roomNo || "") !== "7042" && String(b.note || "").indexOf("7042") < 0) return;
+    if (String(b.importTag || "") === "rent-auto-2026-10" || ymdOf(b.date).slice(0, 7) === ym) gone.push(b.id);
+  });
+  if (gone.length) {
+    data.ledgerGone = unionGone(data.ledgerGone, gone);
+    data.books = (data.books || []).filter(b => b && gone.indexOf(b.id) < 0);
+  }
+  data.pay7042OctClear = "unpaid-v1";
+  try { markCloudDirty(); } catch {}
 }
 function applyFormerStudio(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
@@ -10670,6 +10721,7 @@ async function pullCloud() {
       try { applyRenewNoMarks(state); } catch {}
       try { apply7042RentShort(state); } catch {}
       try { apply7042SepPaid(state); } catch {}
+      try { apply7042OctUnpaid(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
@@ -10829,6 +10881,7 @@ async function pullCloud() {
     try { applyRenewNoMarks(state); } catch {}
     try { apply7042RentShort(state); } catch {}
     try { apply7042SepPaid(state); } catch {}
+    try { apply7042OctUnpaid(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -11490,6 +11543,7 @@ async function pushCloud() {
     try { applyRenewNoMarks(payload); } catch {}
     try { apply7042RentShort(payload); } catch {}
     try { apply7042SepPaid(payload); } catch {}
+    try { apply7042OctUnpaid(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
@@ -13497,8 +13551,13 @@ function upsertRentAutoBookOn(data, t) {
     return;
   }
   const ym = payYmNow();
-  let date = ymdOf(t.remitOn) || ymdOf(t.paidAt) || monthDueYmd();
-  if (date.slice(0, 7) !== ym) {
+  const pre = ymdOf(t.prepaidOn && t.prepaidOn[ym]);
+  if (pre && pre.slice(0, 7) !== ym) {
+    dropRentAutoBookOn(data, t);
+    return;
+  }
+  let date = pre || ymdOf(t.remitOn) || ymdOf(t.paidAt) || monthDueYmd();
+  if (!pre && date.slice(0, 7) !== ym) {
     date = monthDueYmd();
     t.paidAt = date + " 10:00";
   }
