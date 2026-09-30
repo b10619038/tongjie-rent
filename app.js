@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-20-50";
-const APP_EDIT_COUNT = 1691;
+const APP_STAMP = "2026-09-30-21-24";
+const APP_EDIT_COUNT = 1692;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1242";
+const FILE_VER = "1243";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人合約個人章下緣對齊黑線"] },
+  { ver: APP_VERSION, items: ["上方大小章上移避開文字"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22406,7 +22406,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
     </section>
     <section class="lease-pg lease-spread">
       <div class="lease-fill">
-      <h4 class="chop-host">房屋租賃契約書<span class="chop-mark chop-lg" style="top:9mm;right:36mm"></span><span class="chop-mark chop-sm" style="top:22mm;right:18mm"></span></h4>
+      <h4 class="chop-host">房屋租賃契約書<span class="chop-mark chop-lg" style="top:-3mm;right:36mm"></span><span class="chop-mark chop-sm" style="top:10mm;right:18mm"></span></h4>
       <p>立契約書人出租人　${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span></p>
       <p class="chop-host">承租人　${headerTenants}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
       <p class="lease-art chop-host">第一條　契約審閱期${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:56mm;bottom:0.6mm"></span>` : `<span class="chop-mark chop-ps" style="left:56mm;bottom:0.6mm"></span><span class="chop-mark chop-ps" style="left:72mm;bottom:0.6mm"></span>`}</p>
