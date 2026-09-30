@@ -4594,6 +4594,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-person p { margin: 0 0 2px; }
 .lease-people.side .lease-ink { min-width: 2.4em; max-width: 100%; }
 .lease-people.side .lease-esig { height: 32px; max-width: 88px; }
+.lease-fill > .lease-people { margin-bottom: 28px !important; }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;
