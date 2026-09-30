@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-12";
-const APP_EDIT_COUNT = 1630;
+const APP_STAMP = "2026-09-30-12-14";
+const APP_EDIT_COUNT = 1631;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1181";
+const FILE_VER = "1182";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房終止契約公司右邊帶聯絡人，廣永隆為洪子棋"] },
+  { ver: APP_VERSION, items: ["大樹-18 終止契約押金改為玖萬貳仟元整"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4656,7 +4656,7 @@ const FACTORY_TENANT_INFO = {
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "我們繳", elecNote: "自繳欠", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "存現　月中收現", waterNote: "單月給單", elecNote: "雙月給單", extraNote: "每月付 1,000 電桶費", note: "93-63 2F。存現，大概月中收現。每月付電桶費 $1,000。" },
   "大樹-屋頂": { name: "造得科技有限公司", taxId: "", contactName: "", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 7280, rent: 7644, deposit: 0, dueDay: 8, payBank: "聯邦", payCompany: "統潔", invoiceEveryMonths: 2, invoiceItem: "租金收入", invoiceOn: "2026-09-09", invoiceAddr: "831 高雄市大寮區內坑路158之9號", note: "大樹廠房屋頂。付租金給我們。統潔三聯式，品名租金收入，兩個月開一次，寄大寮內坑路158之9。115/9/8 入帳 7,644，115/9/9 已開發票。" },
-  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "洪子棋", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", rentSchedule: [
+  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "洪子棋", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, deposit: 92000, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", rentSchedule: [
     { from: "2026-09-01", untaxed: 46000 },
     { from: "2027-09-01", untaxed: 47000 },
     { from: "2028-09-01", untaxed: 48000 },
@@ -8125,8 +8125,21 @@ function ensureDashu18Term(data) {
   const t = room && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room.id);
   if (!room || !t) return;
   const id = "co-dashu18-20260930";
-  if (data.checkouts.some(c => c && (c.id === id || (String(c.roomNo) === "大樹-18" && c.kind === "early")))) return;
-  const deposit = Number(t.deposit || room.deposit) || 92000;
+  const deposit = 92000;
+  t.deposit = deposit;
+  room.deposit = deposit;
+  const hit = data.checkouts.find(c => c && (c.id === id || (String(c.roomNo) === "大樹-18" && c.kind === "early" && c.status !== "done")));
+  if (hit) {
+    if (!Number(hit.deposit)) {
+      hit.deposit = deposit;
+      hit.deduct = Number(hit.deduct) || 0;
+      hit.prorate = Number(hit.prorate) || 0;
+      hit.refund = Math.max(0, deposit - hit.deduct + hit.prorate);
+      hit.updatedAt = "2026-09-30 12:14";
+      try { markCloudDirty(); } catch {}
+    }
+    return;
+  }
   data.checkouts.push({
     id,
     tenantId: t.id,
@@ -22079,7 +22092,8 @@ function termLeasePaperHtml(t, r, co) {
   const today = ymdOf(nowStamp());
   const end = rocPartsOf(co.at || today);
   const sign = rocPartsOf(co.signedAt || co.at || today);
-  const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
+  const depositRaw = Number(co.deposit != null ? co.deposit : (r && r.deposit)) || 0;
+  const deposit = depositRaw || (r && String(r.no || "") === "大樹-18" ? 92000 : 0);
   const prorate = Number(co.prorate) || 0;
   const refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0) + prorate);
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
@@ -22667,7 +22681,8 @@ function checkoutFormHtml() {
   const co = lastCheckout(t.id) || {};
   const kind = checkoutKindOf(co);
   if (!kind) return "";
-  const deposit = Number(co.deposit != null ? co.deposit : r.deposit) || 0;
+  const depositRaw = Number(co.deposit != null ? co.deposit : (r && r.deposit)) || 0;
+  const deposit = depositRaw || (r && String(r.no || "") === "大樹-18" ? 92000 : 0);
   const deduct = Number(co.deduct) || 0;
   const today = ymdOf(nowStamp());
   const prorate = co.prorate != null && co.prorate !== "" ? Number(co.prorate) : (kind === "early" ? defaultProrateRent(t, r, co.at || today) : 0);
