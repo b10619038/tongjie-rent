@@ -4589,13 +4589,18 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   width: 100%;
   padding-left: 1em;
 }
-.lease-person { min-width: 12em; }
-.lease-people.side .lease-person { flex: 1 1 0; min-width: 0; }
-.lease-people.side .lease-ink { min-width: 2.4em; max-width: 100%; }
+.lease-person { min-width: 12em; display: table; width: max-content; max-width: 100%; border-collapse: separate; border-spacing: 0 11px; }
+.lease-people.side .lease-person { flex: 1 1 0; min-width: 0; width: max-content; }
+.lease-person .lease-line { display: table-row; }
+.lease-person .lease-lab { display: table-cell; white-space: nowrap; vertical-align: baseline; padding: 0; }
+.lease-person .lease-ink,
+.lease-person .lease-u,
+.lease-person .lease-sign-line { display: table-cell; vertical-align: baseline; width: 100%; box-sizing: border-box; }
+.lease-person p { margin: 0; }
+.lease-people.side .lease-ink { min-width: 2.4em; max-width: none; }
 .lease-people.side .lease-esig { height: 32px; max-width: 88px; }
 .lease-tight p { margin: 0 0 2px !important; line-height: 1.42; }
 .lease-tight .lease-art { margin-top: 8px !important; }
-.lease-person p { margin: 0 0 11px; }
 .lease-fill > .lease-people { margin-bottom: 36px !important; }
 .lease-pgno {
   position: absolute;
