@@ -4624,7 +4624,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-tail { display: flex; flex-direction: column; }
 .lease-tail > .lease-firm { margin-top: 0; }
 .lease-tail > .lease-people { margin-top: 40px !important; }
-.lease-tail > .term-date { margin-top: 80px !important; }
+.lease-tail > .term-date { margin-top: 80px !important; text-align: center; width: 100%; }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;
