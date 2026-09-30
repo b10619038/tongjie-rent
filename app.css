@@ -4610,7 +4610,21 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-tight p { margin: 0 0 2px !important; line-height: 1.42; }
 .lease-tight .lease-art { margin-top: 8px !important; }
 .lease-fill > .lease-people { margin-bottom: 36px !important; }
-.lease-fill > .lease-firm { transform: translateY(40px); }
+.lease-fill > .lease-firm { transform: none; }
+.lease-pg.lease-end .lease-fill { justify-content: flex-start; }
+.lease-pg.lease-end .lease-fill > .lease-tight {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin-bottom: 40px !important;
+  min-height: 0;
+}
+.lease-pg.lease-end .lease-tight p { margin: 0 !important; }
+.lease-tail { display: flex; flex-direction: column; }
+.lease-tail > .lease-firm { margin-top: 0; }
+.lease-tail > .lease-people { margin-top: 40px !important; }
+.lease-tail > .term-date { margin-top: 80px !important; }
 .lease-pgno {
   position: absolute;
   left: 0; right: 0; bottom: 8mm;

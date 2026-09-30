@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-18-31";
-const APP_EDIT_COUNT = 1667;
+const APP_STAMP = "2026-09-30-18-36";
+const APP_EDIT_COUNT = 1668;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1218";
+const FILE_VER = "1219";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約出租人區塊往下40px"] },
+  { ver: APP_VERSION, items: ["合約末頁條文行距拉開，離出租人40px"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -22512,7 +22512,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       </div>
       <div class="lease-pgno">5</div>
     </section>
-    <section class="lease-pg lease-spread">
+    <section class="lease-pg lease-spread lease-end">
       <div class="lease-fill">
       <div class="lease-tight">
       <p class="lease-art">第十八條　其他約定</p>
@@ -22529,6 +22529,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p>（四）特別約定：1.屋內禁止抽菸、拜拜、油漆牆面物黏貼紙以及掛勾。</p>
       <p>（五）為提升租客安全及服務品質，承租人應配合下載安裝統潔租客 App，並加入統潔官方 LINE。</p>
       </div>
+      <div class="lease-tail">
       <div class="lease-sign-block lease-firm">
         <p>出租人：${leaseInk(firm.name || "統潔開發有限公司")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span></p>
         <p>代表人：${leaseInk("趙正賢")}</p>
@@ -22536,6 +22537,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       </div>
       <div class="lease-sign-block lease-people${names.length > 1 ? " side" : ""}">${peopleCols}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
+      </div>
       </div>
       <div class="lease-pgno">6</div>
     </section>
