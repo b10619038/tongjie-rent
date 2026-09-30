@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-11-58";
-const APP_EDIT_COUNT = 1629;
+const APP_STAMP = "2026-09-30-12-12";
+const APP_EDIT_COUNT = 1630;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1180";
+const FILE_VER = "1181";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["大樹-18 廣永隆今天終止契約；廠房退租文件收成一頁"] },
+  { ver: APP_VERSION, items: ["廠房終止契約公司右邊帶聯絡人，廣永隆為洪子棋"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4656,7 +4656,7 @@ const FACTORY_TENANT_INFO = {
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "我們繳", elecNote: "自繳欠", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "存現　月中收現", waterNote: "單月給單", elecNote: "雙月給單", extraNote: "每月付 1,000 電桶費", note: "93-63 2F。存現，大概月中收現。每月付電桶費 $1,000。" },
   "大樹-屋頂": { name: "造得科技有限公司", taxId: "", contactName: "", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 7280, rent: 7644, deposit: 0, dueDay: 8, payBank: "聯邦", payCompany: "統潔", invoiceEveryMonths: 2, invoiceItem: "租金收入", invoiceOn: "2026-09-09", invoiceAddr: "831 高雄市大寮區內坑路158之9號", note: "大樹廠房屋頂。付租金給我們。統潔三聯式，品名租金收入，兩個月開一次，寄大寮內坑路158之9。115/9/8 入帳 7,644，115/9/9 已開發票。" },
-  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "陳逸峯", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", rentSchedule: [
+  "大樹-18": { name: "廣永隆生物科技有限公司", taxId: "90553919", contactName: "洪子棋", phone: "0939-153-975", leaseStart: "2026-09-01", leaseEnd: "2031-05-31", rentUntaxed: 46000, rent: 48300, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", rentSchedule: [
     { from: "2026-09-01", untaxed: 46000 },
     { from: "2027-09-01", untaxed: 47000 },
     { from: "2028-09-01", untaxed: 48000 },
@@ -22087,13 +22087,17 @@ function termLeasePaperHtml(t, r, co) {
   const idNo = paperPeople(co.idNo || t.idNo || "");
   const phone = paperPeople(co.phone || t.phone || "");
   const names = paperPeople(t.name || "");
+  const info = (r && typeof FACTORY_TENANT_INFO !== "undefined" && FACTORY_TENANT_INFO[String(r.no || "")]) || {};
+  let person = String((info && info.contactName) || (t && t.contactName) || "").trim();
+  if (!person || person === String(t.name || "").trim() || String(t.name || "").indexOf(person) >= 0) person = "";
+  const party = names + (person ? "　" + person : "");
   const remain = monthRemainRange(co.at || today);
   const amt = n => cnAmt(n) || "　";
   return `<div class="hand-a4-fit"><div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
     <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
     <p>代表人：　<span class="term-fill">趙正賢</span></p>
-    <p>立約人　<span class="term-fill wide">${escapeHtml(names)}</span>　（及原承租人，簡稱乙方）</p>
+    <p>立約人　<span class="term-fill wide">${escapeHtml(names)}</span>${person ? "　" + escapeHtml(person) : ""}　（及原承租人，簡稱乙方）</p>
     <p class="term-center">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
     <p>原租賃物標示及約定事項如下：</p>
     <p>一、原租賃物標示：　<span class="term-fill wide">${escapeHtml(prop)}</span></p>
@@ -22115,7 +22119,7 @@ function termLeasePaperHtml(t, r, co) {
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
       </div>
       <div class="term-party">
-        <p>立約人（乙方）：　${escapeHtml(names)}<span class="term-chop" title="蓋章"></span></p>
+        <p>立約人（乙方）：　${escapeHtml(party)}<span class="term-chop" title="蓋章"></span></p>
         <p>身分證字號：　${escapeHtml(idNo)}</p>
         <p>電話：　${escapeHtml(phone)}</p>
       </div>
