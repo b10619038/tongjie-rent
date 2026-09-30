@@ -4597,7 +4597,15 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-person .lease-u,
 .lease-person .lease-sign-line { display: table-cell; vertical-align: baseline; width: 100%; box-sizing: border-box; }
 .lease-person p { margin: 0; }
-.lease-people.side .lease-ink { min-width: 2.4em; max-width: none; }
+.lease-people.side .lease-ink,
+.lease-people.side .lease-u,
+.lease-people.side .lease-sign-line {
+  border-bottom-color: transparent;
+  background-image: linear-gradient(#111, #111);
+  background-repeat: no-repeat;
+  background-size: 50% 1px;
+  background-position: left bottom;
+}
 .lease-people.side .lease-esig { height: 32px; max-width: 88px; }
 .lease-tight p { margin: 0 0 2px !important; line-height: 1.42; }
 .lease-tight .lease-art { margin-top: 8px !important; }
