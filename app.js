@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-17-55";
-const APP_EDIT_COUNT = 1656;
+const APP_STAMP = "2026-09-30-17-58";
+const APP_EDIT_COUNT = 1657;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1207";
+const FILE_VER = "1208";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人承租人與出租人切齊並上移"] },
+  { ver: APP_VERSION, items: ["套房水電電費固定顯示電費自助"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -5758,7 +5758,7 @@ function normalize(data) {
     if (r.manager === "洪潭") r.manager = "洪漳";
     if (!r.utilities) r.utilities = {};
     if (r.kind !== "factory") {
-      if (!r.utilities.electric || /自助儲值機|公司自付/.test(r.utilities.electric) || r.no === "7651") r.utilities.electric = ELEC_FEE_TEXT;
+      if (!r.utilities.electric || /自助儲值機|公司自付|每度|5\.5/.test(r.utilities.electric) || r.no === "7651") r.utilities.electric = ELEC_FEE_TEXT;
       if (!r.utilities.water || /每月定額|一年固定|公司自付/.test(r.utilities.water) || r.no === "7651") r.utilities.water = WATER_FEE_TEXT;
       if (r.rent == null || r.rent === "") {
         const listed = studioRentOf(r.no);
@@ -24956,11 +24956,12 @@ function roomExtrasHtml(r) {
         <div class="row clickable" data-open-topup role="button">
           <span class="k">電費</span>
           <span class="v linkish">${(function (t) {
-            const s = String(t || ELEC_FEE_TEXT);
+            let s = String(t || ELEC_FEE_TEXT);
+            if (/每度|5\.5|自助儲值機/.test(s)) s = ELEC_FEE_TEXT;
             const i = s.indexOf("儲值機");
             if (i < 0) return `<span class="topup-origin">${escapeHtml(s)}</span>`;
             return escapeHtml(s.slice(0, i)) + `<span class="topup-origin">儲值機</span>` + escapeHtml(s.slice(i + 3));
-          })(util.electric)}</span>
+          })(r.kind === "factory" ? util.electric : ELEC_FEE_TEXT)}</span>
         </div>
         <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>一年 NT$ 1,800</span></span></div>
       </div>
