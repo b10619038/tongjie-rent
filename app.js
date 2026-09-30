@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-09-30-12-30";
-const APP_EDIT_COUNT = 1639;
+const APP_STAMP = "2026-09-30-12-34";
+const APP_EDIT_COUNT = 1640;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1190";
+const FILE_VER = "1191";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約申請送出後後台立即同步"] },
+  { ver: APP_VERSION, items: ["續約申請即時同步，斷線也會補送"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -9953,12 +9953,15 @@ function moneyCloudBlob() {
   });
 }
 let __moneyPubTimer = 0;
+let moneyPubWait = false;
 function publishPaidCloud() {
   persistPaidMarks(state);
   if (!(paidWs && paidWs.readyState === 1)) {
+    moneyPubWait = true;
     try { connectPaidCloud(); } catch {}
     return;
   }
+  moneyPubWait = false;
   clearTimeout(__moneyPubTimer);
   __moneyPubTimer = setTimeout(() => {
     try {
@@ -9993,6 +9996,7 @@ function connectPaidCloud() {
         paidPingTimer = setInterval(() => {
           try { if (paidWs && paidWs.readyState === 1) paidWs.send(new Uint8Array([0xC0, 0x00])); } catch {}
         }, 20000);
+        if (moneyPubWait) publishPaidCloud();
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
