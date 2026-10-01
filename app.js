@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-15-30";
-const APP_EDIT_COUNT = 1751;
+const APP_STAMP = "2026-10-01-15-39";
+const APP_EDIT_COUNT = 1752;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1302";
+const FILE_VER = "1303";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -518,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6841 本月未繳不顯示匯款日，9/10 寫進 9 月實繳日"] },
+  { ver: APP_VERSION, items: ["6841 10月租金改回已繳"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6237,6 +6237,7 @@ function normalize(data) {
   try { ensureRentDueNotices(data); } catch {}
   try { apply6841RenewLai(data); } catch {}
   try { apply6841SepPay(data); } catch {}
+  try { apply6841OctPaid(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   try { ensureDashu18Term(data); } catch {}
@@ -6822,17 +6823,26 @@ function apply6841SepPay(data) {
   if (!data || data.room6841SepVer === ROOM_6841_SEP_VER) return;
   const room = (data.rooms || []).find(r => r && String(r.no) === "6841");
   const t = room && (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (t && !ymdOf(t.remitOn)) t.remitOn = "2026-09-10";
+  data.room6841SepVer = ROOM_6841_SEP_VER;
+}
+const ROOM_6841_OCT_VER = "6841-oct-paid-restore-v1";
+function apply6841OctPaid(data) {
+  if (!data || data.room6841OctVer === ROOM_6841_OCT_VER) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "6841");
+  const t = room && (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
   if (t && payYmNow() === "2026-10") {
-    t.remitOn = "2026-09-10";
-    t.paid = false;
-    t.paidAt = "";
-    t.paidVia = "";
+    t.paid = true;
     t.paidTouched = true;
     t.paidYm = "2026-10";
+    if (!t.paidVia) t.paidVia = "line";
+    t.lineNotified = true;
+    t.lineProofYm = "2026-10";
+    if (!ymdOf(t.remitOn)) t.remitOn = "2026-09-10";
     t.editedAt = Date.now();
     try { stampPaidMark(data, t); } catch {}
   }
-  data.room6841SepVer = ROOM_6841_SEP_VER;
+  data.room6841OctVer = ROOM_6841_OCT_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -17382,9 +17392,10 @@ function leasePayRows(t, r, sheet) {
     try { known = rentPayDateFor(t, r, ym); } catch {}
     const actual = early ? (pre || paid[ym] || known || "") : (future ? "" : (paid[ym] || known || ""));
     const past = ym < thisYm;
+    const thisPaid = ym === thisYm && typeof paidThisMonth === "function" && paidThisMonth(t);
     const note = carry ? rentCarryNote(t, ym) : "";
     const bill = carry ? rentBillOf(t, r, ym, amount) : amount;
-    rows.push({ due, amount: bill, actual, paid: early || (!future && (!!actual || past)), carryNote: note });
+    rows.push({ due, amount: bill, actual, paid: early || thisPaid || (!future && (!!actual || past)), carryNote: note });
   };
   const move = leaseSheetIsRenewal(t, r, sheet) ? null : leaseMoveInBits(t, r, start);
   push(start, move && move.total ? move.total : monthRent(start), !(move && move.total));
