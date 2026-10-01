@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-21-29";
-const APP_EDIT_COUNT = 1771;
+const APP_STAMP = "2026-10-01-21-52";
+const APP_EDIT_COUNT = 1772;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1321";
+const FILE_VER = "1322";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["綁定LINE打開時已帶好房號姓名"] },
+  { ver: APP_VERSION, items: ["預繳的實際匯款日和合約實繳日用同一天"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -13788,8 +13788,23 @@ function payYmNow() {
 function monthDueYmd() {
   return payYmNow() + "-01";
 }
-function currentRemitYmd(t) {
+function monthActualPayYmd(t, r, ym) {
+  ym = String(ym || payYmNow()).slice(0, 7);
+  if (!t || !/^\d{4}-\d{2}$/.test(ym)) return "";
+  if (String(r && r.no) === "7231" && ym === "2026-10") return "2026-09-08";
+  const pre = ymdOf(t.prepaidOn && t.prepaidOn[ym]);
+  if (pre) return pre;
+  let known = "";
+  try { known = rentPayDateFor(t, r, ym); } catch {}
+  return known || "";
+}
+function currentRemitYmd(t, r) {
   if (!paidThisMonth(t)) return "";
+  if (!r && t && t.roomId && typeof state !== "undefined") {
+    r = (state.rooms || []).find(x => x && x.id === t.roomId) || null;
+  }
+  const actual = monthActualPayYmd(t, r, payYmNow());
+  if (actual) return actual;
   const ym = payYmNow();
   const on = ymdOf(t && t.remitOn);
   if (on && remitCoversPayYm(t, ym)) return on;
@@ -17491,9 +17506,8 @@ function leasePayRows(t, r, sheet) {
     const prepaid = (t && t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym);
     const early = !!(pre || prepaid);
     const future = ym > thisYm && !early;
-    let known = "";
-    try { known = rentPayDateFor(t, r, ym); } catch {}
-    const actual = early ? (pre || paid[ym] || known || "") : (future ? "" : (paid[ym] || known || ""));
+    const synced = monthActualPayYmd(t, r, ym);
+    const actual = synced || (early ? (pre || paid[ym] || "") : (future ? "" : (paid[ym] || "")));
     const past = ym < thisYm;
     const thisPaid = ym === thisYm && typeof paidThisMonth === "function" && paidThisMonth(t);
     const note = carry ? rentCarryNote(t, ym) : "";
