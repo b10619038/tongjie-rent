@@ -3131,23 +3131,6 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .fix-run.is-paused .fix-poles { animation-play-state: paused; }
 .fix-run.is-paused .fix-rider {
   animation: none;
-  width: 36px;
-  height: 32px;
-  margin-left: -18px;
-  transform: rotate(-78deg) translateY(6px);
-  transform-origin: 72% 88%;
-}
-.fix-run.is-paused .fix-rider::before {
-  content: "";
-  position: absolute;
-  left: -6px;
-  top: -2px;
-  width: 16px;
-  height: 16px;
-  background:
-    linear-gradient(#243828, #243828) center / 13px 2px no-repeat,
-    linear-gradient(#243828, #243828) center / 2px 13px no-repeat;
-  transform: rotate(24deg);
 }
 .gcal-in {
   position: relative;
