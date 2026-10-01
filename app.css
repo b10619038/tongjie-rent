@@ -3084,6 +3084,23 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   display: block;
   cursor: pointer;
 }
+.appoint-side {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 4;
+  flex: 0 0 auto;
+}
+.appoint-side .gcal-in { margin-left: 0; }
+.appoint-one.has-pause .appoint-native { width: calc(100% - 176px); }
+.fix-run.is-paused .fix-town,
+.fix-run.is-paused .fix-tree,
+.fix-run.is-paused .fix-car,
+.fix-run.is-paused .fix-van,
+.fix-run.is-paused .fix-truck,
+.fix-run.is-paused .fix-poles,
+.fix-run.is-paused .fix-rider { animation-play-state: paused; }
 .gcal-in {
   position: relative;
   z-index: 4;

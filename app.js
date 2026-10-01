@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-44";
-const APP_EDIT_COUNT = 1745;
+const APP_STAMP = "2026-10-01-15-00";
+const APP_EDIT_COUNT = 1746;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1296";
+const FILE_VER = "1297";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙洪漳、許喻涵拿掉總覽", "日誌可點開這兩人的操作畫面"] },
+  { ver: APP_VERSION, items: ["報修可暫停預約，時間先不顯示，租客摩托車動畫也暫停"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -10622,7 +10622,7 @@ function mergeSharedInto(target, other) {
     const g = new Set(target.roomGone.map(String));
     target.rooms = (target.rooms || []).filter(x => x && !g.has(String(x.id)) && String(x.no || "").replace(/\D/g, "") !== "7652");
   }
-  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]);
+  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
@@ -11775,7 +11775,7 @@ async function pushCloud() {
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
-      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "roomId", "photo", "media", "vendor", "cost"]),
+      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "cost"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
@@ -12733,7 +12733,7 @@ function bindAppointPicker(inp) {
   const wrap = inp.closest(".appoint-one");
   const open = e => {
     if (inp.disabled) return;
-    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew]")) return;
+    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-appoint-pause]")) return;
     openAppointPicker(inp);
   };
   inp.addEventListener("click", e => {
@@ -12745,7 +12745,7 @@ function bindAppointPicker(inp) {
   });
   if (wrap) {
     wrap.addEventListener("click", e => {
-      if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew]")) return;
+      if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-appoint-pause]")) return;
       if (e.target === inp) return;
       e.preventDefault();
       e.stopPropagation();
@@ -12756,10 +12756,11 @@ function bindAppointPicker(inp) {
 function appointOneHtml(at, extra) {
   const x = extra || {};
   const empty = x.empty || "選擇簽約時間";
-  return `<div class="appoint-one" data-empty="${escapeHtml(empty)}">
+  const side = `${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalRepair ? `<button type="button" class="gcal-in" data-gcal="${escapeHtml(x.gcalRepair)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : ""))}${x.pauseRepair ? `<button type="button" class="gcal-in appoint-pause" data-appoint-pause="${escapeHtml(x.pauseRepair)}">${x.paused ? "恢復預約" : "暫停預約"}</button>` : ""}`;
+  return `<div class="appoint-one${x.pauseRepair ? " has-pause" : ""}" data-empty="${escapeHtml(empty)}">
     <span class="appoint-face">${appointFaceHtml(at, empty)}</span>
     <input type="datetime-local" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""} value="${escapeHtml(at || "")}" ${x.disabled ? "disabled" : ""}${x.min ? ` min="${escapeHtml(x.min)}"` : ""}${x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
-    ${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalRepair ? `<button type="button" class="gcal-in" data-gcal="${escapeHtml(x.gcalRepair)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : ""))}
+    ${side ? `<span class="appoint-side">${side}</span>` : ""}
   </div>`;
 }
 function formatDateTime12(value) {
@@ -23808,15 +23809,16 @@ async function absorbUploadFiles(files, where) {
   return { names, sheets, meta: names.map(guessMetaFromName), line };
 }
 function appointLabel(rep) {
-  if (!rep.appointAt) return "";
+  if (!rep.appointAt || rep.appointPaused) return "";
   return `<div class="row"><span class="k">預約時間</span><button type="button" class="linkish appoint-link" data-gcal="${rep.id}">${formatDateTime12(String(rep.appointAt).replace("T", " "))}</button></div>`;
 }
 function appointBlock(rep) {
+  const paused = !!rep.appointPaused;
   return `<div class="appoint-box">
     <label class="field"><span>預約日期</span>
-      ${appointOneHtml(rep.appointAt || "", { attr: ` data-appoint="${escapeHtml(rep.id)}"`, empty: "選擇維修時間", gcalRepair: rep.appointAt ? rep.id : "" })}
+      ${appointOneHtml(paused ? "" : (rep.appointAt || ""), { attr: ` data-appoint="${escapeHtml(rep.id)}"`, empty: paused ? "已暫停" : "選擇維修時間", gcalRepair: !paused && rep.appointAt ? rep.id : "", pauseRepair: rep.id, paused })}
     </label>
-    <div class="small appoint-shown">${rep.appointAt ? "已預約 " + formatDateTime12(String(rep.appointAt).replace("T", " ")) : "選擇完成維修的時間"}</div>
+    <div class="small appoint-shown">${paused ? "預約已暫停，時間先不顯示" : (rep.appointAt ? "已預約 " + formatDateTime12(String(rep.appointAt).replace("T", " ")) : "選擇完成維修的時間")}</div>
   </div>`;
 }
 
@@ -24570,7 +24572,7 @@ function leaseNewsFinger(rulesText) {
 }
 function repairNewsFinger() {
   const tid = ui.tenantId;
-  return (state.repairs || []).filter(r => r && r.tenantId === tid).map(r => [r.id, r.status, r.appointAt || "", r.vendor || "", r.cost || "", r.doneNote || ""].join(":")).join("|");
+  return (state.repairs || []).filter(r => r && r.tenantId === tid).map(r => [r.id, r.status, r.appointAt || "", r.appointPaused ? "1" : "", r.vendor || "", r.cost || "", r.doneNote || ""].join(":")).join("|");
 }
 function settingsNewsFinger() {
   const t = (typeof me === "function" && me()) || {};
@@ -26190,7 +26192,8 @@ function repairRunHtml(rep) {
   const pct = repairRunPct(rep);
   const start = parseStampMs(rep.createdAt);
   const end = parseStampMs(rep.appointAt);
-  return `<div class="fix-run${pct >= 0.995 ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}">
+  const paused = !!rep.appointPaused;
+  return `<div class="fix-run${paused ? " is-paused" : ""}${pct >= 0.995 && !paused ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}" data-paused="${paused ? "1" : "0"}">
     <div class="fix-town" style="animation-delay:${fixPhase(28000)}"></div>
     <div class="fix-tree" style="animation-delay:${fixPhase(26000)}"></div>
     <div class="fix-truck" style="animation-delay:${fixPhase(16000)}"></div>
@@ -26205,9 +26208,11 @@ function repairRunHtml(rep) {
 }
 function tickRepairRuns() {
   document.querySelectorAll(".fix-run").forEach(el => {
-    if (el.dataset.done === "1") {
-      el.style.setProperty("--p", "1");
-      el.classList.add("is-in");
+    if (el.dataset.done === "1" || el.dataset.paused === "1") {
+      if (el.dataset.done === "1") {
+        el.style.setProperty("--p", "1");
+        el.classList.add("is-in");
+      }
       return;
     }
     const start = Number(el.dataset.start) || 0;
@@ -34877,7 +34882,7 @@ function bindAdmin() {
     inp.onchange = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.appoint);
       if (!rep) return;
-      rep.appointAt = inp.value; rep.appointRead = !inp.value; stampRepair(rep); save();
+      rep.appointAt = inp.value; rep.appointPaused = false; rep.appointRead = !inp.value; stampRepair(rep); save();
       paintAppointFace(inp);
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
@@ -34887,6 +34892,23 @@ function bindAdmin() {
         const room = state.rooms.find(x => x.id === rep.roomId);
         pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
       }
+    };
+  });
+  document.querySelectorAll("[data-appoint-pause]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rep = (state.repairs || []).find(x => x && x.id === btn.dataset.appointPause);
+      if (!rep) return;
+      if (!rep.appointAt) { toast("請先選擇維修時間"); return; }
+      rep.appointPaused = !rep.appointPaused;
+      stampRepair(rep);
+      save();
+      try { pushCloud(); } catch {}
+      ui.keepScroll = true;
+      render();
     };
   });
   document.querySelectorAll("[data-gcal]").forEach(btn => {
