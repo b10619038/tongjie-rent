@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-17-23";
-const APP_EDIT_COUNT = 1757;
+const APP_STAMP = "2026-10-01-17-32";
+const APP_EDIT_COUNT = 1758;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1307";
+const FILE_VER = "1308";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -518,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回誤標的 10 月已繳，只留已確認的"] },
+  { ver: APP_VERSION, items: ["未繳入帳日改為當天，確認已繳會生效"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6870,30 +6870,7 @@ function apply6841OctPaid(data) {
   });
   data.room6841OctVer = "6841-oct-1001-v2";
 }
-function applyOctPaidRemit(data) {
-  if (!data || payYmNow() !== "2026-10") return;
-  const keep = { "6831": 1, "6841": 1, "7041": 1, "7222": 1, "7232": 1, "7231": 1 };
-  (data.tenants || []).forEach(t => {
-    if (!t || t.former || t.incoming || t.demo || !t.paid) return;
-    if (String(t.paidYm || "").slice(0, 7) !== "2026-10") return;
-    if (ymdOf(t.paidAt) !== "2026-10-01") return;
-    const room = (data.rooms || []).find(r => r && r.id === t.roomId);
-    if (!room || room.kind === "factory" || room.demo) return;
-    const no = String(room.no || "");
-    if (keep[no]) return;
-    t.paid = false;
-    t.paidAt = "";
-    t.paidVia = "";
-    t.paidTouched = true;
-    t.paidYm = "2026-10";
-    t.lineNotified = false;
-    t.lineProofYm = "";
-    if (ymdOf(t.remitOn) === "2026-10-01") t.remitOn = "";
-    t.editedAt = Date.now();
-    try { stampPaidMark(data, t); } catch {}
-    try { dropRentAutoBookOn(data, t); } catch {}
-  });
-}
+function applyOctPaidRemit() {}
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
   const room = (data.rooms || []).find(r => String(r.no) === "7651");
@@ -13985,10 +13962,7 @@ function upsertRentAutoBookOn(data, t) {
     return;
   }
   let date = pre || ymdOf(t.remitOn) || ymdOf(t.paidAt) || monthDueYmd();
-  if (!pre && date.slice(0, 7) !== ym) {
-    date = monthDueYmd();
-    t.paidAt = date + " 10:00";
-  }
+  if (!pre && date.slice(0, 7) !== ym) date = monthDueYmd();
   const hasBank = (data.books || []).some(b => b && !isRentAutoBook(b) && ymdOf(b.date).slice(0, 7) === ym && (
     String(b.roomNo || "") === String(room.no || "") || String(b.note || "").indexOf(String(room.no || "")) >= 0
   ));
@@ -31394,7 +31368,7 @@ function payAdminCardHtml(t, r) {
   const bankNow = tenantPayBankKey(t, r) || "農會";
   const banks = roomIsFactory(r) ? ["農會", "聯邦", "兆豐", "現金"] : ["農會", "兆豐", "現金"];
   const amt = Number(t.paidAmt) > 0 ? Number(t.paidAmt) : payPanelAmount(t, r);
-  const date = ymdOf(t.remitOn) || (unpaid ? todayYmd() : ymdOf(t.paidAt)) || todayYmd();
+  const date = unpaid ? todayYmd() : (ymdOf(t.remitOn) || ymdOf(t.paidAt) || todayYmd());
   const group = factoryGroupTenants(t, state);
   const extra = group.length > 1 ? "　同約 " + group.length + " 戶一次記" : "";
   if (unpaid) {
@@ -32066,6 +32040,31 @@ function bindAssetSearch() {
   inp.addEventListener("input", apply);
   inp.oninput = apply;
 }
+function confirmTenantPaid(btn) {
+  if (!btn || btn.dataset.payBusy === "1") return;
+  btn.dataset.payBusy = "1";
+  const id = btn.dataset.payConfirm || btn.getAttribute("data-pay-confirm") || "";
+  const card = btn.closest("[data-pay-card]");
+  const dateEl = card && card.querySelector("[data-pay-date]");
+  const amtEl = card && card.querySelector("[data-pay-amt]");
+  const bankBtn = card && card.querySelector("[data-pay-bank].on");
+  const t = setTenantPaidMeta(id, true, {
+    date: (dateEl && dateEl.value) || todayYmd(),
+    bank: bankBtn ? (bankBtn.dataset.payBank || bankBtn.getAttribute("data-pay-bank") || "") : "",
+    amount: amtEl ? Number(amtEl.value) : 0
+  });
+  if (!t) { btn.dataset.payBusy = ""; toast("找不到這位租客"); return; }
+  if (!ui.payOpen) ui.payOpen = {};
+  ui.payOpen[t.id] = false;
+  ui.payOpen[id] = false;
+  const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+  toast("已標為" + payLabel(t, room, { admin: true }).text);
+  if (!isDemoTenant(t)) {
+    const stub = isStubMonthNow(t, room);
+    try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
+  }
+  closeSheetThen(card && card.closest(".sheet-drop"), refreshTenantList);
+}
 function bindTenantFold() {
   const sc = document.querySelector(".admin-scroll");
   if (sc && !sc.dataset.tenantGuard) {
@@ -32153,6 +32152,13 @@ function bindTenantFold() {
         item.appointRead = true;
         save();
         openGoogleCalendar(item, "renew");
+        return;
+      }
+      const payBtn = e.target.closest("[data-pay-confirm]");
+      if (payBtn && list.contains(payBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        confirmTenantPaid(payBtn);
       }
     });
   }
@@ -32186,25 +32192,7 @@ function bindTenantFold() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const id = btn.dataset.payConfirm;
-      const card = btn.closest("[data-pay-card]");
-      const dateEl = card && card.querySelector("[data-pay-date]");
-      const amtEl = card && card.querySelector("[data-pay-amt]");
-      const bankBtn = card && card.querySelector("[data-pay-bank].on");
-      const t = setTenantPaidMeta(id, true, {
-        date: dateEl ? dateEl.value : todayYmd(),
-        bank: bankBtn ? bankBtn.dataset.payBank : "",
-        amount: amtEl ? Number(amtEl.value) : 0
-      });
-      if (!t) { toast("找不到這位租客"); return; }
-      if (ui.payOpen) ui.payOpen[id] = false;
-      const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-      toast("已標為" + payLabel(t, room, { admin: true }).text);
-      if (!isDemoTenant(t)) {
-        const stub = isStubMonthNow(t, room);
-        try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
-      }
-      closeSheetThen(card && card.closest(".sheet-drop"), refreshTenantList);
+      confirmTenantPaid(btn);
     };
   });
   document.querySelectorAll("[data-pay-unpay]").forEach(btn => {
