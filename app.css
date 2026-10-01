@@ -1515,11 +1515,11 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 }
 #tenant-vacant-btn,
 #tenant-vacant-btn.on {
-  background: #9aa0a6;
+  background: #f3f3f3;
   color: transparent;
   border: 0;
 }
-#tenant-vacant-btn.on { color: #fff; }
+#tenant-vacant-btn.on { color: #6a6a6a; }
 .tenant-chip[data-tenant-chip="paid"],
 .tenant-chip[data-tenant-chip="paid"].on {
   color: transparent;
