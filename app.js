@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-12-42";
-const APP_EDIT_COUNT = 1722;
+const APP_STAMP = "2026-10-01-13-04";
+const APP_EDIT_COUNT = 1723;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1273";
+const FILE_VER = "1274";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開立發票總覽內文字改 28px"] },
+  { ver: APP_VERSION, items: ["租客可申請中途退租，後台即時收到通知"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3700,6 +3700,208 @@ function submitTenantRenewal() {
   try { publishPaidCloud(); } catch {}
   pushPhoneNotify("續約申請", `${r.no} ${plan.stay.map(p => p.name).join("、")}${dest ? "　換至 " + dest.no : ""}　${plan.stay.map(p => p.name + renewSpanLabel(p.years, p.months)).join("、")}　水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
   toast(dest ? "已送出換房續約" : "已送出續約申請");
+  ui.keepScroll = true;
+  render();
+}
+function tenantEarlyApply(t) {
+  if (!t) return null;
+  const list = (state.checkouts || []).filter(c => c && c.tenantId === t.id && c.kind === "early" && c.status === "applied");
+  return list.length ? list[list.length - 1] : null;
+}
+function canTenantEarlyApply(t, r) {
+  if (!t || !r || t.former || t.incoming) return false;
+  const end = ymdOf(t.leaseEnd);
+  if (!end || todayYmd() >= end) return false;
+  if (t.renewChoice === "no" || renewDecisionOf(r.no) === "no") return false;
+  return true;
+}
+function earlyApplyCo(t, r, at) {
+  const deposit = Number((r && r.deposit) || (t && t.deposit) || 0);
+  const prorate = defaultProrateRent(t, r, at);
+  return {
+    at: at || todayYmd(),
+    deposit,
+    deduct: 0,
+    prorate,
+    refund: Math.max(0, deposit) + prorate,
+    property: termPropLabel(r),
+    idNo: (t && t.idNo) || "",
+    phone: (t && t.phone) || ""
+  };
+}
+function earlyApplyCardHtml(t, r) {
+  if (!canTenantEarlyApply(t, r) && !tenantEarlyApply(t)) return "";
+  const cur = tenantEarlyApply(t);
+  if (cur) {
+    return `<div class="handover-note renew-note" id="early-box">
+      <div class="label">中途退租申請已送出</div>
+      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+    </div>`;
+  }
+  return `<div class="handover-note" id="early-box">
+    <button type="button" class="ghost" id="early-open">申請中途退租</button>
+    <p class="small" style="margin-top:8px">租期還沒到、要提前搬走時申請。送出後後台會立刻收到通知。</p>
+  </div>`;
+}
+function earlyApplyOverlayHtml() {
+  if (!ui.earlyApplyOpen || ui.role !== "tenant") return "";
+  const t = typeof me === "function" ? me() : null;
+  const r = typeof myRoom === "function" ? myRoom() : null;
+  if (!t || !r) return "";
+  const today = todayYmd();
+  const max = addDaysYmd(ymdOf(t.leaseEnd), -1);
+  let at = ui.earlyDate || today;
+  if (at < today) at = today;
+  if (max && at > max) at = max;
+  ui.earlyDate = at;
+  return `<div class="install-mask" id="early-apply-mask">
+    <div class="install-sheet checkout-sheet" id="early-apply-sheet">
+      <div class="label">申請中途退租</div>
+      <h2>${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2>
+      <p class="small">選終止日。契約和後台是同一份，押金與退還金額先照系統計算，不能改。送出後後台會立刻收到通知。</p>
+      <label class="field"><span>終止日期</span><input id="early-date" type="date" value="${escapeHtml(at)}" min="${escapeHtml(today)}"${max ? ` max="${escapeHtml(max)}"` : ""} /></label>
+      <div id="early-paper">${termLeasePaperHtml(t, r, earlyApplyCo(t, r, at))}</div>
+      <button type="button" class="btn-navy" id="early-send" style="margin-top:12px">送出申請</button>
+      <button type="button" class="ghost" id="early-cancel" style="margin-top:8px">取消</button>
+    </div>
+  </div>`;
+}
+function bindEarlyApply() {
+  const open = document.getElementById("early-open");
+  if (open) open.onclick = e => {
+    e.preventDefault();
+    ui.earlyApplyOpen = true;
+    ui.earlyDate = todayYmd();
+    ui.keepScroll = true;
+    render();
+  };
+  const sheet = document.getElementById("early-apply-sheet");
+  const mask = document.getElementById("early-apply-mask");
+  if (sheet) sheet.onclick = e => e.stopPropagation();
+  if (mask) mask.onclick = e => {
+    if (e.target.id !== "early-apply-mask") return;
+    ui.earlyApplyOpen = false;
+    ui.keepScroll = true;
+    render();
+  };
+  const cancel = document.getElementById("early-cancel");
+  if (cancel) cancel.onclick = e => {
+    e.preventDefault();
+    ui.earlyApplyOpen = false;
+    ui.keepScroll = true;
+    render();
+  };
+  const date = document.getElementById("early-date");
+  if (date) date.onchange = () => {
+    ui.earlyDate = date.value;
+    const t = me();
+    const r = myRoom();
+    const box = document.getElementById("early-paper");
+    if (box && t && r) box.innerHTML = termLeasePaperHtml(t, r, earlyApplyCo(t, r, date.value));
+  };
+  const send = document.getElementById("early-send");
+  if (send) send.onclick = e => { e.preventDefault(); submitTenantEarly(); };
+}
+function earlyPingKeys(p) {
+  if (!p) return [];
+  const id = String(p.id || "");
+  const no = String(p.roomNo || "");
+  const name = String(p.name || "");
+  const out = [];
+  if (id) out.push("id:" + id);
+  if (no && name) out.push(no + "|" + name + "|" + String(p.date || ""));
+  return out;
+}
+function earlyPingAlreadySeen(p) {
+  const keys = earlyPingKeys(p);
+  if (!keys.length) return true;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-early-seen") || "[]");
+    return keys.some(k => raw.indexOf(k) >= 0);
+  } catch { return false; }
+}
+function markEarlyPingSeen(p) {
+  const keys = earlyPingKeys(p);
+  if (!keys.length) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-early-seen") || "[]");
+    keys.forEach(k => { if (raw.indexOf(k) < 0) raw.push(k); });
+    localStorage.setItem("tj-early-seen", JSON.stringify(raw.slice(-80)));
+  } catch {}
+}
+function flashEarlyNotice(ping) {
+  if (!ui || ui.role !== "admin") return;
+  const p = ping || state.earlyPing;
+  if (!p || !p.name) return;
+  if (earlyPingAlreadySeen(p)) return;
+  markEarlyPingSeen(p);
+  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}`.trim();
+  try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
+  try { toast("中途退租申請　" + line); } catch {}
+}
+let pendingEarlyPkt = null;
+function publishEarlyNow(row) {
+  if (!row || !row.id) return;
+  pendingEarlyPkt = {
+    at: Date.now(),
+    device: liveDeviceId(),
+    earlyOuts: [row],
+    earlyPing: state.earlyPing || null
+  };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingEarlyPkt), false));
+    pendingEarlyPkt = null;
+  } catch {}
+}
+function submitTenantEarly() {
+  const t = me();
+  const r = myRoom();
+  if (!t || !r) return;
+  if (tenantEarlyApply(t)) { toast("已送出中途退租申請"); return; }
+  if (isProspectPreview()) { toast("預覽中，不會送出"); return; }
+  const inp = document.getElementById("early-date");
+  const at = ymdOf((inp && inp.value) || ui.earlyDate || "");
+  const end = ymdOf(t.leaseEnd);
+  if (!at) { toast("請先選終止日期"); return; }
+  if (at < todayYmd()) { toast("終止日不能早於今天"); return; }
+  if (end && at >= end) { toast("這天已經是到期日，請改走不續約"); return; }
+  const paper = earlyApplyCo(t, r, at);
+  const prev = lastCheckout(t.id);
+  const reuse = prev && prev.status !== "done" && prev.kind === "early";
+  const row = Object.assign({}, reuse ? prev : {}, paper, {
+    id: (reuse && prev.id) || ("co" + Date.now()),
+    tenantId: t.id,
+    tenantName: t.name || "",
+    roomId: r.id || t.roomId,
+    roomNo: r.no || "",
+    kind: "early",
+    status: "applied",
+    appliedAt: nowStamp(),
+    updatedAt: nowStamp()
+  });
+  if (isDevPreview()) {
+    toast("預覽：已送出中途退租（不會寫入）");
+    ui.earlyApplyOpen = false;
+    ui.keepScroll = true;
+    render();
+    return;
+  }
+  if (!state.checkouts) state.checkouts = [];
+  const i = state.checkouts.findIndex(c => c && c.id === row.id);
+  if (i >= 0) state.checkouts[i] = row;
+  else state.checkouts.push(row);
+  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at };
+  save();
+  try { publishEarlyNow(row); } catch {}
+  try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
+  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}`, "admin");
+  toast("已送出中途退租申請");
+  ui.earlyApplyOpen = false;
   ui.keepScroll = true;
   render();
 }
@@ -9759,7 +9961,7 @@ function ingestLiveCloud(raw) {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || o.device === liveDeviceId()) return;
     const at = Number(o.at) || 0;
-    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length)) return;
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length)) return;
     if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
     if (Array.isArray(o.renewals) && o.renewals.length) {
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
@@ -9775,6 +9977,19 @@ function ingestLiveCloud(raw) {
         try { showOsBanner("續約申請", line, "renew-" + (o.renewPing.id || o.renewPing.roomNo || "")); } catch {}
         toast("續約申請　" + line);
       }
+      ui.keepScroll = true;
+      try { render(); } catch {}
+    }
+    if (Array.isArray(o.earlyOuts) && o.earlyOuts.length) {
+      if (!state.checkouts) state.checkouts = [];
+      o.earlyOuts.forEach(x => {
+        if (!x || !x.id) return;
+        const i = state.checkouts.findIndex(c => c && c.id === x.id);
+        if (i >= 0) state.checkouts[i] = Object.assign({}, state.checkouts[i], x);
+        else state.checkouts.push(x);
+      });
+      if (o.earlyPing) state.earlyPing = o.earlyPing;
+      if (ui.role === "admin" && o.earlyPing) flashEarlyNotice(o.earlyPing);
       ui.keepScroll = true;
       try { render(); } catch {}
     }
@@ -10088,6 +10303,14 @@ function ingestPaidCloud(raw) {
       }
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
+    const earlyAt = Number(o.earlyPing && o.earlyPing.at) || 0;
+    if (earlyAt && earlyAt > (ingestPaidCloud.earlyPing || 0)) {
+      ingestPaidCloud.earlyPing = earlyAt;
+      const ping = o.earlyPing;
+      if (ping) state.earlyPing = ping;
+      if (ui.role === "admin" && ping) flashEarlyNotice(ping);
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
+    }
     const signAt = Number(o.eSignPing && o.eSignPing.at) || 0;
     if (signAt && signAt > (ingestPaidCloud.eSignPing || 0)) {
       ingestPaidCloud.eSignPing = signAt;
@@ -10153,6 +10376,7 @@ function moneyCloudBlob() {
     repairNotice: state.repairNotice || null,
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
+    earlyPing: state.earlyPing || null,
     renewals: liveRenewalPayload(),
     eSignPing: state.eSignPing || null
   });
@@ -10203,6 +10427,7 @@ function connectPaidCloud() {
         }, 20000);
         if (moneyPubWait) publishPaidCloud();
         if (pendingRenewPkt) publishRenewNow(pendingRenewPkt.renewals && pendingRenewPkt.renewals[0]);
+        if (pendingEarlyPkt) publishEarlyNow(pendingEarlyPkt.earlyOuts && pendingEarlyPkt.earlyOuts[0]);
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
@@ -10354,6 +10579,9 @@ function mergeSharedInto(target, other) {
   try { applyRenewal7222(target); } catch {}
   if (Number(other.renewPing && other.renewPing.at) > Number(target.renewPing && target.renewPing.at)) {
     target.renewPing = other.renewPing;
+  }
+  if (Number(other.earlyPing && other.earlyPing.at) > Number(target.earlyPing && target.earlyPing.at)) {
+    target.earlyPing = other.earlyPing;
   }
   target.noticeGone = unionGone(target.noticeGone, other.noticeGone);
   if (target.noticeGone && target.noticeGone.length) {
@@ -11489,6 +11717,7 @@ async function pushCloud() {
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
       applyPing: state.applyPing || (remote && remote.applyPing) || null,
       renewPing: (Number(state.renewPing && state.renewPing.at) >= Number(remote && remote.renewPing && remote.renewPing.at) ? state.renewPing : (remote && remote.renewPing)) || null,
+      earlyPing: (Number(state.earlyPing && state.earlyPing.at) >= Number(remote && remote.earlyPing && remote.earlyPing.at) ? state.earlyPing : (remote && remote.earlyPing)) || null,
       renewals: mergeRenewalList(remote && remote.renewals, state.renewals),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       booksImportVer: state.booksImportVer || (remote && remote.booksImportVer),
@@ -11591,7 +11820,8 @@ async function pushCloud() {
         loginSeats: payload.loginSeats,
         presence: payload.presence,
         renewals: payload.renewals,
-        renewPing: payload.renewPing
+        renewPing: payload.renewPing,
+        earlyPing: payload.earlyPing
       });
       stripCloudMedia(slim);
       res = await put(JSON.stringify(slim));
@@ -14496,6 +14726,7 @@ function notifyExtra(title, target) {
     "新報修": { tag: "tongjie-repair", page: "tenants" },
     "繳費回報": { tag: "tongjie-pay", page: "tenants" },
     "續約申請": { tag: "tongjie-renew", page: "tenants" },
+    "中途退租申請": { tag: "tongjie-early", page: "tenants" },
     "續約確認": { tag: "tongjie-renew", page: "lease" },
     "電子合約已簽署": { tag: "tongjie-sign", page: "tenants" },
     "管理員公告": { tag: "tongjie-ann", page: "home" },
@@ -14638,6 +14869,9 @@ function notifyCloudChanges(before) {
       const tenant = (state.tenants || []).find(t => t && t.id === x.tenantId);
       const who = (x.roomNo || (room && room.no) || "") + " " + (x.name || (tenant && tenant.name) || "");
       showOsBanner("續約申請", who.trim() + "　申請續約　" + renewWaterLine(tenant, room, x), "renew-" + x.id);
+    });
+    (state.checkouts || []).filter(c => c && c.kind === "early" && c.status === "applied" && !(before.earlyIds || []).includes(c.id)).forEach(c => {
+      flashEarlyNotice({ id: c.id, roomNo: c.roomNo, name: c.tenantName, date: c.at });
     });
   }
   if (ui.role === "tenant") {
@@ -23598,7 +23832,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -25645,6 +25879,7 @@ function leaseView() {
             : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`);
       })()}`}
       ${pending ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}
+      ${earlyApplyCardHtml(t, r)}
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
     </div>`;
 }
@@ -30966,15 +31201,16 @@ function tenantEntryCardHtml(kind, entry) {
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
   const payOpen = tenantPayOpen(t.id);
   const countOn = tenantChipOn() === "count";
+  const early = tenantEarlyApply(t);
   const leftCls = countOn && tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
   return `<div class="tenant-renew-block">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      ${unread || (renew && renew.status !== "done") ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
+      ${unread || (renew && renew.status !== "done") || early ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<span class="pay-pill unpaid">不續約</span>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">已續約</span>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<span class="pay-pill unpaid">不續約</span>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">已續約</span>` : ""}${early ? `<button type="button" class="pay-pill unpaid" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -31437,6 +31673,16 @@ function bindTenantFold() {
       toggleTenantRenew(id);
     };
   });
+  document.querySelectorAll("[data-open-early]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.openEarly;
+      if (!id) return;
+      openCheckout(id);
+    };
+  });
   const list = document.getElementById("tenant-list");
   if (list && list.dataset.renewPrintBound !== "1") {
     list.dataset.renewPrintBound = "1";
@@ -31562,7 +31808,7 @@ function bindTenantFold() {
     const target = el.closest(".swipe-wrap") || el;
     let x0 = 0, y0 = 0, moved = false, top0 = 0;
     const pressOn = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const p = e.touches ? e.touches[0] : e;
       x0 = p.clientX; y0 = p.clientY; moved = false; ui.tenantDrag = false;
       top0 = sc ? sc.scrollTop : 0;
@@ -31589,7 +31835,7 @@ function bindTenantFold() {
     el.ontouchmove = track;
     el.ontouchend = pressOff;
     el.onclick = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const wrap = el.closest(".swipe-wrap");
       if (wrap && (wrap.dataset.swiping === "1" || wrap.dataset.scrolled === "1")) {
         e.preventDefault();
@@ -32644,6 +32890,7 @@ function bindTenant() {
     askRenew.onclick = () => submitTenantRenewal();
   }
   bindRenewForm();
+  bindEarlyApply();
   const mediaIn = document.getElementById("repair-media");
   const addRepairFiles = async (files) => {
     if (!ui.repairMedia) ui.repairMedia = [];
@@ -34035,6 +34282,7 @@ function bindAdmin() {
   try {
     const p = state.renewPing || (state.renewals || []).filter(x => x && x.status !== "done" && x.status !== "applied").slice(-1)[0];
     if (p && !renewPingAlreadySeen({ id: p.id || p.roomNo, roomNo: p.roomNo, name: p.name })) setTimeout(() => flashRenewNotice(), 400);
+    if (state.earlyPing && !earlyPingAlreadySeen(state.earlyPing)) setTimeout(() => flashEarlyNotice(state.earlyPing), 400);
   } catch {}
   bindTenantLook();
   bindDevChat();
@@ -36790,6 +37038,7 @@ async function boot() {
         repairIds: (state.repairs || []).map(r => r.id),
         repairSnap: Object.fromEntries((state.repairs || []).map(r => [r.id, (r.status || "") + "|" + (r.appointAt || "")])),
         renewIds: (state.renewals || []).map(x => x.id),
+        earlyIds: (state.checkouts || []).filter(c => c && c.status === "applied").map(c => c.id),
         chatLast: (typeof lastChatIncoming === "function" && lastChatIncoming() || {}).id || ""
       };
       const prevSig = coreSig(state);
