@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-17";
-const APP_EDIT_COUNT = 1738;
+const APP_STAMP = "2026-10-01-14-18";
+const APP_EDIT_COUNT = 1739;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1289";
+const FILE_VER = "1290";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 波波奇三聯備註應稅改為 2,000"] },
+  { ver: APP_VERSION, items: ["後台繳費標籤改成已繳、未繳"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -4636,7 +4636,7 @@ function assetMapPopHtml(spot) {
   }
   const rows = rooms.map(r => {
     const t = (state.tenants || []).find(x => x && !x.former && !x.incoming && (x.id === r.tenantId || x.roomId === r.id));
-    const pay = t ? payLabel(t, r) : { text: r.status === "vacant" ? "空置" : "尚無租客", cls: "wait" };
+    const pay = t ? payLabel(t, r, { admin: true }) : { text: r.status === "vacant" ? "空置" : "尚無租客", cls: "wait" };
     const rent = r.kind === "factory"
       ? (t && t.rentUntaxed ? "未稅 " + money(t.rentUntaxed) : (r.rent ? money(r.rent) + "／月" : ""))
       : (r.rent ? money(r.rent) + "／月" : "");
@@ -13630,19 +13630,20 @@ function adminInvoice() {
   </div>`;
 }
 function statusLabel(s) { return { rented: "滿租", vacant: "空置", repair: "維修中", office: "辦公室" }[s] || s; }
-function payLabel(tenant, room) {
+function payLabel(tenant, room, opts) {
   if (!tenant) return { text: "—", cls: "paid" };
   const first = firstStudioPayDue(tenant, room);
   const paid = paidThisMonth(tenant);
   if (first) return { text: paid ? "首次已繳" : "首次未繳", cls: paid ? "paid" : "unpaid" };
   if (!leaseCoversYm(tenant, room, payYmNow())) return { text: "尚無需繳費", cls: "wait" };
   const stub = isStubMonthNow(tenant, room);
-  if (paid) return { text: stub ? "不足月已繳" : "本月已繳", cls: "paid" };
-  return { text: stub ? "不足月未繳" : "本月未繳", cls: "unpaid" };
+  const admin = !!(opts && opts.admin);
+  if (paid) return { text: stub ? "不足月已繳" : (admin ? "已繳" : "本月已繳"), cls: "paid" };
+  return { text: stub ? "不足月未繳" : (admin ? "未繳" : "本月未繳"), cls: "unpaid" };
 }
 function payChip(t, r, unpaid) {
-  if (unpaid) return { text: isStubMonthNow(t, r) ? "不足月未繳" : "本月未繳", cls: "unpaid" };
-  return payLabel(t, r);
+  if (unpaid) return { text: isStubMonthNow(t, r) ? "不足月未繳" : "未繳", cls: "unpaid" };
+  return payLabel(t, r, { admin: true });
 }
 function payYmNow() {
   const d = taipeiNow();
@@ -14005,7 +14006,7 @@ function onTogglePayEvent(e) {
   const roomOpen = (state.rooms || []).find(r => r && r.id === t.roomId);
   if (roomOpen && roomOpen.group) ui.tenantOpen["fg-" + roomOpen.group] = true;
   const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-  const pay = payLabel(t, room);
+  const pay = payLabel(t, room, { admin: true });
   btn.textContent = pay.text;
   btn.classList.toggle("paid", !!t.paid);
   btn.classList.toggle("unpaid", !t.paid);
@@ -31126,7 +31127,7 @@ function tenantListInnerHtml(kind) {
   }).slice().reverse();
   return `${entries.length || vacantHits.length || applyVacant.length || formerVacant.length
       ? applyVacant.map(r => vacantRoomCardHtml(r)).join("") + entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + formerVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
-      : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有本月已繳" : tenantChipOn() === "unpaid" ? "目前沒有本月未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
+      : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有已繳" : tenantChipOn() === "unpaid" ? "目前沒有未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
 }
 function tenantEntryDetailsHtml(kind, entry) {
   const tenants = entry.tenants || [];
@@ -31839,7 +31840,7 @@ function bindTenantFold() {
       if (!t) { toast("找不到這位租客"); return; }
       if (ui.payOpen) ui.payOpen[id] = false;
       const room = (state.rooms || []).find(r => r && r.id === t.roomId);
-      toast("已標為" + payLabel(t, room).text);
+      toast("已標為" + payLabel(t, room, { admin: true }).text);
       if (!isDemoTenant(t)) {
         const stub = isStubMonthNow(t, room);
         try { pushPhoneNotify(stub ? "不足月租金已入帳" : "本月租金已入帳", `${room ? room.no : ""} ${t.name || ""} ${stub ? "不足月租金" : "本月租金"}已入帳`, room ? room.no : "tenants"); } catch {}
@@ -31856,7 +31857,7 @@ function bindTenantFold() {
       const t = setTenantPaidMeta(id, false, {});
       if (!t) { toast("找不到這位租客"); return; }
       if (ui.payOpen) ui.payOpen[id] = false;
-      toast("已標為" + payLabel(t, (state.rooms || []).find(r => r && r.id === t.roomId)).text);
+      toast("已標為" + payLabel(t, (state.rooms || []).find(r => r && r.id === t.roomId), { admin: true }).text);
       closeSheetThen(btn.closest(".sheet-drop"), refreshTenantList);
     };
   });
@@ -32177,8 +32178,8 @@ function field(label, name, value, type) {
     <option value="factory" ${value === "factory" ? "selected" : ""}>廠房</option>
   </select></label>`;
   if (type === "select-paid") return `<label class="field"><span>${label}</span><select name="${name}">
-    <option value="1" ${value ? "selected" : ""}>本月已繳</option>
-    <option value="0" ${!value ? "selected" : ""}>本月未繳</option>
+    <option value="1" ${value ? "selected" : ""}>已繳</option>
+    <option value="0" ${!value ? "selected" : ""}>未繳</option>
   </select></label>`;
   if (type === "select-paidvia") return `<label class="field"><span>${label}</span><select name="${name}">
     <option value="" ${!value ? "selected" : ""}>無</option>
