@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-12-33";
-const APP_EDIT_COUNT = 1721;
+const APP_STAMP = "2026-10-01-12-42";
+const APP_EDIT_COUNT = 1722;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1272";
+const FILE_VER = "1273";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客篩選倒數改成續約"] },
+  { ver: APP_VERSION, items: ["開立發票總覽內文字改 28px"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -16128,12 +16128,6 @@ function drawInvoiceOverviewCanvas(rows, kind, orient, ym) {
       ctx.fillText(c.h, c.x + c.pw / 2, tableTop + headH / 2);
     }
   });
-  const bodyBig = portrait
-    ? Math.min(26, Math.max(18, Math.round(rowH * 0.36)))
-    : Math.max(20, Math.round(rowH * 0.52));
-  const bodySm = portrait
-    ? Math.min(22, Math.max(16, Math.round(rowH * 0.32)))
-    : Math.max(18, Math.round(rowH * 0.46));
   rows.forEach((row, i) => {
     const y = tableTop + headH + i * rowH;
     ctx.fillStyle = i % 2 ? "#f6f8f6" : "#ffffff";
@@ -16152,7 +16146,7 @@ function drawInvoiceOverviewCanvas(rows, kind, orient, ym) {
       if (c.k === "left") val = val === "" || val == null ? "" : String(val);
       if (c.k === "remark") val = val || "";
       ctx.fillStyle = "#24332a";
-      const size = c.k === "remark" ? Math.max(13, bodySm - 2) : (c.big ? bodyBig : bodySm);
+      const size = c.k === "remark" ? 20 : 28;
       ctx.font = (c.k === "buyer" ? "700 " : "600 ") + size + "px \"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif";
       ctx.textAlign = (c.k === "buyer" || c.left) ? "left" : "center";
       ctx.textBaseline = "middle";
