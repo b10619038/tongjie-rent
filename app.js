@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-19-22";
-const APP_EDIT_COUNT = 1760;
+const APP_STAMP = "2026-10-01-19-56";
+const APP_EDIT_COUNT = 1761;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1310";
+const FILE_VER = "1311";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -518,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["應繳日期改成當月日期"] },
+  { ver: APP_VERSION, items: ["續約日曆加上請攜帶個人印章"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -16997,7 +16997,7 @@ function openGoogleCalendar(item, kind) {
   const loc = encodeURIComponent(typeof stampPlaceOf === "function" ? stampPlaceOf(room) : "5F，電梯出來右轉到底，7651簽約室");
   const water = isRenew && typeof renewWaterCashFee === "function" ? renewWaterCashFee(tenant, room, item) : 0;
   const details = encodeURIComponent(isRenew
-    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，電梯出來右轉到底，7651簽約室\n租客：${who}\n房號：牛10 ${no}\n請攜帶年水費現金 ${typeof money === "function" ? money(water) : water}`
+    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，電梯出來右轉到底，7651簽約室\n租客：${who}\n房號：牛10 ${no}\n請攜帶年水費現金 ${typeof money === "function" ? money(water) : water}\n請攜帶個人印章`
     : `統潔＆信潔開發有限公司報修預約\n租客：${who}\n房號：${no}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}${isRenew ? "&location=" + loc : ""}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
@@ -17006,7 +17006,9 @@ function openGoogleCalendarAt(at, title, details) {
   if (!range) { toast("請先選擇簽約時間"); return; }
   const text = encodeURIComponent(title || "續約簽約");
   const loc = encodeURIComponent("5F，電梯出來右轉到底，7651簽約室");
-  const det = encodeURIComponent((details || "統潔＆信潔開發有限公司續約簽約") + "\n地點：5F，電梯出來右轉到底，7651簽約室");
+  let body = (details || "統潔＆信潔開發有限公司續約簽約") + "\n地點：5F，電梯出來右轉到底，7651簽約室";
+  if (body.indexOf("請攜帶個人印章") < 0) body += "\n請攜帶個人印章";
+  const det = encodeURIComponent(body);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${det}&location=${loc}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
 function calendarItems() {
