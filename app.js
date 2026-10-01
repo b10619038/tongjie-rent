@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-10";
-const APP_EDIT_COUNT = 1737;
+const APP_STAMP = "2026-10-01-14-17";
+const APP_EDIT_COUNT = 1738;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1288";
+const FILE_VER = "1289";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約篩選改為即時重排，7021 已表態要續約所以排在未表態的 7232 下面"] },
+  { ver: APP_VERSION, items: ["7611 波波奇三聯備註應稅改為 2,000"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -15824,7 +15824,8 @@ function bopokeTripleRemark(no, amount) {
   const amt = Math.round(Number(amount) || 0);
   if (!amt) return "開三聯單";
   const net = Math.round(amt / 1.05);
-  return "開三聯單　應稅" + net.toLocaleString("zh-TW");
+  const tax = amt - net;
+  return "開三聯單　應稅" + tax.toLocaleString("zh-TW");
 }
 function invoicePushStudio(rows, no, room, t, info) {
   if (String(no) === "7042") {
