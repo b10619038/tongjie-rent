@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-38";
-const APP_EDIT_COUNT = 1744;
+const APP_STAMP = "2026-10-01-14-44";
+const APP_EDIT_COUNT = 1745;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1295";
+const FILE_VER = "1296";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約換房清單，套房下方顯示月租"] },
+  { ver: APP_VERSION, items: ["趙洪漳、許喻涵拿掉總覽", "日誌可點開這兩人的操作畫面"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -11529,7 +11529,7 @@ function presencePayload() {
   } else {
     name = (ui.adminName || "") || (kind === "dev" ? "開發者" : "管理員");
   }
-  return { at: Date.now(), kind, role: ui.role, code: ui.adminCode || "", roomNo, name, device: deviceInfo(), installed: typeof isStandalone === "function" && isStandalone() };
+  return { at: Date.now(), kind, role: ui.role, code: ui.adminCode || "", roomNo, name, page: typeof pageLabel === "function" ? pageLabel() : (ui.page || ""), device: deviceInfo(), installed: typeof isStandalone === "function" && isStandalone() };
 }
 function isOnline(id) {
   const p = (state.presence || {})[id];
@@ -11597,6 +11597,19 @@ function logPresenceId(x) {
   const t = state.tenants.find(n => n.roomId === room.id || n.id === room.tenantId);
   return t ? t.id : "";
 }
+function staffHidesDash() {
+  const n = normAdminName(ui.adminName);
+  return ui.role === "admin" && ui.adminCode === "7651" && (n === "趙洪漳" || n === "許喻涵");
+}
+function adminLandingPage() {
+  return staffHidesDash() ? "rooms" : "dash";
+}
+function staffOpsName(who) {
+  const s = String(who || "");
+  if (s.indexOf("趙洪漳") >= 0) return "趙洪漳";
+  if (s.indexOf("許喻涵") >= 0) return "許喻涵";
+  return "";
+}
 function staffPresenceOn(name) {
   const id = "admin-7651-" + name;
   if (isOnline(id)) return true;
@@ -11616,7 +11629,8 @@ function onlineStaffHtml() {
     const p = (state.presence || {})[id] || (name ? ((state.presence || {})["admin-7651"] || {}) : {});
     const showDevice = on && p.device && (!name || normAdminName(p.name) === name);
     const extra = showDevice ? `<span class="small">${escapeHtml(p.device)}</span>` : "";
-    return `<div class="online-row"><span class="k">${escapeHtml(label)}</span><span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${escapeHtml(id)}">${on ? "在線中" : "離線中"}</span></span></div>`;
+    const click = isDeveloper() && name ? `<button type="button" class="staff-ops-link" data-staff-ops="${escapeHtml(name)}">${escapeHtml(label)}</button>` : `<span class="k">${escapeHtml(label)}</span>`;
+    return `<div class="online-row">${click}<span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${escapeHtml(id)}">${on ? "在線中" : "離線中"}</span></span></div>`;
   }).join("");
 }
 function tenantAccountRows() {
@@ -12226,7 +12240,7 @@ function restoreUi() {
     if (s.role === "tenant" && (ui.page === "tenant-login" || ui.page === "admin-login" || s.page === "tenant-login" || s.page === "admin-login")) {
       ui.page = "home";
     } else if (s.role === "admin" && (!s.page || s.page === "home" || s.page === "tenant-login" || s.page === "admin-login")) {
-      ui.page = "dash";
+      ui.page = adminLandingPage();
     } else if (!s.role && isGatePage(ui.page)) {
       return;
     }
@@ -12243,7 +12257,7 @@ function restoreUi() {
     }
     if (s.role === "admin") {
       ui.adminCode = s.adminCode || ui.adminCode || "";
-      if (!ui.page || ui.page === "home") ui.page = "dash";
+      if (!ui.page || ui.page === "home" || ui.page === "dash") ui.page = adminLandingPage();
       persistUi();
       return;
     }
@@ -12582,7 +12596,7 @@ async function biometricLogin() {
     ui.role = "admin";
     ui.adminCode = kind === "dev" ? "1240" : "7651";
     ui.adminName = rec.adminName || "";
-    ui.page = "dash";
+    ui.page = adminLandingPage();
     ui.loginError = "";
     persistUi();
     audit("登入", "快速登入 " + (ui.adminName || rec.adminCode));
@@ -26559,6 +26573,7 @@ function bindSplitDrag() {
   document.addEventListener("pointercancel", clear, true);
 }
 function adminView() {
+  if (staffHidesDash() && (!ui.page || ui.page === "dash" || ui.page === "home" || ui.page === "solar")) ui.page = "rooms";
   const pages = adminPages();
   const body = splitOn()
     ? splitStageHtml()
@@ -26594,6 +26609,10 @@ function adminPages() {
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("history", "logs");
   allowed.push("settings", "firm", "food");
+  if (staffHidesDash()) {
+    const cut = allowed.indexOf("dash");
+    if (cut >= 0) allowed.splice(cut, 1);
+  }
   let ids = [];
   try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
   if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
@@ -26958,6 +26977,7 @@ function adminBody() {
     else if (page === "repairs") html = adminRepairs();
     else if (page === "ai") html = adminAi();
     else if (page === "announce") html = adminAnnounce();
+    else if (page === "staff-ops") html = ui.adminCode === "1240" ? staffOpsView() : adminDash();
     else if (page === "logs") html = ui.adminCode === "1240" ? adminLogs() : adminDash();
     else if (page === "history") html = ui.adminCode === "1240" ? adminHistory() : adminDash();
     else if (page === "settings") html = adminSettings();
@@ -27154,6 +27174,32 @@ function adminHistory() {
     </div>
   </div>`;
 }
+function staffOpsView() {
+  const name = staffOpsName(ui.staffOps) || "";
+  if (!name) {
+    return `<div class="admin-grid list"><div class="card card-body"><button class="back" data-admin="logs" type="button">← 返回</button><div class="empty">找不到這位管理員</div></div></div>`;
+  }
+  const id = "admin-7651-" + name;
+  const on = staffPresenceOn(name);
+  const p = (state.presence || {})[id] || {};
+  const logs = (state.auditLogs || []).filter(x => staffOpsName(x.who) === name).slice().reverse();
+  const shown = logs.slice(0, 80);
+  const rows = shown.length ? shown.map(x => `<div class="row wrap">
+      <span class="k">${escapeHtml(x.at || "")}</span>
+      <span class="v">${escapeHtml(logActionText(x))}
+        <span class="small" style="display:block">畫面　${escapeHtml(x.page || "—")}${x.device ? "　" + escapeHtml(x.device) : ""}</span>
+      </span>
+    </div>`).join("") : `<div class="empty">還沒有操作紀錄</div>`;
+  return `<div class="admin-grid list">
+    <div class="card card-body">
+      <button class="back" data-admin="logs" type="button">← 返回</button>
+      <h2 class="dash-h">${escapeHtml(name)} 的操作畫面</h2>
+      <p class="small">${on ? "在線中" : "離線中"}${p.device ? "　" + escapeHtml(p.device) : ""}${p.page ? "　目前在「" + escapeHtml(p.page) + "」" : ""}</p>
+      <p class="small" style="margin-top:8px">共 ${logs.length} 筆${logs.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""}</p>
+      ${rows}
+    </div>
+  </div>`;
+}
 function adminLogs() {
   const filter = ui.logFilter || "all";
   let list = (state.auditLogs || []).slice().reverse();
@@ -27194,11 +27240,12 @@ function adminLogs() {
     ${list.length ? list.map(x => {
       const pid = logPresenceId(x);
       const on = pid && isOnline(pid);
+      const ops = typeof isDeveloper === "function" && isDeveloper() ? staffOpsName(x.who) : "";
       return `
       <div class="card card-body log-card">
         <div class="row">
           <label class="log-check"><input type="checkbox" data-log-pick="${x.id}" ${picked[x.id] ? "checked" : ""}></label>
-          <span class="who-mini"><span class="k">${escapeHtml(x.who)}</span>${pid ? `<span class="live-pill${on ? " on" : ""}" data-online="${pid}">${on ? "在線中" : "離線中"}</span>` : ""}</span>
+          <span class="who-mini">${ops ? `<button type="button" class="staff-ops-link" data-staff-ops="${escapeHtml(ops)}">${escapeHtml(x.who)}</button>` : `<span class="k">${escapeHtml(x.who)}</span>`}${pid ? `<span class="live-pill${on ? " on" : ""}" data-online="${pid}">${on ? "在線中" : "離線中"}</span>` : ""}</span>
           <span class="small">${escapeHtml(x.at)}</span>
         </div>
         <div class="log-line"><span class="log-k">操作</span><span class="log-v">${escapeHtml(logActionText(x))}</span></div>
@@ -32531,7 +32578,7 @@ function tryLogin() {
     ui.role = "admin";
     ui.adminCode = kind === "dev" ? "1240" : "7651";
     ui.adminName = name;
-    ui.page = "dash";
+    ui.page = adminLandingPage();
     ui.loginError = "";
     ui.loginAdmin = "";
     persistUi();
@@ -34318,6 +34365,17 @@ function bindAnnounceReactions() {
   });
 }
 function bindAdminLogs() {
+  document.querySelectorAll("[data-staff-ops]").forEach(btn => {
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof isDeveloper !== "function" || !isDeveloper()) return;
+      ui.staffOps = btn.dataset.staffOps || "";
+      ui.page = "staff-ops";
+      render();
+    };
+  });
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
@@ -36379,7 +36437,7 @@ function bindAdminAi() {
       ui.editErrandId = eid;
       ui.editBookId = b ? b.id : null;
       ui.editSlipId = null;
-      ui.page = "dash";
+      ui.page = adminLandingPage();
       if (er && er.date) {
         const p = String(er.date).split("-");
         if (p.length === 3) {
