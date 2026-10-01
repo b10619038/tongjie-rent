@@ -1515,7 +1515,7 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 }
 #tenant-vacant-btn,
 #tenant-vacant-btn.on {
-  background: #f3f3f3;
+  background: #e5e5e5;
   color: transparent;
   border: 0;
 }
@@ -1524,21 +1524,21 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 .tenant-chip[data-tenant-chip="paid"].on {
   color: transparent;
   border: 0;
-  background: #eef3ea;
+  background: #e0e7dc;
 }
 .tenant-chip[data-tenant-chip="paid"].on { color: #62765b; }
 .tenant-chip[data-tenant-chip="unpaid"],
 .tenant-chip[data-tenant-chip="unpaid"].on {
   color: transparent;
   border: 0;
-  background: #fde8e6;
+  background: #f6d4d1;
 }
 .tenant-chip[data-tenant-chip="unpaid"].on { color: #b42318; }
 .tenant-chip[data-tenant-chip="count"],
 .tenant-chip[data-tenant-chip="count"].on {
   color: transparent;
   border: 0;
-  background: #f3e4cf;
+  background: #e9d6be;
 }
 .tenant-chip[data-tenant-chip="count"].on { color: #8a5a22; }
 .pay-pill.count-left {
