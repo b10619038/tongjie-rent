@@ -1198,6 +1198,12 @@ button.pay-pill.hand {
   border-radius: 22px;
   box-sizing: border-box;
 }
+.renew-move-item.on {
+  border-color: var(--teal);
+  background: var(--ok-soft);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
+.renew-move-item[data-renew-pick] { cursor: pointer; }
 .renew-move-hit {
   display: flex;
   justify-content: space-between;
@@ -1211,6 +1217,13 @@ button.pay-pill.hand {
   color: inherit;
   font: inherit;
   text-align: left;
+  pointer-events: none;
+}
+#renew-move-chosen {
+  margin-top: 6px;
+  font-weight: 700;
+  color: var(--ink);
+  min-height: 1.2em;
 }
 .renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 4px; white-space: normal; }
 .renew-move-left {
@@ -1260,8 +1273,7 @@ button.pay-pill.hand {
 }
 .renew-move-until,
 .renew-move-soon { white-space: nowrap; }
-.renew-move-item.off .renew-move-hit,
-.renew-move-hit:disabled {
+.renew-move-item.off .renew-move-hit {
   opacity: 0.55;
   cursor: default;
 }
