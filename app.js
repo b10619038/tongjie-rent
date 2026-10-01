@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-07";
-const APP_EDIT_COUNT = 1736;
+const APP_STAMP = "2026-10-01-14-10";
+const APP_EDIT_COUNT = 1737;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1287";
+const FILE_VER = "1288";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7611 波波奇發票備註改開三聯單，應稅 40,000"] },
+  { ver: APP_VERSION, items: ["續約篩選改為即時重排，7021 已表態要續約所以排在未表態的 7232 下面"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -30502,12 +30502,15 @@ function tenantRenewApply(t, r) {
 function tenantCountRank(t) {
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
   if (tenantRenewApply(t, r)) return 0;
-  if (tenantRenewNo(t, r)) return 2;
-  if (tenantRenewDone(t, r)) return 3;
-  const stated = t && (t.renewChoice === "yes" || t.renewChoice === "no");
-  const decided = stated || (r && typeof renewDecisionOf === "function" && !!renewDecisionOf(r.no));
-  if (!decided && tenantRemainDays(t, r) <= 30) return 1;
-  return 4;
+  if (tenantRenewNo(t, r)) return 3;
+  if (tenantRenewDone(t, r)) return 4;
+  const choice = (t && (t.renewChoice === "yes" || t.renewChoice === "no"))
+    ? t.renewChoice
+    : (r && typeof renewDecisionOf === "function" ? renewDecisionOf(r.no) : "");
+  if (choice === "no") return 3;
+  if (choice === "yes") return 2;
+  if (tenantRemainDays(t, r) <= 30) return 1;
+  return 5;
 }
 function tenantPayChipMatch(t, r, chip) {
   if (!chip || chip === "vacant" || chip === "count") return true;
@@ -30697,8 +30700,9 @@ function tenantListOfKind(kind, opts) {
     }
     uniq.push(t);
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c6|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
-  if (ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c7|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
+  const countOn = tenantChipOn() === "count";
+  if (countOn || ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = uniq.map(t => t.id);
   }
@@ -30709,6 +30713,17 @@ function tenantListOfKind(kind, opts) {
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
     if (!tenantChipOn() && !factory) {
+      const ra = state.rooms.find(x => x.id === a.roomId);
+      const rb = state.rooms.find(x => x.id === b.roomId);
+      return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant", { numeric: true });
+    }
+    if (tenantChipOn() === "count") {
+      const fa = tenantCountRank(a);
+      const fb = tenantCountRank(b);
+      if (fa !== fb) return fa - fb;
+      const daysA = tenantRemainDays(a);
+      const daysB = tenantRemainDays(b);
+      if (daysA !== daysB) return daysA - daysB;
       const ra = state.rooms.find(x => x.id === a.roomId);
       const rb = state.rooms.find(x => x.id === b.roomId);
       return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant", { numeric: true });
