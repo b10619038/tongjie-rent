@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-15-43";
-const APP_EDIT_COUNT = 1753;
+const APP_STAMP = "2026-10-01-16-13";
+const APP_EDIT_COUNT = 1755;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1304";
+const FILE_VER = "1305";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -518,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6841 10月已繳，匯款日 10/1"] },
+  { ver: APP_VERSION, items: ["中途退租可預約到 7651 簽名蓋章"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3772,7 +3772,8 @@ function earlyApplyCardHtml(t, r) {
   if (cur) {
     return `<div class="handover-note renew-note" id="early-box">
       <div class="label">中途退租申請已送出</div>
-      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。${cur.appointAt ? `預約 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))} 到 7651簽約室簽名蓋章。` : "尚未預約簽名蓋章時間。"}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+      ${cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(cur.id)}" style="margin-top:8px">加入日曆</button>` : ""}
     </div>`;
   }
   return `<div class="handover-note" id="early-box">
@@ -3798,6 +3799,10 @@ function earlyApplyOverlayHtml() {
       <p class="small">選終止日。契約和後台是同一份，押金與退還金額先照系統計算，不能改。送出後後台會立刻收到通知。</p>
       <label class="field"><span>終止日期</span><input id="early-date" type="date" value="${escapeHtml(at)}" min="${escapeHtml(today)}"${max ? ` max="${escapeHtml(max)}"` : ""} /></label>
       <div id="early-paper">${termLeasePaperHtml(t, r, earlyApplyCo(t, r, at))}</div>
+      <div class="field" style="margin-top:12px"><span>預約終止簽約時間</span>
+        ${appointOneHtml(ui.earlyAppoint || "", { id: "early-appoint", empty: "選擇簽名蓋章時間", min: today + "T09:00", max: (max || at) + "T18:00" })}
+      </div>
+      <div class="small">地點：5F，電梯出來右轉到底，7651簽約室。雙方簽名蓋章。</div>
       <button type="button" class="btn-navy" id="early-send" style="margin-top:12px">送出申請</button>
       <button type="button" class="ghost" id="early-cancel" style="margin-top:8px">取消</button>
     </div>
@@ -3808,6 +3813,7 @@ function bindEarlyApply() {
   if (open) open.onclick = e => {
     e.preventDefault();
     ui.earlyConfirmStep = 1;
+    ui.earlyAppoint = "";
     ui.keepScroll = true;
     render();
   };
@@ -3835,7 +3841,16 @@ function bindEarlyApply() {
     const r = myRoom();
     const box = document.getElementById("early-paper");
     if (box && t && r) box.innerHTML = termLeasePaperHtml(t, r, earlyApplyCo(t, r, date.value));
+    const appointMax = document.getElementById("early-appoint");
+    if (appointMax && date.value) appointMax.max = date.value + "T18:00";
   };
+  const appoint = document.getElementById("early-appoint");
+  if (appoint) {
+    bindAppointPicker(appoint);
+    const keep = () => { ui.earlyAppoint = appoint.value; paintAppointFace(appoint); };
+    appoint.onchange = keep;
+    appoint.oninput = keep;
+  }
   const send = document.getElementById("early-send");
   if (send) send.onclick = e => { e.preventDefault(); submitTenantEarly(); };
 }
@@ -3922,7 +3937,7 @@ function flashEarlyNotice(ping) {
   if (!p || !p.name) return;
   if (earlyPingAlreadySeen(p)) return;
   markEarlyPingSeen(p);
-  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}`.trim();
+  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
   try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
   try { toast("中途退租申請　" + line); } catch {}
 }
@@ -3956,6 +3971,10 @@ function submitTenantEarly() {
   if (!at) { toast("請先選終止日期"); return; }
   if (at < todayYmd()) { toast("終止日不能早於今天"); return; }
   if (end && at >= end) { toast("這天已經是到期日，請改走不續約"); return; }
+  const appointInp = document.getElementById("early-appoint");
+  const appointAt = String((appointInp && appointInp.value) || ui.earlyAppoint || "").trim();
+  if (!appointAt) { toast("請先預約到 7651 簽名蓋章的時間"); return; }
+  if (appointAt.slice(0, 10) > at) { toast("簽約時間不能晚於終止日"); return; }
   const paper = earlyApplyCo(t, r, at);
   const prev = lastCheckout(t.id);
   const reuse = prev && prev.status !== "done" && prev.kind === "early";
@@ -3967,6 +3986,7 @@ function submitTenantEarly() {
     roomNo: r.no || "",
     kind: "early",
     status: "applied",
+    appointAt,
     appliedAt: nowStamp(),
     updatedAt: nowStamp()
   });
@@ -3981,12 +4001,12 @@ function submitTenantEarly() {
   const i = state.checkouts.findIndex(c => c && c.id === row.id);
   if (i >= 0) state.checkouts[i] = row;
   else state.checkouts.push(row);
-  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at };
+  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at, appointAt };
   save();
   try { publishEarlyNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}`, "admin");
+  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}`, "admin");
   toast("已送出中途退租申請");
   ui.earlyApplyOpen = false;
   ui.keepScroll = true;
@@ -17002,6 +17022,14 @@ function calendarItems() {
       sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
     });
   });
+  (state.checkouts || []).forEach(c => {
+    if (!c || c.kind !== "early" || c.status === "done" || !c.appointAt) return;
+    items.push({
+      at: c.appointAt, kind: "early", id: c.id, item: c,
+      title: `牛10 ${c.roomNo || ""} 終止簽約`,
+      sub: `${c.tenantName || ""} · ${formatDateTime12(String(c.appointAt).replace("T", " "))}`
+    });
+  });
   (myMemos() || []).forEach(m => {
     if (isMemoDone(m)) return;
     let at = m.date;
@@ -23542,6 +23570,7 @@ function checkoutFormHtml() {
     return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
+    ${co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : ""}
     <div class="label" style="margin-top:12px">文件預覽</div>
     ${termPrintPackHtml(t, r, paperCo, "early")}
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
@@ -30973,6 +31002,31 @@ function tenantEntriesOfKind(kind, opts) {
   });
   return order;
 }
+function openEarlyCalendar(co) {
+  if (!co || !co.appointAt) { toast("請先選擇簽約時間"); return; }
+  const who = co.tenantName || "";
+  const no = co.roomNo || "";
+  openGoogleCalendarAt(
+    co.appointAt,
+    "牛10 " + no + " 終止簽約",
+    "統潔＆信潔開發有限公司中途退租簽名蓋章\n租客：" + who + "\n房號：牛10 " + no + "\n終止日：" + (typeof rocSlash === "function" ? rocSlash(co.at) : (co.at || "")) + "\n請到 7651 簽約室簽名蓋章"
+  );
+}
+function earlyAdminCardHtml(co, t, r) {
+  const who = (r && r.no) || (co && co.roomNo) || "";
+  const name = (t && t.name) || (co && co.tenantName) || "";
+  const when = co && co.appointAt ? formatDateTime12(String(co.appointAt).replace("T", " ")) : "";
+  return `<div class="card card-body renew-alert" data-early-card="${escapeHtml((t && t.id) || "")}">
+    <h2 class="dash-h">中途退租申請</h2>
+    <div class="mini"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b></div>
+    <div class="small" style="margin-bottom:6px">終止日 ${escapeHtml(rocSlash(co && co.at) || "")}</div>
+    <div class="appoint-box">
+      <div class="small">${when ? "已預約 " + escapeHtml(when) : "尚未預約簽名蓋章時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
+      ${when ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(co.id)}" style="margin-top:8px">加入日曆</button>` : ""}
+    </div>
+    <button type="button" class="btn-navy" data-open-early-form="${escapeHtml((t && t.id) || "")}" style="margin-top:8px">看終止契約</button>
+  </div>`;
+}
 function renewalAdminCardHtml(x) {
   if (!x || x.status === "applied") return "";
   const room = (state.rooms || []).find(r => r && (r.id === x.roomId || String(r.no) === String(x.roomNo)));
@@ -31131,6 +31185,21 @@ function bindNewSheet(wrap) {
       closeRenewSheet(item.id, refreshTenantList);
     };
   });
+  wrap.querySelectorAll("[data-open-early-form]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCheckout(btn.dataset.openEarlyForm);
+    };
+  });
+  wrap.querySelectorAll("[data-gcal-early]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const co = (state.checkouts || []).find(x => x && x.id === btn.dataset.gcalEarly);
+      openEarlyCalendar(co);
+    };
+  });
 }
 function insertTenantSheet(block, html, originEl) {
   if (!block) return null;
@@ -31174,12 +31243,25 @@ function closeRenewSheet(id, done) {
   const card = document.querySelector(sheetAttrSel("data-renew-card", id));
   playSheetClose(card && card.closest(".sheet-drop"), done, btn);
 }
+function openEarlyIds() {
+  return Object.keys(ui.earlyOpen || {}).filter(k => ui.earlyOpen[k]);
+}
+function closeEarlySheet(id, done) {
+  if (!id) { if (done) done(); return; }
+  if (ui.earlyOpen) ui.earlyOpen[id] = false;
+  const btn = document.querySelector(sheetAttrSel("data-open-early", id));
+  if (btn) btn.classList.remove("on");
+  const card = document.querySelector(sheetAttrSel("data-early-card", id));
+  playSheetClose(card && card.closest(".sheet-drop"), done, btn);
+}
 function closeOtherSheets(exceptKind, exceptId, done) {
   const pays = openPayIds().filter(k => !(exceptKind === "pay" && k === exceptId));
   const renews = openRenewIds().filter(k => !(exceptKind === "renew" && k === exceptId));
+  const earlies = openEarlyIds().filter(k => !(exceptKind === "early" && k === exceptId));
   const run = () => {
     if (pays.length) { closePaySheet(pays.shift(), run); return; }
     if (renews.length) { closeRenewSheet(renews.shift(), run); return; }
+    if (earlies.length) { closeEarlySheet(earlies.shift(), run); return; }
     if (done) done();
   };
   run();
@@ -31204,6 +31286,29 @@ function toggleTenantRenew(id) {
     if (block.querySelector("[data-renew-card]")) return;
     btn.classList.add("on");
     insertTenantSheet(block, renewalAdminCardHtml(renew), btn);
+  });
+}
+function toggleTenantEarly(id) {
+  if (!id || sheetLocked()) return;
+  if (!ui.earlyOpen) ui.earlyOpen = {};
+  const openNow = !!ui.earlyOpen[id];
+  if (openNow) {
+    lockSheet(280);
+    closeEarlySheet(id);
+    return;
+  }
+  lockSheet(520);
+  ui.earlyOpen[id] = true;
+  closeOtherSheets("early", id, () => {
+    const t = (state.tenants || []).find(x => x && x.id === id);
+    const co = t && tenantEarlyApply(t);
+    const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+    const btn = document.querySelector(sheetAttrSel("data-open-early", id));
+    const block = btn && btn.closest(".tenant-renew-block");
+    if (!co || !block) { refreshTenantList(); return; }
+    if (block.querySelector("[data-early-card]")) return;
+    btn.classList.add("on");
+    insertTenantSheet(block, earlyAdminCardHtml(co, t, r), btn);
   });
 }
 function tenantPayOpen(id) {
@@ -31485,6 +31590,7 @@ function tenantEntryCardHtml(kind, entry) {
   const payOpen = tenantPayOpen(t.id);
   const countOn = tenantChipOn() === "count";
   const early = tenantEarlyApply(t);
+  const earlyOpen = !!(early && ui.earlyOpen && ui.earlyOpen[t.id]);
   const leftCls = countOn && tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
   return `<div class="tenant-renew-block">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
@@ -31493,11 +31599,12 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") || early ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<span class="pay-pill unpaid">不續約</span>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">已續約</span>` : ""}${early ? `<button type="button" class="pay-pill unpaid" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<span class="pay-pill unpaid">不續約</span>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">已續約</span>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
     ${renewOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${renewalAdminCardHtml(renew)}</div></div>` : ""}
+    ${earlyOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${earlyAdminCardHtml(early, t, r)}</div></div>` : ""}
     </div>`;
 }
 function teField(label, key, tid, rid, value, type, ph) {
@@ -31963,7 +32070,23 @@ function bindTenantFold() {
       e.stopPropagation();
       const id = btn.dataset.openEarly;
       if (!id) return;
-      openCheckout(id);
+      btn.classList.remove("is-press");
+      toggleTenantEarly(id);
+    };
+  });
+  document.querySelectorAll("[data-open-early-form]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCheckout(btn.dataset.openEarlyForm);
+    };
+  });
+  document.querySelectorAll("#tenant-list [data-gcal-early]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const co = (state.checkouts || []).find(x => x && x.id === btn.dataset.gcalEarly);
+      openEarlyCalendar(co);
     };
   });
   const list = document.getElementById("tenant-list");
@@ -33037,6 +33160,13 @@ function bindTenant() {
       const item = (state.renewals || []).find(x => x.id === btn.dataset.gcalRenew);
       if (!item) return;
       item.appointRead = true; save(); openGoogleCalendar(item, "renew");
+    };
+  });
+  document.querySelectorAll("[data-gcal-early]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault(); e.stopPropagation();
+      const co = (state.checkouts || []).find(x => x && x.id === btn.dataset.gcalEarly);
+      openEarlyCalendar(co);
     };
   });
   document.querySelectorAll("[data-resign-renew]").forEach(btn => {
