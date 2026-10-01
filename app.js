@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-20-08";
-const APP_EDIT_COUNT = 1763;
+const APP_STAMP = "2026-10-01-20-16";
+const APP_EDIT_COUNT = 1764;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1313";
+const FILE_VER = "1314";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -455,6 +455,7 @@ const XUXU_AUG_CASH_BOOKS = [
 function isDevPreview() { return !!(typeof ui !== "undefined" && ui && ui.devPreview && ui.role === "tenant"); }
 function isProspectPreview() { return !!(typeof ui !== "undefined" && ui && ui.prospectPreview && ui.role === "tenant"); }
 function isTenantLook() { return !!(typeof ui !== "undefined" && ui && ui.tenantLook && ui.role === "tenant"); }
+function isStaffLook() { return !!(typeof ui !== "undefined" && ui && ui.staffLook && ui.role === "admin" && ui.lookBack && ui.lookBack.adminCode === "1240"); }
 function tenantPreviewBannerHtml() {
   if (isDevPreview()) {
     return `<div class="preview-banner">開發者預覽租客　測試用、不計入金額<button type="button" class="ghost" id="exit-preview" style="width:auto">返回後台</button></div>`;
@@ -518,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修馬路動畫改成滑順移動"] },
+  { ver: APP_VERSION, items: ["點管理員名字可預覽他的後台"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6029,6 +6030,7 @@ let ui = { role: null, page: "home", roomId: null, tenantId: null, roomNo: "", l
   ui.devPreview = !!s.devPreview;
   ui.prospectPreview = !!s.prospectPreview;
   ui.tenantLook = !!s.tenantLook;
+  ui.staffLook = !!(s.staffLook && s.lookBack && s.lookBack.adminCode === "1240");
   ui.lookBack = s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
   if (EMBED_PAGE && s.role === "admin") {
     ui.embed = EMBED_PAGE;
@@ -11639,7 +11641,7 @@ function isOnline(id) {
 }
 function isTenantOnline(id) { return isOnline(id); }
 function beatPresence() {
-  if (isDevPreview() || isTenantLook()) return;
+  if (isDevPreview() || isTenantLook() || isStaffLook()) return;
   const id = presenceKey();
   const beat = presencePayload();
   if (!id || !beat) return;
@@ -12101,6 +12103,7 @@ function persistLogin() {
     devPreview: !!ui.devPreview,
     prospectPreview: !!ui.prospectPreview,
     tenantLook: !!ui.tenantLook,
+    staffLook: !!ui.staffLook,
     lookBack: ui.lookBack || null
   });
   try { localStorage.setItem(LOGIN_KEY, snap); } catch {}
@@ -12339,7 +12342,8 @@ function restoreUi() {
     ui.prospectPreview = !!s.prospectPreview;
     const lookOk = !!(s.tenantLook && ((s.lookBack && s.lookBack.adminCode === "1240") || s.adminCode === "1240"));
     ui.tenantLook = lookOk;
-    ui.lookBack = lookOk && s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
+    ui.staffLook = !!(s.staffLook && s.lookBack && s.lookBack.adminCode === "1240");
+    ui.lookBack = (lookOk || ui.staffLook) && s.lookBack && typeof s.lookBack === "object" ? s.lookBack : null;
     if (stayingGate && !s.role) return;
     if (s.role === "tenant" && (ui.page === "tenant-login" || ui.page === "admin-login" || s.page === "tenant-login" || s.page === "admin-login")) {
       ui.page = "home";
@@ -12455,7 +12459,7 @@ function clearSession() {
   ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = ""; ui.adminName = "";
   ui.devPreview = false; ui.devTenant = null; ui.devRoom = null; ui.devRepairs = []; ui.devRenewals = []; ui.devReactions = {}; ui.devReadAnns = {};
   ui.prospectPreview = false; ui.moveIn = null;
-  ui.tenantLook = false; ui.lookBack = null;
+  ui.tenantLook = false; ui.staffLook = false; ui.lookBack = null;
   try {
     sessionStorage.removeItem(UI_KEY);
     localStorage.removeItem(UI_KEY);
@@ -13326,7 +13330,7 @@ function logModelText(x) {
 let lastAuditBrowse = "";
 function audit(action, detail) {
   try {
-    if (isDevPreview()) return;
+    if (isDevPreview() || isStaffLook()) return;
     if (!state.auditLogs) state.auditLogs = [];
     const page = pageLabel();
     const det = action === "瀏覽" ? "" : (detail || "");
@@ -14488,6 +14492,37 @@ function enterTenantLook(t) {
   ui.roomNo = (r && r.no) || "";
   ui.page = "home";
   persistUi();
+  render();
+}
+function enterStaffLook(name) {
+  const who = staffOpsName(name);
+  if (!who) { toast("找不到這位管理員"); return; }
+  if (typeof isDeveloper !== "function" || !isDeveloper()) { toast("這個功能只有開發者能用"); return; }
+  ui.lookBack = {
+    role: "admin",
+    adminCode: "1240",
+    adminName: ui.adminName || "",
+    page: ui.page || "logs"
+  };
+  ui.staffLook = true;
+  ui.tenantLook = false;
+  ui.role = "admin";
+  ui.adminCode = "7651";
+  ui.adminName = who;
+  ui.page = "rooms";
+  persistUi();
+  render();
+}
+function exitStaffLook() {
+  const back = ui.lookBack || {};
+  ui.staffLook = false;
+  ui.lookBack = null;
+  ui.role = "admin";
+  ui.adminCode = back.adminCode || "1240";
+  ui.adminName = back.adminName || "";
+  ui.page = back.page || "logs";
+  persistUi();
+  beatPresence();
   render();
 }
 function exitTenantLook() {
@@ -26715,8 +26750,9 @@ function adminView() {
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
       </div>
-      <button class="ghost" id="logout" style="width:auto">登出</button>
+      <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
     </div>
+    ${isStaffLook() ? `<div class="preview-banner">正在看 ${escapeHtml(normAdminName(ui.adminName) || "")} 的後台<button type="button" class="ghost" id="exit-staff-look" style="width:auto">返回</button></div>` : ""}
     ${body}
     <div class="tabs">
       <div class="tabs-track">
@@ -34619,9 +34655,7 @@ function bindAdminLogs() {
       e.preventDefault();
       e.stopPropagation();
       if (typeof isDeveloper !== "function" || !isDeveloper()) return;
-      ui.staffOps = btn.dataset.staffOps || "";
-      ui.page = "staff-ops";
-      render();
+      enterStaffLook(btn.dataset.staffOps || "");
     };
   });
   document.querySelectorAll("[data-log-filter]").forEach(btn => {
@@ -34785,7 +34819,16 @@ function bindAdmin() {
     };
   });
   const logout = document.getElementById("logout");
-  if (logout) logout.onclick = () => logoutToGate();
+  if (logout) logout.onclick = () => {
+    if (isStaffLook()) { exitStaffLook(); return; }
+    logoutToGate();
+  };
+  const exitStaff = document.getElementById("exit-staff-look");
+  if (exitStaff) exitStaff.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    exitStaffLook();
+  };
   bindAdminLogs();
   document.querySelectorAll("[data-history-cat]").forEach(btn => {
     btn.addEventListener("pointerdown", e => e.stopPropagation());
