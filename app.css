@@ -1512,36 +1512,35 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   height: 28px;
   padding: 0 12px !important;
   line-height: 28px;
-  color: #fff;
 }
 #tenant-vacant-btn,
 #tenant-vacant-btn.on {
-  background: #9aa0a6;
+  background: #e6e6e6;
   color: transparent;
-  border-color: transparent;
+  border: 1px solid #d4d4d4;
 }
-#tenant-vacant-btn.on { color: #fff; }
+#tenant-vacant-btn.on { color: #6a6a6a; }
 .tenant-chip[data-tenant-chip="paid"],
 .tenant-chip[data-tenant-chip="paid"].on {
   color: transparent;
-  border-color: #2f7d4a;
-  background: #2f7d4a;
+  border: 1px solid #d5e0d2;
+  background: var(--ok-soft);
 }
-.tenant-chip[data-tenant-chip="paid"].on { color: #fff; }
+.tenant-chip[data-tenant-chip="paid"].on { color: var(--ok); }
 .tenant-chip[data-tenant-chip="unpaid"],
 .tenant-chip[data-tenant-chip="unpaid"].on {
   color: transparent;
-  border-color: #c4453c;
-  background: #c4453c;
+  border: 1px solid #f3c7c3;
+  background: var(--rose-soft);
 }
-.tenant-chip[data-tenant-chip="unpaid"].on { color: #fff; }
+.tenant-chip[data-tenant-chip="unpaid"].on { color: var(--rose); }
 .tenant-chip[data-tenant-chip="count"],
 .tenant-chip[data-tenant-chip="count"].on {
   color: transparent;
-  border-color: #e2b100;
-  background: #e2b100;
+  border: 1px solid #ead7bf;
+  background: #f3e4cf;
 }
-.tenant-chip[data-tenant-chip="count"].on { color: #3a2a00; }
+.tenant-chip[data-tenant-chip="count"].on { color: #8a5a22; }
 .pay-pill.count-left {
   background: #f4f7f4;
   color: #3d5a45;
@@ -6892,18 +6891,25 @@ html[data-theme="void"] .chip {
 }
 html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"],
 html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on {
-  background: #2f7d4a;
+  background: #d8f3df;
   color: transparent;
-  border-color: #2f7d4a;
+  border-color: #d8f3df;
 }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on { color: #fff; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on { color: #14653a; }
 html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"],
 html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on {
-  background: #c4453c;
+  background: #ffd8d4;
   color: transparent;
-  border-color: #c4453c;
+  border-color: #ffd8d4;
 }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on { color: #fff; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on { color: #8f241c; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="count"],
+html[data-theme="void"] .tenant-chip[data-tenant-chip="count"].on {
+  background: #f6e3c4;
+  color: transparent;
+  border-color: #f6e3c4;
+}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="count"].on { color: #6a3d08; }
 #ai-card,
 #work-card,
 #errand-form {
