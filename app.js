@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-11-28";
-const APP_EDIT_COUNT = 1720;
+const APP_STAMP = "2026-10-01-12-33";
+const APP_EDIT_COUNT = 1721;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1271";
+const FILE_VER = "1272";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約公司大章 25mm、小章 15mm"] },
+  { ver: APP_VERSION, items: ["租客篩選倒數改成續約"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -31792,7 +31792,7 @@ function adminTenants() {
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
       <div class="tenant-search-chips" id="tenant-chip-row">
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空套房"}</button>
-        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">倒數</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">續約</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>
