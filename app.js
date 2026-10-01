@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-13-19";
-const APP_EDIT_COUNT = 1725;
+const APP_STAMP = "2026-10-01-13-31";
+const APP_EDIT_COUNT = 1726;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1276";
+const FILE_VER = "1277";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["申請中途退租改到租約頁最上方"] },
+  { ver: APP_VERSION, items: ["申請中途退租移到我要續約下面，點擊要確認三次"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3770,11 +3770,11 @@ function bindEarlyApply() {
   const open = document.getElementById("early-open");
   if (open) open.onclick = e => {
     e.preventDefault();
-    ui.earlyApplyOpen = true;
-    ui.earlyDate = todayYmd();
+    ui.earlyConfirmStep = 1;
     ui.keepScroll = true;
     render();
   };
+  bindEarlyConfirm();
   const sheet = document.getElementById("early-apply-sheet");
   const mask = document.getElementById("early-apply-mask");
   if (sheet) sheet.onclick = e => e.stopPropagation();
@@ -3801,6 +3801,56 @@ function bindEarlyApply() {
   };
   const send = document.getElementById("early-send");
   if (send) send.onclick = e => { e.preventDefault(); submitTenantEarly(); };
+}
+function earlyConfirmLines() {
+  return [
+    "第 1 次提醒：確定要申請中途退租嗎？租期還沒到就要搬走。",
+    "第 2 次提醒：再確認一次，確定要提前退租嗎？",
+    "第 3 次提醒：這是最後一次。確認後才會進入終止契約。"
+  ];
+}
+function earlyConfirmHtml() {
+  const step = Number(ui.earlyConfirmStep) || 0;
+  if (step < 1 || step > 3) return "";
+  const lines = earlyConfirmLines();
+  return `<div class="install-mask" id="early-confirm-mask">
+    <div class="install-sheet" id="early-confirm-sheet">
+      <div class="label">申請中途退租</div>
+      <h2 id="early-confirm-title">請再確認 ${step}/3</h2>
+      <p class="small" id="early-confirm-text">${lines[step - 1]}</p>
+      <button type="button" class="btn-navy" id="early-confirm-yes">確定申請</button>
+      <button type="button" class="ghost" id="early-confirm-no">我再想想</button>
+    </div>
+  </div>`;
+}
+function bindEarlyConfirm() {
+  const close = () => { ui.earlyConfirmStep = 0; ui.keepScroll = true; render(); };
+  const mask = document.getElementById("early-confirm-mask");
+  const sheet = document.getElementById("early-confirm-sheet");
+  if (sheet) sheet.onclick = e => e.stopPropagation();
+  if (mask) mask.onclick = e => { if (e.target.id === "early-confirm-mask") close(); };
+  const no = document.getElementById("early-confirm-no");
+  if (no) no.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
+  const yes = document.getElementById("early-confirm-yes");
+  if (yes) yes.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const step = Number(ui.earlyConfirmStep) || 1;
+    if (step < 3) {
+      ui.earlyConfirmStep = step + 1;
+      const title = document.getElementById("early-confirm-title");
+      const text = document.getElementById("early-confirm-text");
+      const lines = earlyConfirmLines();
+      if (title) title.textContent = "請再確認 " + ui.earlyConfirmStep + "/3";
+      if (text) text.textContent = lines[ui.earlyConfirmStep - 1] || "";
+      return;
+    }
+    ui.earlyConfirmStep = 0;
+    ui.earlyApplyOpen = true;
+    ui.earlyDate = todayYmd();
+    ui.keepScroll = true;
+    render();
+  };
 }
 function earlyPingKeys(p) {
   if (!p) return [];
@@ -23832,7 +23882,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -23968,7 +24018,7 @@ function paintApp() {
   }
   ui.keepScroll = false;
   const overlays = ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || toastHtml || ui.aiAvatarSheet
-    || ui.checkoutTenantId || ui.vacateConfirmId || ui.renewDeclineStep
+    || ui.checkoutTenantId || ui.vacateConfirmId || ui.renewDeclineStep || ui.earlyConfirmStep || ui.earlyApplyOpen
     || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
   const scKeep = root.querySelector(".tenant-scroll");
   const navKeep = root.querySelector(".nav");
@@ -25831,7 +25881,6 @@ function leaseView() {
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
         ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。新約 ${escapeHtml(rocSlash(pending.start) || "")} 起自動生效，匯款改兆豐。</p>` : ""}
       </div>
-      ${earlyApplyCardHtml(t, r)}
       ${pending ? `<div class="section-title" id="renew-current-paper"><h2 class="slide-right">原合約</h2></div>
       <div class="card card-body slide-left">
         <p class="small" style="margin:0 0 8px">目前這份仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。</p>
@@ -25880,6 +25929,7 @@ function leaseView() {
             : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`);
       })()}`}
       ${pending ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}
+      ${earlyApplyCardHtml(t, r)}
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
     </div>`;
 }
