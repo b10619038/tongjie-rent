@@ -1189,12 +1189,28 @@ button.pay-pill.hand {
 }
 .renew-move-item {
   width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 22px;
+  box-sizing: border-box;
+}
+.renew-move-hit {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
   text-align: left;
-  padding: 8px 12px;
 }
 .renew-move-item b { font-size: 13px; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 4px; white-space: normal; }
 .renew-move-left {
@@ -1242,9 +1258,10 @@ button.pay-pill.hand {
   color: var(--muted);
   line-height: 1.3;
 }
-.renew-move-until { white-space: nowrap; }
-.renew-move-item.off,
-.renew-move-item:disabled {
+.renew-move-until,
+.renew-move-soon { white-space: nowrap; }
+.renew-move-item.off .renew-move-hit,
+.renew-move-hit:disabled {
   opacity: 0.55;
   cursor: default;
 }

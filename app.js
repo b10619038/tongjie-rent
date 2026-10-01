@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-15-00";
-const APP_EDIT_COUNT = 1746;
+const APP_STAMP = "2026-10-01-15-10";
+const APP_EDIT_COUNT = 1747;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1297";
+const FILE_VER = "1298";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修可暫停預約，時間先不顯示，租客摩托車動畫也暫停"] },
+  { ver: APP_VERSION, items: ["續約換房可看平面圖", "約至去掉括號並顯示最快可入住"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3315,27 +3315,32 @@ function renewMoveUntil(ymd) {
   const d = ymdOf(ymd);
   return d ? d.replace(/-/g, "/") : "";
 }
+function renewMoveSoon(room) {
+  const start = typeof roomSoonestStart === "function" ? roomSoonestStart(room, { incoming: true }) : "";
+  return renewMoveUntil(start);
+}
 function renewMoveStatus(room) {
-  if (!room) return { kind: "none", label: "—", line: "—", sub: "", selectable: false };
+  if (!room) return { kind: "none", label: "—", line: "—", sub: "", soon: "", selectable: false };
+  const soon = renewMoveSoon(room);
   const inc = typeof incomingOf === "function" ? incomingOf(room.id) : null;
   if (inc && (inc.applyPending || inc.applyUnread || tenantContractStatus(inc, room) === "signed")) {
     const until = renewMoveUntil(inc.leaseEnd);
-    const sub = until ? "（約至 " + until + "）" : "";
-    return { kind: "incoming", label: "已有人申請入住" + sub, line: "已有人申請入住", sub, selectable: false };
+    const sub = until ? "約至 " + until : "";
+    return { kind: "incoming", label: "已有人申請入住 " + sub, line: "已有人申請入住", sub, soon, selectable: false };
   }
   const occ = roomCurrentTenant(room);
   if (!occ) {
-    return { kind: "vacant", label: "空套房　現在可換", line: "空套房　現在可換", sub: "", selectable: true };
+    return { kind: "vacant", label: "空套房　現在可換", line: "空套房　現在可換", sub: "", soon, selectable: true };
   }
   const their = liveRenewalOf(occ);
   if (their) {
     const until = renewMoveUntil(their.end || occ.leaseEnd);
-    const sub = until ? "（約至 " + until + "）" : "";
-    return { kind: "renewed", label: "原住戶已續約" + sub, line: "原住戶已續約", sub, selectable: false };
+    const sub = until ? "約至 " + until : "";
+    return { kind: "renewed", label: "原住戶已續約 " + sub, line: "原住戶已續約", sub, soon, selectable: false };
   }
   const until = renewMoveUntil(occ.leaseEnd);
-  const sub = until ? "（約至 " + until + "）" : "";
-  return { kind: "occupied", label: "目前有人住" + sub, line: "目前有人住", sub, selectable: false };
+  const sub = until ? "約至 " + until : "";
+  return { kind: "occupied", label: "目前有人住 " + sub, line: "目前有人住", sub, soon, selectable: false };
 }
 function renewMovePickHtml(t, r) {
   const list = renewMoveTargets(r);
@@ -3347,13 +3352,21 @@ function renewMovePickHtml(t, r) {
   return `<div class="renew-move-box">
     <div class="small" style="margin:8px 0 6px">${head}</div>
     <div class="renew-move-list">${list.map(x => {
+      if (typeof preloadPlanView === "function") preloadPlanView();
       const st = renewMoveStatus(x);
       const on = pick === x.id || pick === String(x.no);
       const rent = Number(x.rent) || 0;
-      return `<button type="button" class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}" data-renew-pick="${escapeHtml(x.id)}" ${st.selectable ? "" : "disabled"}>
-        <span class="renew-move-left"><b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${studioPickMarksHtml(x)}</b>${rent ? `<em class="renew-move-rent">${escapeHtml(money(rent))}</em>` : ""}</span>
-        <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}</span>
-      </button>`;
+      const plan = typeof floorPlanOf === "function" ? floorPlanOf(x.no) : null;
+      const planBtn = plan
+        ? `<button type="button" class="move-pick-plan renew-move-plan" data-move-plan="1" data-zoom-photo="${(plan.view || plan.hd || "images/plan-6821-view.webp")}?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + (x.no || "")))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
+        : `<span class="move-pick-slot"></span>`;
+      return `<div class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}">
+        ${planBtn}
+        <button type="button" class="renew-move-hit" data-renew-pick="${escapeHtml(x.id)}" ${st.selectable ? "" : "disabled"}>
+          <span class="renew-move-left"><b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${studioPickMarksHtml(x)}</b>${rent ? `<em class="renew-move-rent">${escapeHtml(money(rent))}</em>` : ""}</span>
+          <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}${st.soon ? `<em class="renew-move-soon">最快可入住 ${escapeHtml(st.soon)}</em>` : ""}</span>
+        </button>
+      </div>`;
     }).join("")}</div>
   </div>`;
 }
@@ -3532,6 +3545,14 @@ function paintRenewRange() {
   if (water) water.textContent = plan.waterText;
 }
 function bindRenewPicks() {
+  document.querySelectorAll(".renew-move-plan").forEach(el => {
+    el.addEventListener("pointerdown", e => e.stopPropagation());
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof openPickPlan === "function") openPickPlan(el);
+    };
+  });
   document.querySelectorAll("[data-renew-pick]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -3540,7 +3561,11 @@ function bindRenewPicks() {
       ui.renewMoveRoomId = btn.dataset.renewPick || "";
       const inp = document.getElementById("renew-appoint");
       if (inp) ui.renewAppoint = inp.value;
-      document.querySelectorAll("[data-renew-pick]").forEach(b => b.classList.toggle("on", b === btn));
+      document.querySelectorAll("[data-renew-pick]").forEach(b => {
+        const on = b === btn;
+        b.classList.toggle("on", on);
+        if (b.parentElement) b.parentElement.classList.toggle("on", on);
+      });
       paintRenewRange();
     };
   });
