@@ -3007,46 +3007,45 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .appoint-time { margin-left: 0.45em; }
 .fix-run { position: relative; height: 74px; margin: 2px 2px 4px; overflow: hidden; }
 .fix-town, .fix-tree, .fix-car, .fix-van, .fix-truck, .fix-poles {
-  position: absolute; left: 0; bottom: 6px;
+  position: absolute; left: 0; right: 0; bottom: 6px;
   background-repeat: repeat-x; background-position: left bottom;
   pointer-events: none;
-  transform: translate3d(0, 0, 0);
 }
 .fix-town {
-  height: 62px; z-index: 0; bottom: 8px; width: calc(100% + 640px);
-  background-image: url("images/fix-town-sm.png?v=1317");
+  height: 62px; z-index: 0; bottom: 8px;
+  background-image: url("images/fix-town.png?v=1079");
   background-size: 640px 62px;
   animation: fix-town 28s linear infinite;
 }
 .fix-tree {
-  height: 52px; z-index: 1; bottom: 8px; width: calc(100% + 755px);
-  background-image: url("images/fix-tree-sm.png?v=1317");
+  height: 52px; z-index: 1; bottom: 8px;
+  background-image: url("images/fix-tree.png?v=1082");
   background-size: 755px 52px;
   animation: fix-tree 26s linear infinite;
   opacity: 0.72;
 }
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
 .fix-truck {
-  height: 36px; z-index: 1; width: calc(100% + 388px);
-  background-image: url("images/fix-truck-sm.png?v=1317");
+  height: 36px; z-index: 1;
+  background-image: url("images/fix-truck.png?v=1088");
   background-size: 388px 36px;
   animation: fix-truck 16s linear infinite;
 }
 .fix-van {
-  height: 24px; z-index: 2; width: calc(100% + 201px);
-  background-image: url("images/fix-van-sm.png?v=1317");
-  background-size: 201px 24px;
+  height: 24.2px; z-index: 2;
+  background-image: url("images/fix-van.png?v=1089");
+  background-size: 201.3px 24.2px;
   animation: fix-van 5.4s linear infinite;
 }
 .fix-car {
-  height: 22px; z-index: 2; width: calc(100% + 160px);
-  background-image: url("images/fix-car-sm.png?v=1317");
+  height: 22px; z-index: 2;
+  background-image: url("images/fix-car.png?v=1084");
   background-size: 160px 22px;
   animation: fix-car 3.2s linear infinite;
 }
 .fix-poles {
-  height: 58px; z-index: 3; width: calc(100% + 420px);
-  background-image: url("images/fix-pole-sm.png?v=1317");
+  height: 58px; z-index: 3;
+  background-image: url("images/fix-pole.png?v=1076");
   background-size: 420px 58px;
   animation: fix-poles 18s linear infinite;
 }
@@ -3066,16 +3065,23 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   animation: fix-bob .45s ease-in-out infinite;
 }
 .fix-rider img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.fix-run.is-in .fix-rider,
+.fix-run.is-in .fix-truck,
+.fix-run.is-in .fix-van,
+.fix-run.is-in .fix-car,
+.fix-run.is-in .fix-town,
+.fix-run.is-in .fix-tree,
+.fix-run.is-in .fix-poles { animation: none; }
 @keyframes fix-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
-@keyframes fix-car { to { transform: translate3d(-160px, 0, 0); } }
-@keyframes fix-van { to { transform: translate3d(-201px, 0, 0); } }
-@keyframes fix-truck { to { transform: translate3d(-388px, 0, 0); } }
-@keyframes fix-poles { to { transform: translate3d(-420px, 0, 0); } }
-@keyframes fix-town { to { transform: translate3d(-640px, 0, 0); } }
-@keyframes fix-tree { to { transform: translate3d(-755px, 0, 0); } }
+@keyframes fix-car { to { background-position: -160px bottom; } }
+@keyframes fix-van { to { background-position: -201.3px bottom; } }
+@keyframes fix-truck { to { background-position: -388px bottom; } }
+@keyframes fix-poles { to { background-position: -420px bottom; } }
+@keyframes fix-town { to { background-position: -640px bottom; } }
+@keyframes fix-tree { to { background-position: -755px bottom; } }
 .appoint-face-empty { color: var(--muted); font-weight: 600; }
 .appoint-native {
   position: absolute;
