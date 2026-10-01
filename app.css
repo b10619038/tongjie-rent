@@ -1482,57 +1482,66 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 5px;
+  gap: 8px;
   flex: 0 0 auto;
 }
 #tenant-vacant-btn,
 .tenant-search .tenant-chip,
 .tenant-search .ghost {
+  box-sizing: border-box;
   width: auto !important;
   flex: 0 0 auto;
-  min-width: 0;
-  padding: 6px 10px;
+  min-width: 20px;
+  max-width: 20px;
+  height: 20px;
+  padding: 0 !important;
   font-size: 12px;
   font-weight: 700;
+  border: 0;
   border-radius: 999px;
-  line-height: 1.1;
+  line-height: 20px;
+  color: transparent;
+  overflow: hidden;
   white-space: nowrap;
+  text-align: center;
+  transition: max-width .34s cubic-bezier(.22,1,.36,1), height .34s cubic-bezier(.22,1,.36,1), padding .34s cubic-bezier(.22,1,.36,1), color .16s ease;
 }
-#tenant-vacant-btn.on {
-  background: var(--navy, #1f3d2b);
+#tenant-vacant-btn.on,
+.tenant-search .tenant-chip.on {
+  max-width: 96px;
+  height: 28px;
+  padding: 0 12px !important;
+  line-height: 28px;
   color: #fff;
+}
+#tenant-vacant-btn,
+#tenant-vacant-btn.on {
+  background: #9aa0a6;
+  color: transparent;
   border-color: transparent;
 }
-.tenant-chip[data-tenant-chip="paid"] {
-  color: #2f7d4a;
-  border-color: #8fbf9a;
-  background: #f3faf5;
-}
+#tenant-vacant-btn.on { color: #fff; }
+.tenant-chip[data-tenant-chip="paid"],
 .tenant-chip[data-tenant-chip="paid"].on {
-  background: #2f7d4a;
-  color: #fff;
+  color: transparent;
   border-color: #2f7d4a;
+  background: #2f7d4a;
 }
-.tenant-chip[data-tenant-chip="unpaid"] {
-  color: #c4453c;
-  border-color: #e8a8a3;
-  background: #fdf6f5;
-}
+.tenant-chip[data-tenant-chip="paid"].on { color: #fff; }
+.tenant-chip[data-tenant-chip="unpaid"],
 .tenant-chip[data-tenant-chip="unpaid"].on {
-  background: #c4453c;
-  color: #fff;
+  color: transparent;
   border-color: #c4453c;
+  background: #c4453c;
 }
-.tenant-chip[data-tenant-chip="count"] {
-  color: #8a5a32;
-  border-color: #e0c2a8;
-  background: #fbf6f1;
-}
+.tenant-chip[data-tenant-chip="unpaid"].on { color: #fff; }
+.tenant-chip[data-tenant-chip="count"],
 .tenant-chip[data-tenant-chip="count"].on {
-  background: #8a5a32;
-  color: #fff;
-  border-color: #8a5a32;
+  color: transparent;
+  border-color: #e2b100;
+  background: #e2b100;
 }
+.tenant-chip[data-tenant-chip="count"].on { color: #3a2a00; }
 .pay-pill.count-left {
   background: #f4f7f4;
   color: #3d5a45;
@@ -6881,26 +6890,20 @@ html[data-theme="void"] .chip {
   background: #2a2a2a;
   color: #f5f5f5;
 }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"] {
-  background: #1c3324;
-  color: #8ee0a8;
-  border-color: #3d5a44;
-}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"],
 html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on {
   background: #2f7d4a;
-  color: #fff;
+  color: transparent;
   border-color: #2f7d4a;
 }
-html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"] {
-  background: #3a1c1c;
-  color: #ffb4ae;
-  border-color: #6a3333;
-}
+html[data-theme="void"] .tenant-chip[data-tenant-chip="paid"].on { color: #fff; }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"],
 html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on {
   background: #c4453c;
-  color: #fff;
+  color: transparent;
   border-color: #c4453c;
 }
+html[data-theme="void"] .tenant-chip[data-tenant-chip="unpaid"].on { color: #fff; }
 #ai-card,
 #work-card,
 #errand-form {
