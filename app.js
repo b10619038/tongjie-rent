@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-20-36";
-const APP_EDIT_COUNT = 1768;
+const APP_STAMP = "2026-10-01-21-10";
+const APP_EDIT_COUNT = 1769;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1318";
+const FILE_VER = "1319";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修動畫回到暫停預約剛做好的版本"] },
+  { ver: APP_VERSION, items: ["超過應繳日顯示已遲繳幾日"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -8454,7 +8454,13 @@ function rentDueDay(t) {
 }
 function rentDueLabel(t) {
   const d = taipeiNow();
-  return (d.getMonth() + 1) + "月" + rentDueDay(t) + "號";
+  const base = (d.getMonth() + 1) + "月" + rentDueDay(t) + "號";
+  if (paidThisMonth(t)) return base;
+  const due = new Date(d.getFullYear(), d.getMonth(), rentDueDay(t));
+  const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const late = Math.round((today.getTime() - due.getTime()) / 86400000);
+  if (late < 1) return base;
+  return base + "　<span class=\"due-late\">已遲繳" + late + "日</span>";
 }
 function applyYushengElec(data) {
   if (!data) return;
