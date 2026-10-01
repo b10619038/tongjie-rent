@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-20-22";
-const APP_EDIT_COUNT = 1765;
+const APP_STAMP = "2026-10-01-20-26";
+const APP_EDIT_COUNT = 1766;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1315";
+const FILE_VER = "1316";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員預覽按下去立刻換畫面"] },
+  { ver: APP_VERSION, items: ["報修動畫恢復滑順，暫停才停住"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -26366,13 +26366,13 @@ function repairRunHtml(rep) {
   const start = parseStampMs(rep.createdAt);
   const end = parseStampMs(rep.appointAt);
   const paused = !!rep.appointPaused;
-  return `<div class="fix-run${paused ? " is-paused" : ""}${pct >= 0.995 && !paused ? " is-in" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}" data-paused="${paused ? "1" : "0"}">
-    <div class="fix-town"><i style="animation-delay:${fixPhase(28000)}"></i></div>
-    <div class="fix-tree"><i style="animation-delay:${fixPhase(26000)}"></i></div>
-    <div class="fix-truck"><i style="animation-delay:${fixPhase(16000)}"></i></div>
-    <div class="fix-van"><i style="animation-delay:${fixPhase(5400)}"></i></div>
-    <div class="fix-car"><i style="animation-delay:${fixPhase(3200)}"></i></div>
-    <div class="fix-poles"><i style="animation-delay:${fixPhase(18000)}"></i></div>
+  return `<div class="fix-run${paused ? " is-paused" : ""}" style="--p:${pct.toFixed(4)}" data-start="${start}" data-end="${end}" data-done="${rep.status === "done" ? "1" : "0"}" data-paused="${paused ? "1" : "0"}">
+    <div class="fix-town" style="animation-delay:${fixPhase(28000)}"></div>
+    <div class="fix-tree" style="animation-delay:${fixPhase(26000)}"></div>
+    <div class="fix-truck" style="animation-delay:${fixPhase(16000)}"></div>
+    <div class="fix-van" style="animation-delay:${fixPhase(5400)}"></div>
+    <div class="fix-car" style="animation-delay:${fixPhase(3200)}"></div>
+    <div class="fix-poles" style="animation-delay:${fixPhase(18000)}"></div>
     <div class="fix-line"><i></i></div>
     <div class="fix-rider" aria-hidden="true">
       <img src="images/fix-rider.png?v=${FILE_VER}" alt="" />
@@ -26382,10 +26382,7 @@ function repairRunHtml(rep) {
 function tickRepairRuns() {
   document.querySelectorAll(".fix-run").forEach(el => {
     if (el.dataset.done === "1" || el.dataset.paused === "1") {
-      if (el.dataset.done === "1") {
-        el.style.setProperty("--p", "1");
-        el.classList.add("is-in");
-      }
+      if (el.dataset.done === "1") el.style.setProperty("--p", "1");
       return;
     }
     const start = Number(el.dataset.start) || 0;
@@ -26394,7 +26391,6 @@ function tickRepairRuns() {
     if (start && end > start) pct = Math.max(0, Math.min(1, (Date.now() - start) / (end - start)));
     else if (end && Date.now() >= end) pct = 1;
     el.style.setProperty("--p", pct.toFixed(4));
-    el.classList.toggle("is-in", pct >= 0.995);
   });
 }
 function repairCard(rep, extraClass) {
