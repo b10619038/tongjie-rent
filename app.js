@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-15-19";
-const APP_EDIT_COUNT = 1750;
+const APP_STAMP = "2026-10-01-15-30";
+const APP_EDIT_COUNT = 1751;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1301";
+const FILE_VER = "1302";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -135,7 +135,8 @@ const NONGHUI_SEP_PAID = {
   "7623": ["2026-09-05", 10000],
   "7642": ["2026-09-04", 14000],
   "7651": ["2026-09-05", 5000],
-  "7232": ["2026-08-27", 14000]
+  "7232": ["2026-08-27", 14000],
+  "6841": ["2026-09-10", 9000]
 };
 const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
@@ -517,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約換房空套房可以點選，有人住的不能選"] },
+  { ver: APP_VERSION, items: ["6841 本月未繳不顯示匯款日，9/10 寫進 9 月實繳日"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6235,6 +6236,7 @@ function normalize(data) {
   try { applyRemitMarksPaid(data); } catch {}
   try { ensureRentDueNotices(data); } catch {}
   try { apply6841RenewLai(data); } catch {}
+  try { apply6841SepPay(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
   try { ensureDashu18Term(data); } catch {}
@@ -6814,6 +6816,23 @@ function apply6841RenewLai(data) {
   room.tenantId = neu.id;
   if (room.status !== "repair") room.status = "rented";
   data.room6841RenewVer = ROOM_6841_RENEW_VER;
+}
+const ROOM_6841_SEP_VER = "6841-sep-0910-v1";
+function apply6841SepPay(data) {
+  if (!data || data.room6841SepVer === ROOM_6841_SEP_VER) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "6841");
+  const t = room && (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (t && payYmNow() === "2026-10") {
+    t.remitOn = "2026-09-10";
+    t.paid = false;
+    t.paidAt = "";
+    t.paidVia = "";
+    t.paidTouched = true;
+    t.paidYm = "2026-10";
+    t.editedAt = Date.now();
+    try { stampPaidMark(data, t); } catch {}
+  }
+  data.room6841SepVer = ROOM_6841_SEP_VER;
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -13703,6 +13722,19 @@ function payYmNow() {
 function monthDueYmd() {
   return payYmNow() + "-01";
 }
+function currentRemitYmd(t) {
+  if (!paidThisMonth(t)) return "";
+  const ym = payYmNow();
+  const on = ymdOf(t && t.remitOn);
+  if (on && remitCoversPayYm(t, ym)) return on;
+  const at = ymdOf(t && t.paidAt);
+  if (at && remitCoversPayYm({ remitOn: at }, ym)) return at;
+  return "";
+}
+function remitDateLabel(t) {
+  const d = currentRemitYmd(t);
+  return d ? rocSlash(d) : "尚未入帳";
+}
 function paidThisMonth(t) {
   if (!t || t.former || t.incoming) return false;
   const ym = payYmNow();
@@ -17346,7 +17378,9 @@ function leasePayRows(t, r, sheet) {
     const prepaid = (t && t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym);
     const early = !!(pre || prepaid);
     const future = ym > thisYm && !early;
-    const actual = early ? (pre || paid[ym] || "") : (future ? "" : (paid[ym] || ""));
+    let known = "";
+    try { known = rentPayDateFor(t, r, ym); } catch {}
+    const actual = early ? (pre || paid[ym] || known || "") : (future ? "" : (paid[ym] || known || ""));
     const past = ym < thisYm;
     const note = carry ? rentCarryNote(t, ym) : "";
     const bill = carry ? rentBillOf(t, r, ym, amount) : amount;
@@ -25268,7 +25302,7 @@ function homeView() {
       <div class="card card-body slide-left">
         <div class="row"><span class="k">繳費狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
         <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r))) : "尚無需繳費"}</span></div>
-        <div class="row"><span class="k">實際匯款日</span><span class="v">${dueNow ? (ymdOf(t.remitOn) ? rocSlash(t.remitOn) : (paidThisMonth(t) && ymdOf(t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳")) : "—"}</span></div>
+        <div class="row"><span class="k">實際匯款日</span><span class="v">${dueNow ? remitDateLabel(t) : "—"}</span></div>
         <div class="row"><span class="k">應繳日期</span><span class="v">${!dueNow ? "—" : (stubNow ? "請馬上繳費" : ("每月" + rentDueDay(t) + "號"))}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
@@ -25396,7 +25430,7 @@ function payView() {
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
-        <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? firstPayWayLabel(t, firstPay) + "已收" : firstPayWayLabel(t, firstPay)) : (ymdOf(t && t.remitOn) ? rocSlash(t.remitOn) : (paid && ymdOf(t && t.paidAt) ? rocSlash(t.paidAt) : "尚未入帳"))}</span></div>
+        <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? firstPayWayLabel(t, firstPay) + "已收" : firstPayWayLabel(t, firstPay)) : remitDateLabel(t)}</span></div>
       </div>
       ${firstPay && split && split.way === "cash" ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">簽約現場現金 ${money(firstPay.total)}</div><div class="small" style="margin-top:6px">之後每月租金匯兆豐。電費每度 NT$ 5.5。</div></div>` : ""}
       ${firstPay && split && split.way !== "cash" ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
