@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-15-39";
-const APP_EDIT_COUNT = 1752;
+const APP_STAMP = "2026-10-01-15-43";
+const APP_EDIT_COUNT = 1753;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1303";
+const FILE_VER = "1304";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -518,7 +518,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6841 10月租金改回已繳"] },
+  { ver: APP_VERSION, items: ["6841 10月已繳，匯款日 10/1"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -6826,23 +6826,28 @@ function apply6841SepPay(data) {
   if (t && !ymdOf(t.remitOn)) t.remitOn = "2026-09-10";
   data.room6841SepVer = ROOM_6841_SEP_VER;
 }
-const ROOM_6841_OCT_VER = "6841-oct-paid-restore-v1";
 function apply6841OctPaid(data) {
-  if (!data || data.room6841OctVer === ROOM_6841_OCT_VER) return;
+  if (!data || payYmNow() !== "2026-10") return;
   const room = (data.rooms || []).find(r => r && String(r.no) === "6841");
-  const t = room && (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
-  if (t && payYmNow() === "2026-10") {
+  if (!room) return;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.roomId !== room.id || t.former || t.demo) return;
+    const start = ymdOf(t.leaseStart);
+    if (start && start > "2026-10-31") return;
+    const on = "2026-10-01";
+    if (t.paid && String(t.paidYm || "").slice(0, 7) === "2026-10" && ymdOf(t.remitOn) === on && ymdOf(t.paidAt) === on) return;
     t.paid = true;
     t.paidTouched = true;
     t.paidYm = "2026-10";
-    if (!t.paidVia) t.paidVia = "line";
+    t.remitOn = on;
+    t.paidAt = on + " 10:00";
+    t.paidVia = t.paidVia || "line";
     t.lineNotified = true;
     t.lineProofYm = "2026-10";
-    if (!ymdOf(t.remitOn)) t.remitOn = "2026-09-10";
     t.editedAt = Date.now();
     try { stampPaidMark(data, t); } catch {}
-  }
-  data.room6841OctVer = ROOM_6841_OCT_VER;
+  });
+  data.room6841OctVer = "6841-oct-1001-v2";
 }
 function applyOfficeSubsidyTenant(data) {
   if (!data) return;
@@ -10363,6 +10368,7 @@ function ingestPaidCloud(raw) {
     }
     try { applyRoom7611(state); } catch {}
     applyPaidMarks(state);
+    try { apply6841OctPaid(state); } catch {}
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
     const ping = Number(o.repairPing || 0);
     if (ping && ping > (ingestPaidCloud.repairPing || 0)) {
@@ -11876,6 +11882,7 @@ async function pushCloud() {
     if (payload.paidMarks) state.paidMarks = payload.paidMarks;
     applyPaidMarks(payload);
     applyPaidMarks(state);
+    try { apply6841OctPaid(state); } catch {}
     if (payload.repairs) state.repairs = payload.repairs;
     if (payload.announcements) state.announcements = payload.announcements;
     if (payload.notices) state.notices = payload.notices;
