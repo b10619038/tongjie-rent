@@ -4286,7 +4286,24 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     max-height: none;
     overflow: visible;
   }
-  body.print-term .term-handover-paper { page-break-before: always; break-before: page; }
+  body.print-term .term-handover-paper {
+    page-break-before: always;
+    break-before: page;
+    display: flex;
+    flex-direction: column;
+    height: 265mm;
+    min-height: 265mm;
+    max-height: 265mm;
+  }
+  body.print-term .term-handover-paper .hand-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 6mm 0 0;
+  }
+  body.print-term .term-handover-paper .hand-list li { margin: 0; }
+  body.print-term .term-handover-paper .hand-signs { margin: 4mm 0 0; gap: 8mm; }
   body.print-term .term-lease-paper h3,
   body.print-term .term-handover-paper h3 { font-size: 22pt; margin-bottom: 22pt; letter-spacing: .7em; }
   body.print-term .term-hint { display: none !important; }
@@ -6276,6 +6293,20 @@ html.embed-pane .home-upd { display: none !important; }
 }
 .hand-a4-fit .term-lease-paper h3,
 .hand-a4-fit .term-handover-paper h3 { margin-bottom: 14px; font-size: 22px; }
+.hand-a4-fit .term-handover-paper {
+  display: flex;
+  flex-direction: column;
+}
+.hand-a4-fit .term-handover-paper .hand-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 4mm 0 0;
+}
+.hand-a4-fit .term-handover-paper .hand-list li { margin: 0; }
+.hand-a4-fit .term-handover-paper .hand-signs { margin: 4mm 0 0; gap: 8mm; }
+.hand-a4-fit .term-handover-paper .term-date { margin-top: 4mm; }
 .term-handover-paper h3 {
   text-align: center;
   letter-spacing: .28em;
