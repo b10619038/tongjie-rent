@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-25";
-const APP_EDIT_COUNT = 1742;
+const APP_STAMP = "2026-10-01-14-34";
+const APP_EDIT_COUNT = 1743;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1293";
+const FILE_VER = "1294";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["搜尋清除鍵放大，比較好按"] },
+  { ver: APP_VERSION, items: ["新約第一天拿掉已續約並依剩餘天數下排", "紀錄新增租客合約，從115年9月起依房號列出"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -27003,6 +27003,53 @@ function scrubPracticePeople(data) {
   data.practicePeopleVer = "20260926-drop-names";
   return dirty;
 }
+function contractSpan(start, end) {
+  if (!ymdOf(start) && !ymdOf(end)) return "—";
+  return (rocSlash(start) || "—") + " ➜ " + (rocSlash(end) || "—");
+}
+function contractLedgerEntries() {
+  const list = (state.tenants || []).filter(t => {
+    if (!t || t.former || t.demo || t.placeholder || t.incoming) return false;
+    if (!String(t.name || "").trim()) return false;
+    const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+    return !!(r && !r.demo);
+  });
+  return list.map(t => {
+    const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+    const no = r ? String(r.no || "") : "";
+    const renewals = ((state && state.renewals) || []).filter(x => {
+      if (!x || x.status === "cancelled") return false;
+      return x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no);
+    });
+    const renew = renewals[renewals.length - 1] || null;
+    const started = !!(renew && ymdOf(renew.start) && todayYmd() >= ymdOf(renew.start));
+    return {
+      no,
+      name: t.name || "",
+      factory: typeof roomIsFactory === "function" && roomIsFactory(r),
+      current: contractSpan(started ? renew.start : t.leaseStart, started ? (renew.end || t.leaseEnd) : t.leaseEnd),
+      sign: renew ? (rocSlash(ymdOf(renew.signedAt) || ymdOf(renew.appointAt) || ymdOf(renew.createdAt)) || "—") : "—",
+      next: renew ? contractSpan(renew.start, renew.end) : "—",
+      prev: renew ? contractSpan(renew.oldStart, renew.oldEnd) : "—"
+    };
+  }).sort((a, b) => {
+    if (a.factory !== b.factory) return a.factory ? 1 : -1;
+    return String(a.no).localeCompare(String(b.no), "zh-Hant", { numeric: true });
+  });
+}
+function contractLedgerHtml() {
+  const rows = contractLedgerEntries();
+  if (!rows.length) return `<div class="empty">目前沒有租客合約</div>`;
+  return rows.map(row => `<div class="row wrap">
+      <span class="k">${escapeHtml(row.no || "—")}</span>
+      <span class="v">${escapeHtml(row.name || "")}
+        <span class="small" style="display:block">合約　${escapeHtml(row.current)}</span>
+        <span class="small" style="display:block">續約　${escapeHtml(row.sign)}</span>
+        <span class="small" style="display:block">新合約　${escapeHtml(row.next)}</span>
+        <span class="small" style="display:block">上一份　${escapeHtml(row.prev)}</span>
+      </span>
+    </div>`).join("");
+}
 function historyRows(cat) {
   const roomOf = id => (state.rooms || []).find(r => r && r.id === id);
   if (cat === "lease") {
@@ -27070,6 +27117,7 @@ function historyRows(cat) {
 }
 function adminHistory() {
   const cats = [
+    ["pact", "租客合約"],
     ["lease", "舊租客合約"],
     ["renew", "續約"],
     ["water", "水費單"],
@@ -27085,20 +27133,23 @@ function adminHistory() {
   ];
   const cat = cats.some(c => c[0] === ui.historyCat) ? ui.historyCat : "lease";
   ui.historyCat = cat;
-  const rows = historyRows(cat).filter(row => !historyRowDrop(row)).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const rows = cat === "pact" ? [] : historyRows(cat).filter(row => !historyRowDrop(row)).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const shown = rows.slice(0, 150);
-  const body = shown.length ? shown.map(row => `<div class="row wrap">
+  const body = cat === "pact"
+    ? contractLedgerHtml()
+    : (shown.length ? shown.map(row => `<div class="row wrap">
       <span class="k">${escapeHtml(rocSlash(row.date) || row.date || "—")}</span>
       <span class="v">${escapeHtml(row.title || "")}${row.amount ? "　" + money(row.amount) : ""}${row.sub ? `<span class="small" style="display:block">${escapeHtml(row.sub)}</span>` : ""}</span>
-    </div>`).join("") : `<div class="empty">這一類目前沒有紀錄</div>`;
+    </div>`).join("") : `<div class="empty">這一類目前沒有紀錄</div>`);
+  const pactN = cat === "pact" ? contractLedgerEntries().length : 0;
   return `<div class="admin-grid list">
     <div class="card card-body">
       <h2 class="dash-h">紀錄</h2>
-      <p class="small">開發者專用。舊租客合約、水電網路與垃圾桶、發票、押金、仲介、退租、報修完成、抄表都收在這裡。</p>
+      <p class="small">開發者專用。租客合約從 115年9月起，依房號列出目前合約、續約日、新合約、上一份。App 從這時開始記。</p>
       <div class="history-cats">
         ${cats.map(([id, label]) => `<button type="button" class="ghost ${cat === id ? "on" : ""}" data-history-cat="${id}">${label}</button>`).join("")}
       </div>
-      <p class="small" style="margin-top:12px">共 ${rows.length} 筆${rows.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""}</p>
+      <p class="small" style="margin-top:12px">${cat === "pact" ? ("共 " + pactN + " 間") : ("共 " + rows.length + " 筆" + (rows.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""))}</p>
       ${body}
     </div>
   </div>`;
@@ -30482,8 +30533,24 @@ function tenantRemainLabel(t, r) {
   if (n < 0) return "已到期";
   return "剩" + n + "日";
 }
+function renewalStartedOf(t, r) {
+  if (!t) return null;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  const no = r && String(r.no || "");
+  const today = todayYmd();
+  const hits = ((state && state.renewals) || []).filter(x => {
+    if (!x || x.status === "cancelled") return false;
+    const hit = x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no);
+    if (!hit) return false;
+    const start = ymdOf(x.start);
+    return !!(start && today >= start);
+  });
+  return hits[hits.length - 1] || null;
+}
 function tenantRenewDone(t, r) {
   if (!t) return false;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  if (renewalStartedOf(t, r)) return false;
   if (/已續約/.test(String(t.note || ""))) return true;
   r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
   const no = r && String(r.no || "");
@@ -30504,6 +30571,7 @@ function tenantRenewApply(t, r) {
 }
 function tenantCountRank(t) {
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  if (renewalStartedOf(t, r)) return 5;
   if (tenantRenewApply(t, r)) return 0;
   if (tenantRenewNo(t, r)) return 3;
   if (tenantRenewDone(t, r)) return 4;
@@ -30703,7 +30771,7 @@ function tenantListOfKind(kind, opts) {
     }
     uniq.push(t);
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c7|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c8|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
   const countOn = tenantChipOn() === "count";
   if (countOn || ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
