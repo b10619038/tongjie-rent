@@ -2821,7 +2821,25 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   will-change: transform;
 }
 .log-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; position: relative; z-index: 8; pointer-events: auto !important; }
+.history-cats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.history-cats .ghost {
+  width: auto;
+  min-height: 0;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  line-height: 32px;
+  white-space: nowrap;
+  font-size: 14px;
+}
 .log-filters .ghost { width: auto; padding: 8px 14px; pointer-events: auto !important; position: relative; z-index: 8; cursor: pointer; }
+.history-cats .ghost.on,
 .log-filters .ghost.on { background: var(--teal); color: var(--on-teal, #fff); border-color: var(--teal); }
 .log-card { position: relative; z-index: 2; font-style: normal; }
 .log-card .ghost { pointer-events: auto !important; position: relative; z-index: 6; cursor: pointer; }

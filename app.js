@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-14-18";
-const APP_EDIT_COUNT = 1739;
+const APP_STAMP = "2026-10-01-14-20";
+const APP_EDIT_COUNT = 1740;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1290";
+const FILE_VER = "1291";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台繳費標籤改成已繳、未繳"] },
+  { ver: APP_VERSION, items: ["紀錄分類改成橫向瘦長橢圓"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -27095,7 +27095,7 @@ function adminHistory() {
     <div class="card card-body">
       <h2 class="dash-h">紀錄</h2>
       <p class="small">開發者專用。舊租客合約、水電網路與垃圾桶、發票、押金、仲介、退租、報修完成、抄表都收在這裡。</p>
-      <div class="log-filters">
+      <div class="history-cats">
         ${cats.map(([id, label]) => `<button type="button" class="ghost ${cat === id ? "on" : ""}" data-history-cat="${id}">${label}</button>`).join("")}
       </div>
       <p class="small" style="margin-top:12px">共 ${rows.length} 筆${rows.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""}</p>
