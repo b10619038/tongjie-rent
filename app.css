@@ -1594,6 +1594,16 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   min-width: 0;
 }
 .tenant-search input::placeholder { color: var(--muted); font-weight: 600; }
+#tenant-search::-webkit-search-cancel-button,
+.tenant-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  cursor: pointer;
+  background: center / 20px 20px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%236a6a6a' d='M5.1 3.7 12 10.6l6.9-6.9 1.4 1.4L13.4 12l6.9 6.9-1.4 1.4L12 13.4l-6.9 6.9-1.4-1.4 6.9-6.9-6.9-6.9z'/></svg>");
+}
 .tenant-suggest {
   display: grid;
   margin: 0 0 4px;
