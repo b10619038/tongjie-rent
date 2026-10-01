@@ -4499,8 +4499,8 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
-.chop-lg { width: 26mm; height: 26mm; }
-.chop-sm { width: 13mm; height: 13mm; }
+.chop-lg { width: 25mm; height: 25mm; }
+.chop-sm { width: 15mm; height: 15mm; }
 .chop-ps { width: 10mm; height: 10mm; }
 .chop-host { position: relative; }
 .lease-pg {
