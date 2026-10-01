@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-01-13-10";
-const APP_EDIT_COUNT = 1724;
+const APP_STAMP = "2026-10-01-13-19";
+const APP_EDIT_COUNT = 1725;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1275";
+const FILE_VER = "1276";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -517,7 +517,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租交接確認書行距拉開排滿一頁"] },
+  { ver: APP_VERSION, items: ["申請中途退租改到租約頁最上方"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -25831,6 +25831,7 @@ function leaseView() {
         ${isStubMonthNow(t, r) ? `<div class="row"><span class="k">下月起月租</span><span class="v">${money(studioContractRent(t, r))}</span></div>` : ""}
         ${pending ? `<p class="small" style="margin-top:8px">舊約仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。新約 ${escapeHtml(rocSlash(pending.start) || "")} 起自動生效，匯款改兆豐。</p>` : ""}
       </div>
+      ${earlyApplyCardHtml(t, r)}
       ${pending ? `<div class="section-title" id="renew-current-paper"><h2 class="slide-right">原合約</h2></div>
       <div class="card card-body slide-left">
         <p class="small" style="margin:0 0 8px">目前這份仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。</p>
@@ -25879,7 +25880,6 @@ function leaseView() {
             : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`);
       })()}`}
       ${pending ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}
-      ${earlyApplyCardHtml(t, r)}
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
     </div>`;
 }
