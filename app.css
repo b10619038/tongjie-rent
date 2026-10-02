@@ -1094,43 +1094,38 @@ button.pay-pill.hand {
 .renew-sent-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.sent-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 16px;
+  min-width: 56px;
+  overflow: hidden;
 }
 .sent-pulse {
-  position: relative;
-  width: 12px;
-  height: 12px;
-  margin-left: auto;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #62765b;
-  box-shadow: 0 0 0 0 rgba(98, 118, 91, .45);
-  animation: sentCore 1.8s ease-out infinite;
-}
-.sent-pulse::before,
-.sent-pulse::after {
-  content: "";
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid #62765b;
-  animation: sentRipple 1.8s ease-out infinite;
+  left: 0;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateY(-50%);
+  animation: sentSwoosh 1.7s linear infinite;
 }
-.sent-pulse::after { animation-delay: .7s; }
-@keyframes sentCore {
-  0% { box-shadow: 0 0 0 0 rgba(98, 118, 91, .42); }
-  70% { box-shadow: 0 0 0 8px rgba(98, 118, 91, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(98, 118, 91, 0); }
-}
-@keyframes sentRipple {
-  0% { transform: scale(1); opacity: .7; }
-  100% { transform: scale(2.6); opacity: 0; }
+@keyframes sentSwoosh {
+  0% { left: 0; width: 10px; height: 10px; opacity: 0; transform: translateY(-50%); }
+  10% { left: 0; width: 10px; height: 10px; opacity: 1; transform: translateY(-50%); }
+  28% { left: 0; width: 18px; height: 5px; opacity: 1; transform: translateY(-50%); }
+  48% { left: 0; width: 48px; height: 3.5px; opacity: 1; transform: translateY(-50%); }
+  56% { left: 0; width: 52px; height: 3px; opacity: 1; transform: translateY(-50%); }
+  74% { left: calc(100% - 22px); width: 22px; height: 3px; opacity: 0; transform: translateY(-50%); }
+  75%, 100% { left: 0; width: 10px; height: 10px; opacity: 0; transform: translateY(-50%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sent-pulse,
-  .sent-pulse::before,
-  .sent-pulse::after { animation: none; }
+  .sent-pulse { animation: none; opacity: 1; width: 10px; height: 10px; }
 }
 .renew-ask-actions {
   display: flex;
