@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1363";
+const FILE_VER = "1364";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27764,13 +27764,18 @@ function historyRows(cat) {
       };
     });
   }
-  if (cat === "meter") {
-    return (state.meterLogs || []).map(m => {
+  if (cat === "meter-elec" || cat === "meter-water" || cat === "meter") {
+    const want = cat === "meter-water" ? "water" : "elec";
+    return (state.meterLogs || []).filter(m => {
+      const u = meterUnitById(m && m.unitId);
+      const kind = u && u.kind === "water" ? "water" : "elec";
+      return kind === want;
+    }).map(m => {
       const u = meterUnitById(m.unitId);
       const label = (u && u.unit) || String(m.unitId || "").replace(/^m-/, "");
       return {
         date: ymdOf(m.date) || "",
-        title: "抄表　" + label,
+        title: (want === "water" ? "水抄表" : "電抄表") + "　" + label,
         sub: "度數 " + (m.reading != null ? m.reading : "—") + (m.usage != null ? "　本期 " + m.usage + " 度" : "") + (m.note ? "　" + m.note : ""),
         amount: 0
       };
@@ -27792,8 +27797,10 @@ function adminHistory() {
     ["agent", "仲介費"],
     ["checkout", "退租"],
     ["repair", "報修完成"],
-    ["meter", "抄表"]
+    ["meter-elec", "電抄表"],
+    ["meter-water", "水抄表"]
   ];
+  if (ui.historyCat === "meter") ui.historyCat = "meter-elec";
   const cat = cats.some(c => c[0] === ui.historyCat) ? ui.historyCat : "lease";
   ui.historyCat = cat;
   const rows = cat === "pact" ? [] : historyRows(cat).filter(row => !historyRowDrop(row)).slice().sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
