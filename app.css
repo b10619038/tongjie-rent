@@ -6410,6 +6410,12 @@ html.embed-pane .home-upd { display: none !important; }
 .checkout-checks .log-check { display: flex; align-items: center; gap: 6px; }
 .co-kind-btn { border-radius: 999px !important; min-height: 52px; margin-top: 10px; font-weight: 800; }
 #checkout-form-card .row-end { gap: 8px; }
+#checkout-form-card .co-head-row { align-items: flex-start; }
+#checkout-form-card .co-head-row .dash-h { min-width: 0; flex: 1 1 12em; line-height: 1.35; }
+#checkout-form-card .co-head-who { margin-left: 0.6em; }
+@media (max-width: 900px) {
+  #checkout-form-card .co-head-who { display: block; margin: 6px 0 0; }
+}
 .term-lease-paper {
   margin-top: 18px;
   padding: 32px 26px 36px;

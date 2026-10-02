@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1377";
+const FILE_VER = "1378";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23934,7 +23934,7 @@ function checkoutFormHtml() {
   if (kind === "early") {
     const prop = paperCo.property;
     return `<div class="card card-body" id="checkout-form-card">
-    <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
+    <div class="row co-head-row"><h2 class="dash-h" style="margin:0"><span class="co-head-k">中途退租</span><span class="co-head-who">${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</span></h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
     ${co.status === "done"
       ? (co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : "")
@@ -23978,7 +23978,7 @@ function checkoutFormHtml() {
   </div>`;
   }
   return `<div class="card card-body" id="checkout-form-card">
-    <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
+    <div class="row co-head-row"><h2 class="dash-h" style="margin:0"><span class="co-head-k">正常退租</span><span class="co-head-who">${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</span></h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。列印交接確認書後雙方蓋章即可。"}</div>
     <div class="row" style="margin-top:12px;align-items:center"><div class="label" style="margin:0">文件預覽</div><button type="button" class="ghost" id="co-sys-default" style="width:auto;margin-left:auto">系統預設</button></div>
     ${termPrintPackHtml(t, r, paperCo, "normal")}
