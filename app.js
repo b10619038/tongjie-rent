@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1360";
+const FILE_VER = "1361";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -10962,7 +10962,7 @@ function mergeSharedInto(target, other) {
     const g = new Set(target.roomGone.map(String));
     target.rooms = (target.rooms || []).filter(x => x && !g.has(String(x.id)) && String(x.no || "").replace(/\D/g, "") !== "7652");
   }
-  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "cost"]);
+  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost"]);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
@@ -12119,7 +12119,7 @@ async function pushCloud() {
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
-      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "cost"]),
+      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost"]),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
@@ -26872,6 +26872,7 @@ function repairCard(rep, extraClass) {
     ${editBox}
     ${appointLabel(rep)}
     ${rep.vendor ? `<div class="row"><span class="k">師傅</span><span class="v">${escapeHtml(rep.vendor)}</span></div>` : ""}
+    ${String(rep.vendorPhone || "").trim() ? `<div class="row"><span class="k">電話</span><span class="v"><a class="vendor-tel" href="tel:${escapeHtml(String(rep.vendorPhone).replace(/[^\d+]/g, ""))}">${escapeHtml(rep.vendorPhone)}</a></span></div>` : ""}
     ${repairRunHtml(rep)}
     ${rep.cost != null && String(rep.cost) !== "" ? `<div class="row"><span class="k">金額</span><span class="v">${escapeHtml(repairCostLabel(rep.cost))}</span></div>` : ""}
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
@@ -33011,6 +33012,7 @@ function adminRepairs() {
       ${repairMediaButtons(rep)}
       ${appointBlock(rep)}
       <label class="field"><span>師傅／廠商</span><input data-rep-vendor="${rep.id}" type="text" value="${escapeHtml(rep.vendor || "")}" placeholder="例如 冷氣行" /></label>
+      <label class="field"><span>電話</span><input data-rep-phone="${rep.id}" type="tel" inputmode="tel" value="${escapeHtml(rep.vendorPhone || "")}" placeholder="沒填租客就不會看到" /></label>
       <label class="field"><span>金額</span><input data-rep-cost="${rep.id}" type="text" inputmode="decimal" value="${escapeHtml(rep.cost == null ? "" : String(rep.cost))}" placeholder="0 或 待報價" /></label>
       <label class="field"><span>完工說明</span><textarea data-rep-done-note="${rep.id}" rows="2" placeholder="更換零件、完工情形">${escapeHtml(rep.doneNote || "")}</textarea></label>
       <div class="seg ${rep.status === "done" ? "is-done" : rep.status === "doing" ? "is-doing" : ""}">
@@ -35686,6 +35688,18 @@ function bindAdmin() {
       rep.vendor = String(inp.value || "").trim();
       stampRepair(rep);
       save();
+    };
+  });
+  document.querySelectorAll("[data-rep-phone]").forEach(inp => {
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("click", e => { e.stopPropagation(); try { inp.focus(); } catch {} });
+    inp.onchange = () => {
+      const rep = state.repairs.find(x => x.id === inp.dataset.repPhone);
+      if (!rep) return;
+      rep.vendorPhone = String(inp.value || "").trim();
+      stampRepair(rep);
+      save();
+      try { pushCloud(); } catch {}
     };
   });
   document.querySelectorAll("[data-rep-cost]").forEach(inp => {
