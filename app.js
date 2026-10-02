@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-10-37";
-const APP_EDIT_COUNT = 1773;
+const APP_STAMP = "2026-10-02-10-45";
+const APP_EDIT_COUNT = 1774;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1323";
+const FILE_VER = "1324";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["不續約後仍可申請中途退租"] },
+  { ver: APP_VERSION, items: ["中途退租可填電費餘額並扣進總退還"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3752,15 +3752,19 @@ function canTenantEarlyApply(t, r) {
   if (!end || todayYmd() >= end) return false;
   return true;
 }
-function earlyApplyCo(t, r, at) {
+function earlyApplyCo(t, r, at, elecRaw) {
   const deposit = Number((r && r.deposit) || (t && t.deposit) || 0);
   const prorate = defaultProrateRent(t, r, at);
+  const typed = elecRaw != null && String(elecRaw).trim() !== "";
+  const elecBalance = typed ? Math.max(0, Math.round(Number(elecRaw) || 0)) : null;
+  const cut = elecBalance || 0;
   return {
     at: at || todayYmd(),
     deposit,
     deduct: 0,
     prorate,
-    refund: Math.max(0, deposit) + prorate,
+    elecBalance,
+    refund: Math.max(0, deposit + prorate - cut),
     property: termPropLabel(r),
     idNo: (t && t.idNo) || "",
     phone: (t && t.phone) || ""
@@ -3772,7 +3776,7 @@ function earlyApplyCardHtml(t, r) {
   if (cur) {
     return `<div class="handover-note renew-note" id="early-box">
       <div class="label">中途退租申請已送出</div>
-      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。${cur.appointAt ? `預約 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))} 到 7651簽約室簽名蓋章。` : "尚未預約簽名蓋章時間。"}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。總退還 ${escapeHtml(money(cur.refund || 0))}${cur.elecBalance != null ? "，已扣電費餘額 " + escapeHtml(money(cur.elecBalance)) : ""}。${cur.appointAt ? `預約 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))} 到 7651簽約室簽名蓋章。` : "尚未預約簽名蓋章時間。"}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
       ${cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(cur.id)}" style="margin-top:8px">加入日曆</button>` : ""}
     </div>`;
   }
@@ -3798,7 +3802,10 @@ function earlyApplyOverlayHtml() {
       <h2>${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2>
       <p class="small">選終止日。契約和後台是同一份，押金與退還金額先照系統計算，不能改。送出後後台會立刻收到通知。</p>
       <label class="field"><span>終止日期</span><input id="early-date" type="date" value="${escapeHtml(at)}" min="${escapeHtml(today)}"${max ? ` max="${escapeHtml(max)}"` : ""} /></label>
-      <div id="early-paper">${termLeasePaperHtml(t, r, earlyApplyCo(t, r, at))}</div>
+      <label class="field"><span>電費餘額</span><input id="early-elec" type="number" inputmode="numeric" min="0" step="1" placeholder="插入房間機器後填餘額" value="${escapeHtml(ui.earlyElec != null ? ui.earlyElec : "")}" /></label>
+      <p class="small">把儲值卡插入房間的機器，畫面上的餘額填在這裡。總退還會扣掉這筆。</p>
+      <div id="early-paper">${termLeasePaperHtml(t, r, earlyApplyCo(t, r, at, ui.earlyElec))}</div>
+      <p class="small" id="early-refund-line" style="margin-top:8px"></p>
       <div class="field" style="margin-top:12px"><span>預約終止簽約時間</span>
         ${appointOneHtml(ui.earlyAppoint || "", { id: "early-appoint", empty: "選擇簽名蓋章時間", min: today + "T09:00", max: (max || at) + "T18:00" })}
       </div>
@@ -3808,12 +3815,34 @@ function earlyApplyOverlayHtml() {
     </div>
   </div>`;
 }
+function paintEarlyPaper() {
+  const date = document.getElementById("early-date");
+  if (!date) return;
+  const t = typeof me === "function" ? me() : null;
+  const r = typeof myRoom === "function" ? myRoom() : null;
+  const elec = document.getElementById("early-elec");
+  const at = date.value || ui.earlyDate || todayYmd();
+  const bal = elec ? elec.value : (ui.earlyElec != null ? ui.earlyElec : "");
+  ui.earlyDate = at;
+  ui.earlyElec = bal;
+  const co = t && r ? earlyApplyCo(t, r, at, bal) : null;
+  const box = document.getElementById("early-paper");
+  if (box && co) box.innerHTML = termLeasePaperHtml(t, r, co);
+  const sum = document.getElementById("early-refund-line");
+  if (sum && co) {
+    const cut = co.elecBalance != null ? money(co.elecBalance) : "尚未填寫";
+    sum.textContent = "總退還 " + money(co.refund) + "（押金 " + money(co.deposit) + " ＋ 未住租金 " + money(co.prorate) + " － 電費餘額 " + cut + "）";
+  }
+  const appointMax = document.getElementById("early-appoint");
+  if (appointMax && at) appointMax.max = at + "T18:00";
+}
 function bindEarlyApply() {
   const open = document.getElementById("early-open");
   if (open) open.onclick = e => {
     e.preventDefault();
     ui.earlyConfirmStep = 1;
     ui.earlyAppoint = "";
+    ui.earlyElec = "";
     ui.keepScroll = true;
     render();
   };
@@ -3835,15 +3864,10 @@ function bindEarlyApply() {
     render();
   };
   const date = document.getElementById("early-date");
-  if (date) date.onchange = () => {
-    ui.earlyDate = date.value;
-    const t = me();
-    const r = myRoom();
-    const box = document.getElementById("early-paper");
-    if (box && t && r) box.innerHTML = termLeasePaperHtml(t, r, earlyApplyCo(t, r, date.value));
-    const appointMax = document.getElementById("early-appoint");
-    if (appointMax && date.value) appointMax.max = date.value + "T18:00";
-  };
+  if (date) date.onchange = () => { ui.earlyDate = date.value; paintEarlyPaper(); };
+  const elec = document.getElementById("early-elec");
+  if (elec) elec.oninput = () => { ui.earlyElec = elec.value; paintEarlyPaper(); };
+  paintEarlyPaper();
   const appoint = document.getElementById("early-appoint");
   if (appoint) {
     bindAppointPicker(appoint);
@@ -3937,7 +3961,7 @@ function flashEarlyNotice(ping) {
   if (!p || !p.name) return;
   if (earlyPingAlreadySeen(p)) return;
   markEarlyPingSeen(p);
-  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
+  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（已扣電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
   try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
   try { toast("中途退租申請　" + line); } catch {}
 }
@@ -3975,7 +3999,10 @@ function submitTenantEarly() {
   const appointAt = String((appointInp && appointInp.value) || ui.earlyAppoint || "").trim();
   if (!appointAt) { toast("請先預約到 7651 簽名蓋章的時間"); return; }
   if (appointAt.slice(0, 10) > at) { toast("簽約時間不能晚於終止日"); return; }
-  const paper = earlyApplyCo(t, r, at);
+  const elecEl = document.getElementById("early-elec");
+  const elecRaw = String((elecEl && elecEl.value) || (ui.earlyElec != null ? ui.earlyElec : "")).trim();
+  if (!/^\d+$/.test(elecRaw)) { toast("請先把房間機器上的電費餘額填上"); return; }
+  const paper = earlyApplyCo(t, r, at, elecRaw);
   const prev = lastCheckout(t.id);
   const reuse = prev && prev.status !== "done" && prev.kind === "early";
   const row = Object.assign({}, reuse ? prev : {}, paper, {
@@ -4001,12 +4028,12 @@ function submitTenantEarly() {
   const i = state.checkouts.findIndex(c => c && c.id === row.id);
   if (i >= 0) state.checkouts[i] = row;
   else state.checkouts.push(row);
-  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at, appointAt };
+  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at, appointAt, refund: paper.refund, elecBalance: paper.elecBalance };
   save();
   try { publishEarlyNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}`, "admin");
+  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　總退還 ${money(paper.refund)}　電費餘額 ${money(paper.elecBalance)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}`, "admin");
   toast("已送出中途退租申請");
   ui.earlyApplyOpen = false;
   ui.keepScroll = true;
@@ -22834,6 +22861,7 @@ function postCheckoutBooks(co, t, r) {
   const bits = ["退押金 " + money(deposit || amount)];
   if (Number(co.deduct)) bits.push("扣 " + money(co.deduct));
   if (prorate) bits.push("日租金 " + money(prorate));
+  if (co.elecBalance != null && co.elecBalance !== "") bits.push("電費餘額 " + money(co.elecBalance));
   const site = (r && r.group) || (r && roomIsFactory(r) ? "" : "牛10");
   state.books.push({
     id,
@@ -23065,6 +23093,7 @@ function termLeasePaperHtml(t, r, co) {
     <p>退還費用：</p>
     <p>一、甲方退還乙方</p>
     <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
+    ${co.elecBalance != null ? `<p class="term-indent">電費餘額　<span class="term-fill amt">${escapeHtml(amt(Number(co.elecBalance) || 0))}</span>　元整。</p>` : ""}
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
     <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
     <p>備註：</p>
@@ -23652,6 +23681,7 @@ function checkoutFormHtml() {
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
     ${co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : ""}
+    ${co.elecBalance != null ? `<div class="small" style="margin-top:8px">租客填的電費餘額 ${escapeHtml(money(co.elecBalance))}，總退還 ${escapeHtml(money(refund))}。</div>` : ""}
     <div class="label" style="margin-top:12px">文件預覽</div>
     ${termPrintPackHtml(t, r, paperCo, "early")}
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
@@ -23659,6 +23689,7 @@ function checkoutFormHtml() {
     ${roomIsFactory(r) ? "" : `<label class="field"><span>身分證字號</span><input id="co-idno" type="text" value="${escapeHtml(co.idNo || t.idNo || "")}" /></label>`}
     <label class="field"><span>電話</span><input id="co-phone" type="text" value="${escapeHtml(co.phone || t.phone || "")}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
+    <label class="field"><span>電費餘額</span><input id="co-elec-bal" type="number" inputmode="numeric" min="0" value="${co.elecBalance != null ? co.elecBalance : ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
     <label class="field"><span>總退還費用</span><input id="co-refund-in" type="number" inputmode="numeric" value="${refund || ""}" /></label>
     ${payAcctFields(Object.assign({}, co, { prorate }))}
@@ -23731,7 +23762,8 @@ function readCheckoutForm() {
   const kind = ui.checkoutKind === "early" ? "early" : "normal";
   const refundEl = document.getElementById("co-refund-in");
   const refund = refundEl ? num("co-refund-in") : Math.max(0, deposit - deduct) + prorate;
-  return {
+  const elecBalEl = document.getElementById("co-elec-bal");
+  const out = {
     tenantId: t.id, tenantName: t.name || "", roomId: r.id || t.roomId, roomNo: r.no || "",
     kind,
     at: val("co-date") || ymdOf(nowStamp()),
@@ -23751,6 +23783,8 @@ function readCheckoutForm() {
     property: val("co-property"),
     signedAt: ymdOf(nowStamp())
   };
+  if (elecBalEl) out.elecBalance = elecBalEl.value === "" ? null : num("co-elec-bal");
+  return out;
 }
 function saveCheckout(done, opt) {
   const data = readCheckoutForm();
@@ -23938,17 +23972,20 @@ function bindOps() {
   const pro = document.getElementById("co-prorate");
   const refund = document.getElementById("co-refund");
   const refundIn = document.getElementById("co-refund-in");
+  const elecBal = document.getElementById("co-elec-bal");
   const syncRefund = () => {
     const a = Number((dep || {}).value) || 0;
     const b = Number((ded || {}).value) || 0;
     const p = Number((pro || {}).value) || 0;
-    const v = Math.max(0, a - b) + p;
+    const e = Number((elecBal || {}).value) || 0;
+    const v = Math.max(0, a - b + p - e);
     if (refund) refund.textContent = money(v);
     if (refundIn && document.activeElement !== refundIn) refundIn.value = v ? String(v) : "";
   };
   if (dep) dep.oninput = syncRefund;
   if (ded) ded.oninput = syncRefund;
   if (pro) pro.oninput = syncRefund;
+  if (elecBal) elecBal.oninput = syncRefund;
   document.querySelectorAll("#checkout-form-card input, #checkout-form-card textarea, #checkout-form-card select").forEach(el => {
     el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
     el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
