@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1375";
+const FILE_VER = "1376";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -25810,7 +25810,7 @@ function homeView() {
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
         <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
-        <button class="ghost" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
+        <button class="ghost btn-solid" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
         <button class="btn-navy" data-page="pay">繳費租金</button>
