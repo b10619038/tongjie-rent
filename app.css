@@ -5699,6 +5699,7 @@ button.repair-look {
   visibility: hidden;
 }
 a.vendor-tel { color: inherit; font-weight: 800; text-decoration: none; }
+.tenant-slim .fold-caret {
   display: inline-block;
   width: 8px;
   height: 8px;
