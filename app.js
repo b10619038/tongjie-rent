@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1365";
+const FILE_VER = "1366";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -29498,7 +29498,8 @@ function openGoogleMemo(m) {
   window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei" + recur, "_blank", "noopener");
 }
 function upcomingMemos() {
-  return myMemos().filter(m => !isMemoDone(m)).concat(signAppointMemos()).slice().sort((a, b) => {
+  const today = ymdParts(new Date());
+  return myMemos().filter(m => !isMemoDone(m)).concat(signAppointMemos().filter(m => m && m.date && m.date >= today)).slice().sort((a, b) => {
     const da = (a.source === "sign" ? (a.date || "") : nextCycleDate(a)) + (a.time || "");
     const db = (b.source === "sign" ? (b.date || "") : nextCycleDate(b)) + (b.time || "");
     return da.localeCompare(db);
