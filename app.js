@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1348";
+const FILE_VER = "1349";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23209,12 +23209,12 @@ function handoverConfirmPaperHtml(t, r, co) {
     </ol>
     <div class="hand-signs">
       <p class="hand-sign-row">
-        <span>出租人：${escapeHtml(lessor)}</span>
+        <span class="hand-sign-main">出租人：${escapeHtml(lessor)}</span>
         <span class="hand-chops"><span class="chop-mark chop-lg"></span><span class="chop-mark chop-sm"></span></span>
       </p>
       <p class="hand-sign-row">
-        <span>承租人：<span class="hand-sign-line"></span></span>
-        ${personChops}
+        <span class="hand-sign-main hand-sign-tenant">承租人：<span class="hand-sign-line"></span></span>
+        <span class="hand-person-slot">${personChops}</span>
       </p>
     </div>
     <p class="term-date">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
