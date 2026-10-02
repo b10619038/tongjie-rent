@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1378";
+const FILE_VER = "1379";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23105,7 +23105,7 @@ function payAcctFields(co) {
   const bank = (co && co.payBank) || "";
   return `<label class="field"><span>出帳帳戶</span><select id="co-pay-acct">${BOOK_ACCOUNTS.map(a => `<option${a === acct ? " selected" : ""}>${a}</option>`).join("")}</select></label>
     <label class="field"><span>銀行／通路</span><select id="co-pay-bank"><option value="">（無）</option>${BANK_PLACES.map(a => `<option${a === bank ? " selected" : ""}>${a}</option>`).join("")}</select></label>
-    <label class="field"><span>${co && co.stayDays ? "已住租金" : "日租金退還"}</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="${co && co.stayDays ? "從押金扣掉的已住天數租金" : "不滿月退給舊客，沒有就空白"}" /></label>`;
+    ${co && co.stayDays ? `<label class="field"><span>已住租金</span><input id="co-prorate" type="number" inputmode="numeric" value="${co.prorate ? co.prorate : ""}" placeholder="從押金扣掉的已住天數租金" /></label>` : ""}`;
 }
 function incomingActionHtml(inc, r) {
   if (!inc || !r || inc.former || inc.demo) return "";
