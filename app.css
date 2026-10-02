@@ -6560,6 +6560,34 @@ html.embed-pane .home-upd { display: none !important; }
   padding: 0 8px;
 }
 .hand-signs p { margin: 0; }
+.hand-sign-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6mm;
+}
+.hand-sign-line {
+  display: inline-block;
+  width: 58mm;
+  height: 8mm;
+  border-bottom: 1px solid #111;
+  vertical-align: bottom;
+  margin-left: 2mm;
+}
+.hand-chops {
+  position: relative;
+  width: 45mm;
+  height: 25mm;
+  flex: 0 0 auto;
+}
+.hand-chops .chop-lg { top: 0; left: 0; }
+.hand-chops .chop-sm { top: 10mm; left: 30mm; }
+.hand-person-chop {
+  position: relative;
+  width: 10mm;
+  height: 10mm;
+  flex: 0 0 auto;
+}
+.hand-person-chop .chop-ps { top: 0; left: 0; }
 
 .errand-ball {
   position: fixed;

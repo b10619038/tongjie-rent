@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1346";
+const FILE_VER = "1347";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23194,6 +23194,10 @@ function handoverConfirmPaperHtml(t, r, co) {
     "床墊 1 張",
     "床板 1 張"
   ];
+  const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
+  const lessor = `${firm.name || "統潔開發有限公司"}　趙正賢`;
+  const nameList = splitPair((t && t.name) || "");
+  const personChops = (nameList.length > 1 ? [0, 1] : [0]).map(() => `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`).join("");
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p>甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -23204,8 +23208,14 @@ function handoverConfirmPaperHtml(t, r, co) {
       <li class="hand-fee"><span>水費：<span class="term-fill amt">${escapeHtml(water)}</span></span><span class="hand-elec">電費：<span class="term-fill amt">${escapeHtml(elec)}</span></span><span class="hand-yuan">元整</span></li>
     </ol>
     <div class="hand-signs">
-      <p>出租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
-      <p>承租人：<span class="term-sign-line"></span><span class="term-chop" title="蓋章"></span></p>
+      <p class="hand-sign-row">
+        <span>出租人：${escapeHtml(lessor)}</span>
+        <span class="hand-chops"><span class="chop-mark chop-lg"></span><span class="chop-mark chop-sm"></span></span>
+      </p>
+      <p class="hand-sign-row">
+        <span>承租人：<span class="hand-sign-line"></span></span>
+        ${personChops}
+      </p>
     </div>
     <p class="term-date">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
   </div></div>`;
