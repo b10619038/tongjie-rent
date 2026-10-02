@@ -4410,7 +4410,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 5.5mm;
     margin: 6mm 0 0;
   }
   body.print-term .term-handover-paper .hand-list li { margin: 0; }
@@ -6483,7 +6484,8 @@ html.embed-pane .home-upd { display: none !important; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 5.5mm;
   margin: 4mm 0 0;
 }
 .hand-a4-fit .term-handover-paper .hand-list li { margin: 0; }
