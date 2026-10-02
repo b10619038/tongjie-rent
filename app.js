@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-11-12";
-const APP_EDIT_COUNT = 1779;
+const APP_STAMP = "2026-10-02-11-15";
+const APP_EDIT_COUNT = 1780;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1329";
+const FILE_VER = "1330";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
+  { ver: APP_VERSION, items: ["中途退租：押金減已住天數租金，再加電費餘額"] },
+  { ver: "2026-10-02-11-12-1779", items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
   { ver: "2026-10-02-11-09-1778", items: ["承租人簽章的線拉長兩倍"] },
   { ver: "2026-10-02-11-06-1777", items: ["契約特別約定：物黏貼改成勿黏貼"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
@@ -3819,7 +3820,7 @@ function earlyApplyOverlayHtml() {
       <p class="small">選終止日。契約和後台是同一份，押金與退還金額先照系統計算，不能改。送出後後台會立刻收到通知。</p>
       <label class="field"><span>終止日期</span><input id="early-date" type="date" value="${escapeHtml(at)}" min="${escapeHtml(today)}"${max ? ` max="${escapeHtml(max)}"` : ""} /></label>
       <label class="field"><span>電費餘額</span><input id="early-elec" type="number" inputmode="numeric" min="0" step="1" placeholder="插入房間機器後填餘額" value="${escapeHtml(ui.earlyElec != null ? ui.earlyElec : "")}" /></label>
-      <p class="small">把儲值卡插入房間的機器，畫面上的餘額填在這裡。總退還會扣掉這筆。</p>
+      <p class="small">把儲值卡插入房間的機器，畫面上的餘額填在這裡。這筆會加進總退還。</p>
       <div id="early-paper">${termLeasePaperHtml(t, r, earlyApplyCo(t, r, at, ui.earlyElec))}</div>
       <p class="small" id="early-refund-line" style="margin-top:8px"></p>
       <div class="field" style="margin-top:12px"><span>預約終止簽約時間</span>
