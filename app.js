@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1354";
+const FILE_VER = "1355";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -18578,7 +18578,8 @@ function tenantForRenewPrint(t, r, item) {
     leaseStart: range.start,
     leaseEnd: range.end,
     leases: parts,
-    payBank: NEW_TENANT_PAY_BANK
+    payBank: NEW_TENANT_PAY_BANK,
+    contractSignAt: ymdOf(item && item.appointAt) || ""
   });
 }
 function isRenewSignDay(item) {
@@ -23287,7 +23288,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
   const emNames = splitPair((t && t.emergencyName) || (es && es.emergencyName) || "");
   const emPhones = splitPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || "");
   const addrs = splitPair(tenantPaperAddress(t));
-  const sign = rocPartsOf((es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
+  const sign = rocPartsOf(ymdOf(t && t.contractSignAt) || (es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
   const due = rentDueDay(t);
   const pay = tenantPayAccounts(t, r).primary || {};
   const ck = leaseCk;
