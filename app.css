@@ -1114,6 +1114,7 @@ button.pay-pill.hand {
   background: currentColor;
   transform: translateY(-50%);
   animation: sentSwoosh 2.2s linear infinite;
+  animation-delay: var(--sent-shift, 0ms);
 }
 @keyframes sentSwoosh {
   0% { left: 0; width: 10px; height: 10px; opacity: 0; transform: translateY(-50%); }

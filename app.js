@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1388";
+const FILE_VER = "1389";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -3392,6 +3392,12 @@ function scrollRenewCardIntoPlace() {
   };
   requestAnimationFrame(() => requestAnimationFrame(go));
 }
+function sentPulseStyle() {
+  const dur = 2200;
+  if (!ui.sentEpoch) ui.sentEpoch = Date.now();
+  const shift = -((Date.now() - ui.sentEpoch) % dur);
+  return "animation-delay:" + shift + "ms";
+}
 function renewAskCardHtml(t, r, opts) {
   if (!t || !r || (r && roomIsFactory(r))) return "";
   const full = !!(opts && opts.full);
@@ -3412,7 +3418,7 @@ function renewAskCardHtml(t, r, opts) {
     const esigned = renewEsigned(cur);
     const moveNo = cur.wantMove ? String(cur.moveRoomNo || "") : "";
     return `<div class="handover-note renew-note">
-      <div class="label${signed ? "" : " renew-sent-head"}">${signed ? "續約完成" : "續約申請已送出<span class=\"sent-track\" aria-hidden=\"true\"><i class=\"sent-pulse\"></i></span>"}</div>
+      <div class="label${signed ? "" : " renew-sent-head"}">${signed ? "續約完成" : "續約申請已送出<span class=\"sent-track\" aria-hidden=\"true\"><i class=\"sent-pulse\" style=\"${sentPulseStyle()}\"></i></span>"}</div>
       ${signed ? `<p>現場已簽約。目前合約仍至 ${escapeHtml(rocSlash(t.leaseEnd || cur.oldEnd) || "")}，</p>` : ""}
       ${Array.isArray(cur.people) && cur.people.length ? renewPeopleCardHtml(cur) : `<p>新約 ${renewTermLabel(years, extra)}　${escapeHtml(rocSlash(cur.start) || "")} ➜ ${escapeHtml(rocSlash(cur.end) || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>`}
       ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
@@ -24476,6 +24482,7 @@ function paintApp() {
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
+  if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
   if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
