@@ -4415,6 +4415,19 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   }
   body.print-term .term-handover-paper .hand-list li { margin: 0; }
   body.print-term .term-handover-paper .hand-signs { margin: 4mm 0 0; gap: 8mm; }
+  body.print-term .term-lease-paper {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    height: 265mm;
+    min-height: 265mm;
+    max-height: 265mm;
+    line-height: 2.25;
+  }
+  body.print-term .term-lease-paper .term-date {
+    margin-top: auto;
+    margin-bottom: 0;
+  }
   body.print-term .term-lease-paper h3,
   body.print-term .term-handover-paper h3 { font-size: 22pt; margin-bottom: 22pt; letter-spacing: .7em; }
   body.print-term .term-hint { display: none !important; }
@@ -6447,6 +6460,21 @@ html.embed-pane .home-upd { display: none !important; }
 }
 .hand-a4-fit .term-lease-paper h3,
 .hand-a4-fit .term-handover-paper h3 { margin-bottom: 14px; font-size: 22px; }
+.hand-a4-fit .term-lease-paper {
+  display: flex;
+  flex-direction: column;
+  line-height: 2.05;
+}
+.hand-a4-fit .term-lease-paper p { margin-bottom: 1.6mm; }
+.hand-a4-fit .term-lease-paper .term-center { margin: 3mm 0; }
+.hand-a4-fit .term-lease-paper .term-sign { margin: 3mm 0 4mm; }
+.hand-a4-fit .term-lease-paper .term-parties { margin-top: 4mm; }
+.hand-a4-fit .term-lease-paper .term-party { margin-top: 4mm; }
+.hand-a4-fit .term-lease-paper .term-date {
+  margin-top: auto;
+  margin-bottom: 0;
+  padding-top: 4mm;
+}
 .hand-a4-fit .term-handover-paper {
   display: flex;
   flex-direction: column;
