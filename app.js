@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1340";
+const FILE_VER = "1341";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23159,8 +23159,8 @@ function termLeasePaperHtml(t, r, co) {
         <p>統一編號：　${escapeHtml(firm.taxId || "82934388")}</p>
         <p>代表人：　趙正賢</p>
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
-        <span class="chop-mark chop-lg" style="top:0;right:38mm"></span>
-        <span class="chop-mark chop-sm" style="top:10mm;right:22mm"></span>
+        <span class="chop-mark chop-lg" style="top:0;right:52mm"></span>
+        <span class="chop-mark chop-sm" style="top:10mm;right:36mm"></span>
       </div>
       <div class="term-party chop-host">
         <p>立約人（乙方）：　${escapeHtml(names)}</p>
@@ -23168,8 +23168,8 @@ function termLeasePaperHtml(t, r, co) {
         ${factoryPaper ? "" : `<p>身分證字號：　${escapeHtml(idNo)}</p>`}
         <p>電話：　${escapeHtml(phone)}</p>
         ${nameList.length > 1
-          ? `<span class="chop-mark chop-ps" style="top:0;right:36mm"></span><span class="chop-mark chop-ps" style="top:0;right:22mm"></span>`
-          : `<span class="chop-mark chop-ps" style="top:0;right:38mm"></span>`}
+          ? `<span class="chop-mark chop-ps" style="top:0;right:50mm"></span><span class="chop-mark chop-ps" style="top:0;right:36mm"></span>`
+          : `<span class="chop-mark chop-ps" style="top:0;right:52mm"></span>`}
       </div>
     </div>
     <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
