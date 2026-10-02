@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1394";
+const FILE_VER = "1395";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -6472,7 +6472,42 @@ function normalize(data) {
   try { if (scrubPracticePeople(data)) markCloudDirty(); } catch {}
   persistLedger(data);
   try { applyDevChats(data); } catch {}
+  try { applySharedTabOrder(data); } catch {}
   return data;
+}
+const TAB_ORDER_VER = "pc-2026-10-03";
+const TAB_ORDER_SEED = ["dash", "rooms", "tenants", "repairs", "announce", "ai", "history", "logs", "settings", "firm", "food"];
+function cacheTabOrder(ids, at) {
+  try {
+    localStorage.setItem(TAB_KEY, JSON.stringify(ids || []));
+    localStorage.setItem(TAB_KEY + "_at", String(at || ""));
+    localStorage.setItem(TAB_KEY + "_ver", TAB_ORDER_VER);
+  } catch {}
+}
+function applySharedTabOrder(data) {
+  if (!data) return false;
+  if (data.tabOrderVer === TAB_ORDER_VER && Array.isArray(data.tabOrder) && data.tabOrder.length) {
+    cacheTabOrder(data.tabOrder, data.tabOrderAt);
+    return false;
+  }
+  data.tabOrder = TAB_ORDER_SEED.slice();
+  data.tabOrderAt = Date.now();
+  data.tabOrderVer = TAB_ORDER_VER;
+  cacheTabOrder(data.tabOrder, data.tabOrderAt);
+  try { markCloudDirty(); } catch {}
+  return true;
+}
+function mergeTabOrder(into, from) {
+  if (!into || !from) return false;
+  const a = Number(into.tabOrderAt) || 0;
+  const b = Number(from.tabOrderAt) || 0;
+  if (!(from.tabOrderVer === TAB_ORDER_VER && Array.isArray(from.tabOrder) && from.tabOrder.length && b > a)) return false;
+  into.tabOrder = from.tabOrder.slice();
+  into.tabOrderAt = b;
+  into.tabOrderVer = TAB_ORDER_VER;
+  cacheTabOrder(into.tabOrder, b);
+  try { markCloudDirty(); } catch {}
+  return true;
 }
 function roomNoFromBookNote(note) {
   const s = String(note || "");
@@ -11294,6 +11329,11 @@ async function pullCloud() {
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     const mineSeats = state.loginSeats;
+    const mineTabOrder = {
+      tabOrder: state.tabOrder,
+      tabOrderAt: state.tabOrderAt,
+      tabOrderVer: state.tabOrderVer
+    };
     const mineSnap = {
       tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
@@ -11397,6 +11437,7 @@ async function pullCloud() {
       try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
       try { if (scrubPracticePeople(state)) markCloudDirty(); } catch {}
       try { ensurePhoneLoginPasses(state); } catch {}
+      try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
       try { enforceSeatLimit(); } catch {}
@@ -11413,6 +11454,7 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
+    try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
     const remoteRn = new Set((data.renewals || []).map(x => x && x.id).filter(Boolean));
@@ -27361,38 +27403,12 @@ function adminPages() {
     const cut = allowed.indexOf("dash");
     if (cut >= 0) allowed.splice(cut, 1);
   }
-  let ids = [];
-  try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
-  if (!ids.length && Array.isArray(state.tabOrder)) ids = state.tabOrder.slice();
+  let ids = Array.isArray(state.tabOrder) ? state.tabOrder.slice() : [];
+  if (!ids.length) {
+    try { ids = JSON.parse(localStorage.getItem(TAB_KEY) || "[]"); } catch { ids = []; }
+  }
   ids = ids.filter(id => allowed.includes(id));
   allowed.forEach(id => { if (!ids.includes(id)) ids.push(id); });
-  try {
-    if (localStorage.getItem("tongjie_tab_ann_after_rep") !== "1") {
-      const a = ids.indexOf("announce");
-      if (a >= 0) ids.splice(a, 1);
-      const r = ids.indexOf("repairs");
-      if (r >= 0) ids.splice(r + 1, 0, "announce");
-      else ids.push("announce");
-      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
-      localStorage.setItem("tongjie_tab_ann_after_rep", "1");
-    }
-    if (localStorage.getItem("tongjie_tab_history_after_ai") !== "1" && ids.includes("history")) {
-      ids = ids.filter(id => id !== "history");
-      const a = ids.indexOf("ai");
-      if (a >= 0) ids.splice(a + 1, 0, "history");
-      else ids.push("history");
-      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
-      localStorage.setItem("tongjie_tab_history_after_ai", "1");
-    }
-    if (localStorage.getItem("tongjie_tab_food_after_firm") !== "1") {
-      ids = ids.filter(id => id !== "food");
-      const f = ids.indexOf("firm");
-      if (f >= 0) ids.splice(f + 1, 0, "food");
-      else ids.push("food");
-      localStorage.setItem(TAB_KEY, JSON.stringify(ids));
-      localStorage.setItem("tongjie_tab_food_after_firm", "1");
-    }
-  } catch {}
   return ids.map(id => [id, labels[id]]);
 }
 function bindTabPill() {
@@ -27431,8 +27447,11 @@ function bindTabPill() {
   ui.tabPill = { x, y, w, h };
 }
 function saveTabOrder(ids) {
-  try { localStorage.setItem(TAB_KEY, JSON.stringify(ids)); } catch {}
+  const at = Date.now();
   state.tabOrder = ids.slice();
+  state.tabOrderAt = at;
+  state.tabOrderVer = TAB_ORDER_VER;
+  cacheTabOrder(ids, at);
   save();
 }
 function bindTabReorder() {
