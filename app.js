@@ -3471,7 +3471,8 @@ function renewAskCardHtml(t, r, opts) {
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
     <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室</div>
-    <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約"}</button>
+    ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 0 0">開發者代操會直接寫進正式資料，這一步不必簽名。租客自己登入仍然要簽名。</p>` : ""}
+    <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${typeof isTenantLook === "function" && isTenantLook() ? (mode === "move" ? "送出換房續約申請" : "送出續約申請") : (mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約")}</button>
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
   </div>`;
 }
@@ -3648,7 +3649,9 @@ function bindRenewForm() {
       bindRenewPicks();
     }
     const send = document.getElementById("renew-submit");
-    if (send) send.textContent = ui.renewMode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約";
+    if (send) send.textContent = (typeof isTenantLook === "function" && isTenantLook())
+      ? (ui.renewMode === "move" ? "送出換房續約申請" : "送出續約申請")
+      : (ui.renewMode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約");
     paintRenewRange();
   };
   if (modeSeg && typeof bindSegSwipe === "function") bindSegSwipe(modeSeg, () => setMode("same"), () => setMode("move"));
@@ -3793,12 +3796,23 @@ function saveTenantRenewRow(row, opt) {
   try { publishPaidCloud(); } catch {}
   const who = (row.people || []).filter(p => p && p.renew !== false).map(p => p.name + renewSpanLabel(p.years, p.months)).join("、");
   pushPhoneNotify("續約申請", `${row.roomNo} ${row.renewNames || row.name || ""}${row.moveRoomNo ? "　換至 " + row.moveRoomNo : ""}　${who}　水費 ${money(row.waterFee)} 現場現金　簽約 ${formatDateTime12(String(row.appointAt).replace("T", " "))}`, "admin");
-  toast(row.wantMove ? "已簽名並送出換房續約，現場再蓋章即可" : "已簽名並送出續約申請，現場再蓋章即可");
+  toast(row.byDev
+    ? "已寫入正式續約申請，電子簽名已略過。後台看得到，現場蓋章後再按完成簽約"
+    : (row.wantMove ? "已簽名並送出換房續約，現場再蓋章即可" : "已簽名並送出續約申請，現場再蓋章即可"));
   ui.keepScroll = true;
 }
 function openRenewSignFirst() {
   const row = buildTenantRenewRow();
   if (!row) return;
+  if (typeof isTenantLook === "function" && isTenantLook()) {
+    row.byDev = true;
+    saveTenantRenewRow(row);
+    ui.renewDraft = null;
+    ui.resignRenew = false;
+    ui.page = "lease";
+    render();
+    return;
+  }
   ui.renewDraft = row;
   ui.resignRenew = true;
   ui.signAgree = false;
@@ -3904,6 +3918,7 @@ function earlyApplyOverlayHtml() {
       </div>
       <div class="small">地點：5F，電梯出來右轉到底，7651簽約室。雙方簽名蓋章。</div>
       <button type="button" class="btn-navy" id="early-send" style="margin-top:12px">送出申請</button>
+      ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin-top:8px">開發者代操送出後會寫進正式的中途退租申請。</p>` : ""}
       <button type="button" class="ghost" id="early-cancel" style="margin-top:8px">取消</button>
     </div>
   </div>`;
@@ -26685,13 +26700,14 @@ function leaseSignView() {
         <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(slashPair(tenantHouseholdAddress(t, r)))}" placeholder="${two ? "兩人請用／分開" : "請填身分證上的戶籍地址"}" autocomplete="street-address" /></label>
       </div>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
+      ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出，會寫進正式資料。租客自己的帳號仍然一定要簽名。</p>` : ""}
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
       ${two ? `<div class="small" style="margin:12px 2px 8px">${escapeHtml(names[1])}　請在白框內用藍筆簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad-2" width="640" height="280"></canvas></div>` : ""}
       <div class="btn-row" style="margin-top:12px">
         <button type="button" class="ghost" id="sign-clear">清除簽名</button>
-        <button type="button" class="btn-navy" id="sign-confirm">${draft ? "簽名並送出申請" : "確認簽署"}</button>
+        <button type="button" class="btn-navy" id="sign-confirm">${typeof isTenantLook === "function" && isTenantLook() ? (draft ? "免簽名，送出申請" : "免簽名，下一步") : (draft ? "簽名並送出申請" : "確認簽署")}</button>
       </div>
     </div>`;
 }
@@ -31611,6 +31627,7 @@ function renewalAdminCardHtml(x) {
     <div class="small" style="margin-bottom:6px">${Array.isArray(x.people) && x.people.length ? x.people.map(p => p && p.renew === false ? escapeHtml(p.name) + "不續約" : escapeHtml((p && p.name) || "") + "　" + renewSpanLabel(p && p.years, p && p.months)).join("　") : renewTermLabel(years, renewExtraMonthsOf(x))}　${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
     ${moveLine}
     ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(rocSlash(oldEnd)) : ""}。新約第一天（${escapeHtml(rocSlash(x.start) || "")}）才換成新年合約。</div>` : ""}
+    ${x.byDev && !signed && !(typeof renewEsigned === "function" && renewEsigned(x)) ? `<div class="small" style="margin-bottom:8px">開發者代送，尚未電子簽名。現場蓋章後按完成簽約。</div>` : ""}
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
         ${appointOneHtml(x.appointAt || "", { attr: ` data-renew-appoint="${x.id}"`, disabled: signed, gcalId: x.id })}
@@ -34429,9 +34446,28 @@ function bindSignPad() {
   const ok = document.getElementById("sign-confirm");
   if (ok) ok.onclick = () => {
     const agree = document.getElementById("sign-agree");
-    if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
     const c = a && a.c;
-    if (!c || (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length))) { toast("請先在白框內簽名"); return; }
+    const look = typeof isTenantLook === "function" && isTenantLook();
+    const hasInk = !!(c && (c.dataset.ink === "1" || (ui.signStrokes && ui.signStrokes.length)));
+    const t0 = me();
+    const draft0 = ui.renewDraft && t0 && ui.renewDraft.tenantId === t0.id ? ui.renewDraft : null;
+    if (look && !hasInk) {
+      ui.signStrokes = [];
+      ui.signStrokes2 = [];
+      ui.signing = false;
+      ui.resignRenew = false;
+      if (draft0) {
+        draft0.byDev = true;
+        saveTenantRenewRow(draft0);
+      }
+      ui.renewDraft = null;
+      ui.page = "lease";
+      if (!draft0) toast("已略過簽名，沒有寫入電子簽名");
+      render();
+      return;
+    }
+    if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
+    if (!c || !hasInk) { toast("請先在白框內簽名"); return; }
     const t = me(); const r = signTargetRoom(t) || myRoom();
     const draft = ui.renewDraft && t && ui.renewDraft.tenantId === t.id ? ui.renewDraft : null;
     const renewing = !!(draft || (t && typeof liveRenewalOf === "function" && liveRenewalOf(t)));
