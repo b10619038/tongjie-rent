@@ -108,12 +108,49 @@ export async function saveBinds(data) {
       payProofs: (data && data.payProofs) || {},
       payUsers: (data && data.payUsers) || {}
     };
+    const ym = payYmNow();
+    const noted = [];
+    Object.keys((data && data.payProofs) || {}).forEach(no => {
+      const p = data.payProofs[no];
+      if (!p || p.ym !== ym || !p.hasText || !p.hasImage) return;
+      const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+      if (!room || room.kind === "factory" || room.demo) return;
+      const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+      if (!t) return;
+      if (t.paid && String(t.paidYm || "").slice(0, 7) === ym) return;
+      const when = new Date(p.at || Date.now()).toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 16);
+      t.paid = true;
+      t.paidVia = "line";
+      t.paidAt = when;
+      t.paidTouched = true;
+      t.paidYm = ym;
+      t.remitOn = when.slice(0, 10);
+      t.lineNotified = true;
+      t.lineProofYm = ym;
+      t.edited = true;
+      t.editedAt = Date.now();
+      if (!state.paidMarks) state.paidMarks = {};
+      state.paidMarks[t.id] = {
+        paid: true, paidAt: t.paidAt, paidVia: "line", paidYm: ym,
+        editedAt: t.editedAt, name: t.name || ""
+      };
+      noted.push(no + " " + (t.name || "") + "　實繳日 " + t.remitOn);
+    });
     state.updatedAt = Date.now();
     await fetch(STATE_HOOK + "/api/state", {
       method: "PUT",
       headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify(state)
     });
+    for (const line of noted) {
+      try {
+        await fetch(STATE_HOOK + "/api/push", {
+          method: "POST",
+          headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ target: "admin", title: "繳費回報", body: line + " 已回報繳費（官方 LINE）" })
+        });
+      } catch {}
+    }
   } catch {}
 }
 

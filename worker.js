@@ -60,6 +60,63 @@ function notePayProof(data, room, kind) {
   data.payProofs[no] = cur;
   return cur;
 }
+function taipeiStamp(ts) {
+  try {
+    return new Date(ts || Date.now()).toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 16);
+  } catch {
+    return payYmNow() + "-01 10:00";
+  }
+}
+async function persistPayToState(env, data) {
+  if (!env || !env.DATA) return;
+  const state = await getState(env);
+  if (!state || !Array.isArray(state.tenants)) return;
+  const ym = payYmNow();
+  state.lineBinds = {
+    byRoom: (data && data.byRoom) || {},
+    byUser: (data && data.byUser) || {},
+    payProofs: (data && data.payProofs) || {},
+    payUsers: (data && data.payUsers) || {}
+  };
+  const noted = [];
+  Object.keys((data && data.payProofs) || {}).forEach(no => {
+    const p = data.payProofs[no];
+    if (!p || p.ym !== ym || !p.hasText || !p.hasImage) return;
+    const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room || room.kind === "factory" || room.demo) return;
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (!t) return;
+    if (t.paid && String(t.paidYm || "").slice(0, 7) === ym) return;
+    const when = taipeiStamp(p.at);
+    t.paid = true;
+    t.paidVia = "line";
+    t.paidAt = when;
+    t.paidTouched = true;
+    t.paidYm = ym;
+    t.remitOn = when.slice(0, 10);
+    t.lineNotified = true;
+    t.lineProofYm = ym;
+    t.edited = true;
+    t.editedAt = Date.now();
+    if (!state.paidMarks) state.paidMarks = {};
+    state.paidMarks[t.id] = {
+      paid: true, paidAt: t.paidAt, paidVia: "line", paidYm: ym,
+      editedAt: t.editedAt, name: t.name || ""
+    };
+    noted.push(no + " " + (t.name || "") + "　實繳日 " + t.remitOn);
+  });
+  state.updatedAt = Date.now();
+  await putState(env, state);
+  for (const line of noted) {
+    try {
+      await fetch("https://tongjie-line.b10619038.workers.dev/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Tongjie-Key": APP_KEY },
+        body: JSON.stringify({ target: "admin", title: "繳費回報", body: line + " 已回報繳費（官方 LINE）" })
+      });
+    } catch {}
+  }
+}
 function payProofReply(p) {
   if (!p) return "";
   if (p.hasText && p.hasImage) return "已收到繳費回報與截圖，請回 App 點「本月已繳費」";
@@ -670,7 +727,10 @@ export default {
       }
       if (bound) continue;
     }
-    if (dirty) await saveBinds(data);
+    if (dirty) {
+      await saveBinds(data);
+      try { await persistPayToState(env, data); } catch (e) {}
+    }
     return new Response("OK", { status: 200 });
   }
 };

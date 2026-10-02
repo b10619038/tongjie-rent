@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-11-20";
-const APP_EDIT_COUNT = 1781;
+const APP_STAMP = "2026-10-02-13-50";
+const APP_EDIT_COUNT = 1782;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1331";
+const FILE_VER = "1332";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人合約個人印章移到簽章線中間，名字靠在印章左邊"] },
+  { ver: APP_VERSION, items: ["官方 LINE 回報加截圖到齊後，直接標本月已繳並通知後台"] },
   { ver: "2026-10-02-11-12-1779", items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
   { ver: "2026-10-02-11-09-1778", items: ["承租人簽章的線拉長兩倍"] },
   { ver: "2026-10-02-11-06-1777", items: ["契約特別約定：物黏貼改成勿黏貼"] },
@@ -3213,18 +3213,13 @@ function tenantLineUnlocked(t, r) {
 }
 async function syncLinePayProof() {
   await refreshLineBinds();
+  try { applySeenPayProofs(); } catch {}
   const t = typeof me === "function" ? me() : null;
   const r = typeof myRoom === "function" ? myRoom() : null;
-  if (!t || !r || t.paid || isDemoTenant(t)) return false;
+  if (!t || !r || isDemoTenant(t) || isDevPreview() || isProspectPreview()) return false;
+  if (paidThisMonth(t)) return false;
   if (!linePayReady(t, r)) return false;
-  if (t.lineProofYm === payYmNow() && t.lineNotified) return false;
-  t.lineNotified = true;
-  t.lineProofYm = payYmNow();
-  t.edited = true;
-  t.editedAt = Date.now();
-  save();
-  clearTimeout(saveTimer);
-  try { pushCloud(); } catch {}
+  markTenantPaid("line");
   return true;
 }
 function armLinePayProofPoll() {
@@ -3235,7 +3230,7 @@ function armLinePayProofPoll() {
       if (ui.page !== "pay") return;
       syncLinePayProof().then(ok => {
         if (!ok) return;
-        toast("已收到 LINE 回報與截圖，可以點本月已繳費");
+        toast("已標為本月已繳，後台已收到通知");
         ui.keepScroll = true;
         render();
       });
@@ -25520,18 +25515,61 @@ function markTenantLineReported() {
     try { pushCloud(); } catch {}
   }
 }
+function noteLinePaidTenant(t, room) {
+  if (!t || !room || isDemoTenant(t) || t.former || t.incoming) return false;
+  if (paidThisMonth(t)) return false;
+  const ym = payYmNow();
+  t.paid = true;
+  t.paidVia = "line";
+  t.paidAt = nowStamp();
+  t.paidTouched = true;
+  t.paidYm = ym;
+  t.remitOn = ymdOf(t.paidAt) || todayYmd();
+  t.lineNotified = true;
+  t.lineProofYm = ym;
+  t.edited = true;
+  t.editedAt = Date.now();
+  return true;
+}
+function applySeenPayProofs() {
+  if (!state || ui.role === "tenant") return 0;
+  const proofs = (ui.lineBinds && ui.lineBinds.payProofs) || {};
+  const ym = payYmNow();
+  let n = 0;
+  Object.keys(proofs).forEach(no => {
+    const p = proofs[no];
+    if (!p || String(p.ym) !== ym || !p.hasText || !p.hasImage) return;
+    const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room || room.demo || room.kind === "factory") return;
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (!noteLinePaidTenant(t, room)) return;
+    stampPaidMark(state, t);
+    try { upsertRentAutoBookOn(state, t); } catch {}
+    try { mirrorPaidFromTenant(state, t); } catch {}
+    pushPhoneNotify("繳費回報", `${no} ${t.name || ""} 已回報繳費（官方 LINE）`, "admin");
+    n += 1;
+  });
+  if (n) {
+    save();
+    clearTimeout(saveTimer);
+    try { pushCloud(); } catch {}
+  }
+  return n;
+}
 function markTenantPaid(via) {
   const t = me(); const r = myRoom();
   if (!t || !r) return;
-  t.paid = true;
-  t.paidVia = via;
-  t.paidAt = nowStamp();
-  t.paidTouched = true;
-  t.paidYm = payYmNow();
-  t.remitOn = ymdOf(t.paidAt);
   if (via === "line") {
-    t.lineNotified = true;
-    t.lineProofYm = payYmNow();
+    if (!noteLinePaidTenant(t, r)) return;
+  } else {
+    t.paid = true;
+    t.paidVia = via;
+    t.paidAt = nowStamp();
+    t.paidTouched = true;
+    t.paidYm = payYmNow();
+    t.remitOn = ymdOf(t.paidAt);
+    t.edited = true;
+    t.editedAt = Date.now();
   }
   stampPaidMark(state, t);
   try { ensureDemoTenant(state); } catch {}
@@ -35119,6 +35157,7 @@ function bindAdmin() {
     render();
   };
   refreshLineBinds().then(() => {
+    try { applySeenPayProofs(); } catch {}
     document.querySelectorAll("[data-line-status]").forEach(el => {
       const no = el.dataset.lineStatus;
       const bound = lineBindForRoom(no);
