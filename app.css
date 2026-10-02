@@ -6420,6 +6420,7 @@ html.embed-pane .home-upd { display: none !important; }
   vertical-align: bottom;
   margin-left: 6px;
 }
+.term-lease-paper .term-sign.pair .term-sign-line { width: 118mm; }
 .term-lease-paper .term-parties { margin-top: 22px; }
 .term-lease-paper .term-party { margin: 16px 0 0; padding-left: 1.5em; }
 .term-lease-paper .term-chop { display: none; }
