@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1374";
+const FILE_VER = "1375";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23595,7 +23595,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
         <span class="chop-mark chop-lg" style="top:7mm;left:73mm"></span>
         <span class="chop-mark chop-sm" style="top:17mm;left:calc(73mm + 30mm)"></span>
       </div>
-      <div class="lease-sign-block lease-people${names.length > 1 ? " side" : ""} chop-host">${peopleCols}${names.length < 2 ? `<span class="chop-mark chop-ps" style="top:-6mm;left:73mm"></span>` : `<span class="chop-mark chop-ps" style="top:-8mm;left:68mm"></span><span class="chop-mark chop-ps" style="top:-8mm;left:calc(50% + 68mm)"></span>`}</div>
+      <div class="lease-sign-block lease-people${names.length > 1 ? " side" : ""} chop-host">${peopleCols}${names.length < 2 ? `<span class="chop-mark chop-ps" style="top:-1mm;left:73mm"></span>` : `<span class="chop-mark chop-ps" style="top:-3mm;left:68mm"></span><span class="chop-mark chop-ps" style="top:-3mm;left:calc(50% + 68mm)"></span>`}</div>
       <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
       </div>
       </div>
