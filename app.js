@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1370";
+const FILE_VER = "1371";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -15379,6 +15379,7 @@ function icon(name) {
     "room-open": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" fill-rule="evenodd" d="M3.1 4.7 11.2 2.3 13.2 3.1 13.2 20.9 11.1 21.8 3.1 19.1zM6.05 11.05a1.15 1.15 0 1 0 .02 0z"/><path fill="currentColor" d="M14.5 2.1h7.2v19.8h-7.2v-2.3h4.9V4.4h-4.9z"/></svg>',
     lease: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5.2" y="2.2" width="13.6" height="19.6" rx="2.2"/><path d="M8.2 8h7.6M8.2 12h7.6M8.2 16h5.2"/></svg>',
     fix: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    "fix-fill": '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z"/></svg>',
     "fix-box": '<img class="nav-tool" src="images/repair-box.png?v=' + FILE_VER + '" alt="" />',
     pay: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
     line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 5.2h13.2a2.6 2.6 0 0 1 2.6 2.6v5.6a2.6 2.6 0 0 1-2.6 2.6H9.6L5.6 19.6V16H5.2a2.6 2.6 0 0 1-2.6-2.6V7.8a2.6 2.6 0 0 1 2.6-2.6z"/><circle cx="8.4" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="15.6" cy="10.6" r="1" fill="currentColor" stroke="none"/></svg>',
@@ -27261,7 +27262,7 @@ function adminView() {
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
         const tabIcon = { tenants: "tab-tenants.png", dash: "tab-dash.png", rooms: "tab-rooms.png", ai: "tab-logs.png", announce: "tab-announce.png", history: "tab-firm.png", food: "tab-food.png", logs: "tab-ai.png" }[id] || "";
         const ic = id === "repairs"
-          ? `<span class="tab-repair">${icon("fix")}</span>`
+          ? `<span class="tab-repair">${icon("fix-fill")}</span>`
           : id === "settings"
           ? `<span class="tab-repair">${icon("gear")}</span>`
           : id === "firm"
