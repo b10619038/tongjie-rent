@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-13-50";
-const APP_EDIT_COUNT = 1783;
+const APP_STAMP = "2026-10-02-15-12";
+const APP_EDIT_COUNT = 1784;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1333";
+const FILE_VER = "1334";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["官方 LINE 回報加截圖到齊後，直接標本月已繳並通知後台"] },
+  { ver: APP_VERSION, items: ["終止租賃契約加上公司大小章和個人印章框"] },
+  { ver: "2026-10-02-13-50-1783", items: ["官方 LINE 回報加截圖到齊後，直接標本月已繳並通知後台"] },
   { ver: "2026-10-02-11-12-1779", items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
   { ver: "2026-10-02-11-09-1778", items: ["承租人簽章的線拉長兩倍"] },
   { ver: "2026-10-02-11-06-1777", items: ["契約特別約定：物黏貼改成勿黏貼"] },
@@ -23116,6 +23117,10 @@ function termLeasePaperHtml(t, r, co) {
   let person = String((info && info.contactName) || (t && t.contactName) || "").trim();
   if (!person || person === String(t.name || "").trim() || String(t.name || "").indexOf(person) >= 0) person = "";
   const amt = n => cnAmt(n) || "　";
+  const nameList = splitPair(t.name || "");
+  const receiptChops = nameList.length > 1
+    ? `<span class="chop-mark chop-ps" style="top:-4mm;right:16mm"></span><span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`
+    : `<span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`;
   return `<div class="hand-a4-fit"><div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
     <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
@@ -23131,16 +23136,18 @@ function termLeasePaperHtml(t, r, co) {
     ${co.stayDays ? `<p class="term-indent">日租　<span class="term-fill amt">${escapeHtml(String(co.stayDays))}</span>　天（月租÷${escapeHtml(String(co.monthDays || ""))}）　<span class="term-fill amt">${escapeHtml(amt(prorate))}</span>　元整。</p>` : ""}
     ${co.elecBalance != null ? `<p class="term-indent">電費餘額　<span class="term-fill amt">${escapeHtml(amt(Number(co.elecBalance) || 0))}</span>　元整。</p>` : ""}
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
-    <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
+    <p class="term-sign chop-host">乙方簽收：<span class="term-sign-line"></span>${receiptChops}</p>
     <p>備註：</p>
     <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
     <p>二、乙方將房屋恢復原狀交給甲方。</p>
     <div class="term-parties">
-      <div class="term-party">
+      <div class="term-party chop-host">
         <p>立約人（甲方）：　${escapeHtml(firm.name || "統潔開發有限公司")}</p>
         <p>統一編號：　${escapeHtml(firm.taxId || "82934388")}</p>
         <p>代表人：　趙正賢</p>
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
+        <span class="chop-mark chop-lg" style="top:-1mm;left:88mm"></span>
+        <span class="chop-mark chop-sm" style="top:9mm;left:113mm"></span>
       </div>
       <div class="term-party">
         <p>立約人（乙方）：　${escapeHtml(names)}</p>
