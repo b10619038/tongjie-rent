@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1392";
+const FILE_VER = "1393";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -18206,7 +18206,7 @@ function firstPayHintHtml(bits) {
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
   if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
-  return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。電費每度 NT$ 5.5。";
+  return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。";
 }
 function firstPayWayOf(t) {
   const w = String((t && t.payWay) || "");
