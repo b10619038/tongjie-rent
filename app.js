@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1379";
+const FILE_VER = "1380";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23903,9 +23903,12 @@ function printRenewalById(id) {
   try { printStudioLease(tenantForRenewPrint(t, r, item), r); }
   catch (err) { try { console.error(err); } catch {} toast("合約無法開啟，請再試一次"); }
 }
-function checkoutDefaultDate(t, kind) {
+function checkoutDefaultDate(t, r, kind) {
   const today = ymdOf(nowStamp());
-  if (kind === "normal") return ymdOf(t && t.leaseEnd) || today;
+  if (kind === "normal") {
+    const end = (typeof tenantOccupancyEnd === "function" && tenantOccupancyEnd(t, r)) || ymdOf(t && t.leaseEnd);
+    return end || today;
+  }
   return today;
 }
 function checkoutFormHtml() {
@@ -23921,13 +23924,14 @@ function checkoutFormHtml() {
   const deposit = depositRaw || (r && String(r.no || "") === "大樹-18" ? 92000 : 0);
   const deduct = Number(co.deduct) || 0;
   const today = ymdOf(nowStamp());
-  const dateDefault = checkoutDefaultDate(t, kind);
+  const dateDefault = checkoutDefaultDate(t, r, kind);
+  const shownAt = (kind === "normal" && co.status !== "done" && !co.atManual) ? dateDefault : (co.at || dateDefault);
   const prorate = co.prorate != null && co.prorate !== "" ? Number(co.prorate) : (kind === "early" ? defaultProrateRent(t, r, co.at || today) : 0);
   let refund = co.refund != null && kind === "early" ? Number(co.refund) : Math.max(0, deposit - deduct) + prorate;
   if (String(r.no || "") === "大樹-18") refund = 46000;
   const switcher = `<button type="button" class="ghost" id="co-kind-reset" style="width:auto">改選退租方式</button>`;
   const paperCo = Object.assign({}, co, {
-    at: co.at || dateDefault, deposit, deduct, prorate, refund,
+    at: shownAt, deposit, deduct, prorate, refund,
     property: co.property || termPropLabel(r),
     idNo: co.idNo || t.idNo || "", phone: co.phone || t.phone || ""
   });
@@ -23982,7 +23986,7 @@ function checkoutFormHtml() {
     <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。列印交接確認書後雙方蓋章即可。"}</div>
     <div class="row" style="margin-top:12px;align-items:center"><div class="label" style="margin:0">文件預覽</div><button type="button" class="ghost" id="co-sys-default" style="width:auto;margin-left:auto">系統預設</button></div>
     ${termPrintPackHtml(t, r, paperCo, "normal")}
-    <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || dateDefault)}" /></label>
+    <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(shownAt)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
     <label class="field"><span>扣款</span><input id="co-deduct" type="number" inputmode="numeric" value="${deduct || ""}" /></label>
     ${payAcctFields(co)}
@@ -24046,10 +24050,11 @@ function readCheckoutForm() {
     property: val("co-property"),
     signedAt: val("co-date") || ymdOf(nowStamp())
   };
+  if (kind === "normal") out.atManual = true;
   if (elecBalEl) out.elecBalance = elecBalEl.value === "" ? null : num("co-elec-bal");
   return out;
 }
-function previewCheckoutPaper() {
+function previewCheckoutPaper(forceAt) {
   const pack = document.getElementById("term-print-pack");
   if (!pack) return;
   const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
@@ -24057,8 +24062,10 @@ function previewCheckoutPaper() {
   const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
   const data = readCheckoutForm();
   if (!data) return;
+  const forced = typeof forceAt === "string" ? ymdOf(forceAt) : "";
+  if (forced) data.at = forced;
   const prev = lastCheckout(t.id) || {};
-  const co = Object.assign({}, prev, data, { signedAt: data.at });
+  const co = Object.assign({}, prev, data, { at: data.at, signedAt: data.at });
   pack.outerHTML = termPrintPackHtml(t, r, co, data.kind);
 }
 function applyCheckoutDefaults() {
@@ -24080,7 +24087,8 @@ function applyCheckoutDefaults() {
     const el = document.getElementById(id);
     if (el) el.checked = false;
   };
-  set("co-date", checkoutDefaultDate(t, kind));
+  const day = checkoutDefaultDate(t, r, kind);
+  set("co-date", day);
   set("co-property", termPropLabel(r));
   set("co-idno", t.idNo || "");
   set("co-phone", t.phone || "");
@@ -24104,8 +24112,14 @@ function applyCheckoutDefaults() {
   uncheck("co-ic");
   const refundView = document.getElementById("co-refund");
   if (refundView) refundView.textContent = money(refund);
-  previewCheckoutPaper();
-  toast("已改回系統預設，尚未儲存");
+  const prev = lastCheckout(t.id);
+  if (prev) {
+    prev.at = day;
+    prev.signedAt = day;
+    if (kind === "normal") prev.atManual = false;
+  }
+  previewCheckoutPaper(day);
+  showToastBanner("已改回系統預設，尚未儲存");
 }
 function saveCheckout(done, opt) {
   const data = readCheckoutForm();
