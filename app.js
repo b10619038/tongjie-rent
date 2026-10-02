@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1389";
+const FILE_VER = "1390";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -3682,7 +3682,7 @@ function bindRenewForm() {
       const at = (document.getElementById("renew-appoint") || {}).value || ui.renewAppoint;
       const room = typeof myRoom === "function" ? myRoom() : null;
       const no = room && room.no ? room.no : "";
-      openGoogleCalendarAt(at, no ? `牛10 ${no} 續約簽約` : "牛10 續約簽約", "統潔＆信潔開發有限公司續約簽約");
+      openGoogleCalendarAt(at, no ? `文東 ${no} 續約簽約` : "文東 續約簽約", "統潔＆信潔開發有限公司續約簽約");
     };
   }
   const send = document.getElementById("renew-submit");
@@ -17317,11 +17317,11 @@ function openGoogleCalendar(item, kind) {
   const isRenew = kind === "renew" || !item.type;
   const who = tenant ? tenant.name : (item.name || "");
   const no = room ? room.no : (item.roomNo || "");
-  const text = encodeURIComponent(isRenew ? `牛10 ${no} 續約簽約` : `${no} ${item.type}維修`);
+  const text = encodeURIComponent(isRenew ? `文東 ${no} 續約簽約` : `${no} ${item.type}維修`);
   const loc = encodeURIComponent(typeof stampPlaceOf === "function" ? stampPlaceOf(room) : "5F，電梯出來右轉到底，7651簽約室");
   const water = isRenew && typeof renewWaterCashFee === "function" ? renewWaterCashFee(tenant, room, item) : 0;
   const details = encodeURIComponent(isRenew
-    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，電梯出來右轉到底，7651簽約室\n租客：${who}\n房號：牛10 ${no}\n請攜帶年水費現金 ${typeof money === "function" ? money(water) : water}\n請攜帶個人印章`
+    ? `統潔＆信潔開發有限公司續約簽約\n地點：5F，電梯出來右轉到底，7651簽約室\n租客：${who}\n房號：文東 ${no}\n請攜帶年水費現金 ${typeof money === "function" ? money(water) : water}\n請攜帶個人印章`
     : `統潔＆信潔開發有限公司報修預約\n租客：${who}\n房號：${no}\n說明：${item.note || ""}`);
   window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${range}&details=${details}${isRenew ? "&location=" + loc : ""}&ctz=Asia/Taipei`, "_blank", "noopener");
 }
@@ -17353,7 +17353,7 @@ function calendarItems() {
     const tenant = state.tenants.find(x => x.id === r.tenantId);
     items.push({
       at: r.appointAt, kind: "renew", id: r.id, item: r,
-      title: `牛10 ${room ? room.no : ""} 續約簽約`,
+      title: `文東 ${room ? room.no : ""} 續約簽約`,
       sub: `${tenant ? tenant.name : ""} · ${formatDateTime12(String(r.appointAt).replace("T", " "))}`
     });
   });
@@ -17361,7 +17361,7 @@ function calendarItems() {
     if (!c || c.kind !== "early" || c.status === "done" || !c.appointAt) return;
     items.push({
       at: c.appointAt, kind: "early", id: c.id, item: c,
-      title: `牛10 ${c.roomNo || ""} 終止簽約`,
+      title: `文東 ${c.roomNo || ""} 終止簽約`,
       sub: `${c.tenantName || ""} · ${formatDateTime12(String(c.appointAt).replace("T", " "))}`
     });
   });
@@ -17391,7 +17391,7 @@ function calendarItems() {
     const room = state.rooms.find(x => x.id === t.roomId);
     items.push({
       at: t.signAppointAt, kind: "lease", id: "lease-" + t.id, item: t,
-      title: `牛10 ${room ? room.no : ""} 合約簽約`,
+      title: `文東 ${room ? room.no : ""} 合約簽約`,
       sub: `${t.name || ""} · ${formatDateTime12(String(t.signAppointAt).replace("T", " "))}`
     });
   });
@@ -31615,8 +31615,8 @@ function openEarlyCalendar(co) {
   const no = co.roomNo || "";
   openGoogleCalendarAt(
     co.appointAt,
-    "牛10 " + no + " 終止簽約",
-    "統潔＆信潔開發有限公司中途退租簽名蓋章\n租客：" + who + "\n房號：牛10 " + no + "\n終止日：" + (typeof rocSlash === "function" ? rocSlash(co.at) : (co.at || "")) + "\n請到 7651 簽約室簽名蓋章"
+    "文東 " + no + " 終止簽約",
+    "統潔＆信潔開發有限公司中途退租簽名蓋章\n租客：" + who + "\n房號：文東 " + no + "\n終止日：" + (typeof rocSlash === "function" ? rocSlash(co.at) : (co.at || "")) + "\n請到 7651 簽約室簽名蓋章"
   );
 }
 function earlyAdminCardHtml(co, t, r) {
