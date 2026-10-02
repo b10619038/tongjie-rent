@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1372";
+const FILE_VER = "1373";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27260,7 +27260,7 @@ function adminView() {
       ${pages.map(([id, label]) => {
         const count = tabBadgeCount(id);
         const on = ui.page === id || (ui.page === "home" && id === "dash") || (id === "dash" && ui.page === "solar") || (id === "rooms" && ui.page === "room-edit") || (id === "tenants" && ui.page === "tenant-sheet") || (id === "settings" && ui.page === "howto") || (id === "logs" && ui.page === "logs") || (id === "firm" && ui.page === "firm") || (id === "food" && ui.page === "food");
-        const tabIcon = { tenants: "tab-tenants.png", dash: "tab-dash.png", rooms: "tab-rooms.png", ai: "tab-logs.png", announce: "tab-announce.png", history: "tab-firm.png", food: "tab-food.png", logs: "tab-ai.png" }[id] || "";
+        const tabIcon = { tenants: "tab-tenants.png", dash: "tab-dash.png", rooms: "tab-rooms.png", ai: "tab-logs-fill.png", announce: "tab-announce.png", history: "tab-firm.png", food: "tab-food.png", logs: "tab-ai.png" }[id] || "";
         const ic = id === "repairs"
           ? `<span class="tab-repair">${icon("fix-fill")}</span>`
           : id === "settings"
