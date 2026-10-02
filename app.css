@@ -4407,7 +4407,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     max-height: 265mm;
   }
   body.print-term .term-handover-paper .hand-list {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -4415,7 +4415,17 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
     margin: 6mm 0 0;
   }
   body.print-term .term-handover-paper .hand-list li { margin: 0; }
-  body.print-term .term-handover-paper .hand-signs { margin: 4mm 0 0; gap: 8mm; }
+  body.print-term .term-handover-paper .hand-signs {
+    flex: 1;
+    justify-content: space-evenly;
+    margin: 0;
+    gap: 0;
+  }
+  body.print-term .term-handover-paper .term-date {
+    margin: 0;
+    text-align: center;
+    letter-spacing: .18em;
+  }
   body.print-term .term-lease-paper {
     display: flex;
     flex-direction: column;
@@ -6481,7 +6491,7 @@ html.embed-pane .home-upd { display: none !important; }
   flex-direction: column;
 }
 .hand-a4-fit .term-handover-paper .hand-list {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -6489,8 +6499,18 @@ html.embed-pane .home-upd { display: none !important; }
   margin: 4mm 0 0;
 }
 .hand-a4-fit .term-handover-paper .hand-list li { margin: 0; }
-.hand-a4-fit .term-handover-paper .hand-signs { margin: 4mm 0 0; gap: 8mm; }
-.hand-a4-fit .term-handover-paper .term-date { margin-top: 4mm; }
+.hand-a4-fit .term-handover-paper .hand-signs {
+  flex: 1;
+  justify-content: space-evenly;
+  margin: 0;
+  gap: 0;
+}
+.hand-a4-fit .term-handover-paper .term-date {
+  margin: 0;
+  text-align: center;
+  letter-spacing: .18em;
+  width: 100%;
+}
 .term-handover-paper h3 {
   text-align: center;
   letter-spacing: .28em;
