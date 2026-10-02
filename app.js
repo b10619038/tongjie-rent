@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1351";
+const FILE_VER = "1352";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23128,7 +23128,7 @@ function termLeasePaperHtml(t, r, co) {
     return `<span class="lease-name-chop"><span class="term-fill${wide}">${escapeHtml(n)}</span><span class="chop-mark chop-ps"></span></span>`;
   }).join("　");
   const receiptChops = nameList.length > 1
-    ? `<span class="chop-mark chop-ps" style="top:-4mm;left:calc(50% - 5mm)"></span><span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`
+    ? `<span class="chop-mark chop-ps chop-mid" style="top:-4mm"></span><span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`
     : `<span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`;
   return `<div class="hand-a4-fit"><div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
