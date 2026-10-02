@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1362";
+const FILE_VER = "1363";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27765,12 +27765,16 @@ function historyRows(cat) {
     });
   }
   if (cat === "meter") {
-    return (state.meterLogs || []).map(m => ({
-      date: ymdOf(m.date) || "",
-      title: "抄表　" + (m.unitId || ""),
-      sub: "度數 " + (m.reading != null ? m.reading : "—") + (m.usage != null ? "　本期 " + m.usage + " 度" : "") + (m.note ? "　" + m.note : ""),
-      amount: 0
-    }));
+    return (state.meterLogs || []).map(m => {
+      const u = meterUnitById(m.unitId);
+      const label = (u && u.unit) || String(m.unitId || "").replace(/^m-/, "");
+      return {
+        date: ymdOf(m.date) || "",
+        title: "抄表　" + label,
+        sub: "度數 " + (m.reading != null ? m.reading : "—") + (m.usage != null ? "　本期 " + m.usage + " 度" : "") + (m.note ? "　" + m.note : ""),
+        amount: 0
+      };
+    });
   }
   return [];
 }
