@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-15-39";
-const APP_EDIT_COUNT = 1788;
+const APP_STAMP = "2026-10-02-15-40";
+const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1338";
+const FILE_VER = "1339";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約下方甲方也加上公司大小章"] },
+  { ver: APP_VERSION, items: ["終止契約下方乙方右邊加上個人印章"] },
+  { ver: "2026-10-02-15-39-1788", items: ["終止契約下方甲方也加上公司大小章"] },
   { ver: "2026-10-02-15-38-1787", items: ["終止契約租客姓名右邊加上個人印章"] },
   { ver: "2026-10-02-15-33-1786", items: ["終止契約公司大小章改到立約人右側"] },
   { ver: "2026-10-02-15-30-1785", items: ["終止契約行距拉開，日期放在最下方"] },
@@ -23161,11 +23162,14 @@ function termLeasePaperHtml(t, r, co) {
         <span class="chop-mark chop-lg" style="top:0;right:16mm"></span>
         <span class="chop-mark chop-sm" style="top:10mm;right:0"></span>
       </div>
-      <div class="term-party">
+      <div class="term-party chop-host">
         <p>立約人（乙方）：　${escapeHtml(names)}</p>
         ${taxId ? `<p>統一編號：　${escapeHtml(taxId)}</p>` : ""}
         ${factoryPaper ? "" : `<p>身分證字號：　${escapeHtml(idNo)}</p>`}
         <p>電話：　${escapeHtml(phone)}</p>
+        ${nameList.length > 1
+          ? `<span class="chop-mark chop-ps" style="top:0;right:14mm"></span><span class="chop-mark chop-ps" style="top:0;right:0"></span>`
+          : `<span class="chop-mark chop-ps" style="top:0;right:16mm"></span>`}
       </div>
     </div>
     <p class="term-date">中　華　民　國　<span class="term-fill amt">${sign.y}</span>　年　<span class="term-fill amt">${sign.m}</span>　月　<span class="term-fill amt">${sign.d}</span>　日</p>
