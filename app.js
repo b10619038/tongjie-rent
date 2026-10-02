@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-11-15";
-const APP_EDIT_COUNT = 1780;
+const APP_STAMP = "2026-10-02-11-20";
+const APP_EDIT_COUNT = 1781;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1330";
+const FILE_VER = "1331";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["中途退租：押金減已住天數租金，再加電費餘額"] },
+  { ver: APP_VERSION, items: ["兩人合約個人印章移到簽章線中間，名字靠在印章左邊"] },
   { ver: "2026-10-02-11-12-1779", items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
   { ver: "2026-10-02-11-09-1778", items: ["承租人簽章的線拉長兩倍"] },
   { ver: "2026-10-02-11-06-1777", items: ["契約特別約定：物黏貼改成勿黏貼"] },
@@ -23207,9 +23207,9 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
   const pay = tenantPayAccounts(t, r).primary || {};
   const ck = leaseCk;
   const u = leaseU;
-  const tenantSignRow = names.map((n, i) =>
-    `${tenantSignOnly(t, i, "sign-x2")}<span class="term-chop" title="蓋章"></span>`
-  ).join("");
+  const tenantSignRow = names.length < 2
+    ? `${tenantSignOnly(t, 0, "sign-x2")}<span class="term-chop" title="蓋章"></span><span class="chop-mark chop-ps" style="left:72mm;top:-1mm"></span>`
+    : `<span class="duo-sign-line"><span class="duo-sign-slot slot-a">${tenantSignOnly(t, 0)}</span><span class="chop-mark chop-ps duo-chop a"></span><span class="duo-sign-slot slot-b">${tenantSignOnly(t, 1)}</span><span class="chop-mark chop-ps duo-chop b"></span></span>`;
   const headerTenants = names.map((n, i) => `<span class="lease-name-chop">${tenantMark(t, i, n)}<span class="chop-mark chop-ps"></span></span>`).join("　");
   const peopleCols = names.map((n, i) => `<div class="lease-person">
       <p class="lease-line"><span class="lease-lab">承租人：</span>${tenantSignOnly(t, i)}</p>
@@ -23239,7 +23239,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
       <p class="chop-host">出租人簽章：${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span><span class="chop-mark chop-lg" style="bottom:0.6mm;right:62mm"></span><span class="chop-mark chop-sm" style="bottom:0.6mm;right:42mm"></span></p>
-      <p class="chop-host">承租人簽章：${tenantSignRow}${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:72mm;top:-1mm"></span>` : `<span class="chop-mark chop-ps" style="left:72mm;top:-1mm"></span><span class="chop-mark chop-ps" style="left:112mm;top:-1mm"></span>`}</p>
+      <p class="chop-host">承租人簽章：${tenantSignRow}</p>
       <p class="lease-art">第二條　房屋租賃標的</p>
       <p>（一）租賃標示：</p>
       <p>1、門牌：${u(door, "wide")}</p>

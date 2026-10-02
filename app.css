@@ -4630,6 +4630,39 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .chop-lg { width: 25mm; height: 25mm; }
 .chop-sm { width: 15mm; height: 15mm; }
 .chop-ps { width: 10mm; height: 10mm; }
+.duo-sign-line {
+  position: relative;
+  display: inline-block;
+  vertical-align: bottom;
+  width: calc(16.8em + 24px);
+  height: 12mm;
+  border-bottom: 1px solid #111;
+  margin: 0 6px;
+}
+.duo-sign-line .lease-u,
+.duo-sign-line .lease-sign-line {
+  border-bottom: 0;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 0 0 1px;
+  background: none;
+}
+.duo-sign-line .chop-ps { top: -1mm; }
+.duo-sign-line .duo-chop.a { left: calc(50% - 5mm); }
+.duo-sign-line .duo-chop.b { left: calc(50% - 5mm + 40mm); }
+.duo-sign-slot {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  height: 11mm;
+  overflow: hidden;
+}
+.duo-sign-slot.slot-a { left: 0; width: calc(50% - 5mm - 1.5mm); }
+.duo-sign-slot.slot-b { left: calc(50% + 5mm + 1mm); width: calc(40mm - 10mm - 2.5mm); }
+.duo-sign-line .lease-esig { max-width: 100%; height: 28px; margin: 0 0 1px; }
 .chop-host { position: relative; }
 .lease-name-chop {
   position: relative;
