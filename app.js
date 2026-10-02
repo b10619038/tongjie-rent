@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1367";
+const FILE_VER = "1368";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27404,35 +27404,37 @@ function bindTabReorder() {
     if (e.cancelable) e.preventDefault();
     moved = true;
     follow(p.x);
-    const center = dragEl.getBoundingClientRect().left + dragEl.offsetWidth / 2;
     const tabs = [...bar.querySelectorAll(".tab")];
-    for (const t of tabs) {
-      if (t === dragEl) continue;
-      const mid = t.getBoundingClientRect().left + t.offsetWidth / 2;
-      const from = tabs.indexOf(dragEl);
-      const to = tabs.indexOf(t);
-      if (from < to && center > mid) {
+    const from = tabs.indexOf(dragEl);
+    if (from < 0) return;
+    const center = dragEl.getBoundingClientRect().left + dragEl.offsetWidth / 2;
+    let swapped = false;
+    if (from < tabs.length - 1) {
+      const next = tabs[from + 1];
+      const mid = next.getBoundingClientRect().left + next.offsetWidth / 2;
+      if (center > mid) {
         const left = dragEl.getBoundingClientRect().left;
-        bar.insertBefore(dragEl, t.nextSibling);
+        bar.insertBefore(dragEl, next.nextSibling);
         startX += dragEl.getBoundingClientRect().left - left;
-        follow(p.x);
-        break;
-      }
-      if (from > to && center < mid) {
-        const left = dragEl.getBoundingClientRect().left;
-        bar.insertBefore(dragEl, t);
-        startX += dragEl.getBoundingClientRect().left - left;
-        follow(p.x);
-        break;
+        swapped = true;
       }
     }
+    if (!swapped && from > 0) {
+      const prev = tabs[from - 1];
+      const mid = prev.getBoundingClientRect().left + prev.offsetWidth / 2;
+      if (center < mid) {
+        const left = dragEl.getBoundingClientRect().left;
+        bar.insertBefore(dragEl, prev);
+        startX += dragEl.getBoundingClientRect().left - left;
+        swapped = true;
+      }
+    }
+    if (swapped) follow(p.x);
   };
   const onEnd = () => {
     clear();
     window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("touchmove", onMove);
     window.removeEventListener("pointerup", onEnd);
-    window.removeEventListener("touchend", onEnd);
     window.removeEventListener("pointercancel", onEnd);
     if (dragEl) {
       dragEl.style.transform = "";
@@ -27456,9 +27458,7 @@ function bindTabReorder() {
     try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
     try { dragEl.setPointerCapture(pid); } catch {}
     window.addEventListener("pointermove", onMove, { passive: false });
-    window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
-    window.addEventListener("touchend", onEnd);
     window.addEventListener("pointercancel", onEnd);
   };
   bar.addEventListener("contextmenu", e => { if (e.target.closest(".tab")) e.preventDefault(); });
