@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1391";
+const FILE_VER = "1392";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -18415,23 +18415,21 @@ function renewalHoldPending(room, exceptId) {
   if (hits.some(x => x.status === "done" || x.status === "applied")) return false;
   return hits.some(x => x.status === "open");
 }
-function moveUntilPrefix(m) {
-  if (m && m.pending) return "續約申請至 ";
-  if (m && m.renewed) return "已續約至 ";
-  return "現約至 ";
-}
-function occupiedUntilPhrase(occ, room) {
-  const end = occupiedUntilYmd(occ, room) || (occ && occ.leaseEnd) || "";
-  const cur = ymdOf(occ && occ.leaseEnd);
-  const held = ymdOf(end);
-  if (held && (!cur || held > cur)) return (renewalHoldPending(room, "") ? "續約申請至 " : "已續約至 ") + end;
-  return "現約至 " + (end || "—");
-}
-function occupiedUntilYmd(t, r) {
-  let end = (t && typeof tenantOccupancyEnd === "function" ? tenantOccupancyEnd(t, r) : "") || ymdOf(t && t.leaseEnd) || "";
-  const hold = renewalHoldEnd(r, "");
-  if (hold && (!end || hold > ymdOf(end))) end = hold;
-  return end || "";
+function earlyLeaveEnd(room, tenant) {
+  const tid = tenant && tenant.id;
+  const roomId = room && room.id;
+  const roomNo = room && String(room.no || "");
+  let end = "";
+  ((state && state.checkouts) || []).forEach(c => {
+    if (!c || c.kind !== "early" || c.status !== "applied") return;
+    const at = ymdOf(c.at);
+    if (!at) return;
+    if (tid) {
+      if (c.tenantId !== tid) return;
+    } else if (!((roomId && c.roomId === roomId) || (roomNo && String(c.roomNo) === roomNo))) return;
+    if (!end || at < end) end = at;
+  });
+  return end;
 }
 function roomSoonestStart(room, t) {
   const today = todayYmd();
@@ -18443,13 +18441,14 @@ function roomSoonestStart(room, t) {
     const nxt = addDaysYmd(end, 1);
     if (nxt && nxt > (after || "")) after = nxt;
   };
+  const leave = occ ? earlyLeaveEnd(room, occ) : "";
   if (occ) {
     const same = !!(selfId && occ.id === selfId);
     if (!same || tenantContractStatus(t, room) === "signed" || tenantContractStatus(t, room) === "paper") {
       bump(occupiedUntilYmd(occ, room));
     }
   }
-  bump(renewalHoldEnd(room, selfId));
+  if (!leave) bump(renewalHoldEnd(room, selfId));
   const holder = roomSignedHolder(room, selfId);
   if (holder && holder.id !== selfId) bump(tenantOccupancyEnd(holder, room) || holder.leaseEnd);
   if (after && after > today) return after;
@@ -24901,12 +24900,15 @@ function moveRoomMeta(x, dummy) {
   const signed = !!(holder && holder.incoming && tenantContractStatus(holder, x) === "signed");
   const rent = studioContractRent(dummy, x);
   const curEnd = ymdOf((o && (tenantOccupancyEnd(o, x) || o.leaseEnd)) || "");
-  const hold = (o ? occupiedUntilYmd(o, x) : "") || renewalHoldEnd(x, dummy && dummy.id);
+  const leave = o ? earlyLeaveEnd(x, o) : "";
+  const hold = (o ? occupiedUntilYmd(o, x) : "") || (leave ? "" : renewalHoldEnd(x, dummy && dummy.id));
+  const early = !!(leave && hold && ymdOf(leave) === ymdOf(hold));
   return {
     vacant: !o && !signed && !hold,
     end: signed ? (tenantOccupancyEnd(holder, x) || holder.leaseEnd || "") : (hold || ""),
-    pending: !!(hold && (!curEnd || ymdOf(hold) > curEnd) && renewalHoldPending(x, dummy && dummy.id)),
-    renewed: !!(hold && curEnd && ymdOf(hold) > curEnd) && !(hold && (!curEnd || ymdOf(hold) > curEnd) && renewalHoldPending(x, dummy && dummy.id)),
+    early,
+    pending: !early && !!(hold && (!curEnd || ymdOf(hold) > curEnd) && renewalHoldPending(x, dummy && dummy.id)),
+    renewed: !early && !!(hold && curEnd && ymdOf(hold) > curEnd) && !(hold && (!curEnd || ymdOf(hold) > curEnd) && renewalHoldPending(x, dummy && dummy.id)),
     start,
     no: x.no || "",
     rent,
