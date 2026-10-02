@@ -1091,6 +1091,47 @@ button.pay-pill.hand {
   background: var(--chip);
   border: 1px solid #efe2d4;
 }
+.renew-sent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sent-pulse {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #62765b;
+  box-shadow: 0 0 0 0 rgba(98, 118, 91, .45);
+  animation: sentCore 1.8s ease-out infinite;
+}
+.sent-pulse::before,
+.sent-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #62765b;
+  animation: sentRipple 1.8s ease-out infinite;
+}
+.sent-pulse::after { animation-delay: .7s; }
+@keyframes sentCore {
+  0% { box-shadow: 0 0 0 0 rgba(98, 118, 91, .42); }
+  70% { box-shadow: 0 0 0 8px rgba(98, 118, 91, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(98, 118, 91, 0); }
+}
+@keyframes sentRipple {
+  0% { transform: scale(1); opacity: .7; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sent-pulse,
+  .sent-pulse::before,
+  .sent-pulse::after { animation: none; }
+}
 .renew-ask-actions {
   display: flex;
   gap: 8px;
