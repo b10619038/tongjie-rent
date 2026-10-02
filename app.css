@@ -4719,7 +4719,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   font-weight: 700;
   line-height: 1.35;
 }
-.lease-u.wide { min-width: 12em; }
+.lease-u.sign-x2 { min-width: 8.4em; }
 .lease-u.amt { min-width: 2.6em; text-align: center; }
 .lease-oneline { white-space: nowrap; }
 .lease-oneline .lease-u.amt { min-width: 1.7em; padding: 0 3px 1px; }
