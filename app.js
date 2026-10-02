@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1355";
+const FILE_VER = "1356";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -3418,8 +3418,14 @@ function renewAskCardHtml(t, r, opts) {
       ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
       <p class="small" style="margin-top:8px">${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}，簽約現場只收現金。</p>
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
+      ${signed ? "" : `<div class="appoint-box" style="margin-top:10px">
+        <label class="field"><span>簽約時間</span>
+          ${appointOneHtml(cur.appointAt || "", { attr: ` data-renew-appoint="${escapeHtml(cur.id)}"`, gcalId: cur.id })}
+        </label>
+        <div class="small">可以改時間。後台會一起改，合約底部的中華民國日期也會改成這一天。地點：5F，電梯出來右轉到底，7651簽約室</div>
+      </div>`}
       ${esigned && !signed ? `<p class="small" style="margin-top:8px">已完成線上簽名。請於預約時間到 7651 蓋章。若年、月、房號或金額有改，需要重新簽名。</p>` : ""}
-      ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
+      ${signed && cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
       ${!signed && !esigned ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">${cur.signedKey ? "內容已變更，重新簽署新約" : "線上簽署新約"}</button>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
@@ -3672,6 +3678,15 @@ function bindRenewForm() {
   }
   const send = document.getElementById("renew-submit");
   if (send) send.onclick = () => openRenewSignFirst();
+  document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
+    bindAppointPicker(inp);
+    inp.onclick = e => e.stopPropagation();
+    inp.onchange = () => {
+      paintAppointFace(inp);
+      const item = (state.renewals || []).find(x => x && x.id === inp.dataset.renewAppoint);
+      setRenewAppoint(item, inp.value);
+    };
+  });
   document.querySelectorAll("[data-renew-decline]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); e.stopPropagation(); openRenewDeclineConfirm(); };
   });
@@ -3683,6 +3698,26 @@ function renewTermsKey(row) {
     return [p.name || "", p.renew === false ? "0" : "1", Number(p.years) || 0, Number(p.months) || 0].join(":");
   }).join("|");
   return [row.roomNo || "", row.moveRoomNo || "", row.start || "", row.end || "", Number(row.years) || 0, Number(row.extraMonths) || 0, Number(row.waterFee) || 0, people].join("#");
+}
+function setRenewAppoint(item, value) {
+  if (!item || item.status === "done" || item.status === "applied") return;
+  const next = String(value || "").trim().replace(" ", "T");
+  const prev = String(item.appointAt || "").replace(" ", "T");
+  if (next === prev) return;
+  item.appointAt = next;
+  item.appointRead = !next;
+  item.appointEditedAt = Date.now();
+  save();
+  try { publishRenewNow(item); } catch {}
+  try { pushCloud(); } catch {}
+  const when = next ? formatDateTime12(next.replace("T", " ")) : "未定";
+  const room = (state.rooms || []).find(x => x && (x.id === item.roomId || String(x.no) === String(item.roomNo)));
+  const no = (room && room.no) || item.roomNo || "";
+  if (ui.role === "tenant") pushPhoneNotify("續約簽約時間", `${no} ${item.name || ""} 改為 ${when}`, "admin");
+  else pushPhoneNotify("續約簽約時間", `${no} 簽約時間改為 ${when}`, no || "tenants");
+  toast("已更新簽約時間，另一邊和合約日期會一起改");
+  ui.keepScroll = true;
+  render();
 }
 function renewEsigned(row) {
   return !!(row && row.signedKey && row.signedKey === renewTermsKey(row));
@@ -9839,6 +9874,15 @@ function mergeRenewalList(a, b) {
     const win = renewalStatusRank(x.status) > renewalStatusRank(cur.status) ? x : cur;
     const lose = win === x ? cur : x;
     const out = Object.assign({}, lose, win);
+    const aEdit = Number(cur.appointEditedAt) || 0;
+    const bEdit = Number(x.appointEditedAt) || 0;
+    if (aEdit !== bEdit) {
+      const newer = bEdit > aEdit ? x : cur;
+      out.appointAt = newer.appointAt || "";
+      out.appointEditedAt = Math.max(aEdit, bEdit);
+    } else if (!out.appointEditedAt) {
+      out.appointEditedAt = aEdit || bEdit || 0;
+    }
     if (!out.doneAt) out.doneAt = (cur && cur.doneAt) || (x && x.doneAt) || "";
     if (out.doneAt && renewalStatusRank(out.status) < 3 && out.status !== "cancelled") out.status = "done";
     map.set(x.id, out);
@@ -10397,6 +10441,7 @@ function liveRenewalPayload() {
     status: x.status || "open", years: x.years || 0, extraMonths: x.extraMonths || 0,
     people: x.people || [], renewNames: x.renewNames || "", start: x.start || "", end: x.end || "",
     waterFee: x.waterFee || 0, waterCash: x.waterCash !== false, appointAt: x.appointAt || "",
+    appointEditedAt: Number(x.appointEditedAt) || 0,
     doneAt: x.doneAt || "",
     createdAt: x.createdAt || "", wantMove: !!x.wantMove, moveRoomId: x.moveRoomId || "", moveRoomNo: x.moveRoomNo || "",
     oldStart: x.oldStart || "", oldEnd: x.oldEnd || ""
@@ -32513,11 +32558,7 @@ function bindTenantFold() {
       paintAppointFace(inp);
       const item = (state.renewals || []).find(x => x && x.id === inp.dataset.renewAppoint);
       if (!item) return;
-      item.appointAt = inp.value;
-      item.appointRead = !inp.value;
-      save();
-      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
-      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
+      setRenewAppoint(item, inp.value);
     };
   });
   document.querySelectorAll("[data-pay-bank]").forEach(btn => {
@@ -32758,15 +32799,7 @@ function bindTenantListTools() {
       paintAppointFace(inp);
       const item = (state.renewals || []).find(x => x.id === inp.dataset.renewAppoint);
       if (!item) return;
-      item.appointAt = inp.value;
-      item.appointRead = !inp.value;
-      save();
-      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
-      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
-      if (inp.value) {
-        const room = state.rooms.find(x => x.id === item.roomId);
-        pushPhoneNotify("續約簽約時間", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
-      }
+      setRenewAppoint(item, inp.value);
     };
   });
   bindTenantEdits();
@@ -35429,17 +35462,10 @@ function bindAdmin() {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
+      paintAppointFace(inp);
       const item = (state.renewals || []).find(x => x.id === inp.dataset.renewAppoint);
       if (!item) return;
-      item.appointAt = inp.value;
-      item.appointRead = !inp.value;
-      save();
-      const shown = inp.closest(".appoint-box") && inp.closest(".appoint-box").querySelector(".small");
-      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇簽約時間";
-      if (inp.value) {
-        const room = state.rooms.find(x => x.id === item.roomId);
-        pushPhoneNotify("續約簽約時間", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
-      }
+      setRenewAppoint(item, inp.value);
     };
   });
   document.querySelectorAll("[data-rep-status]").forEach(btn => {
