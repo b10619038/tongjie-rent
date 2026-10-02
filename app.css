@@ -2873,6 +2873,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   z-index: 5;
   cursor: grabbing;
   will-change: transform;
+  transition: none !important;
 }
 .log-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; position: relative; z-index: 8; pointer-events: auto !important; }
 .history-cats {

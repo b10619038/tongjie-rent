@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1369";
+const FILE_VER = "1370";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27359,7 +27359,7 @@ function bindTabReorder() {
   const bar = document.querySelector(".tabs-track") || document.querySelector(".tabs");
   if (!bar || bar.dataset.reorderBound === "1") return;
   bar.dataset.reorderBound = "1";
-  let timer = 0, dragEl = null, startX = 0, armed = false, moved = false, pid = 0, holdY = 0, orderSnap = [], lifted = false;
+  let timer = 0, dragEl = null, startX = 0, grabDx = 0, armed = false, moved = false, pid = 0, holdY = 0, orderSnap = [], lifted = false;
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
   const pt = e => {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -27386,7 +27386,11 @@ function bindTabReorder() {
   };
   const follow = x => {
     if (!dragEl || lifted || window.__splitLift) return;
-    dragEl.style.transform = "translate3d(" + (x - startX) + "px,0,0) scale(1.08)";
+    dragEl.style.transition = "none";
+    dragEl.style.transform = "none";
+    const box = dragEl.getBoundingClientRect();
+    const dx = (x + grabDx) - (box.left + box.width / 2);
+    dragEl.style.transform = "translate3d(" + dx + "px,0,0) scale(1.08)";
   };
   let swapLock = false;
   const onMove = e => {
@@ -27415,9 +27419,7 @@ function bindTabReorder() {
       const next = tabs[from + 1];
       const mid = next.getBoundingClientRect().left + next.offsetWidth / 2;
       if (center > mid) {
-        const left = dragEl.getBoundingClientRect().left;
         bar.insertBefore(dragEl, next.nextSibling);
-        startX += dragEl.getBoundingClientRect().left - left;
         swapped = true;
       }
     }
@@ -27425,9 +27427,7 @@ function bindTabReorder() {
       const prev = tabs[from - 1];
       const mid = prev.getBoundingClientRect().left + prev.offsetWidth / 2;
       if (center < mid) {
-        const left = dragEl.getBoundingClientRect().left;
         bar.insertBefore(dragEl, prev);
-        startX += dragEl.getBoundingClientRect().left - left;
         swapped = true;
       }
     }
@@ -27472,7 +27472,9 @@ function bindTabReorder() {
     const tab = e.target.closest(".tab");
     if (!tab) return;
     const p = pt(e);
+    const r = tab.getBoundingClientRect();
     startX = p.x; holdY = p.y; pid = e.pointerId;
+    grabDx = (r.left + r.width / 2) - p.x;
     armed = false; moved = false; dragEl = tab; lifted = false;
     orderSnap = [...bar.querySelectorAll(".tab")].map(t => t.dataset.admin);
     clear();
