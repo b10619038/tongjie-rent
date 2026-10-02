@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1368";
+const FILE_VER = "1369";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -27388,6 +27388,7 @@ function bindTabReorder() {
     if (!dragEl || lifted || window.__splitLift) return;
     dragEl.style.transform = "translate3d(" + (x - startX) + "px,0,0) scale(1.08)";
   };
+  let swapLock = false;
   const onMove = e => {
     if (!dragEl) return;
     const p = pt(e);
@@ -27404,6 +27405,7 @@ function bindTabReorder() {
     if (e.cancelable) e.preventDefault();
     moved = true;
     follow(p.x);
+    if (swapLock) return;
     const tabs = [...bar.querySelectorAll(".tab")];
     const from = tabs.indexOf(dragEl);
     if (from < 0) return;
@@ -27429,7 +27431,11 @@ function bindTabReorder() {
         swapped = true;
       }
     }
-    if (swapped) follow(p.x);
+    if (swapped) {
+      swapLock = true;
+      follow(p.x);
+      requestAnimationFrame(() => { swapLock = false; });
+    }
   };
   const onEnd = () => {
     clear();
@@ -27529,23 +27535,16 @@ function bindTabPage() {
   sc.dataset.pageBound = "1";
   if (typeof ui.tabScroll === "number") sc.scrollLeft = ui.tabScroll;
   let x0 = 0, y0 = 0, left0 = 0, lock = "";
-  const pageW = () => {
+  const tabW = () => {
     const tab = sc.querySelector(".tab");
-    return Math.max(1, tab ? tab.offsetWidth * 4 : sc.clientWidth);
+    return Math.max(1, tab ? tab.offsetWidth : sc.clientWidth);
   };
   const maxLeft = () => Math.max(0, sc.scrollWidth - sc.clientWidth);
-  const pageOf = left => Math.round(left / pageW());
-  const go = page => {
-    const tabs = [...sc.querySelectorAll(".tab")];
-    const maxP = Math.max(0, Math.ceil(tabs.length / 4) - 1);
-    const p = Math.max(0, Math.min(maxP, page));
-    let left = p * pageW();
-    const tab = tabs[p * 4];
-    if (tab && p > 0) {
-      const pad = parseFloat(getComputedStyle(sc).paddingLeft) || 0;
-      left = sc.scrollLeft + tab.getBoundingClientRect().left - sc.getBoundingClientRect().left - pad;
-    }
-    sc.scrollTo({ left: Math.max(0, Math.min(maxLeft(), left)), behavior: "smooth" });
+  const snapTab = () => {
+    const w = tabW();
+    const left = Math.max(0, Math.min(maxLeft(), Math.round(sc.scrollLeft / w) * w));
+    sc.scrollTo({ left, behavior: "smooth" });
+    ui.tabScroll = left;
   };
   sc.addEventListener("touchstart", e => {
     if (window.innerWidth > 820 || e.touches.length !== 1) return;
@@ -27566,13 +27565,12 @@ function bindTabPage() {
     if (e.cancelable) e.preventDefault();
     sc.scrollLeft = Math.max(0, Math.min(maxLeft(), left0 - dx));
   }, { passive: false });
-  sc.addEventListener("touchend", e => {
+  sc.addEventListener("touchend", () => {
     if (window.innerWidth > 820 || lock !== "x") { lock = ""; return; }
-    const t = e.changedTouches && e.changedTouches[0];
-    const dx = t ? t.clientX - x0 : 0;
     lock = "";
-    const cur = pageOf(left0);
-    go(Math.abs(dx) >= 64 ? cur + (dx < 0 ? 1 : -1) : cur);
+    sc.dataset.tabDrag = "1";
+    snapTab();
+    setTimeout(() => { delete sc.dataset.tabDrag; }, 450);
   }, { passive: true });
   sc.addEventListener("touchcancel", () => { lock = ""; });
 }
@@ -35376,6 +35374,10 @@ function bindAdmin() {
       }
       if (btn.classList.contains("tab")) {
         const sc = btn.closest(".tabs");
+        if (sc && sc.dataset.tabDrag === "1") {
+          e.preventDefault();
+          return;
+        }
         const moved = revealNextTabs(btn);
         if (!moved && sc) ui.tabScroll = sc.scrollLeft;
       }
