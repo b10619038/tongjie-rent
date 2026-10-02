@@ -4631,6 +4631,16 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .chop-sm { width: 15mm; height: 15mm; }
 .chop-ps { width: 10mm; height: 10mm; }
 .chop-host { position: relative; }
+.lease-name-chop {
+  position: relative;
+  display: inline-block;
+  margin-right: 12mm;
+}
+.lease-name-chop > .chop-mark {
+  left: calc(100% + 1.2mm);
+  top: 50%;
+  transform: translateY(-50%);
+}
 .lease-pg {
   position: relative;
   box-sizing: border-box;

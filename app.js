@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-10-45";
-const APP_EDIT_COUNT = 1774;
+const APP_STAMP = "2026-10-02-11-05";
+const APP_EDIT_COUNT = 1776;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1324";
+const FILE_VER = "1326";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["中途退租可填電費餘額並扣進總退還"] },
+  { ver: APP_VERSION, items: ["合約個人印章改到承租人名字右邊"] },
   { ver: "2026-09-23-17-08-1159", items: ["資產平面圖左右與底部的黑邊去掉"] },
   { ver: "2026-09-23-17-02-1158", items: ["資產平面圖可切換直式或橫式"] },
   { ver: "2026-09-23-16-59-1157", items: ["已綁定的官方 LINE 頭貼會抓進租客大頭貼"] },
@@ -3752,19 +3752,33 @@ function canTenantEarlyApply(t, r) {
   if (!end || todayYmd() >= end) return false;
   return true;
 }
+function earlyStayCharge(t, r, at) {
+  const rent = Number((t && t.rent) || (r && r.rent) || 0);
+  const day = ymdOf(at);
+  if (!rent || !day) return { days: 0, amount: 0, rent: rent || 0, monthDays: 0 };
+  const y = Number(day.slice(0, 4));
+  const m = Number(day.slice(5, 7));
+  const days = Number(day.slice(8, 10));
+  const monthDays = new Date(y, m, 0).getDate();
+  if (!days || days < 1 || !monthDays) return { days: 0, amount: 0, rent, monthDays };
+  return { days, rent, monthDays, amount: Math.round(rent / monthDays * days) };
+}
 function earlyApplyCo(t, r, at, elecRaw) {
   const deposit = Number((r && r.deposit) || (t && t.deposit) || 0);
-  const prorate = defaultProrateRent(t, r, at);
+  const stay = earlyStayCharge(t, r, at);
   const typed = elecRaw != null && String(elecRaw).trim() !== "";
   const elecBalance = typed ? Math.max(0, Math.round(Number(elecRaw) || 0)) : null;
-  const cut = elecBalance || 0;
+  const back = elecBalance || 0;
   return {
     at: at || todayYmd(),
     deposit,
     deduct: 0,
-    prorate,
+    prorate: stay.amount,
+    stayDays: stay.days,
+    monthDays: stay.monthDays,
+    monthRent: stay.rent,
     elecBalance,
-    refund: Math.max(0, deposit + prorate - cut),
+    refund: Math.max(0, deposit - stay.amount + back),
     property: termPropLabel(r),
     idNo: (t && t.idNo) || "",
     phone: (t && t.phone) || ""
@@ -3776,7 +3790,7 @@ function earlyApplyCardHtml(t, r) {
   if (cur) {
     return `<div class="handover-note renew-note" id="early-box">
       <div class="label">中途退租申請已送出</div>
-      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。總退還 ${escapeHtml(money(cur.refund || 0))}${cur.elecBalance != null ? "，已扣電費餘額 " + escapeHtml(money(cur.elecBalance)) : ""}。${cur.appointAt ? `預約 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))} 到 7651簽約室簽名蓋章。` : "尚未預約簽名蓋章時間。"}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。總退還 ${escapeHtml(money(cur.refund || 0))}${cur.elecBalance != null ? "，含電費餘額 " + escapeHtml(money(cur.elecBalance)) : ""}。${cur.appointAt ? `預約 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))} 到 7651簽約室簽名蓋章。` : "尚未預約簽名蓋章時間。"}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
       ${cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(cur.id)}" style="margin-top:8px">加入日曆</button>` : ""}
     </div>`;
   }
@@ -3831,7 +3845,8 @@ function paintEarlyPaper() {
   const sum = document.getElementById("early-refund-line");
   if (sum && co) {
     const cut = co.elecBalance != null ? money(co.elecBalance) : "尚未填寫";
-    sum.textContent = "總退還 " + money(co.refund) + "（押金 " + money(co.deposit) + " ＋ 未住租金 " + money(co.prorate) + " － 電費餘額 " + cut + "）";
+    const days = co.stayDays || 0;
+    sum.textContent = "總退還 " + money(co.refund) + "（押金 " + money(co.deposit) + " － 月租÷" + (co.monthDays || "") + "×" + days + "天 " + money(co.prorate) + " ＋ 電費餘額 " + cut + "）";
   }
   const appointMax = document.getElementById("early-appoint");
   if (appointMax && at) appointMax.max = at + "T18:00";
@@ -3961,7 +3976,7 @@ function flashEarlyNotice(ping) {
   if (!p || !p.name) return;
   if (earlyPingAlreadySeen(p)) return;
   markEarlyPingSeen(p);
-  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（已扣電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
+  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（含電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
   try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
   try { toast("中途退租申請　" + line); } catch {}
 }
@@ -22884,7 +22899,7 @@ function payAcctFields(co) {
   const bank = (co && co.payBank) || "";
   return `<label class="field"><span>出帳帳戶</span><select id="co-pay-acct">${BOOK_ACCOUNTS.map(a => `<option${a === acct ? " selected" : ""}>${a}</option>`).join("")}</select></label>
     <label class="field"><span>銀行／通路</span><select id="co-pay-bank"><option value="">（無）</option>${BANK_PLACES.map(a => `<option${a === bank ? " selected" : ""}>${a}</option>`).join("")}</select></label>
-    <label class="field"><span>日租金退還</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="不滿月退給舊客，沒有就空白" /></label>`;
+    <label class="field"><span>${co && co.stayDays ? "已住租金" : "日租金退還"}</span><input id="co-prorate" type="number" inputmode="numeric" value="${co && co.prorate ? co.prorate : ""}" placeholder="${co && co.stayDays ? "從押金扣掉的已住天數租金" : "不滿月退給舊客，沒有就空白"}" /></label>`;
 }
 function incomingActionHtml(inc, r) {
   if (!inc || !r || inc.former || inc.demo) return "";
@@ -23093,6 +23108,7 @@ function termLeasePaperHtml(t, r, co) {
     <p>退還費用：</p>
     <p>一、甲方退還乙方</p>
     <p class="term-indent">押金新台幣　<span class="term-fill amt">${escapeHtml(amt(deposit))}</span>　元整。</p>
+    ${co.stayDays ? `<p class="term-indent">日租　<span class="term-fill amt">${escapeHtml(String(co.stayDays))}</span>　天（月租÷${escapeHtml(String(co.monthDays || ""))}）　<span class="term-fill amt">${escapeHtml(amt(prorate))}</span>　元整。</p>` : ""}
     ${co.elecBalance != null ? `<p class="term-indent">電費餘額　<span class="term-fill amt">${escapeHtml(amt(Number(co.elecBalance) || 0))}</span>　元整。</p>` : ""}
     <p class="term-indent">總退還費用　<span class="term-fill amt">${escapeHtml(amt(refund))}</span>　元整。</p>
     <p class="term-sign">乙方簽收：<span class="term-sign-line"></span></p>
@@ -23191,7 +23207,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
   const tenantSignRow = names.map((n, i) =>
     `${tenantSignOnly(t, i)}<span class="term-chop" title="蓋章"></span>`
   ).join("");
-  const headerTenants = names.map((n, i) => tenantMark(t, i, n)).join("　");
+  const headerTenants = names.map((n, i) => `<span class="lease-name-chop">${tenantMark(t, i, n)}<span class="chop-mark chop-ps"></span></span>`).join("　");
   const peopleCols = names.map((n, i) => `<div class="lease-person">
       <p class="lease-line"><span class="lease-lab">承租人：</span>${tenantSignOnly(t, i)}</p>
       <p class="lease-line"><span class="lease-lab">身分證字號：</span>${leaseInk(ids[i] || "")}</p>
@@ -23217,7 +23233,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
       <h4 class="chop-host">房屋租賃契約書<span class="chop-mark chop-lg" style="top:2mm;right:36mm"></span><span class="chop-mark chop-sm" style="top:12mm;right:16mm"></span></h4>
       <p>立契約書人出租人　${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span></p>
       <p class="chop-host">承租人　${headerTenants}　，茲為宿舍租賃事宜，雙方同意本契約條款如下：</p>
-      <p class="lease-art chop-host">第一條　契約審閱期${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:56mm;bottom:0.6mm"></span>` : `<span class="chop-mark chop-ps" style="left:56mm;bottom:0.6mm"></span><span class="chop-mark chop-ps" style="left:72mm;bottom:0.6mm"></span>`}</p>
+      <p class="lease-art">第一條　契約審閱期</p>
       <p>本契約自當日經出租人與承租人審閱無誤。</p>
       <p class="chop-host">出租人簽章：${leaseInk((firm.name || "統潔開發有限公司") + "　趙正賢", "wide")}<span class="term-chop" title="蓋章"></span><span class="term-chop" title="蓋章"></span><span class="chop-mark chop-lg" style="bottom:0.6mm;right:62mm"></span><span class="chop-mark chop-sm" style="bottom:0.6mm;right:42mm"></span></p>
       <p class="chop-host">承租人簽章：${tenantSignRow}${names.length < 2 ? `<span class="chop-mark chop-ps" style="left:56mm;top:-1mm"></span>` : `<span class="chop-mark chop-ps" style="left:71mm;top:-1mm"></span><span class="chop-mark chop-ps" style="left:87mm;top:-1mm"></span>`}</p>
@@ -23681,7 +23697,7 @@ function checkoutFormHtml() {
     <div class="row"><h2 class="dash-h" style="margin:0">中途退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
     ${co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : ""}
-    ${co.elecBalance != null ? `<div class="small" style="margin-top:8px">租客填的電費餘額 ${escapeHtml(money(co.elecBalance))}，總退還 ${escapeHtml(money(refund))}。</div>` : ""}
+    ${co.elecBalance != null ? `<div class="small" style="margin-top:8px">總退還 ${escapeHtml(money(refund))}（押金 ${escapeHtml(money(deposit))} － 月租÷${escapeHtml(String(co.monthDays || ""))}×${escapeHtml(String(co.stayDays || ""))}天 ${escapeHtml(money(prorate))} ＋ 電費餘額 ${escapeHtml(money(co.elecBalance))}）。</div>` : ""}
     <div class="label" style="margin-top:12px">文件預覽</div>
     ${termPrintPackHtml(t, r, paperCo, "early")}
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
@@ -23978,7 +23994,8 @@ function bindOps() {
     const b = Number((ded || {}).value) || 0;
     const p = Number((pro || {}).value) || 0;
     const e = Number((elecBal || {}).value) || 0;
-    const v = Math.max(0, a - b + p - e);
+    const early = !!elecBal;
+    const v = early ? Math.max(0, a - b - p + e) : Math.max(0, a - b + p);
     if (refund) refund.textContent = money(v);
     if (refundIn && document.activeElement !== refundIn) refundIn.value = v ? String(v) : "";
   };
