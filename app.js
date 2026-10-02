@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1349";
+const FILE_VER = "1350";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23112,9 +23112,9 @@ function termLeasePaperHtml(t, r, co) {
   let refund = co.refund != null ? Number(co.refund) : Math.max(0, deposit - (Number(co.deduct) || 0) + prorate);
   if (r && String(r.no || "") === "大樹-18") refund = 46000;
   const firm = Object.assign({}, DEFAULT_COMPANY, (state && state.company) || {});
-  const prop = co.property || termPropLabel(r);
-  const idNo = paperPeople(co.idNo || t.idNo || "");
-  const phone = paperPeople(co.phone || t.phone || "");
+  const prop = co.property != null ? co.property : termPropLabel(r);
+  const idNo = paperPeople(co.idNo != null ? co.idNo : (t.idNo || ""));
+  const phone = paperPeople(co.phone != null ? co.phone : (t.phone || ""));
   const names = paperPeople(t.name || "");
   const info = (r && typeof FACTORY_TENANT_INFO !== "undefined" && FACTORY_TENANT_INFO[String(r.no || "")]) || {};
   const taxId = String((info && info.taxId) || (t && t.taxId) || "").replace(/\D/g, "");
@@ -23153,6 +23153,7 @@ function termLeasePaperHtml(t, r, co) {
     <p>備註：</p>
     <p>一、乙方將房屋及全部鎖匙交給甲方。</p>
     <p>二、乙方將房屋恢復原狀交給甲方。</p>
+    ${co.note ? `<p>三、${escapeHtml(co.note)}</p>` : ""}
     <div class="term-parties">
       <div class="term-party chop-host">
         <p>立約人（甲方）：　${escapeHtml(firm.name || "統潔開發有限公司")}</p>
@@ -23751,7 +23752,7 @@ function checkoutFormHtml() {
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
     ${co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : ""}
     ${co.elecBalance != null ? `<div class="small" style="margin-top:8px">總退還 ${escapeHtml(money(refund))}（押金 ${escapeHtml(money(deposit))} － 月租÷${escapeHtml(String(co.monthDays || ""))}×${escapeHtml(String(co.stayDays || ""))}天 ${escapeHtml(money(prorate))} ＋ 電費餘額 ${escapeHtml(money(co.elecBalance))}）。</div>` : ""}
-    <div class="label" style="margin-top:12px">文件預覽</div>
+    <div class="row" style="margin-top:12px;align-items:center"><div class="label" style="margin:0">文件預覽</div><button type="button" class="ghost" id="co-sys-default" style="width:auto;margin-left:auto">系統預設</button></div>
     ${termPrintPackHtml(t, r, paperCo, "early")}
     <label class="field"><span>終止日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>租賃物標示</span><input id="co-property" type="text" value="${escapeHtml(prop)}" /></label>
@@ -23786,7 +23787,7 @@ function checkoutFormHtml() {
   return `<div class="card card-body" id="checkout-form-card">
     <div class="row"><h2 class="dash-h" style="margin:0">正常退租　${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張已完成，可再改內容後儲存。" : "填電水表、鑰匙與押金。完成後會記入總覽，舊客變前任；有新客就自動接手。列印交接確認書後雙方蓋章即可。"}</div>
-    <div class="label" style="margin-top:12px">文件預覽</div>
+    <div class="row" style="margin-top:12px;align-items:center"><div class="label" style="margin:0">文件預覽</div><button type="button" class="ghost" id="co-sys-default" style="width:auto;margin-left:auto">系統預設</button></div>
     ${termPrintPackHtml(t, r, paperCo, "normal")}
     <label class="field"><span>退租日期</span><input id="co-date" type="date" value="${escapeHtml(co.at || today)}" /></label>
     <label class="field"><span>押金</span><input id="co-deposit" type="number" inputmode="numeric" value="${deposit || ""}" /></label>
@@ -23850,10 +23851,68 @@ function readCheckoutForm() {
     idNo: val("co-idno"),
     phone: val("co-phone"),
     property: val("co-property"),
-    signedAt: ymdOf(nowStamp())
+    signedAt: val("co-date") || ymdOf(nowStamp())
   };
   if (elecBalEl) out.elecBalance = elecBalEl.value === "" ? null : num("co-elec-bal");
   return out;
+}
+function previewCheckoutPaper() {
+  const pack = document.getElementById("term-print-pack");
+  if (!pack) return;
+  const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
+  if (!t) return;
+  const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
+  const data = readCheckoutForm();
+  if (!data) return;
+  const prev = lastCheckout(t.id) || {};
+  const co = Object.assign({}, prev, data, { signedAt: data.at });
+  pack.outerHTML = termPrintPackHtml(t, r, co, data.kind);
+}
+function applyCheckoutDefaults() {
+  const t = (state.tenants || []).find(x => x.id === ui.checkoutTenantId);
+  if (!t) return;
+  const r = (state.rooms || []).find(x => x.id === t.roomId) || {};
+  const kind = ui.checkoutKind === "early" ? "early" : "normal";
+  const today = ymdOf(nowStamp());
+  const depositRaw = Number((r && r.deposit) || 0);
+  const deposit = depositRaw || (String(r.no || "") === "大樹-18" ? 92000 : 0);
+  const prorate = kind === "early" ? defaultProrateRent(t, r, today) : 0;
+  let refund = Math.max(0, deposit) + prorate;
+  if (kind === "early" && String(r.no || "") === "大樹-18") refund = 46000;
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value == null ? "" : String(value);
+  };
+  const uncheck = id => {
+    const el = document.getElementById(id);
+    if (el) el.checked = false;
+  };
+  set("co-date", today);
+  set("co-property", termPropLabel(r));
+  set("co-idno", t.idNo || "");
+  set("co-phone", t.phone || "");
+  set("co-deposit", deposit || "");
+  set("co-elec-bal", "");
+  set("co-deduct", "");
+  set("co-prorate", prorate || "");
+  set("co-refund-in", refund || "");
+  set("co-pay-acct", "現金(保險箱)");
+  set("co-pay-bank", "");
+  set("co-keys-n", "");
+  set("co-ic-n", "");
+  set("co-water-fee", "");
+  set("co-elec-fee", "");
+  set("co-elec-s", "");
+  set("co-elec-e", "");
+  set("co-water-s", "");
+  set("co-water-e", "");
+  set("co-note", "");
+  uncheck("co-keys");
+  uncheck("co-ic");
+  const refundView = document.getElementById("co-refund");
+  if (refundView) refundView.textContent = money(refund);
+  previewCheckoutPaper();
+  toast("已改回系統預設，尚未儲存");
 }
 function saveCheckout(done, opt) {
   const data = readCheckoutForm();
@@ -24005,6 +24064,8 @@ function bindOps() {
   };
   const resetKind = document.getElementById("co-kind-reset");
   if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  const sysDefault = document.getElementById("co-sys-default");
+  if (sysDefault) sysDefault.onclick = e => { e.preventDefault(); e.stopPropagation(); applyCheckoutDefaults(); };
   const printTerm = document.getElementById("co-print-term");
   if (printTerm) printTerm.onclick = e => {
     e.preventDefault();
@@ -24051,6 +24112,7 @@ function bindOps() {
     const v = early ? Math.max(0, a - b - p + e) : Math.max(0, a - b + p);
     if (refund) refund.textContent = money(v);
     if (refundIn && document.activeElement !== refundIn) refundIn.value = v ? String(v) : "";
+    previewCheckoutPaper();
   };
   if (dep) dep.oninput = syncRefund;
   if (ded) ded.oninput = syncRefund;
@@ -24059,6 +24121,8 @@ function bindOps() {
   document.querySelectorAll("#checkout-form-card input, #checkout-form-card textarea, #checkout-form-card select").forEach(el => {
     el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
     el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    el.addEventListener("input", previewCheckoutPaper);
+    el.addEventListener("change", previewCheckoutPaper);
   });
 }
 function guessMetaFromName(name) {
