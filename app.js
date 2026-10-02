@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1359";
+const FILE_VER = "1360";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -26678,6 +26678,36 @@ function deleteRepair(id) {
   render();
 }
 function bindRepairDelete() {
+  document.querySelectorAll("[data-fold-mine]").forEach(el => {
+    el.addEventListener("pointerdown", e => {
+      if (e.target.closest("button,a,input,textarea,label")) return;
+      const y0 = e.clientY;
+      const move = ev => { if (Math.abs(ev.clientY - y0) > 12) el.dataset.pulling = "1"; };
+      const up = ev => {
+        el.removeEventListener("pointermove", move);
+        el.removeEventListener("pointerup", up);
+        el.removeEventListener("pointercancel", up);
+        const dy = ev.clientY - y0;
+        if (Math.abs(dy) < 28) return;
+        el.dataset.pulled = "1";
+        if (!ui.repairMineOpen) ui.repairMineOpen = {};
+        ui.repairMineOpen[el.dataset.foldMine] = dy > 0;
+        el.classList.toggle("open", dy > 0);
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+      el.addEventListener("pointercancel", up);
+    });
+    el.onclick = e => {
+      if (el.dataset.pulled === "1") { el.dataset.pulled = ""; return; }
+      if (e.target.closest("button,a,input,textarea,label")) return;
+      e.preventDefault();
+      const id = el.dataset.foldMine;
+      if (!ui.repairMineOpen) ui.repairMineOpen = {};
+      ui.repairMineOpen[id] = !ui.repairMineOpen[id];
+      el.classList.toggle("open", !!ui.repairMineOpen[id]);
+    };
+  });
   document.querySelectorAll("[data-del-repair]").forEach(btn => {
     bindIosPress(btn);
     btn.addEventListener("pointerdown", e => e.stopPropagation());
@@ -26833,9 +26863,11 @@ function repairCard(rep, extraClass) {
       <button type="button" class="btn-navy" data-save-repair="${escapeHtml(rep.id)}" style="margin-top:8px">儲存修改</button>
       <button type="button" class="ghost" data-cancel-repair="1" style="margin-top:8px">取消</button>
     </div>` : "";
-  return `<div class="card card-body ${extraClass || ""}">
-    <div class="row"><span class="k">${escapeHtml(editing ? picked : rep.type)}</span><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span></div>
-    <div class="small">${formatDateTime12(rep.createdAt)}</div>
+  const folded = rep.status === "done" && !editing;
+  const open = !folded || !!(ui.repairMineOpen && ui.repairMineOpen[rep.id]);
+  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? picked : rep.type)}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
+  const body = `
+    <div class="small"${folded ? ` style="margin-top:8px"` : ""}>${formatDateTime12(rep.createdAt)}</div>
     ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
     ${editBox}
     ${appointLabel(rep)}
@@ -26845,8 +26877,9 @@ function repairCard(rep, extraClass) {
     ${rep.doneNote ? `<p class="small" style="margin-top:6px">${escapeHtml(rep.doneNote)}</p>` : ""}
     ${repairMediaButtons(rep)}
     ${editing ? "" : `<div class="repair-actions"><button type="button" class="ghost" data-edit-repair="${escapeHtml(rep.id)}">編輯報修</button><button type="button" class="ghost" data-del-repair="${rep.id}">刪除報修</button></div>`}
-    ${editing ? `<button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>` : ""}
-  </div>`;
+    ${editing ? `<button type="button" class="ghost" data-del-repair="${rep.id}" style="margin-top:8px">刪除報修</button>` : ""}`;
+  if (!folded) return `<div class="card card-body ${extraClass || ""}">${head}${body}</div>`;
+  return `<div class="card card-body tenant-slim${open ? " open" : ""} ${extraClass || ""}" data-fold-mine="${escapeHtml(rep.id)}">${head}<div class="tenant-slim-body"><div class="tenant-slim-inner">${body}</div></div></div>`;
 }
 function repairView() {
   const tid = (me() && me().id) || ui.tenantId;
