@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-15-30";
-const APP_EDIT_COUNT = 1785;
+const APP_STAMP = "2026-10-02-15-33";
+const APP_EDIT_COUNT = 1786;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1335";
+const FILE_VER = "1336";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約行距拉開，日期放在最下方"] },
+  { ver: APP_VERSION, items: ["終止契約公司大小章改到立約人右側"] },
+  { ver: "2026-10-02-15-30-1785", items: ["終止契約行距拉開，日期放在最下方"] },
   { ver: "2026-10-02-15-12-1784", items: ["終止租賃契約加上公司大小章和個人印章框"] },
   { ver: "2026-10-02-13-50-1783", items: ["官方 LINE 回報加截圖到齊後，直接標本月已繳並通知後台"] },
   { ver: "2026-10-02-11-12-1779", items: ["承租人簽章旁的個人印章往左 0.2 公分"] },
@@ -23124,9 +23125,13 @@ function termLeasePaperHtml(t, r, co) {
     : `<span class="chop-mark chop-ps" style="top:-4mm;right:0"></span>`;
   return `<div class="hand-a4-fit"><div class="term-lease-paper" id="term-lease-paper">
     <h3>終　止　租　賃　契　約</h3>
-    <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
-    <p>代表人：　<span class="term-fill">趙正賢</span></p>
-    <p>立約人　<span class="term-fill wide">${escapeHtml(names)}</span>${person ? "　" + escapeHtml(person) : ""}　（及原承租人，簡稱乙方）</p>
+    <div class="term-head chop-host">
+      <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
+      <p>代表人：　<span class="term-fill">趙正賢</span></p>
+      <p>立約人　<span class="term-fill wide">${escapeHtml(names)}</span>${person ? "　" + escapeHtml(person) : ""}　（及原承租人，簡稱乙方）</p>
+      <span class="chop-mark chop-lg" style="top:0;right:16mm"></span>
+      <span class="chop-mark chop-sm" style="top:10mm;right:0"></span>
+    </div>
     <p class="term-center">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
     <p>原租賃物標示及約定事項如下：</p>
     <p>一、原租賃物標示：　<span class="term-fill wide">${escapeHtml(prop)}</span></p>
@@ -23147,8 +23152,6 @@ function termLeasePaperHtml(t, r, co) {
         <p>統一編號：　${escapeHtml(firm.taxId || "82934388")}</p>
         <p>代表人：　趙正賢</p>
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
-        <span class="chop-mark chop-lg" style="top:-1mm;left:88mm"></span>
-        <span class="chop-mark chop-sm" style="top:9mm;left:113mm"></span>
       </div>
       <div class="term-party">
         <p>立約人（乙方）：　${escapeHtml(names)}</p>
