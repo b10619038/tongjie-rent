@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1344";
+const FILE_VER = "1345";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -23136,7 +23136,7 @@ function termLeasePaperHtml(t, r, co) {
       <p>立約人　<span class="term-fill">${escapeHtml(firm.name || "統潔開發有限公司")}</span>　（及原出租人，簡稱甲方）</p>
       <p>代表人：　<span class="term-fill">趙正賢</span></p>
       <p>立約人　${tenantHead}${person ? "　" + escapeHtml(person) : ""}　（及原承租人，簡稱乙方）</p>
-      <span class="chop-mark chop-lg" style="top:0;right:16mm"></span>
+      <span class="chop-mark chop-lg" style="top:0;right:20mm"></span>
       <span class="chop-mark chop-sm" style="top:10mm;right:0"></span>
     </div>
     <p class="term-center">當事人間，原簽訂之租賃契約，現經雙方同意終止。</p>
@@ -23160,7 +23160,7 @@ function termLeasePaperHtml(t, r, co) {
         <p>代表人：　趙正賢</p>
         <p>電話：　${escapeHtml(firm.phone || "07-3414159")}</p>
         <span class="chop-mark chop-lg" style="top:0;right:72mm"></span>
-        <span class="chop-mark chop-sm" style="top:10mm;right:56mm"></span>
+        <span class="chop-mark chop-sm" style="top:10mm;right:52mm"></span>
       </div>
       <div class="term-party chop-host">
         <p>立約人（乙方）：　${escapeHtml(names)}</p>
