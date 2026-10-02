@@ -42,9 +42,9 @@ const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-13-50";
-const APP_EDIT_COUNT = 1782;
+const APP_EDIT_COUNT = 1783;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1332";
+const FILE_VER = "1333";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -6306,6 +6306,7 @@ function normalize(data) {
   try { apply6841RenewLai(data); } catch {}
   try { apply6841SepPay(data); } catch {}
   try { apply6841OctPaid(data); } catch {}
+  try { apply6832OctPaid(data); } catch {}
   try { applyOctPaidRemit(data); } catch {}
   syncStudioLeaseMirrors(data);
   ensureCheckout6832(data);
@@ -6917,6 +6918,30 @@ function apply6841OctPaid(data) {
     try { stampPaidMark(data, t); } catch {}
   });
   data.room6841OctVer = "6841-oct-1001-v2";
+}
+function apply6832OctPaid(data) {
+  if (!data || payYmNow() !== "2026-10") return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "6832");
+  if (!room) return;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.roomId !== room.id || t.former || t.demo || t.incoming) return;
+    if (t.name && !sameTenantName(t.name, "周婕妤、許軒偉")) return;
+    const on = "2026-10-02";
+    if (t.paid && String(t.paidYm || "").slice(0, 7) === "2026-10" && ymdOf(t.remitOn) === on && String(t.paidAt || "").indexOf("13:39") >= 0) return;
+    t.paid = true;
+    t.paidTouched = true;
+    t.paidYm = "2026-10";
+    t.remitOn = on;
+    t.paidAt = on + " 13:39";
+    t.paidVia = "line";
+    t.lineNotified = true;
+    t.lineProofYm = "2026-10";
+    t.edited = true;
+    t.editedAt = Date.now();
+    try { stampPaidMark(data, t); } catch {}
+    try { upsertRentAutoBookOn(data, t); } catch {}
+    try { markCloudDirty(); } catch {}
+  });
 }
 function applyOctPaidRemit() {}
 function applyOfficeSubsidyTenant(data) {
@@ -10400,15 +10425,7 @@ function ingestPaidCloud(raw) {
           byId.set(t.id, t);
         } else {
           applyCloudFlags(t, src);
-          if (Number(src.editedAt || 0) < Number(t.editedAt || 0) && Number(src.officialAt || 0) <= (Number(t.officialAt) || 0)) {
-            if ("paid" in src) {
-              t.paid = !!src.paid;
-              t.paidTouched = true;
-              if (src.paidYm) t.paidYm = src.paidYm || payYmNow();
-              t.paidAt = src.paid ? (src.paidAt || t.paidAt || "") : "";
-            }
-            return;
-          }
+          if (Number(src.editedAt || 0) < Number(t.editedAt || 0) && Number(src.officialAt || 0) <= (Number(t.officialAt) || 0)) return;
         }
         if ("paid" in src) t.paid = !!src.paid;
         t.paidTouched = true;
@@ -10453,6 +10470,7 @@ function ingestPaidCloud(raw) {
     try { applyRoom7611(state); } catch {}
     applyPaidMarks(state);
     try { apply6841OctPaid(state); } catch {}
+    try { apply6832OctPaid(state); } catch {}
     try { applyOctPaidRemit(state); } catch {}
     if (o.rentUnpaidYm) state.rentUnpaidYm = o.rentUnpaidYm;
     const ping = Number(o.repairPing || 0);
@@ -11179,6 +11197,7 @@ async function pullCloud() {
       state.factoryRosterVer = FACTORY_ROSTER_VER;
       resetFactoryPaidMarks(state);
       applyPaidMarks(state);
+      try { apply6832OctPaid(state); } catch {}
       persistPaidMarks(state);
       try { syncPaidRentBooks(state); } catch {}
       persistLedger(state);
@@ -11298,6 +11317,7 @@ async function pullCloud() {
     state.factoryRosterVer = FACTORY_ROSTER_VER;
     resetFactoryPaidMarks(state);
     applyPaidMarks(state);
+    try { apply6832OctPaid(state); } catch {}
     persistPaidMarks(state);
     applyAvatars(state);
     persistAvatars(state);
@@ -11893,6 +11913,7 @@ async function pushCloud() {
   pushAgain = false;
   try {
     applyCompany(state);
+    try { apply6832OctPaid(state); } catch {}
     stripDevMemosFromState();
     stripDevLogsFromState();
     state.updatedAt = Date.now();
@@ -11968,6 +11989,7 @@ async function pushCloud() {
     applyPaidMarks(payload);
     applyPaidMarks(state);
     try { apply6841OctPaid(state); } catch {}
+    try { apply6832OctPaid(state); } catch {}
     try { applyOctPaidRemit(state); } catch {}
     if (payload.repairs) state.repairs = payload.repairs;
     if (payload.announcements) state.announcements = payload.announcements;
@@ -31155,6 +31177,11 @@ function tenantListOfKind(kind, opts) {
       const aa = tenantApplyRank(a);
       const ab = tenantApplyRank(b);
       if (aa !== ab) return aa - ab;
+    }
+    if (tenantChipOn() === "paid" && !factory) {
+      const ra = state.rooms.find(x => x.id === a.roomId);
+      const rb = state.rooms.find(x => x.id === b.roomId);
+      return String(ra && ra.no || "").localeCompare(String(rb && rb.no || ""), "zh-Hant", { numeric: true });
     }
     return (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999);
   });
