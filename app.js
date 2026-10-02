@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1353";
+const FILE_VER = "1354";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -3409,6 +3409,7 @@ function renewAskCardHtml(t, r, opts) {
     const extra = renewExtraMonthsOf(cur);
     const signDay = isRenewSignDay(cur);
     const signed = cur.status === "done" || cur.status === "applied";
+    const esigned = renewEsigned(cur);
     const moveNo = cur.wantMove ? String(cur.moveRoomNo || "") : "";
     return `<div class="handover-note renew-note">
       <div class="label">${signed ? "續約完成" : "續約申請已送出"}</div>
@@ -3417,8 +3418,9 @@ function renewAskCardHtml(t, r, opts) {
       ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
       <p class="small" style="margin-top:8px">${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}，簽約現場只收現金。</p>
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
+      ${esigned && !signed ? `<p class="small" style="margin-top:8px">已完成線上簽名。請於預約時間到 7651 蓋章。若年、月、房號或金額有改，需要重新簽名。</p>` : ""}
       ${cur.appointAt && !signed ? `<button type="button" class="linkish appoint-link" data-gcal-renew="${cur.id}" style="margin-top:8px">加入日曆</button>` : ""}
-      ${!signed ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">線上簽署新約</button>` : ""}
+      ${!signed && !esigned ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">${cur.signedKey ? "內容已變更，重新簽署新約" : "線上簽署新約"}</button>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
       ${!signed ? `<button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">改為不續約</button>` : ""}
@@ -3463,7 +3465,7 @@ function renewAskCardHtml(t, r, opts) {
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
     <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室</div>
-    <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "送出換房續約" : "送出續約申請"}</button>
+    <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約"}</button>
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
   </div>`;
 }
@@ -3640,7 +3642,7 @@ function bindRenewForm() {
       bindRenewPicks();
     }
     const send = document.getElementById("renew-submit");
-    if (send) send.textContent = ui.renewMode === "move" ? "送出換房續約" : "送出續約申請";
+    if (send) send.textContent = ui.renewMode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約";
     paintRenewRange();
   };
   if (modeSeg && typeof bindSegSwipe === "function") bindSegSwipe(modeSeg, () => setMode("same"), () => setMode("move"));
@@ -3669,32 +3671,40 @@ function bindRenewForm() {
     };
   }
   const send = document.getElementById("renew-submit");
-  if (send) send.onclick = () => submitTenantRenewal();
+  if (send) send.onclick = () => openRenewSignFirst();
   document.querySelectorAll("[data-renew-decline]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); e.stopPropagation(); openRenewDeclineConfirm(); };
   });
 }
-function submitTenantRenewal() {
+function renewTermsKey(row) {
+  if (!row) return "";
+  const people = (Array.isArray(row.people) ? row.people : []).map(p => {
+    if (!p) return "";
+    return [p.name || "", p.renew === false ? "0" : "1", Number(p.years) || 0, Number(p.months) || 0].join(":");
+  }).join("|");
+  return [row.roomNo || "", row.moveRoomNo || "", row.start || "", row.end || "", Number(row.years) || 0, Number(row.extraMonths) || 0, Number(row.waterFee) || 0, people].join("#");
+}
+function renewEsigned(row) {
+  return !!(row && row.signedKey && row.signedKey === renewTermsKey(row));
+}
+function buildTenantRenewRow() {
   const t = me(); const r = myRoom();
-  if (!t || !r) return;
-  if (liveRenewalOf(t)) { toast(openRenewalOf(t) ? "已送出續約申請" : "續約已完成簽約"); return; }
-  if (isProspectPreview()) { toast("預覽中，續約不會送出"); return; }
+  if (!t || !r) return null;
+  if (liveRenewalOf(t)) { toast(openRenewalOf(t) ? "已送出續約申請" : "續約已完成簽約"); return null; }
+  if (isProspectPreview()) { toast("預覽中，續約不會送出"); return null; }
   const inp = document.getElementById("renew-appoint");
   const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
-  if (!at) { toast("請先預約實際簽約日期"); return; }
+  if (!at) { toast("請先預約實際簽約日期"); return null; }
   const people = renewPeopleState(t);
   const plan = renewPeoplePlan(t, people);
-  if (!plan.stay.length) { toast("請至少一位選擇續約，並選年或月"); return; }
-  const years = plan.years;
-  const range = { start: plan.start, end: plan.end };
-  const water = plan.water;
+  if (!plan.stay.length) { toast("請至少一位選擇續約，並選年或月"); return null; }
   const wantMove = ui.renewMode === "move";
   let dest = null;
   if (wantMove) {
     dest = renewMoveRoomOf(ui.renewMoveRoomId);
-    if (!dest) { toast("請先選要換的房間，或改回同一間續約"); return; }
+    if (!dest) { toast("請先選要換的房間，或改回同一間續約"); return null; }
     const st = renewMoveStatus(dest);
-    if (!st.selectable) { toast(st.label || "這間目前不能換"); return; }
+    if (!st.selectable) { toast(st.label || "這間目前不能換"); return null; }
   }
   const row = {
     id: "rn" + Date.now(),
@@ -3703,16 +3713,16 @@ function submitTenantRenewal() {
     roomNo: r.no,
     name: t.name || "",
     status: "open",
-    years,
+    years: plan.years,
     extraMonths: plan.extra,
     people: (people || []).map(p => {
       const hit = plan.stay.find(s => s.name === p.name);
       return hit || { name: p.name, renew: false, years: 0, months: 0 };
     }),
     renewNames: plan.stay.map(p => p.name).join("、"),
-    start: range.start,
-    end: range.end,
-    waterFee: water,
+    start: plan.start,
+    end: plan.end,
+    waterFee: plan.water,
     waterCash: true,
     appointAt: at.replace(" ", "T"),
     createdAt: nowStamp(),
@@ -3720,29 +3730,53 @@ function submitTenantRenewal() {
     moveRoomId: dest ? dest.id : "",
     moveRoomNo: dest ? dest.no : ""
   };
+  return row;
+}
+function saveTenantRenewRow(row, opt) {
+  if (!row) return;
+  const t = (state.tenants || []).find(x => x.id === row.tenantId) || me();
+  if (opt && opt.signed) {
+    row.signedKey = renewTermsKey(row);
+    row.signedAt = nowStamp();
+  }
   if (isDevPreview()) {
     if (!ui.devRenewals) ui.devRenewals = [];
     ui.devRenewals.push(row);
-    toast("預覽：已送出續約（不會寫入）");
+    toast("預覽：已簽名並送出續約（不會寫入）");
     ui.keepScroll = true;
-    render();
     return;
   }
   if (!state.renewals) state.renewals = [];
   state.renewals.push(row);
-  state.renewPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, years, waterFee: water };
-  const tag = "renew-ask-" + String(t.leaseEnd || "") + "-" + t.id;
-  if (Array.isArray(t.inbox)) t.inbox.forEach(n => { if (n && n.id === tag) n.read = true; });
-  t.renewChoice = "yes";
-  t.edited = true;
-  t.editedAt = Date.now();
+  state.renewPing = { at: Date.now(), roomNo: row.roomNo, name: row.name || "", id: row.id, years: row.years, waterFee: row.waterFee };
+  const tag = "renew-ask-" + String((t && t.leaseEnd) || "") + "-" + (t && t.id || "");
+  if (t && Array.isArray(t.inbox)) t.inbox.forEach(n => { if (n && n.id === tag) n.read = true; });
+  if (t) { t.renewChoice = "yes"; t.edited = true; t.editedAt = Date.now(); }
   save();
   try { publishRenewNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("續約申請", `${r.no} ${plan.stay.map(p => p.name).join("、")}${dest ? "　換至 " + dest.no : ""}　${plan.stay.map(p => p.name + renewSpanLabel(p.years, p.months)).join("、")}　水費 ${money(water)} 現場現金　簽約 ${formatDateTime12(at.replace(" ", "T"))}`, "admin");
-  toast(dest ? "已送出換房續約" : "已送出續約申請");
+  const who = (row.people || []).filter(p => p && p.renew !== false).map(p => p.name + renewSpanLabel(p.years, p.months)).join("、");
+  pushPhoneNotify("續約申請", `${row.roomNo} ${row.renewNames || row.name || ""}${row.moveRoomNo ? "　換至 " + row.moveRoomNo : ""}　${who}　水費 ${money(row.waterFee)} 現場現金　簽約 ${formatDateTime12(String(row.appointAt).replace("T", " "))}`, "admin");
+  toast(row.wantMove ? "已簽名並送出換房續約，現場再蓋章即可" : "已簽名並送出續約申請，現場再蓋章即可");
   ui.keepScroll = true;
+}
+function openRenewSignFirst() {
+  const row = buildTenantRenewRow();
+  if (!row) return;
+  ui.renewDraft = row;
+  ui.resignRenew = true;
+  ui.signAgree = false;
+  ui.signStrokes = [];
+  ui.signStrokes2 = [];
+  ui.page = "lease-sign";
+  ui.keepScroll = false;
+  render();
+}
+function submitTenantRenewal() {
+  const row = buildTenantRenewRow();
+  if (!row) return;
+  saveTenantRenewRow(row, { signed: true });
   render();
 }
 function tenantEarlyApply(t) {
@@ -26381,7 +26415,8 @@ function leaseSignView() {
   const home = myRoom();
   const r = signTargetRoom(t) || home;
   const es = getESign(t);
-  const renewItem = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+  const draft = ui.resignRenew && ui.renewDraft && t && ui.renewDraft.tenantId === t.id ? ui.renewDraft : null;
+  const renewItem = draft || (typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null);
   const paperT = renewItem ? tenantForRenewPrint(t, r, renewItem) : t;
   const paperWhich = renewItem ? "new" : "old";
   const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, paperWhich) : eContractDocHtml(paperT, r);
@@ -26393,7 +26428,7 @@ function leaseSignView() {
     <div class="screen">
       <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
       <p class="small" style="margin:8px 2px 12px">你的藍字簽名與資料已套進合約。管理員列印後只蓋章。</p>
-      ${renewItem && renewItem.status !== "applied" ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-bottom:12px">簽署新約（手寫簽名）</button>` : ""}
+      ${renewItem && renewItem.status !== "applied" && !renewEsigned(renewItem) ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-bottom:12px">簽署新約（手寫簽名）</button>` : ""}
       ${paper}
     </div>`;
   }
@@ -26439,7 +26474,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${renewItem ? "續約新約簽署前，下面承租人資料五項都要填完才能簽名。兩人請用／分開。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。"}</p>
+      <p class="small" style="margin:0 2px 10px">${draft ? "請核對這份新約。五項資料填完並簽名後，才會送出續約申請。之後如果年、月、房號或金額有改，要重新簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : (renewItem ? "續約新約簽署前，下面承租人資料五項都要填完才能簽名。兩人請用／分開。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。")}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -26480,7 +26515,7 @@ function leaseSignView() {
       <div class="sign-pad-wrap"><canvas id="sign-pad-2" width="640" height="280"></canvas></div>` : ""}
       <div class="btn-row" style="margin-top:12px">
         <button type="button" class="ghost" id="sign-clear">清除簽名</button>
-        <button type="button" class="btn-navy" id="sign-confirm">確認簽署</button>
+        <button type="button" class="btn-navy" id="sign-confirm">${draft ? "簽名並送出申請" : "確認簽署"}</button>
       </div>
     </div>`;
 }
@@ -33496,6 +33531,7 @@ function bindTenant() {
       e.preventDefault();
       e.stopPropagation();
       ui.resignRenew = true;
+      ui.renewDraft = null;
       ui.signAgree = false;
       ui.signStrokes = [];
       ui.signStrokes2 = [];
@@ -34182,7 +34218,8 @@ function bindSignPad() {
     const c = a && a.c;
     if (!c || (c.dataset.ink !== "1" && !(ui.signStrokes && ui.signStrokes.length))) { toast("請先在白框內簽名"); return; }
     const t = me(); const r = signTargetRoom(t) || myRoom();
-    const renewing = !!(t && typeof liveRenewalOf === "function" && liveRenewalOf(t));
+    const draft = ui.renewDraft && t && ui.renewDraft.tenantId === t.id ? ui.renewDraft : null;
+    const renewing = !!(draft || (t && typeof liveRenewalOf === "function" && liveRenewalOf(t)));
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
     const idNo = val("sign-idno");
     const phone = val("sign-phone");
@@ -34225,6 +34262,12 @@ function bindSignPad() {
     ui.signing = false;
     ui.resignRenew = false;
     saveESignRecord(t, rec);
+    if (draft) saveTenantRenewRow(draft, { signed: true });
+    else if (renewing) {
+      const cur = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+      if (cur) { cur.signedKey = renewTermsKey(cur); cur.signedAt = rec.at; save(); }
+    }
+    ui.renewDraft = null;
     if (!state.notices) state.notices = [];
     state.notices.push({ id: "n" + Date.now(), type: "esign", roomNo: r && r.no, text: `${r ? r.no : ""} ${t && t.name ? t.name : ""} 已簽署電子合約`, createdAt: rec.at, read: false });
     state.eSignPing = { at: Date.now(), tenantId: t && t.id, roomNo: r && r.no, name: t && t.name };
@@ -34253,7 +34296,7 @@ function bindSignPad() {
       ui.prospectPreview = true;
       persistUi();
     }
-    toast(renewing ? "已完成新約電子簽署，現場再蓋章即可" : "已完成電子簽署，等後台確認才會正式入住");
+    if (!draft) toast(renewing ? "已完成新約電子簽署，現場再蓋章即可" : "已完成電子簽署，等後台確認才會正式入住");
     render();
   };
 }
