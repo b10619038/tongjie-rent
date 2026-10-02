@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1357";
+const FILE_VER = "1359";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -9419,6 +9419,31 @@ function applyId7031(data) {
   try { markCloudDirty(); } catch {}
   return true;
 }
+function applyLoginEverBackfill(data) {
+  if (!data || !Array.isArray(data.tenants)) return false;
+  const seats = data.loginSeats || {};
+  const presence = data.presence || {};
+  let changed = false;
+  data.tenants.forEach(t => {
+    if (!t || !t.id) return;
+    const list = Array.isArray(seats[t.id]) ? seats[t.id] : [];
+    if (!t.loginEverAt && list.length) {
+      const times = list.map(s => Number(s.since) || Number(s.at) || 0).filter(Boolean);
+      t.loginEverAt = times.length ? Math.min.apply(null, times) : Date.now();
+      changed = true;
+    }
+    if (!t.installEver && list.length) {
+      const p = presence[t.id] || {};
+      const dev = String(p.device || "");
+      if (!/Windows|電腦/.test(dev) && (p.installed || /已安裝 App/.test(dev))) {
+        t.installEver = true;
+        changed = true;
+      }
+    }
+  });
+  if (changed) { try { markCloudDirty(); } catch {} }
+  return changed;
+}
 function applyId7041(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
   const room = data.rooms.find(r => r && String(r.no) === "7041");
@@ -9974,7 +9999,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "rentShort", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "rentShort", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -10200,6 +10225,14 @@ function seatExempt() {
   if (ui.role === "admin" || ui.adminCode === "1240") return true;
   return false;
 }
+function rememberTenantLogin(tid) {
+  if (!tid || seatExempt()) return;
+  const t = (state.tenants || []).find(x => x && x.id === tid);
+  if (!t) return;
+  const now = Date.now();
+  if (!t.loginEverAt) t.loginEverAt = now;
+  if (typeof isStandalone === "function" && isStandalone()) t.installEver = true;
+}
 function claimTenantSeat(tid) {
   if (!tid || seatExempt()) return true;
   const id = liveDeviceId();
@@ -10209,11 +10242,13 @@ function claimTenantSeat(tid) {
   if (mine) {
     mine.at = now;
     state.loginSeats[tid] = cur;
+    rememberTenantLogin(tid);
     return true;
   }
   if (cur.length >= 2) return false;
   cur.push({ id, at: now, since: now });
   state.loginSeats[tid] = capSeats(cur);
+  rememberTenantLogin(tid);
   return true;
 }
 function releaseTenantSeat(tid) {
@@ -11301,6 +11336,7 @@ async function pullCloud() {
       try { applyRoom7611(state); } catch {}
       try { applyId7031(state); } catch {}
       try { applyId7041(state); } catch {}
+      try { applyLoginEverBackfill(state); } catch {}
       try { applyRenewNoMarks(state); } catch {}
       try { apply7042RentShort(state); } catch {}
       try { apply7042SepPaid(state); } catch {}
@@ -11463,6 +11499,7 @@ async function pullCloud() {
     try { applyRoom7611(state); } catch {}
     try { applyId7031(state); } catch {}
     try { applyId7041(state); } catch {}
+    try { applyLoginEverBackfill(state); } catch {}
     try { applyRenewNoMarks(state); } catch {}
     try { apply7042RentShort(state); } catch {}
     try { apply7042SepPaid(state); } catch {}
@@ -11848,9 +11885,10 @@ function beatPresence() {
   const id = presenceKey();
   const beat = presencePayload();
   if (!id || !beat) return;
+  if (ui.role === "tenant" && /Windows|電腦/.test(String(beat.device || ""))) return;
   if (!state.presence || typeof state.presence !== "object") state.presence = {};
   const prev = state.presence[id];
-  if (prev && prev.installed) beat.installed = true;
+  if (prev && prev.installed && !/Windows|電腦/.test(String(prev.device || ""))) beat.installed = true;
   state.presence[id] = beat;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   const stale = !prev || !prev.cloudAt || (Date.now() - Number(prev.cloudAt) > 120000);
@@ -11950,11 +11988,9 @@ function tenantAccountRows() {
     const p = (state.presence || {})[t.id] || {};
     const seats = capSeats((state.loginSeats || {})[t.id] || []);
     const on = isOnline(t.id);
-    const ever = on || seats.length > 0 || !!(p && p.at);
-    const installed = !!(p && (p.installed || /已安裝 App/.test(String(p.device || "")))) || (state.auditLogs || []).some(x => {
-      if (!x || !/已安裝 App/.test(String(x.device || ""))) return false;
-      return logPresenceId(x) === t.id || (room.no && String(x.who || "").indexOf(String(room.no)) >= 0 && logKind(x) === "tenant");
-    });
+    const phoneDev = p.device && !/Windows|電腦/.test(String(p.device));
+    const ever = !!(t.loginEverAt || seats.length);
+    const installed = !!(t.installEver || (seats.length && phoneDev && (p.installed || /已安裝 App/.test(String(p.device || "")))));
     rows.push({
       id: t.id,
       no: String(room.no || ""),
@@ -11962,7 +11998,7 @@ function tenantAccountRows() {
       on,
       ever,
       installed,
-      at: Number(p.at) || 0,
+      at: Number(t.loginEverAt) || (ever ? Number(p.at) || 0 : 0),
       device: p.device || "",
       seats: seats.length
     });
@@ -12144,6 +12180,7 @@ async function pushCloud() {
     try { applyRoom7611(payload); } catch {}
     try { applyId7031(payload); } catch {}
     try { applyId7041(payload); } catch {}
+    try { applyLoginEverBackfill(payload); } catch {}
     try { applyRenewNoMarks(payload); } catch {}
     try { apply7042RentShort(payload); } catch {}
     try { apply7042SepPaid(payload); } catch {}
@@ -14692,14 +14729,14 @@ function exitDevPreview() {
   beatPresence();
   render();
 }
-function enterTenantLook(t) {
+function enterTenantLook(t, page) {
   if (!isDeveloper()) { toast("這個功能只有開發者能用"); return; }
   if (!t) { toast("找不到租客"); return; }
   const r = (state.rooms || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id));
   ui.lookBack = {
     role: "admin",
     adminCode: "1240",
-    page: "tenants",
+    page: ui.page || "tenants",
     tenantKind: ui.tenantKind === "factory" ? "factory" : "studio",
     assetKind: ui.assetKind || "studio"
   };
@@ -14710,7 +14747,7 @@ function enterTenantLook(t) {
   ui.tenantId = t.id;
   ui.roomId = r ? r.id : t.roomId;
   ui.roomNo = (r && r.no) || "";
-  ui.page = "home";
+  ui.page = page === "repair" ? "repair" : "home";
   persistUi();
   render();
 }
@@ -32735,7 +32772,7 @@ function bindTenantLook() {
       e.stopPropagation();
       const t = (state.tenants || []).find(x => x && x.id === btn.dataset.lookTenant);
       if (!t) { toast("找不到租客"); return; }
-      enterTenantLook(t);
+      enterTenantLook(t, btn.dataset.lookPage || "");
     };
   });
 }
@@ -32929,8 +32966,12 @@ function adminRepairs() {
     const open = !!ui.repairOpen[rep.id];
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
     const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? "　" + t.name : ""));
+    const label = escapeHtml(rep.type) + " · " + escapeHtml(who);
+    const head = (typeof isDeveloper === "function" && isDeveloper() && t)
+      ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
+      : `<span class="k">${label}</span>`;
     return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
-      <div class="row tenant-slim-head"><span class="k">${escapeHtml(rep.type)} · ${escapeHtml(who)}</span><span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head">${head}<span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">
       <div class="small" style="margin-top:8px">${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>

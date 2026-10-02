@@ -5601,6 +5601,18 @@ html.preview-zoom body {
 .tenant-slim { padding: 8px 14px; transition: padding .32s ease; }
 .tenant-slim.open { padding: 16px; overflow: visible; }
 .tenant-slim-head { padding: 2px 0; align-items: center; gap: 4px; }
+button.repair-look {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+}
 .fold-head { flex: 1; min-width: 0; }
 .tenant-slim-body {
   display: grid;
