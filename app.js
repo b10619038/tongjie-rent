@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1393";
+const FILE_VER = "1394";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -18389,6 +18389,10 @@ function renewalHoldRows(room, exceptId) {
   (list || []).forEach(x => {
     if (!x || x.status === "cancelled") return;
     if (x.status !== "done" && x.status !== "applied" && x.status !== "open") return;
+    if (x.status === "open") {
+      const owner = (state.tenants || []).find(p => p && p.id === x.tenantId);
+      if (owner && owner.renewChoice === "no") return;
+    }
     const e = ymdOf(x.end);
     if (!e) return;
     const fromHere = x.roomId === room.id || String(x.roomNo) === roomNo;
@@ -24927,6 +24931,7 @@ function applyMoveRoom(id) {
     const range = continueLeaseRange(r, { incoming: true });
     d.leaseStart = range.start;
     d.leaseEnd = range.end;
+    d.leaseStartTouched = false;
   }
   ui.signCalYear = 0;
   ui.signCalMonth = 0;
@@ -24975,7 +24980,7 @@ function moveInView() {
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
   const minStart = r ? roomSoonestStart(r, dummy) : todayYmd();
   const cont = r ? fullYearLeaseRange(minStart) : fullYearLeaseRange(todayYmd());
-  if (r && (!d.leaseStart || d.leaseStart < minStart)) {
+  if (r && (!d.leaseStartTouched || !d.leaseStart || d.leaseStart < minStart)) {
     d.leaseStart = minStart;
     d.leaseEnd = cont.end;
   }
@@ -34182,6 +34187,7 @@ function bindMoveInForm() {
         d.leaseStart = min;
         toast("起始日不可早於 " + min);
       }
+      d.leaseStartTouched = d.leaseStart !== min;
       d.leaseEnd = studioLeasePack(d.leaseStart, r ? studioContractRent(null, r) : 0).occupancyEnd;
       render();
     };
