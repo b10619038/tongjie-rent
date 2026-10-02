@@ -79,14 +79,20 @@ async function persistPayToState(env, data) {
     payUsers: (data && data.payUsers) || {}
   };
   const noted = [];
+  let toldDirty = false;
   Object.keys((data && data.payProofs) || {}).forEach(no => {
     const p = data.payProofs[no];
     if (!p || p.ym !== ym || !p.hasText || !p.hasImage) return;
+    if (p.toldYm === ym) return;
     const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
     if (!room || room.kind === "factory" || room.demo) return;
     const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
     if (!t) return;
-    if (t.paid && String(t.paidYm || "").slice(0, 7) === ym) return;
+    const already = (t.paid && String(t.paidYm || "").slice(0, 7) === ym) || t.payToldYm === ym;
+    p.toldYm = ym;
+    toldDirty = true;
+    t.payToldYm = ym;
+    if (already) return;
     const when = taipeiStamp(p.at);
     t.paid = true;
     t.paidVia = "line";
@@ -96,6 +102,7 @@ async function persistPayToState(env, data) {
     t.remitOn = when.slice(0, 10);
     t.lineNotified = true;
     t.lineProofYm = ym;
+    t.payToldYm = ym;
     t.edited = true;
     t.editedAt = Date.now();
     if (!state.paidMarks) state.paidMarks = {};
@@ -105,6 +112,9 @@ async function persistPayToState(env, data) {
     };
     noted.push(no + " " + (t.name || "") + "　實繳日 " + t.remitOn);
   });
+  if (toldDirty) {
+    try { await saveBinds(data); } catch {}
+  }
   state.updatedAt = Date.now();
   await putState(env, state);
   for (const line of noted) {

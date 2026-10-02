@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1364";
+const FILE_VER = "1365";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -7019,7 +7019,7 @@ function apply6841OctPaid(data) {
     const start = ymdOf(t.leaseStart);
     if (start && start > "2026-10-31") return;
     const on = "2026-10-01";
-    if (t.paid && String(t.paidYm || "").slice(0, 7) === "2026-10" && ymdOf(t.remitOn) === on && ymdOf(t.paidAt) === on) return;
+    if (t.paid && String(t.paidYm || "").slice(0, 7) === "2026-10") return;
     t.paid = true;
     t.paidTouched = true;
     t.paidYm = "2026-10";
@@ -9999,7 +9999,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "rentShort", "lineNotified", "lineProofYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -10127,6 +10127,7 @@ function mergePaidFields(out, a, b) {
   out.paidYm = ym;
   out.lineNotified = !!src.lineNotified;
   if (src.remitOn || out.remitOn) out.remitOn = src.remitOn || out.remitOn;
+  if ((a && a.payToldYm === ym) || (b && b.payToldYm === ym)) out.payToldYm = ym;
   return out;
 }
 function mergePaidMarkMaps(a, b) {
@@ -25830,6 +25831,20 @@ function noteLinePaidTenant(t, room) {
   t.editedAt = Date.now();
   return true;
 }
+function payToldKey(no) { return "tj-pay-told-" + payYmNow() + "-" + String(no || ""); }
+function payToldAlready(t, no) {
+  if (t && t.payToldYm === payYmNow()) return true;
+  try { return localStorage.getItem(payToldKey(no)) === "1"; } catch { return false; }
+}
+function rememberPayTold(t, no) {
+  const ym = payYmNow();
+  if (t && t.payToldYm !== ym) {
+    t.payToldYm = ym;
+    t.edited = true;
+    t.editedAt = Date.now();
+  }
+  try { localStorage.setItem(payToldKey(no), "1"); } catch {}
+}
 function applySeenPayProofs() {
   if (!state || ui.role === "tenant") return 0;
   const proofs = (ui.lineBinds && ui.lineBinds.payProofs) || {};
@@ -25841,10 +25856,22 @@ function applySeenPayProofs() {
     const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
     if (!room || room.demo || room.kind === "factory") return;
     const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
-    if (!noteLinePaidTenant(t, room)) return;
+    if (!t || t.former || t.incoming || t.demo) return;
+    if (payToldAlready(t, no)) {
+      if (!paidThisMonth(t) && noteLinePaidTenant(t, room)) n += 1;
+      return;
+    }
+    if (!noteLinePaidTenant(t, room)) {
+      if (t.payToldYm !== ym) {
+        rememberPayTold(t, no);
+        n += 1;
+      }
+      return;
+    }
     stampPaidMark(state, t);
     try { upsertRentAutoBookOn(state, t); } catch {}
     try { mirrorPaidFromTenant(state, t); } catch {}
+    rememberPayTold(t, no);
     pushPhoneNotify("繳費回報", `${no} ${t.name || ""} 已回報繳費（官方 LINE）`, "admin");
     n += 1;
   });
@@ -25858,9 +25885,10 @@ function applySeenPayProofs() {
 function markTenantPaid(via) {
   const t = me(); const r = myRoom();
   if (!t || !r) return;
+  const told = payToldAlready(t, r.no);
   if (via === "line") {
-    if (!noteLinePaidTenant(t, r)) return;
-  } else {
+    if (!noteLinePaidTenant(t, r) && told) return;
+  } else if (!t.paid) {
     t.paid = true;
     t.paidVia = via;
     t.paidAt = nowStamp();
@@ -25869,15 +25897,16 @@ function markTenantPaid(via) {
     t.remitOn = ymdOf(t.paidAt);
     t.edited = true;
     t.editedAt = Date.now();
-  }
+  } else if (told) return;
   stampPaidMark(state, t);
   try { ensureDemoTenant(state); } catch {}
   upsertRentAutoBookOn(state, t);
   mirrorPaidFromTenant(state, t);
+  rememberPayTold(t, r.no);
   save();
   clearTimeout(saveTimer);
   try { pushCloud(); } catch {}
-  pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
+  if (!told) pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
