@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1395";
+const FILE_VER = "1396";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -18461,6 +18461,29 @@ function renewalHoldPending(room, exceptId) {
   if (hits.some(x => x.status === "done" || x.status === "applied")) return false;
   return hits.some(x => x.status === "open");
 }
+function moveUntilPrefix(m) {
+  if (m && m.early) return "中途退租至 ";
+  if (m && m.pending) return "續約申請至 ";
+  if (m && m.renewed) return "已續約至 ";
+  return "現約至 ";
+}
+function occupiedUntilYmd(t, r) {
+  let end = (t && typeof tenantOccupancyEnd === "function" ? tenantOccupancyEnd(t, r) : "") || ymdOf(t && t.leaseEnd) || "";
+  const hold = typeof renewalHoldEnd === "function" ? renewalHoldEnd(r, "") : "";
+  if (hold && (!end || hold > ymdOf(end))) end = hold;
+  const leave = t && typeof earlyLeaveEnd === "function" ? earlyLeaveEnd(r, t) : "";
+  if (leave && (!end || ymdOf(leave) < ymdOf(end))) end = leave;
+  return end || "";
+}
+function occupiedUntilPhrase(occ, room) {
+  const end = occupiedUntilYmd(occ, room) || (occ && occ.leaseEnd) || "";
+  const leave = occ && typeof earlyLeaveEnd === "function" ? earlyLeaveEnd(room, occ) : "";
+  if (leave && ymdOf(end) === ymdOf(leave)) return "中途退租至 " + end;
+  const cur = ymdOf(occ && occ.leaseEnd);
+  const held = ymdOf(end);
+  if (held && (!cur || held > cur)) return (renewalHoldPending(room, "") ? "續約申請至 " : "已續約至 ") + end;
+  return "現約至 " + (end || "—");
+}
 function earlyLeaveEnd(room, tenant) {
   const tid = tenant && tenant.id;
   const roomId = room && room.id;
@@ -26611,6 +26634,7 @@ function contractStatusLabel(t, r) {
 }
 function eContractDocHtml(t, r) {
   const lessor = "統潔＆信潔開發有限公司";
+  r = r || {};
   const firm = r.company || "統潔";
   const es = getESign(t);
   return `<div class="contract-doc">
@@ -26709,10 +26733,20 @@ function leaseView() {
 function leaseSignView() {
   const t = me();
   const home = myRoom();
-  const r = signTargetRoom(t) || home;
-  const es = getESign(t);
   const draft = ui.resignRenew && ui.renewDraft && t && ui.renewDraft.tenantId === t.id ? ui.renewDraft : null;
   const renewItem = draft || (typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null);
+  let r = signTargetRoom(t) || home;
+  if (renewItem) {
+    const rooms = (state && state.rooms) || [];
+    const same = rooms.find(x => x && (x.id === renewItem.roomId || (renewItem.roomNo && String(x.no) === String(renewItem.roomNo))));
+    if (renewItem.wantMove) {
+      const dest = rooms.find(x => x && (x.id === renewItem.moveRoomId || (renewItem.moveRoomNo && String(x.no) === String(renewItem.moveRoomNo))));
+      if (dest) r = dest;
+      else if (!r && same) r = same;
+    } else if (same) r = same;
+  }
+  if (!r && t) r = ((state && state.rooms) || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id)) || null;
+  const es = getESign(t);
   const paperT = renewItem ? tenantForRenewPrint(t, r, renewItem) : t;
   const paperWhich = renewItem ? "new" : "old";
   const paper = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, paperWhich) : eContractDocHtml(paperT, r);
