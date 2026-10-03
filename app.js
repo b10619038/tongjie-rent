@@ -44,7 +44,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-02-15-40";
 const APP_EDIT_COUNT = 1789;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1396";
+const FILE_VER = "1397";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -34568,25 +34568,10 @@ function bindSignPad() {
     const hasInk = !!(c && (c.dataset.ink === "1" || (ui.signStrokes && ui.signStrokes.length)));
     const t0 = me();
     const draft0 = ui.renewDraft && t0 && ui.renewDraft.tenantId === t0.id ? ui.renewDraft : null;
-    if (look && !hasInk) {
-      ui.signStrokes = [];
-      ui.signStrokes2 = [];
-      ui.signing = false;
-      ui.resignRenew = false;
-      if (draft0) {
-        draft0.byDev = true;
-        saveTenantRenewRow(draft0);
-      }
-      ui.renewDraft = null;
-      ui.page = "lease";
-      if (!draft0) toast("已略過簽名，沒有寫入電子簽名");
-      render();
-      return;
-    }
-    if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
-    if (!c || !hasInk) { toast("請先在白框內簽名"); return; }
-    const t = me(); const r = signTargetRoom(t) || myRoom();
-    const draft = ui.renewDraft && t && ui.renewDraft.tenantId === t.id ? ui.renewDraft : null;
+    const skipInk = look && !hasInk;
+    const t = t0;
+    const r = signTargetRoom(t) || myRoom();
+    const draft = draft0;
     const renewing = !!(draft || (t && typeof liveRenewalOf === "function" && liveRenewalOf(t)));
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
     const idNo = val("sign-idno");
@@ -34596,13 +34581,18 @@ function bindSignPad() {
     const addr = val("sign-addr");
     const two = splitPair((t && t.name) || "").length > 1;
     const gap = signProfileGap(two, idNo, phone, emName, emPhone, addr);
-    if (gap) {
+    const wrote = !!(idNo || phone || emName || emPhone || addr);
+    if (!skipInk) {
+      if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
+      if (!c || !hasInk) { toast("請先在白框內簽名"); return; }
+    }
+    if ((!skipInk || wrote) && gap) {
       toast(gap.msg);
       const el = document.getElementById(gap.id);
       if (el) { try { el.focus(); } catch {} }
       return;
     }
-    if (t) {
+    if (t && (!skipInk || wrote)) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
       if (phone) t.phone = normalizeMobile(phone);
       if (emName) t.emergencyName = slashPair(emName);
@@ -34617,6 +34607,25 @@ function bindSignPad() {
         if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
         else if (t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
       }
+    }
+    if (skipInk) {
+      ui.signStrokes = [];
+      ui.signStrokes2 = [];
+      ui.signing = false;
+      ui.resignRenew = false;
+      if (draft) {
+        draft.byDev = true;
+        saveTenantRenewRow(draft);
+      } else if (wrote) {
+        save();
+        try { pushCloud(); } catch {}
+      }
+      ui.renewDraft = null;
+      ui.page = "lease";
+      if (wrote) toast("承租人資料已寫進續約合約，簽名已略過");
+      else if (!draft) toast("已略過簽名，沒有寫入電子簽名");
+      render();
+      return;
     }
     const rec = {
       status: "signed", at: nowStamp(), ts: Date.now(),
