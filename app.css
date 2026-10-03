@@ -1129,6 +1129,39 @@ button.pay-pill.hand {
 }
 @media (prefers-reduced-motion: reduce) {
   .sent-pulse { animation: none; opacity: 1; width: 10px; height: 10px; }
+  .renew-star { animation: none; opacity: .95; transform: none; filter: none; }
+}
+.renew-done-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  color: #8a5a22;
+}
+.renew-stars {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  flex: 0 0 30px;
+  color: currentColor;
+}
+.renew-star {
+  position: absolute;
+  display: block;
+  overflow: visible;
+  transform-origin: center;
+  animation: renewSpark 1.7s ease-in-out infinite;
+}
+.renew-star path { fill: currentColor; }
+.renew-star.s1 { width: 15px; height: 15px; left: 0; top: 2px; }
+.renew-star.s2 { width: 8px; height: 8px; left: 15px; top: 0; animation-delay: .4s; }
+.renew-star.s3 { width: 11px; height: 11px; left: 17px; top: 8px; animation-delay: .85s; }
+@keyframes renewSpark {
+  0%, 100% { opacity: .18; transform: scale(.5) rotate(-12deg); filter: none; }
+  18% { opacity: 1; transform: scale(1.22) rotate(14deg); filter: drop-shadow(0 0 3px rgba(138, 90, 34, .85)); }
+  40% { opacity: .28; transform: scale(.62) rotate(0deg); filter: none; }
+  68% { opacity: 1; transform: scale(1.08) rotate(-8deg); filter: drop-shadow(0 0 2px rgba(138, 90, 34, .7)); }
+  84% { opacity: .22; transform: scale(.55) rotate(6deg); filter: none; }
 }
 .renew-ask-actions {
   display: flex;
