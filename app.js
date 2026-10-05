@@ -41,10 +41,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-02-15-40";
-const APP_EDIT_COUNT = 1789;
+const APP_STAMP = "2026-10-05-13-48";
+const APP_EDIT_COUNT = 1790;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1398";
+const FILE_VER = "1399";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +519,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["終止契約下方乙方右邊加上個人印章"] },
+  { ver: APP_VERSION, items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
+  { ver: "2026-10-02-15-40-1789", items: ["終止契約下方乙方右邊加上個人印章"] },
   { ver: "2026-10-02-15-39-1788", items: ["終止契約下方甲方也加上公司大小章"] },
   { ver: "2026-10-02-15-38-1787", items: ["終止契約租客姓名右邊加上個人印章"] },
   { ver: "2026-10-02-15-33-1786", items: ["終止契約公司大小章改到立約人右側"] },
@@ -6941,7 +6942,7 @@ function applyRoom7621(data) {
     try { markCloudDirty(); } catch {}
   }
 }
-const ROOM_7623_VER = "7623-chen-v1";
+const ROOM_7623_VER = "7623-rent-10000-v1";
 function applyRoom7623(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7623");
@@ -6974,12 +6975,12 @@ function applyRoom7623(data) {
     t = { id: "t7623", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
     data.tenants.push(t);
   }
-  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former;
+  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former || Number(room.rent) !== (studioRentOf("7623") || 10000) || (Array.isArray(t.leases) && t.leases.some(p => p && p.kind !== "stub" && Number(p.rent) !== (studioRentOf("7623") || 10000)));
   t.name = info.name;
   t.phone = info.phone || t.phone || "";
   t.leaseStart = info.leaseStart || t.leaseStart;
   t.leaseEnd = info.leaseEnd || t.leaseEnd;
-  if (info.note) t.note = info.note;
+  if (info.note && !String(t.note || "").trim()) t.note = info.note;
   if (!t.payBankLock) t.payBank = info.payBank || t.payBank || "農會";
   if (info.deposit != null) t.deposit = info.deposit;
   t.former = false;
@@ -6988,8 +6989,18 @@ function applyRoom7623(data) {
   t.loginRevoked = false;
   t.roomId = room.id;
   room.tenantId = t.id;
-  room.rent = studioRentOf("7623") || 10000;
-  if (info.deposit != null) room.deposit = info.deposit;
+  const rent = studioRentOf("7623") || 10000;
+  room.rent = rent;
+  t.rent = rent;
+  if (Array.isArray(t.leases) && t.leases.length) {
+    t.leases.forEach(p => { if (p && p.kind !== "stub") p.rent = rent; });
+  } else {
+    t.leases = [{ kind: "year", start: t.leaseStart || "2025-11-01", end: t.leaseEnd || "2026-10-31", rent }];
+  }
+  if (info.deposit != null) {
+    t.deposit = info.deposit;
+    room.deposit = info.deposit;
+  }
   if (room.status !== "repair" && room.status !== "office") room.status = "rented";
   if (need) {
     t.edited = true;
@@ -18197,6 +18208,9 @@ function ensureStudioLeasePacks(data) {
 }
 function tenantRentForYm(t, r, ym, info) {
   const part = leasePartForYm(t, r, ym);
+  if (part && part.kind === "stub" && Number(part.rent) > 0) return Number(part.rent);
+  const listed = studioRentOf(r && r.no);
+  if (listed != null && listed > 0) return listed;
   if (part && Number(part.rent) > 0) return Number(part.rent);
   return Number(r && r.rent) || Number(t && t.rent) || Number(info && info.rent) || studioContractRent(t, r) || 0;
 }
