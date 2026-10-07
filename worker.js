@@ -503,7 +503,7 @@ export default {
         if (!tid) return cors({ error: "tenant" }, 400);
         const text = String(body.text || "").trim().slice(0, 400);
         const from = body.from === "dev" ? "dev" : "tenant";
-        const id = text ? String(body.id || ("m" + Date.now() + Math.random().toString(36).slice(2, 6))) : "";
+        const imageId = String(body.imageId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 80);
         let saved = null;
         for (let attempt = 0; attempt < 4; attempt++) {
           const all = await load();
@@ -516,22 +516,25 @@ export default {
           if (body.recall) {
             const rid = String(body.recall);
             (th.msgs || []).forEach(m => {
-              if (m && m.id === rid) { m.recalled = true; m.text = ""; m.image = ""; }
+              if (m && m.id === rid) { m.recalled = true; m.text = ""; m.image = ""; m.imageId = ""; }
             });
             th.updatedAt = Date.now();
           }
-          if (text && !(th.msgs || []).some(m => m && m.id === id)) {
-            th.msgs = (th.msgs || []).concat([{ id, from, text, at: Number(body.at) || Date.now() }]).slice(-80);
+          const id = (text || imageId) ? String(body.id || ("m" + Date.now() + Math.random().toString(36).slice(2, 6))) : "";
+          if (id && !(th.msgs || []).some(m => m && m.id === id)) {
+            th.msgs = (th.msgs || []).concat([{ id, from, text: text || (imageId ? "照片" : ""), imageId, at: Number(body.at) || Date.now() }]).slice(-80);
             if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
             else th.unreadTenant = (th.unreadTenant || 0) + 1;
             th.updatedAt = Date.now();
+          } else if (id && imageId) {
+            (th.msgs || []).forEach(m => { if (m && m.id === id && !m.imageId) m.imageId = imageId; });
           }
           all.threads[tid] = th;
           await save(all);
           const check = await load();
           const got = check && check.threads && check.threads[tid];
           saved = check;
-          if (!text || (got && (got.msgs || []).some(m => m && m.id === id))) break;
+          if ((!text && !imageId) || (got && (got.msgs || []).some(m => m && m.id === id))) break;
         }
         const thread = saved && saved.threads && saved.threads[tid];
         return cors({ ok: true, thread, threads: (saved && saved.threads) || {} });

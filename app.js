@@ -6,6 +6,7 @@ const HIDDEN_ANN_KEY = "tj-hidden-anns";
 const REPAIR_MEDIA_KEY = "tongjie_repair_media_v1";
 const REPAIR_STAT_KEY = "tongjie_repair_stat_v1";
 const AVATAR_KEY = "tongjie_tenant_avatars_v1";
+const CHAT_IMG_KEY = "tongjie_chat_img_v1";
 const PAID_KEY = "tongjie_paid_v1";
 const MEMO_DONE_KEY = "tongjie_memo_done_v1";
 const RENT_YM_KEY = "tongjie_rent_ym";
@@ -41,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-05-13-48";
-const APP_EDIT_COUNT = 1790;
+const APP_STAMP = "2026-10-07-21-50";
+const APP_EDIT_COUNT = 1791;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1399";
+const FILE_VER = "1400";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -519,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
+  { ver: APP_VERSION, items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
+  { ver: "2026-10-05-13-48-1790", items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
   { ver: "2026-10-02-15-40-1789", items: ["終止契約下方乙方右邊加上個人印章"] },
   { ver: "2026-10-02-15-39-1788", items: ["終止契約下方甲方也加上公司大小章"] },
   { ver: "2026-10-02-15-38-1787", items: ["終止契約租客姓名右邊加上個人印章"] },
@@ -1619,6 +1621,145 @@ function loadLocalChats() {
 function saveLocalChats(data) {
   try { localStorage.setItem(CHAT_LS, JSON.stringify(data || emptyChatStore())); } catch {}
 }
+function loadChatImageMap() {
+  try { return JSON.parse(localStorage.getItem(CHAT_IMG_KEY) || "{}") || {}; } catch { return {}; }
+}
+function mergeChatImages() {
+  const gone = new Set([].concat(Array.isArray(arguments[0] && arguments[0].gone) ? arguments[0].gone : [], ...(Array.from(arguments).slice(1).map(() => []))));
+  const maps = [];
+  for (let i = 0; i < arguments.length; i++) {
+    const src = arguments[i];
+    if (!src) continue;
+    if (Array.isArray(src.gone)) src.gone.forEach(k => gone.add(String(k)));
+    const bag = src.images || src;
+    if (bag && typeof bag === "object" && !Array.isArray(bag)) maps.push(bag);
+  }
+  const out = {};
+  maps.forEach(bag => {
+    Object.keys(bag).forEach(k => {
+      if (!k || gone.has(String(k))) return;
+      const v = bag[k];
+      if (!v || String(v).indexOf("data:image") !== 0) return;
+      if (!out[k] || String(v).length > String(out[k]).length) out[k] = v;
+    });
+  });
+  return out;
+}
+function unionChatImageGone() {
+  const set = new Set();
+  for (let i = 0; i < arguments.length; i++) {
+    (arguments[i] || []).forEach(k => { if (k) set.add(String(k)); });
+  }
+  return [...set].slice(-200);
+}
+function persistChatImages(data) {
+  const live = mergeChatImages(
+    loadChatImageMap(),
+    data && data.chatImages,
+    state && state.chatImages
+  );
+  (unionChatImageGone(data && data.chatImageGone, state && state.chatImageGone) || []).forEach(k => { delete live[k]; });
+  const ids = Object.keys(live);
+  if (ids.length > 60) {
+    const keep = new Set();
+    const store = (data && data.devChats) || (state && state.devChats) || chatStore();
+    Object.keys((store && store.threads) || {}).forEach(tid => {
+      ((store.threads[tid] && store.threads[tid].msgs) || []).forEach(m => {
+        if (m && (m.id || m.imageId)) keep.add(String(m.imageId || m.id));
+      });
+    });
+    ids.sort((a, b) => (keep.has(b) ? 1 : 0) - (keep.has(a) ? 1 : 0));
+    ids.slice(60).forEach(k => { if (!keep.has(k)) delete live[k]; });
+  }
+  if (data) data.chatImages = live;
+  if (state) state.chatImages = live;
+  try { localStorage.setItem(CHAT_IMG_KEY, JSON.stringify(live)); } catch {}
+}
+function applyChatImages(data) {
+  if (!data) return;
+  const live = mergeChatImages(loadChatImageMap(), data.chatImages, state && state.chatImages);
+  (unionChatImageGone(data.chatImageGone, state && state.chatImageGone) || []).forEach(k => { delete live[k]; });
+  data.chatImages = live;
+  if (state && data === state) state.chatImages = live;
+  const store = data.devChats || (state && state.devChats);
+  Object.keys((store && store.threads) || {}).forEach(tid => {
+    ((store.threads[tid] && store.threads[tid].msgs) || []).forEach(m => {
+      if (!m || m.recalled) return;
+      const id = String(m.imageId || m.id || "");
+      if (!m.image && id && live[id]) m.image = live[id];
+      if (m.image && String(m.image).indexOf("data:image") === 0) {
+        m.imageId = m.imageId || m.id;
+        live[m.id] = live[m.id] || m.image;
+      }
+    });
+  });
+  try { localStorage.setItem(CHAT_IMG_KEY, JSON.stringify(live)); } catch {}
+}
+function rememberChatImage(id, src) {
+  const key = String(id || "");
+  if (!key || !src || String(src).indexOf("data:image") !== 0) return;
+  if (!state.chatImages) state.chatImages = {};
+  state.chatImages[key] = src;
+  persistChatImages(state);
+}
+function chatPicOf(m) {
+  if (!m || m.recalled) return "";
+  if (m.image && String(m.image).indexOf("data:image") === 0) return m.image;
+  const id = String(m.imageId || m.id || "");
+  if (!id) return "";
+  const map = (state && state.chatImages) || loadChatImageMap() || {};
+  return map[id] || "";
+}
+function forgetChatImage(id) {
+  const key = String(id || "");
+  if (!key) return;
+  if (!state.chatImageGone) state.chatImageGone = [];
+  if (state.chatImageGone.indexOf(key) < 0) state.chatImageGone.push(key);
+  if (state.chatImages) delete state.chatImages[key];
+  try {
+    const map = loadChatImageMap();
+    delete map[key];
+    localStorage.setItem(CHAT_IMG_KEY, JSON.stringify(map));
+  } catch {}
+}
+function stripChatMsgMedia(data) {
+  if (!data) return;
+  const imgs = mergeChatImages(data.chatImages, state && state.chatImages, loadChatImageMap());
+  const store = data.devChats;
+  Object.keys((store && store.threads) || {}).forEach(tid => {
+    ((store.threads[tid] && store.threads[tid].msgs) || []).forEach(m => {
+      if (!m) return;
+      if (m.image && String(m.image).indexOf("data:image") === 0) {
+        imgs[m.id] = m.image;
+        m.imageId = m.imageId || m.id;
+        m.image = "";
+      }
+    });
+  });
+  (unionChatImageGone(data.chatImageGone, state && state.chatImageGone) || []).forEach(k => { delete imgs[k]; });
+  data.chatImages = imgs;
+}
+async function putChatImageFile(id, dataUrl) {
+  const key = String(id || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 80);
+  if (!key || !dataUrl) return false;
+  try {
+    const m = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return false;
+    const bin = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0));
+    const res = await fetch(FILE_API + "cimg-" + key, {
+      method: "PUT",
+      headers: {
+        "X-Tongjie-Key": SYNC_KEY,
+        "Content-Type": m[1] || "image/jpeg",
+        "X-File-Name": encodeURIComponent(key + ".jpg")
+      },
+      body: bin
+    });
+    if (!res.ok) return false;
+    const t = await res.text();
+    return t.indexOf("\"ok\"") >= 0 || t.indexOf("ok") === 0;
+  } catch { return false; }
+}
 function chatStore() {
   if (!ui.chats || !ui.chats.threads) ui.chats = loadLocalChats();
   return ui.chats;
@@ -1663,7 +1804,8 @@ function mergeChatStores(a, b) {
       map.set(m.id, Object.assign({}, prev, m, {
         recalled,
         text: recalled ? "" : (m.text || prev.text || ""),
-        image: recalled ? "" : (m.image || prev.image || "")
+        image: recalled ? "" : (m.image || prev.image || ""),
+        imageId: recalled ? "" : (m.imageId || prev.imageId || "")
       }));
     });
     const msgs = applyRecallMarks([...map.values()].sort((p, q) => (Number(p.at) || 0) - (Number(q.at) || 0)).slice(-80));
@@ -1740,6 +1882,7 @@ function persistChatsToState() {
   const store = chatStore();
   if (state) state.devChats = store;
   saveLocalChats(store);
+  try { persistChatImages(state); } catch {}
 }
 function applyDevChats(data) {
   if (!data) return;
@@ -1754,6 +1897,7 @@ function mergeDevChatsInto(target, other) {
   target.devChats = mergeChatStores(target.devChats, other && other.devChats);
   ui.chats = mergeChatStores(chatStore(), target.devChats);
   saveLocalChats(ui.chats);
+  try { applyChatImages(target); } catch {}
 }
 function chatFinger() {
   const th = ((ui.chats && ui.chats.threads) || (chatStore().threads) || {});
@@ -1794,9 +1938,14 @@ async function sendDevChat(tid, text, image) {
     from,
     text: String(text || "").trim().slice(0, 400),
     image: image && String(image).indexOf("data:image") === 0 ? image : "",
+    imageId: "",
     at: Date.now()
   };
   if (!msg.text && !msg.image) return;
+  if (msg.image) {
+    msg.imageId = msg.id;
+    rememberChatImage(msg.id, msg.image);
+  }
   const th = chatThreadOf(tid);
   th.msgs = (th.msgs || []).concat(msg).slice(-80);
   th.updatedAt = msg.at;
@@ -1805,6 +1954,7 @@ async function sendDevChat(tid, text, image) {
   if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
   else th.unreadTenant = (th.unreadTenant || 0) + 1;
   persistChatsToState();
+  persistChatImages(state);
   drawChatBox();
   const body = {
     tenantId: tid,
@@ -1812,12 +1962,14 @@ async function sendDevChat(tid, text, image) {
     name: th.name,
     from,
     text: msg.text || (msg.image ? "照片" : ""),
+    imageId: msg.imageId || "",
     id: msg.id,
     at: msg.at
   };
   const deliver = () => chatPostRemote(body).then(posted => {
     if (posted && posted.threads) {
       ui.chats = mergeChatStores(chatStore(), { threads: posted.threads });
+      applyChatImages(state);
       persistChatsToState();
       if (ui.chatOpen && ui.chatTid === tid) drawChatBox();
     }
@@ -1826,9 +1978,10 @@ async function sendDevChat(tid, text, image) {
   deliver();
   setTimeout(deliver, 800);
   setTimeout(deliver, 1700);
-  try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
   try { save(true); } catch {}
-  pushCloud().catch(() => {});
+  try { await pushCloud(); } catch {}
+  if (msg.image) putChatImageFile(msg.id, msg.image).catch(() => {});
+  try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
 }
 async function markChatRead(tid) {
   const th = chatThreadOf(tid);
@@ -1927,16 +2080,28 @@ function ensureNotifyChat(tid) {
   const id = String(ui.pendingChatMid || "");
   ui.pendingChatText = "";
   ui.pendingChatMid = "";
-  if (!tid || !text) return;
+  if (!tid) return;
+  try { applyChatImages(state); } catch {}
   const from = ui.role === "tenant" ? "dev" : "tenant";
   const th = chatThreadOf(tid);
   if (!th) return;
-  if ((th.msgs || []).some(m => m && ((id && m.id === id) || (m.text === text && m.from === from)))) return;
-  const msg = { id: id || ("n" + Date.now()), from, text, at: Date.now() };
+  if ((th.msgs || []).some(m => m && ((id && m.id === id) || (m.text === text && m.from === from)))) {
+    const hit = (th.msgs || []).find(m => m && ((id && m.id === id) || (m.text === text && m.from === from)));
+    if (hit && !chatPicOf(hit) && (text === "照片" || text === "傳了一張照片")) {
+      const src = chatPicOf({ id, imageId: id }) || (id && ((state.chatImages || {})[id] || loadChatImageMap()[id]));
+      if (src) { hit.image = src; hit.imageId = hit.imageId || id; }
+    }
+    return;
+  }
+  if (!text) return;
+  const src = (id && ((state.chatImages || {})[id] || loadChatImageMap()[id])) || "";
+  const photoOnly = text === "照片" || text === "傳了一張照片";
+  if (photoOnly && !src) return;
+  const msg = { id: id || ("n" + Date.now()), from, text: photoOnly && src ? "" : text, image: src || "", imageId: id || "", at: Date.now() };
   th.msgs = (th.msgs || []).concat(msg).slice(-80);
   th.updatedAt = msg.at;
   persistChatsToState();
-  chatPostRemote({ tenantId: tid, roomNo: th.roomNo || "", name: th.name || "", from, text, id: msg.id, at: msg.at }).catch(() => {});
+  chatPostRemote({ tenantId: tid, roomNo: th.roomNo || "", name: th.name || "", from, text: text || "照片", imageId: msg.imageId, id: msg.id, at: msg.at }).catch(() => {});
 }
 function consumeChatOpen() {
   if (!ui.pendingChatOpen && !ui.pendingChatText) {
@@ -1993,7 +2158,10 @@ function openDevChat(tid) {
     markChatRead(ui.chatTid);
   });
   pullChat(false);
-  setTimeout(() => { pullCloud().catch(() => {}); }, 500);
+  pullCloud().then(() => {
+    try { applyChatImages(state); } catch {}
+    if (ui.chatOpen && String(ui.chatTid) === String(tid)) drawChatBox();
+  }).catch(() => {});
   startChatPoll();
 }
 function saveChatDraft() {
@@ -2104,8 +2272,9 @@ function chatBubbleHtml(m, mine, t, seen) {
   const face = !mine && m.from === "tenant" && t && t.avatar && String(t.avatar).length > 40
     ? `<img class="chat-face" src="${t.avatar}" alt="">`
     : (!mine && m.from === "dev" ? `<img class="chat-face" src="images/ai-avatar-dev.jpg?v=2132" alt="">` : "");
-  const pic = m.image ? `<img class="chat-pic" src="${m.image}" alt="">` : "";
-  const body = pic + (m.text ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : "");
+  const picSrc = chatPicOf(m);
+  const pic = picSrc ? `<img class="chat-pic" src="${picSrc}" alt="">` : "";
+  const body = pic + (m.text && m.text !== "照片" && m.text !== "傳了一張照片" ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : (pic ? "" : escapeHtml(m.text || "")));
   if (!body) return "";
   const read = mine && seen ? `<i class="chat-read">已讀</i>` : "";
   return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${canRecallMsg(mine) ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
@@ -2147,6 +2316,7 @@ function recallDevChat(tid, msgId) {
   m.recalled = true;
   m.text = "";
   m.image = "";
+  forgetChatImage(m.id);
   th.updatedAt = Date.now();
   persistChatsToState();
   drawChatBox();
@@ -2325,9 +2495,10 @@ function devChatInboxHtml() {
     <h2 class="dash-h">開發者對話${n ? "　" + n + " 則未讀" : ""}</h2>
     ${threads.slice(0, 8).map(th => {
       const last = (th.msgs || []).filter(x => x && !x.recalled).slice(-1)[0];
+      const preview = (last && (chatPicOf(last) || last.imageId) && !(last.text && last.text !== "照片" && last.text !== "傳了一張照片")) ? "照片" : ((last && last.text) || "");
       const unread = chatUnreadOf(th.tenantId);
       return `<button type="button" class="chat-inbox-row" data-open-chat="${escapeHtml(th.tenantId)}">
-        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml((last && last.image && !last.text) ? "照片" : ((last && last.text) || ""))}</em></span>
+        <span><b>${escapeHtml((th.roomNo || "") + " " + (th.name || ""))}</b><em>${escapeHtml(preview)}</em></span>
         ${unread ? `<i class="badge-dot">${unread > 99 ? "99+" : unread}</i>` : ""}
       </button>`;
     }).join("")}
@@ -2353,7 +2524,7 @@ function lastChatIncoming() {
     if (ui.role === "tenant" && id !== myTid) return;
     ((chatStore().threads[id] && chatStore().threads[id].msgs) || []).forEach(m => {
       if (!m || m.recalled || m.from === mineFrom) return;
-      if (!m.text && !m.image) return;
+      if (!m.text && !m.image && !chatPicOf(m)) return;
       if (!best || Number(m.at) > Number(best.at)) best = Object.assign({ tid: id }, m);
     });
   });
@@ -11357,6 +11528,8 @@ async function pullCloud() {
       company: state.company, eSigns: state.eSigns, lunchSpots: state.lunchSpots, lunchHidden: state.lunchHidden,
       paidMarks: state.paidMarks,
       devChats: state.devChats || chatStore(),
+      chatImages: state.chatImages,
+      chatImageGone: state.chatImageGone,
       renewals: state.renewals,
       renewPing: state.renewPing
     };
@@ -11366,6 +11539,9 @@ async function pullCloud() {
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
     mergeDevChatsInto(state, data);
+    state.chatImages = mergeChatImages(loadChatImageMap(), state.chatImages, data.chatImages);
+    state.chatImageGone = unionChatImageGone(state.chatImageGone, data.chatImageGone);
+    try { applyChatImages(state); } catch {}
     applyAnnMedia(state);
     applyRepairMedia(state);
     applyRepairStat(state);
@@ -11471,6 +11647,9 @@ async function pullCloud() {
     const remoteRn = new Set((data.renewals || []).map(x => x && x.id).filter(Boolean));
     if ((mineSnap.renewals || []).some(x => x && x.id && !remoteRn.has(x.id))) markCloudDirty();
     mergeDevChatsInto(state, mineSnap);
+    state.chatImages = mergeChatImages(loadChatImageMap(), state.chatImages, mineSnap.chatImages, data.chatImages);
+    state.chatImageGone = unionChatImageGone(state.chatImageGone, mineSnap.chatImageGone, data.chatImageGone);
+    try { applyChatImages(state); } catch {}
     state.meterLogs = unionById(state.meterLogs, mineSnap.meterLogs);
     state.extraMeters = unionById(state.extraMeters, mineSnap.extraMeters);
     state.meterBills = unionById(state.meterBills, mineSnap.meterBills);
@@ -12208,6 +12387,8 @@ async function pushCloud() {
       bookVaultGone: unionGone(remote && remote.bookVaultGone, state.bookVaultGone),
       bookVault: vaultForCloud(dropGone(mergeBookVault(remote && remote.bookVault, state.bookVault), unionGone(remote && remote.bookVaultGone, state.bookVaultGone))),
       devChats: mergeChatStores(remote && remote.devChats, state.devChats || chatStore()),
+      chatImages: mergeChatImages(remote && remote.chatImages, state && state.chatImages, loadChatImageMap()),
+      chatImageGone: unionChatImageGone(remote && remote.chatImageGone, state && state.chatImageGone),
       loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
       presence: mergedPresence(remote && remote.presence, state.presence)
     });
@@ -12242,6 +12423,8 @@ async function pushCloud() {
     if (payload.bookVaultGone) state.bookVaultGone = payload.bookVaultGone;
     if (payload.devChats) {
       state.devChats = payload.devChats;
+      state.chatImages = payload.chatImages;
+      state.chatImageGone = payload.chatImageGone;
       ui.chats = mergeChatStores(chatStore(), payload.devChats);
       saveLocalChats(ui.chats);
     }
@@ -12268,7 +12451,14 @@ async function pushCloud() {
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
-    const body = JSON.stringify(payload);
+    let body;
+    try {
+      const upload = JSON.parse(JSON.stringify(payload));
+      stripChatMsgMedia(upload);
+      body = JSON.stringify(upload);
+    } catch {
+      body = JSON.stringify(payload);
+    }
     const put = async blob => fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
@@ -12304,6 +12494,8 @@ async function pushCloud() {
         bookVault: payload.bookVault,
         bookVaultGone: payload.bookVaultGone,
         devChats: payload.devChats,
+        chatImages: payload.chatImages,
+        chatImageGone: payload.chatImageGone,
         loginSeats: payload.loginSeats,
         presence: payload.presence,
         renewals: payload.renewals,
@@ -12311,8 +12503,17 @@ async function pushCloud() {
         earlyPing: payload.earlyPing
       });
       stripCloudMedia(slim);
-      res = await put(JSON.stringify(slim));
+      let slimBody;
+      try {
+        const upload = JSON.parse(JSON.stringify(slim));
+        stripChatMsgMedia(upload);
+        slimBody = JSON.stringify(upload);
+      } catch {
+        slimBody = JSON.stringify(slim);
+      }
+      res = await put(slimBody);
     }
+    try { applyChatImages(state); persistChatImages(state); } catch {}
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) {
       cloudDirty = false;
@@ -12382,6 +12583,7 @@ function save(force) {
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
     persistAvatars(state);
+    persistChatImages(state);
     state.updatedAt = Date.now();
     persistLedger(state);
     persistMeterLogs(state);
