@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-07-21-50";
-const APP_EDIT_COUNT = 1791;
+const APP_STAMP = "2026-10-09-15-15";
+const APP_EDIT_COUNT = 1792;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1400";
+const FILE_VER = "1401";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -415,8 +415,8 @@ const JINFANG_ENG_0921_BOOKS = [
 const SLIP_0915_BOOKS = [
   ["2026-09-15", "out", 14000, "信潔", "太陽能險　超商繳", "超商"],
   ["2026-09-15", "out", 25456, "信潔", "火險　超商繳", "超商"],
-  ["2026-09-15", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "兆豐", "拉皮-2B"],
-  ["2026-09-15", "out", 10094, "統潔", "電費", "兆豐"]
+  ["2026-09-15", "in", 39900, "統潔", "租金收入　拉皮 93-2B 禹旺　存現", "聯邦", "拉皮-2B"],
+  ["2026-09-15", "out", 10094, "統潔", "電費　楠梓", "聯邦"]
 ];
 const XUXU_AUG_CASH_VER = "xuxu-aug-cash-v1";
 const XUXU_AUG_CASH_BOOKS = [
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
+  { ver: APP_VERSION, items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
+  { ver: "2026-10-07-21-50-1791", items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
   { ver: "2026-10-05-13-48-1790", items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
   { ver: "2026-10-02-15-40-1789", items: ["終止契約下方乙方右邊加上個人印章"] },
   { ver: "2026-10-02-15-39-1788", items: ["終止契約下方甲方也加上公司大小章"] },
@@ -6578,6 +6579,7 @@ function normalize(data) {
   applySimminFed(data);
   applyXuxuAugCash(data);
   applySlip0915(data);
+  applySep115Close(data);
   applyJinfangEng0921(data);
   applyRenewal7221(data);
   applyRenewal7222(data);
@@ -8191,6 +8193,127 @@ function applySlip0915(data) {
     });
   }
   data.slip0915Ver = SLIP_0915_VER;
+}
+const SEP115_CLOSE_VER = "sep115-close-v1";
+const SEP115_CLOSE_BOOKS = [
+  ["2026-09-01", "in", 38850, "統潔", "租金收入　拉皮 93-1A 南溢　9月", "聯邦", "拉皮-1A"],
+  ["2026-09-10", "in", 68250, "統潔", "租金收入　牛7 93-63 1F 驊勝　9月", "聯邦", "牛7-1F"],
+  ["2026-09-11", "in", 63000, "統潔", "租金收入　牛7 93-63 2F 陳慧玲　9月存現", "聯邦", "牛7-2F"],
+  ["2026-09-11", "out", 207507, "統潔", "營所暫繳", "聯邦", ""],
+  ["2026-09-11", "out", 51417, "統潔", "工程支出　台水工程（拉皮）", "聯邦", ""],
+  ["2026-09-14", "out", 112314, "統潔", "電費支出　93-1", "聯邦", ""],
+  ["2026-09-21", "out", 430, "統潔", "電話費", "聯邦", ""],
+  ["2026-09-23", "out", 31530, "統潔", "工程支出　屏東臨時電（宏立成）", "聯邦", ""],
+  ["2026-09-30", "out", 11064, "統潔", "健保費", "聯邦", ""],
+  ["2026-09-30", "out", 9809, "統潔", "勞退金", "聯邦", ""],
+  ["2026-09-30", "out", 18693, "統潔", "勞保費", "聯邦", ""],
+  ["2026-09-09", "in", 200, "統潔", "租金收入　牛10 7231 林安安　5,400尾數", "兆豐", "7231"],
+  ["2026-09-10", "in", 7000, "統潔", "租金收入　牛10 6821 黃宥宇", "農會", "6821"],
+  ["2026-09-10", "in", 9000, "統潔", "租金收入　牛10 6841 劉冠德", "農會", "6841"],
+  ["2026-09-10", "in", 7000, "統潔", "租金收入　牛10 7622 邱育琳", "農會", "7622"],
+  ["2026-09-10", "in", 14000, "統潔", "租金收入　牛10 6842 蘇冠達、吳汶修", "農會", "6842"],
+  ["2026-09-15", "in", 9000, "統潔", "租金收入　牛10 7631 蔡文銘", "農會", "7631"],
+  ["2026-09-21", "in", 7000, "統潔", "租金收入　牛10 7022 郭雅萱", "農會", "7022"],
+  ["2026-09-15", "out", 3600, "統潔", "其他支出　鳳仁傢俱行（床墊）", "農會", ""],
+  ["2026-09-10", "in", 105000, "信潔", "租金收入　牛6 93-61、93-62 驊勝食品", "聯邦", "牛6-61"],
+  ["2026-09-14", "in", 38000, "信潔", "租金收入　牛5 97-76 陳雅琪", "聯邦", "牛5-97-76"],
+  ["2026-09-15", "in", 44100, "信潔", "租金收入　牛5 97-75 力胤", "聯邦", "牛5-97-75"],
+  ["2026-09-20", "in", 44100, "信潔", "租金收入　牛5 97-67 弘翔音響", "聯邦", "牛5-97-67"],
+  ["2026-09-21", "in", 42000, "信潔", "租金收入　牛5 97-71 莊記綠豆鑽", "聯邦", "牛5-97-71"],
+  ["2026-09-29", "in", 44100, "信潔", "租金收入　牛5 97-68 樂芯食品", "聯邦", "牛5-97-68"],
+  ["2026-09-11", "out", 299220, "信潔", "營所暫繳", "聯邦", ""],
+  ["2026-09-11", "out", 93885, "信潔", "營業稅", "聯邦", ""],
+  ["2026-09-04", "out", 5455, "現金(保險箱)", "其他支出　文東61　租賃10% 4,500＋保費950＋手續費5", "現金", "牛1-61"],
+  ["2026-09-04", "in", 46000, "現金(保險箱)", "租金收入　牛2 文東21號", "現金", "牛2-21"],
+  ["2026-09-07", "in", 55000, "現金(保險箱)", "租金收入　牛2 文東23號", "現金", "牛2-23"],
+  ["2026-09-08", "in", 48300, "現金(保險箱)", "其他收入　即時通仲介費48,300＋補大樹4月租金", "現金", ""],
+  ["2026-09-08", "out", 40000, "現金(保險箱)", "薪水支出　趙洪漳20,000、趙文榮20,000", "現金", ""],
+  ["2026-09-08", "out", 500, "現金(保險箱)", "其他支出　賀峻淨水換濾心（牛10）", "現金", ""],
+  ["2026-09-08", "out", 699, "現金(保險箱)", "其他支出　計算機485、郵局寄信214", "現金", ""],
+  ["2026-09-08", "out", 1520, "現金(保險箱)", "其他支出　電子鎖電池244、門牌更換1,276", "現金", ""],
+  ["2026-09-08", "in", 5235, "現金(保險箱)", "水費收入　鳳仁97-71 莊記 115/6/11～115/8/10", "現金", "牛5-97-71"],
+  ["2026-09-08", "out", 1000, "現金(保險箱)", "清潔費支出　成500、賢500", "現金", ""],
+  ["2026-09-08", "in", 15939, "現金(保險箱)", "其他收入　開信潔發票，信潔聯邦轉出", "現金", ""],
+  ["2026-09-09", "out", 9558, "現金(保險箱)", "水費支出　文東59號840、文東61號8,718", "現金", ""],
+  ["2026-09-09", "out", 140, "現金(保險箱)", "其他支出　招待客戶飲料", "現金", ""],
+  ["2026-09-10", "in", 1000, "現金(保險箱)", "其他收入　鳳仁93-63 2F公共設施（電梯）", "現金", "牛7-2F"],
+  ["2026-09-10", "out", 210, "現金(保險箱)", "其他支出　發票印章180、配鎖30（牛10）", "現金", ""],
+  ["2026-09-11", "in", 1515, "現金(保險箱)", "水費收入　鳳仁97-69 喜憨兒 115/6/11～115/8/10", "現金", "牛5-97-69"],
+  ["2026-09-14", "out", 400000, "現金(保險箱)", "個人支出　趙海成200,000、趙正賢200,000", "現金", ""],
+  ["2026-09-21", "in", 14000, "現金(保險箱)", "其他收入　97-77、78 錦芳增建", "現金", "牛8-77"],
+  ["2026-09-29", "in", 95200, "現金(保險箱)", "電費收入　93-1B 鈺晟 115/7/1～115/9/1", "現金", "拉皮-1B"],
+  ["2026-09-30", "in", 25300, "現金(保險箱)", "電費收入　儲值機（牛10）", "現金", ""],
+  ["2026-09-30", "out", 804, "現金(保險箱)", "其他支出　浴簾695、垃圾袋、文件袋109（牛10）", "現金", ""],
+  ["2026-09-01", "in", 45000, "個人戶·趙洪漳", "租金收入　文東61號", "聯邦", "牛1-61"],
+  ["2026-09-01", "in", 58015, "個人戶·趙洪漳", "租金收入　57巷1弄25號　多付手續費15", "聯邦", "牛2-25"],
+  ["2026-09-14", "out", 500030, "個人戶·趙洪漳", "個人轉出　手續費30", "聯邦", ""],
+  ["2026-09-14", "out", 500030, "個人戶·趙浩鈞", "個人轉出　手續費30", "聯邦", ""],
+  ["2026-09-20", "in", 20000, "個人戶·趙浩鈞", "租金收入　57巷1弄33號", "聯邦", "牛2-33"],
+  ["2026-09-21", "in", 15500, "個人戶·趙浩鈞", "租金收入　57巷1弄33號", "聯邦", "牛2-33"],
+  ["2026-09-14", "out", 300000, "個人戶·趙文榮", "個人轉出", "聯邦", ""],
+  ["2026-09-10", "in", 70000, "個人戶·趙文彬", "租金收入　57巷6號　9、10月", "聯邦", "牛1-57巷6"],
+  ["2026-09-14", "out", 300000, "個人戶·趙文彬", "個人轉出", "聯邦", ""],
+  ["2026-09-10", "in", 36000, "個人戶·趙苡真", "租金收入　57巷8號", "聯邦", "牛1-57巷8"],
+  ["2026-09-14", "out", 400000, "個人戶·趙苡真", "個人轉出", "聯邦", ""],
+  ["2026-09-15", "in", 70312, "個人戶·趙苡真", "租金收入　57巷1弄35號　9、10月", "聯邦", "牛2-35"]
+];
+function applySep115Close(data) {
+  if (!data) return;
+  if (!Array.isArray(data.books)) data.books = [];
+  if (!Array.isArray(data.ledgerGone)) data.ledgerGone = [];
+  (data.books || []).forEach(b => {
+    if (!b || ymdOf(b.date) !== "2026-09-15" || String(b.company || "") !== "統潔") return;
+    if (Number(b.amount) === 39900 && b.type === "in") b.bank = "聯邦";
+    if (Number(b.amount) === 10094 && b.type === "out") {
+      b.bank = "聯邦";
+      if (!/楠梓/.test(String(b.note || ""))) b.note = "電費　楠梓";
+    }
+  });
+  const weng = (data.books || []).filter(b => b && b.type === "out" && Number(b.amount) === 19200 && ymdOf(b.date) === "2026-09-02" && String(b.bank || "") === "農會");
+  if (weng.length > 1) {
+    weng.forEach(b => {
+      if (/押金13,500|13,500/.test(String(b.note || ""))) return;
+      if (data.ledgerGone.indexOf(b.id) < 0) data.ledgerGone.push(b.id);
+    });
+  }
+  const payLines = (data.books || []).filter(b => b && b.type === "out" && ymdOf(b.date) === "2026-09-07" && String(b.company || "") === "統潔" && /代發薪資/.test(String(b.note || "")));
+  const paySum = payLines.reduce((s, b) => s + Number(b.amount || 0), 0);
+  if (paySum === 156886) {
+    (data.books || []).forEach(b => {
+      if (!b || b.type !== "out" || Number(b.amount) !== 156886 || ymdOf(b.date) !== "2026-09-07") return;
+      if (String(b.note || "") !== "薪資") return;
+      if (data.ledgerGone.indexOf(b.id) < 0) data.ledgerGone.push(b.id);
+    });
+  }
+  data.books = dropGone(data.books, data.ledgerGone);
+  if (data.sep115CloseVer === SEP115_CLOSE_VER && (data.books || []).some(b => b && b.importTag === "sep115close")) return;
+  SEP115_CLOSE_BOOKS.forEach((row, i) => {
+    const id = "bk-sep115-" + i;
+    if ((data.ledgerGone || []).indexOf(id) >= 0) return;
+    const date = row[0];
+    const type = row[1];
+    const amount = row[2];
+    const company = row[3];
+    const note = row[4];
+    const bank = row[5] || "";
+    const roomNo = row[6] || "";
+    const dup = (data.books || []).some(b => {
+      if (!b || b.importTag === "sep115close") return false;
+      if (ymdOf(b.date) !== date || b.type !== type || Number(b.amount) !== amount) return false;
+      if (String(b.company || "") !== String(company || "")) return false;
+      if (String(b.bank || "") !== String(bank || "")) return false;
+      if (roomNo && String(b.roomNo || "") && String(b.roomNo) !== String(roomNo)) return false;
+      return true;
+    });
+    if (dup) return;
+    data.books.push({
+      id, type, date, amount, company, note, bank,
+      roomNo: roomNo || "",
+      importTag: "sep115close",
+      createdAt: "2026-10-09 15:15"
+    });
+  });
+  data.sep115CloseVer = SEP115_CLOSE_VER;
 }
 function applyJinfangEng0921(data) {
   if (!data) return;
@@ -11575,6 +11698,7 @@ async function pullCloud() {
       applySimminFed(state);
       applyXuxuAugCash(state);
       applySlip0915(state);
+      try { applySep115Close(state); } catch {}
       applyJinfangEng0921(state);
       applyRenewal7221(state);
       applyRenewal7222(state);
@@ -11688,6 +11812,7 @@ async function pullCloud() {
     applySimminFed(state);
     applyXuxuAugCash(state);
     applySlip0915(state);
+    try { applySep115Close(state); } catch {}
     applyJinfangEng0921(state);
     applyRenewal7221(state);
     applyRenewal7222(state);
