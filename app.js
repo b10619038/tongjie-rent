@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-09-15-15";
-const APP_EDIT_COUNT = 1792;
+const APP_STAMP = "2026-10-10-10-39";
+const APP_EDIT_COUNT = 1793;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1401";
+const FILE_VER = "1402";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
+  { ver: APP_VERSION, items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
+  { ver: "2026-10-09-15-15-1792", items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
   { ver: "2026-10-07-21-50-1791", items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
   { ver: "2026-10-05-13-48-1790", items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
   { ver: "2026-10-02-15-40-1789", items: ["終止契約下方乙方右邊加上個人印章"] },
@@ -4881,7 +4882,7 @@ const TENANT_INFO = {
   "7623": { name: "陳財源", phone: "0966-899-726", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 20000, payBank: "農會", note: "2押1租 30,000；水費年 3,600；電儲值 1,000；仲介 10,000；發票 RT35173303" },
   "7631": { name: "蔡文銘", phone: "0966-023-164", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", note: "2押1租 27,000；水費年 1,800；電儲值 1,000；仲介 9,000；發票 RT00055074" },
   "7632": { name: "謝佩君", phone: "0931-299-938", leaseStart: "2025-10-01", leaseEnd: "2026-09-30", deposit: 28000, bankLast5: "12077", payBank: "兆豐", note: "已續約 115/8/25。新約 115/10/1～116/9/30，10/1 起生效。租金 14,000 押金 28,000；水費年 1,800；電儲值 6,200。續約後改匯統潔兆豐。" },
-  "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 18000, payBank: "農會", note: "仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
+  "7641": { name: "洪子軒", phone: "0968-509-299", leaseStart: "2026-05-01", leaseEnd: "2027-04-30", deposit: 18000, payBank: "農會", note: "合約 115/5/1～116/4/30。仲介新邦城；2押1租 27,000；水費年 1,800；電儲值 1,000；仲介費 9,000" },
   "7642": { name: "陳智泓", phone: "0984-188-688", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 28000, payBank: "農會", note: "由 7242 換房；租金 14,000 押金 28,000；電儲值 2,000；水費年 1,800" },
   "7651": { name: "吳慧青", phone: "0989-797-680", rent: 5000, deposit: 0, leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會", note: "掛名申辦租屋補助。實際對應 7251 呂佳芸居住（呂佳芸無法申請補助）。租約與 7251 同步。7651 為辦公室、登入走管理員。月租 5,000。" }
 };
@@ -6627,6 +6628,7 @@ function normalize(data) {
   try { applyClear7042TestSign(data); } catch {}
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
+  try { applyRoom7641(data); } catch {}
   try { applyRenewNoMarks(data); } catch {}
   try { apply7042RentShort(data); } catch {}
   try { apply7042SepPaid(data); } catch {}
@@ -7016,6 +7018,38 @@ function applyFixLeaseSegments(data) {
     dirty = true;
   }
   if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
+}
+const ROOM_7641_VER = "7641-lease-1150501-v1";
+function applyRoom7641(data) {
+  if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7641");
+  if (!room) return;
+  const start = "2026-05-01";
+  const end = "2027-04-30";
+  const t = data.tenants.find(x => x && !x.demo && !x.incoming && (x.id === "t7641" || (x.roomId === room.id && !x.former && /洪子軒/.test(String(x.name || "")))));
+  if (!t) return;
+  const leases = Array.isArray(t.leases) ? t.leases : [];
+  const aligned = t.leaseStart === start && t.leaseEnd === end
+    && leases.length === 1 && leases[0]
+    && ymdOf(leases[0].start) === start && ymdOf(leases[0].end) === end;
+  t.name = t.name || "洪子軒";
+  t.leaseStart = start;
+  t.leaseEnd = end;
+  t.leases = [{ kind: "year", start, end, rent: 9000 }];
+  t.stubRent = 0;
+  t.former = false;
+  t.roomId = room.id;
+  room.tenantId = t.id;
+  room.rent = 9000;
+  if (room.status !== "repair" && room.status !== "office") room.status = "rented";
+  const note = (TENANT_INFO["7641"] && TENANT_INFO["7641"].note) || "";
+  if (note) t.note = note;
+  if (!aligned || data.room7641Ver !== ROOM_7641_VER) {
+    t.edited = true;
+    t.editedAt = Date.now();
+    data.room7641Ver = ROOM_7641_VER;
     try { markCloudDirty(); } catch {}
   }
 }
@@ -11715,6 +11749,7 @@ async function pullCloud() {
       try { apply7042SepPaid(state); } catch {}
       try { apply7042OctUnpaid(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
+      try { applyRoom7641(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
       try { applyRenewedPayBanks(state); } catch {}
@@ -11821,6 +11856,7 @@ async function pullCloud() {
     try { applyRenewal6823(state); } catch {}
     try { applyFix7032SignAppoint(state); } catch {}
     try { applyFixLeaseSegments(state); } catch {}
+    try { applyRoom7641(state); } catch {}
     try { applyRenewal7632(state); } catch {}
     try { applyRenewal6823(state); } catch {}
     try { applyRenewedPayBanks(state); } catch {}
@@ -12569,6 +12605,7 @@ async function pushCloud() {
     try { apply7042SepPaid(payload); } catch {}
     try { apply7042OctUnpaid(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
+    try { applyRoom7641(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
     try { applyRenewedPayBanks(payload); } catch {}
