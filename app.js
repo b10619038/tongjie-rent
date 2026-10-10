@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-10-12-46";
-const APP_EDIT_COUNT = 1794;
+const APP_STAMP = "2026-10-10-13-29";
+const APP_EDIT_COUNT = 1795;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1403";
+const FILE_VER = "1404";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["驊勝 93-61、93-62 新約 115/11/1～117/10/31，未稅 10 萬"] },
+  { ver: APP_VERSION, items: ["本月進出帳結餘，出帳大於進帳時改顯示負數"] },
+  { ver: "2026-10-10-12-46-1794", items: ["驊勝 93-61、93-62 新約 115/11/1～117/10/31，未稅 10 萬"] },
   { ver: "2026-10-10-10-39-1793", items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
   { ver: "2026-10-09-15-15-1792", items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
   { ver: "2026-10-07-21-50-1791", items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
@@ -14114,6 +14115,11 @@ function moneyDigits(n) {
   return String(abs).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 function money(n) { return "$ " + moneyDigits(n); }
+function moneySigned(n) {
+  const v = Number(n);
+  const neg = Number.isFinite(v) && v < 0;
+  return (neg ? "-$ " : "$ ") + moneyDigits(v);
+}
 function moneyBox(n, cls) {
   const v = Number(n);
   const neg = Number.isFinite(v) && v < 0;
@@ -20589,7 +20595,10 @@ function refreshCalSearchLive() {
     const spans = sum.querySelectorAll("span");
     if (spans[0]) spans[0].textContent = "進帳 " + money(inn);
     if (spans[1]) spans[1].textContent = "出帳 " + money(out);
-    if (spans[2]) spans[2].textContent = "結餘 " + money(inn - out);
+    if (spans[2]) {
+      spans[2].textContent = "結餘 " + moneySigned(inn - out);
+      spans[2].classList.toggle("led-out", inn - out < 0);
+    }
   }
 }
 function deleteLedgerRow(id, src) {
@@ -20752,7 +20761,7 @@ function monthCashHtml() {
       <div class="cal-sum">
         <span>進帳 ${money(inn)}</span>
         <span>出帳 ${money(out)}</span>
-        <span>結餘 ${money(inn - out)}</span>
+        <span class="${inn - out < 0 ? "led-out" : ""}">結餘 ${moneySigned(inn - out)}</span>
       </div>
       <div class="cal-kinds">
         <button type="button" class="cal-kind memo${calKindOn("memo") ? " on" : ""}" data-cal-kind="memo">行程</button>
