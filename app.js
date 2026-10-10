@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-10-10-39";
-const APP_EDIT_COUNT = 1793;
+const APP_STAMP = "2026-10-10-12-46";
+const APP_EDIT_COUNT = 1794;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1402";
+const FILE_VER = "1403";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
+  { ver: APP_VERSION, items: ["驊勝 93-61、93-62 新約 115/11/1～117/10/31，未稅 10 萬"] },
+  { ver: "2026-10-10-10-39-1793", items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
   { ver: "2026-10-09-15-15-1792", items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
   { ver: "2026-10-07-21-50-1791", items: ["租客對話照片會存進後台，點開通知就能看到圖"] },
   { ver: "2026-10-05-13-48-1790", items: ["7623 陳財源月租改回 10,000，不再吃到舊約 9,000"] },
@@ -5312,8 +5313,11 @@ const FACTORY_TENANT_INFO = {
   ], note: "93-58／60 同約共二戶。115/3/1～117/2/28 未稅 $105,000＋$5,250＝含稅 $110,250；117/3/1 起未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。115/2/2 入押金 $220,000。水費半年收。" },
   "牛6-59": { name: "黃儒清", taxId: "", contactName: "黃儒清", idNo: "S122572725", phone: "0956-107-555", leaseStart: "2025-03-01", leaseEnd: "2030-02-28", rentUntaxed: 46000, rent: 46000, deposit: 76000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "單月給單", elecNote: "每月給電單（K瓦）", note: "93-59。個人戶。未稅 $46,000。每月1日匯聯邦高雄 信潔 010100034775。" },
   "牛6-60": { name: "鈺晟實業有限公司", taxId: "94068024", contactName: "黃泰穎", phone: "07-790-1836／0927-982-900", leaseStart: "2026-03-01", leaseEnd: "2030-02-28", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-58 同約，租金列在 93-58" },
-  "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 110000, rent: 110000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", note: "93-61／62 同約共二戶。未稅 $110,000。每月1日匯聯邦高雄 信潔 010100034775。押金 61戶 $76,000、62戶 $84,000。合約至 115/10/31。" },
-  "牛6-62": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2026-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-61 同約，租金列在 93-61" },
+  "牛6-61": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2028-10-31", rentUntaxed: 110000, rent: 110000, deposit: 160000, dueDay: 1, payBank: "聯邦", payCompany: "信潔", payWay: "匯款", waterNote: "自繳欠", elecNote: "自繳欠", address: "高雄市鳳山區鳳仁路93-62號", rentSchedule: [
+    { from: "2024-11-01", untaxed: 110000, taxed: 110000 },
+    { from: "2026-11-01", untaxed: 100000, taxed: 105000 }
+  ], note: "93-61、93-62 同約共二戶。新約 115/11/1～117/10/31，共 2 年，11/1 起生效。新約未稅 10 萬元，含 5% 為 105,000。每月 1 日匯聯邦銀行高雄分行，戶名信潔開發有限公司，帳號 010100034775。押金 16 萬元。承租人陳昱廷。原約至 115/10/31，未稅維持 11 萬到 10 月底。" },
+  "牛6-62": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2024-11-01", leaseEnd: "2028-10-31", rentUntaxed: 0, rent: 0, deposit: 0, dueDay: 1, payBank: "聯邦", payCompany: "信潔", note: "與 93-61 同約，租金列在 93-61。新約 115/11/1～117/10/31。" },
   "拉皮-1A": { name: "南溢製鞋股份有限公司", taxId: "81265944", contactName: "徐志逢", phone: "0910-700-069", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 37000, rent: 38850, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "每年一次", elecNote: "每月抄表　半年收（K瓦）", invoiceAddr: "802 高雄市苓雅區永泰路115號", rentSchedule: [
     { from: "2025-12-01", untaxed: 37000 },
     { from: "2027-12-01", untaxed: 39000 }
@@ -6629,6 +6633,7 @@ function normalize(data) {
   try { applyFix7032SignAppoint(data); } catch {}
   try { applyFixLeaseSegments(data); } catch {}
   try { applyRoom7641(data); } catch {}
+  try { applyHuaSheng6162(data); } catch {}
   try { applyRenewNoMarks(data); } catch {}
   try { apply7042RentShort(data); } catch {}
   try { apply7042SepPaid(data); } catch {}
@@ -7050,6 +7055,54 @@ function applyRoom7641(data) {
     t.edited = true;
     t.editedAt = Date.now();
     data.room7641Ver = ROOM_7641_VER;
+    try { markCloudDirty(); } catch {}
+  }
+}
+const HUASHENG_6162_VER = "huasheng-6162-v1";
+function applyHuaSheng6162(data) {
+  if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return;
+  const info61 = FACTORY_TENANT_INFO["牛6-61"] || {};
+  const info62 = FACTORY_TENANT_INFO["牛6-62"] || {};
+  const room61 = data.rooms.find(r => r && String(r.no) === "牛6-61");
+  const room62 = data.rooms.find(r => r && String(r.no) === "牛6-62");
+  const t61 = room61 && data.tenants.find(x => x && !x.former && !x.demo && (x.id === room61.tenantId || x.roomId === room61.id || x.id === "tf-牛6-61"));
+  const t62 = room62 && data.tenants.find(x => x && !x.former && !x.demo && (x.id === room62.tenantId || x.roomId === room62.id || x.id === "tf-牛6-62"));
+  const live = todayYmd() >= "2026-11-01";
+  const sched = [
+    { from: "2024-11-01", untaxed: 110000, taxed: 110000 },
+    { from: "2026-11-01", untaxed: 100000, taxed: 105000 }
+  ];
+  if (t61 && room61) {
+    t61.leaseStart = live ? "2026-11-01" : "2024-11-01";
+    t61.leaseEnd = "2028-10-31";
+    t61.rentSchedule = sched;
+    t61.rentUntaxed = live ? 100000 : 110000;
+    t61.rent = live ? 105000 : 110000;
+    t61.deposit = 160000;
+    t61.dueDay = 1;
+    t61.payWay = info61.payWay || "匯款";
+    if (info61.note) t61.note = info61.note;
+    if (info61.address && !t61.address) t61.address = info61.address;
+    room61.rent = t61.rent;
+    room61.rentUntaxed = t61.rentUntaxed;
+    room61.deposit = 160000;
+    room61.tenantId = t61.id;
+  }
+  if (t62 && room62) {
+    t62.leaseStart = live ? "2026-11-01" : "2024-11-01";
+    t62.leaseEnd = "2028-10-31";
+    t62.rentUntaxed = 0;
+    t62.rent = 0;
+    t62.deposit = 0;
+    if (info62.note) t62.note = info62.note;
+    room62.rent = 0;
+    room62.rentUntaxed = 0;
+    room62.deposit = 0;
+    room62.tenantId = t62.id;
+  }
+  if (data.huaSheng6162Ver !== HUASHENG_6162_VER) {
+    data.huaSheng6162Ver = HUASHENG_6162_VER;
+    if (t61) { t61.edited = true; t61.editedAt = Date.now(); }
     try { markCloudDirty(); } catch {}
   }
 }
@@ -11750,6 +11803,7 @@ async function pullCloud() {
       try { apply7042OctUnpaid(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRoom7641(state); } catch {}
+      try { applyHuaSheng6162(state); } catch {}
       try { applyRenewal7632(state); } catch {}
       try { applyRenewal6823(state); } catch {}
       try { applyRenewedPayBanks(state); } catch {}
@@ -11857,6 +11911,7 @@ async function pullCloud() {
     try { applyFix7032SignAppoint(state); } catch {}
     try { applyFixLeaseSegments(state); } catch {}
     try { applyRoom7641(state); } catch {}
+    try { applyHuaSheng6162(state); } catch {}
     try { applyRenewal7632(state); } catch {}
     try { applyRenewal6823(state); } catch {}
     try { applyRenewedPayBanks(state); } catch {}
@@ -12606,6 +12661,7 @@ async function pushCloud() {
     try { apply7042OctUnpaid(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRoom7641(payload); } catch {}
+    try { applyHuaSheng6162(payload); } catch {}
     try { applyRenewal7632(payload); } catch {}
     try { applyRenewal6823(payload); } catch {}
     try { applyRenewedPayBanks(payload); } catch {}
