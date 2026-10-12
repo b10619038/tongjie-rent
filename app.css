@@ -3181,34 +3181,6 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .repair-actions .ghost { margin-top: 0; width: 100%; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
-[data-fold-repair].card {
-  overflow: hidden;
-  min-width: 0;
-  max-width: 100%;
-}
-[data-fold-repair] .tenant-slim-body,
-[data-fold-repair] .tenant-slim-inner,
-[data-fold-repair] .field,
-[data-fold-repair] .appoint-box,
-[data-fold-repair] .appoint-one,
-[data-fold-repair] .seg {
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-[data-fold-repair] .appoint-one {
-  flex-wrap: wrap;
-  height: auto;
-}
-[data-fold-repair] .appoint-face {
-  flex: 1 1 8em;
-  min-width: 0;
-}
-[data-fold-repair] .appoint-side {
-  flex: 1 1 auto;
-  margin-left: 0;
-  justify-content: flex-end;
-}
 .appoint-one {
   position: relative;
   display: flex;
@@ -5885,12 +5857,6 @@ html.preview-zoom body {
 .swipe-wrap:not(.slim) { overflow: visible; }
 .tenant-slim { padding: 8px 14px; transition: padding .32s ease; }
 .tenant-slim.open { padding: 16px; overflow: visible; }
-[data-fold-repair].card.tenant-slim,
-[data-fold-repair].card.tenant-slim.open {
-  overflow: hidden;
-  min-width: 0;
-  max-width: 100%;
-}
 .tenant-slim-head { padding: 2px 0; align-items: center; gap: 4px; }
 button.repair-look {
   appearance: none;
