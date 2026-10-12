@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-22-04";
-const APP_EDIT_COUNT = 1831;
+const APP_STAMP = "2026-10-12-22-08";
+const APP_EDIT_COUNT = 1832;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1441";
+const FILE_VER = "1442";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["再加一個人一起租改到不續約右邊"] },
+  { ver: APP_VERSION, items: ["拿掉改成移除第二人，放在不續約右邊"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3684,7 +3684,6 @@ function renewPeopleFormHtml(people) {
         : "時間跟" + (src.name || "上面") + "同一段：" + renewSpanLabel(src.years, src.months) + "。半年也一起。";
       return `<div class="renew-person">
         <label class="field renew-add-field"><span>一起租的人</span><input data-renew-name="${i}" maxlength="20" placeholder="第二個人的姓名" value="${escapeHtml(p.name || "")}" /></label>
-        <button type="button" class="ghost" data-renew-remove="${i}">拿掉</button>
         <p class="small">${escapeHtml(same)}</p>
       </div>`;
     }
@@ -3693,7 +3692,7 @@ function renewPeopleFormHtml(people) {
       <div class="renew-year-picks">
         <button type="button" class="${on ? "on" : ""}" data-renew-person="${i}" data-renew-on="1">續約</button>
         <button type="button" class="${on ? "" : "on"}" data-renew-person="${i}" data-renew-on="0">不續約</button>
-        ${canAdd ? `<button type="button" class="ghost renew-add" data-renew-add="1">再加一個人一起租</button>` : ""}
+        ${canAdd ? `<button type="button" class="ghost renew-add" data-renew-add="1">再加一個人一起租</button>` : (list.some(x => x && x.added) ? `<button type="button" class="ghost renew-add" data-renew-remove="${list.findIndex(x => x && x.added)}">移除第二人</button>` : "")}
       </div>
       <div class="renew-fit" data-renew-span="${i}" style="${on ? "" : "display:none"}">
         <div class="renew-span">
