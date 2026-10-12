@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-18-26";
-const APP_EDIT_COUNT = 1807;
+const APP_STAMP = "2026-10-12-18-34";
+const APP_EDIT_COUNT = 1808;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1417";
+const FILE_VER = "1418";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租的加入日曆改到簽約時間右邊"] },
+  { ver: APP_VERSION, items: ["自己點過不續約的人都可以改申請續約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3586,8 +3586,7 @@ function renewAskCardHtml(t, r, opts) {
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
     if (!full && !inRenewAskWindow(t)) return "";
-    const reopen = ["6822", "7023", "7631"].indexOf(String(r.no || "")) < 0;
-    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p>${reopen ? `<button type="button" class="btn-navy" data-renew-reopen="1" style="margin-top:8px">改申請續約</button>` : ""}</div>`;
+    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p><button type="button" class="btn-navy" data-renew-reopen="1" style="margin-top:8px">改申請續約</button></div>`;
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
@@ -16745,6 +16744,7 @@ function renewDecisionOf(no) {
   try {
     const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === s);
     const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (t && t.renewChoice === "open") return "";
     if (t && (t.renewChoice === "no" || t.renewChoice === "yes")) return t.renewChoice;
   } catch {}
   if (s === "6822" || s === "7023" || s === "7631") return "no";
