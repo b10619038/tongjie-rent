@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-18-58";
-const APP_EDIT_COUNT = 1813;
+const APP_STAMP = "2026-10-12-19-07";
+const APP_EDIT_COUNT = 1815;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1423";
+const FILE_VER = "1425";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客正常退租改為線上簽名，不再顯示列印"] },
+  { ver: APP_VERSION, items: ["租客預約退租從按鈕縮放出圖卡", "簽名旁的虛線章框不再顯示，也不會印出"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3586,7 +3586,7 @@ function renewAskCardHtml(t, r, opts) {
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
     if (!full && !inRenewAskWindow(t)) return "";
-    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p><div class="renew-reopen-row"><button type="button" class="btn-rose${ui.leaveBook ? " on" : ""}" data-leave-book="1">預約退租時間</button><button type="button" class="btn-navy" data-renew-reopen="1">改申請續約</button></div></div>${ui.leaveBook ? normalLeaveCardHtml(t, r, { timeOnly: true }) : ""}`;
+    return `<div class="tenant-leave-block"><div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p><div class="renew-reopen-row"><button type="button" class="btn-rose${ui.leaveBook ? " on" : ""}" data-leave-book="1">預約退租時間</button><button type="button" class="btn-navy" data-renew-reopen="1">改申請續約</button></div></div>${ui.leaveBook ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${normalLeaveCardHtml(t, r, { timeOnly: true })}</div></div>` : ""}</div>`;
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
@@ -3943,9 +3943,7 @@ function bindRenewForm() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.leaveBook = !ui.leaveBook;
-      ui.keepScroll = true;
-      render();
+      toggleTenantLeaveBook(btn);
     };
   });
   document.querySelectorAll("[data-print-normal]").forEach(btn => {
@@ -3960,13 +3958,7 @@ function bindRenewForm() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.signAgree = false;
-      ui.signStrokes = [];
-      ui.signStrokes2 = [];
-      ui.leaveBook = true;
-      ui.page = "leave-sign";
-      ui.keepScroll = false;
-      render();
+      openLeaveSignPage();
     };
   });
 }
@@ -4084,6 +4076,33 @@ function saveTenantRenewRow(row, opt) {
     ? "已寫入正式續約申請，電子簽名已略過。後台看得到，現場蓋章後再按完成簽約"
     : (row.wantMove ? "已簽名並送出換房續約，現場再蓋章即可" : "已簽名並送出續約申請，現場再蓋章即可"));
   ui.keepScroll = true;
+}
+function openLeaveSignPage() {
+  ui.signAgree = false;
+  ui.signStrokes = [];
+  ui.signStrokes2 = [];
+  ui.leaveBook = true;
+  ui.page = "leave-sign";
+  ui.keepScroll = false;
+  render();
+}
+function toggleTenantLeaveBook(btn) {
+  const block = btn && btn.closest(".tenant-leave-block");
+  const t = typeof me === "function" ? me() : null;
+  const r = typeof myRoom === "function" ? myRoom() : null;
+  if (!block || !t || !r || block.dataset.sheetBusy === "1") return;
+  block.dataset.sheetBusy = "1";
+  setTimeout(() => { block.dataset.sheetBusy = ""; }, 380);
+  const open = block.querySelector(".sheet-drop");
+  if (open) {
+    ui.leaveBook = false;
+    btn.classList.remove("on");
+    playSheetClose(open, null, btn);
+    return;
+  }
+  ui.leaveBook = true;
+  btn.classList.add("on");
+  insertTenantSheet(block, normalLeaveCardHtml(t, r, { timeOnly: true }), btn);
 }
 function openRenewSignFirst() {
   const row = buildTenantRenewRow();
@@ -32741,12 +32760,11 @@ function bindNewSheet(wrap) {
       openCheckout(btn.dataset.openEarlyForm);
     };
   });
-  wrap.querySelectorAll("[data-gcal-early]").forEach(btn => {
+  wrap.querySelectorAll("[data-leave-sign]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const co = (state.checkouts || []).find(x => x && x.id === btn.dataset.gcalEarly);
-      openEarlyCalendar(co);
+      openLeaveSignPage();
     };
   });
 }
