@@ -1238,11 +1238,16 @@ button.pay-pill.hand {
 .renew-span {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.renew-step-grp {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
 }
 .renew-fit {
-  display: flex;
-  justify-content: flex-end;
+  display: block;
   width: 100%;
   max-width: 100%;
   margin-top: 8px;

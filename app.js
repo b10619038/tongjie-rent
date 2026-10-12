@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-22-15";
-const APP_EDIT_COUNT = 1833;
+const APP_STAMP = "2026-10-12-22-18";
+const APP_EDIT_COUNT = 1834;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1443";
+const FILE_VER = "1444";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約按鈕和年月那兩排靠右，跟同間換房切齊"] },
+  { ver: APP_VERSION, items: ["年月加減左右拉開，跟上下兩排切齊"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3696,14 +3696,18 @@ function renewPeopleFormHtml(people) {
       </div>
       <div class="renew-fit" data-renew-span="${i}" style="${on ? "" : "display:none"}">
         <div class="renew-span">
-          <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
-          <b>${Number(p.years) || 0}</b>
-          <span>年</span>
-          <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
-          <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
-          <b>${Number(p.months) || 0}</b>
-          <span>月</span>
-          <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
+          <span class="renew-step-grp">
+            <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
+            <b>${Number(p.years) || 0}</b>
+            <span>年</span>
+            <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
+          </span>
+          <span class="renew-step-grp">
+            <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
+            <b>${Number(p.months) || 0}</b>
+            <span>月</span>
+            <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
+          </span>
         </div>
       </div>
     </div>`;
