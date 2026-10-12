@@ -1911,6 +1911,15 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 .live-dot.on { background: #22a34a; box-shadow: 0 0 0 3px rgba(34,163,74,.18); }
 .k { color: var(--muted); font-size: 13px; }
 .v { font-weight: 700; }
+.renew-brief > div { display: block; }
+html[data-device="desktop"] .renew-brief > div,
+html[data-device="tablet"] .renew-brief > div {
+  display: inline;
+}
+html[data-device="desktop"] .renew-brief > div + div::before,
+html[data-device="tablet"] .renew-brief > div + div::before {
+  content: "　";
+}
 .small { color: var(--muted); font-size: 12px; }
 .small a, .lead a { color: var(--teal); text-decoration: none; font-weight: 700; }
 .empty { color: var(--muted); padding: 16px; text-align: center; }
