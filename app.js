@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-22-43";
-const APP_EDIT_COUNT = 1843;
+const APP_STAMP = "2026-10-12-23-53";
+const APP_EDIT_COUNT = 1844;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1453";
+const FILE_VER = "1454";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紀錄選單加太陽能，放黃色通知單分址明細"] },
+  { ver: APP_VERSION, items: ["報修選公共設施後可自填，例如插座"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -27728,8 +27728,11 @@ function bindRepairDelete() {
       ui.repairEditType = btn.dataset.editType || ui.repairEditType;
       const grid = btn.closest(".issue-grid");
       if (grid) grid.querySelectorAll("[data-edit-type]").forEach(b => b.classList.toggle("selected", b === btn));
-      const title = btn.closest(".card") && btn.closest(".card").querySelector(".row .k");
-      if (title) title.textContent = ui.repairEditType;
+      const card = btn.closest(".card");
+      const facility = card && card.querySelector("[data-edit-facility]");
+      if (facility) facility.style.display = ui.repairEditType === "公共設施" ? "" : "none";
+      const title = card && card.querySelector(".row .k");
+      if (title) title.textContent = ui.repairEditType === "公共設施" && facility && facility.value.trim() ? "公共設施　" + facility.value.trim() : ui.repairEditType;
     };
   });
   document.querySelectorAll("[data-edit-note]").forEach(box => {
@@ -27757,12 +27760,16 @@ function bindRepairDelete() {
       const noteEl = document.querySelector('[data-edit-note="' + String(rep.id).replace(/"/g, "") + '"]');
       const note = String((noteEl && noteEl.value) || "").trim();
       if (!note) { toast("請先描述問題"); return; }
+      const facilityEl = document.querySelector('[data-edit-facility="' + String(rep.id).replace(/"/g, "") + '"]');
+      const facility = String((facilityEl && facilityEl.value) || "").trim();
+      if ((ui.repairEditType || rep.type) === "公共設施" && !facility) { toast("請填是什麼公共設施，例如插座"); return; }
       rep.type = ui.repairEditType || rep.type;
+      rep.facility = rep.type === "公共設施" ? facility : "";
       rep.note = note;
       stampRepair(rep);
       if (Array.isArray(state.notices)) {
         state.notices.forEach(n => {
-          if (n && n.repairId === rep.id) n.text = (rep.roomNo || "") + " " + rep.type + "報修";
+          if (n && n.repairId === rep.id) n.text = (rep.roomNo || "") + " " + repairTypeLabel(rep) + "報修";
         });
       }
       const room = (state.rooms || []).find(x => x && x.id === rep.roomId);
@@ -27771,7 +27778,7 @@ function bindRepairDelete() {
       persistRepairStat(state);
       save();
       try { pushCloud(); } catch {}
-      pushPhoneNotify("報修已更新", `${(room && room.no) || ""} ${rep.type}　${note}`, "admin");
+      pushPhoneNotify("報修已更新", `${(room && room.no) || ""} ${repairTypeLabel(rep)}　${note}`, "admin");
       ui.repairEditId = "";
       ui.repairEditType = "";
       ui.keepScroll = true;
@@ -27842,19 +27849,27 @@ function tickRepairRuns() {
     el.classList.toggle("is-in", pct >= 0.995);
   });
 }
+function repairTypeLabel(rep) {
+  if (!rep) return "";
+  const type = String(rep.type || "");
+  const facility = String(rep.facility || "").trim();
+  if (type === "公共設施" && facility) return "公共設施　" + facility;
+  return type;
+}
 function repairCard(rep, extraClass) {
   const editing = ui.repairEditId === rep.id;
   const types = ["冷氣", "馬桶", "電燈", "冰箱", "網路", "電視", "電子鎖", "家具", "公共設施", "地板"];
   const picked = editing ? (ui.repairEditType || rep.type) : rep.type;
   const editBox = editing ? `<div class="repair-edit">
       <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${picked === tp ? "selected" : ""}" data-edit-type="${escapeHtml(tp)}">${tp}</button>`).join("")}</div>
+      <input class="repair-facility" data-edit-facility="${escapeHtml(rep.id)}" maxlength="20" placeholder="是什麼公共設施，例如：插座" value="${escapeHtml(rep.facility || "")}" style="${picked === "公共設施" ? "" : "display:none"}" />
       <div class="repair-note-box"><textarea class="repair-note" data-edit-note="${escapeHtml(rep.id)}" rows="4" maxlength="800" autocomplete="off">${escapeHtml(rep.note || "")}</textarea></div>
       <button type="button" class="btn-navy" data-save-repair="${escapeHtml(rep.id)}" style="margin-top:8px">儲存修改</button>
       <button type="button" class="ghost" data-cancel-repair="1" style="margin-top:8px">取消</button>
     </div>` : "";
   const folded = rep.status === "done" && !editing;
   const open = !folded || !!(ui.repairMineOpen && ui.repairMineOpen[rep.id]);
-  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? picked : rep.type)}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
+  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施　" + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
   const body = `
     <div class="small"${folded ? ` style="margin-top:8px"` : ""}>${formatDateTime12(rep.createdAt)}</div>
     ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
@@ -27895,6 +27910,7 @@ function repairView() {
       <div class="slide-left">
       <div id="repair-form">
         <div class="issue-grid">${types.map(tp => `<button type="button" class="issue-opt ${ui.repairType === tp ? "selected" : ""}" data-type="${tp}">${tp}</button>`).join("")}</div>
+        <input class="repair-facility" id="repair-facility" maxlength="20" placeholder="是什麼公共設施，例如：插座" value="${escapeHtml(ui.repairFacility || "")}" style="${ui.repairType === "公共設施" ? "" : "display:none"}" autocomplete="off" />
         <div class="repair-note-box">
           <textarea id="repair-note" name="repair-note" class="repair-note" rows="5" maxlength="800" autocapitalize="sentences" autocomplete="off" placeholder="請描述問題，例如：冷氣不制冷、晚上會滴水…">${escapeHtml(ui.repairNote || "")}</textarea>
         </div>
@@ -34265,7 +34281,7 @@ function adminRepairs() {
     const open = !!ui.repairOpen[rep.id];
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
     const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? "　" + t.name : ""));
-    const label = escapeHtml(rep.type) + " · " + escapeHtml(who);
+    const label = escapeHtml(repairTypeLabel(rep)) + " · " + escapeHtml(who);
     const head = (typeof isDeveloper === "function" && isDeveloper() && t)
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;
@@ -35053,8 +35069,21 @@ function bindTenant() {
       e.stopPropagation();
       ui.repairType = el.dataset.type;
       document.querySelectorAll("[data-type]").forEach(b => b.classList.toggle("selected", b.dataset.type === ui.repairType));
+      const facility = document.getElementById("repair-facility");
+      if (facility) {
+        facility.style.display = ui.repairType === "公共設施" ? "" : "none";
+        if (ui.repairType === "公共設施") facility.focus();
+      }
     };
   });
+  const repairFacility = document.getElementById("repair-facility");
+  if (repairFacility) {
+    const keepFacility = () => { ui.repairFacility = repairFacility.value; };
+    repairFacility.oninput = keepFacility;
+    repairFacility.onchange = keepFacility;
+    repairFacility.onpointerdown = e => e.stopPropagation();
+    repairFacility.onclick = e => { e.stopPropagation(); repairFacility.focus(); };
+  }
   const repairNote = document.getElementById("repair-note");
   if (repairNote) {
     repairNote.readOnly = false;
@@ -35139,21 +35168,24 @@ function bindTenant() {
       e.stopPropagation();
       const note = ((document.getElementById("repair-note") || {}).value || ui.repairNote || "").trim();
       if (!note) { toast("請先描述問題，才能提交報修"); return; }
+      const facility = ui.repairType === "公共設施" ? String(((document.getElementById("repair-facility") || {}).value || ui.repairFacility || "")).trim() : "";
+      if (ui.repairType === "公共設施" && !facility) { toast("請填是什麼公共設施，例如插座"); return; }
       if (isProspectPreview()) { toast("預覽中，報修不會送出"); return; }
       const media = (ui.repairMedia || []).slice();
       const stamp = nowStamp();
       const room = myRoom();
       const rid = "r" + Date.now();
       const rec = {
-        id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, note,
+        id: rid, roomId: room.id, tenantId: me().id, type: ui.repairType, facility, note,
         photo: (media.find(m => m.kind === "image") || {}).src || null, media, status: "open", createdAt: stamp,
         roomNo: room.no || "", demo: !!((room && (room.demo || isDemoRoom(room)))), editedAt: Date.now()
       };
       state.repairs.push(rec);
       if (!state.notices) state.notices = [];
-      state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${ui.repairType}報修`, createdAt: stamp, read: false });
+      const kind = repairTypeLabel({ type: ui.repairType, facility });
+      state.notices.push({ id: "n" + Date.now(), type: "repair", repairId: rid, roomNo: room.no, text: `${room.no} ${kind}報修`, createdAt: stamp, read: false });
       syncRoomRepairStatus(room.id);
-      state.repairNotice = { at: Date.now(), id: rid, roomNo: room.no || "", name: (me() && me().name) || "", type: ui.repairType || "", note };
+      state.repairNotice = { at: Date.now(), id: rid, roomNo: room.no || "", name: (me() && me().name) || "", type: kind, note };
       state.repairPing = state.repairNotice.at;
       persistRepairMedia(state); persistRepairStat(state);
       try { save(true); } catch {
@@ -35161,13 +35193,13 @@ function bindTenant() {
       }
       try { publishPaidCloud(); } catch {}
       try { pushCloud(); } catch {}
-      pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, "admin");
+      pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, "admin");
       if (isDevPreview() && room && !isDemoRoom(room) && !room.demo) {
-        sendRemoteNotify("admin", "新報修", `${room.no} ${me().name || ""}：${ui.repairType}　${note}`, notifyExtra("新報修", "admin"));
+        sendRemoteNotify("admin", "新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, notifyExtra("新報修", "admin"));
       }
       const noteEl = document.getElementById("repair-note");
       if (noteEl) noteEl.value = "";
-      ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairMedia = [];
+      ui.repairType = "冷氣"; ui.repairNote = ""; ui.repairFacility = ""; ui.repairMedia = [];
       if (ui.composeFocus && ui.composeFocus.id === "repair-note") ui.composeFocus = null;
       ui.page = "repair-done";
       toast(isDevPreview() ? "已提交報修，後台可查看" : "已提交報修");

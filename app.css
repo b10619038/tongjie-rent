@@ -2633,6 +2633,22 @@ input[type="file"] {
 #repair-form .upload { margin-bottom: 8px; }
 #repair-form .btn-navy { margin-top: 8px; }
 .issue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.repair-facility {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 10px;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
 .repair-note-box {
   display: block;
   width: 100%;
