@@ -6656,6 +6656,11 @@ html.embed-pane .home-upd { display: none !important; }
   letter-spacing: .18em;
   width: 100%;
 }
+.term-handover-paper [data-lease-sign-date] .term-fill.amt {
+  display: inline-block;
+  min-width: 2.4em;
+  text-align: center;
+}
 .term-handover-paper h3 {
   text-align: center;
   letter-spacing: .28em;

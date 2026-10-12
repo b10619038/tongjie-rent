@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-18-34";
-const APP_EDIT_COUNT = 1808;
+const APP_STAMP = "2026-10-12-18-36";
+const APP_EDIT_COUNT = 1809;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1418";
+const FILE_VER = "1419";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["自己點過不續約的人都可以改申請續約"] },
+  { ver: APP_VERSION, items: ["正常退租合約也可打開或關閉日期"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24063,7 +24063,7 @@ function handoverConfirmPaperHtml(t, r, co) {
   const personChops = (nameList.length > 1 ? [0, 1] : [0]).map(() => `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`).join("");
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
-    <p>甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
+    <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
     <p>一、點交物件</p>
     <ol class="hand-list">
       ${items.map(x => `<li><span>${x}</span><span class="hand-ck">□</span></li>`).join("")}
@@ -24080,7 +24080,7 @@ function handoverConfirmPaperHtml(t, r, co) {
         <span class="hand-person-slot">${personChops}</span>
       </p>
     </div>
-    <p class="term-date">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
+    <p class="term-date" data-lease-sign-date="1">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>
   </div></div>`;
 }
 function termPrintPackHtml(t, r, co, kind) {
@@ -24537,7 +24537,7 @@ function closeLeasePrintPreview() {
   if (el) el.remove();
 }
 function paintLeaseSignDate(on) {
-  document.querySelectorAll("#lease-preview-box [data-lease-sign-date] .lease-u.amt").forEach(el => {
+  document.querySelectorAll("#lease-preview-box [data-lease-sign-date] .lease-u.amt, #lease-preview-box [data-lease-sign-date] .term-fill.amt").forEach(el => {
     if (!el.dataset.full) el.dataset.full = el.textContent;
     el.textContent = on ? el.dataset.full : "\u3000";
   });
@@ -24624,10 +24624,12 @@ function showHandoverPrintPreview(t, r, at) {
   wrap.className = "lightbox lease-print-preview";
   wrap.id = "lease-preview-box";
   const title = "正常退租合約　" + (r.no || "") + (t.name ? "　" + t.name : "");
+  let dateOn = true;
   wrap.innerHTML = `
     <div class="lightbox-bar">
       <div class="lease-prev-tools">
         <button type="button" id="lease-prev-close">關閉</button>
+        <button type="button" id="lease-date-toggle">關閉日期</button>
       </div>
       <span>${escapeHtml(title)}</span>
       <button type="button" class="btn-navy" id="lease-prev-print">列印</button>
@@ -24635,6 +24637,12 @@ function showHandoverPrintPreview(t, r, at) {
     <div class="lease-preview-scroll">${html}</div>`;
   document.body.appendChild(wrap);
   document.getElementById("lease-prev-close").onclick = closeLeasePrintPreview;
+  document.getElementById("lease-date-toggle").onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dateOn = !dateOn;
+    paintLeaseSignDate(dateOn);
+  };
   wrap.addEventListener("click", e => { if (e.target === wrap) closeLeasePrintPreview(); });
   document.getElementById("lease-prev-print").onclick = e => {
     e.preventDefault();
