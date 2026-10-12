@@ -1186,7 +1186,9 @@ button.pay-pill.hand {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  width: 100%;
 }
 .renew-year-picks button {
   border: 1px solid #e6dfd6;
@@ -1239,8 +1241,9 @@ button.pay-pill.hand {
   gap: 8px;
 }
 .renew-fit {
-  display: inline-grid;
-  grid-template-columns: max-content;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
   max-width: 100%;
   margin-top: 8px;
 }
