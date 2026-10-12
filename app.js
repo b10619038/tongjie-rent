@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-19-55";
-const APP_EDIT_COUNT = 1817;
+const APP_STAMP = "2026-10-12-19-59";
+const APP_EDIT_COUNT = 1818;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1427";
+const FILE_VER = "1428";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["有簽名時，右邊的個人印章框仍保留"] },
+  { ver: APP_VERSION, items: ["正常退租名字列右邊加上完成退租，房間仍住到合約最後一天"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -10609,7 +10609,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveDone", "leaveDoneAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -32499,9 +32499,12 @@ function normalLeaveCardHtml(t, r, opts) {
   const at = timeOnly ? tenantLeaveAt(t) : normalLeaveAppoint(t);
   const when = at ? formatDateTime12(at.replace("T", " ")) : "";
   const signedLeave = !!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2));
+  const doneMark = timeOnly ? "" : (t.leaveDone
+    ? `<span class="pay-pill unpaid">已退租</span>`
+    : `<button type="button" class="ghost" data-leave-done="${escapeHtml(t.id)}" style="width:auto">完成退租</button>`);
   return `<div class="card card-body renew-alert" data-norenew-card="${escapeHtml(t.id)}">
     <h2 class="dash-h">正常退租</h2>
-    <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b></div>
+    <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b>${doneMark}</div>
     <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。到期日辦理正常退租點交。${timeOnly ? "日期固定，只能改幾點。" : ""}</div>
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
@@ -32515,6 +32518,19 @@ function normalLeaveCardHtml(t, r, opts) {
       ? `<button type="button" class="btn-navy" data-leave-sign="1" style="margin-top:8px">${signedLeave ? "重新簽名" : "下一步，簽署退租"}</button>`
       : `<button type="button" class="btn-navy" data-print-normal="${escapeHtml(t.id)}" style="margin-top:8px">列印正常退租合約</button>`}
   </div>`;
+}
+function completeNormalLeave(id) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t || t.leaveDone) return;
+  t.leaveDone = true;
+  t.leaveDoneAt = nowStamp();
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  const end = rocSlash(ymdOf(t.leaseEnd) || "");
+  toast("已完成退租。房間仍住到合約最後一天" + (end ? "（" + end + "）" : ""));
+  try { refreshTenantList(); } catch { render(); }
 }
 function leaveSignView() {
   const t = me();
@@ -32741,6 +32757,13 @@ function bindNewSheet(wrap) {
       e.preventDefault();
       e.stopPropagation();
       openInvoiceForRoom(btn.dataset.invoice, "tenants");
+    };
+  });
+  wrap.querySelectorAll("[data-leave-done]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      completeNormalLeave(btn.dataset.leaveDone);
     };
   });
   wrap.querySelectorAll("[data-renew-done]").forEach(btn => {
@@ -33773,6 +33796,13 @@ function bindTenantFold() {
         e.preventDefault();
         e.stopPropagation();
         printNormalLeave(leavePrint.dataset.printNormal);
+        return;
+      }
+      const leaveDoneBtn = e.target.closest("[data-leave-done]");
+      if (leaveDoneBtn && list.contains(leaveDoneBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        completeNormalLeave(leaveDoneBtn.dataset.leaveDone);
         return;
       }
       const doneBtn = e.target.closest("[data-renew-done]");

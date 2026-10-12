@@ -1495,7 +1495,11 @@ html[data-theme="void"] [data-norenew-card] .btn-navy:focus {
   background: var(--rose-soft);
   color: var(--rose);
 }
-[data-norenew-card] .gcal-in { color: var(--rose); }
+[data-norenew-card] .renew-hit > .ghost {
+  color: var(--rose);
+  border-color: var(--rose);
+  background: #fff;
+}
 .mini.renew-hit {
   display: flex;
   flex-wrap: nowrap;
