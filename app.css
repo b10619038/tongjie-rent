@@ -3614,6 +3614,10 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
 .ring-card { display: flex; align-items: center; gap: 12px; padding: 16px; overflow: hidden; min-width: 0; max-width: 100%; }
 .ring-card > div { min-width: 0; }
 .solar-card { min-width: 0; cursor: pointer; transition: transform .12s cubic-bezier(.2,.9,.2,1); -webkit-tap-highlight-color: transparent; }
+.solar-card.solar-card-col { flex-direction: column; align-items: stretch; gap: 10px; }
+.solar-card-top { display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0; }
+.solar-card-top > div { min-width: 0; flex: 1; }
+.solar-card .btn-navy { width: 100%; margin: 0; }
 .solar-card.is-press { transform: scale(0.97); }
 .solar-page.solar-enter {
   animation: solarSheetIn .38s cubic-bezier(.22,.82,.22,1) both;

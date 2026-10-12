@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-22-29";
-const APP_EDIT_COUNT = 1840;
+const APP_STAMP = "2026-10-12-22-38";
+const APP_EDIT_COUNT = 1841;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1450";
+const FILE_VER = "1451";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約人名移到按鈕那一排，上面那行拿掉"] },
+  { ver: APP_VERSION, items: ["總覽加太陽能按鈕，點進去看分址與入帳明細"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -31749,7 +31749,7 @@ function adminSolar() {
       <button class="back" type="button" data-admin="dash">← 返回</button>
       <div class="solar-hero">
         <div class="solar-hero-copy">
-          <h2 class="dash-h" style="margin:0">太陽能覆蓋率</h2>
+          <h2 class="dash-h" style="margin:0">太陽能明細</h2>
           <div class="small">已裝 ${solarSites} · 未裝 ${cov.miss}</div>
           <div class="small">廠房 ${cov.installedF} 戶　套房 ${cov.bld} 棟</div>
           ${cov.miss ? `<div class="small">未裝：${escapeHtml(missNames)}</div>` : ""}
@@ -31831,14 +31831,17 @@ function adminDash() {
         ${occRingBlock(factoryOcc, factoryVs, "leaf", "images/occ-factory.jpg?v=0224", "s2")}
         ${occRingBlock(storeOcc, storeVs, "clay", "images/occ-store.jpg?v=0227", "s3")}
       </div>
-      <div class="card ring-card solar-card" data-page="solar" role="button" tabindex="0">
-        <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
-        <div>
-          <div class="k">太陽能覆蓋率</div>
-          <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
-          <div class="small">售電 ${money(solarLedgerRows().reduce((s, x) => s + (Number(x.amount) || 0), 0))}　點進去看</div>
+      <div class="card ring-card solar-card solar-card-col" data-page="solar" role="button" tabindex="0">
+        <div class="solar-card-top">
+          <div class="ring-wrap"><div class="ring sun ${ui.keepScroll ? "" : "spin-in"} delay" style="--p:${solarPct}"></div><b>${solarPct}%</b></div>
+          <div>
+            <div class="k">太陽能覆蓋率</div>
+            <div class="small">已裝 ${solarSites} · 未裝 ${Math.max(solarTotal - solarSites, 0)}</div>
+            <div class="small">售電 ${money(solarLedgerRows().reduce((s, x) => s + (Number(x.amount) || 0), 0))}</div>
+          </div>
+          <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
         </div>
-        <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
+        <button type="button" class="btn-navy" data-page="solar">太陽能</button>
       </div>
     </div>
     ${overallReportHtml()}
