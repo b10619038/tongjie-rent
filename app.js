@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-16-12";
-const APP_EDIT_COUNT = 1799;
+const APP_STAMP = "2026-10-12-16-54";
+const APP_EDIT_COUNT = 1800;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1408";
+const FILE_VER = "1409";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
+  { ver: APP_VERSION, items: ["7623 陳財源合約押金改為 20,000"] },
+  { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
   { ver: "2026-10-12-14-53-1798", items: ["續約再加進來的人最少簽 1 年，沒有半年；原本的人續約仍可選月"] },
   { ver: "2026-10-12-14-42-1797", items: ["續約可再加一個人一起租，租金不變，水費一人一年 1,800"] },
   { ver: "2026-10-12-13-35-1796", items: ["7623 陳財源不續約後仍可改申請續約"] },
@@ -7293,7 +7294,7 @@ function applyRoom7621(data) {
     try { markCloudDirty(); } catch {}
   }
 }
-const ROOM_7623_VER = "7623-rent-10000-v1";
+const ROOM_7623_VER = "7623-deposit-20000-v1";
 function applyRoom7623(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7623");
@@ -7326,7 +7327,9 @@ function applyRoom7623(data) {
     t = { id: "t7623", roomId: room.id, dueDay: 1, paid: false, paidYm: payYmNow(), paidTouched: true };
     data.tenants.push(t);
   }
-  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former || Number(room.rent) !== (studioRentOf("7623") || 10000) || (Array.isArray(t.leases) && t.leases.some(p => p && p.kind !== "stub" && Number(p.rent) !== (studioRentOf("7623") || 10000)));
+  const rent = studioRentOf("7623") || 10000;
+  const dep = info.deposit != null ? Number(info.deposit) : 20000;
+  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former || Number(room.rent) !== rent || Number(t.deposit) !== dep || Number(room.deposit) !== dep || (Array.isArray(t.leases) && t.leases.some(p => p && p.kind !== "stub" && Number(p.rent) !== rent));
   t.name = info.name;
   t.phone = info.phone || t.phone || "";
   t.leaseStart = info.leaseStart || t.leaseStart;
@@ -7340,7 +7343,6 @@ function applyRoom7623(data) {
   t.loginRevoked = false;
   t.roomId = room.id;
   room.tenantId = t.id;
-  const rent = studioRentOf("7623") || 10000;
   room.rent = rent;
   t.rent = rent;
   if (Array.isArray(t.leases) && t.leases.length) {
@@ -7348,10 +7350,8 @@ function applyRoom7623(data) {
   } else {
     t.leases = [{ kind: "year", start: t.leaseStart || "2025-11-01", end: t.leaseEnd || "2026-10-31", rent }];
   }
-  if (info.deposit != null) {
-    t.deposit = info.deposit;
-    room.deposit = info.deposit;
-  }
+  t.deposit = dep;
+  room.deposit = dep;
   if (room.status !== "repair" && room.status !== "office") room.status = "rented";
   if (need) {
     t.edited = true;
