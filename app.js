@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-20-03";
-const APP_EDIT_COUNT = 1820;
+const APP_STAMP = "2026-10-12-20-19";
+const APP_EDIT_COUNT = 1821;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1430";
+const FILE_VER = "1431";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["完成退租按鈕去掉邊框", "租客退租點交時間只能選上午 9:30 到下午 5:30"] },
+  { ver: APP_VERSION, items: ["115/7/30～10/1 太陽能購電通知單 21 張已入總覽，標成尚未入帳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5968,6 +5968,37 @@ function solarCoverageBits() {
 }
 const SOLAR_PERIODS = [
   {
+    label: "115/7/30～115/10/1",
+    paidOn: "",
+    awaitingBank: true,
+    tongjieBank: 0,
+    xinjieBank: 0,
+    tongjieSites: [
+      ["文57巷2號", 1105, "丞億科技"],
+      ["文57巷6號", 3839, "丞億科技"],
+      ["文57巷8號", 7985, "欣上宜"],
+      ["文東59號", 11141, "張哲嘉"],
+      ["文東61號", 19738, "皇吉企業行"],
+      ["57巷1弄21號", 20461, "謝帛翰"],
+      ["57巷1弄23號", 25070, "洪耀鴻"],
+      ["57巷1弄25號", 16223, "劉德惠"],
+      ["57巷1弄27號", 18904, "趙貴美"],
+      ["57巷1弄29號", 21447, "趙貴美"],
+      ["57巷1弄31號", 23219, "趙貴美"],
+      ["57巷1弄33號", 17091, "謝淑伃"],
+      ["57巷1弄35號", 18259, "詠利實業"],
+      ["鳳仁路97-61號", 18597, "美博城"],
+      ["鳳仁路97-63號", 10918, "卓建忠"],
+      ["鳳仁路97-65號", 14778, "聖昌造船、蔡聖鴻"],
+      ["鳳仁路93-1號", 6286, "南溢製鞋、鈺晟"],
+      ["鳳仁路93-2號", 4806, "咘然居、禹旺"],
+      ["鳳仁路93-63 3F", 17319, "陳慧玲"],
+      ["鳳仁路97-77／78號", 43717, "錦芳食品"],
+      ["文龍東路（牛10）", 38028, "套房整棟"]
+    ],
+    xinjieSites: []
+  },
+  {
     label: "115/5/28～115/7/29",
     paidOn: "2026-08-20",
     tongjieBank: 364196,
@@ -6009,8 +6040,12 @@ const SOLAR_PERIODS = [
     ]
   }
 ];
+function solarSiteSum(list) {
+  return (list || []).reduce((s, x) => s + (Number(x[1]) || 0), 0);
+}
 function solarPeriodBank(p) {
   if (!p) return 0;
+  if (p.awaitingBank) return solarSiteSum(p.tongjieSites) + solarSiteSum(p.xinjieSites);
   return (Number(p.tongjieBank) || 0) + (Number(p.xinjieBank) || 0);
 }
 function solarIdealOf(p, cov) {
@@ -31654,20 +31689,26 @@ function adminSolar() {
   const rows = solarLedgerRows();
   const pick = solarPeriodPick();
   const batch = pick.cur || SOLAR_PERIODS[0];
-  const totT = Number(batch && batch.tongjieBank) || 0;
-  const totX = Number(batch && batch.xinjieBank) || 0;
+  const notice = !!(batch && batch.awaitingBank);
+  const totT = notice ? solarSiteSum(batch.tongjieSites) : (Number(batch && batch.tongjieBank) || 0);
+  const totX = notice ? solarSiteSum(batch.xinjieSites) : (Number(batch && batch.xinjieBank) || 0);
   const tot = totT + totX;
   const prevAmt = solarPeriodBank(pick.prev);
   const diff = pick.prev ? tot - prevAmt : 0;
   const ideal = solarIdealOf(batch, cov);
   const gap = Math.max(ideal - tot, 0);
   const siteBlock = (title, sites, bank) => {
-    const detail = (sites || []).reduce((s, x) => s + x[1], 0);
+    const detail = solarSiteSum(sites);
+    if (!(sites || []).length && notice) return "";
+    const bankRow = notice
+      ? `<div class="acct-row"><span>銀行實收</span><strong>尚未入帳</strong></div>
+      <div class="small" style="margin:6px 0 8px">通知單已到。台電匯進銀行後再對手續費。</div>`
+      : `<div class="acct-row"><span>銀行實收</span><strong class="led-in">${money(bank)}</strong></div>
+      <div class="small" style="margin:6px 0 8px">差 ${money(detail - bank)}（手續費）</div>`;
     return `<div class="card card-body">
       <h2 class="dash-h">${title}</h2>
       <div class="acct-row"><span>明細合計</span><strong class="led-in">${money(detail)}</strong></div>
-      <div class="acct-row"><span>銀行實收</span><strong class="led-in">${money(bank)}</strong></div>
-      <div class="small" style="margin:6px 0 8px">差 ${money(detail - bank)}（手續費）</div>
+      ${bankRow}
       ${(sites || []).map(([addr, amt, who]) => `<div class="acct-row solar-site-row"><span>${escapeHtml(addr)}${who ? `<em class="solar-site-name">${escapeHtml(who)}</em>` : ""}</span><strong>${money(amt)}</strong></div>`).join("")}
     </div>`;
   };
@@ -31704,13 +31745,13 @@ function adminSolar() {
       <h2 class="dash-h">售電收益（獨立）</h2>
       <p class="small">不計入租金。點期別，下方分址會跟著換。</p>
       <div class="solar-period-row">${chips}</div>
-      <div class="acct-row"><span>統潔</span><strong class="led-in">${money(totT)}</strong></div>
-      <div class="acct-row"><span>信潔</span><strong class="led-in">${money(totX)}</strong></div>
-      <div class="acct-row"><span>本期合計</span><strong class="led-in">${money(tot)}</strong></div>
+      <div class="acct-row"><span>統潔${notice ? "通知單" : ""}</span><strong class="led-in">${money(totT)}</strong></div>
+      <div class="acct-row"><span>信潔${notice ? "（這批信沒有）" : ""}</span><strong class="led-in">${money(totX)}</strong></div>
+      <div class="acct-row"><span>${notice ? "通知單合計" : "本期合計"}</span><strong class="led-in">${money(tot)}</strong></div>
       ${cmpHtml}
       <div class="acct-row"><span>全盛推估（覆蓋 100%）</span><strong>${money(ideal)}</strong></div>
       <div class="acct-row"><span>距離全盛還差</span><strong class="led-out">${money(gap)}</strong></div>
-      <div class="small" style="margin-top:8px">全盛＝本期實收 ÷ 覆蓋率。未裝戶先用已裝平均產能估算。</div>
+      <div class="small" style="margin-top:8px">${notice ? "這一期是通知單應付金額，還沒進銀行。全盛仍用通知單合計去除以覆蓋率估算。" : "全盛＝本期實收 ÷ 覆蓋率。未裝戶先用已裝平均產能估算。"}</div>
     </div>
     <div class="solar-split">
       ${siteBlock("統潔　分址", batch.tongjieSites, batch.tongjieBank)}
@@ -31718,7 +31759,7 @@ function adminSolar() {
     </div>
     <div class="card card-body">
       <h2 class="dash-h">銀行入帳</h2>
-      <div class="small" style="margin-bottom:8px">${escapeHtml(batch.label)}，入帳 ${escapeHtml(batch.paidOn || "")}</div>
+      <div class="small" style="margin-bottom:8px">${escapeHtml(batch.label)}${batch.paidOn ? "，入帳 " + escapeHtml(batch.paidOn) : (notice ? "，通知單尚未入帳" : "")}</div>
       ${bookLines}
     </div>
   </div>`;
