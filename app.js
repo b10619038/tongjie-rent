@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-18-49";
-const APP_EDIT_COUNT = 1812;
+const APP_STAMP = "2026-10-12-18-58";
+const APP_EDIT_COUNT = 1813;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1422";
+const FILE_VER = "1423";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["不續約租客可預約退租時間，日期固定，後台同步"] },
+  { ver: APP_VERSION, items: ["租客正常退租改為線上簽名，不再顯示列印"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3954,6 +3954,19 @@ function bindRenewForm() {
       e.preventDefault();
       e.stopPropagation();
       printNormalLeave(btn.dataset.printNormal);
+    };
+  });
+  document.querySelectorAll("[data-leave-sign]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.signAgree = false;
+      ui.signStrokes = [];
+      ui.signStrokes2 = [];
+      ui.leaveBook = true;
+      ui.page = "leave-sign";
+      ui.keepScroll = false;
+      render();
     };
   });
 }
@@ -10577,7 +10590,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -24099,6 +24112,9 @@ function handoverConfirmPaperHtml(t, r, co) {
   const lessor = `${firm.name || "統潔開發有限公司"}　趙正賢`;
   const nameList = splitPair((t && t.name) || "");
   const personChops = (nameList.length > 1 ? [0, 1] : [0]).map(() => `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`).join("");
+  const leave = t && t.leaveSign && t.leaveSign.status === "signed" && !(ui && ui.page === "leave-sign") ? t.leaveSign : null;
+  const sigImg = src => (src && String(src).startsWith("data:")) ? `<img class="lease-esig" src="${src}" alt="簽名">` : "";
+  const sigs = leave ? (sigImg(leave.sig) + sigImg(leave.sig2)) : "";
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -24114,7 +24130,7 @@ function handoverConfirmPaperHtml(t, r, co) {
         <span class="hand-chops"><span class="chop-mark chop-lg"></span><span class="chop-mark chop-sm"></span></span>
       </p>
       <p class="hand-sign-row">
-        <span class="hand-sign-main hand-sign-tenant">承租人：<span class="hand-sign-line"></span></span>
+        <span class="hand-sign-main hand-sign-tenant">承租人：<span class="hand-sign-line">${sigs}</span></span>
         <span class="hand-person-slot">${personChops}</span>
       </p>
     </div>
@@ -25298,7 +25314,7 @@ function paintApp() {
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
-  if (ui.signing && ui.page === "lease-sign" && !pageChanged) return;
+  if (ui.signing && (ui.page === "lease-sign" || ui.page === "leave-sign") && !pageChanged) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
     ui.slideLockPending = true;
     lastRenderRole = ui.role;
@@ -26160,6 +26176,7 @@ function tenantView() {
   if (ui.page === "trash") return trashView();
   if (ui.page === "lease") return leaseView();
   if (ui.page === "lease-sign") return leaseSignView();
+  if (ui.page === "leave-sign") return leaveSignView();
   if (ui.page === "repair" || ui.page === "repair-done") return repairView();
   if (ui.page === "settings") return tenantSettings();
   if (ui.page === "howto") return tenantHowto();
@@ -32462,6 +32479,7 @@ function normalLeaveCardHtml(t, r, opts) {
   const end = ymdOf(t.leaseEnd) || "";
   const at = timeOnly ? tenantLeaveAt(t) : normalLeaveAppoint(t);
   const when = at ? formatDateTime12(at.replace("T", " ")) : "";
+  const signedLeave = !!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2));
   return `<div class="card card-body renew-alert" data-norenew-card="${escapeHtml(t.id)}">
     <h2 class="dash-h">正常退租</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b></div>
@@ -32472,9 +32490,90 @@ function normalLeaveCardHtml(t, r, opts) {
       </label>
       <div class="small" data-leave-note="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
     </div>
-    <div class="small" style="margin:6px 0 4px">點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。</div>
-    <button type="button" class="btn-navy" data-print-normal="${escapeHtml(t.id)}" style="margin-top:8px">列印正常退租合約</button>
+    <div class="small" style="margin:6px 0 4px">${timeOnly ? "簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。" : "點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。"}</div>
+    ${signedLeave ? `<div class="small">已完成線上簽名。列印會帶上簽名，現場仍要蓋章。</div>` : ""}
+    ${timeOnly
+      ? `<button type="button" class="btn-navy" data-leave-sign="1" style="margin-top:8px">${signedLeave ? "重新簽名" : "下一步，簽署退租"}</button>`
+      : `<button type="button" class="btn-navy" data-print-normal="${escapeHtml(t.id)}" style="margin-top:8px">列印正常退租合約</button>`}
   </div>`;
+}
+function leaveSignView() {
+  const t = me();
+  const r = myRoom();
+  if (!t || !r) return "";
+  const names = splitPair(t.name || "");
+  const two = names.length > 1;
+  const at = tenantLeaveAt(t);
+  const co = {
+    at: ymdOf(at) || ymdOf(t.leaseEnd) || todayYmd(),
+    appointAt: at,
+    deposit: Number(t.deposit != null ? t.deposit : r.deposit) || 0,
+    property: termPropLabel(r),
+    idNo: t.idNo || "",
+    phone: t.phone || ""
+  };
+  const paper = handoverConfirmPaperHtml(t, r, co);
+  const look = typeof isTenantLook === "function" && isTenantLook();
+  return `<div class="topbar"><div>
+      <button class="back" data-page="home" type="button">← 返回</button>
+      <div class="eyebrow">LEASE</div><h1>簽署退租</h1>
+    </div></div>
+    <div class="screen">
+      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。日期固定是合約最後一天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
+      ${paper}
+      <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
+      ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
+      <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
+      <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
+      ${two ? `<div class="small" style="margin:12px 2px 8px">${escapeHtml(names[1])}　請在白框內用藍筆簽名。可以留白。</div>
+      <div class="sign-pad-wrap"><canvas id="sign-pad-2" width="640" height="280"></canvas></div>` : ""}
+      <div class="btn-row" style="margin-top:12px">
+        <button type="button" class="ghost" id="sign-clear">清除簽名</button>
+        <button type="button" class="btn-navy" id="sign-confirm">${look ? "免簽名，送出" : "簽名並送出"}</button>
+      </div>
+    </div>`;
+}
+function finishLeaveSign(a, b) {
+  const t = me();
+  const r = t && myRoom();
+  if (!t) return;
+  const agree = document.getElementById("sign-agree");
+  const look = typeof isTenantLook === "function" && isTenantLook();
+  const c1 = a && a.c;
+  const c2 = b && b.c;
+  const has1 = !!(c1 && (c1.dataset.ink === "1" || (ui.signStrokes && ui.signStrokes.length)));
+  const has2 = !!(c2 && (c2.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length)));
+  if (!look) {
+    if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
+    if (!has1 && !has2) { toast("請先簽名。兩人可以只簽一位"); return; }
+  }
+  if (!(has1 || has2)) {
+    ui.page = "home";
+    ui.leaveBook = true;
+    toast("已略過簽名");
+    render();
+    return;
+  }
+  t.leaveSign = {
+    status: "signed",
+    at: nowStamp(),
+    ts: Date.now(),
+    sig: has1 ? canvasToSig(c1) : "",
+    sig2: has2 ? canvasToSig(c2) : "",
+    name: t.name || ""
+  };
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
+  ui.signStrokes = [];
+  ui.signStrokes2 = [];
+  ui.signing = false;
+  ui.page = "home";
+  ui.leaveBook = true;
+  toast("已簽名，後台列印會帶上簽名");
+  render();
 }
 function renewalAdminCardHtml(x) {
   if (!x || x.status === "applied") return "";
@@ -35391,6 +35490,7 @@ function bindSignPad() {
   };
   const ok = document.getElementById("sign-confirm");
   if (ok) ok.onclick = () => {
+    if (ui.page === "leave-sign") { finishLeaveSign(a, b); return; }
     const agree = document.getElementById("sign-agree");
     const c = a && a.c;
     const look = typeof isTenantLook === "function" && isTenantLook();

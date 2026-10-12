@@ -6776,6 +6776,19 @@ html.embed-pane .home-upd { display: none !important; }
   border-bottom: 1px solid #111;
   margin-left: 2mm;
 }
+.hand-sign-line:has(.lease-esig) {
+  height: 16mm;
+  display: flex;
+  align-items: flex-end;
+  gap: 2mm;
+}
+.hand-sign-line .lease-esig {
+  height: 14mm;
+  max-width: 34mm;
+  width: auto;
+  margin: 0;
+  background: transparent;
+}
 .hand-chops {
   position: relative;
   width: 45mm;
