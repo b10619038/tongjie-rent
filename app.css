@@ -1218,6 +1218,8 @@ button.pay-pill.hand {
 #renew-range { white-space: pre-line; }
 .renew-person { margin-top: 10px; }
 .renew-person-name { font-weight: 700; margin-bottom: 6px; }
+.renew-add-field { margin-bottom: 8px; }
+.renew-add-field input { width: 100%; }
 .renew-span {
   display: flex;
   align-items: center;

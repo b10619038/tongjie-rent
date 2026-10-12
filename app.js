@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-13-35";
-const APP_EDIT_COUNT = 1796;
+const APP_STAMP = "2026-10-12-14-42";
+const APP_EDIT_COUNT = 1797;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1405";
+const FILE_VER = "1406";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7623 陳財源不續約後仍可改申請續約"] },
+  { ver: APP_VERSION, items: ["續約可再加一個人一起租，租金不變，水費一人一年 1,800"] },
+  { ver: "2026-10-12-13-35-1796", items: ["7623 陳財源不續約後仍可改申請續約"] },
   { ver: "2026-10-10-13-29-1795", items: ["本月進出帳結餘，出帳大於進帳時改顯示負數"] },
   { ver: "2026-10-10-12-46-1794", items: ["驊勝 93-61、93-62 新約 115/11/1～117/10/31，未稅 10 萬"] },
   { ver: "2026-10-10-10-39-1793", items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
@@ -3668,10 +3669,13 @@ function renewPeopleCardHtml(item) {
   }).join("");
 }
 function renewPeopleFormHtml(people) {
-  return (people || []).map((p, i) => {
+  const rows = (people || []).map((p, i) => {
     const on = p.renew !== false;
+    const name = p.added
+      ? `<label class="field renew-add-field"><span>一起租的人</span><input data-renew-name="${i}" maxlength="20" placeholder="第二個人的姓名" value="${escapeHtml(p.name || "")}" /></label><button type="button" class="ghost" data-renew-remove="${i}">拿掉</button>`
+      : `<div class="renew-person-name">${escapeHtml(p.name)}</div>`;
     return `<div class="renew-person">
-      <div class="renew-person-name">${escapeHtml(p.name)}</div>
+      ${name}
       <div class="renew-year-picks">
         <button type="button" class="${on ? "on" : ""}" data-renew-person="${i}" data-renew-on="1">續約</button>
         <button type="button" class="${on ? "" : "on"}" data-renew-person="${i}" data-renew-on="0">不續約</button>
@@ -3688,6 +3692,9 @@ function renewPeopleFormHtml(people) {
       </div>
     </div>`;
   }).join("");
+  const canAdd = (people || []).length < 2 && !(people || []).some(p => p && p.added);
+  const add = canAdd ? `<button type="button" class="ghost" data-renew-add="1" style="margin-top:8px">再加一個人一起租</button><p class="small">租金不變。多一個人只加年水費，一人一年 1,800，簽約現場收現金。</p>` : "";
+  return rows + add;
 }
 function renewPeoplePlan(t, people) {
   const start = ymdOf(t && t.leaseEnd) ? addDaysYmd(ymdOf(t.leaseEnd), 1) : todayYmd();
@@ -3817,6 +3824,42 @@ function bindRenewForm() {
         setPerson(Number(btn.dataset.renewStep), { part: btn.dataset.part, dir: btn.dataset.dir });
       };
     });
+    document.querySelectorAll("[data-renew-name]").forEach(inp => {
+      inp.oninput = () => {
+        const people = ui.renewPeople || [];
+        const row = people[Number(inp.dataset.renewName)];
+        if (row) row.name = String(inp.value || "").trim();
+        paintRenewRange();
+      };
+    });
+    document.querySelectorAll("[data-renew-add]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        keepAppoint();
+        const t = typeof me === "function" ? me() : null;
+        const people = (ui.renewPeople || renewPeopleState(t)).map(p => Object.assign({}, p));
+        if (people.length >= 2 || people.some(p => p.added)) return;
+        people.push({ name: "", renew: true, years: 1, months: 0, added: true });
+        ui.renewPeople = people;
+        const box = document.getElementById("renew-people");
+        if (box) box.innerHTML = renewPeopleFormHtml(people);
+        bindRenewPeople();
+        paintRenewRange();
+      };
+    });
+    document.querySelectorAll("[data-renew-remove]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        keepAppoint();
+        const people = (ui.renewPeople || []).map(p => Object.assign({}, p));
+        people.splice(Number(btn.dataset.renewRemove), 1);
+        ui.renewPeople = people;
+        const box = document.getElementById("renew-people");
+        if (box) box.innerHTML = renewPeopleFormHtml(people);
+        bindRenewPeople();
+        paintRenewRange();
+      };
+    });
   };
   bindRenewPeople();
   const modeSeg = document.getElementById("renew-mode-seg");
@@ -3921,8 +3964,16 @@ function buildTenantRenewRow() {
   const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
   if (!at) { toast("請先預約實際簽約日期"); return null; }
   const people = renewPeopleState(t);
+  document.querySelectorAll("[data-renew-name]").forEach(inp => {
+    const row = people[Number(inp.dataset.renewName)];
+    if (row) row.name = String(inp.value || "").trim();
+  });
   const plan = renewPeoplePlan(t, people);
   if (!plan.stay.length) { toast("請至少一位選擇續約，並選年或月"); return null; }
+  if ((people || []).some(p => p && p.added && p.renew !== false && !String(p.name || "").trim())) {
+    toast("請填第二個人的姓名");
+    return null;
+  }
   const wantMove = ui.renewMode === "move";
   let dest = null;
   if (wantMove) {
@@ -19149,7 +19200,13 @@ function applySignedRenewalLease(t, r, item) {
   const stay = Array.isArray(item.people) ? item.people.filter(p => p && p.renew !== false && p.name) : [];
   if (stay.length) {
     t.name = stay.map(p => p.name).join("、");
-    if (stay.length === 1) t.note = String(t.note || "").replace(/水費年\s*[\d,]+（\d+人）/, "水費年 1,800");
+    if (stay.length === 1) t.note = String(t.note || "").replace(/水費年\s*[\d,]+（\d+人）?/, "水費年 1,800");
+    else {
+      const label = "水費年 " + (1800 * stay.length).toLocaleString("zh-TW") + "（" + stay.length + "人）";
+      t.note = /水費年/.test(String(t.note || ""))
+        ? String(t.note).replace(/水費年\s*[\d,]+（?\d*人?）?/, label)
+        : (t.note ? String(t.note).trim() + "　" : "") + label;
+    }
   } else if (item.renewNames) t.name = item.renewNames;
   t.payBank = NEW_TENANT_PAY_BANK;
   t.edited = true;
@@ -19214,13 +19271,15 @@ function defaultRenewPeople(t) {
 function renewPeopleState(t) {
   const base = defaultRenewPeople(t);
   const prev = Array.isArray(ui.renewPeople) ? ui.renewPeople : [];
-  if (prev.length !== base.length || prev.some((p, i) => !p || p.name !== base[i].name)) return base;
-  return prev.map(p => ({
-    name: p.name,
+  const headOk = prev.length >= base.length && base.every((p, i) => prev[i] && !prev[i].added && prev[i].name === p.name);
+  const source = headOk ? prev : base.concat(prev.filter(p => p && p.added).slice(0, 1));
+  return source.map(p => ({
+    name: String(p.name || "").trim(),
     renew: p.renew !== false,
     years: Math.max(0, Math.min(5, Math.round(Number(p.years) || 0))),
-    months: Math.max(0, Math.min(11, Math.round(Number(p.months) || 0)))
-  }));
+    months: Math.max(0, Math.min(11, Math.round(Number(p.months) || 0))),
+    added: !!p.added
+  })).filter((p, i) => i < base.length || p.added).slice(0, base.length + 1);
 }
 function renewPersonWater(years, months) {
   const total = Math.round((Number(years) || 0) * 12 + (Number(months) || 0));
