@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-00-01";
-const APP_EDIT_COUNT = 1846;
+const APP_STAMP = "2026-10-13-00-05";
+const APP_EDIT_COUNT = 1847;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1456";
+const FILE_VER = "1457";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["刪除報修後不會被同步加回來"] },
+  { ver: APP_VERSION, items: ["報修外面的刪除按鈕拿掉"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -27892,7 +27892,7 @@ function repairCard(rep, extraClass) {
     </div>` : "";
   const folded = rep.status === "done" && !editing;
   const open = !folded || !!(ui.repairMineOpen && ui.repairMineOpen[rep.id]);
-  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施　" + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : "row-end"}"><button type="button" class="ghost repair-del" data-del-repair="${escapeHtml(rep.id)}">刪除</button><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
+  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施　" + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
   const body = `
     <div class="small"${folded ? ` style="margin-top:8px"` : ""}>${formatDateTime12(rep.createdAt)}</div>
     ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
@@ -34309,7 +34309,7 @@ function adminRepairs() {
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;
     return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
-      <div class="row tenant-slim-head">${head}<span class="row-end"><button type="button" class="ghost repair-del" data-del-repair="${escapeHtml(rep.id)}">刪除</button><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head">${head}<span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">
       <div class="small" style="margin-top:8px">${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
