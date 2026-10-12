@@ -1479,6 +1479,10 @@ button.pay-toggle.paid.on {
   background: #eef3ea;
 }
 .renew-alert .dash-h { color: #3f4f3a; }
+[data-norenew-card].renew-alert .dash-h { color: var(--rose); }
+[data-norenew-card] .mini.renew-hit { background: var(--rose-soft); }
+[data-norenew-card] .btn-navy { background: var(--rose); color: #fff; }
+[data-norenew-card] .gcal-in { color: var(--rose); }
 .mini.renew-hit {
   display: flex;
   flex-wrap: nowrap;
