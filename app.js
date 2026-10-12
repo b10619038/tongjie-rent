@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-23-53";
-const APP_EDIT_COUNT = 1844;
+const APP_STAMP = "2026-10-13-00-01";
+const APP_EDIT_COUNT = 1846;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1454";
+const FILE_VER = "1456";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修選公共設施後可自填，例如插座"] },
+  { ver: APP_VERSION, items: ["刪除報修後不會被同步加回來"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -11616,7 +11616,8 @@ function mergeSharedInto(target, other) {
     const g = new Set(target.roomGone.map(String));
     target.rooms = (target.rooms || []).filter(x => x && !g.has(String(x.id)) && String(x.no || "").replace(/\D/g, "") !== "7652");
   }
-  target.repairs = mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost"]);
+  target.repairGone = unionGone(target.repairGone, other.repairGone);
+  target.repairs = dropGone(mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), target.repairGone);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
@@ -12796,7 +12797,8 @@ async function pushCloud() {
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
-      repairs: mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost"]),
+      repairs: dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), unionGone(remote && remote.repairGone, state.repairGone)),
+      repairGone: unionGone(remote && remote.repairGone, state.repairGone),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
@@ -12838,6 +12840,7 @@ async function pushCloud() {
     try { apply6832OctPaid(state); } catch {}
     try { applyOctPaidRemit(state); } catch {}
     if (payload.repairs) state.repairs = payload.repairs;
+    if (payload.repairGone) state.repairGone = payload.repairGone;
     if (payload.announcements) state.announcements = payload.announcements;
     if (payload.notices) state.notices = payload.notices;
     if (payload.checkouts) state.checkouts = payload.checkouts;
@@ -12915,6 +12918,7 @@ async function pushCloud() {
         checkouts: payload.checkouts,
         eSigns: payload.eSigns,
         repairs: payload.repairs,
+        repairGone: payload.repairGone,
         company: payload.company,
         bookVault: payload.bookVault,
         bookVaultGone: payload.bookVaultGone,
@@ -27654,15 +27658,34 @@ function leaseSignView() {
       </div>
     </div>`;
 }
+function rememberRepairGone(id) {
+  const key = String(id || "");
+  if (!key) return;
+  state.repairGone = unionGone(state.repairGone, [key]);
+  if (state.repairGone.length > 400) state.repairGone = state.repairGone.slice(-400);
+}
+function applyRepairGone(data) {
+  if (!data) return data;
+  data.repairGone = unionGone(data.repairGone, []);
+  if (data.repairGone.length > 400) data.repairGone = data.repairGone.slice(-400);
+  data.repairs = dropGone(data.repairs, data.repairGone);
+  if (Array.isArray(data.notices) && data.repairGone.length) {
+    const g = new Set(data.repairGone.map(String));
+    data.notices = data.notices.filter(n => n && !g.has(String(n.repairId || "")));
+  }
+  return data;
+}
 function deleteRepair(id) {
-  const rep = state.repairs.find(x => x.id === id);
-  if (!rep) return;
-  const roomId = rep.roomId;
-  if (isDemoRepair(rep)) state.demoRepairCleared = true;
-  state.repairs = state.repairs.filter(x => x.id !== id);
-  if (state.notices) state.notices = state.notices.filter(n => n.repairId !== id);
-  syncRoomRepairStatus(roomId);
-  save(isDevPreview());
+  const key = String(id || "");
+  const rep = (state.repairs || []).find(x => x && String(x.id) === key);
+  if (rep && isDemoRepair(rep)) state.demoRepairCleared = true;
+  rememberRepairGone(key);
+  const roomId = rep && rep.roomId;
+  state.repairs = (state.repairs || []).filter(x => x && String(x.id) !== key);
+  if (state.notices) state.notices = state.notices.filter(n => !n || String(n.repairId || "") !== key);
+  if (roomId) syncRoomRepairStatus(roomId);
+  save(true);
+  ui.keepScroll = true;
   toast("已刪除報修");
   render();
 }
@@ -27703,7 +27726,7 @@ function bindRepairDelete() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      setTimeout(() => deleteRepair(btn.dataset.delRepair), 80);
+      deleteRepair(btn.dataset.delRepair);
     };
   });
   tickRepairRuns();
@@ -27869,7 +27892,7 @@ function repairCard(rep, extraClass) {
     </div>` : "";
   const folded = rep.status === "done" && !editing;
   const open = !folded || !!(ui.repairMineOpen && ui.repairMineOpen[rep.id]);
-  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施　" + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
+  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施　" + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : "row-end"}"><button type="button" class="ghost repair-del" data-del-repair="${escapeHtml(rep.id)}">刪除</button><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
   const body = `
     <div class="small"${folded ? ` style="margin-top:8px"` : ""}>${formatDateTime12(rep.createdAt)}</div>
     ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
@@ -34286,7 +34309,7 @@ function adminRepairs() {
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;
     return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
-      <div class="row tenant-slim-head">${head}<span class="row-end"><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
+      <div class="row tenant-slim-head">${head}<span class="row-end"><button type="button" class="ghost repair-del" data-del-repair="${escapeHtml(rep.id)}">刪除</button><span class="badge ${rep.status}">${st}</span><span class="fold-caret"></span></span></div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">
       <div class="small" style="margin-top:8px">${formatDateTime12(rep.createdAt)}${rep.demo ? " · 開發者測試" : ""}</div>
       <p style="margin:10px 0">${escapeHtml(rep.note)}</p>
