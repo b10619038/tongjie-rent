@@ -5638,6 +5638,16 @@ html.preview-zoom body {
   padding: 8px 18px;
   margin: 0;
 }
+.lease-print-preview .lease-prev-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.lease-print-preview .lease-prev-tools button {
+  white-space: nowrap;
+  padding: 8px 12px;
+}
 .lease-preview-scroll {
   flex: 1;
   overflow: auto;

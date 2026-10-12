@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-17-01";
-const APP_EDIT_COUNT = 1801;
+const APP_STAMP = "2026-10-12-17-10";
+const APP_EDIT_COUNT = 1802;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1410";
+const FILE_VER = "1411";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
+  { ver: APP_VERSION, items: ["列印續約合約可關掉最底下的中華民國日期"] },
+  { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
   { ver: "2026-10-12-14-53-1798", items: ["續約再加進來的人最少簽 1 年，沒有半年；原本的人續約仍可選月"] },
@@ -24269,7 +24270,7 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
         <span class="chop-mark chop-sm" style="top:17mm;left:calc(73mm + 30mm)"></span>
       </div>
       <div class="lease-sign-block lease-people${names.length > 1 ? " side" : ""} chop-host">${peopleCols}${names.length < 2 ? `<span class="chop-mark chop-ps" style="top:-1mm;left:73mm"></span>` : `<span class="chop-mark chop-ps" style="top:-3mm;left:68mm"></span><span class="chop-mark chop-ps" style="top:-3mm;left:calc(50% + 68mm)"></span>`}</div>
-      <p class="term-date">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
+      <p class="term-date" data-lease-sign-date="1">中華民國　${u(sign.y, "amt")}　年　${u(sign.m, "amt")}　月　${u(sign.d, "amt")}　日</p>
       </div>
       </div>
       <div class="lease-pgno">6</div>
@@ -24524,6 +24525,14 @@ function closeLeasePrintPreview() {
   const el = document.getElementById("lease-preview-box");
   if (el) el.remove();
 }
+function paintLeaseSignDate(on) {
+  document.querySelectorAll("#lease-preview-box [data-lease-sign-date] .lease-u.amt").forEach(el => {
+    if (!el.dataset.full) el.dataset.full = el.textContent;
+    el.textContent = on ? el.dataset.full : "\u3000";
+  });
+  const btn = document.getElementById("lease-date-toggle");
+  if (btn) btn.textContent = on ? "關閉時間" : "打開時間";
+}
 function showLeasePrintPreview(t, r, which) {
   if (!t || !r) { toast("找不到租客"); return; }
   const es = getESign(t);
@@ -24536,9 +24545,13 @@ function showLeasePrintPreview(t, r, which) {
   wrap.id = "lease-preview-box";
   const kind = which === "old" ? "原合約　" : (which === "new" ? "新合約　" : "");
   const title = kind + "房屋租賃契約書　" + (r.no || "") + (t.name ? "　" + t.name : "");
+  let dateOn = true;
   wrap.innerHTML = `
     <div class="lightbox-bar">
-      <button type="button" id="lease-prev-close">關閉</button>
+      <div class="lease-prev-tools">
+        <button type="button" id="lease-prev-close">關閉</button>
+        <button type="button" id="lease-date-toggle">關閉時間</button>
+      </div>
       <span>${escapeHtml(title)}</span>
       <button type="button" class="btn-navy" id="lease-prev-print">列印</button>
     </div>
@@ -24547,6 +24560,12 @@ function showLeasePrintPreview(t, r, which) {
   const fit = () => fitLeasePages(wrap);
   requestAnimationFrame(() => requestAnimationFrame(fit));
   document.getElementById("lease-prev-close").onclick = closeLeasePrintPreview;
+  document.getElementById("lease-date-toggle").onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dateOn = !dateOn;
+    paintLeaseSignDate(dateOn);
+  };
   wrap.addEventListener("click", e => { if (e.target === wrap) closeLeasePrintPreview(); });
   document.getElementById("lease-prev-print").onclick = e => {
     e.preventDefault();
