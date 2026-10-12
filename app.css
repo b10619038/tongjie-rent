@@ -1367,6 +1367,28 @@ button.pay-pill.paid {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
+button.pay-pill[data-open-norenew] {
+  cursor: pointer;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--rose-soft);
+  color: var(--rose);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  -webkit-tap-highlight-color: transparent;
+}
+button.pay-pill[data-open-norenew].on,
+button.pay-pill[data-open-norenew]:focus,
+button.pay-pill[data-open-norenew]:active {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
 button.pay-pill[data-open-renew] {
   touch-action: manipulation;
   transform-origin: center center;
