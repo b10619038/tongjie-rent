@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-22-41";
-const APP_EDIT_COUNT = 1842;
+const APP_STAMP = "2026-10-12-22-43";
+const APP_EDIT_COUNT = 1843;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1452";
+const FILE_VER = "1453";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["拿掉總覽上多加的太陽能按鈕"] },
+  { ver: APP_VERSION, items: ["紀錄選單加太陽能，放黃色通知單分址明細"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -28706,6 +28706,32 @@ function historyRows(cat) {
     }));
     return bills.concat(historyBookRows(/電費|台電|電度/));
   }
+  if (cat === "solar") {
+    const rocToYmd = s => {
+      const m = String(s || "").match(/(\d{2,3})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})/);
+      if (!m) return "";
+      return (Number(m[1]) + 1911) + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0");
+    };
+    const rows = [];
+    (SOLAR_PERIODS || []).forEach(p => {
+      const end = String(p.label || "").split("～").pop();
+      const date = ymdOf(p.paidOn) || rocToYmd(end);
+      const push = (sites, co) => (sites || []).forEach(site => {
+        const addr = site[0] || "";
+        const amt = Number(site[1]) || 0;
+        const who = site[2] || "";
+        rows.push({
+          date,
+          title: addr + (who ? "　" + who : ""),
+          sub: co + "　" + (p.label || "") + (p.awaitingBank ? "　黃色通知單，尚未入帳" : "　已入帳"),
+          amount: amt
+        });
+      });
+      push(p.tongjieSites, "統潔");
+      push(p.xinjieSites, "信潔");
+    });
+    return rows;
+  }
   if (cat === "net") return historyBookRows(/網路費|網路|寬頻|光纖|中華電信/);
   if (cat === "trash") return historyBookRows(/垃圾桶|清潔費/);
   if (cat === "invoice") return historyBookRows(/發票/);
@@ -28756,6 +28782,7 @@ function adminHistory() {
     ["renew", "續約"],
     ["water", "水費單"],
     ["elec", "電費單"],
+    ["solar", "太陽能"],
     ["net", "網路費"],
     ["trash", "垃圾桶"],
     ["invoice", "發票"],
