@@ -3220,7 +3220,8 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   pointer-events: auto;
   color-scheme: light;
 }
-.appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+.appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.appoint-one input[type="time"]::-webkit-calendar-picker-indicator {
   position: absolute;
   left: 0;
   top: 0;
@@ -3231,6 +3232,34 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   opacity: 0;
   display: block;
   cursor: pointer;
+}
+.renew-reopen-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.renew-reopen-row button {
+  flex: 1 1 0;
+  width: auto;
+  margin: 0;
+  padding: 12px 6px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.btn-rose {
+  background: var(--rose);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-rose:hover,
+.btn-rose:active,
+.btn-rose.on {
+  background: var(--rose-soft);
+  color: var(--rose);
 }
 .appoint-side {
   margin-left: auto;
