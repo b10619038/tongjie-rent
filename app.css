@@ -2336,10 +2336,17 @@ textarea, input[type="text"], input[type="password"], input[type="email"], input
   -webkit-user-select: text; user-select: text;
   box-sizing: border-box; min-height: 46px;
 }
-.renew-add-field input {
+.renew-add-field input,
+.renew-add-field input:focus,
+.renew-add-field input:focus-visible {
   border-radius: 999px;
   padding-left: 18px;
   padding-right: 18px;
+  border: 1.5px solid #c8c4bc;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .field {
   display: flex;
