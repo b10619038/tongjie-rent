@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-20-19";
-const APP_EDIT_COUNT = 1821;
+const APP_STAMP = "2026-10-12-20-41";
+const APP_EDIT_COUNT = 1822;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1431";
+const FILE_VER = "1432";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["115/7/30～10/1 太陽能購電通知單 21 張已入總覽，標成尚未入帳"] },
+  { ver: APP_VERSION, items: ["本月工作加上收支票　樂芯＋第一肉品，每3個月，這次 10/13，下次 1/13"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5512,7 +5512,8 @@ const CYCLE_JOBS = [
   { id: "cycle-rent-21-xie", monthDay: 1, text: "收租金　弄21 謝帛翰（現金）", cycle: true, owner: "7651" },
   { id: "cycle-rent-23-hong", monthDay: 1, text: "收租金　弄23 洪耀鴻（現金）", cycle: true, owner: "7651" },
   { id: "cycle-rent-2f-chen", monthDay: 15, text: "收租金　93-63 2F 陳慧玲（存現）", cycle: true, owner: "7651" },
-  { id: "cycle-rent-2b-yu", monthDay: 15, text: "收租金　93-2B 禹旺（存現 39,900）", cycle: true, owner: "7651" }
+  { id: "cycle-rent-2b-yu", monthDay: 15, text: "收租金　93-2B 禹旺（存現 39,900）", cycle: true, owner: "7651" },
+  { id: "cycle-check-lexin-meat", monthDay: 13, intervalMonths: 3, anchor: "2026-10-13", text: "收支票　樂芯 97-68＋第一肉品 97-70（每3個月，上次 7/16）", cycle: true, owner: "7651" }
 ];
 const METER_UNITS = [
   { id: "m-93-1b", roomNo: "拉皮-1B", unit: "93-1B", name: "鈺晟", kind: "elec" },
