@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-21-47";
-const APP_EDIT_COUNT = 1827;
+const APP_STAMP = "2026-10-12-21-51";
+const APP_EDIT_COUNT = 1828;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1437";
+const FILE_VER = "1438";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版續約申請改回一行，手機維持人名、日期、水費三行"] },
+  { ver: APP_VERSION, items: ["租客正常退租改三行：時間、地點、點交說明"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24789,7 +24789,12 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   save();
   try { pushCloud(); } catch {}
   const note = document.querySelector(sheetAttrSel("data-norenew-card", t.id) + " [data-leave-note]");
-  if (note) note.textContent = (next ? "已預約 " + formatDateTime12(next.replace("T", " ")) + "　" : "") + "地點：5F，電梯出來右轉到底，7651簽約室";
+  if (note) {
+    const head = note.querySelector("[data-leave-when]");
+    const text = next ? "已預約 " + formatDateTime12(next.replace("T", " ")) : "選擇點交時間";
+    if (head) head.textContent = text;
+    else note.textContent = text + "　地點：5F，電梯出來右轉到底，7651簽約室";
+  }
   if (fromTenant) {
     const room = (state.rooms || []).find(x => x && x.id === t.roomId);
     pushPhoneNotify("退租點交", ((room && room.no) || "") + " " + (t.name || "") + " 預約 " + formatDateTime12(next.replace("T", " ")) + " 正常退租", "admin");
@@ -32567,9 +32572,11 @@ function normalLeaveCardHtml(t, r, opts) {
       <label class="field"><span>簽約時間</span>
         ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, lockDay: timeOnly ? end : "", minTime: timeOnly ? "09:30" : "", maxTime: timeOnly ? "17:30" : "" })}
       </label>
-      <div class="small" data-leave-note="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
+      <div class="small" data-leave-note="1">${timeOnly
+        ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
+        : `${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室`}</div>
     </div>
-    <div class="small" style="margin:6px 0 4px">${timeOnly ? "簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。" : "點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。"}</div>
+    ${timeOnly ? "" : `<div class="small" style="margin:6px 0 4px">點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。</div>`}
     ${signedLeave ? `<div class="small">已完成線上簽名。列印會帶上簽名，現場仍要蓋章。</div>` : ""}
     ${timeOnly
       ? `<button type="button" class="btn-navy" data-leave-sign="1" style="margin-top:8px">${signedLeave ? "重新簽名" : "下一步，簽署退租"}</button>`
