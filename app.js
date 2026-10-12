@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-20-41";
-const APP_EDIT_COUNT = 1822;
+const APP_STAMP = "2026-10-12-20-44";
+const APP_EDIT_COUNT = 1823;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1432";
+const FILE_VER = "1433";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作加上收支票　樂芯＋第一肉品，每3個月，這次 10/13，下次 1/13"] },
+  { ver: APP_VERSION, items: ["記水度　喜憨兒 97-69、莊記 97-71：10/11 起每兩個月，下次 12/11、2/11"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5499,8 +5499,8 @@ const CYCLE_JOBS = [
   { id: "cycle-deposit-interest", monthDay: 1, onlyMonth: 12, text: "開立套房／廠房押金設算息發票", cycle: true, owner: "7651" },
   { id: "cycle-month-close", monthDay: 25, time: "", text: "總結公司收支＋開發票", cycle: true, owner: "7651" },
   { id: "cycle-yusheng-elec", monthDay: 28, time: "", text: "收鈺晟電費　93-1B／93-58、60（台電電號 18-33-7421-01-4）", cycle: true, owner: "7651" },
-  { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "抄表度數　97-69 喜憨兒（牛5）", cycle: true, owner: "7651" },
-  { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", flexDays: 4, text: "抄表度數　97-71 莊記綠豆（牛5）", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-69", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", text: "記水度　喜憨兒 97-69", cycle: true, owner: "7651" },
+  { id: "cycle-water-97-71", monthDay: 11, intervalMonths: 2, anchor: "2026-10-11", text: "記水度　莊記 97-71", cycle: true, owner: "7651" },
   { id: "cycle-water-jinfang", monthDay: 11, intervalMonths: 6, anchor: "2027-01-11", flexDays: 4, text: "抄表度數　97-77／78 錦芳（牛8）半年一次", cycle: true, owner: "7651" },
   { id: "cycle-waterfee-chengjia", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　誠家食品 93-55／56／57　半年", cycle: true, owner: "7651" },
   { id: "cycle-waterfee-yusheng", monthDay: 31, intervalMonths: 6, anchor: "2027-01-31", flexDays: 4, text: "收水費　鈺晟 93-58／60、拉皮93-1B　半年", cycle: true, owner: "7651" },
@@ -5599,8 +5599,8 @@ function applyMeterLogs(data) {
 }
 function memoMeterUnits(m) {
   const t = String((m && m.text) || "") + " " + String((m && m.id) || "");
-  if (/cycle-water-97-69|97-69|喜憨兒/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-69");
-  if (/cycle-water-97-71|97-71|莊記/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-71");
+  if (/cycle-water-97-69|97-69|喜憨兒/.test(t) && /抄表|水錶|度數|記水/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-69");
+  if (/cycle-water-97-71|97-71|莊記/.test(t) && /抄表|水錶|度數|記水/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-71");
   if (/cycle-water-jinfang|錦芳|97-77|97-78/.test(t) && /抄表|水錶|度數/.test(t)) return METER_UNITS.filter(u => u.id === "m-97-77");
   if (/cycle-yusheng-elec|收鈺晟電費/.test(t)) return METER_UNITS.filter(u => u.id === "m-93-1b");
   if (/記電錶|cycle-meter-93/.test(t)) return METER_UNITS.filter(u => u.kind === "elec");
@@ -5837,7 +5837,7 @@ function ensureCycleJobs(data) {
   CYCLE_JOBS.forEach(job => {
     const hit = data.aiMemos.find(m => m && m.id === job.id);
     if (hit) {
-      if (!hit.edited) hit.text = job.text;
+      if (!hit.edited || /抄表度數/.test(String(hit.text || ""))) hit.text = job.text;
       hit.time = job.time || "";
       hit.monthDay = job.monthDay;
       hit.flexDays = job.flexDays || 0;
@@ -30232,20 +30232,22 @@ function nextCycleDate(m, from) {
   if (Number(m.onlyMonth)) return workOccurYmd(m);
   if (m.intervalMonths && m.intervalMonths > 1) {
     const day = Math.max(1, Math.min(31, Number(m.monthDay) || 11));
-    let d = new Date((m.anchor || "2026-10-11") + "T00:00:00");
-    if (isNaN(d.getTime())) d = new Date();
+    const anchor = new Date((m.anchor || "2026-10-11") + "T00:00:00");
+    if (isNaN(anchor.getTime())) return "";
     const now = from ? new Date(from) : new Date();
     now.setHours(0, 0, 0, 0);
     const step = Number(m.intervalMonths) || 2;
+    const thisMonth = cycleDateInMonth(m, now.getFullYear(), now.getMonth() + 1);
+    if (thisMonth) return thisMonth;
+    let d = new Date(anchor.getTime());
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
     let guard = 0;
-    while (d < now && guard < 36) {
+    while (d < now && guard < 48) {
       d.setMonth(d.getMonth() + step);
-      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      d.setDate(Math.min(day, last));
+      d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
       guard += 1;
     }
-    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(day, last));
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
     return ymdParts(d);
   }
   if (m.monthDay) return nextMonthDayDate(m.monthDay, from);
