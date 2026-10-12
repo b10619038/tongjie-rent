@@ -1186,7 +1186,7 @@ button.pay-pill.hand {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 6px;
   width: 100%;
 }
@@ -1232,7 +1232,8 @@ button.pay-pill.hand {
 }
 #renew-range { white-space: pre-line; }
 .renew-person { margin-top: 10px; }
-.renew-person-name { font-weight: 700; margin-bottom: 6px; }
+.renew-person-name { font-weight: 700; margin-bottom: 0; }
+.renew-year-picks .renew-person-name { margin-bottom: 0; }
 .renew-add-field { margin-bottom: 8px; }
 .renew-add-field input { width: 100%; }
 .renew-span {
