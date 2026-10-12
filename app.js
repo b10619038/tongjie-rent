@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-21-51";
-const APP_EDIT_COUNT = 1828;
+const APP_STAMP = "2026-10-12-21-57";
+const APP_EDIT_COUNT = 1829;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1438";
+const FILE_VER = "1439";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客正常退租改三行：時間、地點、點交說明"] },
+  { ver: APP_VERSION, items: ["再加一個人一起租按鈕改成跟年月那排一樣寬，下面文字拉開"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3673,10 +3673,12 @@ function renewPeopleCardHtml(item) {
   }).join("");
 }
 function renewPeopleFormHtml(people) {
-  const src = (people || []).find(p => p && !p.added) || { name: "原租客", years: 1, months: 0, renew: true };
-  const rows = (people || []).map((p, i) => {
+  const list = people || [];
+  const canAdd = list.length < 2 && !list.some(p => p && p.added);
+  const rows = list.map((p, i) => {
     const on = p.renew !== false;
     if (p.added) {
+      const src = list.find(x => x && !x.added) || { name: "原租客", years: 1, months: 0, renew: true };
       const same = src.renew === false
         ? "上面的人不續約，一起租的人也不續。"
         : "時間跟" + (src.name || "上面") + "同一段：" + renewSpanLabel(src.years, src.months) + "。半年也一起。";
@@ -3692,21 +3694,23 @@ function renewPeopleFormHtml(people) {
         <button type="button" class="${on ? "on" : ""}" data-renew-person="${i}" data-renew-on="1">續約</button>
         <button type="button" class="${on ? "" : "on"}" data-renew-person="${i}" data-renew-on="0">不續約</button>
       </div>
-      <div class="renew-span" data-renew-span="${i}" style="${on ? "" : "display:none"}">
-        <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
-        <b>${Number(p.years) || 0}</b>
-        <span>年</span>
-        <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
-        <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
-        <b>${Number(p.months) || 0}</b>
-        <span>月</span>
-        <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
+      <div class="renew-fit" data-renew-span="${i}" style="${on ? "" : "display:none"}">
+        <div class="renew-span">
+          <button type="button" data-renew-step="${i}" data-part="years" data-dir="-1" aria-label="減年">－</button>
+          <b>${Number(p.years) || 0}</b>
+          <span>年</span>
+          <button type="button" data-renew-step="${i}" data-part="years" data-dir="1" aria-label="加年">＋</button>
+          <button type="button" data-renew-step="${i}" data-part="months" data-dir="-1" aria-label="減月">－</button>
+          <b>${Number(p.months) || 0}</b>
+          <span>月</span>
+          <button type="button" data-renew-step="${i}" data-part="months" data-dir="1" aria-label="加月">＋</button>
+        </div>
+        ${canAdd ? `<button type="button" class="ghost renew-add" data-renew-add="1">再加一個人一起租</button>` : ""}
       </div>
     </div>`;
   }).join("");
-  const canAdd = (people || []).length < 2 && !(people || []).some(p => p && p.added);
-  const add = canAdd ? `<button type="button" class="ghost" data-renew-add="1" style="margin-top:8px">再加一個人一起租</button><p class="small">時間跟上面同一段，半年也一起。租金不變。水費一人一年 1,800，簽約現場收現金。</p>` : "";
-  return rows + add;
+  const note = canAdd ? `<p class="small renew-add-note">時間跟上面同一段，半年也一起。租金不變。水費一人一年 1,800，簽約現場收現金。</p>` : "";
+  return rows + note;
 }
 function renewPeoplePlan(t, people) {
   const start = ymdOf(t && t.leaseEnd) ? addDaysYmd(ymdOf(t.leaseEnd), 1) : todayYmd();

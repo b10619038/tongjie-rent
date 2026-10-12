@@ -1224,8 +1224,24 @@ button.pay-pill.hand {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.renew-fit {
+  display: inline-grid;
+  grid-template-columns: max-content;
+  max-width: 100%;
   margin-top: 8px;
 }
+.renew-fit > .renew-add {
+  width: 0;
+  min-width: 100%;
+  box-sizing: border-box;
+  margin: 10px 0 0;
+  padding: 8px 12px 11px;
+  border-radius: 999px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.renew-add-note { margin-top: 14px !important; }
 .renew-span button {
   width: 32px;
   height: 32px;
