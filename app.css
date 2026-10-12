@@ -1497,8 +1497,12 @@ html[data-theme="void"] [data-norenew-card] .btn-navy:focus {
 }
 [data-norenew-card] .renew-hit > .ghost {
   color: var(--rose);
-  border-color: var(--rose);
-  background: #fff;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .mini.renew-hit {
   display: flex;

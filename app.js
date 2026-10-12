@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-19-59";
-const APP_EDIT_COUNT = 1818;
+const APP_STAMP = "2026-10-12-20-03";
+const APP_EDIT_COUNT = 1820;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1428";
+const FILE_VER = "1430";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租名字列右邊加上完成退租，房間仍住到合約最後一天"] },
+  { ver: APP_VERSION, items: ["完成退租按鈕去掉邊框", "租客退租點交時間只能選上午 9:30 到下午 5:30"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -13778,7 +13778,7 @@ function appointOneHtml(at, extra) {
   const side = `${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalLeave ? `<button type="button" class="gcal-in" data-gcal-leave="${escapeHtml(x.gcalLeave)}">加入日曆</button>` : (x.gcalRepair ? `<button type="button" class="gcal-in" data-gcal="${escapeHtml(x.gcalRepair)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : "")))}${x.pauseRepair ? `<button type="button" class="gcal-in appoint-pause" data-appoint-pause="${escapeHtml(x.pauseRepair)}">${x.paused ? "恢復預約" : "暫停預約"}</button>` : ""}`;
   return `<div class="appoint-one${x.pauseRepair ? " has-pause" : ""}" data-empty="${escapeHtml(empty)}">
     <span class="appoint-face">${appointFaceHtml(shown, empty)}</span>
-    <input type="${lockDay ? "time" : "datetime-local"}" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""}${lockDay ? ` data-lock-day="${escapeHtml(lockDay)}"` : ""} value="${escapeHtml(lockDay ? clock : (at || ""))}" ${x.disabled ? "disabled" : ""}${!lockDay && x.min ? ` min="${escapeHtml(x.min)}"` : ""}${!lockDay && x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
+    <input type="${lockDay ? "time" : "datetime-local"}" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""}${lockDay ? ` data-lock-day="${escapeHtml(lockDay)}"` : ""} value="${escapeHtml(lockDay ? clock : (at || ""))}" ${x.disabled ? "disabled" : ""}${lockDay && x.minTime ? ` min="${escapeHtml(x.minTime)}"` : ""}${lockDay && x.maxTime ? ` max="${escapeHtml(x.maxTime)}"` : ""}${!lockDay && x.min ? ` min="${escapeHtml(x.min)}"` : ""}${!lockDay && x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
     ${side ? `<span class="appoint-side">${side}</span>` : ""}
   </div>`;
 }
@@ -24742,7 +24742,8 @@ function leaveInputAt(inp, t) {
 }
 function setNormalLeaveAppoint(t, value, fromTenant) {
   if (!t) return;
-  const next = String(value || "").trim().replace(" ", "T").slice(0, 16);
+  const nextRaw = String(value || "").trim().replace(" ", "T").slice(0, 16);
+  const next = fromTenant ? clampLeaveClock(nextRaw) : nextRaw;
   const prev = String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
   if (next === prev) return;
   t.leaveAppointAt = next;
@@ -32483,12 +32484,23 @@ function normalLeaveAppoint(t) {
   const end = ymdOf(t && t.leaseEnd) || "";
   return end ? end + "T10:00" : "";
 }
+function clampLeaveClock(value) {
+  const m = String(value || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{1,2}):(\d{2})/);
+  if (!m) return String(value || "").slice(0, 16);
+  const mins = Number(m[2]) * 60 + Number(m[3]);
+  const lo = 9 * 60 + 30;
+  const hi = 17 * 60 + 30;
+  const use = mins < lo ? lo : (mins > hi ? hi : mins);
+  const hh = String(Math.floor(use / 60)).padStart(2, "0");
+  const mm = String(use % 60).padStart(2, "0");
+  return m[1] + "T" + hh + ":" + mm;
+}
 function tenantLeaveAt(t) {
   const end = ymdOf(t && t.leaseEnd) || "";
   const saved = normalLeaveAppoint(t);
   const hm = String(saved || "").match(/T(\d{2}:\d{2})/);
   const clock = hm ? hm[1] : "10:00";
-  return end ? end + "T" + clock : saved;
+  return clampLeaveClock(end ? end + "T" + clock : saved);
 }
 function normalLeaveCardHtml(t, r, opts) {
   if (!t) return "";
@@ -32505,10 +32517,10 @@ function normalLeaveCardHtml(t, r, opts) {
   return `<div class="card card-body renew-alert" data-norenew-card="${escapeHtml(t.id)}">
     <h2 class="dash-h">正常退租</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b>${doneMark}</div>
-    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。到期日辦理正常退租點交。${timeOnly ? "日期固定，只能改幾點。" : ""}</div>
+    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。到期日辦理正常退租點交。${timeOnly ? "日期固定。時間只能選上午 9:30 到下午 5:30。" : ""}</div>
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
-        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, lockDay: timeOnly ? end : "" })}
+        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, lockDay: timeOnly ? end : "", minTime: timeOnly ? "09:30" : "", maxTime: timeOnly ? "17:30" : "" })}
       </label>
       <div class="small" data-leave-note="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
     </div>
@@ -33741,6 +33753,18 @@ function bindTenantFold() {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
+      if (inp.dataset.lockDay && inp.min && inp.max) {
+        const hm = String(inp.value || "").match(/(\d{1,2}):(\d{2})/);
+        if (hm) {
+          const mins = Number(hm[1]) * 60 + Number(hm[2]);
+          const lo = 9 * 60 + 30;
+          const hi = 17 * 60 + 30;
+          if (mins < lo || mins > hi) {
+            inp.value = mins < lo ? "09:30" : "17:30";
+            toast("點交時間只能選上午 9:30 到下午 5:30");
+          }
+        }
+      }
       paintAppointFace(inp);
       const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
       setNormalLeaveAppoint(t, leaveInputAt(inp, t), !!inp.dataset.lockDay);
