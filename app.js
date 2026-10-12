@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-10-13-29";
-const APP_EDIT_COUNT = 1795;
+const APP_STAMP = "2026-10-12-13-35";
+const APP_EDIT_COUNT = 1796;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1404";
+const FILE_VER = "1405";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月進出帳結餘，出帳大於進帳時改顯示負數"] },
+  { ver: APP_VERSION, items: ["7623 陳財源不續約後仍可改申請續約"] },
+  { ver: "2026-10-10-13-29-1795", items: ["本月進出帳結餘，出帳大於進帳時改顯示負數"] },
   { ver: "2026-10-10-12-46-1794", items: ["驊勝 93-61、93-62 新約 115/11/1～117/10/31，未稅 10 萬"] },
   { ver: "2026-10-10-10-39-1793", items: ["7641 洪子軒租約改為 115/5/1～116/4/30"] },
   { ver: "2026-10-09-15-15-1792", items: ["9月對帳明細已記入總覽：統潔、信潔、個人戶、現金"] },
@@ -3579,7 +3580,8 @@ function renewAskCardHtml(t, r, opts) {
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
     if (!full && !inRenewAskWindow(t)) return "";
-    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p></div>`;
+    const reopen = ["6822", "7023", "7631"].indexOf(String(r.no || "")) < 0;
+    return `<div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p>${reopen ? `<button type="button" class="btn-navy" data-renew-reopen="1" style="margin-top:8px">改申請續約</button>` : ""}</div>`;
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
@@ -3874,6 +3876,9 @@ function bindRenewForm() {
   });
   document.querySelectorAll("[data-renew-decline]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); e.stopPropagation(); openRenewDeclineConfirm(); };
+  });
+  document.querySelectorAll("[data-renew-reopen]").forEach(btn => {
+    btn.onclick = e => { e.preventDefault(); e.stopPropagation(); reopenTenantRenewal(); };
   });
 }
 function renewTermsKey(row) {
@@ -4439,6 +4444,24 @@ function declineTenantRenewal() {
   pushPhoneNotify("不續約", (r.no || "") + " " + (t.name || "") + " 確認不續約，合約至 " + (t.leaseEnd || ""), "admin");
   toast("已確認不續約");
   ui.keepScroll = true;
+  render();
+}
+function reopenTenantRenewal() {
+  const t = me();
+  const r = myRoom();
+  if (!t || !r) return;
+  if (isProspectPreview()) { toast("預覽中，不會送出"); return; }
+  if (!isDevPreview()) {
+    t.renewChoice = "open";
+    t.edited = true;
+    t.editedAt = Date.now();
+    save();
+    try { pushCloud(); } catch {}
+  }
+  ui.page = "lease";
+  ui.scrollRenew = true;
+  ui.keepScroll = false;
+  toast(isDevPreview() ? "預覽：已打開續約申請" : "已打開續約申請");
   render();
 }
 function hideNudgeForMe(id) {
@@ -6528,6 +6551,7 @@ function normalize(data) {
   try { applyRoom7611(data); } catch {}
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
+  try { apply7623RenewOpen(data); } catch {}
   try { syncNiu10StudioAssets(data); } catch {}
   try { syncFactoryAssets(data); } catch {}
   data.tenantRosterVer = TENANT_ROSTER_VER;
@@ -6608,6 +6632,7 @@ function normalize(data) {
   try { applyRoom7611(data); } catch {}
   try { applyRoom7621(data); } catch {}
   try { applyRoom7623(data); } catch {}
+  try { apply7623RenewOpen(data); } catch {}
   try { syncNiu10StudioAssets(data); } catch {}
   try { syncFactoryAssets(data); } catch {}
   applyStudioRemitOn(data);
@@ -7271,6 +7296,20 @@ function applyRoom7623(data) {
     data.room7623Ver = ROOM_7623_VER;
     try { markCloudDirty(); } catch {}
   }
+}
+const ROOM_7623_RENEW_OPEN_VER = "7623-renew-open-v1";
+function apply7623RenewOpen(data) {
+  if (!data || data.room7623RenewOpenVer === ROOM_7623_RENEW_OPEN_VER) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7623");
+  if (!room || !Array.isArray(data.tenants)) return;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && !x.incoming && (x.id === "t26" || (x.roomId === room.id && /陳財源/.test(String(x.name || "")))));
+  if (t && t.renewChoice === "no") {
+    t.renewChoice = "open";
+    t.edited = true;
+    t.editedAt = Date.now();
+  }
+  data.room7623RenewOpenVer = ROOM_7623_RENEW_OPEN_VER;
+  try { markCloudDirty(); } catch {}
 }
 const LUWU_SEP_UNPAID_VER = "luwu-sep-unpaid-v2";
 function applyLuWuSepUnpaid(data) {
