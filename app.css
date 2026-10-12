@@ -3182,6 +3182,12 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .repair-actions .ghost { margin-top: 0; width: 100%; }
 .appoint-box { margin: 10px 0 8px; display: grid; gap: 8px; }
+[data-fold-repair] .tenant-slim-inner,
+[data-fold-repair] .tenant-slim-inner p { font-size: 14px; }
+[data-fold-repair] .appoint-face { font-size: 13px; }
+[data-fold-repair] .gcal-in { font-size: 12px; padding: 8px 2px 8px 4px; }
+[data-fold-repair] .field input,
+[data-fold-repair] .field textarea { font-size: 14px; }
 .appoint-one {
   position: relative;
   display: flex;
