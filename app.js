@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-21-00";
-const APP_EDIT_COUNT = 1824;
+const APP_STAMP = "2026-10-12-21-34";
+const APP_EDIT_COUNT = 1826;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1434";
+const FILE_VER = "1436";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["套房合約匯款：兆豐、統潔、帳號改成黑底白字"] },
+  { ver: APP_VERSION, items: ["續約申請改三行：人名、日期、水費；地點另起一行"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -32684,7 +32684,11 @@ function renewalAdminCardHtml(x) {
     <h2 class="dash-h">${signed ? "續約完成" : (x.wantMove ? "換房續約" : "續約申請")}</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}${x.wantMove && x.moveRoomNo ? " → " + escapeHtml(x.moveRoomNo) : ""}</b>
       ${signed ? `<span class="pay-pill paid">已簽約</span>` : `<button type="button" class="ghost" data-renew-done="${x.id}" style="width:auto">完成簽約</button>`}</div>
-    <div class="small" style="margin-bottom:6px">${Array.isArray(x.people) && x.people.length ? x.people.map(p => p && p.renew === false ? escapeHtml(p.name) + "不續約" : escapeHtml((p && p.name) || "") + "　" + renewSpanLabel(p && p.years, p && p.months)).join("　") : renewTermLabel(years, renewExtraMonthsOf(x))}　${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}　${escapeHtml(renewWaterLine(tenant, room, x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
+    <div class="small" style="margin-bottom:6px">
+      <div>${Array.isArray(x.people) && x.people.length ? x.people.map(p => p && p.renew === false ? escapeHtml(p.name) + "不續約" : escapeHtml((p && p.name) || "") + "　" + renewSpanLabel(p && p.years, p && p.months)).join("　") : renewTermLabel(years, renewExtraMonthsOf(x))}${todaySign && !signed ? "　今天簽約" : ""}</div>
+      <div>${escapeHtml(rocSlash(x.start) || "")} ➜ ${escapeHtml(rocSlash(x.end) || "")}</div>
+      <div>${escapeHtml(renewWaterLine(tenant, room, x))}</div>
+    </div>
     ${moveLine}
     ${signed ? `<div class="small" style="margin-bottom:8px">目前仍用舊約${oldEnd ? "至 " + escapeHtml(rocSlash(oldEnd)) : ""}。新約第一天（${escapeHtml(rocSlash(x.start) || "")}）才換成新年合約。</div>` : ""}
     ${x.byDev && !signed && !(typeof renewEsigned === "function" && renewEsigned(x)) ? `<div class="small" style="margin-bottom:8px">開發者代送，尚未電子簽名。現場蓋章後按完成簽約。</div>` : ""}
@@ -32692,7 +32696,7 @@ function renewalAdminCardHtml(x) {
       <label class="field"><span>簽約時間</span>
         ${appointOneHtml(x.appointAt || "", { attr: ` data-renew-appoint="${x.id}"`, disabled: signed, gcalId: x.id })}
       </label>
-      <div class="small">${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
+      <div class="small"><div>${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div></div>
     </div>
     <div class="small" style="margin:6px 0 4px">${signed ? "年水費已於簽約現場收取，只收現金。新約租金改匯兆豐。" : "簽約現場收年水費，只收現金。新約匯款改兆豐（統潔 04009039686）。"}</div>
     ${tenant && room && room.kind !== "factory" ? `<button type="button" class="btn-navy${todaySign || signed ? "" : " ghost"}" data-print-renew="${x.id}" style="margin-top:8px">${todaySign && !signed ? "列印今天續約合約" : "列印續約合約"}</button>` : ""}
