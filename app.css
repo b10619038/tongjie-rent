@@ -1482,6 +1482,18 @@ button.pay-toggle.paid.on {
 [data-norenew-card].renew-alert .dash-h { color: var(--rose); }
 [data-norenew-card] .mini.renew-hit { background: var(--rose-soft); }
 [data-norenew-card] .btn-navy { background: var(--rose); color: #fff; }
+[data-norenew-card] .btn-navy:hover,
+[data-norenew-card] .btn-navy:active,
+[data-norenew-card] .btn-navy:focus {
+  background: var(--rose-soft);
+  color: var(--rose);
+}
+html[data-theme="void"] [data-norenew-card] .btn-navy:hover,
+html[data-theme="void"] [data-norenew-card] .btn-navy:active,
+html[data-theme="void"] [data-norenew-card] .btn-navy:focus {
+  background: var(--rose-soft);
+  color: var(--rose);
+}
 [data-norenew-card] .gcal-in { color: var(--rose); }
 .mini.renew-hit {
   display: flex;
