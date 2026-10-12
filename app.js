@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-16-54";
-const APP_EDIT_COUNT = 1800;
+const APP_STAMP = "2026-10-12-17-01";
+const APP_EDIT_COUNT = 1801;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1409";
+const FILE_VER = "1410";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,8 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7623 陳財源合約押金改為 20,000"] },
+  { ver: APP_VERSION, items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
+  { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
   { ver: "2026-10-12-14-53-1798", items: ["續約再加進來的人最少簽 1 年，沒有半年；原本的人續約仍可選月"] },
   { ver: "2026-10-12-14-42-1797", items: ["續約可再加一個人一起租，租金不變，水費一人一年 1,800"] },
@@ -11942,6 +11943,7 @@ async function pullCloud() {
       try { if (purgeDroppedStudios(state)) markCloudDirty(); } catch {}
       try { if (scrubPracticePeople(state)) markCloudDirty(); } catch {}
       try { ensurePhoneLoginPasses(state); } catch {}
+      try { applyRoom7623(state); } catch {}
       try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
@@ -11962,6 +11964,7 @@ async function pullCloud() {
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
+    try { applyRoom7623(state); } catch {}
     const remoteRn = new Set((data.renewals || []).map(x => x && x.id).filter(Boolean));
     if ((mineSnap.renewals || []).some(x => x && x.id && !remoteRn.has(x.id))) markCloudDirty();
     mergeDevChatsInto(state, mineSnap);
@@ -24091,7 +24094,8 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
   const end = rocPartsOf(endYmd);
   const isStub = !!(leasePart && leasePart.kind === "stub");
   const rent = isStub ? Number(leasePart.rent) || 0 : listed;
-  const deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (listed * 2);
+  let deposit = Number((t && t.deposit) || (r && r.deposit) || 0) || (listed * 2);
+  if (String((r && r.no) || "") === "7623") deposit = 20000;
   const door = contractDoorplate(r && r.no);
   const part = contractRoomPart(r && r.no);
   const name = (t && t.name) || "";
