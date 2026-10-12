@@ -1184,7 +1184,8 @@ button.pay-pill.hand {
 }
 .renew-year-picks {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 6px;
 }
 .renew-year-picks button {
@@ -1194,6 +1195,18 @@ button.pay-pill.hand {
   border-radius: 999px;
   padding: 7px 12px;
   font-size: 14px;
+}
+.renew-year-picks .renew-add {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--teal);
+  background: #fff;
 }
 .renew-year-picks button.on {
   background: var(--teal);
@@ -1230,16 +1243,6 @@ button.pay-pill.hand {
   grid-template-columns: max-content;
   max-width: 100%;
   margin-top: 8px;
-}
-.renew-fit > .renew-add {
-  width: 0;
-  min-width: 100%;
-  box-sizing: border-box;
-  margin: 10px 0 0;
-  padding: 8px 12px 11px;
-  border-radius: 999px;
-  line-height: 1.35;
-  white-space: nowrap;
 }
 .renew-span button {
   width: 32px;
