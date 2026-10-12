@@ -2336,6 +2336,11 @@ textarea, input[type="text"], input[type="password"], input[type="email"], input
   -webkit-user-select: text; user-select: text;
   box-sizing: border-box; min-height: 46px;
 }
+.renew-add-field input {
+  border-radius: 999px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
 .field {
   display: flex;
   flex-direction: column;
