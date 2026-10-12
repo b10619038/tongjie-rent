@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-18-24";
-const APP_EDIT_COUNT = 1806;
+const APP_STAMP = "2026-10-12-18-26";
+const APP_EDIT_COUNT = 1807;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1416";
+const FILE_VER = "1417";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["不續約圖塊拿掉邊框，改回原本樣子"] },
+  { ver: APP_VERSION, items: ["正常退租的加入日曆改到簽約時間右邊"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -13693,7 +13693,7 @@ function bindAppointPicker(inp) {
   const wrap = inp.closest(".appoint-one");
   const open = e => {
     if (inp.disabled) return;
-    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-appoint-pause]")) return;
+    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-gcal-leave], [data-appoint-pause]")) return;
     openAppointPicker(inp);
   };
   inp.addEventListener("click", e => {
@@ -13716,7 +13716,7 @@ function bindAppointPicker(inp) {
 function appointOneHtml(at, extra) {
   const x = extra || {};
   const empty = x.empty || "選擇簽約時間";
-  const side = `${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalRepair ? `<button type="button" class="gcal-in" data-gcal="${escapeHtml(x.gcalRepair)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : ""))}${x.pauseRepair ? `<button type="button" class="gcal-in appoint-pause" data-appoint-pause="${escapeHtml(x.pauseRepair)}">${x.paused ? "恢復預約" : "暫停預約"}</button>` : ""}`;
+  const side = `${x.gcalId ? `<button type="button" class="gcal-in" data-gcal-renew="${escapeHtml(x.gcalId)}">加入日曆</button>` : (x.gcalLeave ? `<button type="button" class="gcal-in" data-gcal-leave="${escapeHtml(x.gcalLeave)}">加入日曆</button>` : (x.gcalRepair ? `<button type="button" class="gcal-in" data-gcal="${escapeHtml(x.gcalRepair)}">加入日曆</button>` : (x.gcalDraft ? `<button type="button" class="gcal-in" data-gcal-draft="1">加入日曆</button>` : "")))}${x.pauseRepair ? `<button type="button" class="gcal-in appoint-pause" data-appoint-pause="${escapeHtml(x.pauseRepair)}">${x.paused ? "恢復預約" : "暫停預約"}</button>` : ""}`;
   return `<div class="appoint-one${x.pauseRepair ? " has-pause" : ""}" data-empty="${escapeHtml(empty)}">
     <span class="appoint-face">${appointFaceHtml(at, empty)}</span>
     <input type="datetime-local" class="appoint-native"${x.id ? ` id="${x.id}"` : ""}${x.attr || ""} value="${escapeHtml(at || "")}" ${x.disabled ? "disabled" : ""}${x.min ? ` min="${escapeHtml(x.min)}"` : ""}${x.max ? ` max="${escapeHtml(x.max)}"` : ""} />
@@ -32402,10 +32402,9 @@ function normalLeaveCardHtml(t, r) {
     <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。到期日辦理正常退租點交。</div>
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
-        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"` })}
+        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
       </label>
       <div class="small" data-leave-note="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
-      ${when ? `<button type="button" class="linkish appoint-link" data-gcal-leave="${escapeHtml(t.id)}" style="margin-top:8px">加入日曆</button>` : ""}
     </div>
     <div class="small" style="margin:6px 0 4px">點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。</div>
     <button type="button" class="btn-navy" data-print-normal="${escapeHtml(t.id)}" style="margin-top:8px">列印正常退租合約</button>
