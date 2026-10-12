@@ -4932,7 +4932,14 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   font-weight: 700;
   line-height: 1.35;
 }
-.lease-u.sign-x2 { min-width: 8.4em; }
+.lease-u.rev {
+  background: #111;
+  color: #fff;
+  border-bottom: 0;
+  padding: 0 5px 1px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 .lease-u.amt { min-width: 2.6em; text-align: center; }
 .lease-oneline { white-space: nowrap; }
 .lease-oneline .lease-u.amt { min-width: 1.7em; padding: 0 3px 1px; }

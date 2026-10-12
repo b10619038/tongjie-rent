@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-20-44";
-const APP_EDIT_COUNT = 1823;
+const APP_STAMP = "2026-10-12-21-00";
+const APP_EDIT_COUNT = 1824;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1433";
+const FILE_VER = "1434";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["記水度　喜憨兒 97-69、莊記 97-71：10/11 起每兩個月，下次 12/11、2/11"] },
+  { ver: APP_VERSION, items: ["套房合約匯款：兆豐、統潔、帳號改成黑底白字"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24288,8 +24288,8 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
         ? `<p>本約為不足月日拆。月租金為新臺幣（下同）${u(cnAmt(listed) || "零")}　元整，自民國　${u(start.y, "amt")}　年　${u(start.m, "amt")}　月　${u(start.d, "amt")}　日起至民國　${u(end.y, "amt")}　年　${u(end.m, "amt")}　月　${u(end.d, "amt")}　日止共 ${u(String((leasePart && leasePart.days) || ymdInclusiveDays(startYmd, endYmd)), "amt")} 日，應繳日拆租金 ${u(cnAmt(rent) || "零")}　元整（月租 ÷ 當月 ${u(String((leasePart && leasePart.daysInMonth) || daysInMonthYmd(startYmd)), "amt")} 日 × 實際日數）。本約期滿後另立一年約，自次月1日起每月1日前繳付。</p>`
         : `<p>承租人每月租金為新臺幣（下同）${u(cnAmt(rent) || "零")}　元整，每期應繳納一個月租金，並於每${ck(true)}月${ck(false)}期${u(due, "amt")}日前支付，不得藉任何理由拖延或拒絕，出租人於租賃期間亦不得任意要求調整租金。</p>`}
       <p>租金支付方式：${ck(false)}現金繳付　${ck(true)}轉帳繳付：</p>
-      <p>金融機構：${u(pay.bank || "兆豐銀行")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide")}</p>
-      <p>帳號：${u(pay.account || "040-09-03968-6")}，${ck(false)}其他：　　。</p>
+      <p>金融機構：${u(pay.bank || "兆豐銀行", "rev")}，戶名：${u(pay.holder || firm.name || "統潔開發有限公司", "wide rev")}</p>
+      <p>帳號：${u(pay.account || "04009039686", "rev")}，${ck(false)}其他：　　。</p>
       <p class="lease-art">第五條　擔保金（押金）約定及返還</p>
       <p>押金由租賃雙方約定為 2 個月租金，金額為　${u(cnAmt(deposit) || "零")}　元整（最高不得超過二個月租金之總額）。承租人應於簽訂住宅租賃契約（以下簡稱本契約）之同時給付出租人。</p>
       <p>前項擔保金（押金），除有第十三條第三項、第十四條第四項及第十八條第二項之情形外，出租人應於租期屆滿或租賃契約終止，承租人返還租賃住宅時，返還押金或抵充本契約所生債務後之賸餘押金。</p>
@@ -24570,6 +24570,7 @@ function printLeaseIframe(html) {
     + ".lease-pg::before{content:\"\";position:absolute;inset:7mm;border:3px solid #c1121f;pointer-events:none;z-index:2}"
     + ".lease-esig{height:40px!important;max-width:200px!important;object-fit:contain;object-position:left bottom;vertical-align:bottom;margin:0 4px 5px;background:transparent}"
     + ".lease-ink{color:#1a57c5!important}"
+    + ".lease-u.rev{background:#111!important;color:#fff!important;border-bottom:0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}"
     + ".hand-a4-fit{width:210mm;margin:0;padding:0}"
     + ".hand-a4-fit .term-handover-paper,.hand-a4-fit .term-lease-paper{box-sizing:border-box;width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;margin:0!important;zoom:1!important;transform:none!important;box-shadow:none!important;border:0!important;page-break-after:always;break-after:page;background:#fff}";
   const doc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + links
