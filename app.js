@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-17-10";
-const APP_EDIT_COUNT = 1802;
+const APP_STAMP = "2026-10-12-17-13";
+const APP_EDIT_COUNT = 1803;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1411";
+const FILE_VER = "1412";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印續約合約可關掉最底下的中華民國日期"] },
+  { ver: APP_VERSION, items: ["列印合約的按鈕改成關閉日期"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24531,7 +24531,7 @@ function paintLeaseSignDate(on) {
     el.textContent = on ? el.dataset.full : "\u3000";
   });
   const btn = document.getElementById("lease-date-toggle");
-  if (btn) btn.textContent = on ? "關閉時間" : "打開時間";
+  if (btn) btn.textContent = on ? "關閉日期" : "打開日期";
 }
 function showLeasePrintPreview(t, r, which) {
   if (!t || !r) { toast("找不到租客"); return; }
@@ -24550,7 +24550,7 @@ function showLeasePrintPreview(t, r, which) {
     <div class="lightbox-bar">
       <div class="lease-prev-tools">
         <button type="button" id="lease-prev-close">關閉</button>
-        <button type="button" id="lease-date-toggle">關閉時間</button>
+        <button type="button" id="lease-date-toggle">關閉日期</button>
       </div>
       <span>${escapeHtml(title)}</span>
       <button type="button" class="btn-navy" id="lease-prev-print">列印</button>
