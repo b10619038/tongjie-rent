@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-12-17-13";
-const APP_EDIT_COUNT = 1803;
+const APP_STAMP = "2026-10-12-17-27";
+const APP_EDIT_COUNT = 1804;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1412";
+const FILE_VER = "1414";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["列印合約的按鈕改成關閉日期"] },
+  { ver: APP_VERSION, items: ["7623 原約拉回 114/11/1～115/10/31，倒數不再跳到 1480 天"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -7296,7 +7296,7 @@ function applyRoom7621(data) {
     try { markCloudDirty(); } catch {}
   }
 }
-const ROOM_7623_VER = "7623-deposit-20000-v1";
+const ROOM_7623_VER = "7623-lease-1151031-v1";
 function applyRoom7623(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7623");
@@ -7331,11 +7331,19 @@ function applyRoom7623(data) {
   }
   const rent = studioRentOf("7623") || 10000;
   const dep = info.deposit != null ? Number(info.deposit) : 20000;
-  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former || Number(room.rent) !== rent || Number(t.deposit) !== dep || Number(room.deposit) !== dep || (Array.isArray(t.leases) && t.leases.some(p => p && p.kind !== "stub" && Number(p.rent) !== rent));
+  const start = info.leaseStart || "2025-11-01";
+  const end = info.leaseEnd || "2026-10-31";
+  const liveRenew = (data.renewals || []).some(x => x && (x.tenantId === t.id || x.roomId === room.id || String(x.roomNo) === "7623") && (x.status === "applied" || x.status === "done") && renewalStartReached(x));
+  const datesMatch = ymdOf(t.leaseStart) === start && ymdOf(t.leaseEnd) === end && Array.isArray(t.leases) && t.leases.length === 1 && ymdOf(t.leases[0].start) === start && ymdOf(t.leases[0].end) === end;
+  const leaseOk = liveRenew || datesMatch;
+  const need = data.room7623Ver !== ROOM_7623_VER || t.name !== info.name || room.tenantId !== t.id || t.roomId !== room.id || !!t.former || Number(room.rent) !== rent || Number(t.deposit) !== dep || Number(room.deposit) !== dep || !leaseOk;
   t.name = info.name;
   t.phone = info.phone || t.phone || "";
-  t.leaseStart = info.leaseStart || t.leaseStart;
-  t.leaseEnd = info.leaseEnd || t.leaseEnd;
+  if (!liveRenew) {
+    t.leaseStart = start;
+    t.leaseEnd = end;
+    t.leases = [{ kind: "year", start, end, rent }];
+  }
   if (info.note && !String(t.note || "").trim()) t.note = info.note;
   if (!t.payBankLock) t.payBank = info.payBank || t.payBank || "農會";
   if (info.deposit != null) t.deposit = info.deposit;
@@ -7347,10 +7355,8 @@ function applyRoom7623(data) {
   room.tenantId = t.id;
   room.rent = rent;
   t.rent = rent;
-  if (Array.isArray(t.leases) && t.leases.length) {
+  if (liveRenew && Array.isArray(t.leases) && t.leases.length) {
     t.leases.forEach(p => { if (p && p.kind !== "stub") p.rent = rent; });
-  } else {
-    t.leases = [{ kind: "year", start: t.leaseStart || "2025-11-01", end: t.leaseEnd || "2026-10-31", rent }];
   }
   t.deposit = dep;
   room.deposit = dep;
@@ -19492,6 +19498,9 @@ function ensureRenewNudges(data) {
     }, 900);
   }
 }
+function signPacksNewLease(t) {
+  return !!(t && (t.incoming || t.prospect || (typeof isDemoTenant === "function" && isDemoTenant(t))));
+}
 function applyOneYearLease(t, room) {
   if (!t) return;
   const r = room || signTargetRoom(t);
@@ -27359,7 +27368,7 @@ function leaseSignView() {
   const rooms = studioSignRooms(r);
   const win = signWindow(r, t);
   const cont = continueLeaseRange(r, t);
-  if (!renewItem) {
+  if (!renewItem && signPacksNewLease(t)) {
     if (t && t.leaseStart && t.leaseStart < cont.start) {
       applyStudioLeasePack(t, r, cont.start);
     }
@@ -34908,7 +34917,7 @@ function bindSignTermSlots() {
       ui.signTerm1y = !!term.checked;
       const t = me();
       const r = signTargetRoom(t);
-      if (t && ui.signTerm1y) {
+      if (t && signPacksNewLease(t) && ui.signTerm1y) {
         if (ui.signLeaseCustom && t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
         else applyOneYearLease(t, r);
       }
@@ -35193,7 +35202,7 @@ function bindSignPad() {
       t.editedAt = Date.now();
       const term = document.getElementById("sign-term-1y");
       ui.signTerm1y = term ? !!term.checked : ui.signTerm1y !== false;
-      if (!renewing) {
+      if (!renewing && signPacksNewLease(t)) {
         if (ui.signTerm1y && !ui.signLeaseCustom) applyOneYearLease(t, r);
         else if (t.leaseStart) applyStudioLeasePack(t, r, t.leaseStart);
       }
