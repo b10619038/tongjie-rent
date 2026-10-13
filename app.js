@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-52";
-const APP_EDIT_COUNT = 1872;
+const APP_STAMP = "2026-10-13-20-58";
+const APP_EDIT_COUNT = 1874;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1482";
+const FILE_VER = "1484";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已完成的工作留在日曆上，淡色加刪除線"] },
+  { ver: APP_VERSION, items: ["已完成可改回未完成，編輯可改時間"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -12214,10 +12214,21 @@ function mergeMemoRow(a, b) {
   if (!b) return a;
   const next = Object.assign({}, a, b);
   if (a.done || b.done) next.done = true;
-  next.doneMonths = [...new Set([].concat(a.doneMonths || [], b.doneMonths || []))];
-  next.doneAtMonths = Object.assign({}, a.doneAtMonths || {}, b.doneAtMonths || {});
-  if (String(b.doneAt || "") > String(a.doneAt || "")) next.doneAt = b.doneAt;
-  else if (a.doneAt) next.doneAt = a.doneAt;
+  const aStamp = Number(a.doneStamp) || 0;
+  const bStamp = Number(b.doneStamp) || 0;
+  if (aStamp || bStamp) {
+    const win = bStamp >= aStamp ? b : a;
+    next.done = !!win.done;
+    next.doneAt = win.doneAt || "";
+    next.doneMonths = (win.doneMonths || []).slice();
+    next.doneAtMonths = Object.assign({}, win.doneAtMonths || {});
+    next.doneStamp = Math.max(aStamp, bStamp);
+  } else {
+    next.doneMonths = [...new Set([].concat(a.doneMonths || [], b.doneMonths || []))];
+    next.doneAtMonths = Object.assign({}, a.doneAtMonths || {}, b.doneAtMonths || {});
+    if (String(b.doneAt || "") > String(a.doneAt || "")) next.doneAt = b.doneAt;
+    else if (a.doneAt) next.doneAt = a.doneAt;
+  }
   if (a.edited && !b.edited) { next.text = a.text; next.edited = true; }
   return next;
 }
@@ -30155,6 +30166,7 @@ function adminAi() {
             ${editing ? `<form class="work-edit" data-work-save="${m.id}">
               <input name="text" type="text" value="${escapeHtml(m.text || "")}" placeholder="工作內容" autocomplete="off" />
               <input name="date" type="date" value="${escapeHtml(dateVal || "")}" />
+              <input name="time" type="time" value="${escapeHtml(memoTimeInputValue(m))}" />
               <div class="unpaid-tools work-memo-tools">
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
@@ -30163,7 +30175,7 @@ function adminAi() {
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
-              <button type="button" class="ghost" data-done-memo="${m.id}">完成</button>
+              <button type="button" class="ghost" data-${m.struck ? "undone" : "done"}-memo="${m.id}">${m.struck ? "未完成" : "完成"}</button>
             </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}` : ""}
             </div>`;
       }).join("");
@@ -30466,7 +30478,13 @@ function persistMemoDone(data) {
   const take = m => {
     if (!m || !m.id) return;
     const cur = map[m.id] || {};
-    map[m.id] = {
+    map[m.id] = m.doneStamp ? {
+      done: !!m.done,
+      doneAt: m.doneAt || "",
+      doneMonths: (m.doneMonths || []).slice(),
+      doneAtMonths: Object.assign({}, m.doneAtMonths || {}),
+      doneStamp: m.doneStamp
+    } : {
       done: !!(m.done || cur.done),
       doneAt: String(m.doneAt || "") > String(cur.doneAt || "") ? m.doneAt : (cur.doneAt || m.doneAt || ""),
       doneMonths: [...new Set([].concat(cur.doneMonths || [], m.doneMonths || []))],
@@ -30484,6 +30502,14 @@ function applyMemoDone(data) {
     if (!m || !m.id) return;
     const d = map[m.id];
     if (!d) return;
+    if (d.doneStamp && Number(d.doneStamp) >= Number(m.doneStamp || 0)) {
+      m.done = !!d.done;
+      m.doneAt = d.doneAt || "";
+      m.doneMonths = (d.doneMonths || []).slice();
+      m.doneAtMonths = Object.assign({}, d.doneAtMonths || {});
+      m.doneStamp = d.doneStamp;
+      return;
+    }
     if (d.done) m.done = true;
     if (d.doneAt && (!m.doneAt || String(d.doneAt) >= String(m.doneAt))) m.doneAt = d.doneAt;
     m.doneMonths = [...new Set([].concat(m.doneMonths || [], d.doneMonths || []))];
@@ -30742,6 +30768,36 @@ function workAppointMemos() {
     push("repairap-" + r.id, at, who + " 報修 " + (kind || "報修"));
   });
   return out;
+}
+function memoTimeInputValue(m) {
+  const mins = workMemoMinutes(m);
+  if (mins == null) return "";
+  return String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+}
+function clockLabelFromHm(hm) {
+  const hit = String(hm || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!hit) return "";
+  let h = Number(hit[1]);
+  const min = hit[2];
+  const period = h >= 12 ? "下午" : "上午";
+  let h12 = h % 12; if (!h12) h12 = 12;
+  return period + " " + h12 + ":" + min;
+}
+function undoMemoDone(m) {
+  if (!m) return;
+  const ym = ymNow();
+  const key = memoOccurKey(m);
+  if (m.monthDay || m.intervalMonths || Number(m.onlyMonth)) {
+    m.doneMonths = (m.doneMonths || []).filter(x => x !== ym && x !== key);
+    const at = Object.assign({}, m.doneAtMonths || {});
+    delete at[ym];
+    delete at[key];
+    m.doneAtMonths = at;
+  } else {
+    m.done = false;
+    m.doneAt = "";
+  }
+  m.doneStamp = Date.now();
 }
 function memoStruckOn(m, ymd) {
   if (!m || !ymd) return false;
@@ -38548,12 +38604,18 @@ function bindAdminAi() {
       const fd = new FormData(form);
       const text = String(fd.get("text") || "").trim();
       const date = String(fd.get("date") || "").trim();
+      const time = String(fd.get("time") || "").trim();
       if (!text) { toast("請先填工作內容"); return; }
       m.text = text;
       m.edited = true;
+      m.time = clockLabelFromHm(time);
       if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         m.date = date;
-        if (m.monthDay) m.monthDay = Number(date.slice(8, 10));
+        const day = Number(date.slice(8, 10));
+        const month = Number(date.slice(5, 7));
+        if (m.monthDay || m.intervalMonths) m.monthDay = day;
+        if (m.intervalMonths) m.anchor = date;
+        if (Number(m.onlyMonth)) m.onlyMonth = month;
       }
       saveMemoChange(m);
       ui.workEditId = "";
@@ -38677,6 +38739,7 @@ function bindAdminAi() {
       if ((m.owner || "") === "1240" || id === "cycle-dev-salary") m.owner = "1240";
       const today = ymdOf(nowStamp());
       m.doneAt = today;
+      m.doneStamp = Date.now();
       if (m.monthDay || m.intervalMonths) {
         m.doneMonths = m.doneMonths || [];
         const key = memoOccurKey(m);
@@ -38697,6 +38760,25 @@ function bindAdminAi() {
       ui.workEditId = "";
       ui.keepScroll = true;
       toast(m.monthDay ? "本月這筆已完成，記入今天行程，下個月會再提醒" : "已完成，記入今天行程");
+      render();
+    };
+  });
+  document.querySelectorAll("[data-undone-memo]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.undoneMemo;
+      const m = myMemos().find(x => x.id === id)
+        || loadDevMemos().find(x => x.id === id)
+        || (state.aiMemos || []).find(x => x.id === id);
+      if (!m) { toast("找不到這筆工作"); return; }
+      undoMemoDone(m);
+      saveMemoChange(m);
+      ui.workMemoId = id;
+      ui.keepScroll = true;
+      toast("已改回未完成");
       render();
     };
   });
