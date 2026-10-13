@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-50";
-const APP_EDIT_COUNT = 1887;
+const APP_STAMP = "2026-10-13-21-52";
+const APP_EDIT_COUNT = 1888;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1497";
+const FILE_VER = "1498";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增行程表單從加號縮放出來"] },
+  { ver: APP_VERSION, items: ["打開新增行程時加號留在原位並消失"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -31032,7 +31032,7 @@ function workCalHtml(memoRows) {
 }
 function workAddHtml(sel) {
   const open = !!ui.workAddOpen;
-  return `<div class="work-add-bar">
+  return `<div class="work-add-bar${open ? " is-open" : ""}">
     ${open ? `<form class="work-edit work-add-form" id="work-add-form">
       <input name="text" type="text" placeholder="行程" autocomplete="off" />
       <input name="date" type="date" value="${escapeHtml(sel || "")}" />
@@ -31049,8 +31049,7 @@ function workAddHtml(sel) {
         <button type="submit" class="ghost">儲存</button>
         <button type="button" class="ghost" id="work-add-cancel">取消</button>
       </div>
-    </form>` : ""}
-    <button type="button" class="work-add" id="work-add" aria-label="新增行程">+</button>
+    </form>` : `<button type="button" class="work-add" id="work-add" aria-label="新增行程">+</button>`}
   </div>`;
 }
 function tenantLine(t) {
