@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-22-14";
-const APP_EDIT_COUNT = 1894;
+const APP_STAMP = "2026-10-13-22-18";
+const APP_EDIT_COUNT = 1895;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1504";
+const FILE_VER = "1505";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紀錄電度、紀錄水度改放到紀錄選單"] },
+  { ver: APP_VERSION, items: ["記入電度、水度改放在電抄表和水抄表裡"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5780,8 +5780,8 @@ function meterBoxHtml(m) {
     ${shares.map(meterShareHtml).join("")}
   </div>`;
 }
-function meterKindPanelHtml() {
-  const kind = ui.meterKind === "water" ? "water" : "elec";
+function meterKindPanelHtml(forceKind) {
+  const kind = forceKind === "water" || forceKind === "elec" ? forceKind : (ui.meterKind === "water" ? "water" : "elec");
   const units = allMeterUnits().filter(u => u.kind === kind);
   const shares = kind === "elec" ? METER_SHARES : [];
   return `<div class="meter-box">
@@ -29028,27 +29028,6 @@ function historyRows(cat) {
   }
   return [];
 }
-function meterCardHtml() {
-  const open = ui.meterOpen !== false;
-  const kind = ui.meterKind === "water" ? "water" : "elec";
-  return `<div class="card card-body tenant-slim${open ? " open" : ""}" id="meter-card">
-    <div class="row tenant-slim-head">
-      <div class="meter-picks">
-        <button type="button" class="meter-pick elec${kind === "elec" ? " on" : ""}" data-meter-kind="elec">紀錄電度</button>
-        <button type="button" class="meter-pick water${kind === "water" ? " on" : ""}" data-meter-kind="water">紀錄水度</button>
-      </div>
-      <button type="button" class="fold-head meter-fold" id="meter-fold" aria-label="展開紀錄">
-        <span class="fold-caret"></span>
-      </button>
-    </div>
-    <div class="tenant-slim-body">
-      <div class="tenant-slim-inner">
-        <p class="small" style="margin-top:10px">填本次度數後點記入。歷史不會歸零。新錶可在下面新增。</p>
-        ${meterKindPanelHtml()}
-      </div>
-    </div>
-  </div>`;
-}
 function adminHistory() {
   const cats = [
     ["pact", "租客合約"],
@@ -29079,8 +29058,10 @@ function adminHistory() {
       <span class="v">${escapeHtml(row.title || "")}${row.amount ? "　" + money(row.amount) : ""}${row.sub ? `<span class="small" style="display:block">${escapeHtml(row.sub)}</span>` : ""}</span>
     </div>`).join("") : `<div class="empty">這一類目前沒有紀錄</div>`);
   const pactN = cat === "pact" ? contractLedgerEntries().length : 0;
+  const meterKind = cat === "meter-water" ? "water" : (cat === "meter-elec" ? "elec" : "");
+  if (meterKind) ui.meterKind = meterKind;
+  const meterBody = meterKind ? `<div id="meter-card" class="meter-in-history"><p class="small">填本次度數後點記入。歷史不會歸零。新錶可在下面新增。</p>${meterKindPanelHtml(meterKind)}</div>` : "";
   return `<div class="admin-grid list">
-    ${meterCardHtml()}
     <div class="card card-body">
       <h2 class="dash-h">紀錄</h2>
       <p class="small">開發者專用。租客合約從 115年9月起，依房號列出目前合約、續約日、新合約、上一份。App 從這時開始記。</p>
@@ -29088,6 +29069,7 @@ function adminHistory() {
         ${cats.map(([id, label]) => `<button type="button" class="ghost ${cat === id ? "on" : ""}" data-history-cat="${id}">${label}</button>`).join("")}
       </div>
       <p class="small" style="margin-top:12px">${cat === "pact" ? ("共 " + pactN + " 間") : ("共 " + rows.length + " 筆" + (rows.length > shown.length ? "，顯示最近 " + shown.length + " 筆" : ""))}</p>
+      ${meterBody}
       ${body}
     </div>
   </div>`;

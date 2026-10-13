@@ -4027,6 +4027,7 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   border-radius: 16px;
   background: #fff;
 }
+#meter-card.meter-in-history { margin-top: 4px; }
 #work-card .meter-unit,
 #meter-card .meter-unit {
   display: grid;
