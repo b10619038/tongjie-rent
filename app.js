@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-18-24";
-const APP_EDIT_COUNT = 1858;
+const APP_STAMP = "2026-10-13-18-26";
+const APP_EDIT_COUNT = 1859;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1468";
+const FILE_VER = "1469";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作行程依畫面寬度換行"] },
+  { ver: APP_VERSION, items: ["抄表改成紀錄電度、紀錄水度"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5785,14 +5785,10 @@ function meterKindPanelHtml() {
   const units = allMeterUnits().filter(u => u.kind === kind);
   const shares = kind === "elec" ? METER_SHARES : [];
   return `<div class="meter-box">
-    <div class="sign-slot-grid" style="margin:0 0 10px">
-      <button type="button" class="sign-slot${kind === "elec" ? " on" : ""}" data-meter-kind="elec">電表</button>
-      <button type="button" class="sign-slot${kind === "water" ? " on" : ""}" data-meter-kind="water">水表</button>
-    </div>
-    ${units.length ? units.map(meterUnitHtml).join("") : `<div class="small">還沒有${kind === "water" ? "水表" : "電表"}。下面可新增。</div>`}
+    ${units.length ? units.map(meterUnitHtml).join("") : `<div class="small">還沒有${kind === "water" ? "水度" : "電度"}。下面可新增。</div>`}
     ${shares.map(meterShareHtml).join("")}
     <form id="meter-add" class="work-edit" style="margin-top:8px" data-meter-add="${kind}">
-      <div class="small">新增${kind === "water" ? "水表" : "電表"}</div>
+      <div class="small">新增${kind === "water" ? "水度" : "電度"}</div>
       <input name="name" type="text" placeholder="戶名，例如 誠家" autocomplete="off" />
       <input name="unit" type="text" placeholder="門牌，例如 93-55" autocomplete="off" />
       <div class="unpaid-tools work-memo-tools"><button type="submit" class="ghost">加入</button></div>
@@ -5808,7 +5804,7 @@ function addExtraMeter(kind, name, unit) {
   state.extraMeters.push({ id, roomNo: u, unit: u, name: n, kind: kind === "water" ? "water" : "elec" });
   save();
   try { pushCloud(); } catch {}
-  toast("已加入" + (kind === "water" ? "水表" : "電表") + "　" + u + " " + n);
+  toast("已加入" + (kind === "water" ? "水度" : "電度") + "　" + u + " " + n);
   return true;
 }
 function saveMeterReading(unitId, raw) {
@@ -30068,15 +30064,18 @@ function adminAi() {
       const kind = ui.meterKind === "water" ? "water" : "elec";
       return `<div class="card card-body tenant-slim${open ? " open" : ""}" id="meter-card">
       <div class="row tenant-slim-head">
-        <button type="button" class="fold-head" id="meter-fold">
-          <span class="work-title"><span class="k">抄表</span><span class="led-trip">${kind === "water" ? "水表" : "電表"}</span></span>
-          <span class="row-end"><span class="fold-caret"></span></span>
+        <div class="meter-picks">
+          <button type="button" class="meter-pick${kind === "elec" ? " on" : ""}" data-meter-kind="elec">紀錄電度</button>
+          <button type="button" class="meter-pick${kind === "water" ? " on" : ""}" data-meter-kind="water">紀錄水度</button>
+        </div>
+        <button type="button" class="fold-head meter-fold" id="meter-fold" aria-label="展開紀錄">
+          <span class="fold-caret"></span>
         </button>
         ${aiDragBtn()}
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">選電表或水表，填本次度數後點記入。歷史不會歸零。新錶可在下面新增。</p>
+          <p class="small" style="margin-top:10px">填本次度數後點記入。歷史不會歸零。新錶可在下面新增。</p>
           ${meterKindPanelHtml()}
         </div>
       </div>
