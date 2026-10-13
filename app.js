@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-47";
-const APP_EDIT_COUNT = 1871;
+const APP_STAMP = "2026-10-13-20-52";
+const APP_EDIT_COUNT = 1872;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1481";
+const FILE_VER = "1482";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["工作日曆當天行程：沒時間的在上，有時間的由早到晚"] },
+  { ver: APP_VERSION, items: ["已完成的工作留在日曆上，淡色加刪除線"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30148,7 +30148,7 @@ function adminAi() {
         return `
             <div class="work-item">
             <div class="work-scroll-clip"><div class="work-scroll"><div class="work-scroller">
-            <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
+            <div class="mini clickable work-memo${on ? " open" : ""}${m.struck ? " is-done" : ""}" data-work-memo="${m.id}">
               <span>${escapeHtml(bare ? ((m.time ? m.time + "　" : "") + (m.text || "")) : formatWorkMemo(m))}</span>
             </div>
             </div></div></div>
@@ -30743,17 +30743,28 @@ function workAppointMemos() {
   });
   return out;
 }
+function memoStruckOn(m, ymd) {
+  if (!m || !ymd) return false;
+  const ym = String(ymd).slice(0, 7);
+  if (m.monthDay || m.intervalMonths || Number(m.onlyMonth)) {
+    const months = m.doneMonths || [];
+    if (months.indexOf(ym) >= 0 || months.indexOf(ymd) >= 0) return true;
+    const at = m.doneAtMonths || {};
+    return !!(at[ym] || at[ymd]);
+  }
+  return !!m.done;
+}
 function workMemosOnMonth(y, m) {
   const ym = y + "-" + String(m).padStart(2, "0");
   const map = {};
-  upcomingMemos().forEach(memo => {
+  myMemos().forEach(memo => {
     if (!memo || memo.source === "sign" || String(memo.id || "").indexOf("signap-") === 0 || /實體蓋章簽約/.test(String(memo.text || ""))) return;
     const d = Number(memo.onlyMonth)
       ? ((workOccurYmd(memo) || "").slice(0, 7) === ym ? workOccurYmd(memo) : "")
       : cycleDateInMonth(memo, y, m);
     if (!d || d.slice(0, 7) !== ym) return;
     if (!map[d]) map[d] = [];
-    map[d].push(memo);
+    map[d].push(Object.assign({}, memo, { struck: memoStruckOn(memo, d) }));
   });
   workAppointMemos().forEach(memo => {
     if (!memo.date || memo.date.slice(0, 7) !== ym) return;
@@ -30824,8 +30835,10 @@ function workCalHtml(memoRows) {
         if (c.out < 0) { cm -= 1; if (cm < 1) { cm = 12; cy -= 1; } }
         if (c.out > 0) { cm += 1; if (cm > 12) { cm = 1; cy += 1; } }
         const ymd = cy + "-" + p(cm) + "-" + p(cd);
-        const n = (map[ymd] || []).length;
-        const late = n && ymd < today;
+        const list = map[ymd] || [];
+        const openN = list.filter(x => x && !x.struck).length;
+        const late = openN && ymd < today;
+        const n = list.length;
         const on = !c.out && cd === ui.workCalDay;
         const wk = new Date(cy, cm - 1, cd).getDay();
         return `<button type="button" class="work-cal-d${c.out ? " out" : ""}${on ? " on" : ""}${!c.out && (wk === 0 || wk === 6) ? " wk" : ""}${late ? " late" : ""}" data-work-cal-day="${ymd}"><em>${cd}</em>${n ? `<i class="dot"></i>` : `<i class="dot empty"></i>`}</button>`;

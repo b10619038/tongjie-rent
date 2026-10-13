@@ -4003,6 +4003,11 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   padding: 3px 8px;
   margin: 0 -4px;
 }
+#work-card .work-memo.is-done span {
+  color: #b7bec7;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
 #work-card .work-memo.open {
   background: var(--chip);
 }
