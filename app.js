@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-18-26";
-const APP_EDIT_COUNT = 1859;
+const APP_STAMP = "2026-10-13-18-30";
+const APP_EDIT_COUNT = 1861;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1469";
+const FILE_VER = "1471";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["抄表改成紀錄電度、紀錄水度"] },
+  { ver: APP_VERSION, items: ["日曆拿掉實體蓋章簽約，日期上下收緊"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30583,6 +30583,7 @@ function workMemosOnMonth(y, m) {
   const ym = y + "-" + String(m).padStart(2, "0");
   const map = {};
   upcomingMemos().forEach(memo => {
+    if (!memo || memo.source === "sign" || String(memo.id || "").indexOf("signap-") === 0 || /實體蓋章簽約/.test(String(memo.text || ""))) return;
     const d = Number(memo.onlyMonth)
       ? ((workOccurYmd(memo) || "").slice(0, 7) === ym ? workOccurYmd(memo) : "")
       : cycleDateInMonth(memo, y, m);
