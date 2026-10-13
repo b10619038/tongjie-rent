@@ -2970,7 +2970,7 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-dash { width: 22px; }
 .tab-ic.ic-rooms { width: 27.54px; height: 23.4px; flex-basis: 23.4px; }
 .tab-ic.ic-tenants { width: 20.52px; height: 23.4px; flex-basis: 23.4px; }
-.tab-ic.ic-ai { width: 24px; }
+.tab-ic.ic-ai { width: 26px; height: 26px; flex-basis: 26px; }
 .tab-ic.ic-announce { width: 30px; }
 .tab-ic.ic-history { width: 26.73px; height: 21.06px; flex-basis: 21.06px; }
 .tab-ic.ic-food { width: 25px; }
