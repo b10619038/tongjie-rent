@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-42";
-const APP_EDIT_COUNT = 1870;
+const APP_STAMP = "2026-10-13-20-47";
+const APP_EDIT_COUNT = 1871;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1480";
+const FILE_VER = "1481";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["工作日曆同步報修申請"] },
+  { ver: APP_VERSION, items: ["工作日曆當天行程：沒時間的在上，有時間的由早到晚"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30763,6 +30763,28 @@ function workMemosOnMonth(y, m) {
   });
   return map;
 }
+function workMemoMinutes(m) {
+  const raw = String((m && m.time) || "").trim() || String((m && m.text) || "").trim();
+  if (!raw) return null;
+  const hit = raw.match(/(上午|下午|晚上)?\s*(\d{1,2})\s*[:：]\s*(\d{2})/);
+  if (!hit) return null;
+  let h = Number(hit[2]);
+  const min = Number(hit[3]);
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return null;
+  if (hit[1] === "下午" || hit[1] === "晚上") { if (h < 12) h += 12; }
+  else if (hit[1] === "上午" && h === 12) h = 0;
+  return h * 60 + min;
+}
+function sortWorkDayMemos(list) {
+  return (list || []).slice().sort((a, b) => {
+    const am = workMemoMinutes(a);
+    const bm = workMemoMinutes(b);
+    if (am == null && bm == null) return 0;
+    if (am == null) return -1;
+    if (bm == null) return 1;
+    return am - bm;
+  });
+}
 function workCalHtml(memoRows) {
   const now = new Date();
   const today = ymdParts(now);
@@ -30786,7 +30808,7 @@ function workCalHtml(memoRows) {
   const weeks = ["日", "一", "二", "三", "四", "五", "六"];
   const p = n => String(n).padStart(2, "0");
   const sel = y + "-" + p(m) + "-" + p(ui.workCalDay);
-  const dayMemos = map[sel] || [];
+  const dayMemos = sortWorkDayMemos(map[sel] || []);
   const wd = new Date(y, m - 1, ui.workCalDay).getDay();
   const head = m + "月" + ui.workCalDay + "日週" + weeks[wd];
   return `<div class="work-cal">
