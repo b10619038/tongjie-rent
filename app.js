@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-27";
-const APP_EDIT_COUNT = 1881;
+const APP_STAMP = "2026-10-13-21-28";
+const APP_EDIT_COUNT = 1882;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1491";
+const FILE_VER = "1492";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["今天日期圓圈和新增行程改成風格綠"] },
+  { ver: APP_VERSION, items: ["拿掉行程說明，新增按鈕按下去會縮小"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30212,7 +30212,6 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">點日期看當天工作，點一筆可加到日曆、編輯或完成。</p>
           ${workCalHtml(memoRows)}
         </div>
       </div>
@@ -38586,6 +38585,7 @@ function bindAdminAi() {
   });
   const workAdd = document.getElementById("work-add");
   if (workAdd) {
+    bindIosPress(workAdd);
     workAdd.addEventListener("pointerdown", e => e.stopPropagation());
     workAdd.onclick = e => {
       e.preventDefault();

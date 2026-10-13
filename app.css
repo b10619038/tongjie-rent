@@ -4399,6 +4399,12 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   line-height: 32px;
   text-align: center;
   cursor: pointer;
+  transform-origin: center center;
+  transition: transform .16s cubic-bezier(.22, 1.4, .36, 1);
+}
+#work-card .work-add.is-press {
+  transform: scale(0.86);
+  transition-duration: .08s;
 }
 .work-cal-empty { text-align: center; color: var(--muted); padding: 28px 8px 18px; font-weight: 700; }
 .work-cal .work-item { margin-top: 6px; }
