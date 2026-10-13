@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-35";
-const APP_EDIT_COUNT = 1884;
+const APP_STAMP = "2026-10-13-21-40";
+const APP_EDIT_COUNT = 1885;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1494";
+const FILE_VER = "1495";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["手機新增的行程會馬上同步到電腦"] },
+  { ver: APP_VERSION, items: ["新增行程立刻送到另一台，不用等整包資料"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -11013,8 +11013,27 @@ function ingestLiveCloud(raw) {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || o.device === liveDeviceId()) return;
     const at = Number(o.at) || 0;
-    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length)) return;
+    const hasMemos = (Array.isArray(o.memos) && o.memos.length) || (Array.isArray(o.memoGone) && o.memoGone.length);
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !hasMemos) return;
     if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
+    if (hasMemos) {
+      state.memoGone = unionGone(state.memoGone, o.memoGone);
+      const incoming = (o.memos || []).filter(m => m && m.id);
+      state.aiMemos = dropGone(unionMemos(state.aiMemos || [], incoming), state.memoGone);
+      if (Array.isArray(state.devMemos)) state.devMemos = dropGone(state.devMemos, state.memoGone);
+      const jump = incoming.find(m => /^\d{4}-\d{2}-\d{2}$/.test(String(m.date || "")));
+      if (jump && ui.page === "ai") {
+        ui.workCalYear = Number(jump.date.slice(0, 4));
+        ui.workCalMonth = Number(jump.date.slice(5, 7));
+        ui.workCalDay = Number(jump.date.slice(8, 10));
+        ui.workOpen = true;
+      }
+      try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, state, { bookVault: vaultForStore(state.bookVault) }))); } catch {}
+      markCloudDirty();
+      ui.keepScroll = true;
+      try { render(); } catch {}
+      try { pushCloud(); } catch {}
+    }
     if (Array.isArray(o.renewals) && o.renewals.length) {
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
       if (o.renewPing) state.renewPing = o.renewPing;
@@ -11083,7 +11102,22 @@ function publishRenewNow(row) {
     pendingRenewPkt = null;
   } catch {}
 }
+let pendingLiveMemos = [];
+let pendingLiveGone = [];
+function queueLiveMemo(m) {
+  if (!m || !m.id) return;
+  pendingLiveMemos = pendingLiveMemos.filter(x => !x || x.id !== m.id).concat([m]).slice(-30);
+  publishLiveCloud();
+}
+function queueLiveMemoGone(id) {
+  if (!id) return;
+  pendingLiveGone = pendingLiveGone.concat([id]).slice(-30);
+  pendingLiveMemos = pendingLiveMemos.filter(x => !x || x.id !== id);
+  publishLiveCloud();
+}
 function publishLiveCloud() {
+  const memos = pendingLiveMemos.slice();
+  const memoGone = pendingLiveGone.slice();
   lastLiveAt = Date.now();
   if (!(paidWs && paidWs.readyState === 1)) {
     try { connectPaidCloud(); } catch {}
@@ -11093,8 +11127,12 @@ function publishLiveCloud() {
     paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify({
       at: lastLiveAt,
       device: liveDeviceId(),
-      updatedAt: Number(state.updatedAt) || lastLiveAt
+      updatedAt: Number(state.updatedAt) || lastLiveAt,
+      memos,
+      memoGone
     }), false));
+    pendingLiveMemos = [];
+    pendingLiveGone = [];
   } catch {}
 }
 function mqttRemain(n) {
@@ -11483,6 +11521,7 @@ function connectPaidCloud() {
         if (moneyPubWait) publishPaidCloud();
         if (pendingRenewPkt) publishRenewNow(pendingRenewPkt.renewals && pendingRenewPkt.renewals[0]);
         if (pendingEarlyPkt) publishEarlyNow(pendingEarlyPkt.earlyOuts && pendingEarlyPkt.earlyOuts[0]);
+        if (pendingLiveMemos.length || pendingLiveGone.length) publishLiveCloud();
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
@@ -12406,6 +12445,7 @@ function saveMemoChange(m) {
   }
   try { persistMemoDone(state); } catch {}
   save();
+  try { queueLiveMemo(m); } catch {}
   try { pushCloud(); } catch {}
 }
 function deleteWorkMemo(m) {
@@ -12415,6 +12455,7 @@ function deleteWorkMemo(m) {
   if (Array.isArray(state.devMemos)) state.devMemos = dropGone(state.devMemos, state.memoGone);
   try { saveDevMemos(state.devMemos); } catch {}
   save();
+  try { queueLiveMemoGone(m.id); } catch {}
   try { pushCloud(); } catch {}
 }
 function removeMemo(id) {
