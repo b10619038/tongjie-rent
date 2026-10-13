@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-52";
-const APP_EDIT_COUNT = 1888;
+const APP_STAMP = "2026-10-13-21-54";
+const APP_EDIT_COUNT = 1889;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1498";
+const FILE_VER = "1499";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["打開新增行程時加號留在原位並消失"] },
+  { ver: APP_VERSION, items: ["新增行程從右上角的加號往左下展開"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -31035,8 +31035,7 @@ function workAddHtml(sel) {
   return `<div class="work-add-bar${open ? " is-open" : ""}">
     ${open ? `<form class="work-edit work-add-form" id="work-add-form">
       <input name="text" type="text" placeholder="行程" autocomplete="off" />
-      <input name="date" type="date" value="${escapeHtml(sel || "")}" />
-      <input name="time" type="time" />
+      <input name="when" type="datetime-local" value="${escapeHtml(sel || "")}" />
       <select name="cycle">
         <option value="">不重複</option>
         <option value="1">每個月</option>
@@ -38685,8 +38684,9 @@ function bindAdminAi() {
       e.stopPropagation();
       const fd = new FormData(workAddForm);
       const text = String(fd.get("text") || "").trim();
-      const date = String(fd.get("date") || "").trim();
-      const time = String(fd.get("time") || "").trim();
+      const when = String(fd.get("when") || "").trim();
+      const date = when.slice(0, 10);
+      const time = /^\d{2}:\d{2}/.test(when.slice(11, 16)) ? when.slice(11, 16) : "";
       const cycle = String(fd.get("cycle") || "");
       if (!text) { toast("請先填行程"); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast("請先選日期"); return; }

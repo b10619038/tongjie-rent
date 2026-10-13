@@ -4389,7 +4389,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 #work-card .work-add-form {
   width: 100%;
   margin-bottom: 10px;
-  transform-origin: right bottom;
+  transform-origin: right top;
   animation: work-add-zoom .32s cubic-bezier(.16, 1.12, .32, 1);
 }
 @keyframes work-add-zoom {
