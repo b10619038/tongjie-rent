@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-22-03";
-const APP_EDIT_COUNT = 1892;
+const APP_STAMP = "2026-10-13-22-09";
+const APP_EDIT_COUNT = 1893;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1502";
+const FILE_VER = "1503";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增行程收起時外框跟著一起縮"] },
+  { ver: APP_VERSION, items: ["行程收起時加號馬上出現"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -38683,8 +38683,16 @@ function bindAdminAi() {
       const bar = form.closest(".work-add-bar");
       if (bar) {
         bar.style.height = bar.offsetHeight + "px";
+        if (!bar.querySelector(".work-add")) {
+          const plus = document.createElement("button");
+          plus.type = "button";
+          plus.className = "work-add";
+          plus.setAttribute("aria-label", "新增行程");
+          plus.textContent = "+";
+          bar.appendChild(plus);
+        }
         bar.classList.add("is-closing");
-        requestAnimationFrame(() => { bar.style.height = "0px"; });
+        requestAnimationFrame(() => { bar.style.height = "36px"; });
       }
       form.classList.add("is-closing");
       let closed = false;

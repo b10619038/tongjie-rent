@@ -4401,9 +4401,20 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   pointer-events: none;
 }
 #work-card .work-add-bar.is-closing {
+  position: relative;
   overflow: hidden;
-  margin-top: 0;
-  transition: height .32s cubic-bezier(.4, 0, .2, 1), margin-top .32s cubic-bezier(.4, 0, .2, 1);
+  transition: height .32s cubic-bezier(.4, 0, .2, 1);
+}
+#work-card .work-add-bar.is-closing .work-add {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  animation: work-add-plus-in .18s cubic-bezier(.16, 1.12, .32, 1);
+}
+@keyframes work-add-plus-in {
+  from { transform: scale(.45); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 #work-card .work-add-form select { width: 100%; min-width: 0; box-sizing: border-box; }
 #work-card .work-add-form .work-memo-tools { justify-content: flex-end; }
