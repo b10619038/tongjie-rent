@@ -4351,23 +4351,27 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   width: 36px; height: 36px; border: 0; border-radius: 999px; background: transparent;
   color: #1c2430; font-size: 26px; line-height: 1; padding: 0; cursor: pointer;
 }
-.work-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 0; align-content: start; height: auto; }
-.work-cal-w { text-align: center; font-size: 13px; font-weight: 700; color: #9aa3af; padding: 0 0 2px; }
+.work-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 6px; align-content: start; height: auto; }
+.work-cal-w { text-align: center; font-size: 13px; font-weight: 700; color: #9aa3af; padding: 2px 0 4px; line-height: 1.2; }
 .work-cal-w.sun, .work-cal-w.sat { color: #e25b5b; }
 .work-cal-d {
+  position: relative;
   border: 0; background: transparent; padding: 0; margin: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
-  color: #1c2430; cursor: pointer; min-height: 0; height: 34px; line-height: 1;
+  display: flex; align-items: flex-start; justify-content: center;
+  color: #1c2430; cursor: pointer; height: 40px; min-height: 40px; line-height: 1;
   -webkit-appearance: none; appearance: none;
 }
 .work-cal-d em {
   font-style: normal; font-weight: 600; font-size: 16px;
-  width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%;
+  width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
 }
 .work-cal-d.out { color: #c5cad3; }
 .work-cal-d.wk:not(.on) { color: #e25b5b; }
 .work-cal-d.on em { background: #1c2430; color: #fff; }
-.work-cal-d .dot { width: 4px; height: 4px; border-radius: 50%; background: #1d4e89; margin-top: -2px; }
+.work-cal-d .dot {
+  position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+  width: 5px; height: 5px; border-radius: 50%; background: #1d4e89; margin: 0;
+}
 .work-cal-d .dot.empty { background: transparent; }
 .work-cal-d.late .dot { background: #e25b5b; }
 .work-cal-dayh { margin: 14px 2px 8px; font-size: 17px; font-weight: 800; }
