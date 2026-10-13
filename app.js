@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-18-09";
-const APP_EDIT_COUNT = 1855;
+const APP_STAMP = "2026-10-13-18-16";
+const APP_EDIT_COUNT = 1856;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1465";
+const FILE_VER = "1466";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本月工作改成月曆，點日期看當天行程"] },
+  { ver: APP_VERSION, items: ["本月工作拿掉本月狀況"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30015,7 +30015,6 @@ function adminAi() {
     work: (() => {
       try { ensureCycleJobs(state); } catch {}
       try { if (typeof isDeveloper === "function" && isDeveloper()) ensureDevCycleJobs(state); } catch {}
-      const plan = monthlyErrandPlan();
       const g = groupUpcomingMemos();
       const bits = [];
       if (g.overdue.length) bits.push("過期 " + g.overdue.length);
@@ -30060,10 +30059,6 @@ function adminAi() {
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">點日期看當天工作，點一筆可加到日曆、編輯或完成。</p>
           ${g.all.length ? workCalHtml(memoRows) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
-          <div class="small" style="margin:14px 0 6px">${escapeHtml(plan.monthLabel)}　本月狀況</div>
-          ${plan.stats.map(s => s.go
-            ? `<div class="mini clickable" data-work-go="${s.go}"><span>${escapeHtml(s.text)}</span></div>`
-            : `<div class="mini"><span>${escapeHtml(s.text)}</span></div>`).join("")}
         </div>
       </div>
     </div>`;
