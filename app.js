@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-18";
-const APP_EDIT_COUNT = 1864;
+const APP_STAMP = "2026-10-13-20-24";
+const APP_EDIT_COUNT = 1865;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1474";
+const FILE_VER = "1475";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租約可預約到 7651 領取紙本發票"] },
+  { ver: APP_VERSION, items: ["領取發票只開放每月25到30日，週休不給約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -27456,17 +27456,24 @@ function eContractDocHtml(t, r) {
     ${es && es.status === "signed" ? `<div class="signed-block"><p>承租人簽名</p><img src="${es.sig}" alt="簽名"><p class="small">簽署時間　${escapeHtml(formatDateTime12(es.at))}</p></div>` : ""}
   </div>`;
 }
-function invoicePickupWeekdays(n) {
+function invoicePickupDays() {
   const out = [];
   const start = new Date();
   const today = todayYmd();
-  for (let i = 0; i < 70 && out.length < (n || 16); i++) {
-    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-    const wd = day.getDay();
-    if (wd === 0 || wd === 6) continue;
-    const ymd = ymdFromDate(day);
-    if (!ymd || ymd < today) continue;
-    out.push(ymd);
+  for (let i = 0; i < 4; i++) {
+    const base = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const yy = base.getFullYear();
+    const mm = base.getMonth();
+    const last = new Date(yy, mm + 1, 0).getDate();
+    const hi = Math.min(30, last);
+    for (let d = 25; d <= hi; d++) {
+      const day = new Date(yy, mm, d);
+      const wd = day.getDay();
+      if (wd === 0 || wd === 6) continue;
+      const ymd = ymdFromDate(day);
+      if (!ymd || ymd < today) continue;
+      out.push(ymd);
+    }
   }
   return out;
 }
@@ -27494,6 +27501,8 @@ function invoicePickupOk(at) {
   const m = String(at || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
   if (!m) return false;
   if (m[1] < todayYmd()) return false;
+  const dom = Number(m[1].slice(8, 10));
+  if (dom < 25 || dom > 30) return false;
   const day = new Date(m[1] + "T12:00:00").getDay();
   if (day === 0 || day === 6) return false;
   const mins = Number(m[2]) * 60 + Number(m[3]);
@@ -27509,7 +27518,7 @@ function invoicePickupCardHtml(t, r) {
   if (!t || !r) return "";
   const open = !!ui.invPickOpen;
   const saved = String(t.invoicePickupAt || "").replace(" ", "T").slice(0, 16);
-  const days = invoicePickupWeekdays(16);
+  const days = invoicePickupDays();
   const times = invoicePickupTimes();
   const savedDay = saved.slice(0, 10);
   const savedHm = saved.slice(11, 16);
@@ -27525,16 +27534,16 @@ function invoicePickupCardHtml(t, r) {
         </button>
       </div>
       <div class="tenant-slim-body"><div class="tenant-slim-inner">
-        <p class="small" style="margin-top:10px">領取紙本發票。星期一到星期五，上午 10:00 到下午 5:00。地點：5F，電梯出來右轉到底，7651簽約室。</p>
+        <p class="small" style="margin-top:10px">每月 25 日到 30 日才能領。碰到星期六、日不開放。時間上午 10:00 到下午 5:00。地點：5F，電梯出來右轉到底，7651簽約室。</p>
         <p class="small">下面是後台自動開立的發票樣子。字軌號碼由辦公室開立後填上，到場即可核對領取。</p>
         ${invoiceSampleHtml(r, t)}
         <label class="field" style="margin-top:12px"><span>日期</span>
-          <select id="inv-pick-day">${days.map(d => `<option value="${d}"${d === day ? " selected" : ""}>${escapeHtml(invoicePickupYmdLabel(d))}</option>`).join("")}</select>
+          ${days.length ? `<select id="inv-pick-day">${days.map(d => `<option value="${d}"${d === day ? " selected" : ""}>${escapeHtml(invoicePickupYmdLabel(d))}</option>`).join("")}</select>` : `<div class="small">這幾個月的 25 到 30 日都碰到週休，暫時沒有可領的日期。</div>`}
         </label>
         <label class="field"><span>時間</span>
           <select id="inv-pick-time">${times.map(x => `<option value="${x}"${x === hm ? " selected" : ""}>${escapeHtml(invoicePickupClockLabel(x))}</option>`).join("")}</select>
         </label>
-        <button type="button" class="btn-navy" id="inv-pick-save" style="margin-top:10px">${when ? "改預約時間" : "預約領取"}</button>
+        <button type="button" class="btn-navy" id="inv-pick-save" style="margin-top:10px"${days.length ? "" : " disabled"}>${when ? "改預約時間" : "預約領取"}</button>
         ${when ? `<p class="small" style="margin-top:8px">已預約 ${escapeHtml(when)}。請到 7651 領取。</p>` : ""}
       </div></div>
     </div>`;
@@ -27559,7 +27568,7 @@ function bindInvoicePickup() {
     const day = (document.getElementById("inv-pick-day") || {}).value || "";
     const hm = (document.getElementById("inv-pick-time") || {}).value || "";
     const at = day + "T" + hm;
-    if (!invoicePickupOk(at)) { toast("請選星期一到星期五，上午 10:00 到下午 5:00"); return; }
+    if (!invoicePickupOk(at)) { toast("只能約每月 25 到 30 日，週六日不開放，上午 10:00 到下午 5:00"); return; }
     t.invoicePickupAt = at;
     t.edited = true;
     t.editedAt = Date.now();
