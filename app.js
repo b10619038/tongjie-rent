@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-58";
-const APP_EDIT_COUNT = 1874;
+const APP_STAMP = "2026-10-13-21-01";
+const APP_EDIT_COUNT = 1875;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1484";
+const FILE_VER = "1485";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已完成可改回未完成，編輯可改時間"] },
+  { ver: APP_VERSION, items: ["拿掉重複的14:00禹旺電單，已完成排到當天最下面"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5835,6 +5835,19 @@ function saveMeterReading(unitId, raw) {
 const DEV_CYCLE_JOBS = [
   { id: "cycle-dev-salary", monthDay: 5, text: "開發者薪資 NT$ 20,000", cycle: true, owner: "1240" }
 ];
+function isDupYuWangElecMemo(m) {
+  if (!m || m.id === "cycle-rent-2b-yu") return false;
+  const text = String(m.text || "");
+  if (!/禹旺/.test(text)) return false;
+  return /林永|並給電單|自繳電費|給電單/.test(text);
+}
+function dropDupYuWangElecMemo(data) {
+  if (!data || !Array.isArray(data.aiMemos)) return;
+  const ids = data.aiMemos.filter(isDupYuWangElecMemo).map(m => m.id);
+  if (!ids.length) return;
+  data.memoGone = unionGone(data.memoGone, ids);
+  data.aiMemos = dropGone(data.aiMemos, data.memoGone);
+}
 function ensureCycleJobs(data) {
   if (!data || !Array.isArray(data.aiMemos)) return;
   CYCLE_JOBS.forEach(job => {
@@ -5853,6 +5866,7 @@ function ensureCycleJobs(data) {
     }
     data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
+  dropDupYuWangElecMemo(data);
   (data.tenants || []).forEach(t => {
     if (!t || t.former || t.demo || t.placeholder) return;
     if (!t.hasAgent && !Number(t.agentFee)) return;
@@ -12783,7 +12797,14 @@ async function pushCloud() {
       extraMeters: unionById(remote && remote.extraMeters, state.extraMeters),
       checkouts: unionById(remote && remote.checkouts, state.checkouts),
       accountOpenings: Object.assign({}, (remote && remote.accountOpenings) || {}, state.accountOpenings || {}),
-      aiMemos: unionMemos((remote && remote.aiMemos) || [], (state.aiMemos || [])).filter(m => m && !isDevMemo(m)),
+      aiMemos: (() => {
+        const gone = unionGone(remote && remote.memoGone, state.memoGone);
+        const merged = unionMemos((remote && remote.aiMemos) || [], (state.aiMemos || [])).filter(m => m && !isDevMemo(m));
+        const ids = gone.concat(merged.filter(isDupYuWangElecMemo).map(m => m.id));
+        state.memoGone = unionGone(ids);
+        return dropGone(merged, state.memoGone).filter(m => !isDupYuWangElecMemo(m));
+      })(),
+      memoGone: state.memoGone || [],
       devMemos: memoOwner() === "1240"
         ? unionMemos(remote && remote.devMemos, state.devMemos)
         : ((remote && remote.devMemos && remote.devMemos.length) ? remote.devMemos : (state.devMemos || [])),
@@ -12832,6 +12853,7 @@ async function pushCloud() {
     if (payload.meterBills) state.meterBills = payload.meterBills;
     persistMeterLogs(state);
     if (payload.aiMemos) state.aiMemos = payload.aiMemos;
+    if (payload.memoGone) state.memoGone = payload.memoGone;
     if (payload.tenants) state.tenants = payload.tenants;
     if (payload.rooms) state.rooms = payload.rooms;
     applyAvatars(state);
@@ -30814,7 +30836,7 @@ function workMemosOnMonth(y, m) {
   const ym = y + "-" + String(m).padStart(2, "0");
   const map = {};
   myMemos().forEach(memo => {
-    if (!memo || memo.source === "sign" || String(memo.id || "").indexOf("signap-") === 0 || /實體蓋章簽約/.test(String(memo.text || ""))) return;
+    if (!memo || memo.source === "sign" || String(memo.id || "").indexOf("signap-") === 0 || /實體蓋章簽約/.test(String(memo.text || "")) || isDupYuWangElecMemo(memo)) return;
     const d = Number(memo.onlyMonth)
       ? ((workOccurYmd(memo) || "").slice(0, 7) === ym ? workOccurYmd(memo) : "")
       : cycleDateInMonth(memo, y, m);
@@ -30844,6 +30866,9 @@ function workMemoMinutes(m) {
 }
 function sortWorkDayMemos(list) {
   return (list || []).slice().sort((a, b) => {
+    const ad = a && a.struck ? 1 : 0;
+    const bd = b && b.struck ? 1 : 0;
+    if (ad !== bd) return ad - bd;
     const am = workMemoMinutes(a);
     const bm = workMemoMinutes(b);
     if (am == null && bm == null) return 0;
