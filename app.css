@@ -4396,7 +4396,12 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   from { transform: scale(.12); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+#work-card .work-add-form.is-closing {
+  animation: work-add-zoom .28s cubic-bezier(.4, 0, .7, .2) reverse forwards;
+  pointer-events: none;
+}
 #work-card .work-add-form select { width: 100%; min-width: 0; box-sizing: border-box; }
+#work-card .work-add-form .work-memo-tools { justify-content: flex-end; }
 #work-card .work-add {
   width: 36px;
   height: 36px;
