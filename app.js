@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-34";
-const APP_EDIT_COUNT = 1883;
+const APP_STAMP = "2026-10-13-21-35";
+const APP_EDIT_COUNT = 1884;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1493";
+const FILE_VER = "1494";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["行程的編輯和完成中間可刪除"] },
+  { ver: APP_VERSION, items: ["手機新增的行程會馬上同步到電腦"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -11062,7 +11062,7 @@ function ingestLiveCloud(raw) {
       } else {
         try { enforceTenantSession(); } catch {}
       }
-    }, 800);
+    }, 200);
   } catch {}
 }
 let pendingRenewPkt = null;
@@ -12915,6 +12915,18 @@ async function pushCloud() {
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
+    try {
+      const again = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+      if (again.ok) {
+        const latest = await again.json();
+        const gone = unionGone(latest && latest.memoGone, payload.memoGone);
+        const merged = unionMemos((latest && latest.aiMemos) || [], payload.aiMemos || []).filter(m => m && !isDevMemo(m));
+        payload.memoGone = gone;
+        payload.aiMemos = dropGone(merged, gone).filter(m => !isDupYuWangElecMemo(m));
+        state.memoGone = gone;
+        state.aiMemos = payload.aiMemos;
+      }
+    } catch {}
     let body;
     try {
       const upload = JSON.parse(JSON.stringify(payload));
