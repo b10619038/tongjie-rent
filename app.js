@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-13-33";
-const APP_EDIT_COUNT = 1854;
+const APP_STAMP = "2026-10-13-18-09";
+const APP_EDIT_COUNT = 1855;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1464";
+const FILE_VER = "1465";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客公告右上角改成減號，表示收起"] },
+  { ver: APP_VERSION, items: ["本月工作改成月曆，點日期看當天行程"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30020,7 +30020,7 @@ function adminAi() {
       const bits = [];
       if (g.overdue.length) bits.push("過期 " + g.overdue.length);
       const summary = bits.join(" · ");
-      const memoRows = arr => arr.map(m => {
+      const memoRows = (arr, bare) => arr.map(m => {
         const on = ui.workMemoId === m.id;
         const locked = m.source === "sign" || String(m.id || "").indexOf("signap-") === 0;
         const editing = on && ui.workEditId === m.id && !locked;
@@ -30029,7 +30029,7 @@ function adminAi() {
             <div class="work-item">
             <div class="work-scroll-clip"><div class="work-scroll"><div class="work-scroller">
             <div class="mini clickable work-memo${on ? " open" : ""}" data-work-memo="${m.id}">
-              <span>${escapeHtml(formatWorkMemo(m))}</span>
+              <span>${escapeHtml(bare ? ((m.time ? m.time + "　" : "") + (m.text || "")) : formatWorkMemo(m))}</span>
             </div>
             </div></div></div>
             ${editing ? `<form class="work-edit" data-work-save="${m.id}">
@@ -30047,7 +30047,6 @@ function adminAi() {
             </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}` : ""}
             </div>`;
       }).join("");
-      const sect = (title, arr) => arr.length ? `<div class="small" style="margin:12px 0 6px">${title}</div>` + memoRows(arr) : "";
       const workOpen = ui.workOpen !== false;
       return `<div class="card card-body tenant-slim${workOpen ? " open" : ""}" id="work-card">
       <div class="row tenant-slim-head">
@@ -30059,8 +30058,8 @@ function adminAi() {
       </div>
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
-          <p class="small" style="margin-top:10px">點一筆工作可加到日曆、編輯或完成。長字可左右滑查看。</p>
-          ${g.all.length ? (sect("過期未完成", g.overdue) + sect("今天／3 天內", g.soon) + sect("本月其餘", g.later)) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
+          <p class="small" style="margin-top:10px">點日期看當天工作，點一筆可加到日曆、編輯或完成。</p>
+          ${g.all.length ? workCalHtml(memoRows) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
           <div class="small" style="margin:14px 0 6px">${escapeHtml(plan.monthLabel)}　本月狀況</div>
           ${plan.stats.map(s => s.go
             ? `<div class="mini clickable" data-work-go="${s.go}"><span>${escapeHtml(s.text)}</span></div>`
@@ -30585,6 +30584,69 @@ function groupUpcomingMemos() {
     else later.push(m);
   });
   return { overdue, soon, later, all: overdue.concat(soon, later) };
+}
+function workMemosOnMonth(y, m) {
+  const ym = y + "-" + String(m).padStart(2, "0");
+  const map = {};
+  upcomingMemos().forEach(memo => {
+    const d = Number(memo.onlyMonth)
+      ? ((workOccurYmd(memo) || "").slice(0, 7) === ym ? workOccurYmd(memo) : "")
+      : cycleDateInMonth(memo, y, m);
+    if (!d || d.slice(0, 7) !== ym) return;
+    if (!map[d]) map[d] = [];
+    map[d].push(memo);
+  });
+  return map;
+}
+function workCalHtml(memoRows) {
+  const now = new Date();
+  const today = ymdParts(now);
+  if (!ui.workCalYear || !ui.workCalMonth) {
+    ui.workCalYear = now.getFullYear();
+    ui.workCalMonth = now.getMonth() + 1;
+    ui.workCalDay = now.getDate();
+  }
+  const y = ui.workCalYear;
+  const m = ui.workCalMonth;
+  const dim = new Date(y, m, 0).getDate();
+  if (!ui.workCalDay || ui.workCalDay > dim) ui.workCalDay = Math.min(dim, now.getDate() || 1);
+  const map = workMemosOnMonth(y, m);
+  const first = new Date(y, m - 1, 1);
+  const pad = first.getDay();
+  const prevDim = new Date(y, m - 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < pad; i++) cells.push({ d: prevDim - pad + 1 + i, out: -1 });
+  for (let d = 1; d <= dim; d++) cells.push({ d, out: 0 });
+  while (cells.length % 7) cells.push({ d: cells.length - pad - dim + 1, out: 1 });
+  const weeks = ["日", "一", "二", "三", "四", "五", "六"];
+  const p = n => String(n).padStart(2, "0");
+  const sel = y + "-" + p(m) + "-" + p(ui.workCalDay);
+  const dayMemos = map[sel] || [];
+  const wd = new Date(y, m - 1, ui.workCalDay).getDay();
+  const head = m + "月" + ui.workCalDay + "日週" + weeks[wd];
+  return `<div class="work-cal">
+    <div class="work-cal-nav">
+      <button type="button" data-work-cal-nav="-1" aria-label="上個月">‹</button>
+      <strong>${y}年${m}月</strong>
+      <button type="button" data-work-cal-nav="1" aria-label="下個月">›</button>
+    </div>
+    <div class="work-cal-grid">
+      ${weeks.map((w, i) => `<div class="work-cal-w${i === 0 ? " sun" : i === 6 ? " sat" : ""}">${w}</div>`).join("")}
+      ${cells.map(c => {
+        let cy = y, cm = m, cd = c.d;
+        if (c.out < 0) { cm -= 1; if (cm < 1) { cm = 12; cy -= 1; } }
+        if (c.out > 0) { cm += 1; if (cm > 12) { cm = 1; cy += 1; } }
+        const ymd = cy + "-" + p(cm) + "-" + p(cd);
+        const n = (map[ymd] || []).length;
+        const late = n && ymd < today;
+        const on = !c.out && cd === ui.workCalDay;
+        const wk = new Date(cy, cm - 1, cd).getDay();
+        return `<button type="button" class="work-cal-d${c.out ? " out" : ""}${on ? " on" : ""}${!c.out && (wk === 0 || wk === 6) ? " wk" : ""}${late ? " late" : ""}" data-work-cal-day="${ymd}"><em>${cd}</em>${n ? `<i class="dot"></i>` : `<i class="dot empty"></i>`}</button>`;
+      }).join("")}
+    </div>
+    <div class="work-cal-dayh">${head}</div>
+    ${dayMemos.length ? memoRows(dayMemos, true) : `<div class="work-cal-empty">這天沒有工作</div>`}
+  </div>`;
 }
 function tenantLine(t) {
   const r = state.rooms.find(x => x.id === t.roomId);
@@ -38150,6 +38212,39 @@ function bindAdminAi() {
     workCard.classList.toggle("open", ui.workOpen);
     };
   }
+  document.querySelectorAll("[data-work-cal-nav]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const now = new Date();
+      let y = ui.workCalYear || now.getFullYear();
+      let m = (ui.workCalMonth || (now.getMonth() + 1)) + (Number(btn.dataset.workCalNav) || 0);
+      if (m < 1) { m = 12; y -= 1; }
+      if (m > 12) { m = 1; y += 1; }
+      ui.workCalYear = y;
+      ui.workCalMonth = m;
+      ui.workCalDay = (y === now.getFullYear() && m === now.getMonth() + 1) ? now.getDate() : 1;
+      ui.workOpen = true;
+      ui.workMemoId = "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-work-cal-day]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const p = String(btn.dataset.workCalDay || "").split("-");
+      if (p.length !== 3) return;
+      ui.workCalYear = Number(p[0]);
+      ui.workCalMonth = Number(p[1]);
+      ui.workCalDay = Number(p[2]);
+      ui.workOpen = true;
+      ui.workMemoId = "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
   const meterFold = document.getElementById("meter-fold");
   const meterCard = document.getElementById("meter-card");
   if (meterFold && meterCard) {
