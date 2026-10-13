@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-28";
-const APP_EDIT_COUNT = 1882;
+const APP_STAMP = "2026-10-13-21-34";
+const APP_EDIT_COUNT = 1883;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1492";
+const FILE_VER = "1493";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["拿掉行程說明，新增按鈕按下去會縮小"] },
+  { ver: APP_VERSION, items: ["行程的編輯和完成中間可刪除"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5851,6 +5851,7 @@ function dropDupYuWangElecMemo(data) {
 function ensureCycleJobs(data) {
   if (!data || !Array.isArray(data.aiMemos)) return;
   CYCLE_JOBS.forEach(job => {
+    if ((data.memoGone || []).map(String).indexOf(String(job.id)) >= 0) return;
     const hit = data.aiMemos.find(m => m && m.id === job.id);
     if (hit) {
       if (!hit.edited || /抄表度數/.test(String(hit.text || ""))) hit.text = job.text;
@@ -12358,8 +12359,9 @@ function mergeESignsInto(target, other) {
 function mergeMemosInto(target, other) {
   if (!target) return;
   if (!Array.isArray(target.aiMemos)) target.aiMemos = [];
+  target.memoGone = unionGone(target.memoGone, other && other.memoGone);
   const src = ((other && other.aiMemos) || []).filter(m => m && !isDevMemo(m));
-  target.aiMemos = unionMemos(target.aiMemos.filter(m => m && !isDevMemo(m)), src);
+  target.aiMemos = dropGone(unionMemos(target.aiMemos.filter(m => m && !isDevMemo(m)), src), target.memoGone);
   mergeDevBundle(target, other);
 }
 function mergeDevBundle(target, other) {
@@ -12403,6 +12405,15 @@ function saveMemoChange(m) {
     saveDevMemos(state.devMemos);
   }
   try { persistMemoDone(state); } catch {}
+  save();
+  try { pushCloud(); } catch {}
+}
+function deleteWorkMemo(m) {
+  if (!m || !m.id) return;
+  state.memoGone = unionGone(state.memoGone, [m.id]);
+  state.aiMemos = dropGone(state.aiMemos || [], state.memoGone);
+  if (Array.isArray(state.devMemos)) state.devMemos = dropGone(state.devMemos, state.memoGone);
+  try { saveDevMemos(state.devMemos); } catch {}
   save();
   try { pushCloud(); } catch {}
 }
@@ -30197,6 +30208,7 @@ function adminAi() {
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
+              <button type="button" class="ghost" data-del-memo="${m.id}">刪除</button>
               <button type="button" class="ghost" data-${m.struck ? "undone" : "done"}-memo="${m.id}">${m.struck ? "未完成" : "完成"}</button>
             </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}` : ""}
             </div>`;
@@ -38873,6 +38885,25 @@ function bindAdminAi() {
       e.stopPropagation();
       const m = myMemos().find(x => x.id === btn.dataset.gcalMemo);
       if (m) openGoogleMemo(m);
+    };
+  });
+  document.querySelectorAll("[data-del-memo]").forEach(btn => {
+    bindIosPress(btn);
+    btn.addEventListener("pointerdown", e => e.stopPropagation());
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.delMemo;
+      const m = myMemos().find(x => x.id === id)
+        || (state.aiMemos || []).find(x => x.id === id)
+        || (state.devMemos || []).find(x => x.id === id);
+      if (!m) { toast("找不到這筆行程"); return; }
+      deleteWorkMemo(m);
+      ui.workMemoId = "";
+      ui.workEditId = "";
+      ui.keepScroll = true;
+      toast("已刪除這筆行程");
+      render();
     };
   });
   document.querySelectorAll("[data-done-memo]").forEach(btn => {
