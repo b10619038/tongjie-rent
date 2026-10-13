@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-20-31";
-const APP_EDIT_COUNT = 1868;
+const APP_STAMP = "2026-10-13-20-38";
+const APP_EDIT_COUNT = 1869;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1478";
+const FILE_VER = "1479";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["發票說明改成範例圖，實際以紙本為主"] },
+  { ver: APP_VERSION, items: ["工作日曆同步領取發票、續約、正常退租、中途退租"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30142,7 +30142,7 @@ function adminAi() {
       const summary = bits.join(" · ");
       const memoRows = (arr, bare) => arr.map(m => {
         const on = ui.workMemoId === m.id;
-        const locked = m.source === "sign" || String(m.id || "").indexOf("signap-") === 0;
+        const locked = m.source === "sign" || m.source === "appoint" || String(m.id || "").indexOf("signap-") === 0;
         const editing = on && ui.workEditId === m.id && !locked;
         const dateVal = m.date && /^\d{4}-\d{2}-\d{2}$/.test(m.date) ? m.date : (typeof workOccurYmd === "function" ? workOccurYmd(m) : "");
         return `
@@ -30159,7 +30159,7 @@ function adminAi() {
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
               </div>
-            </form>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
+            </form>` : on && m.source === "appoint" ? `<div class="small" style="margin:6px 0 0">這筆跟租客預約同步。改了預約時間，日曆會一起改。</div>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
@@ -30704,6 +30704,35 @@ function groupUpcomingMemos() {
   });
   return { overdue, soon, later, all: overdue.concat(soon, later) };
 }
+function workAppointMemos() {
+  const out = [];
+  const push = (id, at, text) => {
+    const ymd = ymdOf(at);
+    if (!id || !ymd) return;
+    const clock = formatDateTime12(String(at).replace("T", " ")).replace(/^\d{4}-\d{2}-\d{2}\s*/, "").trim();
+    out.push({ id, text: String(text || "").trim(), date: ymd, time: clock, source: "appoint" });
+  };
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || t.demo || t.placeholder) return;
+    const room = (state.rooms || []).find(x => x && x.id === t.roomId);
+    const who = (((room && room.no) || "") + " " + (t.name || "")).trim();
+    if (t.invoicePickupAt) push("invpick-" + t.id, t.invoicePickupAt, who + " 領取發票");
+    if (t.leaveAppointAt && !t.leaveDone && typeof tenantRenewNo === "function" && tenantRenewNo(t, room)) {
+      push("leaveap-" + t.id, t.leaveAppointAt, who + " 正常退租");
+    }
+  });
+  (state.renewals || []).forEach(r => {
+    if (!r || !r.appointAt || r.status === "done" || r.status === "cancelled") return;
+    const who = ((r.roomNo || "") + " " + (r.renewNames || r.name || "")).trim();
+    push("renewap-" + (r.id || r.roomNo || r.tenantId), r.appointAt, who + " 續約簽約");
+  });
+  (state.checkouts || []).forEach(c => {
+    if (!c || c.kind !== "early" || c.status === "done" || !c.appointAt) return;
+    const who = ((c.roomNo || "") + " " + (c.tenantName || "")).trim();
+    push("earlyap-" + (c.id || c.roomNo || c.tenantId), c.appointAt, who + " 中途退租");
+  });
+  return out;
+}
 function workMemosOnMonth(y, m) {
   const ym = y + "-" + String(m).padStart(2, "0");
   const map = {};
@@ -30715,6 +30744,12 @@ function workMemosOnMonth(y, m) {
     if (!d || d.slice(0, 7) !== ym) return;
     if (!map[d]) map[d] = [];
     map[d].push(memo);
+  });
+  workAppointMemos().forEach(memo => {
+    if (!memo.date || memo.date.slice(0, 7) !== ym) return;
+    if (!map[memo.date]) map[memo.date] = [];
+    if (map[memo.date].some(x => x && x.id === memo.id)) return;
+    map[memo.date].push(memo);
   });
   return map;
 }
