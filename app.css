@@ -4554,6 +4554,13 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
+.inv-sample { margin-top: 8px; pointer-events: none; }
+.inv-sample .inv-photo { max-width: 100%; margin: 0; }
+.inv-sample .inv-abs { pointer-events: none; }
+#inv-pick-card select {
+  width: 100%; border: 1.5px solid var(--line); background: #fff; color: inherit;
+  border-radius: 14px; padding: 12px 14px; font: inherit;
+}
 .inv-photo {
   position: relative;
   width: 100%;

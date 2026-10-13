@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-18-33";
-const APP_EDIT_COUNT = 1863;
+const APP_STAMP = "2026-10-13-20-18";
+const APP_EDIT_COUNT = 1864;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1473";
+const FILE_VER = "1474";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["日曆日期不再擠在一起"] },
+  { ver: APP_VERSION, items: ["租約可預約到 7651 領取紙本發票"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -10648,7 +10648,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveDone", "leaveDoneAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -27456,6 +27456,123 @@ function eContractDocHtml(t, r) {
     ${es && es.status === "signed" ? `<div class="signed-block"><p>承租人簽名</p><img src="${es.sig}" alt="簽名"><p class="small">簽署時間　${escapeHtml(formatDateTime12(es.at))}</p></div>` : ""}
   </div>`;
 }
+function invoicePickupWeekdays(n) {
+  const out = [];
+  const start = new Date();
+  const today = todayYmd();
+  for (let i = 0; i < 70 && out.length < (n || 16); i++) {
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const wd = day.getDay();
+    if (wd === 0 || wd === 6) continue;
+    const ymd = ymdFromDate(day);
+    if (!ymd || ymd < today) continue;
+    out.push(ymd);
+  }
+  return out;
+}
+function invoicePickupTimes() {
+  const out = [];
+  for (let m = 10 * 60; m <= 17 * 60; m += 30) {
+    out.push(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
+  }
+  return out;
+}
+function invoicePickupClockLabel(hm) {
+  const p = String(hm || "10:00").split(":");
+  const h = Number(p[0]) || 0;
+  const m = p[1] || "00";
+  const period = h >= 12 ? "下午" : "上午";
+  let h12 = h % 12; if (!h12) h12 = 12;
+  return period + " " + h12 + ":" + m;
+}
+function invoicePickupYmdLabel(ymd) {
+  const d = new Date(String(ymd) + "T12:00:00");
+  const wk = "日一二三四五六"[d.getDay()] || "";
+  return (rocSlash(ymd) || ymd) + "（" + wk + "）";
+}
+function invoicePickupOk(at) {
+  const m = String(at || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return false;
+  if (m[1] < todayYmd()) return false;
+  const day = new Date(m[1] + "T12:00:00").getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = Number(m[2]) * 60 + Number(m[3]);
+  return mins >= 10 * 60 && mins <= 17 * 60 && mins % 30 === 0;
+}
+function invoiceSampleHtml(r, t) {
+  try {
+    const html = invoiceCopyHtml(r, t, "領取聯");
+    return `<div class="inv-sample" aria-hidden="true">${String(html).replace(/<input /g, "<input readonly tabindex=\"-1\" ")}</div>`;
+  } catch { return ""; }
+}
+function invoicePickupCardHtml(t, r) {
+  if (!t || !r) return "";
+  const open = !!ui.invPickOpen;
+  const saved = String(t.invoicePickupAt || "").replace(" ", "T").slice(0, 16);
+  const days = invoicePickupWeekdays(16);
+  const times = invoicePickupTimes();
+  const savedDay = saved.slice(0, 10);
+  const savedHm = saved.slice(11, 16);
+  const day = days.includes(savedDay) ? savedDay : (days[0] || todayYmd());
+  const hm = times.includes(savedHm) ? savedHm : "10:00";
+  const when = invoicePickupOk(saved) ? formatDateTime12(saved.replace("T", " ")) : "";
+  return `<div class="section-title"><h2 class="slide-right">發票領取</h2></div>
+    <div class="card card-body slide-left tenant-slim${open ? " open" : ""}" id="inv-pick-card">
+      <div class="row tenant-slim-head">
+        <button type="button" class="fold-head" id="inv-pick-fold">
+          <span class="k">領取實體紙本發票</span>
+          <span class="row-end"><span class="small">${escapeHtml(when || "預約時間")}</span><span class="fold-caret"></span></span>
+        </button>
+      </div>
+      <div class="tenant-slim-body"><div class="tenant-slim-inner">
+        <p class="small" style="margin-top:10px">領取紙本發票。星期一到星期五，上午 10:00 到下午 5:00。地點：5F，電梯出來右轉到底，7651簽約室。</p>
+        <p class="small">下面是後台自動開立的發票樣子。字軌號碼由辦公室開立後填上，到場即可核對領取。</p>
+        ${invoiceSampleHtml(r, t)}
+        <label class="field" style="margin-top:12px"><span>日期</span>
+          <select id="inv-pick-day">${days.map(d => `<option value="${d}"${d === day ? " selected" : ""}>${escapeHtml(invoicePickupYmdLabel(d))}</option>`).join("")}</select>
+        </label>
+        <label class="field"><span>時間</span>
+          <select id="inv-pick-time">${times.map(x => `<option value="${x}"${x === hm ? " selected" : ""}>${escapeHtml(invoicePickupClockLabel(x))}</option>`).join("")}</select>
+        </label>
+        <button type="button" class="btn-navy" id="inv-pick-save" style="margin-top:10px">${when ? "改預約時間" : "預約領取"}</button>
+        ${when ? `<p class="small" style="margin-top:8px">已預約 ${escapeHtml(when)}。請到 7651 領取。</p>` : ""}
+      </div></div>
+    </div>`;
+}
+function bindInvoicePickup() {
+  const fold = document.getElementById("inv-pick-fold");
+  const card = document.getElementById("inv-pick-card");
+  if (fold && card) {
+    fold.onclick = e => {
+      e.preventDefault();
+      ui.invPickOpen = !card.classList.contains("open");
+      card.classList.toggle("open", ui.invPickOpen);
+    };
+  }
+  const saveBtn = document.getElementById("inv-pick-save");
+  if (!saveBtn) return;
+  saveBtn.onclick = e => {
+    e.preventDefault();
+    const t = me();
+    const r = myRoom();
+    if (!t) return;
+    const day = (document.getElementById("inv-pick-day") || {}).value || "";
+    const hm = (document.getElementById("inv-pick-time") || {}).value || "";
+    const at = day + "T" + hm;
+    if (!invoicePickupOk(at)) { toast("請選星期一到星期五，上午 10:00 到下午 5:00"); return; }
+    t.invoicePickupAt = at;
+    t.edited = true;
+    t.editedAt = Date.now();
+    save();
+    try { pushCloud(); } catch {}
+    const when = formatDateTime12(at.replace("T", " "));
+    try { pushPhoneNotify("領取發票", `${(r && r.no) || ""} ${t.name || ""}　${when}　7651`, "admin"); } catch {}
+    toast("已預約 " + when);
+    ui.invPickOpen = true;
+    ui.keepScroll = true;
+    render();
+  };
+}
 function leaseView() {
   try { applyRoom7611(state); } catch {}
   const t = me(); const r = myRoom();
@@ -27490,6 +27607,7 @@ function leaseView() {
         <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(rocSlash(pending.start) || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
         ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, "new") : eContractDocHtml(paperT, r)}
       </div>` : ""}
+      ${invoicePickupCardHtml(t, r)}
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
       <div class="card card-body slide-left rules">${(state.houseRules || DEFAULT_RULES).split("\n").filter(x => x.trim()).map(line => `<p>${escapeHtml(line)}</p>`).join("")}</div>
       ${pending ? "" : `<div class="section-title">
@@ -33203,6 +33321,7 @@ function payAdminCardHtml(t, r) {
       </label>
       <button type="button" class="btn-navy" data-pay-confirm="${escapeHtml(t.id)}" style="margin-top:10px">確認本月已繳</button>
       ${roomIsFactory(r) ? "" : `<button type="button" class="ghost" data-nudge-pay="${escapeHtml(t.id)}" style="margin-top:8px">催繳</button>`}
+      ${t.invoicePickupAt ? `<div class="small" style="margin-top:8px">領取發票　${escapeHtml(formatDateTime12(String(t.invoicePickupAt).replace("T", " ")))}　7651</div>` : ""}
     </div>`;
   }
   return `<div class="card card-body pay-alert paid" data-pay-card="${escapeHtml(t.id)}">
@@ -33213,6 +33332,7 @@ function payAdminCardHtml(t, r) {
     <div class="row"><span class="k">金額</span><span class="v">${amt ? money(amt) : "—"}</span></div>
     <button type="button" class="btn-navy" data-pay-unpay="${escapeHtml(t.id)}" style="margin-top:10px">改回未繳</button>
     <button type="button" class="ghost" data-invoice="${escapeHtml(t.roomId || (r && r.id) || "")}" style="margin-top:8px">產出發票</button>
+    ${t.invoicePickupAt ? `<div class="small" style="margin-top:8px">領取發票　${escapeHtml(formatDateTime12(String(t.invoicePickupAt).replace("T", " ")))}　7651</div>` : ""}
   </div>`;
 }
 function tenantListInnerHtml(kind) {
@@ -34920,6 +35040,7 @@ function bindTenant() {
   if (av) av.onchange = () => onAvatar(av);
   if (avSet) avSet.onchange = () => onAvatar(avSet);
   bindTenantSettings();
+  bindInvoicePickup();
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
@@ -36864,6 +36985,7 @@ function bindAdmin() {
     el.addEventListener("pointerdown", e => e.stopPropagation());
     el.addEventListener("click", e => { e.stopPropagation(); try { el.focus(); } catch {} });
     el.onchange = () => {
+      if (el.closest(".inv-sample")) return;
       ui[el.dataset.inv] = el.value;
       if (/^invoiceTax\d$/.test(el.dataset.inv)) {
         ui.invoiceTaxId = [0,1,2,3,4,5,6,7].map(i => {
