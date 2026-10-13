@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-21-21";
-const APP_EDIT_COUNT = 1879;
+const APP_STAMP = "2026-10-13-21-23";
+const APP_EDIT_COUNT = 1880;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1489";
+const FILE_VER = "1490";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["行程選單日曆改成跟其他選單同一顏色"] },
+  { ver: APP_VERSION, items: ["行程日曆右下角可新增行程、日期、時間、週期"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30213,7 +30213,7 @@ function adminAi() {
       <div class="tenant-slim-body">
         <div class="tenant-slim-inner">
           <p class="small" style="margin-top:10px">點日期看當天工作，點一筆可加到日曆、編輯或完成。</p>
-          ${g.all.length ? workCalHtml(memoRows) : `<div class="empty">還沒有提醒。在下面跟助手說要記的事。</div>`}
+          ${workCalHtml(memoRows)}
         </div>
       </div>
     </div>`;
@@ -30957,6 +30957,30 @@ function workCalHtml(memoRows) {
     </div>
     <div class="work-cal-dayh">${head}</div>
     ${dayMemos.length ? memoRows(dayMemos, true) : `<div class="work-cal-empty">這天沒有工作</div>`}
+    ${workAddHtml(sel)}
+  </div>`;
+}
+function workAddHtml(sel) {
+  const open = !!ui.workAddOpen;
+  return `<div class="work-add-bar">
+    ${open ? `<form class="work-edit work-add-form" id="work-add-form">
+      <input name="text" type="text" placeholder="行程" autocomplete="off" />
+      <input name="date" type="date" value="${escapeHtml(sel || "")}" />
+      <input name="time" type="time" />
+      <select name="cycle">
+        <option value="">不重複</option>
+        <option value="1">每個月</option>
+        <option value="2">每2個月</option>
+        <option value="3">每3個月</option>
+        <option value="6">每半年</option>
+        <option value="12">每年</option>
+      </select>
+      <div class="unpaid-tools work-memo-tools">
+        <button type="submit" class="ghost">儲存</button>
+        <button type="button" class="ghost" id="work-add-cancel">取消</button>
+      </div>
+    </form>` : ""}
+    <button type="button" class="work-add" id="work-add" aria-label="新增行程">+</button>
   </div>`;
 }
 function tenantLine(t) {
@@ -38560,6 +38584,77 @@ function bindAdminAi() {
       render();
     };
   });
+  const workAdd = document.getElementById("work-add");
+  if (workAdd) {
+    workAdd.addEventListener("pointerdown", e => e.stopPropagation());
+    workAdd.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.workAddOpen = !ui.workAddOpen;
+      ui.workOpen = true;
+      ui.keepScroll = true;
+      render();
+    };
+  }
+  const workAddCancel = document.getElementById("work-add-cancel");
+  if (workAddCancel) {
+    workAddCancel.addEventListener("pointerdown", e => e.stopPropagation());
+    workAddCancel.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.workAddOpen = false;
+      ui.keepScroll = true;
+      render();
+    };
+  }
+  const workAddForm = document.getElementById("work-add-form");
+  if (workAddForm) {
+    workAddForm.addEventListener("pointerdown", e => e.stopPropagation());
+    workAddForm.onsubmit = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const fd = new FormData(workAddForm);
+      const text = String(fd.get("text") || "").trim();
+      const date = String(fd.get("date") || "").trim();
+      const time = String(fd.get("time") || "").trim();
+      const cycle = String(fd.get("cycle") || "");
+      if (!text) { toast("請先填行程"); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast("請先選日期"); return; }
+      const day = Number(date.slice(8, 10));
+      const month = Number(date.slice(5, 7));
+      const rec = {
+        id: "memo" + Date.now().toString(36),
+        text,
+        date,
+        time: clockLabelFromHm(time),
+        owner: "7651",
+        createdAt: nowStamp(),
+        edited: true
+      };
+      if (cycle === "1") {
+        rec.monthDay = day;
+        rec.cycle = true;
+      } else if (cycle === "2" || cycle === "3" || cycle === "6") {
+        rec.monthDay = day;
+        rec.intervalMonths = Number(cycle);
+        rec.anchor = date;
+        rec.cycle = true;
+      } else if (cycle === "12") {
+        rec.monthDay = day;
+        rec.onlyMonth = month;
+        rec.cycle = true;
+      }
+      saveMemoChange(rec);
+      ui.workAddOpen = false;
+      ui.workOpen = true;
+      ui.workCalYear = Number(date.slice(0, 4));
+      ui.workCalMonth = month;
+      ui.workCalDay = day;
+      ui.keepScroll = true;
+      toast("已加入行程");
+      render();
+    };
+  }
   const meterFold = document.getElementById("meter-fold");
   const meterCard = document.getElementById("meter-card");
   if (meterFold && meterCard) {
