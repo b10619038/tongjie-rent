@@ -5914,9 +5914,11 @@ button.repair-look {
 #meter-card .meter-picks { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
 #meter-card .meter-pick {
   border: 0; background: transparent; padding: 6px 0; margin: 0;
-  font: inherit; font-size: 16px; font-weight: 800; color: #9aa3af; cursor: pointer;
+  font: inherit; font-size: 16px; font-weight: 800; cursor: pointer;
 }
-#meter-card .meter-pick.on { color: #1d4e89; }
+#meter-card .meter-pick.elec { color: #e07a1f; }
+#meter-card .meter-pick.water { color: #1d4e89; }
+#meter-card .meter-pick.on { text-decoration: underline; text-underline-offset: 4px; }
 #meter-card .meter-fold { flex: 0 0 auto; width: auto; padding: 6px 2px; }
 .tenant-slim-body {
   display: grid;
