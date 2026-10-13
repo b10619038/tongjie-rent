@@ -3815,18 +3815,17 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   pointer-events: auto;
 }
 #work-card .work-scroll-clip {
-  overflow: hidden;
+  overflow: visible;
+  max-width: 100%;
 }
 #work-card .work-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x pan-y;
-  margin: 0 -4px;
-  padding: 0 4px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overscroll-behavior-x: auto;
+  touch-action: pan-y;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
 }
 #work-card .work-scroll::-webkit-scrollbar,
 #work-card .work-scroll::-webkit-scrollbar-thumb,
@@ -3838,8 +3837,9 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   background: transparent !important;
 }
 #work-card .work-scroller {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 #work-card .small {
   white-space: normal;
@@ -3849,10 +3849,15 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   align-items: flex-start;
   overflow: visible;
 }
-#work-card .work-scroller .mini span {
-  white-space: nowrap;
-  overflow: visible;
-  flex: none;
+#work-card .work-scroller .mini span,
+#work-card .work-memo span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.45;
 }
 #work-card .work-title {
   display: inline-flex;

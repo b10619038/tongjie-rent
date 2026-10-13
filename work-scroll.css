@@ -10,34 +10,28 @@
   max-height: none;
 }
 #work-card .work-scroll-clip {
-  overflow: hidden;
+  overflow: visible;
+  max-width: 100%;
 }
 #work-card .work-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  touch-action: pan-x pan-y;
-  margin: 0 -4px;
-  padding: 0 4px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-#work-card .work-scroll::-webkit-scrollbar,
-#work-card .work-scroll::-webkit-scrollbar-thumb,
-#work-card .work-scroll::-webkit-scrollbar-track,
-#work-card .work-scroll::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  background: transparent !important;
+  overflow: visible;
+  touch-action: pan-y;
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
 }
 #work-card .work-scroller {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
-#work-card .work-scroller .mini span {
-  white-space: nowrap;
-  overflow: visible;
-  flex: none;
+#work-card .work-scroller .mini span,
+#work-card .work-memo span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.45;
 }
