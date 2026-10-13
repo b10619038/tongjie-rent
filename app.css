@@ -195,7 +195,11 @@ input, textarea, select {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   overflow-anchor: none;
+  scrollbar-gutter: stable;
   touch-action: pan-y;
+}
+#work-card:has(.work-add-bar.is-closing) .work-item {
+  transform: translateZ(0);
 }
 .admin-scroll { padding: 8px 0 16px; }
 .shell.admin-wide .admin-scroll { padding-bottom: calc(108px + var(--safe-b)); }

@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-22-22";
-const APP_EDIT_COUNT = 1896;
+const APP_STAMP = "2026-10-13-22-24";
+const APP_EDIT_COUNT = 1897;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1506";
+const FILE_VER = "1507";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新增行程欄位改成底線，拿掉圓框"] },
+  { ver: APP_VERSION, items: ["收起新增行程時，上面的行程不再抖動"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -38662,6 +38662,13 @@ function bindAdminAi() {
       }
       e.preventDefault();
       e.stopPropagation();
+      const sc = document.querySelector(".admin-scroll");
+      const lockTop = sc ? sc.scrollTop : 0;
+      const ae = document.activeElement;
+      if (ae && form.contains(ae) && ae.blur) ae.blur();
+      if (sc) sc.scrollTop = lockTop;
+      const hold = () => { if (sc) sc.scrollTop = lockTop; };
+      if (sc) sc.addEventListener("scroll", hold, { passive: true });
       const bar = form.closest(".work-add-bar");
       if (bar) {
         bar.style.height = bar.offsetHeight + "px";
@@ -38674,19 +38681,26 @@ function bindAdminAi() {
           bar.appendChild(plus);
         }
         bar.classList.add("is-closing");
-        requestAnimationFrame(() => { bar.style.height = "36px"; });
+        requestAnimationFrame(() => {
+          if (sc) sc.scrollTop = lockTop;
+          bar.style.height = "36px";
+        });
       }
       form.classList.add("is-closing");
       let closed = false;
       const finish = () => {
         if (closed) return;
         closed = true;
+        if (sc) sc.removeEventListener("scroll", hold);
         ui.workAddOpen = false;
         ui.keepScroll = true;
         render();
       };
-      if (bar) bar.addEventListener("transitionend", finish, { once: true });
-      setTimeout(finish, 380);
+      if (bar) bar.addEventListener("transitionend", e => {
+        if (e.target !== bar || e.propertyName !== "height") return;
+        finish();
+      });
+      setTimeout(finish, 420);
     }, true);
   }
   const workAddForm = document.getElementById("work-add-form");
