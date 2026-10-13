@@ -4397,8 +4397,13 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   to { transform: none; opacity: 1; }
 }
 #work-card .work-add-form.is-closing {
-  animation: work-add-zoom .28s cubic-bezier(.4, 0, .7, .2) reverse forwards;
+  animation: work-add-zoom .32s cubic-bezier(.4, 0, .2, 1) reverse forwards;
   pointer-events: none;
+}
+#work-card .work-add-bar.is-closing {
+  overflow: hidden;
+  margin-top: 0;
+  transition: height .32s cubic-bezier(.4, 0, .2, 1), margin-top .32s cubic-bezier(.4, 0, .2, 1);
 }
 #work-card .work-add-form select { width: 100%; min-width: 0; box-sizing: border-box; }
 #work-card .work-add-form .work-memo-tools { justify-content: flex-end; }
