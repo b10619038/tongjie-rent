@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v1920";
+const CACHE = "tongjie-app-v1921";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
 self.addEventListener("install", e => {
@@ -10,6 +10,15 @@ self.addEventListener("activate", e => {
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
+    const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    await Promise.all(all.map(async c => {
+      try {
+        const u = new URL(c.url);
+        if (u.searchParams.get("rsync") === "2") return;
+        u.searchParams.set("rsync", "2");
+        if (typeof c.navigate === "function") await c.navigate(u.href);
+      } catch {}
+    }));
   })());
 });
 self.addEventListener("message", e => {
