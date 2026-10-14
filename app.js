@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-12-24";
-const APP_EDIT_COUNT = 1907;
+const APP_STAMP = "2026-10-14-12-30";
+const APP_EDIT_COUNT = 1908;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1517";
+const FILE_VER = "1518";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["預約退租時間改成預約退租點交"] },
+  { ver: APP_VERSION, items: ["收回續約會留在不續約，新合約一併拿掉"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9182,6 +9182,9 @@ function completeRenewal(item) {
   const water = renewWaterCashFee(t, r, item);
   item.status = "done";
   item.doneAt = nowStamp();
+  item.signedTs = Date.now();
+  item.cancelledAt = "";
+  item.cancelledTs = 0;
   item.waterCash = true;
   if (item.waterFee == null) item.waterFee = water;
   ensureRenewalWaterBook(state, item);
@@ -9206,19 +9209,40 @@ function undoSignedRenewal(id) {
   const item = (state.renewals || []).find(x => x && x.id === id);
   if (!item || (item.status !== "done" && item.status !== "applied")) { toast("這筆續約不能收回"); return false; }
   if (renewalStartReached(item)) { toast("新約已經開始，不能收回"); return false; }
+  const now = Date.now();
+  const stamp = nowStamp();
+  const roomNo = String(item.roomNo || "");
+  (state.renewals || []).forEach(x => {
+    if (!x || (x.status !== "done" && x.status !== "applied")) return;
+    if (renewalStartReached(x)) return;
+    const same = x.id === item.id
+      || (item.tenantId && x.tenantId === item.tenantId)
+      || (roomNo && String(x.roomNo) === roomNo)
+      || (item.roomId && x.roomId === item.roomId);
+    if (!same) return;
+    x.status = "cancelled";
+    x.cancelledAt = stamp;
+    x.cancelledTs = now;
+    x.editedAt = now;
+  });
   const t = (state.tenants || []).find(x => x && (x.id === item.tenantId || (!x.former && !x.demo && x.roomId === item.roomId)));
+  const room = t && (state.rooms || []).find(x => x && x.id === t.roomId);
   if (t) {
     if (item.oldStart) t.leaseStart = item.oldStart;
     if (item.oldEnd) t.leaseEnd = item.oldEnd;
     t.renewChoice = "no";
     t.note = String(t.note || "").replace(/已續約[^　。]*/g, "").replace(/　{2,}/g, "　").trim();
+    try {
+      const rent = (typeof studioContractRent === "function" ? studioContractRent(t, room) : 0) || Number(t.rent) || 0;
+      const pack = typeof studioLeasePack === "function" ? studioLeasePack(t.leaseStart, rent) : null;
+      if (pack && pack.parts && pack.parts.length) t.leases = pack.parts;
+      else if (t.leaseStart && t.leaseEnd) t.leases = [{ start: t.leaseStart, end: t.leaseEnd, kind: "year", rent: rent }];
+    } catch {}
     const born = ymdOf(t.leaseStart || "");
     if (!t.payBankLock && t.payBank === "兆豐" && (!born || born < NEW_TENANT_SINCE)) t.payBank = "農會";
     t.edited = true;
-    t.editedAt = Date.now();
+    t.editedAt = now;
   }
-  item.status = "cancelled";
-  item.cancelledAt = nowStamp();
   if (state.renewPing && state.renewPing.id === item.id) state.renewPing = null;
   if (ui.renewOpen) ui.renewOpen[item.id] = false;
   ui.undoRenewId = "";
@@ -10772,13 +10796,29 @@ function renewalStatusRank(s) {
   if (s === "cancelled") return 2;
   return 1;
 }
+function renewalBeat(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const aCancel = a.status === "cancelled";
+  const bCancel = b.status === "cancelled";
+  if (aCancel !== bCancel) {
+    const cancel = aCancel ? a : b;
+    const other = aCancel ? b : a;
+    const cTs = Number(cancel.cancelledTs) || 0;
+    const oTs = Number(other.signedTs || other.editedAt) || 0;
+    if (cTs && oTs) return cTs >= oTs ? cancel : other;
+    if (cTs) return cancel;
+    return cancel;
+  }
+  return renewalStatusRank(a.status) >= renewalStatusRank(b.status) ? a : b;
+}
 function mergeRenewalList(a, b) {
   const map = new Map();
   [].concat(a || [], b || []).forEach(x => {
     if (!x || !x.id) return;
     const cur = map.get(x.id);
     if (!cur) { map.set(x.id, Object.assign({}, x)); return; }
-    const win = renewalStatusRank(x.status) > renewalStatusRank(cur.status) ? x : cur;
+    const win = renewalBeat(x, cur);
     const lose = win === x ? cur : x;
     const out = Object.assign({}, lose, win);
     const aEdit = Number(cur.appointEditedAt) || 0;
@@ -10790,8 +10830,10 @@ function mergeRenewalList(a, b) {
     } else if (!out.appointEditedAt) {
       out.appointEditedAt = aEdit || bEdit || 0;
     }
+    if (!out.cancelledTs) out.cancelledTs = Number(cur.cancelledTs || x.cancelledTs) || 0;
+    if (!out.signedTs) out.signedTs = Number(cur.signedTs || x.signedTs) || 0;
     if (!out.doneAt) out.doneAt = (cur && cur.doneAt) || (x && x.doneAt) || "";
-    if (out.doneAt && renewalStatusRank(out.status) < 3 && out.status !== "cancelled") out.status = "done";
+    if (out.status !== "cancelled" && out.doneAt && renewalStatusRank(out.status) < 3) out.status = "done";
     map.set(x.id, out);
   });
   return [...map.values()];
@@ -11399,13 +11441,16 @@ function mergeLiveRenewals(local, incoming) {
   return mergeRenewalList(local, incoming);
 }
 function liveRenewalPayload() {
-  return (state.renewals || []).filter(x => x && x.id && x.status !== "cancelled").map(x => ({
+  return (state.renewals || []).filter(x => x && x.id).map(x => ({
     id: x.id, roomId: x.roomId || "", tenantId: x.tenantId || "", roomNo: x.roomNo || "", name: x.name || "",
     status: x.status || "open", years: x.years || 0, extraMonths: x.extraMonths || 0,
     people: x.people || [], renewNames: x.renewNames || "", start: x.start || "", end: x.end || "",
     waterFee: x.waterFee || 0, waterCash: x.waterCash !== false, appointAt: x.appointAt || "",
     appointEditedAt: Number(x.appointEditedAt) || 0,
     doneAt: x.doneAt || "",
+    signedTs: Number(x.signedTs) || 0,
+    cancelledAt: x.cancelledAt || "",
+    cancelledTs: Number(x.cancelledTs) || 0,
     createdAt: x.createdAt || "", wantMove: !!x.wantMove, moveRoomId: x.moveRoomId || "", moveRoomNo: x.moveRoomNo || "",
     oldStart: x.oldStart || "", oldEnd: x.oldEnd || ""
   }));
