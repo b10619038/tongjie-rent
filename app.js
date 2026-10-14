@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-08-45";
-const APP_EDIT_COUNT = 1898;
+const APP_STAMP = "2026-10-14-11-29";
+const APP_EDIT_COUNT = 1899;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1508";
+const FILE_VER = "1509";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["離開行程再回來，日曆自動回到今天"] },
+  { ver: APP_VERSION, items: ["倒數裡的已續約可以收回，改為不續約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9200,6 +9200,76 @@ function completeRenewal(item) {
     ? ("已完成續約" + (water ? "，年水費 " + money(water) + " 已記入現金" : ""))
     : ("已完成簽約。新約 " + (item.start || "") + " 才生效，目前仍是舊約" + (until ? "至 " + until : "") + (water ? "。年水費 " + money(water) + " 已記入總覽日曆（現金）" : "")));
   return true;
+}
+function undoSignedRenewal(id) {
+  const item = (state.renewals || []).find(x => x && x.id === id);
+  if (!item || (item.status !== "done" && item.status !== "applied")) { toast("這筆續約不能收回"); return false; }
+  if (renewalStartReached(item)) { toast("新約已經開始，不能收回"); return false; }
+  const t = (state.tenants || []).find(x => x && (x.id === item.tenantId || (!x.former && !x.demo && x.roomId === item.roomId)));
+  if (t) {
+    if (item.oldStart) t.leaseStart = item.oldStart;
+    if (item.oldEnd) t.leaseEnd = item.oldEnd;
+    t.renewChoice = "no";
+    t.note = String(t.note || "").replace(/已續約[^　。]*/g, "").replace(/　{2,}/g, "　").trim();
+    const born = ymdOf(t.leaseStart || "");
+    if (!t.payBankLock && t.payBank === "兆豐" && (!born || born < NEW_TENANT_SINCE)) t.payBank = "農會";
+    t.edited = true;
+    t.editedAt = Date.now();
+  }
+  item.status = "cancelled";
+  item.cancelledAt = nowStamp();
+  if (state.renewPing && state.renewPing.id === item.id) state.renewPing = null;
+  if (ui.renewOpen) ui.renewOpen[item.id] = false;
+  ui.undoRenewId = "";
+  save();
+  try { publishPaidCloud(); } catch {}
+  try { pushCloud(); } catch {}
+  toast("已收回續約　" + ((item.roomNo || "") + " " + (item.name || "")).trim() + "　改為不續約");
+  ui.keepScroll = true;
+  render();
+  return true;
+}
+function undoRenewConfirmHtml() {
+  const id = ui.undoRenewId;
+  if (!id) return "";
+  const x = (state.renewals || []).find(r => r && r.id === id);
+  if (!x) return "";
+  const until = rocSlash(x.oldEnd || "") || "原到期日";
+  return `<div class="install-mask" id="undo-renew-mask">
+    <div class="install-sheet" id="undo-renew-sheet">
+      <div class="label">收回續約</div>
+      <h2>${escapeHtml((x.roomNo || "") + " " + (x.name || ""))}</h2>
+      <p class="small">新約會取消，改為不續約。目前合約仍到 ${escapeHtml(until)}，到期再正常退租。已經收過的年水費不會自動刪掉。</p>
+      <button type="button" class="btn-navy" id="undo-renew-yes">收回續約</button>
+      <button type="button" class="ghost" id="undo-renew-no">先不要</button>
+    </div>
+  </div>`;
+}
+function bindUndoRenew() {
+  document.querySelectorAll("[data-undo-renew]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.undoRenewId = btn.dataset.undoRenew || "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const close = () => { ui.undoRenewId = ""; ui.keepScroll = true; render(); };
+  const mask = document.getElementById("undo-renew-mask");
+  const sheet = document.getElementById("undo-renew-sheet");
+  if (sheet) sheet.onclick = e => e.stopPropagation();
+  if (mask) mask.onclick = e => { if (e.target.id === "undo-renew-mask") close(); };
+  const no = document.getElementById("undo-renew-no");
+  if (no) no.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
+  const yes = document.getElementById("undo-renew-yes");
+  if (yes) yes.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = ui.undoRenewId;
+    if (mask) mask.remove();
+    undoSignedRenewal(id);
+  };
 }
 function applyRenewWater7221(data) {
   if (!data) return;
@@ -25492,7 +25562,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -33227,6 +33297,7 @@ function renewalAdminCardHtml(x) {
       <div class="small"><div>${x.appointAt ? "已預約 " + formatDateTime12(String(x.appointAt).replace("T", " ")) : "選擇簽約時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div></div>
     </div>
     <div class="small" style="margin:6px 0 4px">${signed ? "年水費已於簽約現場收取，只收現金。新約租金改匯兆豐。" : "簽約現場收年水費，只收現金。新約匯款改兆豐（統潔 04009039686）。"}</div>
+    ${signed && !renewalStartReached(x) ? `<button type="button" class="ghost" data-undo-renew="${escapeHtml(x.id)}" style="margin-top:8px">收回續約</button>` : ""}
     ${tenant && room && room.kind !== "factory" ? `<button type="button" class="btn-navy${todaySign || signed ? "" : " ghost"}" data-print-renew="${x.id}" style="margin-top:8px">${todaySign && !signed ? "列印今天續約合約" : "列印續約合約"}</button>` : ""}
   </div>`;
 }
@@ -33816,7 +33887,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") || early ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : ""}${countOn && tenantRenewDone(t, r) ? `<span class="pay-pill paid">已續約</span>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "")}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : ""}${countOn && tenantRenewDone(t, r) && renew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(renew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -37045,6 +37116,7 @@ function bindAdmin() {
     if (state.earlyPing && !earlyPingAlreadySeen(state.earlyPing)) setTimeout(() => flashEarlyNotice(state.earlyPing), 400);
   } catch {}
   bindTenantLook();
+  bindUndoRenew();
   bindDevChat();
   bindInviteSheet();
   bindHistoryBack();
