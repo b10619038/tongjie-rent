@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-23-17";
-const APP_EDIT_COUNT = 1916;
+const APP_STAMP = "2026-10-14-23-23";
+const APP_EDIT_COUNT = 1917;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1526";
+const FILE_VER = "1527";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修已完成會同步到電腦和管理員"] },
+  { ver: APP_VERSION, items: ["插座報修已完成會立刻同步"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -11043,6 +11043,45 @@ function applyRepairStat(data) {
     try { if (typeof pushCloud === "function" && !pushBusy) pushCloud(); } catch {}
   }
 }
+function rememberRepairStatus(rep) {
+  if (!rep || !rep.id) return;
+  try {
+    const box = JSON.parse(localStorage.getItem("tj-repair-status-box") || "{}") || {};
+    const at = Number(rep.statusAt) || Date.now();
+    const cur = box[rep.id];
+    if (!cur || at >= Number(cur.statusAt || 0)) {
+      box[rep.id] = { status: rep.status || "open", statusAt: at };
+      localStorage.setItem("tj-repair-status-box", JSON.stringify(box));
+    }
+  } catch {}
+}
+function applyRepairStatusBox(list) {
+  let box = {};
+  try { box = JSON.parse(localStorage.getItem("tj-repair-status-box") || "{}") || {}; } catch { return false; }
+  let changed = false;
+  (list || []).forEach(r => {
+    if (!r || !r.id) return;
+    const hit = box[r.id];
+    if (!hit || !hit.status) return;
+    const at = Number(hit.statusAt) || 0;
+    if (at >= Number(r.statusAt || 0) && r.status !== hit.status) {
+      r.status = hit.status;
+      r.statusAt = at;
+      if (at > Number(r.editedAt || 0)) r.editedAt = at;
+      changed = true;
+    }
+  });
+  return changed;
+}
+function clearRepairStatusBox(list) {
+  let box = {};
+  try { box = JSON.parse(localStorage.getItem("tj-repair-status-box") || "{}") || {}; } catch { return; }
+  (list || []).forEach(r => {
+    if (!r || !r.id || !box[r.id]) return;
+    if (r.status === box[r.id].status && Number(r.statusAt || 0) >= Number(box[r.id].statusAt || 0)) delete box[r.id];
+  });
+  try { localStorage.setItem("tj-repair-status-box", JSON.stringify(box)); } catch {}
+}
 function stampRepair(rep) {
   if (!rep) return;
   rep.edited = true;
@@ -12531,6 +12570,7 @@ async function pullCloud() {
     applyAnnMedia(state);
     applyRepairMedia(state);
     applyRepairStat(state);
+    if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
     applyAvatars(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       applyCompany(state);
@@ -12635,6 +12675,7 @@ async function pullCloud() {
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
+    if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
     try { applyRoom7623(state); } catch {}
     const remoteRn = new Set((data.renewals || []).map(x => x && x.id).filter(Boolean));
     if ((mineSnap.renewals || []).some(x => x && x.id && !remoteRn.has(x.id))) markCloudDirty();
@@ -13353,6 +13394,7 @@ async function pushCloud() {
     stripDevMemosFromState();
     stripDevLogsFromState();
     state.updatedAt = Date.now();
+    applyRepairStatusBox(state.repairs);
     let remote = null;
     try {
       const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
@@ -13558,6 +13600,7 @@ async function pushCloud() {
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) {
       cloudDirty = false;
+      try { clearRepairStatusBox(state.repairs); } catch {}
       try { publishLiveCloud(); } catch {}
     }
   } catch { ui.cloudOk = false; }
@@ -38040,10 +38083,10 @@ function bindAdmin() {
       const [id, status] = btn.dataset.repStatus.split("|");
       const rep = state.repairs.find(x => x.id === id);
       if (!rep) return;
-      if (rep.status === status) return;
       rep.status = status;
       rep.statusAt = Date.now();
       stampRepair(rep);
+      rememberRepairStatus(rep);
       syncRoomRepairStatus(rep.roomId);
       persistRepairStat(state);
       save();
