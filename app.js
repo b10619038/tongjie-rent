@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-12-30";
-const APP_EDIT_COUNT = 1908;
+const APP_STAMP = "2026-10-14-12-41";
+const APP_EDIT_COUNT = 1909;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1518";
+const FILE_VER = "1519";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回續約會留在不續約，新合約一併拿掉"] },
+  { ver: APP_VERSION, items: ["收回後可取消收回，過了原約到期日就不能再改"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2958,7 +2958,7 @@ let __reloading = false;
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller && !EMBED_PAGE) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
-    if (ui.undoRenewId) return;
+    if (ui.undoRenewId || ui.restoreRenewId) return;
     try {
       if (sessionStorage.getItem("tj-sw-reload") === "1") return;
       sessionStorage.setItem("tj-sw-reload", "1");
@@ -9364,25 +9364,142 @@ function openUndoRenew(id, originEl) {
   render();
   playUndoRenewZoom();
 }
+function restoreSignedRenewal(id) {
+  const item = (state.renewals || []).find(x => x && x.id === id);
+  if (!item || item.status !== "cancelled") { toast("這筆不能恢復"); return false; }
+  if (renewalPastCutoff(item)) { toast("已經過了合約到期日，不能再恢復續約"); return false; }
+  const now = Date.now();
+  item.status = "done";
+  item.signedTs = now;
+  item.cancelledAt = "";
+  item.cancelledTs = 0;
+  item.editedAt = now;
+  const t = (state.tenants || []).find(x => x && (x.id === item.tenantId || (!x.former && !x.demo && x.roomId === item.roomId)));
+  if (t) {
+    t.renewChoice = "yes";
+    if (!t.payBankLock) t.payBank = NEW_TENANT_PAY_BANK;
+    t.edited = true;
+    t.editedAt = now;
+  }
+  ui.restoreRenewId = "";
+  ui.restoreRenewFrom = null;
+  ui.restoreRenewZoom = false;
+  save();
+  try { publishPaidCloud(); } catch {}
+  try { pushCloud(); } catch {}
+  toast("已恢復續約　" + ((item.roomNo || "") + " " + (item.name || "")).trim());
+  ui.keepScroll = true;
+  render();
+  return true;
+}
+function restoreRenewConfirmHtml() {
+  const id = ui.restoreRenewId;
+  if (!id) return "";
+  const x = (state.renewals || []).find(r => r && r.id === id);
+  if (!x) return "";
+  const until = rocSlash(x.oldEnd || "") || "";
+  const start = rocSlash(x.start) || "";
+  const end = rocSlash(x.end) || "";
+  return `<div class="install-mask" id="restore-renew-mask">
+    <div class="install-sheet" id="restore-renew-sheet"${ui.restoreRenewZoom ? ` style="opacity:0"` : ""}>
+      <div class="label">取消收回續約</div>
+      <h2>${escapeHtml((x.roomNo || "") + " " + (x.name || ""))}</h2>
+      <div class="small" style="margin:8px 0 6px">
+        ${start || end ? `<div>續約日期　${escapeHtml(start)} ➜ ${escapeHtml(end)}</div>` : ""}
+        ${until ? `<div>原合約到 ${escapeHtml(until)}。過了這天就不能再改。</div>` : ""}
+      </div>
+      <p class="small">恢復成已續約。新合約會再出現。過了原合約到期日，已續約和取消收回都會拿掉。</p>
+      <button type="button" class="btn-navy" id="restore-renew-yes">恢復續約</button>
+      <button type="button" class="ghost" id="restore-renew-no">先不要</button>
+    </div>
+  </div>`;
+}
+function playRestoreRenewZoom() {
+  const sheet = document.getElementById("restore-renew-sheet");
+  const from = ui.restoreRenewFrom;
+  if (!sheet || !from) return;
+  const to = sheet.getBoundingClientRect();
+  sheet.style.transformOrigin = "center center";
+  sheet.style.willChange = "transform, opacity";
+  sheet.style.transform = sheetZoomFrom(from, to);
+  sheet.style.opacity = "0.4";
+  void sheet.offsetHeight;
+  requestAnimationFrame(() => {
+    ui.restoreRenewZoom = false;
+    sheet.style.transition = "transform .32s cubic-bezier(.22,1,.36,1), opacity .2s ease";
+    sheet.style.transform = "translate3d(0,0,0) scale(1)";
+    sheet.style.opacity = "1";
+  });
+}
+function closeRestoreRenew() {
+  const sheet = document.getElementById("restore-renew-sheet");
+  const id = String(ui.restoreRenewId || "");
+  let origin = null;
+  document.querySelectorAll("[data-restore-renew]").forEach(el => {
+    if (origin || el.closest("#restore-renew-mask")) return;
+    if (id && el.getAttribute("data-restore-renew") !== id) return;
+    origin = el;
+  });
+  const from = undoRenewOrigin(origin) || ui.restoreRenewFrom;
+  const finish = () => {
+    ui.restoreRenewId = "";
+    ui.restoreRenewFrom = null;
+    ui.restoreRenewZoom = false;
+    ui.keepScroll = true;
+    render();
+  };
+  if (!sheet || !from) { finish(); return; }
+  const to = sheet.getBoundingClientRect();
+  const mask = document.getElementById("restore-renew-mask");
+  if (mask) {
+    mask.style.pointerEvents = "none";
+    mask.style.transition = "background .28s ease";
+    mask.style.background = "transparent";
+  }
+  sheet.style.transformOrigin = "center center";
+  void sheet.offsetHeight;
+  requestAnimationFrame(() => {
+    sheet.style.transition = "transform .32s cubic-bezier(.22,1,.36,1), opacity .24s ease";
+    sheet.style.transform = sheetZoomFrom(from, to);
+    sheet.style.opacity = "0.15";
+  });
+  setTimeout(finish, 320);
+}
+function openRestoreRenew(id, originEl) {
+  if (!id) return;
+  ui.restoreRenewFrom = undoRenewOrigin(originEl);
+  ui.restoreRenewZoom = !!ui.restoreRenewFrom;
+  ui.restoreRenewId = id;
+  ui.restoreRenewGuard = Date.now() + 500;
+  ui.keepScroll = true;
+  render();
+  playRestoreRenewZoom();
+}
 function bindUndoRenew() {
   if (!window.__undoRenewClick) {
     window.__undoRenewClick = true;
     let touched = 0;
     document.addEventListener("touchend", e => {
-      const btn = e.target && e.target.closest && e.target.closest("[data-undo-renew]");
+      const undoBtn = e.target && e.target.closest && e.target.closest("[data-undo-renew]");
+      const backBtn = e.target && e.target.closest && e.target.closest("[data-restore-renew]");
+      const btn = undoBtn || backBtn;
       if (!btn) return;
       touched = Date.now();
       e.preventDefault();
       e.stopPropagation();
-      openUndoRenew(btn.getAttribute("data-undo-renew") || "", btn);
+      if (backBtn) openRestoreRenew(backBtn.getAttribute("data-restore-renew") || "", backBtn);
+      else openUndoRenew(undoBtn.getAttribute("data-undo-renew") || "", undoBtn);
     }, { capture: true, passive: false });
     document.addEventListener("click", e => {
       if (Date.now() - touched < 700) return;
-      const btn = e.target && e.target.closest && e.target.closest("[data-undo-renew]");
+      const undoBtn = e.target && e.target.closest && e.target.closest("[data-undo-renew]");
+      const backBtn = e.target && e.target.closest && e.target.closest("[data-restore-renew]");
+      const btn = undoBtn || backBtn;
       if (!btn) return;
       e.preventDefault();
       e.stopPropagation();
-      openUndoRenew(btn.getAttribute("data-undo-renew") || "", btn);
+      if (backBtn) openRestoreRenew(backBtn.getAttribute("data-restore-renew") || "", backBtn);
+      else openUndoRenew(undoBtn.getAttribute("data-undo-renew") || "", undoBtn);
     }, true);
   }
   const close = () => closeUndoRenew();
@@ -9402,6 +9519,24 @@ function bindUndoRenew() {
     const id = ui.undoRenewId;
     if (mask) mask.remove();
     undoSignedRenewal(id);
+  };
+  const restoreClose = () => closeRestoreRenew();
+  const restoreMask = document.getElementById("restore-renew-mask");
+  const restoreSheet = document.getElementById("restore-renew-sheet");
+  if (restoreSheet) restoreSheet.onclick = e => e.stopPropagation();
+  if (restoreMask) restoreMask.onclick = e => {
+    if (Date.now() < (ui.restoreRenewGuard || 0)) return;
+    if (e.target.id === "restore-renew-mask") restoreClose();
+  };
+  const restoreNo = document.getElementById("restore-renew-no");
+  if (restoreNo) restoreNo.onclick = e => { e.preventDefault(); e.stopPropagation(); restoreClose(); };
+  const restoreYes = document.getElementById("restore-renew-yes");
+  if (restoreYes) restoreYes.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rid = ui.restoreRenewId;
+    if (restoreMask) restoreMask.remove();
+    restoreSignedRenewal(rid);
   };
 }
 function applyRenewWater7221(data) {
@@ -25695,7 +25830,7 @@ function paintApp() {
     });
     announceAdminRepairs(fresh);
   }
-  if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page && !ui.undoRenewId) return;
+  if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page && !ui.undoRenewId && !ui.restoreRenewId) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
@@ -25716,7 +25851,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + restoreRenewConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -25750,6 +25885,7 @@ function paintApp() {
       || ui.checkoutTenantId
       || ui.vacateConfirmId
       || ui.undoRenewId
+      || ui.restoreRenewId
       || document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask");
     const wantLook = isStaffLook() ? (normAdminName(ui.adminName) || "1") : "";
     const shellNow = document.querySelector(".shell.admin-wide");
@@ -32958,13 +33094,31 @@ function renewalStartedOf(t, r) {
   });
   return hits[hits.length - 1] || null;
 }
+function renewalPastCutoff(x) {
+  if (!x) return true;
+  if (typeof renewalStartReached === "function" && renewalStartReached(x)) return true;
+  const end = ymdOf(x.oldEnd || "");
+  return !!(end && todayYmd() > end);
+}
 function retractableRenewalOf(t, r) {
   if (!t) return null;
   r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
   const no = r && String(r.no || "");
   const hits = ((state && state.renewals) || []).filter(x => {
     if (!x || (x.status !== "done" && x.status !== "applied")) return false;
-    if (typeof renewalStartReached === "function" && renewalStartReached(x)) return false;
+    if (renewalPastCutoff(x)) return false;
+    return x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no);
+  });
+  return hits[hits.length - 1] || null;
+}
+function restorableRenewalOf(t, r) {
+  if (!t) return null;
+  r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  const no = r && String(r.no || "");
+  const hits = ((state && state.renewals) || []).filter(x => {
+    if (!x || x.status !== "cancelled") return false;
+    if (!(x.cancelledTs || x.doneAt || x.signedTs)) return false;
+    if (renewalPastCutoff(x)) return false;
     return x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no);
   });
   return hits[hits.length - 1] || null;
@@ -34038,6 +34192,8 @@ function tenantEntryCardHtml(kind, entry) {
   const pill = applyStatusPill(inc, t, r);
   const renew = liveRenewalOf(t);
   const undoRenew = retractableRenewalOf(t, r);
+  const restoreRenew = restorableRenewalOf(t, r);
+  const restoreBtn = restoreRenew ? `<button type="button" class="pay-pill hand" data-restore-renew="${escapeHtml(restoreRenew.id)}">取消收回</button>` : "";
   const renewOpen = !!(renew && tenantRenewOpen(renew.id));
   const renewLabel = renew && renew.status === "done" ? "已續約" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
@@ -34054,7 +34210,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") || early ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${countOn && tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${countOn && tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -34738,7 +34894,7 @@ function bindTenantFold() {
     const target = el.closest(".swipe-wrap") || el;
     let x0 = 0, y0 = 0, moved = false, top0 = 0;
     const pressOn = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-restore-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const p = e.touches ? e.touches[0] : e;
       x0 = p.clientX; y0 = p.clientY; moved = false; ui.tenantDrag = false;
       top0 = sc ? sc.scrollTop : 0;
@@ -34765,7 +34921,7 @@ function bindTenantFold() {
     el.ontouchmove = track;
     el.ontouchend = pressOff;
     el.onclick = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-restore-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const wrap = el.closest(".swipe-wrap");
       if (wrap && (wrap.dataset.swiping === "1" || wrap.dataset.scrolled === "1")) {
         e.preventDefault();
