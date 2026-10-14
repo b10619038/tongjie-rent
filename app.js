@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-12-02";
-const APP_EDIT_COUNT = 1904;
+const APP_STAMP = "2026-10-14-12-07";
+const APP_EDIT_COUNT = 1905;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1514";
+const FILE_VER = "1515";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回續約從已續約按鈕縮放出來"] },
+  { ver: APP_VERSION, items: ["收回續約顯示續約日期，先不要才縮回去"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2958,6 +2958,7 @@ let __reloading = false;
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller && !EMBED_PAGE) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
+    if (ui.undoRenewId) return;
     try {
       if (sessionStorage.getItem("tj-sw-reload") === "1") return;
       sessionStorage.setItem("tj-sw-reload", "1");
@@ -9234,12 +9235,22 @@ function undoRenewConfirmHtml() {
   if (!id) return "";
   const x = (state.renewals || []).find(r => r && r.id === id);
   if (!x) return "";
-  const until = rocSlash(x.oldEnd || "") || "原到期日";
+  const until = rocSlash(x.oldEnd || "") || "";
+  const start = rocSlash(x.start) || "";
+  const end = rocSlash(x.end) || "";
+  const term = (typeof renewTermLabel === "function" && typeof renewYearsOf === "function")
+    ? renewTermLabel(renewYearsOf(x), typeof renewExtraMonthsOf === "function" ? renewExtraMonthsOf(x) : 0)
+    : "";
   return `<div class="install-mask" id="undo-renew-mask">
-    <div class="install-sheet" id="undo-renew-sheet"${ui.undoRenewFrom ? ` style="opacity:0"` : ""}>
+    <div class="install-sheet" id="undo-renew-sheet"${ui.undoRenewZoom ? ` style="opacity:0"` : ""}>
       <div class="label">收回續約</div>
       <h2>${escapeHtml((x.roomNo || "") + " " + (x.name || ""))}</h2>
-      <p class="small">新約會取消，改為不續約。目前合約仍到 ${escapeHtml(until)}，到期再正常退租。已經收過的年水費不會自動刪掉。</p>
+      <div class="small" style="margin:8px 0 6px">
+        ${start || end ? `<div>續約日期　${escapeHtml(start)} ➜ ${escapeHtml(end)}</div>` : ""}
+        ${term ? `<div>${escapeHtml(term)}</div>` : ""}
+        ${until ? `<div>目前合約仍到 ${escapeHtml(until)}</div>` : ""}
+      </div>
+      <p class="small">新約會取消，改為不續約。到期再正常退租。已經收過的年水費不會自動刪掉。</p>
       <button type="button" class="btn-navy" id="undo-renew-yes">收回續約</button>
       <button type="button" class="ghost" id="undo-renew-no">先不要</button>
     </div>
@@ -9262,14 +9273,40 @@ function playUndoRenewZoom() {
   sheet.style.opacity = "0.4";
   void sheet.offsetHeight;
   requestAnimationFrame(() => {
+    ui.undoRenewZoom = false;
     sheet.style.transition = "transform .32s cubic-bezier(.22,1,.36,1), opacity .2s ease";
     sheet.style.transform = "translate3d(0,0,0) scale(1)";
     sheet.style.opacity = "1";
   });
 }
+function closeUndoRenew() {
+  const sheet = document.getElementById("undo-renew-sheet");
+  let origin = null;
+  document.querySelectorAll("[data-undo-renew]").forEach(el => {
+    if (!origin && !el.closest("#undo-renew-mask")) origin = el;
+  });
+  const from = undoRenewOrigin(origin) || ui.undoRenewFrom;
+  const finish = () => {
+    ui.undoRenewId = "";
+    ui.undoRenewFrom = null;
+    ui.undoRenewZoom = false;
+    ui.keepScroll = true;
+    render();
+  };
+  if (!sheet || !from) { finish(); return; }
+  const to = sheet.getBoundingClientRect();
+  sheet.style.transition = "transform .28s cubic-bezier(.4,0,1,1), opacity .22s ease";
+  sheet.style.transformOrigin = "center center";
+  sheet.style.transform = sheetZoomFrom(from, to);
+  sheet.style.opacity = "0.35";
+  const mask = document.getElementById("undo-renew-mask");
+  if (mask) mask.style.pointerEvents = "none";
+  setTimeout(finish, 280);
+}
 function openUndoRenew(id, originEl) {
   if (!id) return;
   ui.undoRenewFrom = undoRenewOrigin(originEl);
+  ui.undoRenewZoom = !!ui.undoRenewFrom;
   ui.undoRenewId = id;
   ui.undoRenewGuard = Date.now() + 500;
   ui.keepScroll = true;
@@ -9297,7 +9334,7 @@ function bindUndoRenew() {
       openUndoRenew(btn.getAttribute("data-undo-renew") || "", btn);
     }, true);
   }
-  const close = () => { ui.undoRenewId = ""; ui.keepScroll = true; render(); };
+  const close = () => closeUndoRenew();
   const mask = document.getElementById("undo-renew-mask");
   const sheet = document.getElementById("undo-renew-sheet");
   if (sheet) sheet.onclick = e => e.stopPropagation();
