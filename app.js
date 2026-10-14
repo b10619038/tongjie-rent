@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-23-12";
-const APP_EDIT_COUNT = 1915;
+const APP_STAMP = "2026-10-14-23-17";
+const APP_EDIT_COUNT = 1916;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1525";
+const FILE_VER = "1526";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["申請入住可用網址直接打開"] },
+  { ver: APP_VERSION, items: ["報修已完成會同步到電腦和管理員"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -10942,6 +10942,7 @@ function persistRepairStat(data) {
     if (!r || !r.id) return;
     const next = {
       status: r.status || "open",
+      statusAt: Number(r.statusAt) || 0,
       editedAt: Number(r.editedAt) || 0,
       vendor: r.vendor || "",
       cost: r.cost == null ? "" : r.cost,
@@ -10949,9 +10950,9 @@ function persistRepairStat(data) {
       appointAt: r.appointAt || ""
     };
     const cur = map[r.id];
-    if (!cur || Number(next.editedAt) >= Number(cur.editedAt || 0) || repairStatusRank(next.status) >= repairStatusRank(cur.status)) {
-      map[r.id] = next;
-    }
+    const nextAt = Number(next.statusAt) || Number(next.editedAt) || 0;
+    const curAt = cur ? (Number(cur.statusAt) || Number(cur.editedAt) || 0) : 0;
+    if (!cur || nextAt >= curAt) map[r.id] = next;
   });
   try { localStorage.setItem(REPAIR_STAT_KEY, JSON.stringify(map)); } catch {}
 }
@@ -11012,19 +11013,35 @@ function clearTenantAvatar(t) {
 function applyRepairStat(data) {
   if (!data || !Array.isArray(data.repairs)) return;
   const map = loadRepairStatMap();
+  let dirty = false;
   data.repairs.forEach(r => {
     if (!r || !r.id) return;
     const cur = map[r.id];
     if (!cur) return;
-    if (Number(cur.editedAt || 0) >= Number(r.editedAt || 0) || repairStatusRank(cur.status) > repairStatusRank(r.status)) {
-      if (cur.status) r.status = cur.status;
-      if (cur.editedAt) r.editedAt = cur.editedAt;
+    const localAt = Number(cur.statusAt) || 0;
+    const remoteAt = Number(r.statusAt) || 0;
+    const localWins = !!(cur.status && localAt && localAt >= remoteAt && cur.status !== r.status);
+    const recover = !!(cur.status && !localAt && !remoteAt && repairStatusRank(cur.status) > repairStatusRank(r.status));
+    if (localWins || recover) {
+      r.status = cur.status;
+      r.statusAt = localAt || Date.now();
+      if (r.statusAt > Number(r.editedAt || 0)) r.editedAt = r.statusAt;
+      map[r.id] = Object.assign({}, cur, { status: r.status, statusAt: r.statusAt, editedAt: Number(r.editedAt) || r.statusAt });
+      dirty = true;
+      return;
+    }
+    if (Number(cur.editedAt || 0) > Number(r.editedAt || 0)) {
       if (cur.vendor) r.vendor = cur.vendor;
       if (cur.cost !== "" && cur.cost != null) r.cost = cur.cost;
       if (cur.doneNote) r.doneNote = cur.doneNote;
       if (cur.appointAt) r.appointAt = cur.appointAt;
     }
   });
+  if (dirty) {
+    try { localStorage.setItem(REPAIR_STAT_KEY, JSON.stringify(map)); } catch {}
+    try { markCloudDirty(); } catch {}
+    try { if (typeof pushCloud === "function" && !pushBusy) pushCloud(); } catch {}
+  }
 }
 function stampRepair(rep) {
   if (!rep) return;
@@ -11199,6 +11216,17 @@ function pickNewerEntity(a, b, keys) {
   });
   out.edited = !!(a.edited || b.edited);
   out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
+  if (keys && keys.indexOf("status") >= 0) {
+    const aAt = Number(a.statusAt) || 0;
+    const bAt = Number(b.statusAt) || 0;
+    let pick = null;
+    if (aAt !== bAt) pick = aAt > bAt ? a : b;
+    else if (repairStatusRank(a.status) !== repairStatusRank(b.status)) pick = repairStatusRank(a.status) > repairStatusRank(b.status) ? a : b;
+    if (pick && pick.status) {
+      out.status = pick.status;
+      out.statusAt = Math.max(aAt, bAt) || Date.now();
+    }
+  }
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
@@ -38014,6 +38042,7 @@ function bindAdmin() {
       if (!rep) return;
       if (rep.status === status) return;
       rep.status = status;
+      rep.statusAt = Date.now();
       stampRepair(rep);
       syncRoomRepairStatus(rep.roomId);
       persistRepairStat(state);
