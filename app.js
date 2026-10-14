@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-18-01";
-const APP_EDIT_COUNT = 1913;
+const APP_STAMP = "2026-10-14-23-05";
+const APP_EDIT_COUNT = 1914;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1523";
+const FILE_VER = "1524";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -516,11 +516,11 @@ function isDemoRepair(r) {
   return false;
 }
 const TENANT_ROSTER_VER = "20260902-1455";
-const FACTORY_ROSTER_VER = "20260915-xuxu2";
+const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回 6832 的公告愛心"] },
+  { ver: APP_VERSION, items: ["禹旺改到大同路，從拉皮地圖拿掉"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5204,7 +5204,7 @@ const FACTORY_GROUPS = [
     { no: "拉皮-1A", unit: "93-1A號", manager: "" },
     { no: "拉皮-1B", unit: "93-1B號", manager: "" },
     { no: "拉皮-2A", unit: "93-2A號", manager: "" },
-    { no: "拉皮-2B", unit: "93-2B號", manager: "" }
+    { no: "拉皮-2B", unit: "", manager: "", street: "大同路", location: "大同路" }
   ]},
   { group: "大樹", street: "九曲路", company: "統潔", city: "高雄市大樹區九曲路", items: [
     { no: "大樹-18", unit: "5巷32弄18號", manager: "" },
@@ -5258,8 +5258,7 @@ const SITE_MAP_SPOTS = [
   { cx:10.04, cy:96.22, w:3.23, h:2.5, rot:147.9, kind:"factory", nos:["牛8-78"], label:"牛8 97-78" },
   { cx:33.07, cy:82.69, w:2.55, h:1.38, rot:151.9, kind:"factory", nos:["牛7-3F"], label:"牛7 93-63 3F" },
   { cx:33.72, cy:84.42, w:2.61, h:1.53, rot:151.8, kind:"factory", nos:["牛7-2F"], label:"牛7 93-63 2F" },
-  { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" },
-  { cx:38.97, cy:89.57, w:2.51, h:2.77, rot:68.4, kind:"factory", nos:["拉皮-2B"], label:"拉皮 93-2B" }
+  { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" }
 ];
 function findRoomByAssetNo(no) {
   const want = String(no || "");
@@ -5565,7 +5564,7 @@ const FACTORY_TENANT_INFO = {
     { from: "2027-12-01", untaxed: 39000 }
   ], note: "114/12/1 未稅 $37,000；116/12/1 起未稅 $39,000。每月寄發票。" },
   "拉皮-2A": { name: "咘然居", taxId: "", contactName: "孫小姐", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 0, rent: 45000, dueDay: 5, payBank: "現金", payCompany: "現金(保險箱)", payWay: "現金　每月5號去收", waterNote: "半年一次", elecNote: "每月收", extraNote: "每月5號收租金＋電費水", note: "紙本統潔租金表沒有這戶，依收租與電錶保留。每月5日下午2:00收租。電錶 115/7/2：47453→53551（6,098 度）；7/30：57858（再 4,307 度）；9/7：61785.15（本期 3,927.15 度，紅單 17,672）。" },
-  "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "存現", elecNote: "每月給電單（K瓦）", note: "93-2B。小許應收 $39,900。存現。每月給電單。" },
+  "拉皮-2B": { name: "禹旺企業有限公司", taxId: "83394199", contactName: "林永紝", phone: "0927-223-207", leaseStart: "2025-12-01", leaseEnd: "2029-11-30", rentUntaxed: 38000, rent: 39900, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "存現", elecNote: "每月給電單（K瓦），度數之後再補", note: "人在大同路，不在鳳仁路拉皮這張圖上。帳仍記拉皮-2B。未稅 $38,000，存現 $39,900。電度之後再補。" },
   "牛7-1F": { name: "驊勝食品工業有限公司", taxId: "89187957", contactName: "陳昱廷", phone: "0913-897-288", leaseStart: "2026-01-01", leaseEnd: "2027-12-31", rentUntaxed: 65000, rent: 68250, dueDay: 1, payBank: "聯邦", payCompany: "統潔", payWay: "匯款", waterNote: "我們繳", elecNote: "自繳欠", note: "93-63 1F。此次合約未附，先沿用租金表。" },
   "牛7-2F": { name: "陳慧玲", taxId: "", contactName: "", phone: "", leaseStart: "2024-09-01", leaseEnd: "2027-08-31", rentUntaxed: 60000, rent: 63000, dueDay: 15, payBank: "現金", payCompany: "現金(保險箱)", payWay: "存現　月中收現", waterNote: "單月給單", elecNote: "雙月給單", extraNote: "每月付 1,000 電桶費", note: "93-63 2F。存現，大概月中收現。每月付電桶費 $1,000。" },
   "大樹-屋頂": { name: "造得科技有限公司", taxId: "", contactName: "", phone: "", leaseStart: "", leaseEnd: "", rentUntaxed: 7280, rent: 7644, deposit: 0, dueDay: 8, payBank: "聯邦", payCompany: "統潔", invoiceEveryMonths: 2, invoiceItem: "租金收入", invoiceOn: "2026-09-09", invoiceAddr: "831 高雄市大寮區內坑路158之9號", note: "大樹廠房屋頂。付租金給我們。統潔三聯式，品名租金收入，兩個月開一次，寄大寮內坑路158之9。115/9/8 入帳 7,644，115/9/9 已開發票。" },
@@ -6390,10 +6389,10 @@ function factoryRooms() {
         title: "廠房",
         kind: "factory",
         group: g.group,
-        street: g.street,
+        street: item.street || g.street,
         company: item.company || g.company,
         manager: item.manager || "",
-        location: g.city + item.unit,
+        location: item.location || ((item.city || g.city) + (item.unit || "")),
         rent: info && info.rent ? info.rent : 0,
         rentUntaxed: info && info.rentUntaxed ? info.rentUntaxed : 0,
         deposit: info && info.deposit ? info.deposit : 0,
@@ -10011,7 +10010,7 @@ function collapseFactoryDupes(data) {
   const seedByNo = {};
   FACTORY_GROUPS.forEach(g => {
     (g.items || []).forEach(it => {
-      seedByNo[it.no] = { group: g.group, street: g.street, city: g.city, unit: it.unit, no: it.no };
+      seedByNo[it.no] = { group: g.group, street: it.street || g.street, city: it.city || g.city, unit: it.unit, location: it.location || "", no: it.no };
       const old = String(it.no).replace(/^牛5-97-(\d{2})$/, "牛5-$1");
       if (old !== it.no) seedByNo[old] = seedByNo[it.no];
     });
@@ -10024,7 +10023,8 @@ function collapseFactoryDupes(data) {
       r.no = seed.no;
       if (seed.group) r.group = seed.group;
       if (seed.street) r.street = seed.street;
-      if (seed.city && seed.unit) r.location = seed.city + seed.unit;
+      if (seed.location) r.location = seed.location;
+      else if (seed.city && seed.unit) r.location = seed.city + seed.unit;
     } else {
       r.no = String(r.no).replace(/^牛5-(\d{2})$/, "牛5-97-$1");
     }
