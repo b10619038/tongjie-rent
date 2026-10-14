@@ -1390,6 +1390,8 @@ button.pay-pill.hand {
 button.pay-pill[data-undo-renew] {
   cursor: pointer;
   border: 0;
+  width: auto;
+  flex: 0 0 auto;
   position: relative;
   z-index: 8;
   pointer-events: auto !important;

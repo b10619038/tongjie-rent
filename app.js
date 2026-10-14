@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-11-38";
-const APP_EDIT_COUNT = 1900;
+const APP_STAMP = "2026-10-14-11-45";
+const APP_EDIT_COUNT = 1901;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1510";
+const FILE_VER = "1511";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已續約改成點得下去，點了才收回"] },
+  { ver: APP_VERSION, items: ["點已續約才跳出收回，不會跟主圖卡搞混"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9246,23 +9246,13 @@ function undoRenewConfirmHtml() {
   </div>`;
 }
 function bindUndoRenew() {
-  if (!window.__undoRenewTap) {
-    window.__undoRenewTap = true;
-    document.addEventListener("pointerdown", e => {
-      const btn = e.target && e.target.closest && e.target.closest("[data-undo-renew]");
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      ui.undoRenewId = btn.getAttribute("data-undo-renew") || "";
-      ui.keepScroll = true;
-      render();
-    }, true);
-  }
   document.querySelectorAll("[data-undo-renew]").forEach(btn => {
+    btn.onpointerdown = e => { e.stopPropagation(); };
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.undoRenewId = btn.dataset.undoRenew || "";
+      ui.undoRenewId = btn.getAttribute("data-undo-renew") || "";
+      ui.undoRenewGuard = Date.now() + 500;
       ui.keepScroll = true;
       render();
     };
@@ -9271,7 +9261,10 @@ function bindUndoRenew() {
   const mask = document.getElementById("undo-renew-mask");
   const sheet = document.getElementById("undo-renew-sheet");
   if (sheet) sheet.onclick = e => e.stopPropagation();
-  if (mask) mask.onclick = e => { if (e.target.id === "undo-renew-mask") close(); };
+  if (mask) mask.onclick = e => {
+    if (Date.now() < (ui.undoRenewGuard || 0)) return;
+    if (e.target.id === "undo-renew-mask") close();
+  };
   const no = document.getElementById("undo-renew-no");
   if (no) no.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
   const yes = document.getElementById("undo-renew-yes");
@@ -34595,7 +34588,7 @@ function bindTenantFold() {
     const target = el.closest(".swipe-wrap") || el;
     let x0 = 0, y0 = 0, moved = false, top0 = 0;
     const pressOn = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const p = e.touches ? e.touches[0] : e;
       x0 = p.clientX; y0 = p.clientY; moved = false; ui.tenantDrag = false;
       top0 = sc ? sc.scrollTop : 0;
@@ -34622,7 +34615,7 @@ function bindTenantFold() {
     el.ontouchmove = track;
     el.ontouchend = pressOff;
     el.onclick = e => {
-      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
+      if (e.target.closest("button,select,a,input,.pay-toggle,[data-toggle-pay],[data-open-renew],[data-undo-renew],[data-open-early],.avatar-look,[data-look-tenant],[data-open-chat]")) return;
       const wrap = el.closest(".swipe-wrap");
       if (wrap && (wrap.dataset.swiping === "1" || wrap.dataset.scrolled === "1")) {
         e.preventDefault();
