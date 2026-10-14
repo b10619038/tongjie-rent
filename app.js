@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-14-50";
-const APP_EDIT_COUNT = 1912;
+const APP_STAMP = "2026-10-14-18-01";
+const APP_EDIT_COUNT = 1913;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1522";
+const FILE_VER = "1523";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["App 已開著時，點網址也會進到該畫面"] },
+  { ver: APP_VERSION, items: ["收回 6832 的公告愛心"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -6936,6 +6936,7 @@ function normalize(data) {
   try { applyClearForgottenHearts(data); } catch {}
   try { applyClearRecentHearts(data); } catch {}
   try { applyClearStarPair(data); } catch {}
+  try { applyClear6832Heart(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
   mergeLedgerInto(data, loadLedgerBackup());
@@ -11119,6 +11120,24 @@ function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
 }
 const REACT_KEEP_AFTER = 1790138935786;
+const DROP_6832_HEART_UNTIL = Date.parse("2026-10-15T00:00:00+08:00");
+function is6832HeartTenant(id, data) {
+  const key = String(id || "");
+  if (!key) return false;
+  if (key === "t6832") return true;
+  const bags = [data, (typeof state !== "undefined" ? state : null)];
+  for (let i = 0; i < bags.length; i++) {
+    const bag = bags[i];
+    if (!bag) continue;
+    const tenants = bag.tenants || [];
+    const rooms = bag.rooms || [];
+    const t = tenants.find(x => x && String(x.id) === key && !x.demo && !x.former);
+    if (!t) continue;
+    const r = rooms.find(x => x && (x.id === t.roomId || String(x.tenantId) === key));
+    if (r && String(r.no) === "6832") return true;
+  }
+  return false;
+}
 function mergeAnnouncementReactions(a, b) {
   const reactions = {};
   const reactionAt = {};
@@ -11130,6 +11149,7 @@ function mergeAnnouncementReactions(a, b) {
       if (!rec[id]) return;
       const stamp = Number(at[id]) || Number(src.editedAt) || 0;
       if (stamp <= REACT_KEEP_AFTER) return;
+      if (is6832HeartTenant(id) && stamp < DROP_6832_HEART_UNTIL) return;
       if (!reactions[id] || stamp >= (reactionAt[id] || 0)) {
         reactions[id] = rec[id];
         reactionAt[id] = stamp;
@@ -12520,6 +12540,7 @@ async function pullCloud() {
       try { applyClearForgottenHearts(state); } catch {}
       try { applyClearRecentHearts(state); } catch {}
       try { applyClearStarPair(state); } catch {}
+      try { applyClear6832Heart(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
       applyTongjieMega(state);
@@ -12630,6 +12651,7 @@ async function pullCloud() {
     try { applyClearForgottenHearts(state); } catch {}
     try { applyClearRecentHearts(state); } catch {}
     try { applyClearStarPair(state); } catch {}
+    try { applyClear6832Heart(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
     applyTongjieMega(state);
@@ -13409,6 +13431,7 @@ async function pushCloud() {
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
+    try { applyClear6832Heart(payload); } catch {}
     try {
       const again = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
       if (again.ok) {
@@ -26853,6 +26876,26 @@ function reactBarHtml(a) {
   const who = openKind ? reactionWho(a, openKind) : [];
   const list = openKind ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人</span>`}</div>` : "";
   return `<div class="ann-react${openKind || ui.reactPick === a.id ? " open" : ""}" data-react-ann="${a.id}">${pick}${chips}${list}</div>`;
+}
+function applyClear6832Heart(data) {
+  if (!data || !Array.isArray(data.announcements)) return;
+  let dirty = false;
+  data.announcements.forEach(a => {
+    if (!a || !a.reactions) return;
+    Object.keys(a.reactions).forEach(id => {
+      if (!a.reactions[id] || !is6832HeartTenant(id, data)) return;
+      const stamp = Number((a.reactionAt || {})[id]) || 0;
+      if (stamp >= DROP_6832_HEART_UNTIL) return;
+      delete a.reactions[id];
+      if (a.reactionAt) delete a.reactionAt[id];
+      a.edited = true;
+      a.editedAt = Date.now();
+      dirty = true;
+    });
+  });
+  if (dirty) {
+    try { markCloudDirty(); } catch {}
+  }
 }
 function applyClearForgottenHearts(data) {
   if (!data || !Array.isArray(data.announcements)) return;
