@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-12-41";
-const APP_EDIT_COUNT = 1909;
+const APP_STAMP = "2026-10-14-14-34";
+const APP_EDIT_COUNT = 1910;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1519";
+const FILE_VER = "1520";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回後可取消收回，過了原約到期日就不能再改"] },
+  { ver: APP_VERSION, items: ["租客網址可直接開報修、繳費、續約、中途退租"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2057,6 +2057,66 @@ function animateChatChip(toAway) {
     chip.classList.toggle("chip-lock", toAway);
     try { anim.cancel(); } catch {}
   };
+}
+const TENANT_GO = {
+  repair: "repair",
+  "報修": "repair",
+  pay: "pay",
+  "繳費": "pay",
+  early: "early",
+  "中途退租": "early",
+  renew: "renew",
+  "換房": "renew",
+  "renew-apply": "renew-apply",
+  "續約申請": "renew-apply"
+};
+function takeTenantGoQuery() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const raw = String(q.get("go") || "").trim();
+    const go = TENANT_GO[raw] || "";
+    if (go) {
+      ui.pendingGo = go;
+      try { sessionStorage.setItem("tj-go", go); } catch {}
+      q.delete("go");
+      const left = q.toString();
+      history.replaceState({}, "", location.pathname + (left ? "?" + left : "") + location.hash);
+    }
+  } catch {}
+  if (!ui.pendingGo) {
+    try { ui.pendingGo = sessionStorage.getItem("tj-go") || ""; } catch {}
+  }
+}
+function applyTenantGo() {
+  const go = ui.pendingGo || "";
+  if (!go) return;
+  if (ui.role === "admin") {
+    ui.pendingGo = "";
+    try { sessionStorage.removeItem("tj-go"); } catch {}
+    return;
+  }
+  if (ui.role !== "tenant" || !ui.tenantId) {
+    ui.page = "tenant-login";
+    return;
+  }
+  if (go === "repair") ui.page = "repair";
+  else if (go === "pay") ui.page = "pay";
+  else if (go === "early") {
+    ui.page = "lease";
+    ui.earlyApplyOpen = true;
+    ui.earlyDate = typeof todayYmd === "function" ? todayYmd() : "";
+  } else if (go === "renew") {
+    ui.page = "lease";
+    ui.scrollRenew = true;
+    ui.renewMode = "move";
+  } else if (go === "renew-apply") {
+    ui.page = "lease";
+    ui.scrollRenew = true;
+    ui.renewMode = "same";
+  }
+  ui.pendingGo = "";
+  try { sessionStorage.removeItem("tj-go"); } catch {}
+  try { persistUi(); } catch {}
 }
 function takeChatOpenQuery() {
   try {
@@ -35392,6 +35452,7 @@ function enterTenant(room, tenant) {
   ui.roomId = room.id;
   ui.roomNo = room.no;
   ui.page = "home";
+  applyTenantGo();
   ui.loginError = "";
   ui.loginRoom = "";
   ui.foundPass = null;
@@ -40351,13 +40412,14 @@ function hideSplash() {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
 }
 async function boot() {
-  try { takeChatOpenQuery(); armChatOpen(); } catch {}
+  try { takeTenantGoQuery(); takeChatOpenQuery(); armChatOpen(); } catch {}
   const splashAt = setTimeout(hideSplash, 2200);
   try {
     armCompanySave();
     armAiSend();
     armRoomEditSave();
     restoreUi();
+    applyTenantGo();
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
     seedSeenVersion();
@@ -40391,6 +40453,7 @@ async function boot() {
     try { connectPaidCloud(); } catch {}
     if (got === "local-newer" || cloudDirty) await pushCloud();
     restoreUi();
+    applyTenantGo();
     beatPresence();
     render();
     try { armChatOpen(); } catch {}
