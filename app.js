@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-14-41";
-const APP_EDIT_COUNT = 1911;
+const APP_STAMP = "2026-10-14-14-50";
+const APP_EDIT_COUNT = 1912;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1521";
+const FILE_VER = "1522";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者代看租客時，網址也能直接開到該畫面"] },
+  { ver: APP_VERSION, items: ["App 已開著時，點網址也會進到該畫面"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2070,22 +2070,59 @@ const TENANT_GO = {
   "renew-apply": "renew-apply",
   "續約申請": "renew-apply"
 };
+function tenantGoFromHref(href) {
+  try {
+    const u = new URL(href || location.href, location.origin);
+    let raw = String(u.searchParams.get("go") || "").trim();
+    if (!raw && u.hash) {
+      const h = u.hash.replace(/^#/, "");
+      if (h.indexOf("=") >= 0) raw = String(new URLSearchParams(h).get("go") || "").trim();
+      else raw = h;
+    }
+    return TENANT_GO[raw] || "";
+  } catch { return ""; }
+}
 function takeTenantGoQuery() {
   try {
-    const q = new URLSearchParams(location.search);
-    const raw = String(q.get("go") || "").trim();
-    const go = TENANT_GO[raw] || "";
+    const go = tenantGoFromHref(location.href);
     if (go) {
       ui.pendingGo = go;
       try { sessionStorage.setItem("tj-go", go); } catch {}
+      const q = new URLSearchParams(location.search);
       q.delete("go");
       const left = q.toString();
-      history.replaceState({}, "", location.pathname + (left ? "?" + left : "") + location.hash);
+      const hash = String(location.hash || "").replace(/^#go=[^&]*/, "").replace(/^#$/, "");
+      history.replaceState({}, "", location.pathname + (left ? "?" + left : "") + hash);
     }
   } catch {}
   if (!ui.pendingGo) {
     try { ui.pendingGo = sessionStorage.getItem("tj-go") || ""; } catch {}
   }
+}
+function catchTenantGo(href) {
+  const go = tenantGoFromHref(href || location.href);
+  if (go) {
+    ui.pendingGo = go;
+    try { sessionStorage.setItem("tj-go", go); } catch {}
+  }
+  if (!ui.pendingGo) return false;
+  applyTenantGo();
+  if (ui.pendingGo) return false;
+  ui.keepScroll = false;
+  try { render(); } catch {}
+  return true;
+}
+function armTenantGoLaunch() {
+  try {
+    if (window.launchQueue && typeof launchQueue.setConsumer === "function") {
+      launchQueue.setConsumer(params => {
+        const url = params && params.targetURL;
+        if (!url) return;
+        try { restoreUi(); } catch {}
+        catchTenantGo(url);
+      });
+    }
+  } catch {}
 }
 function applyTenantGo() {
   const go = ui.pendingGo || "";
@@ -40596,10 +40633,17 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
     if (Date.now() - lastScrollAt < 450) try { e.target.blur(); } catch {}
   });
 })();
-window.addEventListener("pageshow", () => { try { restoreUi(); } catch {} });
+window.addEventListener("pageshow", () => {
+  try { restoreUi(); } catch {}
+  try { catchTenantGo(location.href); } catch {}
+});
 window.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") persistLogin();
-  if (document.visibilityState === "visible") { try { restoreUi(); } catch {} }
+  if (document.visibilityState === "visible") {
+    try { restoreUi(); } catch {}
+    try { catchTenantGo(location.href); } catch {}
+  }
 });
 setInterval(() => { try { persistLogin(); } catch {} }, 4000);
+armTenantGoLaunch();
 boot();

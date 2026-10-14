@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v1913";
+const CACHE = "tongjie-app-v1914";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
 self.addEventListener("install", e => {
@@ -35,7 +35,7 @@ self.addEventListener("fetch", e => {
     return;
   }
   const bust = url.search.includes("t=") || url.search.includes("nocache=") || url.search.includes("v=");
-  const live = bust || path === "/" || path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css");
+  const live = bust || path === "/" || path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css") || path.endsWith("manifest.json");
   e.respondWith((async () => {
     try {
       const res = await fetch(e.request, { cache: "no-store" });
