@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-12-07";
-const APP_EDIT_COUNT = 1905;
+const APP_STAMP = "2026-10-14-12-11";
+const APP_EDIT_COUNT = 1906;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1515";
+const FILE_VER = "1516";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回續約顯示續約日期，先不要才縮回去"] },
+  { ver: APP_VERSION, items: ["先不要會縮回剛剛點的已續約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9279,13 +9279,32 @@ function playUndoRenewZoom() {
     sheet.style.opacity = "1";
   });
 }
+function undoRenewBackTarget() {
+  const id = String(ui.undoRenewId || "");
+  const saved = ui.undoRenewFrom;
+  let best = null;
+  let bestDist = Infinity;
+  document.querySelectorAll("[data-undo-renew]").forEach(el => {
+    if (el.closest("#undo-renew-mask")) return;
+    if (id && el.getAttribute("data-undo-renew") !== id) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) return;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const sx = saved ? saved.left + saved.width / 2 : cx;
+    const sy = saved ? saved.top + saved.height / 2 : cy;
+    const dist = Math.hypot(cx - sx, cy - sy);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+  });
+  return best || saved || null;
+}
 function closeUndoRenew() {
   const sheet = document.getElementById("undo-renew-sheet");
-  let origin = null;
-  document.querySelectorAll("[data-undo-renew]").forEach(el => {
-    if (!origin && !el.closest("#undo-renew-mask")) origin = el;
-  });
-  const from = undoRenewOrigin(origin) || ui.undoRenewFrom;
+  const from = undoRenewBackTarget();
   const finish = () => {
     ui.undoRenewId = "";
     ui.undoRenewFrom = null;
@@ -9295,13 +9314,21 @@ function closeUndoRenew() {
   };
   if (!sheet || !from) { finish(); return; }
   const to = sheet.getBoundingClientRect();
-  sheet.style.transition = "transform .28s cubic-bezier(.4,0,1,1), opacity .22s ease";
-  sheet.style.transformOrigin = "center center";
-  sheet.style.transform = sheetZoomFrom(from, to);
-  sheet.style.opacity = "0.35";
   const mask = document.getElementById("undo-renew-mask");
-  if (mask) mask.style.pointerEvents = "none";
-  setTimeout(finish, 280);
+  if (mask) {
+    mask.style.pointerEvents = "none";
+    mask.style.transition = "background .28s ease";
+    mask.style.background = "transparent";
+  }
+  sheet.style.transformOrigin = "center center";
+  sheet.style.willChange = "transform, opacity";
+  void sheet.offsetHeight;
+  requestAnimationFrame(() => {
+    sheet.style.transition = "transform .32s cubic-bezier(.22,1,.36,1), opacity .24s ease";
+    sheet.style.transform = sheetZoomFrom(from, to);
+    sheet.style.opacity = "0.15";
+  });
+  setTimeout(finish, 320);
 }
 function openUndoRenew(id, originEl) {
   if (!id) return;
