@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-13-22-24";
-const APP_EDIT_COUNT = 1897;
+const APP_STAMP = "2026-10-14-08-45";
+const APP_EDIT_COUNT = 1898;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1507";
+const FILE_VER = "1508";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收起新增行程時，上面的行程不再抖動"] },
+  { ver: APP_VERSION, items: ["離開行程再回來，日曆自動回到今天"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -28793,7 +28793,13 @@ function bindAdminPageSwipe() {
     if (i < 0) return;
     const next = dx < 0 ? i + 1 : i - 1;
     if (next < 0 || next >= pages.length) return;
-    ui.page = pages[next];
+    const nextPage = pages[next];
+    if (nextPage === "ai") {
+      ui.workCalYear = 0;
+      ui.workCalMonth = 0;
+      ui.workCalDay = 0;
+    }
+    ui.page = nextPage;
     ui.keepScroll = false;
     render();
   }, { passive: true });
@@ -37157,7 +37163,12 @@ function bindAdmin() {
       if (btn.classList.contains("tab") && cur === id) return;
       const on = document.querySelector(".tabs .tab.on");
       if (on) ui.tabPill = { x: on.offsetLeft, y: on.offsetTop, w: on.offsetWidth, h: on.offsetHeight };
-      if (id === "ai") ui.aiOpen = false;
+      if (id === "ai") {
+        ui.aiOpen = false;
+        ui.workCalYear = 0;
+        ui.workCalMonth = 0;
+        ui.workCalDay = 0;
+      }
       ui.page = id;
       ui.keepScroll = false;
       render();
