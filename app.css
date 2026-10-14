@@ -1387,6 +1387,19 @@ button.pay-pill.hand {
   background: #ffffff;
   margin-top: 8px;
 }
+button.pay-pill[data-undo-renew] {
+  cursor: pointer;
+  border: 0;
+  position: relative;
+  z-index: 8;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  -webkit-tap-highlight-color: transparent;
+}
 button.pay-pill.paid {
   cursor: pointer;
   border: 0;
