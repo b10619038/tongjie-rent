@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-23-05";
-const APP_EDIT_COUNT = 1914;
+const APP_STAMP = "2026-10-14-23-12";
+const APP_EDIT_COUNT = 1915;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1524";
+const FILE_VER = "1525";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["禹旺改到大同路，從拉皮地圖拿掉"] },
+  { ver: APP_VERSION, items: ["申請入住可用網址直接打開"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2058,6 +2058,11 @@ function animateChatChip(toAway) {
     try { anim.cancel(); } catch {}
   };
 }
+const PUBLIC_GO = {
+  "move-in": "move-in",
+  "申請入住": "move-in",
+  "入住": "move-in"
+};
 const TENANT_GO = {
   repair: "repair",
   "報修": "repair",
@@ -2079,7 +2084,7 @@ function tenantGoFromHref(href) {
       if (h.indexOf("=") >= 0) raw = String(new URLSearchParams(h).get("go") || "").trim();
       else raw = h;
     }
-    return TENANT_GO[raw] || "";
+    return PUBLIC_GO[raw] || TENANT_GO[raw] || "";
   } catch { return ""; }
 }
 function takeTenantGoQuery() {
@@ -2127,6 +2132,20 @@ function armTenantGoLaunch() {
 function applyTenantGo() {
   const go = ui.pendingGo || "";
   if (!go) return;
+  if (go === "move-in") {
+    ui.pendingGo = "";
+    try { sessionStorage.removeItem("tj-go"); } catch {}
+    try { sessionStorage.setItem("tj-public-go", "move-in"); } catch {}
+    ui.loginError = "";
+    ui.moveEnter = true;
+    if (ui.role) {
+      ui.guestMoveIn = true;
+      if (!ui.guestMoveBack || ui.guestMoveBack === "move-in") ui.guestMoveBack = ui.page && ui.page !== "move-in" ? ui.page : (ui.role === "admin" ? "dash" : "home");
+    }
+    ui.page = "move-in";
+    if (!ui.role) { try { persistGatePage(); } catch {} }
+    return;
+  }
   const looking = !!(ui.tenantLook && ui.tenantId);
   if (ui.role === "admin" && !looking) return;
   if ((ui.role !== "tenant" && !looking) || !ui.tenantId) {
@@ -13607,7 +13626,7 @@ function persistLogin() {
     role: ui.role,
     adminCode: ui.adminCode || "",
     adminName: ui.adminName || "",
-    page: ui.page || "",
+    page: ui.guestMoveIn ? (ui.guestMoveBack || (ui.role === "admin" ? "dash" : "home")) : (ui.page || ""),
     roomId: ui.roomId || "",
     tenantId: ui.tenantId || "",
     roomNo: ui.roomNo || "",
@@ -13830,7 +13849,20 @@ function readGatePage() {
 function isGatePage(p) {
   return /^(tenant-login|admin-login|move-in|tenant-forgot|tenant-setpass)$/.test(String(p || ""));
 }
+function revivePublicGo(keepBack) {
+  let go = "";
+  try { go = sessionStorage.getItem("tj-public-go") || ""; } catch {}
+  if (go !== "move-in") return;
+  if (ui.role) {
+    ui.guestMoveIn = true;
+    const back = keepBack || ui.guestMoveBack || ui.page || "";
+    ui.guestMoveBack = back && back !== "move-in" ? back : (ui.role === "admin" ? "dash" : "home");
+  }
+  ui.page = "move-in";
+  ui.moveEnter = true;
+}
 function restoreUi() {
+  const keepBack = ui.guestMoveBack || "";
   try {
     const stayingGate = !ui.role && isGatePage(ui.page);
     const s = readUiSnap();
@@ -13967,6 +13999,7 @@ function restoreUi() {
     }
     persistUi();
   } catch {}
+  finally { revivePublicGo(keepBack); }
 }
 function clearSession() {
   ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = ""; ui.adminName = "";
@@ -25970,7 +26003,7 @@ function paintApp() {
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
   const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + restoreRenewConfirmHtml() + moveSubmitConfirmHtml();
-  if (!ui.role) {
+  if (!ui.role || ui.guestMoveIn) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
     const oldGate = gateSc ? gateSc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
@@ -35742,7 +35775,19 @@ function bindGate() {
     if (ui.page === "tenant-setpass" || ui.page === "tenant-forgot") {
       ui.page = "tenant-login"; ui.loginError = ""; ui.foundPass = null; render(); return;
     }
-    ui.page = "home"; ui.loginError = ""; ui.loginRoom = ""; ui.foundPass = null; render();
+    if (ui.guestMoveIn && ui.role) {
+      ui.page = ui.guestMoveBack || (ui.role === "admin" ? "dash" : "home");
+      ui.guestMoveIn = false;
+      ui.guestMoveBack = "";
+      try { sessionStorage.removeItem("tj-public-go"); } catch {}
+      render();
+      return;
+    }
+    ui.page = "home"; ui.loginError = ""; ui.loginRoom = ""; ui.foundPass = null;
+    ui.guestMoveIn = false;
+    ui.guestMoveBack = "";
+    try { sessionStorage.removeItem("tj-public-go"); } catch {}
+    render();
   };
   const input = document.getElementById("room-login");
   if (input) {
