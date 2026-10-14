@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-23-23";
-const APP_EDIT_COUNT = 1917;
+const APP_STAMP = "2026-10-14-23-38";
+const APP_EDIT_COUNT = 1919;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1527";
+const FILE_VER = "1529";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["插座報修已完成會立刻同步"] },
+  { ver: APP_VERSION, items: ["任一台改報修狀態，其他裝置會跟著更新"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -11027,6 +11027,7 @@ function applyRepairStat(data) {
       r.statusAt = localAt || Date.now();
       if (r.statusAt > Number(r.editedAt || 0)) r.editedAt = r.statusAt;
       map[r.id] = Object.assign({}, cur, { status: r.status, statusAt: r.statusAt, editedAt: Number(r.editedAt) || r.statusAt });
+      try { rememberRepairStatus(r); } catch {}
       dirty = true;
       return;
     }
@@ -11043,6 +11044,43 @@ function applyRepairStat(data) {
     try { if (typeof pushCloud === "function" && !pushBusy) pushCloud(); } catch {}
   }
 }
+function noteRepairPin(rep) {
+  if (!rep || !rep.id || typeof state === "undefined" || !state) return;
+  if (!state.repairPins || typeof state.repairPins !== "object") state.repairPins = {};
+  const at = Number(rep.statusAt) || Date.now();
+  const cur = state.repairPins[rep.id];
+  if (!cur || at >= Number(cur.statusAt || 0)) state.repairPins[rep.id] = { status: rep.status || "open", statusAt: at };
+}
+function mergeRepairPinMaps(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    const n = b[id];
+    if (!n || !n.status) return;
+    const cur = out[id];
+    if (!cur || Number(n.statusAt || 0) >= Number(cur.statusAt || 0)) out[id] = { status: n.status, statusAt: Number(n.statusAt) || 0 };
+  });
+  return out;
+}
+function applyRepairPins(list, pins) {
+  const map = pins || {};
+  (list || []).forEach(r => {
+    if (!r || !r.id) return;
+    const hit = map[r.id];
+    if (!hit || !hit.status) return;
+    const at = Number(hit.statusAt) || 0;
+    if (at && at >= Number(r.statusAt || 0) && r.status !== hit.status) {
+      r.status = hit.status;
+      r.statusAt = at;
+      if (at > Number(r.editedAt || 0)) r.editedAt = at;
+    }
+  });
+  (list || []).forEach(r => {
+    if (!r || !r.id || !r.statusAt) return;
+    const cur = map[r.id];
+    if (!cur || Number(r.statusAt) >= Number(cur.statusAt || 0)) map[r.id] = { status: r.status, statusAt: Number(r.statusAt) };
+  });
+  return map;
+}
 function rememberRepairStatus(rep) {
   if (!rep || !rep.id) return;
   try {
@@ -11054,6 +11092,7 @@ function rememberRepairStatus(rep) {
       localStorage.setItem("tj-repair-status-box", JSON.stringify(box));
     }
   } catch {}
+  noteRepairPin(rep);
 }
 function applyRepairStatusBox(list) {
   let box = {};
@@ -11570,7 +11609,8 @@ function ingestLiveCloud(raw) {
     if (!o || o.device === liveDeviceId()) return;
     const at = Number(o.at) || 0;
     const hasMemos = (Array.isArray(o.memos) && o.memos.length) || (Array.isArray(o.memoGone) && o.memoGone.length);
-    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !hasMemos) return;
+    const hasRepairs = Array.isArray(o.repairs) && o.repairs.length;
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !hasMemos && !hasRepairs) return;
     if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
     if (hasMemos) {
       state.memoGone = unionGone(state.memoGone, o.memoGone);
@@ -11589,6 +11629,26 @@ function ingestLiveCloud(raw) {
       ui.keepScroll = true;
       try { render(); } catch {}
       try { pushCloud(); } catch {}
+    }
+    if (hasRepairs) {
+      let changed = false;
+      o.repairs.forEach(x => {
+        if (!x || !x.id || !x.status) return;
+        const cur = (state.repairs || []).find(r => r && r.id === x.id);
+        if (!cur) return;
+        const stamp = Number(x.statusAt) || at || 0;
+        if (stamp < Number(cur.statusAt || 0)) return;
+        if (cur.status === x.status && Number(cur.statusAt || 0) >= stamp) return;
+        cur.status = x.status;
+        cur.statusAt = stamp;
+        if (stamp > Number(cur.editedAt || 0)) cur.editedAt = stamp;
+        try { rememberRepairStatus(cur); } catch {}
+        changed = true;
+      });
+      if (changed) {
+        ui.keepScroll = true;
+        try { render(); } catch {}
+      }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
@@ -11638,6 +11698,23 @@ function ingestLiveCloud(raw) {
         try { enforceTenantSession(); } catch {}
       }
     }, 200);
+  } catch {}
+}
+let pendingRepairPkt = null;
+function publishRepairStatus(rep) {
+  if (!rep || !rep.id) return;
+  pendingRepairPkt = {
+    at: Date.now(),
+    device: liveDeviceId(),
+    repairs: [{ id: rep.id, status: rep.status || "open", statusAt: Number(rep.statusAt) || Date.now() }]
+  };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRepairPkt), false));
+    pendingRepairPkt = null;
   } catch {}
 }
 let pendingRenewPkt = null;
@@ -12081,6 +12158,7 @@ function connectPaidCloud() {
         if (pendingRenewPkt) publishRenewNow(pendingRenewPkt.renewals && pendingRenewPkt.renewals[0]);
         if (pendingEarlyPkt) publishEarlyNow(pendingEarlyPkt.earlyOuts && pendingEarlyPkt.earlyOuts[0]);
         if (pendingLiveMemos.length || pendingLiveGone.length) publishLiveCloud();
+        if (pendingRepairPkt) publishRepairStatus({ id: pendingRepairPkt.repairs[0].id, status: pendingRepairPkt.repairs[0].status, statusAt: pendingRepairPkt.repairs[0].statusAt });
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
@@ -12227,6 +12305,7 @@ function mergeSharedInto(target, other) {
   }
   target.repairGone = unionGone(target.repairGone, other.repairGone);
   target.repairs = dropGone(mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), target.repairGone);
+  target.repairPins = applyRepairPins(target.repairs, mergeRepairPinMaps(target.repairPins, other.repairPins));
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
@@ -12531,7 +12610,7 @@ async function pullCloud() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
   try {
-    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, signal: ctrl ? ctrl.signal : undefined });
+    const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
@@ -13397,7 +13476,7 @@ async function pushCloud() {
     applyRepairStatusBox(state.repairs);
     let remote = null;
     try {
-      const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+      const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
       if (cur.ok) remote = await cur.json();
     } catch {}
     const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone);
@@ -13437,8 +13516,9 @@ async function pushCloud() {
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
-      repairs: dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), unionGone(remote && remote.repairGone, state.repairGone)),
+      repairs: dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone)),
       repairGone: unionGone(remote && remote.repairGone, state.repairGone),
+      repairPins: mergeRepairPinMaps(remote && remote.repairPins, state.repairPins),
       announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
@@ -13457,6 +13537,10 @@ async function pushCloud() {
       loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
       presence: mergedPresence(remote && remote.presence, state.presence)
     });
+    applyRepairStatusBox(state.repairs);
+    applyRepairStatusBox(payload.repairs);
+    payload.repairs = dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone));
+    applyRepairStatusBox(payload.repairs);
     mergeLedgerInto(payload, loadLedgerBackup());
     persistLedger(payload);
     persistMemoDone(payload);
@@ -13522,7 +13606,7 @@ async function pushCloud() {
     try { applyClearStarPair(payload); } catch {}
     try { applyClear6832Heart(payload); } catch {}
     try {
-      const again = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY } });
+      const again = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
       if (again.ok) {
         const latest = await again.json();
         const gone = unionGone(latest && latest.memoGone, payload.memoGone);
@@ -13531,8 +13615,15 @@ async function pushCloud() {
         payload.aiMemos = dropGone(merged, gone).filter(m => !isDupYuWangElecMemo(m));
         state.memoGone = gone;
         state.aiMemos = payload.aiMemos;
+        const repairKeys = ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"];
+        payload.repairs = dropGone(mergeEntities(latest && latest.repairs, payload.repairs, repairKeys), unionGone(latest && latest.repairGone, payload.repairGone));
+        payload.repairPins = mergeRepairPinMaps(latest && latest.repairPins, payload.repairPins);
       }
     } catch {}
+    try { applyRepairStatusBox(payload.repairs); } catch {}
+    try { payload.repairPins = applyRepairPins(payload.repairs, payload.repairPins || {}); } catch {}
+    state.repairs = payload.repairs;
+    state.repairPins = payload.repairPins;
     let body;
     try {
       const upload = JSON.parse(JSON.stringify(payload));
@@ -13573,6 +13664,7 @@ async function pushCloud() {
         eSigns: payload.eSigns,
         repairs: payload.repairs,
         repairGone: payload.repairGone,
+        repairPins: payload.repairPins,
         company: payload.company,
         bookVault: payload.bookVault,
         bookVaultGone: payload.bookVaultGone,
@@ -38087,9 +38179,11 @@ function bindAdmin() {
       rep.statusAt = Date.now();
       stampRepair(rep);
       rememberRepairStatus(rep);
+      try { noteRepairPin(rep); } catch {}
       syncRoomRepairStatus(rep.roomId);
       persistRepairStat(state);
       save();
+      try { publishRepairStatus(rep); } catch {}
       try { pushCloud(); } catch {}
       const room = state.rooms.find(x => x.id === rep.roomId);
       pushPhoneNotify("報修進度", `${room ? room.no : ""} ${rep.type}已改為${status === "done" ? "已完成" : "處理中"}`, room ? room.no : "tenants");
