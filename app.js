@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-14-34";
-const APP_EDIT_COUNT = 1910;
+const APP_STAMP = "2026-10-14-14-41";
+const APP_EDIT_COUNT = 1911;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1520";
+const FILE_VER = "1521";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20260915-xuxu2";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客網址可直接開報修、繳費、續約、中途退租"] },
+  { ver: APP_VERSION, items: ["開發者代看租客時，網址也能直接開到該畫面"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2090,13 +2090,10 @@ function takeTenantGoQuery() {
 function applyTenantGo() {
   const go = ui.pendingGo || "";
   if (!go) return;
-  if (ui.role === "admin") {
-    ui.pendingGo = "";
-    try { sessionStorage.removeItem("tj-go"); } catch {}
-    return;
-  }
-  if (ui.role !== "tenant" || !ui.tenantId) {
-    ui.page = "tenant-login";
+  const looking = !!(ui.tenantLook && ui.tenantId);
+  if (ui.role === "admin" && !looking) return;
+  if ((ui.role !== "tenant" && !looking) || !ui.tenantId) {
+    if (!ui.role) ui.page = "tenant-login";
     return;
   }
   if (go === "repair") ui.page = "repair";
@@ -2113,7 +2110,7 @@ function applyTenantGo() {
     ui.page = "lease";
     ui.scrollRenew = true;
     ui.renewMode = "same";
-  }
+  } else return;
   ui.pendingGo = "";
   try { sessionStorage.removeItem("tj-go"); } catch {}
   try { persistUi(); } catch {}
@@ -15977,6 +15974,7 @@ function enterTenantLook(t, page) {
   ui.roomId = r ? r.id : t.roomId;
   ui.roomNo = (r && r.no) || "";
   ui.page = page === "repair" ? "repair" : "home";
+  applyTenantGo();
   persistUi();
   render();
 }
