@@ -2421,14 +2421,14 @@ textarea { min-height: 92px; resize: vertical; }
 .btn-navy:hover { background: var(--teal-mid); }
 .btn-navy:disabled { opacity: 0.55; cursor: default; background: var(--teal); }
 .btn-navy.pay-locked,
-#mark-paid.pay-locked {
+#pay-step.pay-locked {
   opacity: 0.28 !important;
   filter: grayscale(0.45);
   pointer-events: none;
   cursor: default;
   box-shadow: none;
 }
-#mark-paid:not(.pay-locked):not(:disabled) {
+#pay-step:not(.pay-locked):not(:disabled) {
   opacity: 1;
   filter: none;
 }
@@ -2446,7 +2446,7 @@ textarea { min-height: 92px; resize: vertical; }
   font-weight: 700;
   line-height: 1.55;
 }
-#mark-paid.pay-next {
+#pay-step.pay-next {
   box-shadow: 0 0 0 3px #e7c48a;
 }
 .ghost { background: var(--card); color: var(--teal); border: 1.5px solid var(--line); }
