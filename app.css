@@ -1095,6 +1095,21 @@ button.pay-pill.hand {
   background: var(--chip);
   border: 1px solid #efe2d4;
 }
+.renew-note .renew-focus {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff6e8;
+  border: 1px solid #e7c48a;
+}
+.renew-note .renew-focus p {
+  margin: 0;
+  color: #6b4a16;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+.renew-note .renew-focus b { color: #9a3412; }
 .renew-sent-head {
   display: flex;
   align-items: center;
