@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-22-14";
-const APP_EDIT_COUNT = 1944;
+const APP_STAMP = "2026-10-15-22-41";
+const APP_EDIT_COUNT = 1945;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1554";
+const FILE_VER = "1555";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員公告先全部收起，之後只打開最新一則"] },
+  { ver: APP_VERSION, items: ["電腦版可以另開視窗，每個視窗各自停留"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -14146,10 +14146,10 @@ function readUiSnap() {
     } catch { return null; }
   };
   try {
+    const here = parse(sessionStorage.getItem(LOGIN_KEY)) || parse(sessionStorage.getItem(UI_KEY));
+    if (here) return here;
     return parse(localStorage.getItem(LOGIN_KEY))
-      || parse(sessionStorage.getItem(LOGIN_KEY))
       || parse(localStorage.getItem(UI_KEY))
-      || parse(sessionStorage.getItem(UI_KEY))
       || parse(localStorage.getItem("tongjie_ui_v1"))
       || parse(sessionStorage.getItem("tongjie_ui_v1"))
       || (function () {
@@ -29398,7 +29398,10 @@ function adminView() {
     <div class="admin-bar">
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
       </div>
-      <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${deviceKind() === "desktop" ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
+        <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
+      </div>
     </div>
     ${isStaffLook() ? `<div class="preview-banner">正在看 ${escapeHtml(normAdminName(ui.adminName) || "")} 的後台<button type="button" class="ghost" id="exit-staff-look" style="width:auto">返回</button></div>` : ""}
     ${body}
@@ -38139,6 +38142,16 @@ function bindAdmin() {
   if (logout) logout.onclick = () => {
     if (isStaffLook()) { exitStaffLook(); return; }
     logoutToGate();
+  };
+  const openWindow = document.getElementById("open-window");
+  if (openWindow) openWindow.onclick = () => {
+    const w = 430;
+    const h = Math.min(920, (screen.availHeight || 900) - 40);
+    const n = Date.now() % 8;
+    const left = Math.max(0, Math.round((screen.availWidth || 1200) / 2 - w / 2 + n * 36));
+    const top = Math.max(0, 24 + (n % 4) * 28);
+    const win = window.open(location.origin + location.pathname, "tj-win-" + Date.now(), "popup=yes,width=" + w + ",height=" + h + ",left=" + left + ",top=" + top);
+    if (!win) toast("瀏覽器擋住了新視窗，請允許彈出視窗後再按一次");
   };
   const bossTitle = document.getElementById("boss-title");
   if (bossTitle && !bossTitle._bound) {
