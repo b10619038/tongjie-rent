@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-15-05";
-const APP_EDIT_COUNT = 1925;
+const APP_STAMP = "2026-10-15-15-40";
+const APP_EDIT_COUNT = 1926;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1534";
+const FILE_VER = "1535";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["6842 蘇冠達、吳汶修的身分證、戶籍地址、緊急聯絡人已補進合約"] },
+  { ver: APP_VERSION, items: ["7021 加入吳舉珉。兩人輪流住，年水費仍收 1,800"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5122,7 +5122,7 @@ const TENANT_INFO = {
   "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0963-701-012", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
   "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會", renewName: "賴欣怡", note: "115/10/31 到期換約改掛女友 賴欣怡。現任仍是劉冠德。" },
   "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", idNo: "S124242819／P124485357", address: "高雄市鳳山區文英里5鄰文南街31號／雲林縣水林鄉車港村9鄰興隆路32號", emergencyName: "李姿君／吳儉鴻", emergencyPhone: "0906-653-690／0922-612-969", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
-  "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "7021": { name: "陳信安、吳舉珉", phone: "0966-268-087", idNo: "N123765891／G121925901", address: "彰化縣花壇鄉中口村中北街8號／台北市士林區福華里承德路4段40巷49號4F-12", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", waterYear: 1800, residents: 1, note: "兩人輪流住，不同時在住，年水費仍收 1,800。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。" },
   "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
   "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
@@ -10616,6 +10616,54 @@ function applyId6842(data) {
   try { markCloudDirty(); } catch {}
   return true;
 }
+function apply7021Rotate(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  const room = data.rooms.find(r => r && String(r.no) === "7021");
+  if (!room) return false;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && (x.roomId === room.id || x.id === room.tenantId || sameTenantName(x.name, "陳信安")));
+  if (!t || (t.name && !/陳信安/.test(String(t.name)))) return false;
+  const name = "陳信安、吳舉珉";
+  const idNo = "N123765891／G121925901";
+  const address = "彰化縣花壇鄉中口村中北街8號／台北市士林區福華里承德路4段40巷49號4F-12";
+  const note = "兩人輪流住，不同時在住，年水費仍收 1,800。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。";
+  let changed = false;
+  if (t.name !== name) { t.name = name; changed = true; }
+  if (t.idNo !== idNo) { t.idNo = idNo; changed = true; }
+  if (t.address !== address) { t.address = address; changed = true; }
+  if (!String(t.phone || "").includes("0966-268-087")) { t.phone = "0966-268-087"; changed = true; }
+  if (Number(t.waterYear) !== 1800) { t.waterYear = 1800; changed = true; }
+  if (Number(t.residents) !== 1) { t.residents = 1; changed = true; }
+  if (!String(t.note || "").includes("輪流住")) {
+    t.note = String(t.note || "").trim() ? (String(t.note).trim() + "。" + note) : note;
+    changed = true;
+  }
+  (data.renewals || []).forEach(row => {
+    if (!row || row.status === "cancelled") return;
+    if (String(row.roomNo) !== "7021" && row.tenantId !== t.id && row.roomId !== room.id) return;
+    if (row.name !== name) { row.name = name; changed = true; }
+    if (row.renewNames !== name) { row.renewNames = name; changed = true; }
+    if (Number(row.waterFee) !== 1800) { row.waterFee = 1800; changed = true; }
+    const people = Array.isArray(row.people) ? row.people.map(p => Object.assign({}, p)) : [];
+    let chen = people.find(p => p && /陳信安/.test(String(p.name || "")));
+    if (!chen) {
+      chen = { name: "陳信安", renew: true, years: Number(row.years) || 1, months: 0, start: row.start || "", end: row.end || "", water: 1800 };
+      people.unshift(chen);
+      changed = true;
+    }
+    if (Number(chen.water) !== 1800) { chen.water = 1800; changed = true; }
+    let wu = people.find(p => p && /吳舉珉/.test(String(p.name || "")));
+    if (!wu) {
+      people.push({ name: "吳舉珉", renew: true, years: Number(chen.years) || Number(row.years) || 1, months: Number(chen.months) || 0, start: chen.start || row.start || "", end: chen.end || row.end || "", water: 0, rotate: true });
+      changed = true;
+    } else if (Number(wu.water)) { wu.water = 0; changed = true; }
+    row.people = people;
+  });
+  if (!changed) return false;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  return true;
+}
 function applyRenewNoMarks(data) {
   if (!data || !Array.isArray(data.tenants)) return false;
   const nos = ["6822", "7023", "7631"];
@@ -12718,6 +12766,7 @@ async function pullCloud() {
       try { applyId7031(state); } catch {}
       try { applyId7041(state); } catch {}
       try { applyId6842(state); } catch {}
+      try { apply7021Rotate(state); } catch {}
       try { applyLoginEverBackfill(state); } catch {}
       try { applyRenewNoMarks(state); } catch {}
       try { apply7042RentShort(state); } catch {}
@@ -12897,6 +12946,7 @@ async function pullCloud() {
     try { applyId7031(state); } catch {}
     try { applyId7041(state); } catch {}
     try { applyId6842(state); } catch {}
+    try { apply7021Rotate(state); } catch {}
     try { applyLoginEverBackfill(state); } catch {}
     try { applyRenewNoMarks(state); } catch {}
     try { apply7042RentShort(state); } catch {}
@@ -13618,6 +13668,7 @@ async function pushCloud() {
     try { applyId7031(payload); } catch {}
     try { applyId7041(payload); } catch {}
     try { applyId6842(payload); } catch {}
+    try { apply7021Rotate(payload); } catch {}
     try { applyLoginEverBackfill(payload); } catch {}
     try { applyRenewNoMarks(payload); } catch {}
     try { apply7042RentShort(payload); } catch {}
@@ -20132,8 +20183,12 @@ function applySignedRenewalLease(t, r, item) {
   const stay = Array.isArray(item.people) ? item.people.filter(p => p && p.renew !== false && p.name) : [];
   if (stay.length) {
     t.name = stay.map(p => p.name).join("、");
+    const fixedWater = Number(t.waterYear) || 0;
     if (stay.length === 1) t.note = String(t.note || "").replace(/水費年\s*[\d,]+（\d+人）?/, "水費年 1,800");
-    else {
+    else if (fixedWater > 0) {
+      const label = "水費年 " + fixedWater.toLocaleString("zh-TW");
+      if (/水費年/.test(String(t.note || ""))) t.note = String(t.note).replace(/水費年\s*[\d,]+（?\d*人?）?/, label);
+    } else {
       const label = "水費年 " + (1800 * stay.length).toLocaleString("zh-TW") + "（" + stay.length + "人）";
       t.note = /水費年/.test(String(t.note || ""))
         ? String(t.note).replace(/水費年\s*[\d,]+（?\d*人?）?/, label)
