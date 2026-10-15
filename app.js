@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-14-23-56";
-const APP_EDIT_COUNT = 1921;
+const APP_STAMP = "2026-10-15-11-40";
+const APP_EDIT_COUNT = 1922;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1530";
+const FILE_VER = "1531";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["任一台改報修狀態，其他手機、電腦、管理員會一起更新"] },
+  { ver: APP_VERSION, items: ["續約、中途退租、正常退租點交的圖卡都會提醒攜帶個人印章"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3721,6 +3721,7 @@ function renewAskCardHtml(t, r, opts) {
       ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
       <p class="small" style="margin-top:8px">${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}，簽約現場只收現金。</p>
       <p class="small">新約租金改匯兆豐。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
+      ${signed ? "" : `<p class="small">記得攜帶個人印章。</p>`}
       ${signed ? "" : `<div class="appoint-box" style="margin-top:10px">
         <label class="field"><span>簽約時間</span>
           ${appointOneHtml(cur.appointAt || "", { attr: ` data-renew-appoint="${escapeHtml(cur.id)}"`, gcalId: cur.id })}
@@ -3773,7 +3774,7 @@ function renewAskCardHtml(t, r, opts) {
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
-    <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室</div>
+    <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。</div>
     ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 0 0">開發者代操會直接寫進正式資料，這一步不必簽名。租客自己登入仍然要簽名。</p>` : ""}
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${typeof isTenantLook === "function" && isTenantLook() ? (mode === "move" ? "送出換房續約申請" : "送出續約申請") : (mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約")}</button>
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
@@ -4306,7 +4307,7 @@ function earlyApplyCardHtml(t, r) {
         <label class="field"><span>簽約時間</span>
           ${appointOneHtml(cur.appointAt || "", { attr: ` data-early-appoint="${escapeHtml(cur.id)}"`, gcalId: "", min: todayYmd() + "T09:00", max: (ymdOf(cur.at) || todayYmd()) + "T18:00" })}
         </label>
-        <div class="small">可以改時間。後台會一起改，終止契約底部的中華民國日期也會改成這一天。不能晚於終止日。地點：5F，電梯出來右轉到底，7651簽約室</div>
+        <div class="small">可以改時間。後台會一起改，終止契約底部的中華民國日期也會改成這一天。不能晚於終止日。地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。</div>
         ${cur.appointAt ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(cur.id)}" style="margin-top:8px">加入日曆</button>` : ""}
       </div>`}
     </div>`;
@@ -4340,7 +4341,7 @@ function earlyApplyOverlayHtml() {
       <div class="field" style="margin-top:12px"><span>預約終止簽約時間</span>
         ${appointOneHtml(ui.earlyAppoint || "", { id: "early-appoint", empty: "選擇簽名蓋章時間", min: today + "T09:00", max: (max || at) + "T18:00" })}
       </div>
-      <div class="small">地點：5F，電梯出來右轉到底，7651簽約室。雙方簽名蓋章。</div>
+      <div class="small">地點：5F，電梯出來右轉到底，7651簽約室。雙方簽名蓋章。記得攜帶個人印章。</div>
       <button type="button" class="btn-navy" id="early-send" style="margin-top:12px">送出申請</button>
       ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin-top:8px">開發者代操送出後會寫進正式的中途退租申請。</p>` : ""}
       <button type="button" class="ghost" id="early-cancel" style="margin-top:8px">取消</button>
@@ -25566,7 +25567,7 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
     const head = note.querySelector("[data-leave-when]");
     const text = next ? "已預約 " + formatDateTime12(next.replace("T", " ")) : "選擇點交時間";
     if (head) head.textContent = text;
-    else note.textContent = text + "　地點：5F，電梯出來右轉到底，7651簽約室";
+    else note.textContent = text + "　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。";
   }
   if (fromTenant) {
     const room = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -33767,7 +33768,7 @@ function earlyAdminCardHtml(co, t, r) {
     <div class="mini"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b></div>
     <div class="small" style="margin-bottom:6px">終止日 ${escapeHtml(rocSlash(co && co.at) || "")}</div>
     <div class="appoint-box">
-      <div class="small">${when ? "已預約 " + escapeHtml(when) : "尚未預約簽名蓋章時間"}　地點：5F，電梯出來右轉到底，7651簽約室</div>
+      <div class="small">${when ? "已預約 " + escapeHtml(when) : "尚未預約簽名蓋章時間"}　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。</div>
       ${when ? `<button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(co.id)}" style="margin-top:8px">加入日曆</button>` : ""}
     </div>
     <button type="button" class="btn-navy" data-open-early-form="${escapeHtml((t && t.id) || "")}" style="margin-top:8px">看終止契約</button>
@@ -33818,8 +33819,8 @@ function normalLeaveCardHtml(t, r, opts) {
         ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, lockDay: timeOnly ? end : "", minTime: timeOnly ? "09:30" : "", maxTime: timeOnly ? "17:30" : "" })}
       </label>
       <div class="small" data-leave-note="1">${timeOnly
-        ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
-        : `${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室`}</div>
+        ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>記得攜帶個人印章。簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
+        : `${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。`}</div>
     </div>
     ${timeOnly ? "" : `<div class="small" style="margin:6px 0 4px">點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。</div>`}
     ${signedLeave ? `<div class="small">已完成線上簽名。列印會帶上簽名，現場仍要蓋章。</div>` : ""}
