@@ -5,12 +5,13 @@
     adminLoginKind = function (code, name) {
       const c = String(code || "").replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); }).replace(/\s+/g, "");
       const n = typeof normAdminName === "function" ? normAdminName(name) : String(name || "").replace(/\s+/g, "").trim();
-      if (c === "1976" && n === "趙正賢") return "boss";
+      if ((c === "1976" || c === "7651") && n === "趙正賢") return "boss";
       if (c === "7651" && n === "趙海城") return "boss";
       return prevKind(code, name);
     };
     const prevKey = presenceKey;
     presenceKey = function () {
+      if (typeof ui !== "undefined" && ui && ui.role === "admin" && normAdminName(ui.adminName) === "趙正賢") return "admin-1976";
       if (typeof ui !== "undefined" && ui && ui.role === "admin" && ui.adminCode === "7651" && normAdminName(ui.adminName) === "趙海城") return "admin-7651-趙海城";
       return prevKey();
     };
@@ -35,7 +36,7 @@
         return;
       }
       ui.role = "admin";
-      ui.adminCode = kind === "dev" ? "1240" : no;
+      ui.adminCode = kind === "dev" ? "1240" : (normAdminName(name) === "趙正賢" ? "1976" : no);
       ui.adminName = name;
       ui.page = typeof adminLandingPage === "function" ? adminLandingPage() : "dash";
       ui.loginError = "";
@@ -70,7 +71,7 @@
           return;
         }
         ui.role = "admin";
-        ui.adminCode = String(rec.adminCode || "");
+        ui.adminCode = normAdminName(rec.adminName) === "趙正賢" ? "1976" : String(rec.adminCode || "");
         ui.adminName = rec.adminName || "";
         ui.page = adminLandingPage();
         ui.loginError = "";
