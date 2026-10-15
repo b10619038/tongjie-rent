@@ -25,8 +25,8 @@
       const name = String((nameEl && nameEl.value) || ui.loginAdminName || "").trim();
       ui.loginAdmin = no;
       ui.loginAdminName = name;
-      if (!name) { ui.loginError = "請輸入負責人姓名"; render(); return; }
-      if (!no) { ui.loginError = "請輸入負責人密碼"; render(); return; }
+      if (!name) { ui.loginError = "請輸入姓名"; render(); return; }
+      if (!no) { ui.loginError = "請輸入密碼"; render(); return; }
       const kind = adminLoginKind(no, name);
       if (!kind) {
         ui.loginError = "姓名或密碼不正確";
@@ -115,10 +115,19 @@
       .replace(/管理員密碼/g, "負責人密碼")
       .replace("開發者、管理員與正在使用 App 的租客。", "開發者、負責人與正在使用 App 的租客。");
   }
-  if (typeof gateView === "function" && !gateView._boss) {
+  function retitleDoor(html) {
+    return retitle(html)
+      .replace(">負責人後台<", ">後台登入<")
+      .replace(">負責人登入<", ">後台登入<")
+      .replace("請輸入負責人姓名與密碼後，查看全部房間、租客與報修。", "管理員、開發者、負責人都可以從這裡進入。")
+      .replace("請輸入負責人姓名與密碼，進入後台", "請輸入姓名與密碼。管理員、開發者、負責人都可以從這裡進入。")
+      .replace('placeholder="負責人姓名"', 'placeholder="姓名"')
+      .replace('placeholder="負責人密碼"', 'placeholder="密碼"');
+  }
+  if (typeof gateView === "function" && !gateView._door) {
     const prev = gateView;
-    gateView = function () { return retitle(prev.apply(this, arguments)); };
-    gateView._boss = 1;
+    gateView = function () { return retitleDoor(prev.apply(this, arguments)); };
+    gateView._door = 1;
   }
   if (typeof adminView === "function" && !adminView._boss) {
     const prev = adminView;
