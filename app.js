@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-20-50";
-const APP_EDIT_COUNT = 1936;
+const APP_STAMP = "2026-10-15-21-07";
+const APP_EDIT_COUNT = 1937;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1545";
+const FILE_VER = "1546";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約完成後，不再顯示年水費和現場只收現金"] },
+  { ver: APP_VERSION, items: ["續約完成後，不再顯示改匯兆豐"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3742,12 +3742,12 @@ function renewAskCardHtml(t, r, opts) {
       ${signed ? `<p>現場已簽約。目前合約仍至 ${escapeHtml(rocSlash(t.leaseEnd || cur.oldEnd) || "")}，</p>` : ""}
       ${Array.isArray(cur.people) && cur.people.length ? renewPeopleCardHtml(cur) : `<p>新約 ${renewTermLabel(years, extra)}　${escapeHtml(rocSlash(cur.start) || "")} ➜ ${escapeHtml(rocSlash(cur.end) || "")}${signed ? "，等到新約第一天自動生效。" : (cur.appointAt ? "。簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "。簽約日期待約。")}</p>`}
       ${Array.isArray(cur.people) && cur.people.length ? `<p class="small">${signed ? "等到新約第一天自動生效。" : (cur.appointAt ? "簽約時間 " + formatDateTime12(String(cur.appointAt).replace("T", " ")) : "簽約日期待約。")}</p>` : ""}
-      <div class="renew-focus">
-        ${signed ? "" : `<p>${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}</p>
-        <p>簽約現場<b>只收現金</b>。</p>`}
+      ${signed ? "" : `<div class="renew-focus">
+        <p>${extra || (Array.isArray(cur.people) && cur.people.some(p => p && p.renew !== false && !(Number(p.years) >= 1 && !Number(p.months)))) ? "水費" : "年水費"} ${money(renewWaterCashFee(t, r, cur))}</p>
+        <p>簽約現場<b>只收現金</b>。</p>
         <p>新約租金<b>改匯兆豐</b>。${moveNo ? "換房不重收 2 押 1 租。" : ""}</p>
-        ${signed ? "" : `<p>記得攜帶<b>個人印章</b>。</p>`}
-      </div>
+        <p>記得攜帶<b>個人印章</b>。</p>
+      </div>`}
       ${signed ? "" : `<div class="appoint-box" style="margin-top:10px">
         <label class="field"><span>簽約時間</span>
           ${appointOneHtml(cur.appointAt || "", { attr: ` data-renew-appoint="${escapeHtml(cur.id)}"`, gcalId: cur.id })}
