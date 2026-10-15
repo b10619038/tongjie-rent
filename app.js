@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-19-48";
-const APP_EDIT_COUNT = 1931;
+const APP_STAMP = "2026-10-15-19-52";
+const APP_EDIT_COUNT = 1932;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1540";
+const FILE_VER = "1541";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["新客如果是兩人，簽署時也是一人一張資料，再加一個人即可"] },
+  { ver: APP_VERSION, items: ["點兩人都要簽名，直接捲到填資料的地方"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3685,6 +3685,18 @@ function renewMovePickHtml(t, r) {
     }).join("")}</div>
     <div class="small" id="renew-move-chosen"></div>
   </div>`;
+}
+function scrollSignFormIntoPlace() {
+  if (!ui.scrollSignForm || ui.page !== "lease-sign") return;
+  ui.scrollSignForm = false;
+  const go = () => {
+    const sc = document.querySelector(".tenant-scroll");
+    const box = document.getElementById("sign-people");
+    if (!sc || !box) return;
+    const top = box.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
+    sc.scrollTop = Math.max(0, top);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(go));
 }
 function scrollRenewCardIntoPlace() {
   if (!ui.scrollRenew || ui.page !== "lease") return;
@@ -24912,7 +24924,7 @@ function signPersonCard(who, i, idNo, phone, emName, emPhone, addr, nameInput) {
   const nameRow = nameInput
     ? `<label class="field"><span>姓名</span><input id="sign-name-2" type="text" maxlength="20" value="${escapeHtml(who || "")}" placeholder="第二個人的姓名" autocomplete="name" /></label>`
     : "";
-  return `<div class="card card-body" style="margin-top:12px">
+  return `<div class="card card-body"${i ? "" : " id=\"sign-people\""} style="margin-top:12px">
         <div class="label">${escapeHtml(title)}</div>
         <p class="small" style="margin:0 0 8px">這五項沒填完不能簽名。</p>
         ${nameRow}
@@ -26486,6 +26498,7 @@ function paintApp() {
       scKeep.scrollTop = 0;
     }
     scrollRenewCardIntoPlace();
+    scrollSignFormIntoPlace();
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
     return;
@@ -26517,6 +26530,7 @@ function paintApp() {
     }
   }
   scrollRenewCardIntoPlace();
+  scrollSignFormIntoPlace();
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
 }
@@ -36360,6 +36374,7 @@ function bindTenant() {
       ui.signStrokes = [];
       ui.signStrokes2 = [];
       ui.page = "lease-sign";
+      ui.scrollSignForm = String(btn.textContent || "").indexOf("兩人都要簽名") >= 0;
       render();
     };
   });
