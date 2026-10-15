@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-21-07";
-const APP_EDIT_COUNT = 1937;
+const APP_STAMP = "2026-10-15-21-19";
+const APP_EDIT_COUNT = 1938;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1546";
+const FILE_VER = "1547";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約完成後，不再顯示改匯兆豐"] },
+  { ver: APP_VERSION, items: ["繳費頁先標 1 再標 2，還沒繳完才出現步驟說明"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -27857,13 +27857,18 @@ function payView() {
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次：現金 ${money(split.cash)}，其餘轉統潔兆豐 ${money(split.mega)}。租客一樣要登入 App。</p>`
       : firstPay
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次請轉統潔兆豐。轉完後在 LINE 回報並附截圖。</p>`
-      : lineOk
-      ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">官方 LINE 已收到回報和截圖，可以點「本月已繳費」。</p>`
-      : (proof && proof.hasText)
-        ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到回報文字，請再在 LINE 傳轉帳截圖。</p>`
-        : (proof && proof.hasImage)
-          ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">已收到截圖，請再在 LINE 傳回報文字。</p>`
-          : `<p class="small slide-left" style="margin-top:12px;padding:0 6px">請先點上方到官方 LINE，把回報文字和轉帳截圖一起按傳送。系統收到這兩樣後，才可以點「本月已繳費」。</p>`;
+      : "";
+  const stepGuide = paid || (firstPay && split && split.way === "cash")
+    ? ""
+    : `<div class="pay-steps slide-left"><p>${
+        lineOk
+          ? "可以按本月已繳費了。"
+          : (proof && proof.hasText)
+            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完後，2 才會亮。"
+            : (proof && proof.hasImage)
+              ? "已收到截圖，請再在 LINE 傳回報文字。傳完後，2 才會亮。"
+              : "先按綠色的 1，把截圖傳到官方 LINE。傳完後，2 才會亮，再按本月已繳費。"
+      }</p></div>`;
   const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
   const dueHint = firstPay
     ? `<div class="small">${escapeHtml(firstPayHintHtml(firstPay))}</div>`
@@ -27892,8 +27897,9 @@ function payView() {
       ${!firstPay && !cashAunt ? `<div class="section-title"><h2 class="slide-right">匯款帳戶</h2></div>
       ${payAccountCardHtml(pack.primary, acctTitle)}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}${megaHint}` : ""}
-      ${firstPay && split && split.way === "cash" ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">回報已繳費並附上截圖</button>`}
-      <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "本月已繳費"}</button>
+      ${stepGuide}
+      ${firstPay && split && split.way === "cash" ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">${paid ? "回報已繳費並附上截圖" : "1　回報已繳費並附上截圖"}</button>`}
+      <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}${!paid && lineOk ? " pay-next" : ""}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "2　本月已繳費"}</button>
       ${proofHint}
     </div>`;
 }
