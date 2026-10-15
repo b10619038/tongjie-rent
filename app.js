@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-12-59";
-const APP_EDIT_COUNT = 1924;
+const APP_STAMP = "2026-10-15-15-05";
+const APP_EDIT_COUNT = 1925;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1533";
+const FILE_VER = "1534";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["完成簽約的續約仍留在日曆，並用刪除線標示"] },
+  { ver: APP_VERSION, items: ["6842 蘇冠達、吳汶修的身分證、戶籍地址、緊急聯絡人已補進合約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -5121,7 +5121,7 @@ const TENANT_INFO = {
   "6831": { name: "吳昱瑋", phone: "0903-905-609", leaseStart: "2026-03-01", leaseEnd: "2027-02-28", payBank: "農會" },
   "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0963-701-012", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
   "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會", renewName: "賴欣怡", note: "115/10/31 到期換約改掛女友 賴欣怡。現任仍是劉冠德。" },
-  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
+  "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", idNo: "S124242819／P124485357", address: "高雄市鳳山區文英里5鄰文南街31號／雲林縣水林鄉車港村9鄰興隆路32號", emergencyName: "李姿君／吳儉鴻", emergencyPhone: "0906-653-690／0922-612-969", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7021": { name: "陳信安", phone: "0966-268-087", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
   "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
@@ -10590,6 +10590,32 @@ function applyId7041(data) {
   try { markCloudDirty(); } catch {}
   return true;
 }
+function applyId6842(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  const room = data.rooms.find(r => r && String(r.no) === "6842");
+  if (!room) return false;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && (x.roomId === room.id || sameTenantName(x.name, "蘇冠達、吳汶修") || sameTenantName(x.name, "蘇冠達")));
+  if (!t || (t.name && !/蘇冠達/.test(String(t.name)))) return false;
+  const idNo = "S124242819／P124485357";
+  const address = "高雄市鳳山區文英里5鄰文南街31號／雲林縣水林鄉車港村9鄰興隆路32號";
+  const emergencyName = "李姿君／吳儉鴻";
+  const emergencyPhone = "0906-653-690／0922-612-969";
+  const bit = "身分證 蘇冠達 S124242819、吳汶修 P124485357。戶籍：蘇冠達 高雄市鳳山區文英里5鄰文南街31號；吳汶修 雲林縣水林鄉車港村9鄰興隆路32號。緊急聯絡人 李姿君 0906-653-690、吳儉鴻 0922-612-969。";
+  let changed = false;
+  if (t.idNo !== idNo) { t.idNo = idNo; changed = true; }
+  if (t.address !== address) { t.address = address; changed = true; }
+  if (t.emergencyName !== emergencyName) { t.emergencyName = emergencyName; changed = true; }
+  if (String(t.emergencyPhone || "").replace(/\D/g, "") !== "09066536900922612969") { t.emergencyPhone = emergencyPhone; changed = true; }
+  if (!String(t.note || "").includes("S124242819")) {
+    t.note = String(t.note || "").trim() ? (String(t.note).trim() + "。" + bit) : bit;
+    changed = true;
+  }
+  if (!changed) return false;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  return true;
+}
 function applyRenewNoMarks(data) {
   if (!data || !Array.isArray(data.tenants)) return false;
   const nos = ["6822", "7023", "7631"];
@@ -12691,6 +12717,7 @@ async function pullCloud() {
       try { applyRoom7611(state); } catch {}
       try { applyId7031(state); } catch {}
       try { applyId7041(state); } catch {}
+      try { applyId6842(state); } catch {}
       try { applyLoginEverBackfill(state); } catch {}
       try { applyRenewNoMarks(state); } catch {}
       try { apply7042RentShort(state); } catch {}
@@ -12869,6 +12896,7 @@ async function pullCloud() {
     try { applyRoom7611(state); } catch {}
     try { applyId7031(state); } catch {}
     try { applyId7041(state); } catch {}
+    try { applyId6842(state); } catch {}
     try { applyLoginEverBackfill(state); } catch {}
     try { applyRenewNoMarks(state); } catch {}
     try { apply7042RentShort(state); } catch {}
@@ -13589,6 +13617,7 @@ async function pushCloud() {
     try { applyRoom7611(payload); } catch {}
     try { applyId7031(payload); } catch {}
     try { applyId7041(payload); } catch {}
+    try { applyId6842(payload); } catch {}
     try { applyLoginEverBackfill(payload); } catch {}
     try { applyRenewNoMarks(payload); } catch {}
     try { apply7042RentShort(payload); } catch {}
