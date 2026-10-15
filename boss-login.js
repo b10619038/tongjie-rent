@@ -130,14 +130,55 @@
     gateView = function () { return retitleDoor(prev.apply(this, arguments)); };
     gateView._door = 1;
   }
+  function bossUser() {
+    if (typeof ui === "undefined" || !ui || ui.role !== "admin" || ui.adminCode === "1240") return false;
+    const n = typeof normAdminName === "function" ? normAdminName(ui.adminName) : "";
+    return n === "趙正賢" || n === "趙海城" || ui.adminCode === "1976";
+  }
+  if (typeof adminPages === "function" && !adminPages._bossTabs) {
+    const prevPages = adminPages;
+    adminPages = function () {
+      const pages = prevPages.apply(this, arguments);
+      if (!bossUser()) return pages;
+      const keep = ["dash", "rooms", "tenants", "repairs"];
+      const labels = { dash: "總覽", rooms: "資產", tenants: "租客", repairs: "報修" };
+      return keep.map(function (id) {
+        const found = (pages || []).find(function (p) { return p && p[0] === id; });
+        return found || [id, labels[id]];
+      });
+    };
+    adminPages._bossTabs = 1;
+  }
   if (typeof adminView === "function" && !adminView._boss) {
     const prev = adminView;
-    adminView = function () { return retitle(prev.apply(this, arguments)); };
+    adminView = function () {
+      if (bossUser() && /^(ai|announce|history|logs|firm|food|staff-ops)$/.test(ui.page || "")) ui.page = "dash";
+      let html = retitle(prev.apply(this, arguments));
+      if (bossUser() && html.indexOf('id="boss-title"') < 0) {
+        html = html.replace(
+          '<h1 style="font-size:24px">負責人後台</h1>',
+          '<button type="button" id="boss-title" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">負責人後台</button>'
+        );
+      }
+      return html;
+    };
     adminView._boss = 1;
   }
   if (typeof adminLogs === "function" && !adminLogs._boss) {
     const prev = adminLogs;
     adminLogs = function () { return retitle(prev.apply(this, arguments)); };
     adminLogs._boss = 1;
+  }
+  if (!window.__bossTitle) {
+    window.__bossTitle = 1;
+    document.addEventListener("click", function (e) {
+      const btn = e.target && e.target.closest && e.target.closest("#boss-title");
+      if (!btn || !bossUser()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      ui.page = ui.page === "settings" ? "dash" : "settings";
+      ui.keepScroll = false;
+      if (typeof render === "function") render();
+    }, true);
   }
 })();
