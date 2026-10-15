@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-22-41";
-const APP_EDIT_COUNT = 1945;
+const APP_STAMP = "2026-10-15-22-46";
+const APP_EDIT_COUNT = 1946;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1555";
+const FILE_VER = "1556";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦版可以另開視窗，每個視窗各自停留"] },
+  { ver: APP_VERSION, items: ["電腦用滑鼠時，視窗窄也看得到另開視窗"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -29118,6 +29118,13 @@ function deviceKind() {
   if (touch && short >= 680) return "tablet";
   return "phone";
 }
+function canOpenExtraWindow() {
+  try { if (matchMedia("(hover: hover) and (pointer: fine)").matches) return true; } catch {}
+  const w = window.innerWidth || 0;
+  const touch = (navigator.maxTouchPoints || 0) > 0;
+  if (!touch && w >= 700) return true;
+  return deviceKind() === "desktop";
+}
 function splitCap() {
   const k = deviceKind();
   return k === "fold" || k === "phone" ? 2 : 3;
@@ -29399,7 +29406,7 @@ function adminView() {
       <div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${deviceKind() === "desktop" ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
+        ${canOpenExtraWindow() ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
         <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
       </div>
     </div>
