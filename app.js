@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-21-19";
-const APP_EDIT_COUNT = 1938;
+const APP_STAMP = "2026-10-15-21-34";
+const APP_EDIT_COUNT = 1939;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1547";
+const FILE_VER = "1548";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費頁先標 1 再標 2，還沒繳完才出現步驟說明"] },
+  { ver: APP_VERSION, items: ["繳費回報收成一顆按鈕，LINE 收到後才變成本月已繳費"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3532,9 +3532,7 @@ async function syncLinePayProof() {
   const r = typeof myRoom === "function" ? myRoom() : null;
   if (!t || !r || isDemoTenant(t) || isDevPreview() || isProspectPreview()) return false;
   if (paidThisMonth(t)) return false;
-  if (!linePayReady(t, r)) return false;
-  markTenantPaid("line");
-  return true;
+  return !!(linePayReady(t, r) || tenantLineUnlocked(t, r));
 }
 function armLinePayProofPoll() {
   if (!ui.payProofVis) {
@@ -3543,8 +3541,9 @@ function armLinePayProofPoll() {
       if (document.visibilityState && document.visibilityState !== "visible") return;
       if (ui.page !== "pay") return;
       syncLinePayProof().then(ok => {
-        if (!ok) return;
-        toast("已標為本月已繳，後台已收到通知");
+        if (!ok || ui.payStepTold) return;
+        ui.payStepTold = true;
+        toast("可以按本月已繳費了");
         ui.keepScroll = true;
         render();
       });
@@ -3559,7 +3558,10 @@ function armLinePayProofPoll() {
     if (ui.page !== "pay" && ui.page !== "home") return;
     const ok = await syncLinePayProof();
     if (ok) {
-      toast("已收到 LINE 回報與截圖，可以點本月已繳費");
+      if (!ui.payStepTold) {
+        ui.payStepTold = true;
+        toast("可以按本月已繳費了");
+      }
       ui.keepScroll = true;
       render();
       return;
@@ -27831,8 +27833,32 @@ function payView() {
   const stubNow = !firstPay && isStubMonthNow(t, r);
   const pay = payLabel(t, r);
   const split = firstPay ? firstPaySplitOf(t, firstPay) : null;
-  const lineOk = !!(paid || tenantLineUnlocked(t, r) || (firstPay && split && split.way === "cash"));
   const proof = linePayProofOf(r && r.no);
+  const cashFirst = !!(firstPay && split && split.way === "cash");
+  const ready = !paid && (cashFirst || tenantLineUnlocked(t, r));
+  const hasText = !!(proof && proof.hasText);
+  const hasImage = !!(proof && proof.hasImage);
+  const payMode = paid ? "done" : ready ? "mark" : "line";
+  const payLabelText = paid
+    ? "已回報本月已繳費"
+    : ready
+      ? "本月已繳費"
+      : hasText && !hasImage
+        ? "再傳轉帳截圖"
+        : hasImage && !hasText
+          ? "再傳回報文字"
+          : "回報已繳費並附上截圖";
+  const stepGuide = paid || cashFirst
+    ? ""
+    : `<div class="pay-steps slide-left"><p>${
+        ready
+          ? "可以按本月已繳費了。"
+          : hasText && !hasImage
+            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完回到這裡，按鈕會變成本月已繳費。"
+            : hasImage && !hasText
+              ? "已收到截圖，請再在 LINE 傳回報文字。傳完回到這裡，按鈕會變成本月已繳費。"
+              : "按這顆，把截圖傳到官方 LINE。傳完回到這裡，按鈕會變成本月已繳費。"
+      }</p></div>`;
   const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const megaSoon = !!(renew && (renew.status === "done" || renew.status === "applied") && renew.start && !(typeof renewalStartReached === "function" && renewalStartReached(renew)));
   const megaNow = pack.key === "兆豐";
@@ -27858,17 +27884,6 @@ function payView() {
       : firstPay
       ? `<p class="small slide-left" style="margin-top:12px;padding:0 6px">第一次請轉統潔兆豐。轉完後在 LINE 回報並附截圖。</p>`
       : "";
-  const stepGuide = paid || (firstPay && split && split.way === "cash")
-    ? ""
-    : `<div class="pay-steps slide-left"><p>${
-        lineOk
-          ? "可以按本月已繳費了。"
-          : (proof && proof.hasText)
-            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完後，2 才會亮。"
-            : (proof && proof.hasImage)
-              ? "已收到截圖，請再在 LINE 傳回報文字。傳完後，2 才會亮。"
-              : "先按綠色的 1，把截圖傳到官方 LINE。傳完後，2 才會亮，再按本月已繳費。"
-      }</p></div>`;
   const dueAmt = firstPay ? firstPay.total : thisMonthRentOf(t, r);
   const dueHint = firstPay
     ? `<div class="small">${escapeHtml(firstPayHintHtml(firstPay))}</div>`
@@ -27898,8 +27913,7 @@ function payView() {
       ${payAccountCardHtml(pack.primary, acctTitle)}
       ${pack.extra.map(b => payAccountCardHtml(b, "也可匯" + b.bank)).join("")}${megaHint}` : ""}
       ${stepGuide}
-      ${firstPay && split && split.way === "cash" ? "" : `<button type="button" class="btn-navy slide-left" id="line-paid" style="margin-top:14px">${paid ? "回報已繳費並附上截圖" : "1　回報已繳費並附上截圖"}</button>`}
-      <button type="button" class="btn-navy slide-left${paid || lineOk ? "" : " pay-locked"}${!paid && lineOk ? " pay-next" : ""}" id="mark-paid" style="margin-top:8px" ${paid || !lineOk ? "disabled" : ""}>${paid ? "已回報本月已繳費" : "2　本月已繳費"}</button>
+      <button type="button" class="btn-navy slide-left${payMode === "done" ? " pay-locked" : ""}${payMode === "mark" && !cashFirst ? " pay-next" : ""}" id="pay-step" data-pay-step="${payMode}" style="margin-top:14px"${payMode === "done" ? " disabled" : ""}>${payLabelText}</button>
       ${proofHint}
     </div>`;
 }
@@ -36309,27 +36323,30 @@ function bindTenant() {
       window.open(poiNavUrl(p), "_blank", "noopener");
     };
   });
-  const markPaid = document.getElementById("mark-paid");
-  if (markPaid) {
-    markPaid.onclick = () => {
+  const payStep = document.getElementById("pay-step");
+  if (payStep) {
+    payStep.onclick = async () => {
+      const mode = payStep.dataset.payStep || "";
+      if (mode === "done") return;
+      if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
       const t0 = me();
       const r0 = myRoom();
-      if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
-      if (!t0 || t0.paid) return;
-      if (!isDemoTenant(t0) && !tenantLineUnlocked(t0, r0)) {
-        toast("請先在官方 LINE 傳送回報和轉帳截圖");
+      if (!t0 || !r0) return;
+      if (mode === "mark") {
+        if (t0.paid) return;
+        const first = typeof firstStudioPayDue === "function" ? firstStudioPayDue(t0, r0) : null;
+        const split = first && typeof firstPaySplitOf === "function" ? firstPaySplitOf(t0, first) : null;
+        const cashFirst = !!(split && split.way === "cash");
+        if (!cashFirst && !isDemoTenant(t0) && !tenantLineUnlocked(t0, r0)) {
+          toast("請先在官方 LINE 傳送回報和轉帳截圖");
+          return;
+        }
+        markTenantPaid(t0.lineNotified || tenantLineUnlocked(t0, r0) ? "line" : "app");
+        toast("已回報本月已繳費");
+        ui.keepScroll = true;
+        render();
         return;
       }
-      markTenantPaid(t0.lineNotified || tenantLineUnlocked(t0, r0) ? "line" : "app");
-      toast("已回報本月已繳費");
-      ui.keepScroll = true;
-      render();
-    };
-  }
-  const linePaid = document.getElementById("line-paid");
-  if (linePaid) {
-    linePaid.onclick = async () => {
-      if (isProspectPreview()) { toast("預覽中，不會記真的帳"); return; }
       const msg = linePayMessage();
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(msg);
@@ -36343,7 +36360,15 @@ function bindTenant() {
       render();
     };
     if (ui.page === "pay") {
-      syncLinePayProof().then(ok => { if (ok) { ui.keepScroll = true; render(); } });
+      syncLinePayProof().then(ok => {
+        if (!ok) return;
+        if (!ui.payStepTold) {
+          ui.payStepTold = true;
+          toast("可以按本月已繳費了");
+        }
+        ui.keepScroll = true;
+        render();
+      });
     }
   }
   document.querySelectorAll("[data-gcal]").forEach(btn => {
