@@ -33,6 +33,8 @@ function adminLoginKind(code, name) {
   const n = normAdminName(name);
   if (!c || !n) return "";
   if (c === "1240" && ADMIN_DEV_NAMES.some(x => normAdminName(x) === n)) return "dev";
+  if ((c === "1976" || c === "7651") && n === "趙正賢") return "boss";
+  if (c === "7651" && n === "趙海城") return "boss";
   if (c === "7651" && ADMIN_STAFF_NAMES.some(x => normAdminName(x) === n)) return "staff";
   return "";
 }
@@ -42,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-15-40";
-const APP_EDIT_COUNT = 1926;
+const APP_STAMP = "2026-10-15-17-55";
+const APP_EDIT_COUNT = 1928;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1535";
+const FILE_VER = "1537";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["7021 加入吳舉珉。兩人輪流住，年水費仍收 1,800"] },
+  { ver: APP_VERSION, items: ["負責人後台下方只留總覽、資產、租客、報修，設定改點左上角標題", "趙正賢可用 1976 或 7651 進入負責人後台"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -2754,6 +2756,11 @@ function seedSeenVersion() {
   if (last) return;
   try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
 }
+function unseenAppVersion() {
+  const last = lastSeenVersion();
+  if (!last || last === "pending-reload" || last === APP_VERSION) return false;
+  return true;
+}
 function hasUnseenUpdate() {
   const remote = String(ui.pendingFileVer || "");
   return !!(remote && isNewerBuild(remote) && !isDismissed(remote));
@@ -2907,13 +2914,13 @@ function ensureUpdateBar() {
   }
   const remote = String(ui.pendingFileVer || "");
   const newer = !!(remote && isNewerBuild(remote) && !isDismissed(remote));
-  const need = newer;
+  const need = newer || unseenAppVersion();
   let el = document.getElementById("apply-update");
   if (!need) {
     if (el) el.remove();
     return;
   }
-  const lift = ui.role === "tenant";
+  const lift = ui.role === "tenant" || ui.role === "admin";
   const text = "有新版本 " + APP_VERSION + "，點此更新";
   if (el) {
     el.classList.add("shown");
@@ -2942,18 +2949,22 @@ async function wipeClientCache() {
 function applyAppUpdate() {
   persistLogin();
   persistUi();
+  const reloadNow = () => {
+    try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
+    hideUpdateUi();
+    try { __reloading = true; } catch {}
+    wipeClientCache().finally(() => {
+      try { location.replace(location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now()); }
+      catch { location.reload(); }
+    });
+  };
   if (!ui.pendingFileVer || !isNewerBuild(ui.pendingFileVer)) {
+    if (unseenAppVersion()) { reloadNow(); return; }
     markVersionSeen();
     hideUpdateUi();
     return;
   }
-  try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
-  hideUpdateUi();
-  try { __reloading = true; } catch {}
-  wipeClientCache().finally(() => {
-    try { location.replace(location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now()); }
-    catch { location.reload(); }
-  });
+  reloadNow();
 }
 async function pollRemoteBuild() {
   if (EMBED_PAGE) return;
@@ -4301,7 +4312,7 @@ function earlyApplyCardHtml(t, r) {
   if (cur) {
     return `<div class="handover-note renew-note" id="early-box">
       <div class="label">中途退租申請已送出</div>
-      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。總退還 ${escapeHtml(money(cur.refund || 0))}${cur.elecBalance != null ? "，含電費餘額 " + escapeHtml(money(cur.elecBalance)) : ""}。這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
+      <p>終止日 ${escapeHtml(rocSlash(cur.at) || "")}。總退還 ${escapeHtml(money(cur.refund || 0))}${cur.elecBalance != null ? "，含電費餘額 " + escapeHtml(money(cur.elecBalance)) : ""}。${cur.reason ? "中途退租理由：" + escapeHtml(cur.reason) + "。" : ""}這份終止契約和後台是同一份，金額由後台確認後才會完成退租。</p>
       ${cur.status === "done" ? (cur.appointAt ? `<p class="small">簽約時間 ${escapeHtml(formatDateTime12(String(cur.appointAt).replace("T", " ")))}</p><button type="button" class="linkish appoint-link" data-gcal-early="${escapeHtml(cur.id)}" style="margin-top:8px">加入日曆</button>` : "") : `<div class="appoint-box" style="margin-top:10px">
         <label class="field"><span>簽約時間</span>
           ${appointOneHtml(cur.appointAt || "", { attr: ` data-early-appoint="${escapeHtml(cur.id)}"`, gcalId: "", min: todayYmd() + "T09:00", max: (ymdOf(cur.at) || todayYmd()) + "T18:00" })}
@@ -4341,6 +4352,8 @@ function earlyApplyOverlayHtml() {
         ${appointOneHtml(ui.earlyAppoint || "", { id: "early-appoint", empty: "選擇簽名蓋章時間", min: today + "T09:00", max: (max || at) + "T18:00" })}
       </div>
       <div class="small">地點：5F，電梯出來右轉到底，7651簽約室。雙方簽名蓋章。記得攜帶個人印章。</div>
+      <label class="field" style="margin-top:12px"><span>中途退租理由</span><textarea id="early-reason" rows="3" maxlength="200" placeholder="請寫為什麼要提前退租">${escapeHtml(ui.earlyReason || "")}</textarea></label>
+      <p class="small">必填。後台會看到這段理由。</p>
       <button type="button" class="btn-navy" id="early-send" style="margin-top:12px">送出申請</button>
       ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin-top:8px">開發者代操送出後會寫進正式的中途退租申請。</p>` : ""}
       <button type="button" class="ghost" id="early-cancel" style="margin-top:8px">取消</button>
@@ -4412,6 +4425,8 @@ function bindEarlyApply() {
     appoint.onchange = keep;
     appoint.oninput = keep;
   }
+  const reason = document.getElementById("early-reason");
+  if (reason) reason.oninput = () => { ui.earlyReason = reason.value; };
   document.querySelectorAll("[data-early-appoint]").forEach(inp => {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
@@ -4507,7 +4522,7 @@ function flashEarlyNotice(ping) {
   if (!p || !p.name) return;
   if (earlyPingAlreadySeen(p)) return;
   markEarlyPingSeen(p);
-  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（含電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}`.trim();
+  const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（含電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}${p.reason ? "　理由 " + p.reason : ""}`.trim();
   try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
   try { toast("中途退租申請　" + line); } catch {}
 }
@@ -4568,6 +4583,9 @@ function submitTenantEarly() {
   const elecEl = document.getElementById("early-elec");
   const elecRaw = String((elecEl && elecEl.value) || (ui.earlyElec != null ? ui.earlyElec : "")).trim();
   if (!/^\d+$/.test(elecRaw)) { toast("請先把房間機器上的電費餘額填上"); return; }
+  const reasonEl = document.getElementById("early-reason");
+  const reason = String((reasonEl && reasonEl.value) || ui.earlyReason || "").trim();
+  if (!reason) { toast("請填寫中途退租理由"); if (reasonEl) reasonEl.focus(); return; }
   const paper = earlyApplyCo(t, r, at, elecRaw);
   const prev = lastCheckout(t.id);
   const reuse = prev && prev.status !== "done" && prev.kind === "early";
@@ -4580,6 +4598,7 @@ function submitTenantEarly() {
     kind: "early",
     status: "applied",
     appointAt,
+    reason,
     appliedAt: nowStamp(),
     updatedAt: nowStamp()
   });
@@ -4594,14 +4613,15 @@ function submitTenantEarly() {
   const i = state.checkouts.findIndex(c => c && c.id === row.id);
   if (i >= 0) state.checkouts[i] = row;
   else state.checkouts.push(row);
-  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at, appointAt, refund: paper.refund, elecBalance: paper.elecBalance };
+  state.earlyPing = { at: Date.now(), roomNo: r.no, name: t.name || "", id: row.id, date: at, appointAt, refund: paper.refund, elecBalance: paper.elecBalance, reason };
   save();
   try { publishEarlyNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　總退還 ${money(paper.refund)}　電費餘額 ${money(paper.elecBalance)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}`, "admin");
+  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　總退還 ${money(paper.refund)}　電費餘額 ${money(paper.elecBalance)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}　理由 ${reason}`, "admin");
   toast("已送出中途退租申請");
   ui.earlyApplyOpen = false;
+  ui.earlyReason = "";
   ui.keepScroll = true;
   render();
 }
@@ -5122,7 +5142,7 @@ const TENANT_INFO = {
   "6832": { name: "周婕妤、許軒偉", phone: "0953-382-012／0963-701-012", leaseStart: "2026-09-01", leaseEnd: "2027-08-31", deposit: 28000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。前任高逸安、翁玟倫已於 115/8/19 退租。" },
   "6841": { name: "劉冠德", phone: "0985-049-080", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "98847", payBank: "農會", renewName: "賴欣怡", note: "115/10/31 到期換約改掛女友 賴欣怡。現任仍是劉冠德。" },
   "6842": { name: "蘇冠達、吳汶修", phone: "0983-175-009／0980-968-882", idNo: "S124242819／P124485357", address: "高雄市鳳山區文英里5鄰文南街31號／雲林縣水林鄉車港村9鄰興隆路32號", emergencyName: "李姿君／吳儉鴻", emergencyPhone: "0906-653-690／0922-612-969", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
-  "7021": { name: "陳信安、吳舉珉", phone: "0966-268-087", idNo: "N123765891／G121925901", address: "彰化縣花壇鄉中口村中北街8號／台北市士林區福華里承德路4段40巷49號4F-12", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", waterYear: 1800, residents: 1, note: "兩人輪流住，不同時在住，年水費仍收 1,800。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。" },
+  "7021": { name: "陳信安", phone: "0966-268-087", idNo: "N123765891／G121925901", address: "彰化縣花壇鄉中口村中北街8號／台北市士林區福華里承德路4段40巷49號4F-12", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", waterYear: 1800, residents: 1, note: "兩人輪流住，不同時在住，年水費仍收 1,800。名單與發票只掛陳信安。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。" },
   "7022": { name: "郭雅萱", phone: "0979-030-393", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", bankLast5: "80176", payBank: "農會" },
   "7023": { name: "謝雯鶯", phone: "0981-188-439", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會" },
   "7031": { name: "朱甫晟", phone: "0905-798-136", idNo: "W100522226", address: "金門縣金城鎮古城里1鄰金門城125號", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", payBank: "農會", note: "身分證 W100522226。男。民國91年11月21日生。出生地福建省金門縣。父朱書強、母呂彩珠。戶籍金門縣金城鎮古城里1鄰金門城125號。106年5月24日金門初發。" },
@@ -10622,12 +10642,13 @@ function apply7021Rotate(data) {
   if (!room) return false;
   const t = data.tenants.find(x => x && !x.former && !x.demo && (x.roomId === room.id || x.id === room.tenantId || sameTenantName(x.name, "陳信安")));
   if (!t || (t.name && !/陳信安/.test(String(t.name)))) return false;
-  const name = "陳信安、吳舉珉";
+  const name = "陳信安";
   const idNo = "N123765891／G121925901";
   const address = "彰化縣花壇鄉中口村中北街8號／台北市士林區福華里承德路4段40巷49號4F-12";
-  const note = "兩人輪流住，不同時在住，年水費仍收 1,800。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。";
+  const note = "兩人輪流住，不同時在住，年水費仍收 1,800。名單與發票只掛陳信安。陳信安 N123765891，0966-268-087，彰化縣花壇鄉中口村中北街8號。吳舉珉 G121925901，台北市士林區福華里承德路4段40巷49號4F-12。";
   let changed = false;
   if (t.name !== name) { t.name = name; changed = true; }
+  if (t.invoiceBuyer && t.invoiceBuyer !== name) { t.invoiceBuyer = name; changed = true; }
   if (t.idNo !== idNo) { t.idNo = idNo; changed = true; }
   if (t.address !== address) { t.address = address; changed = true; }
   if (!String(t.phone || "").includes("0966-268-087")) { t.phone = "0966-268-087"; changed = true; }
@@ -10643,7 +10664,8 @@ function apply7021Rotate(data) {
     if (row.name !== name) { row.name = name; changed = true; }
     if (row.renewNames !== name) { row.renewNames = name; changed = true; }
     if (Number(row.waterFee) !== 1800) { row.waterFee = 1800; changed = true; }
-    const people = Array.isArray(row.people) ? row.people.map(p => Object.assign({}, p)) : [];
+    const people = (Array.isArray(row.people) ? row.people : []).filter(p => p && !/吳舉珉/.test(String(p.name || ""))).map(p => Object.assign({}, p));
+    if ((row.people || []).some(p => p && /吳舉珉/.test(String(p.name || "")))) changed = true;
     let chen = people.find(p => p && /陳信安/.test(String(p.name || "")));
     if (!chen) {
       chen = { name: "陳信安", renew: true, years: Number(row.years) || 1, months: 0, start: row.start || "", end: row.end || "", water: 1800 };
@@ -10651,11 +10673,6 @@ function apply7021Rotate(data) {
       changed = true;
     }
     if (Number(chen.water) !== 1800) { chen.water = 1800; changed = true; }
-    let wu = people.find(p => p && /吳舉珉/.test(String(p.name || "")));
-    if (!wu) {
-      people.push({ name: "吳舉珉", renew: true, years: Number(chen.years) || Number(row.years) || 1, months: Number(chen.months) || 0, start: chen.start || row.start || "", end: chen.end || row.end || "", water: 0, rotate: true });
-      changed = true;
-    } else if (Number(wu.water)) { wu.water = 0; changed = true; }
     row.people = people;
   });
   if (!changed) return false;
@@ -13314,6 +13331,8 @@ function presenceKey() {
   if (ui.role === "tenant" && ui.tenantId) return ui.tenantId;
   if (ui.role === "admin" && ui.adminCode) {
     const name = normAdminName(ui.adminName);
+    if (name === "趙正賢") return "admin-1976";
+    if (ui.adminCode === "7651" && name === "趙海城") return "admin-7651-趙海城";
     if (ui.adminCode === "7651" && (name === "許喻涵" || name === "趙洪漳")) return "admin-7651-" + name;
     return "admin-" + ui.adminCode;
   }
@@ -13409,6 +13428,11 @@ function logPresenceId(x) {
   const t = state.tenants.find(n => n.roomId === room.id || n.id === room.tenantId);
   return t ? t.id : "";
 }
+function isBossAdmin() {
+  if (!ui || ui.role !== "admin" || ui.adminCode === "1240") return false;
+  const n = normAdminName(ui.adminName);
+  return n === "趙正賢" || n === "趙海城" || ui.adminCode === "1976";
+}
 function staffHidesDash() {
   const n = normAdminName(ui.adminName);
   return ui.role === "admin" && ui.adminCode === "7651" && (n === "趙洪漳" || n === "許喻涵");
@@ -13431,17 +13455,18 @@ function staffPresenceOn(name) {
 function onlineStaffHtml() {
   const slots = [
     ["admin-1240", "開發者（1240）"],
-    ["admin-1976", "管理員（1976）"],
+    ["admin-1976", "趙正賢（1976）"],
+    ["admin-7651-趙海城", "趙海城（7651）"],
     ["admin-7651-趙洪漳", "趙洪漳"],
     ["admin-7651-許喻涵", "許喻涵"]
   ];
   return slots.map(([id, label]) => {
-    const name = String(id).indexOf("admin-7651-") === 0 ? label : "";
-    const on = name ? staffPresenceOn(name) : isOnline(id);
-    const p = (state.presence || {})[id] || (name ? ((state.presence || {})["admin-7651"] || {}) : {});
-    const showDevice = on && p.device && (!name || normAdminName(p.name) === name);
+    const staffName = (label === "趙洪漳" || label === "許喻涵") ? label : "";
+    const on = staffName ? staffPresenceOn(staffName) : isOnline(id);
+    const p = (state.presence || {})[id] || (staffName ? ((state.presence || {})["admin-7651"] || {}) : {});
+    const showDevice = on && p.device && (!staffName || normAdminName(p.name) === staffName);
     const extra = showDevice ? `<span class="small">${escapeHtml(p.device)}</span>` : "";
-    const click = isDeveloper() && name ? `<button type="button" class="staff-ops-link" data-staff-ops="${escapeHtml(name)}">${escapeHtml(label)}</button>` : `<span class="k">${escapeHtml(label)}</span>`;
+    const click = isDeveloper() && staffName ? `<button type="button" class="staff-ops-link" data-staff-ops="${escapeHtml(staffName)}">${escapeHtml(label)}</button>` : `<span class="k">${escapeHtml(label)}</span>`;
     return `<div class="online-row">${click}<span class="row-end">${extra}<span class="live-pill${on ? " on" : ""}" data-online="${escapeHtml(id)}">${on ? "在線中" : "離線中"}</span></span></div>`;
   }).join("");
 }
@@ -14491,7 +14516,7 @@ async function biometricLogin() {
     const kind = rec.adminName ? adminLoginKind(rec.adminCode, rec.adminName) : (ADMIN_CODES.includes(rec.adminCode) ? (rec.adminCode === "1240" ? "dev" : "staff") : "");
     if (!kind) { toast("請改用姓名與密碼登入"); return; }
     ui.role = "admin";
-    ui.adminCode = kind === "dev" ? "1240" : "7651";
+    ui.adminCode = kind === "dev" ? "1240" : (normAdminName(rec.adminName) === "趙正賢" ? "1976" : (kind === "boss" ? String(rec.adminCode || "") : "7651"));
     ui.adminName = rec.adminName || "";
     ui.page = adminLandingPage();
     ui.loginError = "";
@@ -16910,7 +16935,7 @@ function notifyCloudChanges(before) {
       showOsBanner("續約申請", who.trim() + "　申請續約　" + renewWaterLine(tenant, room, x), "renew-" + x.id);
     });
     (state.checkouts || []).filter(c => c && c.kind === "early" && c.status === "applied" && !(before.earlyIds || []).includes(c.id)).forEach(c => {
-      flashEarlyNotice({ id: c.id, roomNo: c.roomNo, name: c.tenantName, date: c.at });
+      flashEarlyNotice({ id: c.id, roomNo: c.roomNo, name: c.tenantName, date: c.at, reason: c.reason, refund: c.refund, elecBalance: c.elecBalance, appointAt: c.appointAt });
     });
   }
   if (ui.role === "tenant") {
@@ -25695,6 +25720,7 @@ function checkoutFormHtml() {
     return `<div class="card card-body" id="checkout-form-card">
     <div class="row co-head-row"><h2 class="dash-h" style="margin:0"><span class="co-head-k">中途退租</span><span class="co-head-who">${escapeHtml(r.no || "")}　${escapeHtml(t.name || "")}</span></h2><span class="row-end">${switcher}<button type="button" class="ghost" id="checkout-close" style="width:auto">關閉</button></span></div>
     <div class="small">${co.status === "done" ? "這張終止契約已完成，可再改內容後儲存或列印。" : "填終止日期與退還金額。完成後會記入總覽，舊客變前任；有新客就自動接手。列印後雙方蓋章即可。"}</div>
+    ${co.reason ? `<div class="handover-note" style="margin-top:8px"><div class="label">中途退租理由</div><p>${escapeHtml(co.reason)}</p></div>` : ""}
     ${co.status === "done"
       ? (co.appointAt ? `<div class="small" style="margin-top:8px">預約簽名蓋章：${escapeHtml(formatDateTime12(String(co.appointAt).replace("T", " ")))}　地點：5F，電梯出來右轉到底，7651簽約室</div>` : "")
       : `<div class="appoint-box" style="margin-top:8px">
@@ -26848,12 +26874,12 @@ function gateView() {
       <button class="back slide-right" id="back-gate" type="button">← 返回</button>
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
-        <h1>${isAdmin ? "管理員登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入管理員姓名與密碼，進入後台" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
+        <h1>${isAdmin ? "後台登入" : "租客登入"}</h1>
+        <p class="lead">${isAdmin ? "請輸入姓名與密碼。管理員、開發者、負責人都可以從這裡進入。" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
       </div>
       <div class="login-block slide-left">
-        ${isAdmin ? `<input id="admin-name" type="text" autocomplete="username" maxlength="12" placeholder="管理員姓名" value="${escapeHtml(ui.loginAdminName || "")}" />` : ""}
-        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="${isAdmin ? "numeric" : "numeric"}" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "管理員密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
+        ${isAdmin ? `<input id="admin-name" type="text" autocomplete="username" maxlength="12" placeholder="姓名" value="${escapeHtml(ui.loginAdminName || "")}" />` : ""}
+        <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="${isAdmin ? "numeric" : "numeric"}" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
         ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
@@ -26879,8 +26905,8 @@ function gateView() {
       <span>請輸入房號，密碼可用姓名或手機號碼。</span>
     </button>
     <button class="role-btn slide-left r3" data-go="admin-login">
-      <strong>管理員後台</strong>
-      <span>請輸入管理員姓名與密碼後，查看全部房間、租客與報修。</span>
+      <strong>後台登入</strong>
+      <span>管理員、開發者、負責人都可以從這裡進入。</span>
     </button>
     ${bioEnrolled() ? `<button class="role-btn slide-left r4" id="bio-login" type="button">
       <strong>${bioLabel()}</strong>
@@ -29233,13 +29259,18 @@ function bindSplitDrag() {
 }
 function adminView() {
   if (staffHidesDash() && (!ui.page || ui.page === "dash" || ui.page === "home" || ui.page === "solar")) ui.page = "rooms";
+  if (isBossAdmin() && /^(ai|announce|history|logs|firm|food|staff-ops)$/.test(ui.page || "")) ui.page = "dash";
   const pages = adminPages();
   const body = splitOn()
     ? splitStageHtml()
     : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
+  const title = ui.adminCode === "1240" ? "開發者後台" : "負責人後台";
+  const titleHtml = isBossAdmin()
+    ? `<button type="button" id="boss-title" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">${title}</button>`
+    : `<h1 style="font-size:24px">${title}</h1>`;
   return `
     <div class="admin-bar">
-      <div><div class="eyebrow">統潔＆信潔開發有限公司</div><h1 style="font-size:24px">${ui.adminCode === "1240" ? "開發者後台" : "管理員後台"}</h1>
+      <div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
       </div>
       <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
     </div>
@@ -29266,6 +29297,7 @@ function adminView() {
 }
 function adminPages() {
   const labels = { dash: "總覽", rooms: "資產", tenants: "租客", announce: "公告", repairs: "報修", ai: "行程", history: "紀錄", logs: "日誌", settings: "設定", firm: "資料", food: "飲食" };
+  if (isBossAdmin()) return ["dash", "rooms", "tenants", "repairs"].map(id => [id, labels[id]]);
   const allowed = ["dash", "rooms", "tenants", "ai", "repairs", "announce"];
   if (ui.adminCode === "1240") allowed.push("history", "logs");
   allowed.push("settings", "firm", "food");
@@ -29897,7 +29929,7 @@ function adminLogs() {
   return `<div class="admin-grid list">
     <div class="card card-body">
       <h2 class="dash-h">目前在線</h2>
-      <p class="small">開發者、管理員與正在使用 App 的租客。</p>
+      <p class="small">開發者、負責人與正在使用 App 的租客。</p>
       <div class="online-board">
         ${onlineStaffHtml()}
         <div class="online-h">租客</div>
@@ -35879,23 +35911,23 @@ function tryLogin() {
     const name = String((nameEl && nameEl.value) || ui.loginAdminName || "").trim();
     ui.loginAdmin = no;
     ui.loginAdminName = name;
-    if (!name) { ui.loginError = "請輸入管理員姓名"; render(); return; }
-    if (!no) { ui.loginError = "請輸入管理員密碼"; render(); return; }
+    if (!name) { ui.loginError = "請輸入姓名"; render(); return; }
+    if (!no) { ui.loginError = "請輸入密碼"; render(); return; }
     const kind = adminLoginKind(no, name);
     if (!kind) {
       ui.loginError = "姓名或密碼不正確";
-      audit("登入失敗", "嘗試管理員 " + name);
+      audit("登入失敗", "嘗試負責人 " + name);
       render();
       return;
     }
     ui.role = "admin";
-    ui.adminCode = kind === "dev" ? "1240" : "7651";
+    ui.adminCode = kind === "dev" ? "1240" : (normAdminName(name) === "趙正賢" ? "1976" : no);
     ui.adminName = name;
     ui.page = adminLandingPage();
     ui.loginError = "";
     ui.loginAdmin = "";
     persistUi();
-    audit("登入", (kind === "dev" ? "開發者 " : "管理員 ") + name);
+    audit("登入", (kind === "dev" ? "開發者 " : kind === "boss" ? "負責人 " : "管理員 ") + name);
     beatPresence();
     render(); enablePush(true).then(() => maybeNudgeNotifies()); armPushAsk(); return;
   }
@@ -37927,6 +37959,17 @@ function bindAdmin() {
     if (isStaffLook()) { exitStaffLook(); return; }
     logoutToGate();
   };
+  const bossTitle = document.getElementById("boss-title");
+  if (bossTitle && !bossTitle._bound) {
+    bossTitle._bound = 1;
+    bossTitle.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.page = ui.page === "settings" ? "dash" : "settings";
+      ui.keepScroll = false;
+      render();
+    };
+  }
   const exitStaff = document.getElementById("exit-staff-look");
   if (exitStaff) exitStaff.onclick = e => {
     e.preventDefault();
@@ -40798,7 +40841,7 @@ async function boot() {
     applyFont(currentFontScale());
     seedSeenVersion();
     try { sessionStorage.removeItem("tj-sw-reload"); } catch {}
-    markVersionSeen();
+    if (!unseenAppVersion()) markVersionSeen();
     try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
