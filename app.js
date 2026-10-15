@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-17-55";
-const APP_EDIT_COUNT = 1928;
+const APP_STAMP = "2026-10-15-18-49";
+const APP_EDIT_COUNT = 1929;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1537";
+const FILE_VER = "1538";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["負責人後台下方只留總覽、資產、租客、報修，設定改點左上角標題", "趙正賢可用 1976 或 7651 進入負責人後台"] },
+  { ver: APP_VERSION, items: ["續約有兩人時，合約要兩人各自簽名，缺一人不能算簽完"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3740,7 +3740,7 @@ function renewAskCardHtml(t, r, opts) {
         <div class="small">可以改時間。後台會一起改，合約底部的中華民國日期也會改成這一天。地點：5F，電梯出來右轉到底，7651簽約室</div>
       </div>`}
       ${esigned && !signed ? `<p class="small" style="margin-top:8px">已完成線上簽名。請於預約時間到 7651 蓋章。若年、月、房號或金額有改，需要重新簽名。</p>` : ""}
-      ${!signed && !esigned ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">${cur.signedKey ? "內容已變更，重新簽署新約" : "線上簽署新約"}</button>` : ""}
+      ${!signed && !esigned ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">${renewStayNames(cur).length > 1 && cur.signedKey ? "兩人都要簽名" : (cur.signedKey ? "內容已變更，重新簽署新約" : "線上簽署新約")}</button>` : ""}
       ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
       ${!signed ? `<button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">改為不續約</button>` : ""}
@@ -4122,8 +4122,20 @@ function setRenewAppoint(item, value) {
   ui.keepScroll = true;
   render();
 }
+function renewStayNames(row) {
+  return (Array.isArray(row && row.people) ? row.people : [])
+    .filter(p => p && p.renew !== false && String(p.name || "").trim())
+    .map(p => String(p.name).trim());
+}
+function renewRowTenant(row) {
+  if (!row || typeof state === "undefined" || !state) return null;
+  return (state.tenants || []).find(x => x && !x.former && (x.id === row.tenantId || (row.roomId && x.roomId === row.roomId))) || null;
+}
 function renewEsigned(row) {
-  return !!(row && row.signedKey && row.signedKey === renewTermsKey(row));
+  if (!row || !row.signedKey || row.signedKey !== renewTermsKey(row)) return false;
+  if (renewStayNames(row).length < 2) return true;
+  const es = typeof getESign === "function" ? getESign(renewRowTenant(row)) : null;
+  return !!(es && es.status === "signed" && es.sig2);
 }
 function buildTenantRenewRow() {
   const t = me(); const r = myRoom();
@@ -20383,7 +20395,9 @@ function tenantForRenewPrint(t, r, item) {
   const parts = extra > 0 || range.years === 0.5
     ? [{ kind: "year", start: range.start, end: range.end, rent: monthly }]
     : (pack.parts || []);
+  const stayNames = renewStayNames(item);
   return Object.assign({}, t, {
+    name: stayNames.length > 1 ? stayNames.join("／") : (stayNames[0] || t.name || ""),
     leaseStart: range.start,
     leaseEnd: range.end,
     leases: parts,
@@ -28585,11 +28599,11 @@ function leaseSignView() {
     <div class="screen">
       <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">電子已簽</span></div>
       <p class="small" style="margin:8px 2px 12px">你的藍字簽名與資料已套進合約。管理員列印後只蓋章。</p>
-      ${renewItem && renewItem.status !== "applied" && !renewEsigned(renewItem) ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-bottom:12px">簽署新約（手寫簽名）</button>` : ""}
+      ${renewItem && renewItem.status !== "applied" && !renewEsigned(renewItem) ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-bottom:12px">${renewStayNames(renewItem).length > 1 ? "兩人都要簽名" : "簽署新約（手寫簽名）"}</button>` : ""}
       ${paper}
     </div>`;
   }
-  const names = splitPair((t && t.name) || "");
+  const names = splitPair((paperT && paperT.name) || (t && t.name) || "");
   const two = names.length > 1;
   if (ui.signTerm1y == null) ui.signTerm1y = true;
   const pickRoom = canPickSignRoom(t) && !renewItem;
@@ -37034,12 +37048,16 @@ function bindSignPad() {
     const emName = val("sign-emname");
     const emPhone = val("sign-emphone");
     const addr = val("sign-addr");
-    const two = splitPair((t && t.name) || "").length > 1;
+    const item = draft || (typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null);
+    const stayN = renewStayNames(item);
+    const two = stayN.length > 1 || splitPair((t && t.name) || "").length > 1;
+    const hasInk2 = !!(b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length)));
     const gap = signProfileGap(two, idNo, phone, emName, emPhone, addr);
     const wrote = !!(idNo || phone || emName || emPhone || addr);
     if (!skipInk) {
       if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
       if (!c || !hasInk) { toast("請先在白框內簽名"); return; }
+      if (two && !hasInk2) { toast("兩人都要簽名"); return; }
     }
     if ((!skipInk || wrote) && gap) {
       toast(gap.msg);
@@ -37086,7 +37104,7 @@ function bindSignPad() {
       status: "signed", at: nowStamp(), ts: Date.now(),
       sig: canvasToSig(c),
       sig2: (b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length))) ? canvasToSig(b.c) : "",
-      name: (t && t.name) || "",
+      name: stayN.length > 1 ? stayN.join("／") : ((t && t.name) || ""),
       idNo, phone, emergencyName: emName, emergencyPhone: emPhone, address: addr
     };
     ui.signStrokes = [];
