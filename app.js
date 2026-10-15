@@ -42,10 +42,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-12-56";
-const APP_EDIT_COUNT = 1923;
+const APP_STAMP = "2026-10-15-12-59";
+const APP_EDIT_COUNT = 1924;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1532";
+const FILE_VER = "1533";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -520,7 +520,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約完成的圖卡不再顯示加入日曆"] },
+  { ver: APP_VERSION, items: ["完成簽約的續約仍留在日曆，並用刪除線標示"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -30962,7 +30962,7 @@ function adminAi() {
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
               </div>
-            </form>` : on && m.source === "appoint" ? `<div class="small" style="margin:6px 0 0">這筆跟租客預約同步。改了預約時間，日曆會一起改。</div>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
+            </form>` : on && m.source === "appoint" ? `<div class="small" style="margin:6px 0 0">${m.struck ? "已完成簽約，所以用刪除線留在這一天。" : "這筆跟租客預約同步。改了預約時間，日曆會一起改。"}</div>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
@@ -31501,11 +31501,11 @@ function groupUpcomingMemos() {
 }
 function workAppointMemos() {
   const out = [];
-  const push = (id, at, text) => {
+  const push = (id, at, text, struck) => {
     const ymd = ymdOf(at);
     if (!id || !ymd) return;
     const clock = formatDateTime12(String(at).replace("T", " ")).replace(/^\d{4}-\d{2}-\d{2}\s*/, "").trim();
-    out.push({ id, text: String(text || "").trim(), date: ymd, time: clock, source: "appoint" });
+    out.push({ id, text: String(text || "").trim(), date: ymd, time: clock, source: "appoint", struck: !!struck });
   };
   (state.tenants || []).forEach(t => {
     if (!t || t.former || t.demo || t.placeholder) return;
@@ -31517,9 +31517,10 @@ function workAppointMemos() {
     }
   });
   (state.renewals || []).forEach(r => {
-    if (!r || !r.appointAt || r.status === "done" || r.status === "cancelled") return;
+    if (!r || !r.appointAt || r.status === "cancelled") return;
+    const signed = r.status === "done" || r.status === "applied";
     const who = ((r.roomNo || "") + " " + (r.renewNames || r.name || "")).trim();
-    push("renewap-" + (r.id || r.roomNo || r.tenantId), r.appointAt, who + " 續約簽約");
+    push("renewap-" + (r.id || r.roomNo || r.tenantId), r.appointAt, who + " 續約簽約", signed);
   });
   (state.checkouts || []).forEach(c => {
     if (!c || c.kind !== "early" || c.status === "done" || !c.appointAt) return;
