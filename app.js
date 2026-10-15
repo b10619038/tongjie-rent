@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-18-49";
-const APP_EDIT_COUNT = 1929;
+const APP_STAMP = "2026-10-15-19-40";
+const APP_EDIT_COUNT = 1930;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1538";
+const FILE_VER = "1539";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約有兩人時，合約要兩人各自簽名，缺一人不能算簽完"] },
+  { ver: APP_VERSION, items: ["續約兩人時，資料改成一人一張，不用再用／擠在同一格"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24072,9 +24072,9 @@ function oneMobile(s) {
 }
 function normalizeMobile(s, soft) {
   const raw = String(s || "");
-  const hasSep = /[、，,\/]/.test(raw);
+  const hasSep = /[、，,\/／]/.test(raw);
   if (hasSep) {
-    const chunks = raw.split(/[、，,\/]+/);
+    const chunks = raw.split(/[、，,\/／]+/);
     const a = oneMobile(chunks[0]);
     const rest = chunks.slice(1).join("");
     if (soft) {
@@ -24116,9 +24116,9 @@ function oneIdNo(s) {
 }
 function normalizeIdNo(s, soft) {
   const raw = String(s || "");
-  const hasSep = /[、，,\/]/.test(raw);
+  const hasSep = /[、，,\/／]/.test(raw);
   if (hasSep) {
-    const chunks = raw.split(/[、，,\/]+/);
+    const chunks = raw.split(/[、，,\/／]+/);
     const a = oneIdNo(chunks[0]);
     const rest = chunks.slice(1).join("");
     const b = oneIdNo(rest);
@@ -24905,6 +24905,19 @@ function cnAmt(n) {
   const s = moneyCN(n).replace(/^新臺幣/, "").replace(/元整$/, "");
   return s || "";
 }
+function signPersonCard(who, i, idNo, phone, emName, emPhone, addr) {
+  const suf = i ? "-2" : "";
+  const id = key => "sign-" + key + suf;
+  return `<div class="card card-body" style="margin-top:12px">
+        <div class="label">${escapeHtml(who || (i ? "第二位承租人" : "承租人"))}</div>
+        <p class="small" style="margin:0 0 8px">這五項沒填完不能簽名。</p>
+        <label class="field"><span>身分證字號</span><input id="${id("idno")}" type="text" value="${escapeHtml(idNo)}" placeholder="身分證字號" autocomplete="off" /></label>
+        <label class="field"><span>聯絡電話</span><input id="${id("phone")}" type="tel" value="${escapeHtml(phone)}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="${id("emname")}" type="text" value="${escapeHtml(emName)}" placeholder="姓名" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="${id("emphone")}" type="tel" value="${escapeHtml(emPhone)}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>戶籍地址</span><input id="${id("addr")}" type="text" value="${escapeHtml(addr)}" placeholder="身分證上的戶籍地址" autocomplete="street-address" /></label>
+      </div>`;
+}
 function slashPair(s) {
   const parts = String(s || "").split(/[／/、]+/).map(x => x.trim()).filter(Boolean);
   return parts.slice(0, 2).join("／");
@@ -24918,7 +24931,7 @@ function signProfileGap(two, idNo, phone, emName, emPhone, addr) {
     const raw = String(value || "").trim();
     if (!raw || hint.test(raw)) return { id, msg: "請先填" + label + "，才能簽署" };
     const parts = signPairBits(raw);
-    if (two && parts.length < 2) return { id, msg: label + "兩人都要填，中間用／分開" };
+    if (two && parts.length < 2) return { id: parts.length ? id + "-2" : id, msg: label + "兩人都要填" };
     if (kind === "id" && !parts.every(p => /^[A-Z]\d{9}$/.test(normalizeIdNo(p)))) return { id, msg: "請填正確身分證字號" };
     if (kind === "phone" && !parts.every(p => /^09\d{8}$/.test(oneMobile(p)))) return { id, msg: "請填正確電話" };
     return null;
@@ -28645,7 +28658,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${draft ? "請核對這份新約。五項資料填完並簽名後，才會送出續約申請。之後如果年、月、房號或金額有改，要重新簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : (renewItem ? "續約新約簽署前，下面承租人資料五項都要填完才能簽名。兩人請用／分開。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。列印後我們只蓋章。")}</p>
+      <p class="small" style="margin:0 2px 10px">${draft ? "請核對這份新約。五項資料填完並簽名後，才會送出續約申請。之後如果年、月、房號或金額有改，要重新簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : (renewItem ? "續約新約簽署前，每人的五項資料都要填完才能簽名。兩人各填一張、各簽一次。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。兩人各填一張、各簽一次。列印後我們只蓋章。")}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -28670,15 +28683,15 @@ function leaseSignView() {
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
       </div>`}
-      <div class="card card-body" style="margin-top:12px">
+      ${two ? signPersonCard(names[0], 0, signPairBits((t && t.idNo) || (es && es.idNo) || "")[0] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[0] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[0] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[0] || "", signPairBits(tenantHouseholdAddress(t, r))[0] || "") + signPersonCard(names[1], 1, signPairBits((t && t.idNo) || (es && es.idNo) || "")[1] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[1] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[1] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[1] || "", signPairBits(tenantHouseholdAddress(t, r))[1] || "") : `<div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（必填，藍字印在合約上）</div>
-        <p class="small" style="margin:0 0 8px">${renewItem ? "這五項沒填完不能確認簽署。" : "這五項都要填，才印得上合約。"}${two ? "兩人中間用／分開。" : ""}</p>
-        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml(slashPair((t && t.idNo) || (es && es.idNo) || ""))}" placeholder="${two ? "兩人請用／分開" : "身分證字號"}" autocomplete="off" /></label>
-        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml(slashPair((t && t.phone) || (es && es.phone) || ""))}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
-        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml(slashPair((t && t.emergencyName) || (es && es.emergencyName) || ""))}" placeholder="${two ? "兩人請用／分開" : "姓名"}" autocomplete="off" /></label>
-        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml(slashPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || ""))}" placeholder="${two ? "兩人請用／分開" : "手機號碼"}" autocomplete="off" /></label>
-        <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(slashPair(tenantHouseholdAddress(t, r)))}" placeholder="${two ? "兩人請用／分開" : "請填身分證上的戶籍地址"}" autocomplete="street-address" /></label>
-      </div>
+        <p class="small" style="margin:0 0 8px">${renewItem ? "這五項沒填完不能確認簽署。" : "這五項都要填，才印得上合約。"}</p>
+        <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml(slashPair((t && t.idNo) || (es && es.idNo) || ""))}" placeholder="身分證字號" autocomplete="off" /></label>
+        <label class="field"><span>聯絡電話</span><input id="sign-phone" type="tel" value="${escapeHtml(slashPair((t && t.phone) || (es && es.phone) || ""))}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml(slashPair((t && t.emergencyName) || (es && es.emergencyName) || ""))}" placeholder="姓名" autocomplete="off" /></label>
+        <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml(slashPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || ""))}" placeholder="手機號碼" autocomplete="off" /></label>
+        <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(slashPair(tenantHouseholdAddress(t, r)))}" placeholder="請填身分證上的戶籍地址" autocomplete="street-address" /></label>
+      </div>`}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出，會寫進正式資料。租客自己的帳號仍然一定要簽名。</p>` : ""}
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -37043,14 +37056,15 @@ function bindSignPad() {
     const draft = draft0;
     const renewing = !!(draft || (t && typeof liveRenewalOf === "function" && liveRenewalOf(t)));
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
-    const idNo = val("sign-idno");
-    const phone = val("sign-phone");
-    const emName = val("sign-emname");
-    const emPhone = val("sign-emphone");
-    const addr = val("sign-addr");
     const item = draft || (typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null);
     const stayN = renewStayNames(item);
     const two = stayN.length > 1 || splitPair((t && t.name) || "").length > 1;
+    const pull = id => two ? [val(id), val(id + "-2")].map(x => String(x || "").trim()).filter(Boolean).join("／") : val(id);
+    const idNo = pull("sign-idno");
+    const phone = pull("sign-phone");
+    const emName = pull("sign-emname");
+    const emPhone = pull("sign-emphone");
+    const addr = pull("sign-addr");
     const hasInk2 = !!(b && b.c && (b.c.dataset.ink === "1" || (ui.signStrokes2 && ui.signStrokes2.length)));
     const gap = signProfileGap(two, idNo, phone, emName, emPhone, addr);
     const wrote = !!(idNo || phone || emName || emPhone || addr);
