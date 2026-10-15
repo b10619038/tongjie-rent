@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-23-16";
-const APP_EDIT_COUNT = 1951;
+const APP_STAMP = "2026-10-15-23-21";
+const APP_EDIT_COUNT = 1952;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1561";
+const FILE_VER = "1562";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["公司大小章和租客個人章分開，不再黏在一起"] },
+  { ver: APP_VERSION, items: ["租客改簽約時間，管理員、開發者、負責人後台都會收到"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9302,6 +9302,26 @@ function seedOldEventNotifies() {
     }
   } catch {}
 }
+function flashAppointChange(title, no, name, when, key) {
+  if (!ui || ui.role !== "admin" || !when) return;
+  const line = `${no || ""} ${name || ""} 簽約時間改為 ${when}`.replace(/\s+/g, " ").trim();
+  const tag = key || ("appoint-t" + Date.now());
+  const fp = osBannerFp(title, line, tag);
+  if (osBannerSeen(fp)) return;
+  try { showOsBanner(title, line, tag); } catch {}
+  try { toast(title + "　" + line); } catch {}
+}
+function renewAppointChanges(prev, incoming) {
+  const out = [];
+  (incoming || []).forEach(x => {
+    if (!x || !x.id) return;
+    const before = prev.get(x.id);
+    const after = String(x.appointAt || "").replace(" ", "T");
+    if (before == null || !after || before === after) return;
+    out.push(x);
+  });
+  return out;
+}
 function flashRenewNotice(ping) {
   if (ui.role !== "admin") return;
   const p = ping || state.renewPing || (state.renewals || []).filter(x => x && x.status !== "done").slice(-1)[0];
@@ -11798,6 +11818,8 @@ function ingestLiveCloud(raw) {
       }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
+      const prevAt = new Map((state.renewals || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
+      const appointChanged = o.device !== liveDeviceId() ? renewAppointChanges(prevAt, o.renewals) : [];
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
       if (o.renewPing) state.renewPing = o.renewPing;
       o.renewals.forEach(x => {
@@ -11811,10 +11833,16 @@ function ingestLiveCloud(raw) {
         try { showOsBanner("續約申請", line, "renew-" + (o.renewPing.id || o.renewPing.roomNo || "")); } catch {}
         toast("續約申請　" + line);
       }
+      appointChanged.forEach(x => {
+        const when = formatDateTime12(String(x.appointAt || "").replace("T", " "));
+        flashAppointChange("續約簽約時間", x.roomNo, x.name, when, "renew-time-" + x.id + "-" + String(x.appointAt || "").replace(/\W/g, ""));
+      });
       ui.keepScroll = true;
       try { render(); } catch {}
     }
     if (Array.isArray(o.earlyOuts) && o.earlyOuts.length) {
+      const prevEarly = new Map((state.checkouts || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
+      const earlyChanged = o.device !== liveDeviceId() ? renewAppointChanges(prevEarly, o.earlyOuts) : [];
       if (!state.checkouts) state.checkouts = [];
       o.earlyOuts.forEach(x => {
         if (!x || !x.id) return;
@@ -11831,6 +11859,10 @@ function ingestLiveCloud(raw) {
       });
       if (o.earlyPing) state.earlyPing = o.earlyPing;
       if (ui.role === "admin" && o.earlyPing) flashEarlyNotice(o.earlyPing);
+      earlyChanged.forEach(x => {
+        const when = formatDateTime12(String(x.appointAt || "").replace("T", " "));
+        flashAppointChange("中途退租簽約時間", x.roomNo, x.tenantName || x.name, when, "early-time-" + x.id + "-" + String(x.appointAt || "").replace(/\W/g, ""));
+      });
       ui.keepScroll = true;
       try { render(); } catch {}
     }
@@ -12162,6 +12194,8 @@ function ingestPaidCloud(raw) {
     let renewRowsChanged = false;
     if (Array.isArray(o.renewals) && o.renewals.length) {
       const beforeRn = (state.renewals || []).map(x => x && (x.id + ":" + x.status + ":" + (x.appointAt || ""))).join("|");
+      const prevAt = new Map((state.renewals || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
+      const appointChanged = renewAppointChanges(prevAt, o.renewals);
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
       o.renewals.forEach(x => {
         if (!x || !x.tenantId || x.status === "cancelled") return;
@@ -12169,6 +12203,10 @@ function ingestPaidCloud(raw) {
         if (t && t.renewChoice !== "no" && t.renewChoice !== "yes") t.renewChoice = "yes";
       });
       renewRowsChanged = beforeRn !== (state.renewals || []).map(x => x && (x.id + ":" + x.status + ":" + (x.appointAt || ""))).join("|");
+      appointChanged.forEach(x => {
+        const when = formatDateTime12(String(x.appointAt || "").replace("T", " "));
+        flashAppointChange("續約簽約時間", x.roomNo, x.name, when, "renew-time-" + x.id + "-" + String(x.appointAt || "").replace(/\W/g, ""));
+      });
     }
     if (renewAt && renewAt > (ingestPaidCloud.renewPing || 0)) {
       ingestPaidCloud.renewPing = renewAt;
@@ -16891,7 +16929,8 @@ function notifyExtra(title, target) {
     "租金繳費通知": { tag: "tongjie-rent-due", page: "pay" },
     "報修進度": { tag: "tongjie-repair", page: "repair" },
     "報修預約已安排": { tag: "tongjie-repair", page: "repair" },
-    "續約簽約時間": { tag: "tongjie-renew", page: "home" },
+    "續約簽約時間": { tag: "tongjie-renew-time", page: "tenants" },
+    "中途退租簽約時間": { tag: "tongjie-early-time", page: "tenants" },
     "入住已確認": { tag: "tongjie-movein", page: "home" },
     "租約已結束": { tag: "tongjie-out", page: "home" },
     "本月租金已入帳": { tag: "tongjie-paid", page: "pay" },
@@ -16916,7 +16955,11 @@ function announceAdminRepairs(list) {
 }
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
-  const extra = notifyExtra(title, target);
+  const extra = Object.assign({}, notifyExtra(title, target));
+  if (title === "續約簽約時間" || title === "中途退租簽約時間") {
+    extra.tag = (extra.tag || "tongjie-appoint") + "-t" + Date.now();
+    if (target === "admin") extra.page = "tenants";
+  }
   if (target && !isDevPreview()) sendRemoteNotify(target, title, text, extra);
   if (!shouldShowLocalBanner(target) && !isDevPreview()) return;
   const tag = title === "租金繳費通知"
