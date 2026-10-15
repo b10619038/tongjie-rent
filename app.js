@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-23-30";
-const APP_EDIT_COUNT = 1953;
+const APP_STAMP = "2026-10-15-23-50";
+const APP_EDIT_COUNT = 1954;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1563";
+const FILE_VER = "1564";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費完成立刻通知三個後台，同一個月份不重複跳"] },
+  { ver: APP_VERSION, items: ["改簽約時間只通知最新的那一筆，舊時間不再補跳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -9312,13 +9312,20 @@ function flashAppointChange(title, no, name, when, key) {
   try { showOsBanner(title, line, tag); } catch {}
   try { toast(title + "　" + line); } catch {}
 }
-function renewAppointChanges(prev, incoming) {
+function renewAppointChanges(localRows, incoming) {
+  const prev = new Map();
+  (localRows || []).forEach(x => { if (x && x.id) prev.set(x.id, x); });
   const out = [];
   (incoming || []).forEach(x => {
     if (!x || !x.id) return;
-    const before = prev.get(x.id);
+    const cur = prev.get(x.id);
+    if (!cur) return;
+    const before = String(cur.appointAt || "").replace(" ", "T");
     const after = String(x.appointAt || "").replace(" ", "T");
-    if (before == null || !after || before === after) return;
+    if (!after || before === after) return;
+    const curEdit = Number(cur.appointEditedAt) || 0;
+    const nextEdit = Number(x.appointEditedAt) || 0;
+    if (!nextEdit || nextEdit < curEdit) return;
     out.push(x);
   });
   return out;
@@ -11819,8 +11826,7 @@ function ingestLiveCloud(raw) {
       }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
-      const prevAt = new Map((state.renewals || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
-      const appointChanged = o.device !== liveDeviceId() ? renewAppointChanges(prevAt, o.renewals) : [];
+      const appointChanged = o.device !== liveDeviceId() ? renewAppointChanges(state.renewals, o.renewals) : [];
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
       if (o.renewPing) state.renewPing = o.renewPing;
       o.renewals.forEach(x => {
@@ -11842,8 +11848,7 @@ function ingestLiveCloud(raw) {
       try { render(); } catch {}
     }
     if (Array.isArray(o.earlyOuts) && o.earlyOuts.length) {
-      const prevEarly = new Map((state.checkouts || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
-      const earlyChanged = o.device !== liveDeviceId() ? renewAppointChanges(prevEarly, o.earlyOuts) : [];
+      const earlyChanged = o.device !== liveDeviceId() ? renewAppointChanges(state.checkouts, o.earlyOuts) : [];
       if (!state.checkouts) state.checkouts = [];
       o.earlyOuts.forEach(x => {
         if (!x || !x.id) return;
@@ -12197,8 +12202,7 @@ function ingestPaidCloud(raw) {
     let renewRowsChanged = false;
     if (Array.isArray(o.renewals) && o.renewals.length) {
       const beforeRn = (state.renewals || []).map(x => x && (x.id + ":" + x.status + ":" + (x.appointAt || ""))).join("|");
-      const prevAt = new Map((state.renewals || []).filter(x => x && x.id).map(x => [x.id, String(x.appointAt || "").replace(" ", "T")]));
-      const appointChanged = renewAppointChanges(prevAt, o.renewals);
+      const appointChanged = renewAppointChanges(state.renewals, o.renewals);
       state.renewals = mergeLiveRenewals(state.renewals, o.renewals);
       o.renewals.forEach(x => {
         if (!x || !x.tenantId || x.status === "cancelled") return;
