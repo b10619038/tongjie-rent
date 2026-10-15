@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-23-21";
-const APP_EDIT_COUNT = 1952;
+const APP_STAMP = "2026-10-15-23-30";
+const APP_EDIT_COUNT = 1953;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1562";
+const FILE_VER = "1563";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客改簽約時間，管理員、開發者、負責人後台都會收到"] },
+  { ver: APP_VERSION, items: ["繳費完成立刻通知三個後台，同一個月份不重複跳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3553,24 +3553,25 @@ function armLinePayProofPoll() {
     window.addEventListener("focus", onBack);
   }
   if (ui.payProofTimer) return;
+  ui.payProofUntil = Date.now() + 120000;
   let n = 0;
   const tick = async () => {
     ui.payProofTimer = 0;
-    if (ui.page !== "pay" && ui.page !== "home") return;
+    const watching = ui.page === "pay" || ui.page === "home" || Date.now() < (ui.payProofUntil || 0);
+    if (!watching) return;
     const ok = await syncLinePayProof();
-    if (ok) {
+    if (ok && (ui.page === "pay" || ui.page === "home")) {
       if (!ui.payStepTold) {
         ui.payStepTold = true;
         toast("可以按本月已繳費了");
       }
       ui.keepScroll = true;
       render();
-      return;
     }
     n += 1;
-    if (n < 48) ui.payProofTimer = setTimeout(tick, 2500);
+    if (n < 48 && watching) ui.payProofTimer = setTimeout(tick, 1500);
   };
-  ui.payProofTimer = setTimeout(tick, 1200);
+  ui.payProofTimer = setTimeout(tick, 400);
 }
 function unbindRoomLine(no, oldT) {
   if (!no) return;
@@ -11863,6 +11864,7 @@ function ingestLiveCloud(raw) {
         const when = formatDateTime12(String(x.appointAt || "").replace("T", " "));
         flashAppointChange("中途退租簽約時間", x.roomNo, x.tenantName || x.name, when, "early-time-" + x.id + "-" + String(x.appointAt || "").replace(/\W/g, ""));
       });
+      if (o.payPing) takePayPing(o.payPing);
       ui.keepScroll = true;
       try { render(); } catch {}
     }
@@ -12055,6 +12057,7 @@ function ingestPaidCloud(raw) {
       ingestPaidCloud.applyPing = Number(m.applyPing) || 0;
       ingestPaidCloud.renewPing = Number(m.renewPing) || 0;
       ingestPaidCloud.eSignPing = Number(m.eSignPing) || 0;
+      ingestPaidCloud.payPing = Number(m.payPing) || 0;
       ingestPaidCloud.ready = true;
     }
     const stampPing = (k, v) => {
@@ -12229,6 +12232,7 @@ function ingestPaidCloud(raw) {
       if (ui.role === "admin" && ping) flashEarlyNotice(ping);
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
+    if (o.payPing) takePayPing(o.payPing);
     const signAt = Number(o.eSignPing && o.eSignPing.at) || 0;
     if (signAt && signAt > (ingestPaidCloud.eSignPing || 0)) {
       ingestPaidCloud.eSignPing = signAt;
@@ -12295,6 +12299,7 @@ function moneyCloudBlob() {
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
     earlyPing: state.earlyPing || null,
+    payPing: state.payPing || null,
     renewals: liveRenewalPayload(),
     eSignPing: state.eSignPing || null
   });
@@ -16956,6 +16961,11 @@ function announceAdminRepairs(list) {
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
   const extra = Object.assign({}, notifyExtra(title, target));
+  if (title === "繳費回報") {
+    const no = String(text).trim().split(/\s+/)[0] || "";
+    extra.tag = payNoticeTag(no, payYmNow());
+    extra.page = "tenants";
+  }
   if (title === "續約簽約時間" || title === "中途退租簽約時間") {
     extra.tag = (extra.tag || "tongjie-appoint") + "-t" + Date.now();
     if (target === "admin") extra.page = "tenants";
@@ -27858,6 +27868,53 @@ function noteLinePaidTenant(t, room) {
   t.editedAt = Date.now();
   return true;
 }
+function payNoticeTag(no, ym) {
+  return "tongjie-pay-" + String(no || "") + "-" + String(ym || payYmNow());
+}
+function flashPayNotice(ping) {
+  if (!ui || ui.role !== "admin" || !ping) return;
+  const ym = String(ping.ym || payYmNow());
+  if (ym !== payYmNow()) return;
+  const no = String(ping.roomNo || "");
+  const tag = payNoticeTag(no, ym);
+  const line = `${no} ${ping.name || ""} 已回報繳費`.replace(/\s+/g, " ").trim();
+  if (osBannerSeen(osBannerFp("繳費回報", line, tag))) return;
+  try { showOsBanner("繳費回報", line, tag); } catch {}
+  try { toast("繳費回報　" + line); } catch {}
+}
+function takePayPing(ping) {
+  if (!ping) return;
+  const at = Number(ping.at) || 0;
+  if (!at || at <= (ingestPaidCloud.payPing || 0)) return;
+  ingestPaidCloud.payPing = at;
+  try {
+    const m = JSON.parse(localStorage.getItem("tj-ping-marks") || "{}") || {};
+    m.payPing = at;
+    localStorage.setItem("tj-ping-marks", JSON.stringify(m));
+  } catch {}
+  state.payPing = ping;
+  if (Date.now() - at > 2 * 60 * 1000) return;
+  flashPayNotice(ping);
+}
+function publishPayNow() {
+  const ping = state && state.payPing;
+  if (!ping || !ping.at) return;
+  const pkt = { at: ping.at, device: typeof liveDeviceId === "function" ? liveDeviceId() : "", payPing: ping };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    try { publishPaidCloud(); } catch {}
+    return;
+  }
+  try { paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pkt), false)); } catch {}
+  try { publishPaidCloud(); } catch {}
+}
+function startAdminPayWatch() {
+  if (startAdminPayWatch.timer) return;
+  startAdminPayWatch.timer = setInterval(() => {
+    if (!ui || ui.role !== "admin" || document.visibilityState === "hidden") return;
+    refreshLineBinds().then(() => { try { applySeenPayProofs(); } catch {} }).catch(() => {});
+  }, 3000);
+}
 function payToldKey(no) { return "tj-pay-told-" + payYmNow() + "-" + String(no || ""); }
 function payToldAlready(t, no) {
   if (t && t.payToldYm === payYmNow()) return true;
@@ -27899,7 +27956,9 @@ function applySeenPayProofs() {
     try { upsertRentAutoBookOn(state, t); } catch {}
     try { mirrorPaidFromTenant(state, t); } catch {}
     rememberPayTold(t, no);
+    state.payPing = { at: Date.now(), roomNo: String(no), name: t.name || "", ym, via: "line" };
     pushPhoneNotify("繳費回報", `${no} ${t.name || ""} 已回報繳費（官方 LINE）`, "admin");
+    try { publishPayNow(); } catch {}
     n += 1;
   });
   if (n) {
@@ -27933,7 +27992,11 @@ function markTenantPaid(via) {
   save();
   clearTimeout(saveTimer);
   try { pushCloud(); } catch {}
-  if (!told) pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
+  if (!told) {
+    state.payPing = { at: Date.now(), roomNo: String(r.no || ""), name: t.name || "", ym: payYmNow(), via: via || "app" };
+    pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
+    try { publishPayNow(); } catch {}
+  }
 }
 function linePayMessage() {
   const t = me(); const r = myRoom();
@@ -41239,6 +41302,7 @@ async function boot() {
   setInterval(syncTick, 1500);
   setTimeout(syncTick, 200);
   setInterval(beatPresence, 25000);
+  try { startAdminPayWatch(); } catch {}
   setInterval(() => { refreshSky().catch(() => {}); }, 15 * 60 * 1000);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
