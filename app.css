@@ -2432,6 +2432,23 @@ textarea { min-height: 92px; resize: vertical; }
   opacity: 1;
   filter: none;
 }
+.pay-steps {
+  margin: 14px 2px 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff6e8;
+  border: 1px solid #e7c48a;
+}
+.pay-steps p {
+  margin: 0;
+  color: #6b4a16;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+#mark-paid.pay-next {
+  box-shadow: 0 0 0 3px #e7c48a;
+}
 .ghost { background: var(--card); color: var(--teal); border: 1.5px solid var(--line); }
 .danger { background: var(--rose-soft); color: var(--rose); }
 .nudge-bounce {
