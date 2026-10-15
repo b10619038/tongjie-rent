@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-21-53";
-const APP_EDIT_COUNT = 1941;
+const APP_STAMP = "2026-10-15-21-55";
+const APP_EDIT_COUNT = 1942;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1551";
+const FILE_VER = "1552";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約完成後按查看續約，直接從新合約開始看"] },
+  { ver: APP_VERSION, items: ["未繳費的人點本月租金或繳費租金，直接停在回報說明"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3699,6 +3699,19 @@ function scrollSignFormIntoPlace() {
     sc.scrollTop = Math.max(0, top);
   };
   requestAnimationFrame(() => requestAnimationFrame(go));
+}
+function scrollPayStepIntoPlace() {
+  if (!ui.scrollPayStep || ui.page !== "pay") return;
+  ui.scrollPayStep = false;
+  const go = () => {
+    const sc = document.querySelector(".tenant-scroll");
+    const box = document.getElementById("pay-report") || document.getElementById("pay-step");
+    if (!sc || !box) return;
+    const top = box.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
+    sc.scrollTop = Math.max(0, top);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+  setTimeout(go, 120);
 }
 function scrollNewLeaseIntoPlace() {
   if (!ui.scrollNewLease || ui.page !== "lease") return;
@@ -26517,6 +26530,7 @@ function paintApp() {
     }
     scrollRenewCardIntoPlace();
     scrollNewLeaseIntoPlace();
+    scrollPayStepIntoPlace();
     scrollSignFormIntoPlace();
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
@@ -26550,6 +26564,7 @@ function paintApp() {
   }
   scrollRenewCardIntoPlace();
   scrollNewLeaseIntoPlace();
+  scrollPayStepIntoPlace();
   scrollSignFormIntoPlace();
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
@@ -27684,7 +27699,7 @@ function homeView() {
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
-          <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
+          <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" data-scroll-pay="1" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
         </div>
         ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
         ${isProspectPreview()
@@ -27709,7 +27724,7 @@ function homeView() {
         <button class="ghost btn-solid" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
-        <button class="btn-navy" data-page="pay">繳費租金</button>
+        <button class="btn-navy" data-page="pay" data-scroll-pay="1">繳費租金</button>
       </div>
       ${roomExtrasHtml(r)}
     </div>`;
@@ -27865,7 +27880,7 @@ function payView() {
           : "回報已繳費並附上截圖";
   const stepGuide = paid || cashFirst
     ? ""
-    : `<div class="pay-steps slide-left"><p>${
+    : `<div class="pay-steps slide-left" id="pay-report"><p>${
         ready
           ? "可以按本月已繳費了。"
           : hasText && !hasImage
@@ -36281,6 +36296,10 @@ function bindTenant() {
       if (next === "settings") { try { ackTenantTab("settings"); } catch {} }
       if (el.dataset.scrollRenew) ui.scrollRenew = true;
       if (el.dataset.scrollNew) ui.scrollNewLease = true;
+      if (el.dataset.scrollPay) {
+        const who = typeof me === "function" ? me() : null;
+        if (who && !who.paid) ui.scrollPayStep = true;
+      }
       if (ui.page === "repair" && ui.tenantId) {
         let changed = false;
         state.repairs.forEach(r => {
