@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-23-02";
-const APP_EDIT_COUNT = 1948;
+const APP_STAMP = "2026-10-15-23-04";
+const APP_EDIT_COUNT = 1949;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1558";
+const FILE_VER = "1559";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["第二人填過的身分證、電話、地址會補回合約"] },
+  { ver: APP_VERSION, items: ["蔡佳琳的聯絡電話補進合約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -25214,11 +25214,11 @@ function studioLeasePaperHtml(t, r, leasePart, banner) {
   const name = (t && t.name) || "";
   const names = splitPair(name);
   const es = getESign(t);
-  const ids = splitPair((t && t.idNo) || (es && es.idNo) || "");
-  const phones = splitPair((t && t.phone) || (es && es.phone) || "");
-  const emNames = splitPair((t && t.emergencyName) || (es && es.emergencyName) || "");
-  const emPhones = splitPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || "");
-  const addrs = splitPair(tenantPaperAddress(t));
+  const ids = splitPair(richerPair((t && t.idNo) || "", (es && es.idNo) || ""));
+  const phones = splitPair(richerPair((t && t.phone) || "", (es && es.phone) || ""));
+  const emNames = splitPair(richerPair((t && t.emergencyName) || "", (es && es.emergencyName) || ""));
+  const emPhones = splitPair(richerPair((t && t.emergencyPhone) || "", (es && es.emergencyPhone) || ""));
+  const addrs = splitPair(richerPair((t && t.address) || "", (es && es.address) || ""));
   const sign = rocPartsOf(ymdOf(t && t.contractSignAt) || (es && es.at && ymdOf(es.at)) || ymdOf(nowStamp()));
   const due = rentDueDay(t);
   const pay = tenantPayAccounts(t, r).primary || {};
