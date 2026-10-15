@@ -1,6 +1,6 @@
-const CACHE = "tongjie-app-v1926";
+const CACHE = "tongjie-app-v1927";
 const BUILD = "20261003-1398";
-const FILES = ["/", "/index.html", "/app.css", "/app.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
+const FILES = ["/", "/index.html", "/app.css", "/app.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));
@@ -14,8 +14,8 @@ self.addEventListener("activate", e => {
     await Promise.all(all.map(async c => {
       try {
         const u = new URL(c.url);
-        if (u.searchParams.get("rsync") === "7") return;
-        u.searchParams.set("rsync", "7");
+        if (u.searchParams.get("rsync") === "8") return;
+        u.searchParams.set("rsync", "8");
         if (typeof c.navigate === "function") await c.navigate(u.href);
       } catch {}
     }));
