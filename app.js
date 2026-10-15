@@ -27857,7 +27857,7 @@ function payView() {
             ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完回到這裡，按鈕會變成本月已繳費。"
             : hasImage && !hasText
               ? "已收到截圖，請再在 LINE 傳回報文字。傳完回到這裡，按鈕會變成本月已繳費。"
-              : "按這顆，把截圖傳到官方 LINE。傳完回到這裡，按鈕會變成本月已繳費。"
+              : "先按回報按鈕傳送訊息，把截圖傳到官方 LINE。<br>傳完回到這裡，按鈕會變成本月已繳費。"
       }</p></div>`;
   const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const megaSoon = !!(renew && (renew.status === "done" || renew.status === "applied") && renew.start && !(typeof renewalStartReached === "function" && renewalStartReached(renew)));
