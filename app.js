@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-21-46";
-const APP_EDIT_COUNT = 1940;
+const APP_STAMP = "2026-10-15-21-53";
+const APP_EDIT_COUNT = 1941;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1550";
+const FILE_VER = "1551";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["繳費提示改成先按回報按鈕，傳完再回到這裡"] },
+  { ver: APP_VERSION, items: ["續約完成後按查看續約，直接從新合約開始看"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -3700,6 +3700,19 @@ function scrollSignFormIntoPlace() {
   };
   requestAnimationFrame(() => requestAnimationFrame(go));
 }
+function scrollNewLeaseIntoPlace() {
+  if (!ui.scrollNewLease || ui.page !== "lease") return;
+  ui.scrollNewLease = false;
+  const go = () => {
+    const sc = document.querySelector(".tenant-scroll");
+    const box = document.getElementById("renew-new-paper");
+    if (!sc || !box) return;
+    const top = box.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
+    sc.scrollTop = Math.max(0, top);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+  setTimeout(go, 80);
+}
 function scrollRenewCardIntoPlace() {
   if (!ui.scrollRenew || ui.page !== "lease") return;
   ui.scrollRenew = false;
@@ -3758,7 +3771,7 @@ function renewAskCardHtml(t, r, opts) {
       </div>`}
       ${esigned && !signed ? `<p class="small" style="margin-top:8px">已完成線上簽名。請於預約時間到 7651 蓋章。若年、月、房號或金額有改，需要重新簽名。</p>` : ""}
       ${!signed && !esigned ? `<button type="button" class="btn-navy" data-resign-renew="1" style="margin-top:10px">${renewStayNames(cur).length > 1 && cur.signedKey ? "兩人都要簽名" : (cur.signedKey ? "內容已變更，重新簽署新約" : "線上簽署新約")}</button>` : ""}
-      ${full ? "" : `<button type="button" class="btn-navy" data-page="lease" style="margin-top:10px">查看續約</button>`}
+      ${full ? "" : `<button type="button" class="btn-navy" data-page="lease"${signed ? ` data-scroll-new="1"` : ""} style="margin-top:10px">查看續約</button>`}
       ${!signed && signDay ? `<p class="small" style="margin-top:8px">今天是簽約日，請到 5F，電梯出來右轉到底，7651簽約室蓋章。管理員可列印新約。</p>` : ""}
       ${!signed ? `<button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">改為不續約</button>` : ""}
     </div>`;
@@ -26503,6 +26516,7 @@ function paintApp() {
       scKeep.scrollTop = 0;
     }
     scrollRenewCardIntoPlace();
+    scrollNewLeaseIntoPlace();
     scrollSignFormIntoPlace();
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
@@ -26535,6 +26549,7 @@ function paintApp() {
     }
   }
   scrollRenewCardIntoPlace();
+  scrollNewLeaseIntoPlace();
   scrollSignFormIntoPlace();
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
@@ -36265,6 +36280,7 @@ function bindTenant() {
       ui.page = next;
       if (next === "settings") { try { ackTenantTab("settings"); } catch {} }
       if (el.dataset.scrollRenew) ui.scrollRenew = true;
+      if (el.dataset.scrollNew) ui.scrollNewLease = true;
       if (ui.page === "repair" && ui.tenantId) {
         let changed = false;
         state.repairs.forEach(r => {
