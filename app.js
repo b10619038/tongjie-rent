@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-19-40";
-const APP_EDIT_COUNT = 1930;
+const APP_STAMP = "2026-10-15-19-48";
+const APP_EDIT_COUNT = 1931;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1539";
+const FILE_VER = "1540";
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
 const DUE_DAY_VER = "due1-v1";
@@ -522,7 +522,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["續約兩人時，資料改成一人一張，不用再用／擠在同一格"] },
+  { ver: APP_VERSION, items: ["新客如果是兩人，簽署時也是一人一張資料，再加一個人即可"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -24905,12 +24905,17 @@ function cnAmt(n) {
   const s = moneyCN(n).replace(/^新臺幣/, "").replace(/元整$/, "");
   return s || "";
 }
-function signPersonCard(who, i, idNo, phone, emName, emPhone, addr) {
+function signPersonCard(who, i, idNo, phone, emName, emPhone, addr, nameInput) {
   const suf = i ? "-2" : "";
   const id = key => "sign-" + key + suf;
+  const title = nameInput ? "第二位承租人" : (who || (i ? "第二位承租人" : "承租人"));
+  const nameRow = nameInput
+    ? `<label class="field"><span>姓名</span><input id="sign-name-2" type="text" maxlength="20" value="${escapeHtml(who || "")}" placeholder="第二個人的姓名" autocomplete="name" /></label>`
+    : "";
   return `<div class="card card-body" style="margin-top:12px">
-        <div class="label">${escapeHtml(who || (i ? "第二位承租人" : "承租人"))}</div>
+        <div class="label">${escapeHtml(title)}</div>
         <p class="small" style="margin:0 0 8px">這五項沒填完不能簽名。</p>
+        ${nameRow}
         <label class="field"><span>身分證字號</span><input id="${id("idno")}" type="text" value="${escapeHtml(idNo)}" placeholder="身分證字號" autocomplete="off" /></label>
         <label class="field"><span>聯絡電話</span><input id="${id("phone")}" type="tel" value="${escapeHtml(phone)}" placeholder="手機號碼" autocomplete="off" /></label>
         <label class="field"><span>緊急聯絡人</span><input id="${id("emname")}" type="text" value="${escapeHtml(emName)}" placeholder="姓名" autocomplete="off" /></label>
@@ -28617,7 +28622,9 @@ function leaseSignView() {
     </div>`;
   }
   const names = splitPair((paperT && paperT.name) || (t && t.name) || "");
-  const two = names.length > 1;
+  const addedPair = !renewItem && !!ui.signPair && names.length < 2;
+  const pairNames = addedPair ? [names[0] || "承租人", ui.signPairName || ""] : names;
+  const two = pairNames.length > 1;
   if (ui.signTerm1y == null) ui.signTerm1y = true;
   const pickRoom = canPickSignRoom(t) && !renewItem;
   const rooms = studioSignRooms(r);
@@ -28647,7 +28654,10 @@ function leaseSignView() {
   const fastSlot = nextSignSlots(1, t && t.signAppointAt, win.min, "", win.maxFast)[0];
   const occ = roomCurrentTenant(r);
   const confirmBy = renewConfirmYmd(t && !t.incoming ? t : occ);
-  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, renewItem ? "new" : "old") : eContractDocHtml(paperT, r);
+  const previewT = addedPair && pairNames[1]
+    ? Object.assign({}, paperT, { name: pairNames.filter(Boolean).join("／") })
+    : paperT;
+  const paperNow = isStudioLeaseRoom(r) ? studioLeasePreviewHtml(previewT, r, renewItem ? "new" : "old") : eContractDocHtml(previewT, r);
   const roomOpts = rooms.map(x => {
     const m = moveRoomMeta(x, t);
     const hint = m.taken ? ("已被簽約至 " + (m.end || "—") + "　最快可排 " + m.start) : (m.vacant ? ("空房　最快可入住 " + m.start) : (moveUntilPrefix(m) + (m.end || "—") + "　最快可入住 " + m.start));
@@ -28683,7 +28693,7 @@ function leaseSignView() {
         ${leasePackSummaryHtml({ parts: tenantLeaseParts(t, r) }, studioContractRent(t, r))}
         <button type="button" class="ghost" id="sign-lease-fast" style="margin-top:8px">用最快可入住日</button>
       </div>`}
-      ${two ? signPersonCard(names[0], 0, signPairBits((t && t.idNo) || (es && es.idNo) || "")[0] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[0] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[0] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[0] || "", signPairBits(tenantHouseholdAddress(t, r))[0] || "") + signPersonCard(names[1], 1, signPairBits((t && t.idNo) || (es && es.idNo) || "")[1] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[1] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[1] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[1] || "", signPairBits(tenantHouseholdAddress(t, r))[1] || "") : `<div class="card card-body" style="margin-top:12px">
+      ${two ? signPersonCard(pairNames[0], 0, signPairBits((t && t.idNo) || (es && es.idNo) || "")[0] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[0] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[0] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[0] || "", signPairBits(tenantHouseholdAddress(t, r))[0] || "") + signPersonCard(pairNames[1], 1, signPairBits((t && t.idNo) || (es && es.idNo) || "")[1] || "", signPairBits((t && t.phone) || (es && es.phone) || "")[1] || "", signPairBits((t && t.emergencyName) || (es && es.emergencyName) || "")[1] || "", signPairBits((t && t.emergencyPhone) || (es && es.emergencyPhone) || "")[1] || "", signPairBits(tenantHouseholdAddress(t, r))[1] || "", addedPair) + (addedPair ? `<button type="button" class="ghost" id="sign-remove-person" style="margin-top:8px">移除第二人</button>` : "") : `<div class="card card-body" style="margin-top:12px">
         <div class="label">承租人資料（必填，藍字印在合約上）</div>
         <p class="small" style="margin:0 0 8px">${renewItem ? "這五項沒填完不能確認簽署。" : "這五項都要填，才印得上合約。"}</p>
         <label class="field"><span>身分證字號</span><input id="sign-idno" type="text" value="${escapeHtml(slashPair((t && t.idNo) || (es && es.idNo) || ""))}" placeholder="身分證字號" autocomplete="off" /></label>
@@ -28691,12 +28701,13 @@ function leaseSignView() {
         <label class="field"><span>緊急聯絡人</span><input id="sign-emname" type="text" value="${escapeHtml(slashPair((t && t.emergencyName) || (es && es.emergencyName) || ""))}" placeholder="姓名" autocomplete="off" /></label>
         <label class="field"><span>緊急電話</span><input id="sign-emphone" type="tel" value="${escapeHtml(slashPair((t && t.emergencyPhone) || (es && es.emergencyPhone) || ""))}" placeholder="手機號碼" autocomplete="off" /></label>
         <label class="field"><span>戶籍地址</span><input id="sign-addr" type="text" value="${escapeHtml(slashPair(tenantHouseholdAddress(t, r)))}" placeholder="請填身分證上的戶籍地址" autocomplete="street-address" /></label>
+        ${renewItem ? "" : `<button type="button" class="ghost" id="sign-add-person" style="margin-top:10px">再加一個人一起住</button>`}
       </div>`}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀並同意以上租賃條款，願以電子簽名完成本合約。</label>
       ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出，會寫進正式資料。租客自己的帳號仍然一定要簽名。</p>` : ""}
-      <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
+      <div class="small" style="margin:8px 2px">${escapeHtml(pairNames[0] || "承租人")}　請在白框內用藍筆簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad" width="640" height="280"></canvas></div>
-      ${two ? `<div class="small" style="margin:12px 2px 8px">${escapeHtml(names[1])}　請在白框內用藍筆簽名</div>
+      ${two ? `<div class="small" style="margin:12px 2px 8px">${escapeHtml(pairNames[1] || "第二位承租人")}　請在白框內用藍筆簽名</div>
       <div class="sign-pad-wrap"><canvas id="sign-pad-2" width="640" height="280"></canvas></div>` : ""}
       <div class="btn-row" style="margin-top:12px">
         <button type="button" class="ghost" id="sign-clear">清除簽名</button>
@@ -36780,11 +36791,12 @@ function captureSignDraft() {
     const el = document.getElementById(id);
     return el ? String(el.value || "").trim() : "";
   };
-  const idNo = val("sign-idno"); if (document.getElementById("sign-idno")) t.idNo = idNo;
-  const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = phone;
-  const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = normalizePersonName(emName);
-  const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = normalizeMobile(emPhone);
-  const addr = val("sign-addr"); if (document.getElementById("sign-addr")) t.address = addr;
+  const idNo = val("sign-idno"); if (document.getElementById("sign-idno")) t.idNo = document.getElementById("sign-idno-2") ? [val("sign-idno"), val("sign-idno-2")].filter(Boolean).join("／") : idNo;
+  const phone = val("sign-phone"); if (document.getElementById("sign-phone")) t.phone = document.getElementById("sign-phone-2") ? [val("sign-phone"), val("sign-phone-2")].filter(Boolean).join("／") : phone;
+  const emName = val("sign-emname"); if (document.getElementById("sign-emname")) t.emergencyName = document.getElementById("sign-emname-2") ? [val("sign-emname"), val("sign-emname-2")].filter(Boolean).join("／") : normalizePersonName(emName);
+  const emPhone = val("sign-emphone"); if (document.getElementById("sign-emphone")) t.emergencyPhone = document.getElementById("sign-emphone-2") ? [val("sign-emphone"), val("sign-emphone-2")].filter(Boolean).join("／") : normalizeMobile(emPhone);
+  const addr = val("sign-addr"); if (document.getElementById("sign-addr")) t.address = document.getElementById("sign-addr-2") ? [val("sign-addr"), val("sign-addr-2")].filter(Boolean).join("／") : addr;
+  if (document.getElementById("sign-name-2")) ui.signPairName = val("sign-name-2");
   const start = val("sign-lease-start");
   if (document.getElementById("sign-lease-start") && start) {
     if (start !== t.leaseStart) ui.signLeaseCustom = true;
@@ -36833,6 +36845,32 @@ function bindSignTermSlots() {
       render();
     };
   }
+  const addPerson = document.getElementById("sign-add-person");
+  if (addPerson) addPerson.onclick = e => {
+    e.preventDefault();
+    captureSignDraft();
+    ui.signPair = true;
+    ui.keepScroll = true;
+    render();
+  };
+  const removePerson = document.getElementById("sign-remove-person");
+  if (removePerson) removePerson.onclick = e => {
+    e.preventDefault();
+    captureSignDraft();
+    ui.signPair = false;
+    ui.signPairName = "";
+    const t = me();
+    if (t) {
+      const one = v => String(v || "").split(/[／/、,，]+/).map(x => x.trim()).filter(Boolean)[0] || "";
+      t.idNo = one(t.idNo);
+      t.phone = one(t.phone);
+      t.emergencyName = one(t.emergencyName);
+      t.emergencyPhone = one(t.emergencyPhone);
+      t.address = one(t.address);
+    }
+    ui.keepScroll = true;
+    render();
+  };
   const fastBtn = document.getElementById("sign-lease-fast");
   if (fastBtn) {
     fastBtn.onclick = e => {
@@ -37058,7 +37096,8 @@ function bindSignPad() {
     const val = id => String((document.getElementById(id) || {}).value || "").trim();
     const item = draft || (typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null);
     const stayN = renewStayNames(item);
-    const two = stayN.length > 1 || splitPair((t && t.name) || "").length > 1;
+    const name2 = document.getElementById("sign-name-2");
+    const two = stayN.length > 1 || splitPair((t && t.name) || "").length > 1 || !!name2;
     const pull = id => two ? [val(id), val(id + "-2")].map(x => String(x || "").trim()).filter(Boolean).join("／") : val(id);
     const idNo = pull("sign-idno");
     const phone = pull("sign-phone");
@@ -37070,6 +37109,7 @@ function bindSignPad() {
     const wrote = !!(idNo || phone || emName || emPhone || addr);
     if (!skipInk) {
       if (!agree || !agree.checked) { toast("請先勾選已閱讀並同意"); return; }
+      if (name2 && !val("sign-name-2")) { toast("請填第二個人的姓名"); return; }
       if (!c || !hasInk) { toast("請先在白框內簽名"); return; }
       if (two && !hasInk2) { toast("兩人都要簽名"); return; }
     }
@@ -37078,6 +37118,10 @@ function bindSignPad() {
       const el = document.getElementById(gap.id);
       if (el) { try { el.focus(); } catch {} }
       return;
+    }
+    if (t && name2 && val("sign-name-2")) {
+      const first = splitPair(t.name)[0] || t.name || "";
+      t.name = first + "／" + val("sign-name-2");
     }
     if (t && (!skipInk || wrote)) {
       if (idNo) t.idNo = normalizeIdNo(idNo);
