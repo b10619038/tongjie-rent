@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-22-46";
-const APP_EDIT_COUNT = 1946;
+const APP_STAMP = "2026-10-15-22-53";
+const APP_EDIT_COUNT = 1947;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1556";
+const FILE_VER = "1557";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電腦用滑鼠時，視窗窄也看得到另開視窗"] },
+  { ver: APP_VERSION, items: ["兩人簽名不會再被沒有圖的紀錄蓋掉"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -12103,14 +12103,18 @@ function ingestPaidCloud(raw) {
         if (src.editedAt && Number(src.editedAt) >= Number(t.editedAt || 0)) t.editedAt = src.editedAt;
         if (src.eSignStatus === "signed") {
           const ts = Number(src.eSignTs) || 0;
-          if (!t.eSign || t.eSign.status !== "signed" || ts >= (Number(t.eSign.ts) || 0)) {
-            t.eSign = Object.assign({}, t.eSign || {}, {
-              status: "signed",
-              at: src.eSignAt || (t.eSign && t.eSign.at) || nowStamp(),
-              ts: ts || Date.now(),
-              sig: (t.eSign && t.eSign.sig) || "",
-              sig2: (t.eSign && t.eSign.sig2) || ""
-            });
+          const cur = t.eSign || {};
+          const curTs = Number(cur.ts) || 0;
+          if (!(cur.status === "signed" && (eSignInk(cur, "sig") || eSignInk(cur, "sig2")) && ts && ts < curTs)) {
+            if (!t.eSign || cur.status !== "signed" || !ts || ts >= curTs) {
+              t.eSign = Object.assign({}, cur, {
+                status: "signed",
+                at: src.eSignAt || cur.at || nowStamp(),
+                ts: ts || curTs || 0,
+                sig: eSignInk(cur, "sig") || cur.sig || "",
+                sig2: eSignInk(cur, "sig2") || cur.sig2 || ""
+              });
+            }
           }
         }
         if (Array.isArray(src.hiddenAnns) && src.hiddenAnns.length) {
@@ -13136,17 +13140,36 @@ function migrateDevLocalInto(data) {
   saveDevMemos(data.devMemos);
   saveDevLogs(data.devLogs);
 }
+function eSignInk(x, key) {
+  const s = x && x[key];
+  return s && String(s).indexOf("data:") === 0 ? String(s) : "";
+}
 function eSignNewer(a, b) {
   if (!a) return b || null;
   if (!b) return a;
   const ts = x => Number(x && x.ts) || Date.parse(x && x.at) || 0;
   const ta = ts(a), tb = ts(b);
-  if (tb !== ta) return tb > ta ? b : a;
-  if (a.cleared && !b.cleared) return a;
-  if (b.cleared && !a.cleared) return b;
-  if ((b.status === "signed" && b.sig) && !(a.status === "signed" && a.sig)) return b;
-  if ((a.status === "signed" && a.sig) && !(b.status === "signed" && b.sig)) return a;
-  return b.cleared ? b : a;
+  let win = a;
+  let lose = b;
+  if (tb > ta) { win = b; lose = a; }
+  else if (ta === tb) {
+    if (b.cleared && !a.cleared) { win = b; lose = a; }
+    else if ((b.status === "signed" && b.sig) && !(a.status === "signed" && a.sig)) { win = b; lose = a; }
+    else { win = a; lose = b; }
+  }
+  const clearedLater = !!(win.cleared && ts(win) > ts(lose));
+  if (clearedLater) return win;
+  const sig = eSignInk(win, "sig") || eSignInk(lose, "sig");
+  const sig2 = eSignInk(win, "sig2") || eSignInk(lose, "sig2");
+  if (!sig && !sig2) return win;
+  if (eSignInk(win, "sig") === sig && eSignInk(win, "sig2") === sig2 && win.status === "signed" && !win.cleared) return win;
+  return Object.assign({}, win, {
+    status: "signed",
+    cleared: false,
+    sig: sig || win.sig || "",
+    sig2: sig2 || win.sig2 || "",
+    ts: Math.max(ts(win), ts(lose))
+  });
 }
 function mergeESignMaps(a, b) {
   const out = Object.assign({}, a || {});
@@ -28285,7 +28308,9 @@ function getESign(t) {
   } catch {}
   if (isDevPreview() || t.demo || t.id === "t-demo") rec = eSignNewer(rec, ui.devESign);
   const rev = Number(t.eSignRev) || 0;
-  if (rev && rec && (Number(rec.ts) || Date.parse(rec.at) || 0) < rev) rec = { status: "unsigned", at: rec.at, ts: rev, sig: "", cleared: true };
+  if (rev && rec && !rec.cleared && (Number(rec.ts) || Date.parse(rec.at) || 0) < rev && !(eSignInk(rec, "sig") || eSignInk(rec, "sig2"))) {
+    rec = { status: "unsigned", at: rec.at, ts: rev, sig: "", sig2: "", cleared: true };
+  }
   if (rec && rec.cleared && rec.status !== "signed") return rec;
   return rec && rec.sig ? rec : rec;
 }
