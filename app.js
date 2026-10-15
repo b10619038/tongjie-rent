@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-22-53";
-const APP_EDIT_COUNT = 1947;
+const APP_STAMP = "2026-10-15-23-02";
+const APP_EDIT_COUNT = 1948;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1557";
+const FILE_VER = "1558";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人簽名不會再被沒有圖的紀錄蓋掉"] },
+  { ver: APP_VERSION, items: ["第二人填過的身分證、電話、地址會補回合約"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -13144,6 +13144,15 @@ function eSignInk(x, key) {
   const s = x && x[key];
   return s && String(s).indexOf("data:") === 0 ? String(s) : "";
 }
+function richerPair(newer, older) {
+  const parts = s => String(s || "").split(/[／/、,，]+/).map(x => x.trim()).filter(Boolean);
+  const a = parts(newer);
+  const b = parts(older);
+  if (b.length <= a.length) return String(newer || older || "").trim();
+  if (!a.length) return b.join("／");
+  if (a.length === 1 && b.length >= 2) return [a[0] === b[0] ? b[0] : a[0]].concat(b.slice(1)).join("／");
+  return b.join("／");
+}
 function eSignNewer(a, b) {
   if (!a) return b || null;
   if (!b) return a;
@@ -13159,11 +13168,15 @@ function eSignNewer(a, b) {
   }
   const clearedLater = !!(win.cleared && ts(win) > ts(lose));
   if (clearedLater) return win;
+  const text = {};
+  ["name", "idNo", "phone", "address", "emergencyName", "emergencyPhone"].forEach(k => {
+    text[k] = richerPair(win[k], lose[k]);
+  });
   const sig = eSignInk(win, "sig") || eSignInk(lose, "sig");
   const sig2 = eSignInk(win, "sig2") || eSignInk(lose, "sig2");
-  if (!sig && !sig2) return win;
-  if (eSignInk(win, "sig") === sig && eSignInk(win, "sig2") === sig2 && win.status === "signed" && !win.cleared) return win;
-  return Object.assign({}, win, {
+  const sameText = ["name", "idNo", "phone", "address", "emergencyName", "emergencyPhone"].every(k => String(win[k] || "") === String(text[k] || ""));
+  if ((!sig && !sig2) || (sameText && eSignInk(win, "sig") === sig && eSignInk(win, "sig2") === sig2 && win.status === "signed" && !win.cleared)) return sameText ? win : Object.assign({}, win, text);
+  return Object.assign({}, win, text, {
     status: "signed",
     cleared: false,
     sig: sig || win.sig || "",
