@@ -6616,6 +6616,15 @@ html.embed-pane .home-upd { display: none !important; }
   -webkit-overflow-scrolling: touch;
   padding: 12px 12px calc(24px + var(--safe-b, 0px));
 }
+#early-apply-mask {
+  display: block;
+  place-items: unset;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 12px 12px calc(24px + var(--safe-b, 0px));
+}
 .install-sheet.checkout-pick-sheet {
   background: #fff;
   border: 1px solid var(--line);
