@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-21-57";
-const APP_EDIT_COUNT = 1976;
+const APP_STAMP = "2026-10-16-22-04";
+const APP_EDIT_COUNT = 1977;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1586";
+const FILE_VER = "1587";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["營收圖卡的月改成圓形，放在上一月左邊"] },
+  { ver: APP_VERSION, items: ["現金(保險箱) 顯示改成保險箱"] },
+  { ver: "2026-10-16-21-57-1976", items: ["營收圖卡的月改成圓形，放在上一月左邊"] },
   { ver: "2026-10-16-21-29-1975", items: ["營收總額和本期收支可以切上一月、下一月"] },
   { ver: "2026-10-16-21-07-1974", items: ["總覽上方改成概覽與整體報表"] },
   { ver: "2026-10-16-21-00-1973", items: ["總覽日曆放回概覽原本的位置"] },
@@ -21039,6 +21040,7 @@ function personOfAccount(c) {
 function accountLabel(c) {
   const p = personOfAccount(c);
   if (p) return "個人戶 · " + p;
+  if (c === "現金(保險箱)") return "保險箱";
   return String(c || "統潔");
 }
 function xferDestOf(s) {
@@ -21108,7 +21110,7 @@ const ERRAND_PEOPLE = ["趙文榮", "趙文彬", "趙苡真", "趙洪漳", "趙�
 function errandAccountOptions(selected) {
   const sel = normalizeBookCompany(selected || "統潔");
   const opt = (v, label) => `<option value="${escapeHtml(v)}" ${sel === v ? "selected" : ""}>${escapeHtml(label || v)}</option>`;
-  return `${opt("統潔")}${opt("信潔")}<optgroup label="個人戶">${ERRAND_PEOPLE.map(p => opt(personalKey(p), p)).join("")}</optgroup>${opt("現金(保險箱)")}`;
+  return `${opt("統潔")}${opt("信潔")}<optgroup label="個人戶">${ERRAND_PEOPLE.map(p => opt(personalKey(p), p)).join("")}</optgroup>${opt("現金(保險箱)", "保險箱")}`;
 }
 function errandBankSelectHtml(acct, selected, ids) {
   const banks = banksOf(acct);
@@ -21178,7 +21180,7 @@ function bookAccountOptions(selected) {
   const people = PERSONAL_PEOPLE.map(p => opt(personalKey(p), p)).join("");
   const extra = (sel === "個人戶" || (isPersonalKey(sel) && !PERSONAL_ACCOUNTS.includes(sel)))
     ? opt(sel, accountLabel(sel)) : "";
-  return `${withAuto || sel === "auto" ? opt("auto", "自動感應") : ""}${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)")}`;
+  return `${withAuto || sel === "auto" ? opt("auto", "自動感應") : ""}${opt("統潔")}${opt("信潔")}${opt("聯名戶")}<optgroup label="個人戶">${extra}${people}</optgroup>${opt("現金(保險箱)", "保險箱")}`;
 }
 function isBookCompany(v) {
   return BOOK_ACCOUNTS.includes(v) || PERSONAL_ACCOUNTS.includes(v) || v === "個人戶" || isPersonalKey(v);
@@ -21421,7 +21423,7 @@ function overallReportBodyHtml() {
     <div class="acct-grid">
       ${stats.map(s => `
         <div class="acct-card${ui.calFilter === s.name ? " on" : ""}" data-filter-acct="${escapeHtml(s.name)}" role="button">
-          <div class="k">${escapeHtml(s.name)}</div>
+          <div class="k">${escapeHtml(accountLabel(s.name))}</div>
           <div class="acct-row"><span class="led-in">本期收入</span>${moneyBox(s.inn, "led-in")}</div>
           <div class="acct-row"><span class="led-out">本期支出</span>${moneyBox(s.out, "led-out")}</div>
           ${banksOf(s.name).length ? `<div class="acct-banks">${bankPeriodBits(s.name, b.start, b.end).map(bk => `
@@ -24947,7 +24949,7 @@ function postCheckoutBooks(co, t, r) {
 function payAcctFields(co) {
   const acct = (co && co.payAccount) || "現金(保險箱)";
   const bank = (co && co.payBank) || "";
-  return `<label class="field"><span>出帳帳戶</span><select id="co-pay-acct">${BOOK_ACCOUNTS.map(a => `<option${a === acct ? " selected" : ""}>${a}</option>`).join("")}</select></label>
+  return `<label class="field"><span>出帳帳戶</span><select id="co-pay-acct">${BOOK_ACCOUNTS.map(a => `<option value="${escapeHtml(a)}"${a === acct ? " selected" : ""}>${escapeHtml(accountLabel(a))}</option>`).join("")}</select></label>
     <label class="field"><span>銀行／通路</span><select id="co-pay-bank"><option value="">（無）</option>${BANK_PLACES.map(a => `<option${a === bank ? " selected" : ""}>${a}</option>`).join("")}</select></label>
     ${co && co.stayDays ? `<label class="field"><span>已住租金</span><input id="co-prorate" type="number" inputmode="numeric" value="${co.prorate ? co.prorate : ""}" placeholder="從押金扣掉的已住天數租金" /></label>` : ""}`;
 }
