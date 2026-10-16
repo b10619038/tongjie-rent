@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-59";
-const APP_EDIT_COUNT = 1986;
+const APP_STAMP = "2026-10-16-23-12";
+const APP_EDIT_COUNT = 1987;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1596";
+const FILE_VER = "1597";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["多收、少收在實收下面寫原因"] },
+  { ver: APP_VERSION, items: ["空房少收原因改成此房間沒住人"] },
+  { ver: "2026-10-16-22-59-1986", items: ["多收、少收在實收下面寫原因"] },
   { ver: "2026-10-16-22-45-1985", items: ["楊旻憲已不在 7051，12000 算 7032 月租，不再顯示多收"] },
   { ver: "2026-10-16-22-32-1984", items: ["本期收支拿掉月，日期改到總餘額和本期收支右邊"] },
   { ver: "2026-10-16-22-28-1983", items: ["營收總額改成總餘額，拿掉月"] },
@@ -33496,7 +33497,7 @@ function rentVsPack(rooms, label) {
     if (stubNow && gotAmt < listed) because = "這個月不足月，不是收整月 " + money(listed);
     if (!covers) {
       vacant += listed;
-      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: gotAmt, miss: listed, because: because || "這個月沒有租客" });
+      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: gotAmt, miss: listed, because: "此房間沒住人" });
       return;
     }
     if (monthDue < listed) stub += listed - monthDue;
