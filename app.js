@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-18-40";
-const APP_EDIT_COUNT = 1961;
+const APP_STAMP = "2026-10-16-18-44";
+const APP_EDIT_COUNT = 1962;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1571";
+const FILE_VER = "1572";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約翻頁會看到頁面從左邊掀過去"] },
+  { ver: APP_VERSION, items: ["翻合約時畫面不再突然往上跳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -25591,11 +25591,6 @@ function showLeaseFlip(box, index, jump) {
     mover.addEventListener("animationend", done, { once: true });
     setTimeout(settle, 720);
   }
-  if (!jump) return;
-  const sc = box.closest(".tenant-scroll");
-  if (!sc) return;
-  const top = box.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8;
-  sc.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
 }
 function mountLeaseFlips() {
   document.querySelectorAll("[data-lease-flip]").forEach(box => showLeaseFlip(box, Number(box.dataset.flipAt) || 0, false));
