@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-45";
-const APP_EDIT_COUNT = 1985;
+const APP_STAMP = "2026-10-16-22-59";
+const APP_EDIT_COUNT = 1986;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1595";
+const FILE_VER = "1596";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["楊旻憲已不在 7051，12000 算 7032 月租，不再顯示多收"] },
+  { ver: APP_VERSION, items: ["多收、少收在實收下面寫原因"] },
+  { ver: "2026-10-16-22-45-1985", items: ["楊旻憲已不在 7051，12000 算 7032 月租，不再顯示多收"] },
   { ver: "2026-10-16-22-32-1984", items: ["本期收支拿掉月，日期改到總餘額和本期收支右邊"] },
   { ver: "2026-10-16-22-28-1983", items: ["營收總額改成總餘額，拿掉月"] },
   { ver: "2026-10-16-22-24-1982", items: ["營收圖卡的錢符號貼齊數字"] },
@@ -33354,12 +33355,13 @@ function isRentVsAutoRow(x) {
   if (typeof isRentAutoBook === "function" && isRentAutoBook(x)) return true;
   return false;
 }
-function roomRentLedgerSum(no, names, ymds) {
+function roomRentLedgerPick(no, names, ymds) {
   const nos = [].concat(no || []).filter(Boolean).flatMap(n => roomNoKeys(n));
   const who = [].concat(names || []).filter(Boolean).map(String).filter(n => !sameTenantName(n, "小芬"));
   const days = new Set([].concat(ymds || []).filter(Boolean));
-  if (!nos.length || !days.size) return 0;
-  let real = 0, auto = 0;
+  if (!nos.length || !days.size) return { sum: 0, rows: [] };
+  const real = [];
+  const auto = [];
   collectLedger().forEach(x => {
     if (!x || x.type !== "in") return;
     if (!days.has(String(x.date || ""))) return;
@@ -33372,14 +33374,18 @@ function roomRentLedgerSum(no, names, ymds) {
     const otherRoom = tagged && !nos.some(n => n === tagged);
     const nameHit = !otherRoom && who.some(n => n && blob.indexOf(n) >= 0);
     if (!roomHit && !nameHit) return;
-    const amt = Number(x.amount) || 0;
-    if (isRentVsAutoRow(x)) auto += amt;
-    else real += amt;
+    if (isRentVsAutoRow(x)) auto.push(x);
+    else real.push(x);
   });
-  return real || auto;
+  const rows = real.length ? real : auto;
+  const sum = rows.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  return { sum, rows };
 }
-function roomRentGot(r, t, ym) {
-  if (skipRentVsRoom(r)) return 0;
+function roomRentLedgerSum(no, names, ymds) {
+  return roomRentLedgerPick(no, names, ymds).sum;
+}
+function roomRentGotDetail(r, t, ym) {
+  if (skipRentVsRoom(r)) return { sum: 0, rows: [] };
   const guestNo = String(r && r.no || "");
   const hostNo = studioMirrorHostNo(guestNo);
   const lookNo = hostNo || guestNo;
@@ -33397,11 +33403,72 @@ function roomRentGot(r, t, ym) {
   const m = Number(String(ym).slice(5, 7));
   const last = new Date(y, m, 0).getDate();
   for (let d = 1; d <= last; d++) monthDays.push(ym + "-" + String(d).padStart(2, "0"));
-  let sum = roomRentLedgerSum(nos, names, monthDays);
-  if (!sum) sum = roomRentLedgerSum(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
-  if (sum) return hostNo && due ? Math.min(sum, due) : sum;
-  if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return due;
-  return 0;
+  let pick = roomRentLedgerPick(nos, names, monthDays);
+  if (!pick.sum) pick = roomRentLedgerPick(nos, names, lastYmdsOfYm(prevYmOf(ym), 3));
+  if (pick.sum) {
+    const sum = hostNo && due ? Math.min(pick.sum, due) : pick.sum;
+    return { sum, rows: pick.rows };
+  }
+  if ((lookT && paidForYm(lookT, ym)) || (t && paidForYm(t, ym))) return { sum: due, rows: [] };
+  return { sum: 0, rows: [] };
+}
+function roomRentGot(r, t, ym) {
+  return roomRentGotDetail(r, t, ym).sum;
+}
+function rentBookForYm(x) {
+  const tag = String(x && x.importTag || "");
+  const pre = tag.match(/rent-prepaid-(\d{4})-(\d{2})/);
+  if (pre) return pre[1] + "-" + pre[2];
+  const note = String(x && x.note || "");
+  const hit = note.match(/(\d{1,2})月租金/);
+  const d = ymdOf(x && x.date);
+  if (!hit || !d) return "";
+  const mm = Number(hit[1]);
+  const y = Number(d.slice(0, 4));
+  const dm = Number(d.slice(5, 7));
+  if (!mm || mm === dm) return "";
+  const yy = mm > dm ? y : y + 1;
+  return yy + "-" + String(mm).padStart(2, "0");
+}
+function rentMd(date) {
+  const d = ymdOf(date);
+  if (!d) return "";
+  return Number(d.slice(5, 7)) + "/" + Number(d.slice(8, 10));
+}
+function rentGapReason(rows, ym, listed, got) {
+  const list = rows || [];
+  if (got === listed) return "";
+  if (!list.length) return got ? "" : "這個月還沒入帳";
+  const prepaid = list.filter(x => {
+    const forYm = rentBookForYm(x);
+    return forYm && forYm !== ym;
+  });
+  const signup = list.filter(x => /簽約|現場|尾數/.test(String(x.note || "")));
+  if (prepaid.length && got > listed) {
+    return prepaid.map(x => {
+      const forYm = rentBookForYm(x);
+      const m = Number(String(forYm).slice(5, 7));
+      return rentMd(x.date) + " 預繳了 " + m + " 月租金 " + money(x.amount);
+    }).join("，");
+  }
+  if (signup.length && got > listed) {
+    const tail = signup.filter(x => /尾數/.test(String(x.note || "")));
+    const main = signup.filter(x => !/尾數/.test(String(x.note || "")));
+    const when = rentMd((main[0] || signup[0]).date);
+    const mainSum = (main.length ? main : signup).reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    if (tail.length && main.length) {
+      const tailSum = tail.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      return when + " 簽約一次收了 " + money(mainSum) + "（含押金、不足月、水電），另 " + money(tailSum) + " 是尾數，不是只有月租";
+    }
+    return when + " 簽約一次收了 " + money(mainSum) + "，含押金和不足月，不是只有月租 " + money(listed);
+  }
+  if (got < listed) {
+    if (!got) return "這個月還沒入帳";
+    const when = list.length === 1 ? rentMd(list[0].date) + " " : "";
+    return when + "只入帳 " + money(got) + "，還差 " + money(listed - got);
+  }
+  if (list.length > 1) return "這個月入了 " + list.length + " 筆：" + list.map(x => rentMd(x.date) + " " + money(x.amount)).join("、");
+  return "入帳 " + money(got) + "，高於月租 " + money(listed);
 }
 function rentVsPack(rooms, label) {
   const ym = rentVsYm();
@@ -33413,7 +33480,8 @@ function rentVsPack(rooms, label) {
     if (!listed) return;
     full += listed;
     const t = roomTenantForYm(r, ym);
-    const gotAmt = roomRentGot(r, t, ym);
+    const gotDetail = roomRentGotDetail(r, t, ym);
+    const gotAmt = gotDetail.sum;
     let covers = !!(t && !skipRentVsTenant(t) && (rentVsCovers(t, r, ym) || (r.status === "rented" && ym === payYmNow())));
     if (!covers && r.status === "rented" && ym === payYmNow()) covers = true;
     if (!covers && gotAmt) covers = true;
@@ -33424,9 +33492,11 @@ function rentVsPack(rooms, label) {
     due += monthDue;
     got += gotAmt;
     const stubNow = !!(covers && t && leasePartForYm(t, r, ym) && leasePartForYm(t, r, ym).kind === "stub");
+    let because = rentGapReason(gotDetail.rows, ym, listed, gotAmt);
+    if (stubNow && gotAmt < listed) because = "這個月不足月，不是收整月 " + money(listed);
     if (!covers) {
       vacant += listed;
-      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: gotAmt, miss: listed });
+      lines.push({ no: r.no, name: who, why: "空置", listed, due: 0, got: gotAmt, miss: listed, because: because || "這個月沒有租客" });
       return;
     }
     if (monthDue < listed) stub += listed - monthDue;
@@ -33436,9 +33506,9 @@ function rentVsPack(rooms, label) {
       if (gotAmt >= monthDue && monthDue < listed) why = "不足月";
       else if (gotAmt > 0 && gotAmt < monthDue) why = "只收到部分";
       else if (stubNow) why = "不足月尚未入帳";
-      lines.push({ no: r.no, name: who, why, listed, due: monthDue, got: gotAmt, miss: listed - gotAmt });
+      lines.push({ no: r.no, name: who, why, listed, due: monthDue, got: gotAmt, miss: listed - gotAmt, because });
     } else if (gotAmt > listed) {
-      lines.push({ no: r.no, name: who, why: "實收高於月租", listed, due: monthDue, got: gotAmt, miss: listed - gotAmt });
+      lines.push({ no: r.no, name: who, why: "實收高於月租", listed, due: monthDue, got: gotAmt, miss: listed - gotAmt, because });
     }
   });
   lines.sort((a, b) => b.miss - a.miss);
@@ -33459,6 +33529,7 @@ function rentVsDetailHtml(p) {
         <strong class="${extra ? "led-in" : "led-out"}">${extra ? "多收 " + money(-x.miss) : "少收 " + money(x.miss)}</strong>
       </div>
       <div class="small">${escapeHtml(x.why)}　應收 ${money(x.listed)}　實收 ${money(x.got)}</div>
+      ${x.because ? `<div class="small rent-vs-because">${escapeHtml(x.because)}</div>` : ""}
     </div>`;
   }).join("");
   return items || `<div class="small">${escapeHtml(p.label)}這個月滿收，沒有差額房間。</div>`;
