@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-18-28";
-const APP_EDIT_COUNT = 1959;
+const APP_STAMP = "2026-10-16-18-36";
+const APP_EDIT_COUNT = 1960;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1569";
+const FILE_VER = "1570";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客合約改成左右翻頁，點一下或往左滑看下一頁"] },
+  { ver: APP_VERSION, items: ["合約掀頁維持原本大小，頁碼改成第一頁"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -25524,7 +25524,18 @@ function studioLeasePapersHtml(t, r, preview, which) {
 function studioLeasePreviewHtml(t, r, which) {
   const html = studioLeasePapersHtml(t, r, true, which || "");
   if (!html) return "";
-  return `<div class="lease-flip" data-lease-flip="1">${html.replace('class="lease-pg', 'class="lease-pg on')}<div class="lease-flip-bar"><button type="button" data-lease-prev>上一頁</button><span data-lease-count></span><button type="button" data-lease-next>下一頁</button></div><p class="lease-flip-hint">往左滑，或點一下，看下一頁</p></div>`;
+  return `<div class="lease-flip" data-lease-flip="1">${html.replace('class="lease-pg', 'class="lease-pg on')}<div class="lease-flip-bar"><button type="button" data-lease-prev>上一頁</button><span data-lease-page>第一頁</span><button type="button" data-lease-next>下一頁</button></div><p class="lease-flip-hint">往左滑，或點一下，看下一頁</p></div>`;
+}
+function leasePageNo(n) {
+  const d = "零一二三四五六七八九";
+  const num = Number(n) || 0;
+  if (num <= 0) return "第一頁";
+  if (num < 10) return "第" + d[num] + "頁";
+  if (num === 10) return "第十頁";
+  if (num < 20) return "第十" + d[num - 10] + "頁";
+  const ten = Math.floor(num / 10);
+  const one = num % 10;
+  return "第" + d[ten] + "十" + (one ? d[one] : "") + "頁";
 }
 function showLeaseFlip(box, index, jump) {
   if (!box) return;
@@ -25536,8 +25547,8 @@ function showLeaseFlip(box, index, jump) {
   if (i < 0) i = 0;
   if (i > last) i = last;
   pages.forEach((p, n) => p.classList.toggle("on", n === i));
-  const label = box.querySelector("[data-lease-count]");
-  if (label) label.textContent = (i + 1) + " / " + pages.length;
+  const label = box.querySelector("[data-lease-page]");
+  if (label) label.textContent = leasePageNo(i + 1);
   const prev = box.querySelector("[data-lease-prev]");
   const next = box.querySelector("[data-lease-next]");
   if (prev) prev.disabled = i <= 0;
