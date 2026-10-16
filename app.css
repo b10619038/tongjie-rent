@@ -3025,7 +3025,8 @@ button.avatar-look.is-press { transform: scale(.94); }
 .tab-ic.ic-announce { width: 30px; }
 .tab-ic.ic-history { width: 26.73px; height: 21.06px; flex-basis: 21.06px; }
 .tab-ic.ic-food { width: 25px; }
-.tab-ic.ic-logs { width: 25px; }
+.tab-ic.ic-logs { width: 30px; height: 19px; flex-basis: 19px; }
+.tab-ic.ic-settings { width: 26px; height: 26px; flex-basis: 26px; }
 .tab-repair {
   display: grid;
   place-items: center;
