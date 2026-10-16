@@ -5739,7 +5739,9 @@ img.avatar { object-fit: cover; display: block; }
 .seg.is-site .seg-bg,
 .seg.is-land .seg-bg,
 .seg.is-later .seg-bg,
-.seg.is-sheet .seg-bg { transform: translate3d(100%,0,0); }
+.seg.is-sheet .seg-bg,
+.seg.is-cal .seg-bg { transform: translate3d(100%,0,0); }
+.dash-switch { margin-top: 0; }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
 .seg button {
   position: relative; z-index: 2; border: 0; background: transparent; border-radius: 999px;
