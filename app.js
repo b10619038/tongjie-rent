@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-21-00";
-const APP_EDIT_COUNT = 1973;
+const APP_STAMP = "2026-10-16-21-07";
+const APP_EDIT_COUNT = 1974;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1583";
+const FILE_VER = "1584";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽日曆放回概覽原本的位置"] },
+  { ver: APP_VERSION, items: ["總覽上方改成概覽與整體報表"] },
+  { ver: "2026-10-16-21-00-1973", items: ["總覽日曆放回概覽原本的位置"] },
   { ver: "2026-10-16-20-45-1972", items: ["總覽的概覽、日曆切換跟年月一樣滑順"] },
   { ver: "2026-10-16-20-41-1971", items: ["總覽拿掉現金對帳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
@@ -33519,22 +33520,22 @@ function adminRenewalsBannerHtml() {
   return list.map(x => renewalAdminCardHtml(x)).join("");
 }
 function dashSwitchHtml() {
-  const cal = ui.dashView === "cal";
-  return `<div class="seg dash-switch${cal ? " is-cal" : ""}" id="dash-view-seg">
+  const report = ui.dashView === "report";
+  return `<div class="seg dash-switch${report ? " is-report" : ""}" id="dash-view-seg">
     <i class="seg-bg"></i>
-    <button type="button" data-dash-view="overview" class="${cal ? "" : "on"}">概覽</button>
-    <button type="button" data-dash-view="cal" class="${cal ? "on" : ""}">日曆</button>
+    <button type="button" data-dash-view="overview" class="${report ? "" : "on"}">概覽</button>
+    <button type="button" data-dash-view="report" class="${report ? "on" : ""}">整體報表</button>
   </div>`;
 }
 function applyDashView(next) {
-  const want = next === "cal" ? "cal" : "overview";
-  if ((ui.dashView === "cal" ? "cal" : "overview") === want) return;
+  const want = next === "report" ? "report" : "overview";
+  if ((ui.dashView === "report" ? "report" : "overview") === want) return;
   ui.dashView = want;
   const seg = document.getElementById("dash-view-seg");
-  if (seg) setSegSide(seg, want === "cal", "", "is-cal");
+  if (seg) setSegSide(seg, want === "report", "", "is-report");
   const body = document.getElementById("dash-view-body");
   if (!body) { render(); return; }
-  body.innerHTML = want === "cal" ? monthCashHtml() : dashOverviewHtml();
+  body.innerHTML = dashOverviewHtml(want === "report" ? "books" : "glance");
   bindDashViewBody();
 }
 function bindDashViewBody() {
@@ -33585,10 +33586,10 @@ function bindDashViewBody() {
   bindOps();
 }
 function adminDash() {
-  ui.dashView = "";
-  return `<div class="dash">${dashOverviewHtml()}</div>`;
+  const books = ui.dashView === "report";
+  return `<div class="dash">${dashSwitchHtml()}<div id="dash-view-body">${dashOverviewHtml(books ? "books" : "glance")}</div></div>`;
 }
-function dashOverviewHtml() {
+function dashOverviewHtml(part) {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
   const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
@@ -33623,7 +33624,7 @@ function dashOverviewHtml() {
   const studioVs = rentVsPack(studios, "套房");
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
-  return `<div class="firm-grid" id="report-pies">
+  const glance = `<div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
@@ -33642,8 +33643,8 @@ function dashOverviewHtml() {
         </div>
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
-    </div>
-    ${overallReportHtml()}
+    </div>`;
+  const books = `${overallReportHtml()}
     ${monthCashHtml()}
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">牛10 樓層出租概況</h2>
@@ -33689,6 +33690,7 @@ function dashOverviewHtml() {
         ${(() => { const list = waterDueSoon(); return list.length ? list.map(x => `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${x.r ? x.r.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days} 天 · ${x.due} · NT$ 1,800</span></div>`).join("") : `<div class="empty">近 45 天沒有套房水費到期</div>`; })()}
       </div>
     </div>`;
+  return part === "books" ? books : glance;
 }
 function roomMatchesQ(r, q) {
   if (!q) return true;
@@ -40841,7 +40843,7 @@ function bindCashCal() {
         applyDashView(btn.dataset.dashView);
       };
     });
-    bindSegSwipe(dashSeg, () => applyDashView("overview"), () => applyDashView("cal"));
+    bindSegSwipe(dashSeg, () => applyDashView("overview"), () => applyDashView("report"));
   }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onpointerdown = () => {
