@@ -6007,6 +6007,14 @@ html.preview-zoom body {
   -webkit-overflow-scrolling: touch;
 }
 .lease-preview-scroll .studio-lease-paper .term-hint { display: none; }
+.lease-flip { touch-action: pan-y; }
+.lease-flip .lease-pg { display: none !important; margin-bottom: 0; }
+.lease-flip .lease-pg.on { display: block !important; }
+.lease-flip-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 2px 0; }
+.lease-flip-bar button { border: 0; background: #62765b; color: #fff; border-radius: 999px; padding: 8px 14px; font: inherit; font-weight: 700; }
+.lease-flip-bar button:disabled { background: #e7e7e7; color: #9a9a9a; }
+.lease-flip-bar span { font-weight: 700; }
+.lease-flip-hint { margin: 6px 2px 0; text-align: center; color: #6d6d6d; font-size: 13px; }
 
 .role-btn, .room-row, .clickable, .card.item, .issue-opt, [data-room] {
   border-radius: 22px; overflow: hidden;
