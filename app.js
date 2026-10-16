@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-15-23-50";
-const APP_EDIT_COUNT = 1954;
+const APP_STAMP = "2026-10-16-17-48";
+const APP_EDIT_COUNT = 1955;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1564";
+const FILE_VER = "1565";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["改簽約時間只通知最新的那一筆，舊時間不再補跳"] },
+  { ver: APP_VERSION, items: ["趙洪漳、許喻涵登入進管理員後台，不再進負責人後台"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -29545,7 +29545,7 @@ function adminView() {
   const body = splitOn()
     ? splitStageHtml()
     : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
-  const title = ui.adminCode === "1240" ? "開發者後台" : "負責人後台";
+  const title = ui.adminCode === "1240" ? "開發者後台" : (isBossAdmin() ? "負責人後台" : "管理員後台");
   const titleHtml = isBossAdmin()
     ? `<button type="button" id="boss-title" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">${title}</button>`
     : `<h1 style="font-size:24px">${title}</h1>`;
