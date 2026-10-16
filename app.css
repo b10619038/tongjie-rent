@@ -3597,6 +3597,8 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   transition-duration: 0.09s;
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
+.pie-nav { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.pie-nav .ghost { width: auto; margin: 0; padding: 4px 10px; font-size: 12px; font-weight: 800; border-radius: 999px; }
 .firm-card { padding: 16px; overflow: hidden; min-width: 0; }
 .firm-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: nowrap; min-width: 0; }
 .pie-wrap { position: relative; width: 108px; height: 108px; flex: 0 0 108px; }
