@@ -3578,7 +3578,7 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
 .kpi.accent .k, .kpi.accent .small { color: var(--muted); }
 .dash { padding: 0 20px 30px; display: grid; gap: 14px; max-width: 100%; min-width: 0; box-sizing: border-box; overflow-x: hidden; }
 .firm-grid { display: grid; gap: 12px; min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
-.firm-k { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.firm-k { display: flex; align-items: center; justify-content: flex-start; gap: 8px; min-width: 0; }
 .firm-k > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .firm-k select, .firm-toggle {
   width: auto; min-width: 64px; padding: 4px 12px; font-size: 12px; font-weight: 800;
