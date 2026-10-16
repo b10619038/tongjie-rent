@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-20-41";
-const APP_EDIT_COUNT = 1971;
+const APP_STAMP = "2026-10-16-20-45";
+const APP_EDIT_COUNT = 1972;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1581";
+const FILE_VER = "1582";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["總覽拿掉現金對帳"] },
+  { ver: APP_VERSION, items: ["總覽的概覽、日曆切換跟年月一樣滑順"] },
+  { ver: "2026-10-16-20-41-1971", items: ["總覽拿掉現金對帳"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -33526,16 +33527,67 @@ function dashSwitchHtml() {
 }
 function applyDashView(next) {
   const want = next === "cal" ? "cal" : "overview";
-  if ((ui.dashView === "cal" ? "cal" : "overview") === want) {
-    const seg = document.getElementById("dash-view-seg");
-    if (seg) setSegSide(seg, want === "cal", "", "is-cal");
-    return;
-  }
+  if ((ui.dashView === "cal" ? "cal" : "overview") === want) return;
   ui.dashView = want;
-  ui.adminJump = "dash-view-seg";
-  render();
+  const seg = document.getElementById("dash-view-seg");
+  if (seg) setSegSide(seg, want === "cal", "", "is-cal");
+  const body = document.getElementById("dash-view-body");
+  if (!body) { render(); return; }
+  body.innerHTML = want === "cal" ? monthCashHtml() : dashOverviewHtml();
+  bindDashViewBody();
+}
+function bindDashViewBody() {
+  const root = document.getElementById("dash-view-body");
+  if (!root) return;
+  root.querySelectorAll("[data-page]").forEach(el => {
+    el.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = el.dataset.page;
+      if (!next || next === ui.page) return;
+      if (next === "solar") ui.solarEnter = true;
+      ui.page = next;
+      render();
+    };
+  });
+  root.querySelectorAll(".solar-card").forEach(bindIosPress);
+  root.querySelectorAll("[data-rent-vs-open]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const name = btn.dataset.rentVsOpen || "";
+      ui.rentVsOpen = ui.rentVsOpen === name ? "" : name;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  root.querySelectorAll("[data-rent-vs-nav]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      shiftRentVs(Number(btn.dataset.rentVsNav) || 0);
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const exportBtn = document.getElementById("export-report");
+  if (exportBtn) exportBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("report"); };
+  const printReport = document.getElementById("print-report");
+  if (printReport) printReport.onclick = printOverallReport;
+  bindReportBody();
+  bindReportModeBtns();
+  bindReportPeriodSeg();
+  bindReportViewSeg();
+  bindCashCal();
+  bindOps();
 }
 function adminDash() {
+  const body = ui.dashView === "cal" ? monthCashHtml() : dashOverviewHtml();
+  return `<div class="dash">${dashSwitchHtml()}<div id="dash-view-body">${body}</div></div>`;
+}
+function dashOverviewHtml() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
   const stores = state.rooms.filter(r => r.kind === "store" || isStoreNo(r.no));
@@ -33570,10 +33622,7 @@ function adminDash() {
   const studioVs = rentVsPack(studios, "套房");
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
-  if (ui.dashView === "cal") return `<div class="dash">${dashSwitchHtml()}${monthCashHtml()}</div>`;
-  return `<div class="dash">
-    ${dashSwitchHtml()}
-    <div class="firm-grid" id="report-pies">
+  return `<div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
     <div class="dash-hero rings">
@@ -33637,8 +33686,7 @@ function adminDash() {
       <div class="card card-body"><h2 class="dash-h">年度水費（45 天內）</h2>
         ${(() => { const list = waterDueSoon(); return list.length ? list.map(x => `<div class="mini clickable" data-admin-room="${x.t.roomId}"><b>${x.r ? x.r.no : ""} ·${escapeHtml(x.t.name)}</b><span>${x.days} 天 · ${x.due} · NT$ 1,800</span></div>`).join("") : `<div class="empty">近 45 天沒有套房水費到期</div>`; })()}
       </div>
-    </div>
-  </div>`;
+    </div>`;
 }
 function roomMatchesQ(r, q) {
   if (!q) return true;
