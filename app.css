@@ -5158,12 +5158,14 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .lease-party-chops > .chop-lg {
   right: 36mm;
   top: 50%;
-  transform: translateY(-58%);
+  margin-top: -12.5mm;
+  transform: none;
 }
 .lease-party-chops > .chop-sm {
   right: 16mm;
-  top: calc(50% + 10mm);
-  transform: translateY(-58%);
+  top: 50%;
+  margin-top: -2.5mm;
+  transform: none;
 }
 .lease-pg:not(.cover) {
   display: flex;
