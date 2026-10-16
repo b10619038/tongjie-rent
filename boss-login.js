@@ -153,7 +153,9 @@
     const prev = adminView;
     adminView = function () {
       if (bossUser() && /^(ai|announce|history|logs|firm|food|staff-ops)$/.test(ui.page || "")) ui.page = "dash";
-      let html = retitle(prev.apply(this, arguments));
+      let html = prev.apply(this, arguments);
+      if (!bossUser()) return html;
+      html = retitle(html);
       if (bossUser() && html.indexOf('id="boss-title"') < 0) {
         html = html.replace(
           '<h1 style="font-size:24px">負責人後台</h1>',
@@ -166,7 +168,10 @@
   }
   if (typeof adminLogs === "function" && !adminLogs._boss) {
     const prev = adminLogs;
-    adminLogs = function () { return retitle(prev.apply(this, arguments)); };
+    adminLogs = function () {
+      const html = prev.apply(this, arguments);
+      return bossUser() ? retitle(html) : html;
+    };
     adminLogs._boss = 1;
   }
   if (!window.__bossTitle) {
