@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-17-48";
-const APP_EDIT_COUNT = 1955;
+const APP_STAMP = "2026-10-16-18-02";
+const APP_EDIT_COUNT = 1956;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1565";
+const FILE_VER = "1566";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["趙洪漳、許喻涵登入進管理員後台，不再進負責人後台"] },
+  { ver: APP_VERSION, items: ["在線名單補上趙正賢（1976）（7651），趙洪漳、許喻涵（7651）"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -13593,14 +13593,13 @@ function staffPresenceOn(name) {
 }
 function onlineStaffHtml() {
   const slots = [
-    ["admin-1240", "開發者（1240）"],
-    ["admin-1976", "趙正賢（1976）"],
-    ["admin-7651-趙海城", "趙海城（7651）"],
-    ["admin-7651-趙洪漳", "趙洪漳"],
-    ["admin-7651-許喻涵", "許喻涵"]
+    ["admin-1240", "開發者（1240）", ""],
+    ["admin-1976", "趙正賢（1976）（7651）", ""],
+    ["admin-7651-趙海城", "趙海城（7651）", ""],
+    ["admin-7651-趙洪漳", "趙洪漳（7651）", "趙洪漳"],
+    ["admin-7651-許喻涵", "許喻涵（7651）", "許喻涵"]
   ];
-  return slots.map(([id, label]) => {
-    const staffName = (label === "趙洪漳" || label === "許喻涵") ? label : "";
+  return slots.map(([id, label, staffName]) => {
     const on = staffName ? staffPresenceOn(staffName) : isOnline(id);
     const p = (state.presence || {})[id] || (staffName ? ((state.presence || {})["admin-7651"] || {}) : {});
     const showDevice = on && p.device && (!staffName || normAdminName(p.name) === staffName);
