@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-18-36";
-const APP_EDIT_COUNT = 1960;
+const APP_STAMP = "2026-10-16-18-40";
+const APP_EDIT_COUNT = 1961;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1570";
+const FILE_VER = "1571";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約掀頁維持原本大小，頁碼改成第一頁"] },
+  { ver: APP_VERSION, items: ["合約翻頁會看到頁面從左邊掀過去"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -25546,16 +25546,51 @@ function showLeaseFlip(box, index, jump) {
   const last = pages.length - 1;
   if (i < 0) i = 0;
   if (i > last) i = last;
-  pages.forEach((p, n) => p.classList.toggle("on", n === i));
-  const label = box.querySelector("[data-lease-page]");
-  if (label) label.textContent = leasePageNo(i + 1);
-  const prev = box.querySelector("[data-lease-prev]");
-  const next = box.querySelector("[data-lease-next]");
-  if (prev) prev.disabled = i <= 0;
-  if (next) next.disabled = i >= last;
-  const hint = box.querySelector(".lease-flip-hint");
-  if (hint) hint.textContent = i >= last ? "已經是最後一頁，往右滑可回上一頁" : "往左滑，或點一下，看下一頁";
-  box.dataset.flipAt = String(i);
+  const from = Number(box.dataset.flipAt);
+  const dir = Number.isFinite(from) && from !== i ? (i > from ? 1 : -1) : 0;
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const paint = () => {
+    const label = box.querySelector("[data-lease-page]");
+    if (label) label.textContent = leasePageNo(i + 1);
+    const prev = box.querySelector("[data-lease-prev]");
+    const next = box.querySelector("[data-lease-next]");
+    if (prev) prev.disabled = i <= 0;
+    if (next) next.disabled = i >= last;
+    const hint = box.querySelector(".lease-flip-hint");
+    if (hint) hint.textContent = i >= last ? "已經是最後一頁，往右滑可回上一頁" : "往左滑，或點一下，看下一頁";
+    box.dataset.flipAt = String(i);
+  };
+  const settle = () => {
+    pages.forEach((p, n) => {
+      p.classList.remove("turn-out", "turn-in", "turn-back");
+      p.classList.toggle("on", n === i);
+    });
+    box.dataset.flipping = "";
+  };
+  if (!dir || reduce || box.dataset.flipping === "1") {
+    settle();
+    paint();
+  } else {
+    pages.forEach(p => p.classList.remove("turn-out", "turn-in", "turn-back", "on"));
+    const leave = pages[from];
+    const enter = pages[i];
+    if (dir > 0) {
+      enter.classList.add("on", "turn-in");
+      leave.classList.add("turn-out");
+    } else {
+      leave.classList.add("on");
+      enter.classList.add("turn-back");
+    }
+    box.dataset.flipping = "1";
+    paint();
+    const done = (ev) => {
+      if (ev && ev.animationName && ev.animationName !== "leaseTurnOut" && ev.animationName !== "leaseTurnBack") return;
+      settle();
+    };
+    const mover = dir > 0 ? leave : enter;
+    mover.addEventListener("animationend", done, { once: true });
+    setTimeout(settle, 720);
+  }
   if (!jump) return;
   const sc = box.closest(".tenant-scroll");
   if (!sc) return;
