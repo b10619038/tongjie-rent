@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-16";
-const APP_EDIT_COUNT = 1980;
+const APP_STAMP = "2026-10-16-22-22";
+const APP_EDIT_COUNT = 1981;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1590";
+const FILE_VER = "1591";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["營收總額右邊顯示四戶加總，本期收支右邊顯示收入加支出，拿掉淨月額"] },
+  { ver: APP_VERSION, items: ["本期收支右邊改成收入減支出"] },
+  { ver: "2026-10-16-22-16-1980", items: ["營收總額右邊顯示四戶加總，本期收支右邊顯示收入加支出，拿掉淨月額"] },
   { ver: "2026-10-16-22-10-1979", items: ["月按鈕靠在營收總額和本期收支右邊"] },
   { ver: "2026-10-16-22-06-1978", items: ["營收圖卡跟著出租率的上一月、下一月一起換"] },
   { ver: "2026-10-16-22-04-1977", items: ["現金(保險箱) 顯示改成保險箱"] },
@@ -33138,7 +33139,7 @@ function reportPiesHtml() {
   const toggle = `<button type="button" class="firm-toggle" data-report-mode="${yearOn ? "month" : "year"}">${unit}</button>`;
   const nav = `<div class="pie-nav">${toggle}</div>`;
   const balSum = slices.reduce((s, x) => s + x.bal, 0);
-  const flowSum = totIn + totOut;
+  const flowSum = totIn - totOut;
   const sumCls = n => n < 0 ? "led-out" : "led-in";
   const spin = ui.keepScroll ? "" : "spin-in";
   return `<div class="card firm-card">
