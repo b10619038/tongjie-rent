@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-18-02";
-const APP_EDIT_COUNT = 1956;
+const APP_STAMP = "2026-10-16-18-16";
+const APP_EDIT_COUNT = 1957;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1566";
+const FILE_VER = "1567";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["在線名單補上趙正賢（1976）（7651），趙洪漳、許喻涵（7651）"] },
+  { ver: APP_VERSION, items: ["後台設定改成實心齒輪"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -17120,7 +17120,7 @@ function icon(name) {
     line: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 5.2h13.2a2.6 2.6 0 0 1 2.6 2.6v5.6a2.6 2.6 0 0 1-2.6 2.6H9.6L5.6 19.6V16H5.2a2.6 2.6 0 0 1-2.6-2.6V7.8a2.6 2.6 0 0 1 2.6-2.6z"/><circle cx="8.4" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="10.6" r="1" fill="currentColor" stroke="none"/><circle cx="15.6" cy="10.6" r="1" fill="currentColor" stroke="none"/></svg>',
     pin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.4s5.8-6 5.8-10.2A5.8 5.8 0 0 0 6.2 10.2c0 4.2 5.8 10.2 5.8 10.2z"/><circle cx="12" cy="10.1" r="2"/></svg>',
     book: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5v16"/><path d="M8 7h8M8 11h8"/></svg>',
-    gear: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M9.55 1.55h4.9l.42 2.28c.72.18 1.4.48 2.02.88l1.98-1.28 3.46 3.46-1.28 1.98c.4.62.7 1.3.88 2.02l2.28.42v4.9l-2.28.42a7.6 7.6 0 0 1-.88 2.02l1.28 1.98-3.46 3.46-1.98-1.28a7.6 7.6 0 0 1-2.02.88l-.42 2.28h-4.9l-.42-2.28a7.6 7.6 0 0 1-2.02-.88l-1.98 1.28-3.46-3.46 1.28-1.98a7.6 7.6 0 0 1-.88-2.02L1.55 14.45v-4.9l2.28-.42c.18-.72.48-1.4.88-2.02L3.43 5.13l3.46-3.46 1.98 1.28c.62-.4 1.3-.7 2.02-.88l.66-1.52zM12 7.15a4.85 4.85 0 1 0 .01 9.7 4.85 4.85 0 0 0-.01-9.7z"/></svg>',
     bell: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M6.2 17c.2-5.2 1.5-7.4 2.6-8.5.6-.6.9-1.3 1-2.1A2.2 2.2 0 0 1 12 4.2a2.2 2.2 0 0 1 2.2 2.2c.1.8.4 1.5 1 2.1 1.1 1.1 2.4 3.3 2.6 8.5"/><path d="M9.6 17.2a2.4 2.4 0 0 0 4.8 0"/></svg>'
   };
   return map[name];
