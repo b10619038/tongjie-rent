@@ -3598,6 +3598,10 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .pie-nav { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.pie-nav .firm-toggle {
+  width: 32px; height: 32px; min-width: 32px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+}
 .pie-nav .ghost { width: auto; margin: 0; padding: 4px 10px; font-size: 12px; font-weight: 800; border-radius: 999px; }
 .firm-card { padding: 16px; overflow: hidden; min-width: 0; }
 .firm-body { display: flex; align-items: center; gap: 16px; margin-top: 12px; flex-wrap: nowrap; min-width: 0; }
