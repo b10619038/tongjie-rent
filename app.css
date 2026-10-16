@@ -3580,6 +3580,7 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
 .firm-grid { display: grid; gap: 12px; min-width: 0; max-width: 100%; grid-template-columns: minmax(0, 1fr); }
 .firm-k { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .firm-k-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: visible; }
+.firm-when { color: var(--muted); font-size: 13px; font-weight: 700; white-space: nowrap; }
 .firm-k > .money { margin-left: auto; font-size: 16px; font-weight: 800; gap: 0.12em; }
 .firm-k > .money .money-num { width: auto; min-width: 0; }
 .firm-k > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
