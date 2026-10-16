@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-32";
-const APP_EDIT_COUNT = 1984;
+const APP_STAMP = "2026-10-16-22-45";
+const APP_EDIT_COUNT = 1985;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1594";
+const FILE_VER = "1595";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["本期收支拿掉月，日期改到總餘額和本期收支右邊"] },
+  { ver: APP_VERSION, items: ["楊旻憲已不在 7051，12000 算 7032 月租，不再顯示多收"] },
+  { ver: "2026-10-16-22-32-1984", items: ["本期收支拿掉月，日期改到總餘額和本期收支右邊"] },
   { ver: "2026-10-16-22-28-1983", items: ["營收總額改成總餘額，拿掉月"] },
   { ver: "2026-10-16-22-24-1982", items: ["營收圖卡的錢符號貼齊數字"] },
   { ver: "2026-10-16-22-22-1981", items: ["本期收支右邊改成收入減支出"] },
@@ -7316,7 +7317,7 @@ function reviveStudioMirrorGuests(data) {
     ensureStudioTenant(data, no);
   });
 }
-const ROOM_7051_VER = "7051-6k-nosub-v1";
+const ROOM_7051_VER = "7051-vacant-yang-v2";
 const CLEAR_7042_ESIGN_VER = "7042-clear-test-sign-v1";
 function applyClear7042TestSign(data) {
   if (!data || data.clear7042EsignVer === CLEAR_7042_ESIGN_VER) return;
@@ -7527,7 +7528,31 @@ function applyRoom7051(data) {
   room.noSubsidy = true;
   if (!Number(room.deposit)) room.deposit = 12000;
   room.note = "月租 NT$ 6,000。不可申請租屋補助。";
+  const room32 = (data.rooms || []).find(r => r && String(r.no) === "7032");
+  let changed = data.room7051Ver !== ROOM_7051_VER;
+  (data.tenants || []).forEach(t => {
+    if (!t || t.demo || t.incoming || t.roomId !== room.id) return;
+    if (!sameTenantName(t.name, "楊旻憲")) return;
+    if (room32 && room32.tenantId === t.id) {
+      if (t.roomId !== room32.id) { t.roomId = room32.id; changed = true; }
+      if (room.tenantId === t.id) { room.tenantId = ""; changed = true; }
+      return;
+    }
+    if (!t.former) {
+      t.former = true;
+      t.leftOn = t.leftOn || "2026-03-01";
+      if (!t.note) t.note = "換房至 7032，7051 現為空房";
+      t.edited = true;
+      t.editedAt = Date.now();
+      changed = true;
+    }
+    if (room.tenantId === t.id) { room.tenantId = ""; changed = true; }
+  });
+  const still = (data.tenants || []).some(t => t && !t.former && !t.demo && !t.incoming && !t.placeholder && t.roomId === room.id);
+  if (!still && room.tenantId) { room.tenantId = ""; changed = true; }
+  if (!still && room.status === "rented") { room.status = "vacant"; changed = true; }
   data.room7051Ver = ROOM_7051_VER;
+  if (changed) { try { markCloudDirty(); } catch {} }
 }
 const ROOM_7611_VER = "7611-bopoke-v4";
 function applyRoom7611(data) {
@@ -33222,11 +33247,11 @@ function roomTenantForYm(room, ym) {
   if (!room || skipRentVsRoom(room)) return null;
   const y = String(ym || payYmNow()).slice(0, 7);
   const cur = roomCurrentTenant(room);
-  if (cur && !skipRentVsTenant(cur)) {
+  if (cur && !cur.former && !skipRentVsTenant(cur)) {
     if (rentVsCovers(cur, room, y)) return cur;
     if (room.status === "rented" && y === payYmNow()) return cur;
   }
-  const hit = (state.tenants || []).find(t => t && String(t.roomId) === String(room.id) && !skipRentVsTenant(t) && rentVsCovers(t, room, y));
+  const hit = (state.tenants || []).find(t => t && !t.former && String(t.roomId) === String(room.id) && !skipRentVsTenant(t) && rentVsCovers(t, room, y));
   if (hit) return hit;
   return null;
 }
@@ -33342,9 +33367,11 @@ function roomRentLedgerSum(no, names, ymds) {
     if (/押金|仲介|水費|電費|售電|太陽能/.test(String(x.note || ""))) return;
     const blob = String(x.note || "") + " " + String(x.roomNo || "");
     if (/7652|小芬/.test(blob) || isPracticeStudioNo(x.roomNo)) return;
-    const hit = nos.some(n => n && (String(x.roomNo || "") === n || blob.indexOf(n) >= 0))
-      || who.some(n => n && blob.indexOf(n) >= 0);
-    if (!hit) return;
+    const roomHit = nos.some(n => n && (String(x.roomNo || "") === n || blob.indexOf(n) >= 0));
+    const tagged = String(x.roomNo || "");
+    const otherRoom = tagged && !nos.some(n => n === tagged);
+    const nameHit = !otherRoom && who.some(n => n && blob.indexOf(n) >= 0);
+    if (!roomHit && !nameHit) return;
     const amt = Number(x.amount) || 0;
     if (isRentVsAutoRow(x)) auto += amt;
     else real += amt;
