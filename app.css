@@ -5361,6 +5361,7 @@ body.rev-zooming { overflow: hidden; }
 .rent-vs-amt.on { text-decoration: underline; text-underline-offset: 3px; }
 .rent-vs-list { margin-top: 10px; display: grid; gap: 10px; }
 .rent-vs-item { min-width: 0; }
+.rent-vs-because { margin-top: 2px; line-height: 1.45; }
 .occ-rent-nav { margin: 0 0 2px; }
 .occ-rent-line { margin-top: 4px; }
 .ring-row .rent-vs-amt {
