@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-28";
-const APP_EDIT_COUNT = 1983;
+const APP_STAMP = "2026-10-16-22-32";
+const APP_EDIT_COUNT = 1984;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1593";
+const FILE_VER = "1594";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["營收總額改成總餘額，拿掉月"] },
+  { ver: APP_VERSION, items: ["本期收支拿掉月，日期改到總餘額和本期收支右邊"] },
+  { ver: "2026-10-16-22-28-1983", items: ["營收總額改成總餘額，拿掉月"] },
   { ver: "2026-10-16-22-24-1982", items: ["營收圖卡的錢符號貼齊數字"] },
   { ver: "2026-10-16-22-22-1981", items: ["本期收支右邊改成收入減支出"] },
   { ver: "2026-10-16-22-16-1980", items: ["營收總額右邊顯示四戶加總，本期收支右邊顯示收入加支出，拿掉淨月額"] },
@@ -33136,16 +33137,13 @@ function reportPiesHtml() {
   const totOut = stats.reduce((s, x) => s + x.out, 0) + joint.out;
   const flow = totIn + totOut;
   const inPct = flow ? Math.round(totIn / flow * 1000) / 10 : 0;
-  const yearOn = ui.reportMode === "year";
-  const unit = yearOn ? "年" : "月";
-  const toggle = `<button type="button" class="firm-toggle" data-report-mode="${yearOn ? "month" : "year"}">${unit}</button>`;
-  const nav = `<div class="pie-nav">${toggle}</div>`;
+  const when = escapeHtml(String(b.label || "").replace(/\s/g, ""));
   const balSum = slices.reduce((s, x) => s + x.bal, 0);
   const flowSum = totIn - totOut;
   const sumCls = n => n < 0 ? "led-out" : "led-in";
   const spin = ui.keepScroll ? "" : "spin-in";
   return `<div class="card firm-card">
-      <div class="k firm-k"><span class="firm-k-title"><span>總餘額</span></span>${moneyBox(balSum, sumCls(balSum))}</div>
+      <div class="k firm-k"><span class="firm-k-title"><span>總餘額</span><span class="firm-when">${when}</span></span>${moneyBox(balSum, sumCls(balSum))}</div>
       <div class="firm-body">
         <div class="pie-wrap">
           <div class="pie ${sum ? "" : "empty"} ${spin}" style="background:${pieCss}"></div>
@@ -33153,12 +33151,12 @@ function reportPiesHtml() {
         </div>
         <div class="firm-legend">
           ${slices.map(p => `<div class="firm-row"><i style="background:${p.color}"></i><span class="firm-name">${escapeHtml(p.name)}</span>${moneyBox(p.bal)}</div>`).join("")}
-          <div class="small">${escapeHtml(b.label)}${sum ? "" : " · 尚無營收"}</div>
+          ${sum ? "" : `<div class="small">尚無營收</div>`}
         </div>
       </div>
     </div>
     <div class="card firm-card">
-      <div class="k firm-k"><span class="firm-k-title"><span>本期收支</span>${nav}</span>${moneyBox(flowSum, sumCls(flowSum))}</div>
+      <div class="k firm-k"><span class="firm-k-title"><span>本期收支</span><span class="firm-when">${when}</span></span>${moneyBox(flowSum, sumCls(flowSum))}</div>
       <div class="firm-body">
         <div class="pie-wrap">
           <div class="pie ${flow ? "" : "empty"} ${spin}" style="--in:${inPct}"></div>
@@ -33167,7 +33165,7 @@ function reportPiesHtml() {
         <div class="firm-legend">
           <div class="firm-row"><i class="in"></i><span class="firm-name">本期收入</span>${moneyBox(totIn, "led-in")}</div>
           <div class="firm-row"><i class="out"></i><span class="firm-name">本期支出</span>${moneyBox(totOut, "led-out")}</div>
-          <div class="small">${escapeHtml(b.label)}${flow ? "" : " · 尚無進出帳"}</div>
+          ${flow ? "" : `<div class="small">尚無進出帳</div>`}
         </div>
       </div>
     </div>`;
