@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-20-24";
-const APP_EDIT_COUNT = 1969;
+const APP_STAMP = "2026-10-16-20-36";
+const APP_EDIT_COUNT = 1970;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1579";
+const FILE_VER = "1580";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已送出續約按查看續約，會跳到租約裡的續約卡"] },
+  { ver: APP_VERSION, items: ["總覽最上方可左右切換概覽與日曆"] },
   { ver: "2026-10-12-17-01-1801", items: ["7623 合約第五條押金固定印 20,000，不再被舊的 18,000 蓋回去"] },
   { ver: "2026-10-12-16-54-1800", items: ["7623 陳財源合約押金改為 20,000"] },
   { ver: "2026-10-12-16-12-1799", items: ["續約再加的人跟原租客同一段時間，半年也一起"] },
@@ -22030,7 +22030,7 @@ function monthCashHtml() {
   return `<div class="card card-body cal-card" id="month-cash">
     <div class="cal-head">
       <h2 class="dash-h" style="margin:0">本月進出帳</h2>
-      <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calFirm ? " · " + escapeHtml(ui.calFirm) : "") + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳")}</div>
+      <div class="small">${filter ? "目前顯示：" + escapeHtml(isSiteName(filter) ? ("案場 " + filter) : accountLabel(filter)) + (ui.calFirm ? " · " + escapeHtml(ui.calFirm) : "") + (ui.calBank ? " · " + escapeHtml(ui.calBank) : "") + "　點圖卡可切換" : (ui.dashView === "cal" ? "可搜尋，或切回概覽點帳戶圖卡只看該戶" : (ui.reportView === "site" ? "點上方牛案場圖卡，可只看該案場進出帳" : "點上方統潔／信潔／個人戶／現金圖卡，可只看該戶進出帳"))}</div>
       <div class="cal-toolbar no-print">
         <button type="button" class="ghost" id="export-cal">匯出</button>
         <button type="button" class="ghost" id="print-cal">列印</button>
@@ -33516,6 +33516,25 @@ function adminRenewalsBannerHtml() {
   if (!list.length) return "";
   return list.map(x => renewalAdminCardHtml(x)).join("");
 }
+function dashSwitchHtml() {
+  const cal = ui.dashView === "cal";
+  return `<div class="seg dash-switch${cal ? " is-cal" : ""}" id="dash-view-seg">
+    <i class="seg-bg"></i>
+    <button type="button" data-dash-view="overview" class="${cal ? "" : "on"}">概覽</button>
+    <button type="button" data-dash-view="cal" class="${cal ? "on" : ""}">日曆</button>
+  </div>`;
+}
+function applyDashView(next) {
+  const want = next === "cal" ? "cal" : "overview";
+  if ((ui.dashView === "cal" ? "cal" : "overview") === want) {
+    const seg = document.getElementById("dash-view-seg");
+    if (seg) setSegSide(seg, want === "cal", "", "is-cal");
+    return;
+  }
+  ui.dashView = want;
+  ui.adminJump = "dash-view-seg";
+  render();
+}
 function adminDash() {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
@@ -33551,7 +33570,9 @@ function adminDash() {
   const studioVs = rentVsPack(studios, "套房");
   const factoryVs = rentVsPack(factories, "廠房");
   const storeVs = rentVsPack(stores, "店面");
+  if (ui.dashView === "cal") return `<div class="dash">${dashSwitchHtml()}${monthCashHtml()}</div>`;
   return `<div class="dash">
+    ${dashSwitchHtml()}
     <div class="firm-grid" id="report-pies">
       ${reportPiesHtml()}
     </div>
@@ -33573,7 +33594,6 @@ function adminDash() {
       </div>
     </div>
     ${overallReportHtml()}
-    ${monthCashHtml()}
     ${cashPairHtml()}
     <div class="dash-two">
       <div class="card card-body"><h2 class="dash-h">牛10 樓層出租概況</h2>
@@ -40762,6 +40782,17 @@ function bindCashCal() {
       ui.calQ = String(search.value || "");
       refreshCalSearchLive();
     };
+  }
+  const dashSeg = document.getElementById("dash-view-seg");
+  if (dashSeg && !dashSeg.dataset.bound) {
+    dashSeg.dataset.bound = "1";
+    dashSeg.querySelectorAll("[data-dash-view]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        applyDashView(btn.dataset.dashView);
+      };
+    });
+    bindSegSwipe(dashSeg, () => applyDashView("overview"), () => applyDashView("cal"));
   }
   document.querySelectorAll("[data-cal-nav]").forEach(btn => {
     btn.onpointerdown = () => {
