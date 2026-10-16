@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-16-22-04";
-const APP_EDIT_COUNT = 1977;
+const APP_STAMP = "2026-10-16-22-06";
+const APP_EDIT_COUNT = 1978;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1587";
+const FILE_VER = "1588";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["現金(保險箱) 顯示改成保險箱"] },
+  { ver: APP_VERSION, items: ["營收圖卡跟著出租率的上一月、下一月一起換"] },
+  { ver: "2026-10-16-22-04-1977", items: ["現金(保險箱) 顯示改成保險箱"] },
   { ver: "2026-10-16-21-57-1976", items: ["營收圖卡的月改成圓形，放在上一月左邊"] },
   { ver: "2026-10-16-21-29-1975", items: ["營收總額和本期收支可以切上一月、下一月"] },
   { ver: "2026-10-16-21-07-1974", items: ["總覽上方改成概覽與整體報表"] },
@@ -21289,6 +21290,23 @@ function ensureReportPeriod() {
   if (ui.reportMode !== "year") ui.reportMode = "month";
   if (ui.reportView !== "site") ui.reportView = "account";
 }
+function pieBounds() {
+  ensureRentVsMonth();
+  ensureReportPeriod();
+  const y = ui.rentVsYear;
+  const m = ui.rentVsMonth;
+  if (ui.reportMode === "year") {
+    return { start: y + "-01-01", end: y + "-12-31", label: y + " 年", unit: "年" };
+  }
+  const last = new Date(y, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  return {
+    start: y + "-" + mm + "-01",
+    end: y + "-" + mm + "-" + String(last).padStart(2, "0"),
+    label: y + " 年 " + m + " 月",
+    unit: "月"
+  };
+}
 function reportBounds() {
   ensureReportPeriod();
   const y = ui.reportYear, m = ui.reportMonth;
@@ -33089,7 +33107,7 @@ function firmTotals(company, mode) {
   return { inn, out, net: inn - out };
 }
 function reportPiesHtml() {
-  const b = reportBounds();
+  const b = pieBounds();
   const stats = REPORT_ACCOUNTS.map(n => Object.assign({ name: n }, accountStats(n, b.start, b.end)));
   const joint = accountStats("聯名戶", b.start, b.end);
   const colors = { "統潔": "#3FA89A", "信潔": "#5B8EE8", "個人戶": "#E8896C", "現金(保險箱)": "#8B95A8" };
@@ -33116,7 +33134,7 @@ function reportPiesHtml() {
   const yearOn = ui.reportMode === "year";
   const unit = yearOn ? "年" : "月";
   const toggle = `<button type="button" class="firm-toggle" data-report-mode="${yearOn ? "month" : "year"}">${unit}</button>`;
-  const nav = `<div class="pie-nav">${toggle}<button type="button" class="ghost" data-report-nav="-1">${b.prev}</button><button type="button" class="ghost" data-report-nav="1">${b.next}</button></div>`;
+  const nav = `<div class="pie-nav">${toggle}</div>`;
   const spin = ui.keepScroll ? "" : "spin-in";
   return `<div class="card firm-card">
       <div class="k firm-k"><span>營收總額</span>${nav}</div>
