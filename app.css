@@ -6051,6 +6051,7 @@ html.preview-zoom body {
 .lease-flip .lease-pg.turn-out { animation: leaseTurnOut .58s cubic-bezier(.4,.05,.2,1) forwards; }
 .lease-flip .lease-pg.turn-back { animation: leaseTurnBack .58s cubic-bezier(.4,.05,.2,1) forwards; }
 .lease-flip .lease-pg.turn-in { animation: leaseTurnIn .58s ease; }
+.lease-flip.fast .lease-pg.turn-back { animation-duration: .28s; }
 @keyframes leaseTurnOut {
   0% { transform: rotateY(0deg); box-shadow: 0 10px 24px rgba(0,0,0,.14); }
   100% { transform: rotateY(-98deg); box-shadow: -22px 12px 28px rgba(0,0,0,.2); }
