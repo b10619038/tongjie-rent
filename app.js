@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-23-16";
-const APP_EDIT_COUNT = 1995;
+const APP_STAMP = "2026-10-17-23-37";
+const APP_EDIT_COUNT = 1996;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1605";
+const FILE_VER = "1606";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["概覽最下面新增淨資產變化圖"] },
+  { ver: APP_VERSION, items: ["淨資產變化從 2026 年 7 月開始"] },
+  { ver: "2026-10-17-23-16-1995", items: ["概覽最下面新增淨資產變化圖"] },
   { ver: "2026-10-17-22-47-1994", items: ["案場總結算的金錢符號貼齊數字"] },
   { ver: "2026-10-17-22-44-1993", items: ["案場總結算底色改成跟帳戶總餘額一樣"] },
   { ver: "2026-10-17-22-37-1992", items: ["手機窄畫面四戶圖卡改成上下排列"] },
@@ -33756,6 +33757,7 @@ function adminDash() {
   return `<div class="dash">${dashSwitchHtml()}<div id="dash-view-body">${dashOverviewHtml(books ? "books" : "glance")}</div></div>`;
 }
 function netAssetSeries() {
+  const FROM = "2026-07-01";
   const delta = new Map();
   REPORT_ACCOUNTS.forEach(name => {
     ledgerRowsForAccount(name).forEach(x => {
@@ -33768,14 +33770,16 @@ function netAssetSeries() {
   });
   const days = [...delta.keys()].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   let bal = REPORT_ACCOUNTS.reduce((s, n) => s + accountOpening(n), 0);
-  const pts = [];
+  const pts = [{ date: FROM, v: bal }];
   days.forEach(date => {
     bal += delta.get(date) || 0;
-    pts.push({ date, v: bal });
+    if (date < FROM) pts[0].v = bal;
+    else if (date === FROM) pts[0].v = bal;
+    else pts.push({ date, v: bal });
   });
   const today = typeof todayYmd === "function" ? todayYmd() : "";
-  if (today && (!pts.length || pts[pts.length - 1].date < today)) pts.push({ date: today, v: bal });
-  if (pts.length === 1) pts.unshift({ date: pts[0].date, v: pts[0].v });
+  if (today && today >= FROM && pts[pts.length - 1].date < today) pts.push({ date: today, v: bal });
+  if (pts.length === 1) pts.push({ date: today && today >= FROM ? today : FROM, v: pts[0].v });
   return pts;
 }
 function netAssetAxisMoney(n) {
