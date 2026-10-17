@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-15-28";
-const APP_EDIT_COUNT = 1988;
+const APP_STAMP = "2026-10-17-22-08";
+const APP_EDIT_COUNT = 1989;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1598";
+const FILE_VER = "1599";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["官方 LINE 選單補上看合約、正常退租網址"] },
+  { ver: APP_VERSION, items: ["合約最後一頁點一下快速回到第一頁"] },
+  { ver: "2026-10-17-15-28-1988", items: ["官方 LINE 選單補上看合約、正常退租網址"] },
   { ver: "2026-10-16-23-12-1987", items: ["空房少收原因改成此房間沒住人"] },
   { ver: "2026-10-16-22-59-1986", items: ["多收、少收在實收下面寫原因"] },
   { ver: "2026-10-16-22-45-1985", items: ["楊旻憲已不在 7051，12000 算 7032 月租，不再顯示多收"] },
@@ -25626,7 +25627,7 @@ function leasePageNo(n) {
   const one = num % 10;
   return "第" + d[ten] + "十" + (one ? d[one] : "") + "頁";
 }
-function showLeaseFlip(box, index, jump) {
+function showLeaseFlip(box, index, jump, fast) {
   if (!box) return;
   const pages = [...box.querySelectorAll(".lease-pg")];
   if (!pages.length) return;
@@ -25646,7 +25647,7 @@ function showLeaseFlip(box, index, jump) {
     if (prev) prev.disabled = i <= 0;
     if (next) next.disabled = i >= last;
     const hint = box.querySelector(".lease-flip-hint");
-    if (hint) hint.textContent = i >= last ? "已經是最後一頁，往右滑可回上一頁" : "往左滑，或點一下，看下一頁";
+    if (hint) hint.textContent = i >= last ? "點一下，回到第一頁" : "往左滑，或點一下，看下一頁";
     box.dataset.flipAt = String(i);
   };
   const settle = () => {
@@ -25654,6 +25655,7 @@ function showLeaseFlip(box, index, jump) {
       p.classList.remove("turn-out", "turn-in", "turn-back");
       p.classList.toggle("on", n === i);
     });
+    box.classList.remove("fast");
     box.dataset.flipping = "";
   };
   if (!dir || reduce || box.dataset.flipping === "1") {
@@ -25661,6 +25663,7 @@ function showLeaseFlip(box, index, jump) {
     paint();
   } else {
     pages.forEach(p => p.classList.remove("turn-out", "turn-in", "turn-back", "on"));
+    box.classList.toggle("fast", !!fast);
     const leave = pages[from];
     const enter = pages[i];
     if (dir > 0) {
@@ -25678,7 +25681,7 @@ function showLeaseFlip(box, index, jump) {
     };
     const mover = dir > 0 ? leave : enter;
     mover.addEventListener("animationend", done, { once: true });
-    setTimeout(settle, 720);
+    setTimeout(settle, fast ? 420 : 720);
   }
 }
 function mountLeaseFlips() {
@@ -25707,7 +25710,11 @@ function mountLeaseFlips() {
       return;
     }
     if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
-      if (cur >= last) { toast("已經是最後一頁"); return; }
+      if (e.target.closest && e.target.closest("a, button, input, textarea, select, label")) return;
+      if (cur >= last) {
+        showLeaseFlip(box, 0, true, true);
+        return;
+      }
       showLeaseFlip(box, cur + 1, true);
     }
   }, { passive: true });
