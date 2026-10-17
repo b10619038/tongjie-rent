@@ -5584,6 +5584,11 @@ body.rev-zooming { overflow: hidden; }
 .rev-table td .money { width: 100%; font-weight: inherit; }
 .acct-total .money { font-size: 22px; }
 .acct-card.on { box-shadow: inset 0 0 0 1.5px var(--teal); }
+.net-asset-card { overflow: hidden; }
+.net-asset-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.net-asset-head strong { font-size: 18px; font-weight: 800; white-space: nowrap; }
+.net-asset-svg { width: 100%; height: auto; display: block; margin-top: 4px; }
+.net-asset-svg text { font-size: 11px; fill: #8d8d8d; font-family: inherit; }
 .item {
   display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center;
   padding: 10px; cursor: pointer;
