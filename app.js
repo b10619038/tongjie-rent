@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-01-20";
-const APP_EDIT_COUNT = 2001;
+const APP_STAMP = "2026-10-18-01-28";
+const APP_EDIT_COUNT = 2002;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1611";
+const FILE_VER = "1612";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["行程加上營業稅、營所稅、房屋稅、地價稅、扣繳憑單"] },
+  { ver: APP_VERSION, items: ["未安裝、未登入只記套房租客"] },
+  { ver: "2026-10-18-01-20-2001", items: ["行程加上營業稅、營所稅、房屋稅、地價稅、扣繳憑單"] },
   { ver: "2026-10-18-01-04-2000", items: ["管理員、負責人、開發者後台全部登出，需重新登入"] },
   { ver: "2026-10-18-00-02-1999", items: ["消費分析改跟所選月份，標題顯示幾月消費分析"] },
   { ver: "2026-10-17-23-55-1998", items: ["消費分析的分類列可以點開明細"] },
@@ -13703,6 +13704,7 @@ function tenantAccountRows() {
     if (/趙文榮|歐玉珠|小芬/.test(String(t.name || ""))) return;
     const room = (state.rooms || []).find(r => r && (r.id === t.roomId || r.tenantId === t.id));
     if (!room || room.demo || room.status === "office" || isPracticeStudioNo(room.no)) return;
+    if (room.kind === "factory" || room.kind === "store" || (typeof isStoreNo === "function" && isStoreNo(room.no))) return;
     const p = (state.presence || {})[t.id] || {};
     const seats = capSeats((state.loginSeats || {})[t.id] || []);
     const on = isOnline(t.id);
