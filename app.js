@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-22-47";
-const APP_EDIT_COUNT = 1994;
+const APP_STAMP = "2026-10-17-23-16";
+const APP_EDIT_COUNT = 1995;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1604";
+const FILE_VER = "1605";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["案場總結算的金錢符號貼齊數字"] },
+  { ver: APP_VERSION, items: ["概覽最下面新增淨資產變化圖"] },
+  { ver: "2026-10-17-22-47-1994", items: ["案場總結算的金錢符號貼齊數字"] },
   { ver: "2026-10-17-22-44-1993", items: ["案場總結算底色改成跟帳戶總餘額一樣"] },
   { ver: "2026-10-17-22-37-1992", items: ["手機窄畫面四戶圖卡改成上下排列"] },
   { ver: "2026-10-17-22-26-1991", items: ["點上方帳戶後，日曆改到同一個月並圈選每一天"] },
@@ -33754,6 +33755,98 @@ function adminDash() {
   const books = ui.dashView === "report";
   return `<div class="dash">${dashSwitchHtml()}<div id="dash-view-body">${dashOverviewHtml(books ? "books" : "glance")}</div></div>`;
 }
+function netAssetSeries() {
+  const delta = new Map();
+  REPORT_ACCOUNTS.forEach(name => {
+    ledgerRowsForAccount(name).forEach(x => {
+      if (!x || x.type === "memo" || !x.date) return;
+      const amt = Number(x.amount) || 0;
+      if (!amt) return;
+      const d = x.type === "out" ? -amt : amt;
+      delta.set(x.date, (delta.get(x.date) || 0) + d);
+    });
+  });
+  const days = [...delta.keys()].filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  let bal = REPORT_ACCOUNTS.reduce((s, n) => s + accountOpening(n), 0);
+  const pts = [];
+  days.forEach(date => {
+    bal += delta.get(date) || 0;
+    pts.push({ date, v: bal });
+  });
+  const today = typeof todayYmd === "function" ? todayYmd() : "";
+  if (today && (!pts.length || pts[pts.length - 1].date < today)) pts.push({ date: today, v: bal });
+  if (pts.length === 1) pts.unshift({ date: pts[0].date, v: pts[0].v });
+  return pts;
+}
+function netAssetAxisMoney(n) {
+  const v = Number(n) || 0;
+  const sign = v < 0 ? "-" : "";
+  const a = Math.abs(v);
+  if (a >= 100000000) {
+    const e = a / 100000000;
+    return sign + (e >= 10 ? Math.round(e) : Math.round(e * 10) / 10).toString().replace(/\.0$/, "") + "億";
+  }
+  if (a >= 10000) {
+    const w = a / 10000;
+    return sign + (w >= 100 ? Math.round(w) : Math.round(w * 10) / 10).toString().replace(/\.0$/, "") + "萬";
+  }
+  return sign + Math.round(a).toLocaleString("zh-TW");
+}
+function netAssetChartHtml() {
+  const pts = netAssetSeries();
+  if (pts.length < 2) {
+    return `<div class="card card-body net-asset-card"><h2 class="dash-h" style="margin:0">淨資產變化</h2><div class="empty">還沒有足夠的進出帳</div></div>`;
+  }
+  const W = 360, H = 198, padL = 48, padR = 12, padT = 14, padB = 28;
+  const vals = pts.map(p => p.v);
+  let lo = Math.min.apply(null, vals);
+  let hi = Math.max.apply(null, vals);
+  if (lo === hi) { lo -= Math.abs(lo) || 1; hi += Math.abs(hi) || 1; }
+  const pad = (hi - lo) * 0.12;
+  lo -= pad;
+  hi += pad;
+  const x0 = Date.parse(pts[0].date + "T00:00:00+08:00");
+  const x1 = Date.parse(pts[pts.length - 1].date + "T00:00:00+08:00");
+  const xSpan = Math.max(x1 - x0, 86400000);
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const X = d => padL + (Date.parse(d + "T00:00:00+08:00") - x0) / xSpan * plotW;
+  const Y = v => padT + (hi - v) / (hi - lo) * plotH;
+  const stepRaw = (hi - lo) / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(Math.max(stepRaw, 1))));
+  const err = stepRaw / pow;
+  const nice = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * pow;
+  const ticks = [];
+  for (let t = Math.ceil(lo / nice) * nice; t <= hi + nice * 0.01; t += nice) ticks.push(t);
+  const coords = pts.map(p => [X(p.date), Y(p.v)]);
+  const line = coords.map((c, i) => (i ? "L" : "M") + c[0].toFixed(1) + " " + c[1].toFixed(1)).join("");
+  const zeroY = Y(0);
+  const base = zeroY >= padT && zeroY <= H - padB ? zeroY : H - padB;
+  const area = line + " L" + coords[coords.length - 1][0].toFixed(1) + " " + base.toFixed(1) + " L" + coords[0][0].toFixed(1) + " " + base.toFixed(1) + " Z";
+  const grids = ticks.map(t => {
+    const y = Y(t);
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="#ececec" stroke-width="1"></line><text x="${padL - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end">${netAssetAxisMoney(t)}</text>`;
+  }).join("");
+  const marks = [0, 0.33, 0.66, 1].map(p => {
+    const at = x0 + xSpan * p;
+    const d = new Date(at);
+    const label = d.getFullYear() + "/" + String(d.getMonth() + 1).padStart(2, "0");
+    const x = padL + p * plotW;
+    const anchor = p === 0 ? "start" : (p === 1 ? "end" : "middle");
+    return `<text x="${x.toFixed(1)}" y="${H - 8}" text-anchor="${anchor}">${label}</text>`;
+  }).join("");
+  const last = pts[pts.length - 1];
+  return `<div class="card card-body net-asset-card">
+    <div class="net-asset-head"><h2 class="dash-h" style="margin:0">淨資產變化</h2><strong class="${last.v < 0 ? "led-out" : "led-in"}">${money(last.v)}</strong></div>
+    <svg class="net-asset-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="淨資產變化">
+      ${grids}
+      <path d="${area}" fill="rgba(46,160,67,.16)" stroke="none"></path>
+      <path d="${line}" fill="none" stroke="#2ea043" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+      ${marks}
+    </svg>
+    <div class="small">四戶累計餘額　${escapeHtml(pts[0].date.replace(/-/g, "/"))} – ${escapeHtml(last.date.replace(/-/g, "/"))}</div>
+  </div>`;
+}
 function dashOverviewHtml(part) {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
@@ -33808,7 +33901,8 @@ function dashOverviewHtml(part) {
         </div>
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
-    </div>`;
+    </div>
+    ${netAssetChartHtml()}`;
   const books = `${overallReportHtml()}
     ${monthCashHtml()}
     <div class="dash-two">
