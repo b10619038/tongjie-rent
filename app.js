@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-23-46";
-const APP_EDIT_COUNT = 1997;
+const APP_STAMP = "2026-10-17-23-55";
+const APP_EDIT_COUNT = 1998;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1607";
+const FILE_VER = "1608";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["淨資產圖下方新增消費分析"] },
+  { ver: APP_VERSION, items: ["消費分析的分類列可以點開明細"] },
+  { ver: "2026-10-17-23-46-1997", items: ["淨資產圖下方新增消費分析"] },
   { ver: "2026-10-17-23-37-1996", items: ["淨資產變化從 2026 年 7 月開始"] },
   { ver: "2026-10-17-23-16-1995", items: ["概覽最下面新增淨資產變化圖"] },
   { ver: "2026-10-17-22-47-1994", items: ["案場總結算的金錢符號貼齊數字"] },
@@ -33706,6 +33707,19 @@ function applyDashView(next) {
   body.innerHTML = dashOverviewHtml(want === "report" ? "books" : "glance");
   bindDashViewBody();
 }
+function bindSpendRows(root) {
+  (root || document).querySelectorAll("[data-spend]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = btn.dataset.spend || "";
+      ui.spendOpen = ui.spendOpen === key ? "" : key;
+      ui.keepScroll = true;
+      render();
+    };
+  });
+}
 function bindDashViewBody() {
   const root = document.getElementById("dash-view-body");
   if (!root) return;
@@ -33746,17 +33760,7 @@ function bindDashViewBody() {
   if (exportBtn) exportBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("report"); };
   const printReport = document.getElementById("print-report");
   if (printReport) printReport.onclick = printOverallReport;
-  root.querySelectorAll("[data-spend]").forEach(btn => {
-    bindIosPress(btn);
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const key = btn.dataset.spend || "";
-      ui.spendOpen = ui.spendOpen === key ? "" : key;
-      ui.keepScroll = true;
-      render();
-    };
-  });
+  bindSpendRows(root);
   bindReportBody();
   bindReportModeBtns();
   bindReportPeriodSeg();
@@ -38836,6 +38840,7 @@ function bindAdmin() {
       render();
     };
   });
+  bindSpendRows(document);
   const logout = document.getElementById("logout");
   if (logout) logout.onclick = () => {
     if (isStaffLook()) { exitStaffLook(); return; }
