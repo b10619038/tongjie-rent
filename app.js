@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-01-04";
-const APP_EDIT_COUNT = 2000;
+const APP_STAMP = "2026-10-18-01-20";
+const APP_EDIT_COUNT = 2001;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1610";
+const FILE_VER = "1611";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["管理員、負責人、開發者後台全部登出，需重新登入"] },
+  { ver: APP_VERSION, items: ["行程加上營業稅、營所稅、房屋稅、地價稅、扣繳憑單"] },
+  { ver: "2026-10-18-01-04-2000", items: ["管理員、負責人、開發者後台全部登出，需重新登入"] },
   { ver: "2026-10-18-00-02-1999", items: ["消費分析改跟所選月份，標題顯示幾月消費分析"] },
   { ver: "2026-10-17-23-55-1998", items: ["消費分析的分類列可以點開明細"] },
   { ver: "2026-10-17-23-46-1997", items: ["淨資產圖下方新增消費分析"] },
@@ -5763,7 +5764,13 @@ const CYCLE_JOBS = [
   { id: "cycle-rent-23-hong", monthDay: 1, text: "收租金　弄23 洪耀鴻（現金）", cycle: true, owner: "7651" },
   { id: "cycle-rent-2f-chen", monthDay: 15, text: "收租金　93-63 2F 陳慧玲（存現）", cycle: true, owner: "7651" },
   { id: "cycle-rent-2b-yu", monthDay: 15, text: "收租金　93-2B 禹旺（存現 39,900）", cycle: true, owner: "7651" },
-  { id: "cycle-check-lexin-meat", monthDay: 13, intervalMonths: 3, anchor: "2026-10-13", text: "收支票　樂芯 97-68＋第一肉品 97-70（每3個月）", cycle: true, owner: "7651" }
+  { id: "cycle-check-lexin-meat", monthDay: 13, intervalMonths: 3, anchor: "2026-10-13", text: "收支票　樂芯 97-68＋第一肉品 97-70（每3個月）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-vat", monthDay: 15, intervalMonths: 2, anchor: "2026-01-15", text: "繳營業稅（單月15日前，報前兩個月）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-cit", monthDay: 1, onlyMonth: 5, text: "營所稅結算申報（5/31 前，報上一年度）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-house", monthDay: 15, onlyMonth: 5, text: "繳房屋稅（5/31 前）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-prov", monthDay: 1, onlyMonth: 9, text: "營所稅暫繳（9/30 前）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-land", monthDay: 1, onlyMonth: 11, text: "繳地價稅（11/30 前）", cycle: true, owner: "7651" },
+  { id: "cycle-tax-withhold", monthDay: 31, onlyMonth: 1, text: "全年扣繳憑單申報（1/31 前）", cycle: true, owner: "7651" }
 ];
 const METER_UNITS = [
   { id: "m-93-1b", roomNo: "拉皮-1B", unit: "93-1B", name: "鈺晟", kind: "elec" },
@@ -6102,6 +6109,7 @@ function ensureCycleJobs(data) {
       hit.monthDay = job.monthDay;
       hit.flexDays = job.flexDays || 0;
       hit.intervalMonths = job.intervalMonths || 0;
+      hit.onlyMonth = job.onlyMonth || 0;
       hit.anchor = job.anchor || "";
       hit.untilYmd = job.untilYmd || "";
       hit.cycle = true;
@@ -19203,7 +19211,11 @@ function calendarItems() {
   (myMemos() || []).forEach(m => {
     if (isMemoDone(m)) return;
     let at = m.date;
-    if (m.monthDay || m.intervalMonths) {
+    if (Number(m.onlyMonth)) {
+      ensureCalMonth();
+      if (Number(m.onlyMonth) !== Number(ui.calMonth)) return;
+      at = cycleDateInMonth(m, ui.calYear, ui.calMonth);
+    } else if (m.monthDay || m.intervalMonths) {
       at = nextCycleDate(m);
       ensureCalMonth();
       const ym = ui.calYear + "-" + String(ui.calMonth).padStart(2, "0");
@@ -31837,6 +31849,7 @@ function ymdParts(dt) {
 }
 function cycleDateInMonth(m, y, mo) {
   if (!m) return "";
+  if (Number(m.onlyMonth) && Number(m.onlyMonth) !== Number(mo)) return "";
   const ym = y + "-" + String(mo).padStart(2, "0");
   if (m.intervalMonths && m.intervalMonths > 1) {
     const day = Math.max(1, Math.min(31, Number(m.monthDay) || 11));
