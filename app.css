@@ -5563,7 +5563,7 @@ body.rev-zooming { overflow: hidden; }
   grid-template-columns: 1fr;
   gap: 0;
   margin: 8px 0 12px;
-  background: var(--chip);
+  background: var(--ok-soft);
   border-radius: 16px;
   overflow: hidden;
 }
