@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-23-37";
-const APP_EDIT_COUNT = 1996;
+const APP_STAMP = "2026-10-17-23-46";
+const APP_EDIT_COUNT = 1997;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1606";
+const FILE_VER = "1607";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["淨資產變化從 2026 年 7 月開始"] },
+  { ver: APP_VERSION, items: ["淨資產圖下方新增消費分析"] },
+  { ver: "2026-10-17-23-37-1996", items: ["淨資產變化從 2026 年 7 月開始"] },
   { ver: "2026-10-17-23-16-1995", items: ["概覽最下面新增淨資產變化圖"] },
   { ver: "2026-10-17-22-47-1994", items: ["案場總結算的金錢符號貼齊數字"] },
   { ver: "2026-10-17-22-44-1993", items: ["案場總結算底色改成跟帳戶總餘額一樣"] },
@@ -33745,6 +33746,17 @@ function bindDashViewBody() {
   if (exportBtn) exportBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); showExportPick("report"); };
   const printReport = document.getElementById("print-report");
   if (printReport) printReport.onclick = printOverallReport;
+  root.querySelectorAll("[data-spend]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const key = btn.dataset.spend || "";
+      ui.spendOpen = ui.spendOpen === key ? "" : key;
+      ui.keepScroll = true;
+      render();
+    };
+  });
   bindReportBody();
   bindReportModeBtns();
   bindReportPeriodSeg();
@@ -33851,6 +33863,79 @@ function netAssetChartHtml() {
     <div class="small">四戶累計餘額　${escapeHtml(pts[0].date.replace(/-/g, "/"))} – ${escapeHtml(last.date.replace(/-/g, "/"))}</div>
   </div>`;
 }
+const SPEND_FROM = "2026-07-01";
+const SPEND_CATS = [
+  { key: "薪資", emoji: "💼", color: "#5b8def", test: /薪資|薪水|代發薪/ },
+  { key: "個人", emoji: "👤", color: "#f26d6d", test: /個人轉出|個人支出/ },
+  { key: "稅費", emoji: "🧾", color: "#3ec6c0", test: /營所|營業稅|房屋稅|所得稅/ },
+  { key: "電費", emoji: "⚡", color: "#f5c542", test: /電費|台電/ },
+  { key: "水費", emoji: "💧", color: "#4aa3df", test: /水費|自來水/ },
+  { key: "工程", emoji: "🔧", color: "#f0a05a", test: /工程|水電|烤漆|仲介|電子鎖|明達|康莊|築美|燦坤/ },
+  { key: "清潔", emoji: "🧹", color: "#7bc67e", test: /清潔|垃圾/ },
+  { key: "保險", emoji: "🛡", color: "#8d7cf6", test: /勞保|健保|勞退|火險|太陽能險|保險/ },
+  { key: "利息", emoji: "🏦", color: "#c47ad4", test: /利息|繳息|放款/ },
+  { key: "提領", emoji: "🏧", color: "#9aa3ad", test: /自行提款|聯行收付/ }
+];
+function spendCatOf(note) {
+  const s = String(note || "");
+  if (/退押金|退租/.test(s)) return "";
+  const hit = SPEND_CATS.find(c => c.test.test(s));
+  if (hit) return hit.key;
+  if (/^轉帳至/.test(s)) return "";
+  return "其他";
+}
+function spendPack() {
+  const bags = {};
+  const add = (key, row) => {
+    if (!bags[key]) bags[key] = [];
+    bags[key].push(row);
+  };
+  REPORT_ACCOUNTS.forEach(name => {
+    ledgerRowsForAccount(name).forEach(x => {
+      if (!x || x.type !== "out" || !x.date || x.date < SPEND_FROM) return;
+      const amt = Number(x.amount) || 0;
+      if (!amt) return;
+      const key = spendCatOf(x.note);
+      if (!key) return;
+      add(key, { date: x.date, note: x.note || "", amount: amt, company: accountLabel(x.company || name) });
+    });
+  });
+  const meta = k => SPEND_CATS.find(c => c.key === k) || { key: "其他", emoji: "📦", color: "#c5c5c5" };
+  return Object.keys(bags).map(key => {
+    const items = bags[key].slice().sort((a, b) => b.amount - a.amount || String(b.date).localeCompare(String(a.date)));
+    const amount = items.reduce((s, x) => s + x.amount, 0);
+    return Object.assign({ amount, items }, meta(key));
+  }).filter(x => x.amount > 0).sort((a, b) => b.amount - a.amount);
+}
+function spendCardHtml() {
+  const rows = spendPack();
+  const total = rows.reduce((s, x) => s + x.amount, 0);
+  if (!total) {
+    return `<div class="card card-body spend-card"><h2 class="dash-h" style="margin:0">消費分析</h2><div class="empty">7 月起還沒有支出</div></div>`;
+  }
+  const bar = rows.map(x => `<i style="width:${(x.amount / total * 100).toFixed(2)}%;background:${x.color}"></i>`).join("");
+  const open = ui.spendOpen || "";
+  const body = rows.map(x => {
+    const pct = Math.round(x.amount / total * 1000) / 10;
+    const lines = open === x.key
+      ? `<div class="spend-lines">${x.items.map(it => `<div class="spend-line"><span>${escapeHtml(String(it.date || "").replace(/-/g, "/"))}　${escapeHtml(it.note || it.company || "")}</span><b>${money(it.amount)}</b></div>`).join("")}</div>`
+      : "";
+    return `<button type="button" class="spend-row${open === x.key ? " on" : ""}" data-spend="${escapeHtml(x.key)}">
+      <i class="spend-dot" style="background:${x.color}"></i>
+      <span class="spend-emo">${x.emoji}</span>
+      <span class="spend-name">${escapeHtml(x.key)}</span>
+      <span class="spend-pct">${pct}%</span>
+      <span class="spend-amt">${money(x.amount)}</span>
+      <span class="spend-go">${open === x.key ? "‹" : "›"}</span>
+    </button>${lines}`;
+  }).join("");
+  return `<div class="card card-body spend-card">
+    <div class="net-asset-head"><h2 class="dash-h" style="margin:0">消費分析</h2><strong class="led-out">${money(total)}</strong></div>
+    <div class="spend-bar">${bar}</div>
+    ${body}
+    <div class="small">2026/07/01 起的支出，不含戶內轉帳和退押金</div>
+  </div>`;
+}
 function dashOverviewHtml(part) {
   const studios = state.rooms.filter(r => r.status !== "office" && r.kind !== "factory" && r.kind !== "store" && !isStoreNo(r.no) && !isDemoRoom(r) && !isPracticeStudioNo(r.no));
   const factories = state.rooms.filter(r => r.kind === "factory" && !isDemoRoom(r));
@@ -33906,7 +33991,8 @@ function dashOverviewHtml(part) {
         <img class="solar-shot${ui.keepScroll ? "" : " shot-in"}" src="images/solar-panels.jpg?v=1351" alt="太陽能板">
       </div>
     </div>
-    ${netAssetChartHtml()}`;
+    ${netAssetChartHtml()}
+    ${spendCardHtml()}`;
   const books = `${overallReportHtml()}
     ${monthCashHtml()}
     <div class="dash-two">
