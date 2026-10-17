@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-22-37";
-const APP_EDIT_COUNT = 1992;
+const APP_STAMP = "2026-10-17-22-44";
+const APP_EDIT_COUNT = 1993;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1602";
+const FILE_VER = "1603";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["手機窄畫面四戶圖卡改成上下排列"] },
+  { ver: APP_VERSION, items: ["案場總結算底色改成跟帳戶總餘額一樣"] },
+  { ver: "2026-10-17-22-37-1992", items: ["手機窄畫面四戶圖卡改成上下排列"] },
   { ver: "2026-10-17-22-26-1991", items: ["點上方帳戶後，日曆改到同一個月並圈選每一天"] },
   { ver: "2026-10-17-22-20-1990", items: ["四戶卡片的營收總額改成累積餘額"] },
   { ver: "2026-10-17-22-08-1989", items: ["合約最後一頁點一下快速回到第一頁"] },
