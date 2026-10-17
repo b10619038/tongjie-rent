@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-22-08";
-const APP_EDIT_COUNT = 1989;
+const APP_STAMP = "2026-10-17-22-20";
+const APP_EDIT_COUNT = 1990;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1599";
+const FILE_VER = "1600";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["合約最後一頁點一下快速回到第一頁"] },
+  { ver: APP_VERSION, items: ["四戶卡片的營收總額改成累積餘額"] },
+  { ver: "2026-10-17-22-08-1989", items: ["合約最後一頁點一下快速回到第一頁"] },
   { ver: "2026-10-17-15-28-1988", items: ["官方 LINE 選單補上看合約、正常退租網址"] },
   { ver: "2026-10-16-23-12-1987", items: ["空房少收原因改成此房間沒住人"] },
   { ver: "2026-10-16-22-59-1986", items: ["多收、少收在實收下面寫原因"] },
@@ -21496,7 +21497,7 @@ function overallReportBodyHtml() {
               <span class="bk-lines"><b>收 ${money(bk.inn)}</b><b>支 ${money(bk.out)}</b><b>餘 ${money(bk.bal)}</b></span>
             </button>`).join("")}</div>` : ""}
           ${s.name === "個人戶" ? `<button type="button" class="acct-drop-btn" id="acct-person-pick">請下拉選擇</button>` : ""}
-          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}"><span>營收總額</span>${moneyBox(s.bal, s.bal < 0 ? "led-out" : "")}</button>
+          <button type="button" class="acct-bal" data-edit-acct="${escapeHtml(s.name)}"><span>累積餘額</span>${moneyBox(s.bal, s.bal < 0 ? "led-out" : "")}</button>
         </div>`).join("")}
     </div>
     ${joint.inn || joint.out || joint.bal ? `<div class="small" style="margin-top:10px">聯名戶營收總額 ${money(joint.bal)}</div>` : ""}
@@ -21548,12 +21549,12 @@ function overallReportHtml() {
     const s = Object.assign({ name: ui.editAcct }, accountStats(ui.editAcct, b.start, b.end));
     return `<div class="card card-body" id="overall-report">
       <button type="button" class="back" id="acct-bal-back">← 返回</button>
-      <h2 class="dash-h">${escapeHtml(accountLabel(s.name))}　營收總額</h2>
+      <h2 class="dash-h">${escapeHtml(accountLabel(s.name))}　累積餘額</h2>
       <div class="small">輸入目前實際餘額後儲存。之後用「新增一筆」進出帳會自動加減。</div>
       <div class="acct-row" style="margin-top:12px"><span class="led-in">本期收入</span>${moneyBox(s.inn, "led-in")}</div>
       <div class="acct-row"><span class="led-out">本期支出</span>${moneyBox(s.out, "led-out")}</div>
       <form id="acct-bal-form" style="margin-top:14px">
-        <label class="field"><span>營收總額</span>
+        <label class="field"><span>累積餘額</span>
           <input name="bal" type="text" inputmode="decimal" value="${s.bal}" />
         </label>
         <button class="btn-navy" type="submit">儲存</button>
@@ -38877,7 +38878,7 @@ function bindAdmin() {
     ui.editAcct = "";
     save();
     ui.keepScroll = true;
-    toast("已更新 " + accountLabel(name) + " 營收總額");
+    toast("已更新 " + accountLabel(name) + " 累積餘額");
     render();
   };
   refreshLineBinds().then(() => {
