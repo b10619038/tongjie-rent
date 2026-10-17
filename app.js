@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-00-02";
-const APP_EDIT_COUNT = 1999;
+const APP_STAMP = "2026-10-18-01-04";
+const APP_EDIT_COUNT = 2000;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1609";
+const FILE_VER = "1610";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["消費分析改跟所選月份，標題顯示幾月消費分析"] },
+  { ver: APP_VERSION, items: ["管理員、負責人、開發者後台全部登出，需重新登入"] },
+  { ver: "2026-10-18-00-02-1999", items: ["消費分析改跟所選月份，標題顯示幾月消費分析"] },
   { ver: "2026-10-17-23-55-1998", items: ["消費分析的分類列可以點開明細"] },
   { ver: "2026-10-17-23-46-1997", items: ["淨資產圖下方新增消費分析"] },
   { ver: "2026-10-17-23-37-1996", items: ["淨資產變化從 2026 年 7 月開始"] },
@@ -12888,6 +12889,8 @@ async function pullCloud() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
+    if (keepCut) state.adminLogoutAt = keepCut;
     const mineSeats = state.loginSeats;
     const mineTabOrder = {
       tabOrder: state.tabOrder,
@@ -13027,6 +13030,7 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
+    if (keepCut) state.adminLogoutAt = keepCut;
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
@@ -13796,6 +13800,8 @@ async function pushCloud() {
       const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
       if (cur.ok) remote = await cur.json();
     } catch {}
+    const cut = Math.max(Number(state.adminLogoutAt) || 0, Number(remote && remote.adminLogoutAt) || 0);
+    if (cut) state.adminLogoutAt = cut;
     const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone);
     const payload = Object.assign({}, remote || {}, state, {
       updatedAt: state.updatedAt,
@@ -14104,8 +14110,15 @@ window.addEventListener("storage", e => {
 function persistLogin() {
   if (EMBED_PAGE) return;
   if (!ui || !ui.role) return;
+  let at = 0;
+  try {
+    const prev = readUiSnap();
+    if (prev && prev.at) at = Number(prev.at) || 0;
+  } catch {}
+  if (!at && !readUiSnap()) at = Date.now();
   const snap = JSON.stringify({
     role: ui.role,
+    at: at || undefined,
     adminCode: ui.adminCode || "",
     adminName: ui.adminName || "",
     page: ui.guestMoveIn ? (ui.guestMoveBack || (ui.role === "admin" ? "dash" : "home")) : (ui.page || ""),
@@ -14348,6 +14361,7 @@ function restoreUi() {
   try {
     const stayingGate = !ui.role && isGatePage(ui.page);
     const s = readUiSnap();
+    if (kickStaleAdmin()) return;
     if (stayingGate && (!s || !s.role)) return;
     if (!s) {
       if (!ui.role) {
@@ -14482,6 +14496,26 @@ function restoreUi() {
     persistUi();
   } catch {}
   finally { revivePublicGo(keepBack); }
+}
+function snapIsBackend(s) {
+  if (!s) return false;
+  if (s.role === "admin") return true;
+  return !!(s.devPreview || s.staffLook || s.tenantLook);
+}
+function kickStaleAdmin() {
+  const cut = Number(state && state.adminLogoutAt) || 0;
+  if (!cut) return false;
+  const s = typeof readUiSnap === "function" ? readUiSnap() : null;
+  const backend = (ui && ui.role === "admin") || (ui && (ui.devPreview || ui.staffLook || ui.tenantLook)) || snapIsBackend(s);
+  if (!backend) return false;
+  const at = Number(s && s.at) || 0;
+  if (at && at >= cut) return false;
+  clearSession();
+  ui.page = "admin-login";
+  ui.loginError = "後台已全部登出，請重新登入";
+  lastRenderRole = "";
+  lastRenderPage = "";
+  return true;
 }
 function clearSession() {
   ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = ""; ui.adminName = "";
@@ -41835,6 +41869,7 @@ async function boot() {
       const prevSig = coreSig(state);
       const chatBefore = typeof chatFinger === "function" ? chatFinger() : "";
       const changed = await pullCloud();
+      if (kickStaleAdmin()) render();
       try { await pullBuild(); } catch {}
       try { await pollRemoteBuild(); } catch {}
       refreshOnlineBadges();
