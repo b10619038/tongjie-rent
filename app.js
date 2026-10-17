@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-17-23-55";
-const APP_EDIT_COUNT = 1998;
+const APP_STAMP = "2026-10-18-00-02";
+const APP_EDIT_COUNT = 1999;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1608";
+const FILE_VER = "1609";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["消費分析的分類列可以點開明細"] },
+  { ver: APP_VERSION, items: ["消費分析改跟所選月份，標題顯示幾月消費分析"] },
+  { ver: "2026-10-17-23-55-1998", items: ["消費分析的分類列可以點開明細"] },
   { ver: "2026-10-17-23-46-1997", items: ["淨資產圖下方新增消費分析"] },
   { ver: "2026-10-17-23-37-1996", items: ["淨資產變化從 2026 年 7 月開始"] },
   { ver: "2026-10-17-23-16-1995", items: ["概覽最下面新增淨資產變化圖"] },
@@ -33867,7 +33868,6 @@ function netAssetChartHtml() {
     <div class="small">四戶累計餘額　${escapeHtml(pts[0].date.replace(/-/g, "/"))} – ${escapeHtml(last.date.replace(/-/g, "/"))}</div>
   </div>`;
 }
-const SPEND_FROM = "2026-07-01";
 const SPEND_CATS = [
   { key: "薪資", emoji: "💼", color: "#5b8def", test: /薪資|薪水|代發薪/ },
   { key: "個人", emoji: "👤", color: "#f26d6d", test: /個人轉出|個人支出/ },
@@ -33889,6 +33889,7 @@ function spendCatOf(note) {
   return "其他";
 }
 function spendPack() {
+  const ym = rentVsYm();
   const bags = {};
   const add = (key, row) => {
     if (!bags[key]) bags[key] = [];
@@ -33896,7 +33897,7 @@ function spendPack() {
   };
   REPORT_ACCOUNTS.forEach(name => {
     ledgerRowsForAccount(name).forEach(x => {
-      if (!x || x.type !== "out" || !x.date || x.date < SPEND_FROM) return;
+      if (!x || x.type !== "out" || !x.date || x.date.slice(0, 7) !== ym) return;
       const amt = Number(x.amount) || 0;
       if (!amt) return;
       const key = spendCatOf(x.note);
@@ -33913,9 +33914,10 @@ function spendPack() {
 }
 function spendCardHtml() {
   const rows = spendPack();
+  const ymLabel = ui.rentVsMonth + "月";
   const total = rows.reduce((s, x) => s + x.amount, 0);
   if (!total) {
-    return `<div class="card card-body spend-card"><h2 class="dash-h" style="margin:0">消費分析</h2><div class="empty">7 月起還沒有支出</div></div>`;
+    return `<div class="card card-body spend-card"><h2 class="dash-h" style="margin:0">${ymLabel}消費分析</h2><div class="empty">${ymLabel}還沒有支出</div></div>`;
   }
   const bar = rows.map(x => `<i style="width:${(x.amount / total * 100).toFixed(2)}%;background:${x.color}"></i>`).join("");
   const open = ui.spendOpen || "";
@@ -33934,10 +33936,10 @@ function spendCardHtml() {
     </button>${lines}`;
   }).join("");
   return `<div class="card card-body spend-card">
-    <div class="net-asset-head"><h2 class="dash-h" style="margin:0">消費分析</h2><strong class="led-out">${money(total)}</strong></div>
+    <div class="net-asset-head"><h2 class="dash-h" style="margin:0">${ymLabel}消費分析</h2><strong class="led-out">${money(total)}</strong></div>
     <div class="spend-bar">${bar}</div>
     ${body}
-    <div class="small">2026/07/01 起的支出，不含戶內轉帳和退押金</div>
+    <div class="small">${ui.rentVsYear}/${String(ui.rentVsMonth).padStart(2, "0")} 的支出，不含戶內轉帳和退押金</div>
   </div>`;
 }
 function dashOverviewHtml(part) {
