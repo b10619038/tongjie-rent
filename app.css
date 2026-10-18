@@ -7914,7 +7914,7 @@ html[data-theme="void"] .site-chip {
 .map-site-ring {
   position: absolute;
   border: 1.5px dashed #3f4f3a;
-  border-radius: 50%;
+  border-radius: 12px;
   background: rgba(98,118,91,.06);
   transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
   transform-origin: center center;
