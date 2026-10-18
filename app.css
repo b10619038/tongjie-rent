@@ -7935,6 +7935,10 @@ html[data-theme="void"] .site-chip {
   z-index: 3;
   white-space: nowrap;
 }
+.asset-map-wrap.is-portrait .map-site-tag {
+  transform-origin: left center;
+  transform: rotate(-90deg);
+}
 .map-hot.is-press {
   transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(0.94);
 }
