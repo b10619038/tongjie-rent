@@ -210,7 +210,7 @@
       if (Math.hypot(p.x - sx, p.y - sy) > 12) { clearTimer(); dragEl = null; }
     }, { passive: true });
     list.addEventListener("pointerup", onEnd);
-    list.addEventListener("pointercancel", onEnd);
+    list.addEventListener("pointercancel", () => { if (armed) onEnd(); });
     list.addEventListener("touchmove", e => {
       if (armed && e.cancelable) e.preventDefault();
     }, { passive: false });
@@ -239,6 +239,15 @@
     };
   }
   const style = document.createElement("style");
-  style.textContent = ".admin-grid.list.sorting{touch-action:none}[data-fold-repair].dragging{position:relative;z-index:4;box-shadow:0 10px 24px rgba(23,33,31,.14)}";
+  style.textContent = "[data-fold-repair],[data-fold-repair] .k,[data-fold-repair] .repair-look{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.admin-grid.list.sorting{touch-action:none}[data-fold-repair].dragging{position:relative;z-index:4;box-shadow:0 10px 24px rgba(23,33,31,.14)}";
   document.head.appendChild(style);
+  const boot = () => { try { bindRepairSort(); } catch (e) {} };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+  setTimeout(boot, 400);
+  setTimeout(boot, 1200);
+  const app = document.getElementById("app");
+  if (app && typeof MutationObserver === "function") {
+    new MutationObserver(boot).observe(app, { childList: true, subtree: true });
+  }
 })();
