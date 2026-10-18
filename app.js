@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-19-30";
-const APP_EDIT_COUNT = 2022;
+const APP_STAMP = "2026-10-18-23-14";
+const APP_EDIT_COUNT = 2023;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1632";
+const FILE_VER = "1633";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["拉皮案場虛線框角度收回一點"] },
+  { ver: APP_VERSION, items: ["美博城廠房加上附近租售行情參考"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -10421,6 +10421,30 @@ function collapseFactoryDupes(data) {
     return true;
   });
 }
+function factoryMarketOf(no) {
+  const book = {
+    "牛3-97-61": {
+      ping: "48.9",
+      from: "161.51平方公尺",
+      rent: "55,000～60,000",
+      sale: "3,300萬～4,000萬",
+      asOf: "2026/10/18",
+      note: "合約寫租賃面積 161.51 平方公尺，換成 48.9 坪。附近鳳仁路約 53 坪的刊登月租 6 萬；591 鳳山廠房在售均價約 71 萬／坪。這是當天公開刊登的參考，不是成交價，也不會每天自動改。"
+    }
+  };
+  return book[String(no || "")] || null;
+}
+function factoryMarketHtml(r) {
+  const m = factoryMarketOf(r && r.no);
+  if (!m) return `<p class="small" style="margin:-4px 0 12px">這間還沒有市場行情。有坪數之後可以再查附近刊登。</p>`;
+  return `<div class="card card-body" style="margin:0 0 12px">
+    <div class="row"><span class="k">市場行情</span><span class="v">${escapeHtml(m.asOf)}</span></div>
+    <div class="row"><span class="k">坪數換算</span><span class="v">${escapeHtml(m.ping)}坪（${escapeHtml(m.from)}）</span></div>
+    <div class="row"><span class="k">若出租</span><span class="v">約 ${escapeHtml(m.rent)}／月</span></div>
+    <div class="row"><span class="k">若售出</span><span class="v">約 ${escapeHtml(m.sale)}</span></div>
+    <p class="small" style="margin:8px 0 0">${escapeHtml(m.note)}本戶現收未稅 5 萬、含稅 54,600，跟這個出租參考差不多。</p>
+  </div>`;
+}
 function applyFactoryRoster(data) {
   factoryRooms().forEach(seedRoom => {
     let room = data.rooms.find(r => r.id === seedRoom.id || r.no === seedRoom.no);
@@ -10440,6 +10464,8 @@ function applyFactoryRoster(data) {
       room.kind = "factory";
       if (!room.title) room.title = "廠房";
     }
+    const mkt = factoryMarketOf(room.no);
+    if (mkt && !String(room.area || "").trim()) room.area = mkt.ping;
     const info = FACTORY_TENANT_INFO[room.no];
     let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming);
     if (!info || !info.name) {
@@ -36918,6 +36944,7 @@ function adminRoomEdit() {
       ${field("路段", "street", r.street || "")}
       ${field("歸屬", "company", r.company || "")}
       ${r.kind === "factory" ? field("坪數", "area", r.area || "") : ""}
+      ${r.kind === "factory" ? factoryMarketHtml(r) : ""}
       ${field("負責人", "manager", r.manager || "")}
       ${field("資產類型", "kind", r.kind || "studio", "select-kind")}
       ${field("房型", "title", r.title)}
