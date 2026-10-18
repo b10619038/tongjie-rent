@@ -7926,13 +7926,13 @@ html[data-theme="void"] .site-chip {
   left: 6px;
   top: 6px;
   transform: none;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1.2;
   color: #3f4f3a;
-  background: rgba(255,255,255,.92);
+  background: rgba(255,255,255,.94);
   border-radius: 999px;
-  padding: 1px 7px;
+  padding: 4px 14px;
   pointer-events: none;
   z-index: 5;
   white-space: nowrap;
