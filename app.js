@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-23-22";
-const APP_EDIT_COUNT = 2024;
+const APP_STAMP = "2026-10-19-01-30";
+const APP_EDIT_COUNT = 2025;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1634";
+const FILE_VER = "1635";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["美博城行情按鳳山近三年漲幅，每天往前推"] },
+  { ver: APP_VERSION, items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -14390,6 +14390,62 @@ function persistLogin() {
   try { localStorage.setItem(UI_KEY, snap); } catch {}
   try { sessionStorage.setItem(UI_KEY, snap); } catch {}
   try { document.cookie = "tj_login=" + encodeURIComponent(snap) + "; max-age=31536000; path=/; SameSite=Lax"; } catch {}
+  pushKeepSession();
+}
+function inLineApp() {
+  try { return /Line\//i.test(navigator.userAgent || ""); } catch { return false; }
+}
+function pushKeepSession() {
+  if (EMBED_PAGE || ui.keepPosted) return;
+  if (!ui || ui.role !== "tenant" || !ui.tenantId) return;
+  if (ui.devPreview || ui.tenantLook || ui.prospectPreview) return;
+  ui.keepPosted = true;
+  const body = JSON.stringify({
+    role: "tenant",
+    tenantId: ui.tenantId,
+    roomId: ui.roomId || "",
+    roomNo: ui.roomNo || "",
+    device: typeof liveDeviceId === "function" ? liveDeviceId() : ""
+  });
+  fetch("/api/session", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body
+  }).catch(() => { ui.keepPosted = false; });
+}
+function forgetKeepSession() {
+  ui.keepPosted = false;
+  fetch("/api/session", { method: "DELETE", credentials: "same-origin", keepalive: true }).catch(() => {});
+}
+async function pullKeepSession() {
+  if (EMBED_PAGE || readUiSnap()) return;
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 2500) : 0;
+  try {
+    const res = await fetch("/api/session", { credentials: "same-origin", cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
+    const data = await res.json();
+    const s = data && data.snap;
+    if (!s || s.role !== "tenant" || !s.tenantId) return;
+    if (s.device) {
+      liveSelfId = String(s.device);
+      try { localStorage.setItem("tj_live_id", liveSelfId); } catch {}
+    }
+    const snap = JSON.stringify({
+      role: "tenant",
+      tenantId: s.tenantId,
+      roomId: s.roomId || "",
+      roomNo: s.roomNo || "",
+      page: "home",
+      at: Date.now()
+    });
+    try { localStorage.setItem(LOGIN_KEY, snap); } catch {}
+    try { sessionStorage.setItem(LOGIN_KEY, snap); } catch {}
+    try { localStorage.setItem(UI_KEY, snap); } catch {}
+    try { sessionStorage.setItem(UI_KEY, snap); } catch {}
+    ui.keepPosted = true;
+  } catch {}
+  finally { if (timer) clearTimeout(timer); }
 }
 function persistUi() {
   persistLogin();
@@ -14782,6 +14838,7 @@ function clearSession() {
     sessionStorage.removeItem("tongjie_ui_v1");
     localStorage.removeItem("tongjie_ui_v1");
     document.cookie = "tj_login=; max-age=0; path=/";
+    forgetKeepSession();
   } catch {}
 }
 function logoutToGate() {
@@ -42014,6 +42071,7 @@ function shouldOfferPhoneInstall() {
   return true;
 }
 function remindInstallBeforeTenantLogin() {
+  if (inLineApp() || ui.pendingGo) return false;
   if (!isPhone() || isStandalone()) return false;
   try { if (sessionStorage.getItem("tj-login-install") === "1") return false; } catch {}
   if (ui.installOffered) {
@@ -42231,6 +42289,7 @@ async function boot() {
     armCompanySave();
     armAiSend();
     armRoomEditSave();
+    try { await pullKeepSession(); } catch {}
     restoreUi();
     applyTenantGo();
     applyTheme(currentThemeId());
