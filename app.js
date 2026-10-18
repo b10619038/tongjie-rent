@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-10";
-const APP_EDIT_COUNT = 2004;
+const APP_STAMP = "2026-10-18-15-28";
+const APP_EDIT_COUNT = 2005;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1614";
+const FILE_VER = "1615";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["刪掉的公告不會再被同步加回來"] },
+  { ver: APP_VERSION, items: ["紀錄分類可以長按拖移排列"] },
+  { ver: "2026-10-18-15-10-2004", items: ["刪掉的公告不會再被同步加回來"] },
   { ver: "2026-10-18-01-32-2003", items: ["紀錄分類改成兩個一排、一樣長"] },
   { ver: "2026-10-18-01-28-2002", items: ["未安裝、未登入只記套房租客"] },
   { ver: "2026-10-18-01-20-2001", items: ["行程加上營業稅、營所稅、房屋稅、地價稅、扣繳憑單"] },
@@ -12912,6 +12913,10 @@ async function pullCloud() {
       tabOrderAt: state.tabOrderAt,
       tabOrderVer: state.tabOrderVer
     };
+    const mineHistOrder = {
+      historyCatOrder: state.historyCatOrder,
+      historyCatOrderAt: state.historyCatOrderAt
+    };
     const mineSnap = {
       tenants: state.tenants, rooms: state.rooms, repairs: state.repairs,
       announcements: state.announcements, notices: state.notices, checkouts: state.checkouts,
@@ -13047,6 +13052,15 @@ async function pullCloud() {
     state = normalize(data);
     if (keepCut) state.adminLogoutAt = keepCut;
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
+    try {
+      const localAt = Number(mineHistOrder.historyCatOrderAt) || 0;
+      const remoteAt = Number(state.historyCatOrderAt) || 0;
+      if (Array.isArray(mineHistOrder.historyCatOrder) && mineHistOrder.historyCatOrder.length && localAt > remoteAt) {
+        state.historyCatOrder = mineHistOrder.historyCatOrder.slice();
+        state.historyCatOrderAt = localAt;
+        markCloudDirty();
+      }
+    } catch {}
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
     if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
@@ -30430,23 +30444,7 @@ function historyRows(cat) {
   return [];
 }
 function adminHistory() {
-  const cats = [
-    ["pact", "租客合約"],
-    ["lease", "舊租客合約"],
-    ["renew", "續約"],
-    ["water", "水費單"],
-    ["elec", "電費單"],
-    ["solar", "太陽能"],
-    ["net", "網路費"],
-    ["trash", "垃圾桶"],
-    ["invoice", "發票"],
-    ["deposit", "押金"],
-    ["agent", "仲介費"],
-    ["checkout", "退租"],
-    ["repair", "報修完成"],
-    ["meter-elec", "電抄表"],
-    ["meter-water", "水抄表"]
-  ];
+  const cats = historyCats();
   if (ui.historyCat === "meter") ui.historyCat = "meter-elec";
   const cat = cats.some(c => c[0] === ui.historyCat) ? ui.historyCat : "lease";
   ui.historyCat = cat;
@@ -30474,6 +30472,135 @@ function adminHistory() {
       ${body}
     </div>
   </div>`;
+}
+const HISTORY_CAT_KEY = "tongjie_history_cat_order";
+const HISTORY_CAT_SEED = [
+  ["pact", "租客合約"],
+  ["lease", "舊租客合約"],
+  ["renew", "續約"],
+  ["water", "水費單"],
+  ["elec", "電費單"],
+  ["solar", "太陽能"],
+  ["net", "網路費"],
+  ["trash", "垃圾桶"],
+  ["invoice", "發票"],
+  ["deposit", "押金"],
+  ["agent", "仲介費"],
+  ["checkout", "退租"],
+  ["repair", "報修完成"],
+  ["meter-elec", "電抄表"],
+  ["meter-water", "水抄表"]
+];
+function historyCats() {
+  const labels = {};
+  HISTORY_CAT_SEED.forEach(([id, label]) => { labels[id] = label; });
+  let ids = Array.isArray(state && state.historyCatOrder) ? state.historyCatOrder.slice() : [];
+  if (!ids.length) {
+    try { ids = JSON.parse(localStorage.getItem(HISTORY_CAT_KEY) || "[]"); } catch { ids = []; }
+  }
+  ids = ids.filter(id => labels[id]);
+  HISTORY_CAT_SEED.forEach(([id]) => { if (!ids.includes(id)) ids.push(id); });
+  return ids.map(id => [id, labels[id]]);
+}
+function saveHistoryCatOrder(ids) {
+  state.historyCatOrder = ids.slice();
+  state.historyCatOrderAt = Date.now();
+  try { localStorage.setItem(HISTORY_CAT_KEY, JSON.stringify(ids)); } catch {}
+  save();
+}
+function bindHistoryCatReorder() {
+  const box = document.querySelector(".history-cats");
+  if (!box || box.dataset.reorderBound === "1") return;
+  box.dataset.reorderBound = "1";
+  let timer = 0, dragEl = null, armed = false, moved = false, pid = 0, sx = 0, sy = 0, grabX = 0, grabY = 0;
+  const pt = e => {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    return { x: e.clientX, y: e.clientY };
+  };
+  const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
+  const follow = (x, y) => {
+    if (!dragEl) return;
+    const b = dragEl.getBoundingClientRect();
+    const dx = (x + grabX) - (b.left + b.width / 2);
+    const dy = (y + grabY) - (b.top + b.height / 2);
+    dragEl.style.transform = "translate3d(" + dx + "px," + dy + "px,0) scale(1.04)";
+  };
+  const onMove = e => {
+    if (!dragEl) return;
+    const p = pt(e);
+    if (!armed) {
+      if (Math.hypot(p.x - sx, p.y - sy) > 12) { clear(); dragEl = null; }
+      return;
+    }
+    if (e.cancelable) e.preventDefault();
+    moved = true;
+    follow(p.x, p.y);
+    const buttons = [...box.querySelectorAll("[data-history-cat]")];
+    const from = buttons.indexOf(dragEl);
+    if (from < 0) return;
+    let hit = null;
+    buttons.forEach(btn => {
+      if (hit || btn === dragEl) return;
+      const r = btn.getBoundingClientRect();
+      if (p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom) hit = btn;
+    });
+    if (!hit) return;
+    const to = buttons.indexOf(hit);
+    if (to < 0 || to === from) return;
+    if (to > from) box.insertBefore(dragEl, hit.nextSibling);
+    else box.insertBefore(dragEl, hit);
+    follow(p.x, p.y);
+  };
+  const onEnd = () => {
+    clear();
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("pointercancel", onEnd);
+    if (dragEl) {
+      dragEl.style.transform = "";
+      dragEl.classList.remove("dragging");
+      if (armed && moved) {
+        dragEl.dataset.dragged = "1";
+        saveHistoryCatOrder([...box.querySelectorAll("[data-history-cat]")].map(b => b.dataset.historyCat));
+      }
+    }
+    box.classList.remove("sorting");
+    armed = false;
+    dragEl = null;
+    moved = false;
+  };
+  const arm = () => {
+    if (!dragEl) return;
+    armed = true;
+    box.classList.add("sorting");
+    dragEl.classList.add("dragging");
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+    try { dragEl.setPointerCapture(pid); } catch {}
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+  };
+  box.addEventListener("contextmenu", e => { if (e.target.closest("[data-history-cat]")) e.preventDefault(); });
+  box.addEventListener("pointerdown", e => {
+    const btn = e.target.closest("[data-history-cat]");
+    if (!btn) return;
+    e.stopPropagation();
+    const p = pt(e);
+    const r = btn.getBoundingClientRect();
+    sx = p.x; sy = p.y; pid = e.pointerId;
+    grabX = (r.left + r.width / 2) - p.x;
+    grabY = (r.top + r.height / 2) - p.y;
+    armed = false; moved = false; dragEl = btn;
+    clear();
+    timer = setTimeout(arm, 320);
+  });
+  box.addEventListener("pointermove", e => {
+    if (armed || !dragEl) return;
+    const p = pt(e);
+    if (Math.hypot(p.x - sx, p.y - sy) > 12) { clear(); dragEl = null; }
+  }, { passive: true });
+  box.addEventListener("pointerup", onEnd);
+  box.addEventListener("pointercancel", onEnd);
 }
 function staffOpsView() {
   const name = staffOpsName(ui.staffOps) || "";
@@ -38956,8 +39083,8 @@ function bindAdmin() {
   };
   bindAdminLogs();
   document.querySelectorAll("[data-history-cat]").forEach(btn => {
-    btn.addEventListener("pointerdown", e => e.stopPropagation());
     btn.onclick = e => {
+      if (btn.dataset.dragged === "1") { delete btn.dataset.dragged; return; }
       e.preventDefault();
       e.stopPropagation();
       ui.historyCat = btn.dataset.historyCat;
@@ -38965,6 +39092,7 @@ function bindAdmin() {
       render();
     };
   });
+  bindHistoryCatReorder();
   bindLunch();
   document.querySelectorAll("[data-firm-period]").forEach(btn => {
     btn.onclick = e => {
