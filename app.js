@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-17-12";
-const APP_EDIT_COUNT = 2012;
+const APP_STAMP = "2026-10-18-17-42";
+const APP_EDIT_COUNT = 2013;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1622";
+const FILE_VER = "1623";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點廠房平面圖會順暢放大到 2 倍，並移到那一棟"] },
+  { ver: APP_VERSION, items: ["點廠房會用虛線橢圓框起整個案場，左上角標牛幾案場"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -5421,6 +5421,65 @@ const SITE_MAP_SPOTS = [
   { cx:33.72, cy:84.42, w:2.61, h:1.53, rot:151.8, kind:"factory", nos:["牛7-2F"], label:"牛7 93-63 2F" },
   { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" }
 ];
+function assetSiteKey(spot) {
+  const m = String(spot && spot.label || "").match(/^(牛\d+|拉皮)/);
+  return m ? m[1] : "";
+}
+function assetSiteRing(spot) {
+  const key = assetSiteKey(spot);
+  if (!key) return null;
+  const group = SITE_MAP_SPOTS.filter(s => assetSiteKey(s) === key);
+  if (!group.length) return null;
+  const pts = [];
+  group.forEach(s => {
+    const rad = (Number(s.rot) || 0) * Math.PI / 180;
+    const c = Math.cos(rad), sn = Math.sin(rad);
+    const hw = Number(s.w) / 2, hh = Number(s.h) / 2;
+    [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].forEach(pair => {
+      const x = pair[0], y = pair[1];
+      pts.push({ x: s.cx + x * c - y * sn, y: s.cy + x * sn + y * c });
+    });
+  });
+  let mx = 0, my = 0;
+  pts.forEach(p => { mx += p.x; my += p.y; });
+  mx /= pts.length;
+  my /= pts.length;
+  let xx = 0, yy = 0, xy = 0;
+  pts.forEach(p => {
+    const dx = p.x - mx, dy = p.y - my;
+    xx += dx * dx;
+    yy += dy * dy;
+    xy += dx * dy;
+  });
+  const ang = 0.5 * Math.atan2(2 * xy, xx - yy);
+  const c = Math.cos(ang), sn = Math.sin(ang);
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  pts.forEach(p => {
+    const dx = p.x - mx, dy = p.y - my;
+    const u = dx * c + dy * sn;
+    const v = -dx * sn + dy * c;
+    if (u < minU) minU = u;
+    if (u > maxU) maxU = u;
+    if (v < minV) minV = v;
+    if (v > maxV) maxV = v;
+  });
+  const w = Math.max(7, maxU - minU + 4.4);
+  const h = Math.max(5, maxV - minV + 3.6);
+  const cu = (minU + maxU) / 2, cv = (minV + maxV) / 2;
+  const cx = mx + cu * c - cv * sn;
+  const cy = my + cu * sn + cv * c;
+  const hw = w / 2, hh = h / 2;
+  const halfW = Math.abs(hw * Math.cos(ang)) + Math.abs(hh * Math.sin(ang));
+  const halfH = Math.abs(hw * Math.sin(ang)) + Math.abs(hh * Math.cos(ang));
+  return { key, cx, cy, w, h, rot: ang * 180 / Math.PI, left: cx - halfW, top: cy - halfH };
+}
+function assetMapSiteRingHtml(spot) {
+  const ring = assetSiteRing(spot);
+  if (!ring) return "";
+  const box = `left:${ring.cx.toFixed(2)}%;top:${ring.cy.toFixed(2)}%;width:${ring.w.toFixed(2)}%;height:${ring.h.toFixed(2)}%;--rot:${ring.rot.toFixed(1)}deg`;
+  const tag = `left:${Math.max(0, ring.left).toFixed(2)}%;top:${Math.max(0, ring.top).toFixed(2)}%`;
+  return `<div class="map-site-ring" style="${box}"></div><div class="map-site-tag" style="${tag}">${escapeHtml(ring.key)}案場</div>`;
+}
 function findRoomByAssetNo(no) {
   const want = String(no || "");
   const alt = want.replace(/^牛5-97-/, "牛5-").replace(/^牛5-(\d{2})$/, "牛5-97-$1");
@@ -5488,6 +5547,7 @@ function assetMapHtml() {
       <div class="asset-map-turn" id="asset-map-turn">
         <div class="asset-map" id="asset-map">
           <img src="images/asset-map.webp" alt="資產平面圖" draggable="false" decoding="async" fetchpriority="high" />
+          <div id="asset-map-ring">${open ? assetMapSiteRingHtml(open) : ""}</div>
           ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
         </div>
       </div>
@@ -5559,6 +5619,8 @@ function bindAssetMap() {
       ui.assetMapSpot = opening ? i : -1;
       document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === ui.assetMapSpot));
       if (pop) pop.innerHTML = ui.assetMapSpot >= 0 ? assetMapPopHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
+      const ringBox = document.getElementById("asset-map-ring");
+      if (ringBox) ringBox.innerHTML = ui.assetMapSpot >= 0 ? assetMapSiteRingHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
       if (opening) {
         const br = btn.getBoundingClientRect();
         const wr = wrap.getBoundingClientRect();

@@ -7911,6 +7911,30 @@ html[data-theme="void"] .site-chip {
   outline: 2px solid #62765b;
   background: rgba(98,118,91,.48);
 }
+.map-site-ring {
+  position: absolute;
+  border: 1.5px dashed #3f4f3a;
+  border-radius: 50%;
+  background: rgba(98,118,91,.06);
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 2;
+}
+.map-site-tag {
+  position: absolute;
+  transform: translate(0, -115%);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #3f4f3a;
+  background: rgba(255,255,255,.92);
+  border-radius: 999px;
+  padding: 1px 7px;
+  pointer-events: none;
+  z-index: 3;
+  white-space: nowrap;
+}
 .map-hot.is-press {
   transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(0.94);
 }
