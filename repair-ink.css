@@ -1,3 +1,5 @@
-button.repair-look { color: var(--ink); font-weight: 700; }
-button.repair-look .repair-who { color: var(--muted); font-weight: 500; }
+button.repair-look,
+[data-fold-repair] > .tenant-slim-head > .k { color: var(--ink); font-weight: 700; }
+button.repair-look .repair-who,
+[data-fold-repair] > .tenant-slim-head > .k .repair-who { color: var(--muted); font-weight: 500; }
 .repair-kind { color: var(--ink); font-weight: 700; }
