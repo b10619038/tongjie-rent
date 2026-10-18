@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-17-56";
-const APP_EDIT_COUNT = 2014;
+const APP_STAMP = "2026-10-18-18-10";
+const APP_EDIT_COUNT = 2015;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1624";
+const FILE_VER = "1625";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["案場虛線框改成有圓角的長方形"] },
+  { ver: APP_VERSION, items: ["案場虛線框改成跟著廠房按鈕的角度"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -5444,14 +5444,14 @@ function assetSiteRing(spot) {
   pts.forEach(p => { mx += p.x; my += p.y; });
   mx /= pts.length;
   my /= pts.length;
-  let xx = 0, yy = 0, xy = 0;
-  pts.forEach(p => {
-    const dx = p.x - mx, dy = p.y - my;
-    xx += dx * dx;
-    yy += dy * dy;
-    xy += dx * dy;
+  let sx = 0, sy = 0;
+  group.forEach(s => {
+    const area = Math.max(0.2, Number(s.w) * Number(s.h));
+    const t = (Number(s.rot) || 0) * Math.PI / 45;
+    sx += Math.cos(t) * area;
+    sy += Math.sin(t) * area;
   });
-  const ang = 0.5 * Math.atan2(2 * xy, xx - yy);
+  const ang = Math.atan2(sy, sx) / 4;
   const c = Math.cos(ang), sn = Math.sin(ang);
   let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
   pts.forEach(p => {
