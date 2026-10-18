@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-01-32";
-const APP_EDIT_COUNT = 2003;
+const APP_STAMP = "2026-10-18-15-10";
+const APP_EDIT_COUNT = 2004;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1613";
+const FILE_VER = "1614";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紀錄分類改成兩個一排、一樣長"] },
+  { ver: APP_VERSION, items: ["刪掉的公告不會再被同步加回來"] },
+  { ver: "2026-10-18-01-32-2003", items: ["紀錄分類改成兩個一排、一樣長"] },
   { ver: "2026-10-18-01-28-2002", items: ["未安裝、未登入只記套房租客"] },
   { ver: "2026-10-18-01-20-2001", items: ["行程加上營業稅、營所稅、房屋稅、地價稅、扣繳憑單"] },
   { ver: "2026-10-18-01-04-2000", items: ["管理員、負責人、開發者後台全部登出，需重新登入"] },
@@ -6890,6 +6891,8 @@ function normalize(data) {
   if (!Array.isArray(data.notices)) data.notices = [];
   if (!Array.isArray(data.noticeGone)) data.noticeGone = [];
   if (!Array.isArray(data.announcements)) data.announcements = [];
+  if (!Array.isArray(data.annGone)) data.annGone = [];
+  try { if (applyAnnGone(data)) markCloudDirty(); } catch {}
   applyAnnMedia(data);
   data.announcements.forEach(a => {
     if (a.postedBy) return;
@@ -12591,7 +12594,9 @@ function mergeSharedInto(target, other) {
   target.repairGone = unionGone(target.repairGone, other.repairGone);
   target.repairs = dropGone(mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), target.repairGone);
   target.repairPins = applyRepairPins(target.repairs, mergeRepairPinMaps(target.repairPins, other.repairPins));
+  target.annGone = unionGone(target.annGone, other.annGone);
   target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
+  applyAnnGone(target);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
   try { applyRenewal7222(target); } catch {}
@@ -13814,6 +13819,10 @@ async function pushCloud() {
     const cut = Math.max(Number(state.adminLogoutAt) || 0, Number(remote && remote.adminLogoutAt) || 0);
     if (cut) state.adminLogoutAt = cut;
     const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone);
+    const annGone = unionGone(remote && remote.annGone, state.annGone);
+    const annMerged = mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]);
+    state.annGone = unionGone(annGone, (annMerged || []).filter(annIsWasherLost).map(a => String(a.id)));
+    state.announcements = dropGone(annMerged, state.annGone);
     const payload = Object.assign({}, remote || {}, state, {
       updatedAt: state.updatedAt,
       company: state.company,
@@ -13853,7 +13862,8 @@ async function pushCloud() {
       repairs: dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone)),
       repairGone: unionGone(remote && remote.repairGone, state.repairGone),
       repairPins: mergeRepairPinMaps(remote && remote.repairPins, state.repairPins),
-      announcements: mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]),
+      announcements: state.announcements,
+      annGone: state.annGone || [],
       notices: dropGone(mergeEntities(remote && remote.notices, state.notices, ["title", "body", "text"]), unionGone(remote && remote.noticeGone, state.noticeGone)),
       noticeGone: unionGone(remote && remote.noticeGone, state.noticeGone),
       applyPing: state.applyPing || (remote && remote.applyPing) || null,
@@ -13901,6 +13911,7 @@ async function pushCloud() {
     if (payload.repairs) state.repairs = payload.repairs;
     if (payload.repairGone) state.repairGone = payload.repairGone;
     if (payload.announcements) state.announcements = payload.announcements;
+    if (payload.annGone) state.annGone = payload.annGone;
     if (payload.notices) state.notices = payload.notices;
     if (payload.checkouts) state.checkouts = payload.checkouts;
     if (payload.accountOpenings) state.accountOpenings = payload.accountOpenings;
@@ -13993,6 +14004,7 @@ async function pushCloud() {
         rentUnpaidYm: payload.rentUnpaidYm,
         repairs: payload.repairs,
         announcements: payload.announcements,
+        annGone: payload.annGone,
         notices: payload.notices,
         noticeGone: payload.noticeGone,
         applyPing: payload.applyPing,
@@ -27740,9 +27752,26 @@ function startAnnounceEdit(id) {
   ui.editAnnounceMedia = (a.media || []).slice();
   render();
 }
+function annIsWasherLost(a) {
+  const blob = [a && a.title, a && a.body, a && a.text].join("");
+  return /公共洗衣機/.test(blob) && /逾期/.test(blob) && /招領/.test(blob);
+}
+function applyAnnGone(data) {
+  if (!data) return false;
+  if (!Array.isArray(data.annGone)) data.annGone = [];
+  const extra = (data.announcements || []).filter(annIsWasherLost).map(a => String(a.id));
+  const gone = unionGone(data.annGone, extra);
+  const next = dropGone(data.announcements, gone);
+  const changed = gone.length !== data.annGone.length || next.length !== (data.announcements || []).length;
+  data.annGone = gone;
+  data.announcements = next;
+  return changed;
+}
 function deleteAnnounce(id) {
   const key = String(id || "");
-  state.announcements = (state.announcements || []).filter(a => String(a.id) !== key);
+  if (!Array.isArray(state.annGone)) state.annGone = [];
+  if (key) state.annGone = unionGone(state.annGone, [key]);
+  state.announcements = dropGone(state.announcements, state.annGone);
   if (String(ui.announceEditId) === key) { ui.announceEditId = null; ui.editAnnounceMedia = []; }
   save(); render();
 }
