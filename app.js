@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-18-18";
-const APP_EDIT_COUNT = 2016;
+const APP_STAMP = "2026-10-18-18-22";
+const APP_EDIT_COUNT = 2017;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1626";
+const FILE_VER = "1627";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["直式平面圖的案場名稱改成水平"] },
+  { ver: APP_VERSION, items: ["案場名稱靠地圖邊緣時會移進畫面，避免被切掉"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -5477,8 +5477,38 @@ function assetMapSiteRingHtml(spot) {
   const ring = assetSiteRing(spot);
   if (!ring) return "";
   const box = `left:${ring.cx.toFixed(2)}%;top:${ring.cy.toFixed(2)}%;width:${ring.w.toFixed(2)}%;height:${ring.h.toFixed(2)}%;--rot:${ring.rot.toFixed(1)}deg`;
-  const tag = `left:${Math.max(0, ring.left).toFixed(2)}%;top:${Math.max(0, ring.top).toFixed(2)}%`;
-  return `<div class="map-site-ring" style="${box}"></div><div class="map-site-tag" style="${tag}">${escapeHtml(ring.key)}案場</div>`;
+  return `<div class="map-site-ring" style="${box}"></div><div class="map-site-tag">${escapeHtml(ring.key)}案場</div>`;
+}
+function placeMapSiteTag() {
+  const wrap = document.getElementById("asset-map-wrap");
+  const tag = document.querySelector(".map-site-tag");
+  if (!wrap || !tag) return;
+  if (tag.parentElement !== wrap) wrap.appendChild(tag);
+  const ring = wrap.querySelector(".map-site-ring");
+  if (!ring) { tag.hidden = true; return; }
+  tag.hidden = false;
+  tag.style.position = "absolute";
+  tag.style.transform = "none";
+  tag.style.right = "auto";
+  const wr = wrap.getBoundingClientRect();
+  const rr = ring.getBoundingClientRect();
+  const pad = 6;
+  const tw = tag.offsetWidth || 78;
+  const th = tag.offsetHeight || 22;
+  const visLeft = Math.max(rr.left, wr.left + pad);
+  const visTop = Math.max(rr.top, wr.top + pad);
+  let x = visLeft - wr.left;
+  let y = visTop - wr.top - th - 4;
+  if (y < pad) y = visTop - wr.top + 4;
+  x = Math.max(pad, Math.min(x, Math.max(pad, wr.width - tw - pad)));
+  y = Math.max(pad, Math.min(y, Math.max(pad, wr.height - th - pad)));
+  tag.style.left = x + "px";
+  tag.style.top = y + "px";
+}
+function watchMapTag() {
+  placeMapSiteTag();
+  const turn = document.getElementById("asset-map-turn");
+  if (turn && turn.classList.contains("is-glide")) requestAnimationFrame(watchMapTag);
 }
 function findRoomByAssetNo(no) {
   const want = String(no || "");
@@ -5594,6 +5624,7 @@ function bindAssetMap() {
     ui.assetMapX = clamp(Number(ui.assetMapX) || 0, -maxX, maxX);
     ui.assetMapY = clamp(Number(ui.assetMapY) || 0, -maxY, maxY);
     turn.style.transform = "translate(" + ui.assetMapX + "px," + ui.assetMapY + "px) scale(" + z + ")";
+    watchMapTag();
   };
   const zoomAt = (next, clientX, clientY) => {
     if (!wrap) return;

@@ -7923,7 +7923,9 @@ html[data-theme="void"] .site-chip {
 }
 .map-site-tag {
   position: absolute;
-  transform: translate(0, -115%);
+  left: 6px;
+  top: 6px;
+  transform: none;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
@@ -7932,12 +7934,8 @@ html[data-theme="void"] .site-chip {
   border-radius: 999px;
   padding: 1px 7px;
   pointer-events: none;
-  z-index: 3;
+  z-index: 5;
   white-space: nowrap;
-}
-.asset-map-wrap.is-portrait .map-site-tag {
-  transform-origin: left center;
-  transform: rotate(-90deg);
 }
 .map-hot.is-press {
   transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(0.94);
