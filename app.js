@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-19-05";
-const APP_EDIT_COUNT = 2019;
+const APP_STAMP = "2026-10-18-19-12";
+const APP_EDIT_COUNT = 2020;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1629";
+const FILE_VER = "1630";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["案場名稱圖塊放大"] },
+  { ver: APP_VERSION, items: ["廠房資產可填坪數", "牛5重複的廠房收成一戶"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -10348,6 +10348,16 @@ function migrateNiu5Nos(data) {
   }
   data.niu5NoVer = "20260902-niu5-97d";
 }
+function canonFactoryNo(no, group) {
+  const s = String(no || "").trim().replace(/[\s\u3000]+/g, "").replace(/[–—－﹣]/g, "-").replace(/號$/, "");
+  let m = s.match(/^牛5(?:-97)?-(\d{2})$/);
+  if (m) return "牛5-97-" + m[1];
+  if (group === "牛5") {
+    m = s.match(/97-(\d{2})/) || s.match(/-(\d{2})$/);
+    if (m) return "牛5-97-" + m[1];
+  }
+  return s;
+}
 function collapseFactoryDupes(data) {
   if (!data) return;
   const seedByNo = {};
@@ -10359,9 +10369,10 @@ function collapseFactoryDupes(data) {
     });
   });
   const seenNo = new Map();
+  const dropTo = new Map();
   (data.rooms || []).forEach(r => {
     if (!r || r.kind !== "factory" || !r.no) return;
-    const seed = seedByNo[r.no];
+    const seed = seedByNo[r.no] || seedByNo[canonFactoryNo(r.no, r.group)];
     if (seed) {
       r.no = seed.no;
       if (seed.group) r.group = seed.group;
@@ -10369,17 +10380,34 @@ function collapseFactoryDupes(data) {
       if (seed.location) r.location = seed.location;
       else if (seed.city && seed.unit) r.location = seed.city + seed.unit;
     } else {
-      r.no = String(r.no).replace(/^牛5-(\d{2})$/, "牛5-97-$1");
+      const canon = canonFactoryNo(r.no, r.group);
+      if (canon && canon !== r.no && /^牛5-97-\d{2}$/.test(canon)) r.no = canon;
     }
-    const cur = seenNo.get(r.no);
-    if (!cur) seenNo.set(r.no, r);
+    const key = canonFactoryNo(r.no, r.group);
+    const cur = seenNo.get(key);
+    const score = x => (x && x.tenantId ? 4 : 0) + (x && x.edited ? 2 : 0) + (x && x.area ? 1 : 0) + (Number(x && x.rent) > 0 ? 1 : 0);
+    if (!cur || score(r) > score(cur)) {
+      if (cur) dropTo.set(cur.id, r);
+      seenNo.set(key, r);
+    } else if (cur !== r) dropTo.set(r.id, cur);
   });
-  data.rooms = (data.rooms || []).filter(r => {
-    if (!r) return false;
-    if (r.kind === "factory" && /^牛5-\d{2}$/.test(String(r.no))) return false;
-    if (r.kind === "factory" && seenNo.get(r.no) && seenNo.get(r.no) !== r) return false;
-    return true;
-  });
+  if (dropTo.size) {
+    dropTo.forEach((keep, id) => {
+      let next = keep;
+      const guard = new Set();
+      while (next && dropTo.has(next.id) && !guard.has(next.id)) {
+        guard.add(next.id);
+        next = dropTo.get(next.id);
+      }
+      if (next) dropTo.set(id, next);
+    });
+    (data.tenants || []).forEach(t => {
+      const keep = t && dropTo.get(t.roomId);
+      if (keep) t.roomId = keep.id;
+    });
+    data.rooms = (data.rooms || []).filter(r => r && !dropTo.has(r.id));
+    try { markCloudDirty(); } catch {}
+  }
   const seenT = new Map();
   data.tenants = (data.tenants || []).filter(t => {
     if (!t || t.former || t.demo) return true;
@@ -11624,7 +11652,7 @@ function unionLedgerById(a, b) {
   return [...map.values()];
 }
 const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
-const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId"];
+const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
 }
@@ -34583,7 +34611,11 @@ function adminRoomListHtml(kind) {
     if (!list.length) return `<div class="empty">${q ? "沒有符合的廠房" : "目前沒有廠房"}</div>`;
     if (!ui.factoryFold) ui.factoryFold = {};
     const groups = [];
+    const seenNo = new Set();
     list.forEach(r => {
+      const key = canonFactoryNo(r.no, r.group);
+      if (key && seenNo.has(key)) return;
+      if (key) seenNo.add(key);
       const g = r.group || "其他";
       let pack = groups.find(x => x.group === g);
       if (!pack) { pack = { group: g, rooms: [], company: r.company || "", street: r.street || "" }; groups.push(pack); }
@@ -34602,7 +34634,7 @@ function adminRoomListHtml(kind) {
         ${photoEl(r.photos && r.photos[0], r.no)}
         <div><strong>${r.no}</strong>
           <div class="small">${t && t.name ? escapeHtml(t.name) : "尚無租客"}${r.rent ? " · " + money(r.rent) + "／月" : ""}</div>
-          <div class="small">${escapeHtml(r.location || "")}${r.manager ? " · " + escapeHtml(r.manager) : ""}</div>
+          <div class="small">${escapeHtml(r.location || "")}${r.area ? " · " + escapeHtml(String(r.area).replace(/坪$/, "")) + "坪" : ""}${r.manager ? " · " + escapeHtml(r.manager) : ""}</div>
         </div>
         <select class="select-mini" data-status="${r.id}">
           <option value="rented" ${r.status === "rented" ? "selected" : ""}>使用中</option>
@@ -36884,6 +36916,7 @@ function adminRoomEdit() {
       ${field("分組", "group", r.group || "")}
       ${field("路段", "street", r.street || "")}
       ${field("歸屬", "company", r.company || "")}
+      ${r.kind === "factory" ? field("坪數", "area", r.area || "") : ""}
       ${field("負責人", "manager", r.manager || "")}
       ${field("資產類型", "kind", r.kind || "studio", "select-kind")}
       ${field("房型", "title", r.title)}
@@ -36966,6 +36999,7 @@ function saveRoomEdit(form) {
   r.street = g("street");
   r.company = g("company");
   r.manager = g("manager");
+  if (r.kind === "factory" || g("kind") === "factory") r.area = g("area").trim().replace(/坪/g, "");
   r.title = g("title").trim() || r.title;
   r.kind = g("kind") || r.kind || "studio";
   r.rent = formNum(form, "rent", r.rent);
