@@ -62,6 +62,46 @@
     if (typeof state !== "undefined" && state) state[key] = rec;
     if (typeof save === "function") save();
   }
+  function splitRepairLook() {
+    if (typeof isDeveloper !== "function" || !isDeveloper()) return;
+    document.querySelectorAll("button.repair-look").forEach(btn => {
+      const who = btn.querySelector(".repair-who");
+      let type = "";
+      const kind = btn.querySelector(".repair-kind");
+      if (kind) type = kind.textContent.trim();
+      else {
+        btn.childNodes.forEach(n => { if (n.nodeType === 3) type += n.textContent; });
+        type = type.replace(/\s*·\s*$/, "").trim();
+      }
+      if (!type) return;
+      const tid = btn.dataset.lookTenant || "";
+      const page = btn.dataset.lookPage || "repair";
+      const wrap = document.createElement("span");
+      wrap.className = "k repair-look-wrap";
+      const look = document.createElement("button");
+      look.type = "button";
+      look.className = "repair-item-look";
+      look.textContent = type;
+      look.dataset.lookTenant = tid;
+      look.dataset.lookPage = page;
+      look.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = (state.tenants || []).find(x => x && x.id === tid);
+        if (!t) { if (typeof toast === "function") toast("找不到租客"); return; }
+        if (typeof enterTenantLook === "function") enterTenantLook(t, page);
+      };
+      wrap.appendChild(look);
+      if (who) {
+        const rest = document.createElement("span");
+        rest.className = "repair-rest";
+        rest.appendChild(document.createTextNode(" ·"));
+        rest.appendChild(who);
+        wrap.appendChild(rest);
+      }
+      btn.replaceWith(wrap);
+    });
+  }
   function bindRepairSort() {
     const any = document.querySelector("[data-fold-repair]");
     const list = any && any.parentElement;
@@ -219,7 +259,7 @@
     const orig = bindAdmin;
     bindAdmin = function () {
       const out = orig.apply(this, arguments);
-      try { bindRepairSort(); } catch (e) {}
+      try { splitRepairLook(); bindRepairSort(); } catch (e) {}
       return out;
     };
   }
@@ -239,9 +279,9 @@
     };
   }
   const style = document.createElement("style");
-  style.textContent = "[data-fold-repair],[data-fold-repair] .k,[data-fold-repair] .repair-look{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.admin-grid.list.sorting{touch-action:none}[data-fold-repair].dragging{position:relative;z-index:4;box-shadow:0 10px 24px rgba(23,33,31,.14)}";
+  style.textContent = "[data-fold-repair],[data-fold-repair] .k,[data-fold-repair] .repair-look,[data-fold-repair] .repair-item-look{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.repair-look-wrap{flex:1;min-width:0;text-align:left}.repair-item-look{appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;font-weight:800;color:var(--ink);cursor:pointer}.repair-rest,.repair-look-wrap .repair-who{color:var(--muted);font-weight:500}.admin-grid.list.sorting{touch-action:none}[data-fold-repair].dragging{position:relative;z-index:4;box-shadow:0 10px 24px rgba(23,33,31,.14)}";
   document.head.appendChild(style);
-  const boot = () => { try { bindRepairSort(); } catch (e) {} };
+  const boot = () => { try { splitRepairLook(); bindRepairSort(); } catch (e) {} };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
   setTimeout(boot, 400);
