@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-46";
-const APP_EDIT_COUNT = 2009;
+const APP_STAMP = "2026-10-18-15-50";
+const APP_EDIT_COUNT = 2010;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1619";
+const FILE_VER = "1620";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修標題的公共設施、房號和姓名改成小空格"] },
+  { ver: APP_VERSION, items: ["手機看報修時，點後面的房號姓名換到下一行"] },
+  { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
   { ver: "2026-10-18-15-36-2007", items: ["拖移紀錄分類時，旁邊的圖塊會滑過去"] },
   { ver: "2026-10-18-15-32-2006", items: ["拖移紀錄分類時畫面不再跟著滑"] },
@@ -36697,7 +36698,7 @@ function adminRepairs() {
     const open = !!ui.repairOpen[rep.id];
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
     const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? " " + t.name : ""));
-    const label = escapeHtml(repairTypeLabel(rep)) + " · " + escapeHtml(who);
+    const label = escapeHtml(repairTypeLabel(rep)) + (who ? " ·<span class=\"repair-who\">" + escapeHtml(who) + "</span>" : "");
     const head = (typeof isDeveloper === "function" && isDeveloper() && t)
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;
