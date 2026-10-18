@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-23-14";
-const APP_EDIT_COUNT = 2023;
+const APP_STAMP = "2026-10-18-23-22";
+const APP_EDIT_COUNT = 2024;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1633";
+const FILE_VER = "1634";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["美博城廠房加上附近租售行情參考"] },
+  { ver: APP_VERSION, items: ["美博城行情按鳳山近三年漲幅，每天往前推"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -10426,23 +10426,54 @@ function factoryMarketOf(no) {
     "牛3-97-61": {
       ping: "48.9",
       from: "161.51平方公尺",
-      rent: "55,000～60,000",
-      sale: "3,300萬～4,000萬",
-      asOf: "2026/10/18",
-      note: "合約寫租賃面積 161.51 平方公尺，換成 48.9 坪。附近鳳仁路約 53 坪的刊登月租 6 萬；591 鳳山廠房在售均價約 71 萬／坪。這是當天公開刊登的參考，不是成交價，也不會每天自動改。"
+      base: "2026-10-18",
+      rentLow: 55000,
+      rentHigh: 60000,
+      saleLow: 33000000,
+      saleHigh: 40000000
     }
   };
   return book[String(no || "")] || null;
 }
+function factoryLandTrend() {
+  const rises = [0.0252, 0.0533, 0.0127];
+  const span = rises.reduce((p, r) => p * (1 + r), 1);
+  return { year: Math.pow(span, 1 / rises.length) - 1, span: span - 1 };
+}
+function factoryMarketLive(m) {
+  const trend = factoryLandTrend();
+  let today = m.base;
+  try {
+    today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  } catch {}
+  const days = Math.max(0, Math.round((Date.parse(today + "T00:00:00+08:00") - Date.parse(m.base + "T00:00:00+08:00")) / 86400000));
+  const grow = y => Math.pow(1 + trend.year, y);
+  const nowF = grow(days / 365.25);
+  const yearF = grow(1);
+  const money = n => Math.round(n).toLocaleString("zh-Hant");
+  const wan = n => (Math.round(n / 1000) / 10).toLocaleString("zh-Hant", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return {
+    today: today.replace(/-/g, "/"),
+    days,
+    yearPct: (trend.year * 100).toFixed(2),
+    nowPct: ((nowF - 1) * 100).toFixed(2),
+    rentNow: money(m.rentLow * nowF) + "～" + money(m.rentHigh * nowF),
+    saleNow: wan(m.saleLow * nowF) + "萬～" + wan(m.saleHigh * nowF) + "萬",
+    rentYear: money(m.rentLow * yearF) + "～" + money(m.rentHigh * yearF),
+    saleYear: wan(m.saleLow * yearF) + "萬～" + wan(m.saleHigh * yearF) + "萬"
+  };
+}
 function factoryMarketHtml(r) {
   const m = factoryMarketOf(r && r.no);
   if (!m) return `<p class="small" style="margin:-4px 0 12px">這間還沒有市場行情。有坪數之後可以再查附近刊登。</p>`;
+  const live = factoryMarketLive(m);
   return `<div class="card card-body" style="margin:0 0 12px">
-    <div class="row"><span class="k">市場行情</span><span class="v">${escapeHtml(m.asOf)}</span></div>
+    <div class="row"><span class="k">市場行情</span><span class="v">${escapeHtml(live.today)}</span></div>
     <div class="row"><span class="k">坪數換算</span><span class="v">${escapeHtml(m.ping)}坪（${escapeHtml(m.from)}）</span></div>
-    <div class="row"><span class="k">若出租</span><span class="v">約 ${escapeHtml(m.rent)}／月</span></div>
-    <div class="row"><span class="k">若售出</span><span class="v">約 ${escapeHtml(m.sale)}</span></div>
-    <p class="small" style="margin:8px 0 0">${escapeHtml(m.note)}本戶現收未稅 5 萬、含稅 54,600，跟這個出租參考差不多。</p>
+    <div class="row"><span class="k">若出租</span><span class="v">約 ${escapeHtml(live.rentNow)}／月</span></div>
+    <div class="row"><span class="k">若售出</span><span class="v">約 ${escapeHtml(live.saleNow)}</span></div>
+    <div class="row"><span class="k">一年後</span><span class="v">租 ${escapeHtml(live.rentYear)}／月<br>售 ${escapeHtml(live.saleYear)}</span></div>
+    <p class="small" style="margin:8px 0 0">基準是 2026/10/18 附近刊登。售價與租金都按鳳山區公告土地現值近三年漲幅往前推：113年 +2.52%、114年 +5.33%、115年 +1.27%，複利年增 ${escapeHtml(live.yearPct)}%。今天是第 ${live.days} 天，累計 +${escapeHtml(live.nowPct)}%，每天 0 點重算。這不是每天重抓成交價，租金也沒有單獨的廠房年報，先沿用同一條幅度。本戶現收未稅 5 萬、含稅 54,600。</p>
   </div>`;
 }
 function applyFactoryRoster(data) {
