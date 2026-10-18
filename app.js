@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-36";
-const APP_EDIT_COUNT = 2007;
+const APP_STAMP = "2026-10-18-15-40";
+const APP_EDIT_COUNT = 2008;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1617";
+const FILE_VER = "1618";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["拖移紀錄分類時，旁邊的圖塊會滑過去"] },
+  { ver: APP_VERSION, items: ["拖移紀錄分類時圖塊不再互相卡住"] },
+  { ver: "2026-10-18-15-36-2007", items: ["拖移紀錄分類時，旁邊的圖塊會滑過去"] },
   { ver: "2026-10-18-15-32-2006", items: ["拖移紀錄分類時畫面不再跟著滑"] },
   { ver: "2026-10-18-15-28-2005", items: ["紀錄分類可以長按拖移排列"] },
   { ver: "2026-10-18-15-10-2004", items: ["刪掉的公告不會再被同步加回來"] },
@@ -30514,22 +30515,33 @@ function bindHistoryCatReorder() {
   const box = document.querySelector(".history-cats");
   if (!box || box.dataset.reorderBound === "1") return;
   box.dataset.reorderBound = "1";
-  let timer = 0, dragEl = null, armed = false, moved = false, pid = 0, sx = 0, sy = 0, grabX = 0, grabY = 0, scroller = null, lockTop = 0;
+  let timer = 0, dragEl = null, armed = false, moved = false, pid = 0, sx = 0, sy = 0, grabX = 0, grabY = 0, scroller = null, lockTop = 0, slots = [], origin = null;
   const pt = e => {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     return { x: e.clientX, y: e.clientY };
   };
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
-  const follow = (x, y) => {
+  const syncOrigin = () => {
     if (!dragEl) return;
     const prev = dragEl.style.transform;
     dragEl.style.transform = "none";
     const b = dragEl.getBoundingClientRect();
     dragEl.style.transform = prev;
-    const dx = (x + grabX) - (b.left + b.width / 2);
-    const dy = (y + grabY) - (b.top + b.height / 2);
+    origin = { cx: b.left + b.width / 2, cy: b.top + b.height / 2 };
+  };
+  const follow = (x, y) => {
+    if (!dragEl || !origin) return;
     dragEl.style.transition = "none";
-    dragEl.style.transform = "translate3d(" + dx + "px," + dy + "px,0) scale(1.04)";
+    dragEl.style.transform = "translate3d(" + ((x + grabX) - origin.cx) + "px," + ((y + grabY) - origin.cy) + "px,0) scale(1.04)";
+  };
+  const captureSlots = () => {
+    slots = [...box.querySelectorAll("[data-history-cat]")].map(el => {
+      const prev = el.style.transform;
+      el.style.transform = "none";
+      const r = el.getBoundingClientRect();
+      el.style.transform = prev;
+      return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    });
   };
   const slideOthers = () => {
     const first = new Map();
@@ -30549,7 +30561,7 @@ function bindHistoryCatReorder() {
         el.style.transform = "translate3d(" + dx + "px," + dy + "px,0)";
         requestAnimationFrame(() => {
           if (!el.isConnected) return;
-          el.style.transition = "transform .34s cubic-bezier(.22,.8,.24,1)";
+          el.style.transition = "transform .2s cubic-bezier(.22,.8,.24,1)";
           el.style.transform = "";
         });
       });
@@ -30566,22 +30578,24 @@ function bindHistoryCatReorder() {
     moved = true;
     if (scroller) scroller.scrollTop = lockTop;
     follow(p.x, p.y);
+    if (!slots.length) return;
     const buttons = [...box.querySelectorAll("[data-history-cat]")];
     const from = buttons.indexOf(dragEl);
     if (from < 0) return;
-    let hit = null;
-    buttons.forEach(btn => {
-      if (hit || btn === dragEl) return;
-      const r = btn.getBoundingClientRect();
-      if (p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom) hit = btn;
+    let to = from, best = Infinity;
+    slots.forEach((s, i) => {
+      const d = Math.hypot(p.x - s.cx, p.y - s.cy);
+      if (d < best) { best = d; to = i; }
     });
-    if (!hit) return;
-    const to = buttons.indexOf(hit);
-    if (to < 0 || to === from) return;
+    if (to === from || to < 0 || to >= buttons.length) return;
+    const cur = slots[from];
+    if (Math.hypot(p.x - cur.cx, p.y - cur.cy) - best < 8) return;
     const play = slideOthers();
-    if (to > from) box.insertBefore(dragEl, hit.nextSibling);
-    else box.insertBefore(dragEl, hit);
+    const ref = to > from ? buttons[to + 1] : buttons[to];
+    if (ref) box.insertBefore(dragEl, ref);
+    else box.appendChild(dragEl);
     play();
+    syncOrigin();
     follow(p.x, p.y);
   };
   const onEnd = () => {
@@ -30615,6 +30629,8 @@ function bindHistoryCatReorder() {
       scroller.style.overflow = "hidden";
     }
     try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
+    captureSlots();
+    syncOrigin();
     try { dragEl.setPointerCapture(pid); } catch {}
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
