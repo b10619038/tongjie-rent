@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-32";
-const APP_EDIT_COUNT = 2006;
+const APP_STAMP = "2026-10-18-15-36";
+const APP_EDIT_COUNT = 2007;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1616";
+const FILE_VER = "1617";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["拖移紀錄分類時畫面不再跟著滑"] },
+  { ver: APP_VERSION, items: ["拖移紀錄分類時，旁邊的圖塊會滑過去"] },
+  { ver: "2026-10-18-15-32-2006", items: ["拖移紀錄分類時畫面不再跟著滑"] },
   { ver: "2026-10-18-15-28-2005", items: ["紀錄分類可以長按拖移排列"] },
   { ver: "2026-10-18-15-10-2004", items: ["刪掉的公告不會再被同步加回來"] },
   { ver: "2026-10-18-01-32-2003", items: ["紀錄分類改成兩個一排、一樣長"] },
@@ -30521,10 +30522,38 @@ function bindHistoryCatReorder() {
   const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
   const follow = (x, y) => {
     if (!dragEl) return;
+    const prev = dragEl.style.transform;
+    dragEl.style.transform = "none";
     const b = dragEl.getBoundingClientRect();
+    dragEl.style.transform = prev;
     const dx = (x + grabX) - (b.left + b.width / 2);
     const dy = (y + grabY) - (b.top + b.height / 2);
+    dragEl.style.transition = "none";
     dragEl.style.transform = "translate3d(" + dx + "px," + dy + "px,0) scale(1.04)";
+  };
+  const slideOthers = () => {
+    const first = new Map();
+    [...box.querySelectorAll("[data-history-cat]")].forEach(el => {
+      if (el !== dragEl) first.set(el, el.getBoundingClientRect());
+    });
+    return () => {
+      [...box.querySelectorAll("[data-history-cat]")].forEach(el => {
+        if (el === dragEl || !first.has(el)) return;
+        const a = first.get(el);
+        el.style.transition = "none";
+        el.style.transform = "none";
+        const b = el.getBoundingClientRect();
+        const dx = a.left - b.left;
+        const dy = a.top - b.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        el.style.transform = "translate3d(" + dx + "px," + dy + "px,0)";
+        requestAnimationFrame(() => {
+          if (!el.isConnected) return;
+          el.style.transition = "transform .34s cubic-bezier(.22,.8,.24,1)";
+          el.style.transform = "";
+        });
+      });
+    };
   };
   const onMove = e => {
     if (!dragEl) return;
@@ -30549,8 +30578,10 @@ function bindHistoryCatReorder() {
     if (!hit) return;
     const to = buttons.indexOf(hit);
     if (to < 0 || to === from) return;
+    const play = slideOthers();
     if (to > from) box.insertBefore(dragEl, hit.nextSibling);
     else box.insertBefore(dragEl, hit);
+    play();
     follow(p.x, p.y);
   };
   const onEnd = () => {
