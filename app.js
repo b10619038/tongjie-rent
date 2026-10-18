@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-18-22";
-const APP_EDIT_COUNT = 2017;
+const APP_STAMP = "2026-10-18-18-35";
+const APP_EDIT_COUNT = 2018;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1627";
+const FILE_VER = "1628";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["案場名稱靠地圖邊緣時會移進畫面，避免被切掉"] },
+  { ver: APP_VERSION, items: ["點新案場時，舊的案場名稱會先收掉"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
@@ -5477,16 +5477,23 @@ function assetMapSiteRingHtml(spot) {
   const ring = assetSiteRing(spot);
   if (!ring) return "";
   const box = `left:${ring.cx.toFixed(2)}%;top:${ring.cy.toFixed(2)}%;width:${ring.w.toFixed(2)}%;height:${ring.h.toFixed(2)}%;--rot:${ring.rot.toFixed(1)}deg`;
-  return `<div class="map-site-ring" style="${box}"></div><div class="map-site-tag">${escapeHtml(ring.key)}案場</div>`;
+  return `<div class="map-site-ring" data-site="${escapeHtml(ring.key)}案場" style="${box}"></div>`;
 }
 function placeMapSiteTag() {
   const wrap = document.getElementById("asset-map-wrap");
-  const tag = document.querySelector(".map-site-tag");
-  if (!wrap || !tag) return;
-  if (tag.parentElement !== wrap) wrap.appendChild(tag);
+  if (!wrap) return;
   const ring = wrap.querySelector(".map-site-ring");
-  if (!ring) { tag.hidden = true; return; }
+  const old = [...wrap.querySelectorAll(".map-site-tag")];
+  if (!ring) { old.forEach(el => el.remove()); return; }
+  old.slice(1).forEach(el => el.remove());
+  let tag = old[0];
+  if (!tag) {
+    tag = document.createElement("div");
+    tag.className = "map-site-tag";
+  }
+  if (tag.parentElement !== wrap) wrap.appendChild(tag);
   tag.hidden = false;
+  tag.textContent = ring.dataset.site || "";
   tag.style.position = "absolute";
   tag.style.transform = "none";
   tag.style.right = "auto";
