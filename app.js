@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-28";
-const APP_EDIT_COUNT = 2005;
+const APP_STAMP = "2026-10-18-15-32";
+const APP_EDIT_COUNT = 2006;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1615";
+const FILE_VER = "1616";
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +523,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["紀錄分類可以長按拖移排列"] },
+  { ver: APP_VERSION, items: ["拖移紀錄分類時畫面不再跟著滑"] },
+  { ver: "2026-10-18-15-28-2005", items: ["紀錄分類可以長按拖移排列"] },
   { ver: "2026-10-18-15-10-2004", items: ["刪掉的公告不會再被同步加回來"] },
   { ver: "2026-10-18-01-32-2003", items: ["紀錄分類改成兩個一排、一樣長"] },
   { ver: "2026-10-18-01-28-2002", items: ["未安裝、未登入只記套房租客"] },
@@ -30512,7 +30513,7 @@ function bindHistoryCatReorder() {
   const box = document.querySelector(".history-cats");
   if (!box || box.dataset.reorderBound === "1") return;
   box.dataset.reorderBound = "1";
-  let timer = 0, dragEl = null, armed = false, moved = false, pid = 0, sx = 0, sy = 0, grabX = 0, grabY = 0;
+  let timer = 0, dragEl = null, armed = false, moved = false, pid = 0, sx = 0, sy = 0, grabX = 0, grabY = 0, scroller = null, lockTop = 0;
   const pt = e => {
     if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
     return { x: e.clientX, y: e.clientY };
@@ -30534,6 +30535,7 @@ function bindHistoryCatReorder() {
     }
     if (e.cancelable) e.preventDefault();
     moved = true;
+    if (scroller) scroller.scrollTop = lockTop;
     follow(p.x, p.y);
     const buttons = [...box.querySelectorAll("[data-history-cat]")];
     const from = buttons.indexOf(dragEl);
@@ -30565,6 +30567,8 @@ function bindHistoryCatReorder() {
       }
     }
     box.classList.remove("sorting");
+    if (scroller) scroller.style.overflow = "";
+    scroller = null;
     armed = false;
     dragEl = null;
     moved = false;
@@ -30574,6 +30578,11 @@ function bindHistoryCatReorder() {
     armed = true;
     box.classList.add("sorting");
     dragEl.classList.add("dragging");
+    scroller = box.closest(".admin-scroll") || document.scrollingElement;
+    if (scroller) {
+      lockTop = scroller.scrollTop;
+      scroller.style.overflow = "hidden";
+    }
     try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
     try { dragEl.setPointerCapture(pid); } catch {}
     window.addEventListener("pointermove", onMove, { passive: false });
@@ -30599,6 +30608,10 @@ function bindHistoryCatReorder() {
     const p = pt(e);
     if (Math.hypot(p.x - sx, p.y - sy) > 12) { clear(); dragEl = null; }
   }, { passive: true });
+  box.addEventListener("touchmove", e => {
+    if (!dragEl) return;
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
   box.addEventListener("pointerup", onEnd);
   box.addEventListener("pointercancel", onEnd);
 }
