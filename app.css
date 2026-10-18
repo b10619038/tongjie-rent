@@ -6160,6 +6160,8 @@ button.repair-look {
   cursor: pointer;
   min-width: 0;
   flex: 1;
+  color: var(--ink);
+  font-weight: 700;
 }
 @media (min-width: 821px) {
   .repair-who::before { content: " "; }
@@ -6168,6 +6170,7 @@ button.repair-look {
   .tenant-slim-head > .k { flex: 1; min-width: 0; }
   .repair-who { display: block; }
 }
+.repair-kind { color: var(--ink); font-weight: 700; }
 #meter-card .meter-picks { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
 #meter-card .meter-pick {
   border: 0; background: transparent; padding: 6px 0; margin: 0;
@@ -7868,6 +7871,9 @@ html[data-theme="void"] .site-chip {
   position: absolute;
   inset: 0;
   transform-origin: center center;
+}
+.asset-map-turn.is-glide {
+  transition: transform .48s cubic-bezier(.22, .82, .24, 1);
 }
 .asset-map {
   position: absolute;

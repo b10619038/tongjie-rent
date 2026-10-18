@@ -44,10 +44,11 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-18-15-50";
-const APP_EDIT_COUNT = 2010;
+const APP_STAMP = "2026-10-18-17-12";
+const APP_EDIT_COUNT = 2012;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1620";
+const FILE_VER = "1622";
+window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
 const RENT_DUE_DAY = 1;
@@ -523,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["手機看報修時，點後面的房號姓名換到下一行"] },
+  { ver: APP_VERSION, items: ["點廠房平面圖會順暢放大到 2 倍，並移到那一棟"] },
+  { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
   { ver: "2026-10-18-15-40-2008", items: ["拖移紀錄分類時圖塊不再互相卡住"] },
   { ver: "2026-10-18-15-36-2007", items: ["拖移紀錄分類時，旁邊的圖塊會滑過去"] },
@@ -5553,9 +5555,31 @@ function bindAssetMap() {
       e.preventDefault();
       e.stopPropagation();
       const i = Number(btn.dataset.mapSpot);
-      ui.assetMapSpot = ui.assetMapSpot === i ? -1 : i;
+      const opening = ui.assetMapSpot !== i;
+      ui.assetMapSpot = opening ? i : -1;
       document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === ui.assetMapSpot));
       if (pop) pop.innerHTML = ui.assetMapSpot >= 0 ? assetMapPopHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
+      if (opening) {
+        const br = btn.getBoundingClientRect();
+        const wr = wrap.getBoundingClientRect();
+        const z0 = Math.max(1, Number(ui.assetMapZoom) || 1);
+        const hx = ((br.left + br.width / 2) - (wr.left + wr.width / 2) - (Number(ui.assetMapX) || 0)) / z0;
+        const hy = ((br.top + br.height / 2) - (wr.top + wr.height / 2) - (Number(ui.assetMapY) || 0)) / z0;
+        ui.assetMapZoom = 2;
+        ui.assetMapX = -2 * hx;
+        ui.assetMapY = -2 * hy;
+      } else {
+        ui.assetMapZoom = 1;
+        ui.assetMapX = 0;
+        ui.assetMapY = 0;
+      }
+      if (turn) {
+        turn.classList.add("is-glide");
+        void turn.offsetWidth;
+      }
+      layout();
+      clearTimeout(ui.mapGlideTimer);
+      ui.mapGlideTimer = setTimeout(() => { if (turn) turn.classList.remove("is-glide"); }, 520);
       if (pop && ui.assetMapSpot >= 0) {
         try { pop.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
         try { bindAdminRoomItems(); } catch {}
@@ -29506,7 +29530,7 @@ function repairCard(rep, extraClass) {
     </div>` : "";
   const folded = rep.status === "done" && !editing;
   const open = !folded || !!(ui.repairMineOpen && ui.repairMineOpen[rep.id]);
-  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施 " + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
+  const head = `<div class="row${folded ? " tenant-slim-head" : ""}"><span class="k repair-kind">${escapeHtml(editing ? (picked === "公共設施" && String(rep.facility || "").trim() ? "公共設施 " + String(rep.facility).trim() : picked) : repairTypeLabel(rep))}</span><span class="${folded ? "row-end" : ""}"><span class="badge ${rep.status}">${rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成"}</span>${folded ? `<span class="fold-caret"></span>` : ""}</span></div>`;
   const body = `
     <div class="small"${folded ? ` style="margin-top:8px"` : ""}>${formatDateTime12(rep.createdAt)}</div>
     ${editing ? "" : `<p style="margin-top:8px">${escapeHtml(rep.note)}</p>`}
@@ -36698,7 +36722,7 @@ function adminRepairs() {
     const open = !!ui.repairOpen[rep.id];
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
     const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? " " + t.name : ""));
-    const label = escapeHtml(repairTypeLabel(rep)) + (who ? " ·<span class=\"repair-who\">" + escapeHtml(who) + "</span>" : "");
+    const label = "<span class=\"repair-kind\">" + escapeHtml(repairTypeLabel(rep)) + "</span>" + (who ? " ·<span class=\"repair-who\">" + escapeHtml(who) + "</span>" : "");
     const head = (typeof isDeveloper === "function" && isDeveloper() && t)
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;

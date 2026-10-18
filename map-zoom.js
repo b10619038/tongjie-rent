@@ -1,4 +1,5 @@
 (function () {
+  if (window.__mapZoomNative) return;
   const style = document.createElement("style");
   style.textContent = ".asset-map-turn.is-glide{transition:transform .48s cubic-bezier(.22,.82,.24,1)}";
   document.head.appendChild(style);
