@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1667";
+const FILE_VER = "1668";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -13563,6 +13563,7 @@ async function pullCloud() {
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
       state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
       state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
+      state.leaveWithdrawn = Object.assign({}, data.leaveWithdrawn || {}, state.leaveWithdrawn || {});
       try { applyLeaveExtras(); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
@@ -14426,7 +14427,8 @@ async function pushCloud() {
       loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
       presence: mergedPresence(remote && remote.presence, state.presence),
       leaveCash: mergeLeaveCash(remote && remote.leaveCash, state.leaveCash),
-      leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk)
+      leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk),
+      leaveWithdrawn: Object.assign({}, (remote && remote.leaveWithdrawn) || {}, state.leaveWithdrawn || {})
     });
     applyRepairStatusBox(state.repairs);
     applyRepairStatusBox(payload.repairs);
@@ -14474,6 +14476,7 @@ async function pushCloud() {
     if (payload.loginSeats) state.loginSeats = payload.loginSeats;
     if (payload.leaveCash) state.leaveCash = payload.leaveCash;
     if (payload.leaveInk) state.leaveInk = payload.leaveInk;
+    if (payload.leaveWithdrawn) state.leaveWithdrawn = payload.leaveWithdrawn;
     try { applyLeaveExtras(); } catch {}
     try { enforceSeatLimit(); } catch {}
     applyBookVaultGone(state);
@@ -35384,15 +35387,21 @@ function tenantRenewDone(t, r) {
 function leaveApplyTs(t) {
   return Math.max(Number(t && t.leaveAppliedAt) || 0, Number(t && t.leaveSign && t.leaveSign.ts) || 0);
 }
+function leaveWithdrawMap() {
+  if (!state.leaveWithdrawn || typeof state.leaveWithdrawn !== "object") state.leaveWithdrawn = {};
+  return state.leaveWithdrawn;
+}
 function clearStaleLeave(t) {
-  const reset = Number(t && t.leaveResetAt) || 0;
-  if (!t || !reset || leaveApplyTs(t) >= reset) return false;
+  if (!t) return false;
+  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+  if (!reset || leaveApplyTs(t) >= reset) return false;
   t.leaveApplied = false;
   t.leaveSign = null;
   t.leaveSignCloud = "";
   t.leaveAppointAt = "";
   t.leaveAppointEditedAt = 0;
   t.leaveTimeSet = false;
+  t.leaveResetAt = reset;
   return true;
 }
 function tenantLeaveApplied(t) {
