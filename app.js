@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-16-10";
-const APP_EDIT_COUNT = 2058;
+const APP_STAMP = "2026-10-19-16-20";
+const APP_EDIT_COUNT = 2059;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1683";
+const FILE_VER = "1684";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["收回 7221 張智傑的正退申請，可以重新填寫"] },
+  { ver: APP_VERSION, items: ["再次收回 7221 張智傑的正退申請，租客可重新填寫"] },
+  { ver: "2026-10-19-16-10-2058", items: ["收回 7221 張智傑的正退申請，可以重新填寫"] },
   { ver: "2026-10-19-16-00-2057", items: ["後台退押金金額改成跟電費餘額一樣大、一樣深"] },
   { ver: "2026-10-19-15-45-2056", items: ["正常退租提示改成先寫打掃和印章，退電費、退押金放第三、第四行"] },
   { ver: "2026-10-19-15-30-2055", items: ["電費餘額只退現金，不再寫進退租合約的電費欄"] },
@@ -13622,7 +13623,7 @@ async function pullCloud() {
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
       state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
       state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
-      state.leaveWithdrawn = Object.assign({}, data.leaveWithdrawn || {}, state.leaveWithdrawn || {});
+      state.leaveWithdrawn = mergeLeaveWithdrawn(data.leaveWithdrawn, state.leaveWithdrawn);
       try { applyLeaveExtras(); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.seatGone = mergeSeatGone(state.seatGone, data.seatGone);
@@ -14500,7 +14501,7 @@ async function pushCloud() {
       presence: mergedPresence(remote && remote.presence, state.presence),
       leaveCash: mergeLeaveCash(remote && remote.leaveCash, state.leaveCash),
       leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk),
-      leaveWithdrawn: Object.assign({}, (remote && remote.leaveWithdrawn) || {}, state.leaveWithdrawn || {})
+      leaveWithdrawn: mergeLeaveWithdrawn(remote && remote.leaveWithdrawn, state.leaveWithdrawn)
     });
     applyRepairStatusBox(state.repairs);
     applyRepairStatusBox(payload.repairs);
@@ -35561,6 +35562,13 @@ function leaveApplyTs(t) {
 function leaveWithdrawMap() {
   if (!state.leaveWithdrawn || typeof state.leaveWithdrawn !== "object") state.leaveWithdrawn = {};
   return state.leaveWithdrawn;
+}
+function mergeLeaveWithdrawn(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    out[id] = Math.max(Number(out[id]) || 0, Number(b[id]) || 0);
+  });
+  return out;
 }
 function clearStaleLeave(t) {
   if (!t) return false;
