@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-15-45";
-const APP_EDIT_COUNT = 2056;
+const APP_STAMP = "2026-10-19-16-00";
+const APP_EDIT_COUNT = 2057;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1681";
+const FILE_VER = "1682";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租提示改成先寫打掃和印章，退電費、退押金放第三、第四行"] },
+  { ver: APP_VERSION, items: ["後台退押金金額改成跟電費餘額一樣大、一樣深"] },
+  { ver: "2026-10-19-15-45-2056", items: ["正常退租提示改成先寫打掃和印章，退電費、退押金放第三、第四行"] },
   { ver: "2026-10-19-15-30-2055", items: ["電費餘額只退現金，不再寫進退租合約的電費欄"] },
   { ver: "2026-10-19-13-31-2052", items: ["還沒填電費餘額時，退電費顯示點交查卡"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
@@ -36312,8 +36313,17 @@ function leaveElecCashLine(t) {
   const shown = leaveElecShown(t);
   return shown ? "現場退電費現金 " + shown + "。" : "";
 }
+function leaveDepositFieldHtml(t, r) {
+  const dep = leaveDepositAmount(t, r);
+  const bank = depositPaidBankOf(t, r);
+  if (!dep) return `<div class="small" style="margin-top:8px">這間沒有押金可退。</div>`;
+  const cash = bank === "現金";
+  const label = cash ? "退押金現金" : "退押金匯款";
+  const note = cash ? "原本是現金，從保險箱退。" : "原本進" + payBankDisplay(bank) + "，用這個銀行簿子匯退。";
+  return `<div class="field leave-dep-field"><span>${escapeHtml(label)}</span><div class="leave-dep-amt">${escapeHtml(money(dep))}</div><div class="small">${escapeHtml(note)}</div></div>`;
+}
 function leaveRefundHtml(t, r, timeOnly) {
-  const depLine = `<div class="small" style="margin-top:8px">${escapeHtml(depositRefundLine(t, r))}</div>`;
+  const depLine = leaveDepositFieldHtml(t, r);
   const signed = !!(t && t.leaveSign && t.leaveSign.status === "signed");
   const hint = "電費餘額退現金。不確定可以先空白，點交當天由後台依電表填。";
   if (timeOnly) {

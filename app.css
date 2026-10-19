@@ -2403,6 +2403,14 @@ textarea, input[type="text"], input[type="password"], input[type="email"], input
   font-size: 13px;
   font-weight: 700;
 }
+.leave-dep-field { margin: 8px 0 0; }
+.leave-dep-amt {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+}
+html[data-theme="void"] .leave-dep-amt { color: #f5f5f5; }
 #checkout-form-card .field { margin-bottom: 14px; }
 #checkout-form-card .row { margin: 2px 0 10px; }
 textarea { min-height: 92px; resize: vertical; }
