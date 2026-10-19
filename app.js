@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-21-25";
-const APP_EDIT_COUNT = 2071;
+const APP_STAMP = "2026-10-19-21-30";
+const APP_EDIT_COUNT = 2072;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1696";
+const FILE_VER = "1697";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["已簽名的正常退租說明拿掉房間住到最後一天"] },
+  { ver: APP_VERSION, items: ["免簽名送出的正常退租，租客首頁也顯示已送出圖卡"] },
+  { ver: "2026-10-19-21-25-2071", items: ["已簽名的正常退租說明拿掉房間住到最後一天"] },
   { ver: "2026-10-19-21-20-2070", items: ["兩人退租改成請攜帶2位個人印章"] },
   { ver: "2026-10-19-21-15-2069", items: ["押金退款提示拿掉將於"] },
   { ver: "2026-10-19-21-10-2068", items: ["正常退租註明點交後不得再入住，未住天數不予退費"] },
@@ -3843,8 +3844,13 @@ function scrollRenewCardIntoPlace() {
   };
   requestAnimationFrame(() => requestAnimationFrame(go));
 }
+function leaveHomeSent(t) {
+  if (!t || t.leaveDone) return false;
+  if (t.leaveSign && t.leaveSign.status === "signed") return true;
+  return !!(t.leaveApplied && t.leaveTimeSet);
+}
 function leaveSentHomeHtml(t) {
-  if (!t || t.leaveDone || !(t.leaveSign && t.leaveSign.status === "signed")) return "";
+  if (!leaveHomeSent(t)) return "";
   const at = tenantLeaveAt(t);
   const when = at ? formatDateTime12(String(at).replace("T", " ")) : "";
   const cashAmt = leaveElecShown(t);
@@ -3853,9 +3859,10 @@ function leaveSentHomeHtml(t) {
   const depBank = depositPaidBankOf(t, room);
   const depLabel = depBank === "現金" ? "退押金現金：" : "退押金匯款：";
   const sealLine = splitPair(t.name).length > 1 ? "請攜帶2位個人印章" : "請攜帶個人印章";
+  const signed = !!(t.leaveSign && t.leaveSign.status === "signed");
   return `<div class="handover-note renew-note">
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
-      <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。</p>
+      <p>${signed ? "已簽名送出。" : "已送出。"}可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。</p>
       <div class="renew-focus">
         <p>請打掃整理套房</p>
         <p>${sealLine}</p>
@@ -3926,7 +3933,7 @@ function renewAskCardHtml(t, r, opts) {
   if (!t || !r || (r && roomIsFactory(r))) return "";
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
-    if (!full && t.leaveSign && t.leaveSign.status === "signed" && !t.leaveDone) return "";
+    if (!full && leaveHomeSent(t)) return "";
     if (!full && !inRenewAskWindow(t)) return "";
     return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。點交日期可以自己選，房間仍住到合約最後一天。若要提前搬走，下面仍可申請中途退租。</p><div class="renew-reopen-row"><button type="button" class="btn-rose${ui.leaveBook ? " on" : ""}" data-leave-book="1">預約退租點交</button><button type="button" class="btn-navy" data-renew-reopen="1">改申請續約</button></div></div>${ui.leaveBook ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${normalLeaveCardHtml(t, r, { timeOnly: true })}</div></div>` : ""}</div>`;
   }
