@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-16-50";
-const APP_EDIT_COUNT = 2060;
+const APP_STAMP = "2026-10-19-17-15";
+const APP_EDIT_COUNT = 2061;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1685";
+const FILE_VER = "1686";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽退租時保留剛選的點交時間，不會被收回紀錄蓋回合約到期日"] },
+  { ver: APP_VERSION, items: ["正常退租提示加上請繳回磁扣、鑰匙、儲值卡"] },
+  { ver: "2026-10-19-16-50-2060", items: ["簽退租時保留剛選的點交時間，不會被收回紀錄蓋回合約到期日"] },
   { ver: "2026-10-19-16-20-2059", items: ["再次收回 7221 張智傑的正退申請，租客可重新填寫"] },
   { ver: "2026-10-19-16-10-2058", items: ["收回 7221 張智傑的正退申請，可以重新填寫"] },
   { ver: "2026-10-19-16-00-2057", items: ["後台退押金金額改成跟電費餘額一樣大、一樣深"] },
@@ -3847,6 +3848,7 @@ function leaveSentHomeHtml(t) {
       <div class="renew-focus">
         <p>請打掃整理套房</p>
         <p>請攜帶個人印章</p>
+        <p>請繳回磁扣/鑰匙/儲值卡</p>
         <p data-leave-cash-line="${escapeHtml(t.id)}">退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
         <p>${depLabel}${dep ? `<span class="leave-cash">${escapeHtml(moneyDigits(dep))}</span>` : ""}</p>
       </div>
@@ -36105,6 +36107,7 @@ function leaveCalendarBody(t, r) {
     "房號：文東 " + ((r && r.no) || ""),
     "請打掃整理套房",
     "請攜帶個人印章",
+    "請繳回磁扣/鑰匙/儲值卡",
     "退電費現金：" + (cash || "(點交查卡)"),
     depLabel + (dep ? moneyDigits(dep) : "")
   ].join("\n");
