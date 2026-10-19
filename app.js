@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1669";
+const FILE_VER = "1670";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3846,7 +3846,7 @@ function leaveSentHomeHtml(t) {
       </div>
       <div class="appoint-box" style="margin-top:10px">
         <div class="field"><span>點交時間</span>
-          ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: true })}
+          ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
         </div>
         <div class="small" data-leave-note="1"><div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>*押金退款作業預計將於退租後7個工作日內完成撥款</div></div>
       </div>
@@ -36181,7 +36181,7 @@ function normalLeaveCardHtml(t, r, opts) {
     <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。</div>
     <div class="appoint-box">
       <div class="field"><span>${timeOnly ? "點交時間" : "簽約時間"}</span>
-        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: !!timeOnly })}
+        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
       </div>
       <div class="small" data-leave-note="1">${timeOnly
         ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>記得攜帶個人印章。簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
@@ -37448,56 +37448,20 @@ function bindTenantFold() {
   document.querySelectorAll("[data-leave-appoint]").forEach(inp => {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
-    const applyLeaveClock = () => {
+    inp.onchange = () => {
       const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      const wrap = inp.closest(".appoint-one");
-      const clock = wrap && wrap.querySelector("[data-leave-clock]");
-      let at = leaveInputAt(inp, t);
-      if (clock && ui.role === "tenant") {
+      let at = String(inp.value || "").trim();
+      if (ui.role === "tenant" && at) {
         const clamped = clampLeaveClock(at);
-        if (clamped && String(at || "").slice(0, 16) !== clamped) {
+        if (clamped && at.slice(0, 16) !== clamped) {
           at = clamped;
+          inp.value = clamped;
           toast("點交時間只能選上午 9:30 到下午 5:30");
-        }
-        const hm = String(at || "").match(/T(\d{2}:\d{2})/);
-        if (hm && clockShown(clock) !== hm[1]) {
-          clock.setAttribute("data-leave-clock", hm[1]);
-          clock.textContent = hm[1];
         }
       }
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
     };
-    inp.onchange = applyLeaveClock;
-    inp.addEventListener("input", applyLeaveClock);
-    if (inp.closest(".appoint-one")) {
-      const wrap = inp.closest(".appoint-one");
-      const clock = wrap && wrap.querySelector("[data-leave-clock]");
-      if (clock && clock.dataset.boundClock !== "1") {
-        clock.dataset.boundClock = "1";
-        clock.addEventListener("click", e => {
-          e.preventDefault();
-          e.stopPropagation();
-          ui.clockOpen = !ui.clockOpen;
-          ui.keepScroll = true;
-          render();
-        });
-      }
-      wrap.querySelectorAll("[data-clock-opt]").forEach(btn => {
-        if (btn.dataset.boundOpt === "1") return;
-        btn.dataset.boundOpt = "1";
-        btn.addEventListener("click", e => {
-          e.preventDefault();
-          e.stopPropagation();
-          clock.setAttribute("data-leave-clock", btn.dataset.clockOpt || "");
-          clock.textContent = btn.dataset.clockOpt || "";
-          ui.clockOpen = false;
-          applyLeaveClock();
-          ui.keepScroll = true;
-          render();
-        });
-      });
-    }
   });
   document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
     btn.onclick = e => {
