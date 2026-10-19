@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1675";
+const FILE_VER = "1676";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -15614,6 +15614,10 @@ function bindAppointPicker(inp) {
   if (!inp || inp.dataset.boundPicker === "1") return;
   inp.dataset.boundPicker = "1";
   paintAppointFace(inp);
+  const hold = () => { ui.appointLock = Date.now() + 120000; };
+  inp.addEventListener("pointerdown", hold);
+  inp.addEventListener("focus", hold);
+  inp.addEventListener("cancel", () => { ui.appointLock = 0; });
   const wrap = inp.closest(".appoint-one");
   if (wrap) {
     wrap.addEventListener("click", e => {
@@ -26842,6 +26846,12 @@ function printNormalLeave(id) {
   const at = leaveInputAt(inp, t) || normalLeaveAppoint(t);
   showHandoverPrintPreview(t, r, at);
 }
+function readAppointValue(raw) {
+  const s = String(raw || "").trim().replace(" ", "T");
+  const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  return m[1] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[3]).padStart(2, "0") + "T" + String(m[4]).padStart(2, "0") + ":" + m[5];
+}
 function leaveInputAt(inp, t) {
   if (inp) {
     const wrap = inp.closest(".appoint-one");
@@ -27397,6 +27407,7 @@ function appointBlock(rep) {
 let lastRenderPage = "";
 let lastRenderRole = "";
 function pickerBusy() {
+  if (ui.appointLock && Date.now() < ui.appointLock) return true;
   const a = document.activeElement;
   if (!a || !a.tagName) return false;
   const type = String(a.type || "").toLowerCase();
@@ -27405,7 +27416,7 @@ function pickerBusy() {
 function render() {
   if (pickerBusy()) {
     clearTimeout(render.later);
-    render.later = setTimeout(() => { if (!pickerBusy()) render(); }, 280);
+    render.later = setTimeout(() => render(), 400);
     return;
   }
   markDevice();
@@ -37506,16 +37517,40 @@ function bindTenantFold() {
   document.querySelectorAll("[data-leave-appoint]").forEach(inp => {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
-    inp.onchange = () => {
+    const applyLeavePick = () => {
       const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      const at = String(inp.value || "").trim().replace(" ", "T").slice(0, 16);
-      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at)) return;
+      const at = readAppointValue(inp.value);
+      if (!at) return;
       inp.value = at;
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
-      ui.keepScroll = true;
-      setTimeout(() => { if (!pickerBusy()) render(); }, 40);
     };
+    inp.addEventListener("pointerdown", () => {
+      ui.appointLock = Date.now() + 120000;
+      const start = String(inp.value || "");
+      clearInterval(inp._pickWatch);
+      inp._pickWatch = setInterval(() => {
+        if (!document.body.contains(inp) || !ui.appointLock || Date.now() > ui.appointLock) {
+          clearInterval(inp._pickWatch);
+          return;
+        }
+        if (String(inp.value || "") && String(inp.value || "") !== start) {
+          clearInterval(inp._pickWatch);
+          ui.appointLock = 0;
+          applyLeavePick();
+          ui.keepScroll = true;
+          render();
+        }
+      }, 250);
+    });
+    inp.addEventListener("input", applyLeavePick);
+    inp.addEventListener("change", () => {
+      ui.appointLock = 0;
+      applyLeavePick();
+      setTimeout(applyLeavePick, 60);
+      ui.keepScroll = true;
+      setTimeout(() => render(), 120);
+    });
   });
   document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
     btn.onclick = e => {
