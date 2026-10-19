@@ -3374,11 +3374,21 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   pointer-events: auto;
   color-scheme: light;
 }
-.appoint-one.has-clock .appoint-native.appoint-day { width: calc(100% - 188px); }
-.appoint-one.has-clock .appoint-native.appoint-clock {
-  left: auto;
-  right: 96px;
-  width: 88px;
+.appoint-one.has-clock .appoint-native.appoint-day { width: calc(100% - 210px); }
+.appoint-clock-pick {
+  position: relative;
+  z-index: 3;
+  margin-left: 8px;
+  border: 0;
+  background: #f3e4cf;
+  color: #8a5a22;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  border-radius: 999px;
+  padding: 6px 8px;
+  max-width: 96px;
 }
 .appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .appoint-one input[type="date"]::-webkit-calendar-picker-indicator,
