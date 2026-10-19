@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-17-20";
-const APP_EDIT_COUNT = 2062;
+const APP_STAMP = "2026-10-19-17-50";
+const APP_EDIT_COUNT = 2063;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1687";
+const FILE_VER = "1688";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台退押金上方加上回收鑰匙、磁扣、儲值卡"] },
+  { ver: APP_VERSION, items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
+  { ver: "2026-10-19-17-20-2062", items: ["後台退押金上方加上回收鑰匙、磁扣、儲值卡"] },
   { ver: "2026-10-19-17-15-2061", items: ["正常退租提示加上請繳回磁扣、鑰匙、儲值卡"] },
   { ver: "2026-10-19-16-50-2060", items: ["簽退租時保留剛選的點交時間，不會被收回紀錄蓋回合約到期日"] },
   { ver: "2026-10-19-16-20-2059", items: ["再次收回 7221 張智傑的正退申請，租客可重新填寫"] },
@@ -4448,6 +4449,7 @@ function openLeaveSignPage() {
     }
   }
   ui.signAgree = false;
+  ui.leaveSubsidy = t && (t.leaveSubsidy === "yes" || t.leaveSubsidy === "no") ? t.leaveSubsidy : "";
   ui.signStrokes = [];
   ui.signStrokes2 = [];
   ui.leaveBook = true;
@@ -11832,7 +11834,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -11960,6 +11962,15 @@ function pickNewerEntity(a, b, keys) {
     };
     pickAmt("leaveElec", "leaveElecAt");
     pickAmt("leaveElecAdmin", "leaveElecAdminAt");
+    const aSub = a.leaveSubsidy === "yes" || a.leaveSubsidy === "no";
+    const bSub = b.leaveSubsidy === "yes" || b.leaveSubsidy === "no";
+    if (aSub || bSub) {
+      const aAt = Number(a.leaveSubsidyAt) || (aSub ? Number(a.editedAt) || 0 : 0);
+      const bAt = Number(b.leaveSubsidyAt) || (bSub ? Number(b.editedAt) || 0 : 0);
+      const pick = aSub && bSub ? (aAt >= bAt ? a : b) : (aSub ? a : b);
+      out.leaveSubsidy = pick.leaveSubsidy;
+      if (pick.leaveSubsidyAt) out.leaveSubsidyAt = pick.leaveSubsidyAt;
+    }
     const aAp = Number(a.leaveAppointEditedAt) || 0;
     const bAp = Number(b.leaveAppointEditedAt) || 0;
     if (aAp || bAp) {
@@ -11979,6 +11990,8 @@ function pickNewerEntity(a, b, keys) {
         out.leaveAppointAt = "";
         out.leaveAppointEditedAt = 0;
         out.leaveTimeSet = false;
+        out.leaveSubsidy = "";
+        out.leaveSubsidyAt = 0;
       }
     }
   }
@@ -12529,6 +12542,8 @@ function leaveNowRow(t) {
     leaveElecAt: Number(t.leaveElecAt) || 0,
     leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
     leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
+    leaveSubsidy: t.leaveSubsidy === "yes" || t.leaveSubsidy === "no" ? t.leaveSubsidy : "",
+    leaveSubsidyAt: Number(t.leaveSubsidyAt) || 0,
     editedAt: Number(t.editedAt) || Date.now()
   };
   const packed = JSON.stringify(row);
@@ -12966,6 +12981,8 @@ function moneyCloudBlob() {
       leaveElecAt: Number(t.leaveElecAt) || 0,
       leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
       leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
+      leaveSubsidy: t.leaveSubsidy === "yes" || t.leaveSubsidy === "no" ? t.leaveSubsidy : "",
+      leaveSubsidyAt: Number(t.leaveSubsidyAt) || 0,
       leaveDone: !!t.leaveDone,
       leaveDoneAt: t.leaveDoneAt || "",
       leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
@@ -35597,6 +35614,8 @@ function clearStaleLeave(t) {
   t.leaveElecAt = 0;
   t.leaveElecAdmin = "";
   t.leaveElecAdminAt = 0;
+  t.leaveSubsidy = "";
+  t.leaveSubsidyAt = 0;
   t.leaveResetAt = reset;
   if (state.leaveInk && state.leaveInk[t.id]) delete state.leaveInk[t.id];
   if (state.leaveCash && state.leaveCash[t.id]) delete state.leaveCash[t.id];
@@ -36029,6 +36048,15 @@ function applyLeaveCloudFields(t, src) {
   }
   if (takeLeaveAmt(t, "leaveElec", "leaveElecAt", src.leaveElec, src.leaveElecAt)) changed = true;
   if (takeLeaveAmt(t, "leaveElecAdmin", "leaveElecAdminAt", src.leaveElecAdmin, src.leaveElecAdminAt)) changed = true;
+  if (src.leaveSubsidy === "yes" || src.leaveSubsidy === "no") {
+    const srcAt = Number(src.leaveSubsidyAt) || Number(src.editedAt) || 0;
+    const curAt = Number(t.leaveSubsidyAt) || 0;
+    if (!curAt || srcAt >= curAt) {
+      if (t.leaveSubsidy !== src.leaveSubsidy) changed = true;
+      t.leaveSubsidy = src.leaveSubsidy;
+      t.leaveSubsidyAt = srcAt || Date.now();
+    }
+  }
   if (src.leaveDone && !t.leaveDone) {
     t.leaveDone = true;
     t.leaveDoneAt = src.leaveDoneAt || t.leaveDoneAt || "";
@@ -36384,6 +36412,10 @@ function leaveDepositFieldHtml(t, r) {
   const note = cash ? "原本是現金，從保險箱退。" : "原本進" + payBankDisplay(bank) + "，用這個銀行簿子匯退。";
   return `<div class="field leave-dep-field"><span>${escapeHtml(label)}</span><div class="leave-dep-amt">${escapeHtml(money(dep))}</div><div class="small">${escapeHtml(note)}</div></div>`;
 }
+function leaveSubsidyAdminHtml(t) {
+  if (!t || (t.leaveSubsidy !== "yes" && t.leaveSubsidy !== "no")) return "";
+  return `<div class="field" style="margin:8px 0 0"><span>住戶${t.leaveSubsidy === "yes" ? "有" : "無"}申請租屋補助</span></div>`;
+}
 function leaveRefundHtml(t, r, timeOnly) {
   const depLine = leaveDepositFieldHtml(t, r);
   const signed = !!(t && t.leaveSign && t.leaveSign.status === "signed");
@@ -36396,7 +36428,7 @@ function leaveRefundHtml(t, r, timeOnly) {
   }
   const official = t && t.leaveElecAdmin != null ? t.leaveElecAdmin : "";
   const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
-  return `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣+儲值卡</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就記入現金保險箱。</div>`;
+  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣+儲值卡</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就記入現金保險箱。</div>`;
 }
 function bindLeaveElecInputs(root) {
   const scope = root || document;
@@ -36503,6 +36535,9 @@ function leaveSignView() {
     <div class="screen">
       <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。點交日期是你預約的那天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金用當初進來的銀行匯退，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
       ${paper}
+      <div class="small" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">是否有申請成功租屋補助</div>
+      <label class="sign-agree"><input type="checkbox" data-leave-subsidy="yes" ${ui.leaveSubsidy === "yes" ? "checked" : ""} /> 有，我有申請成功</label>
+      <label class="sign-agree"><input type="checkbox" data-leave-subsidy="no" ${ui.leaveSubsidy === "no" ? "checked" : ""} /> 無，我沒有申請</label>
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
       ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -36515,10 +36550,20 @@ function leaveSignView() {
       </div>
     </div>`;
 }
+function readLeaveSubsidyPick() {
+  let picked = "";
+  document.querySelectorAll("[data-leave-subsidy]").forEach(box => {
+    if (box.checked) picked = box.getAttribute("data-leave-subsidy") || "";
+  });
+  if (picked !== "yes" && picked !== "no") picked = ui.leaveSubsidy === "yes" || ui.leaveSubsidy === "no" ? ui.leaveSubsidy : "";
+  return picked;
+}
 function finishLeaveSign(a, b) {
   const t = me();
   const r = t && myRoom();
   if (!t) return;
+  const subsidy = readLeaveSubsidyPick();
+  if (subsidy !== "yes" && subsidy !== "no") { toast("請勾選是否有申請成功租屋補助"); return; }
   const agree = document.getElementById("sign-agree");
   const look = typeof isTenantLook === "function" && isTenantLook();
   const c1 = a && a.c;
@@ -36555,6 +36600,8 @@ function finishLeaveSign(a, b) {
     t.leaveAppliedAt = Date.now();
   }
   if (!t.renewChoice || t.renewChoice === "open") t.renewChoice = "no";
+  t.leaveSubsidy = subsidy;
+  t.leaveSubsidyAt = Date.now();
   t.leaveSignCloud = "2";
   rememberLeaveInk(t);
   t.edited = true;
@@ -36566,7 +36613,7 @@ function finishLeaveSign(a, b) {
   try { publishLeaveNow(t); } catch {}
   setTimeout(() => { try { publishLeaveNow(t); } catch {} }, 1800);
   try { putLeaveSigFile(t); } catch {}
-  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
+  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租，" + (subsidy === "yes" ? "有" : "無") + "申請租屋補助", "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
   ui.signing = false;
@@ -39471,6 +39518,16 @@ function bindSignAgree() {
       sync();
     };
   }
+  document.querySelectorAll("[data-leave-subsidy]").forEach(opt => {
+    opt.onclick = e => e.stopPropagation();
+    opt.onchange = () => {
+      const val = opt.getAttribute("data-leave-subsidy") || "";
+      if (opt.checked) {
+        ui.leaveSubsidy = val;
+        document.querySelectorAll("[data-leave-subsidy]").forEach(o => { if (o !== opt) o.checked = false; });
+      } else if (ui.leaveSubsidy === val) ui.leaveSubsidy = "";
+    };
+  });
 }
 function bindSignPad() {
   bindFormatField(document.getElementById("sign-emname"), "name");
