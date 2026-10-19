@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1676";
+const FILE_VER = "1677";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4425,9 +4425,11 @@ function saveTenantRenewRow(row, opt) {
 function openLeaveSignPage() {
   const t = typeof me === "function" ? me() : null;
   if (t && !isDevPreview() && !isProspectPreview()) {
+    const saved = readAppointValue(t.leaveAppointAt);
     const inp = document.querySelector("[data-leave-appoint=\"" + t.id + "\"]") || document.querySelector("[data-leave-appoint]");
-    const at = (typeof leaveInputAt === "function" && inp && leaveInputAt(inp, t)) || tenantLeaveAt(t);
-    if (at) setNormalLeaveAppoint(t, at, true);
+    const picked = inp && (inp.dataset.pickedAt || "");
+    const at = (t.leaveTimeSet && saved) ? saved : (readAppointValue(picked) || (inp && leaveInputAt(inp, t)) || tenantLeaveAt(t));
+    if (at && at !== saved) setNormalLeaveAppoint(t, at, false);
   }
   ui.signAgree = false;
   ui.signStrokes = [];
@@ -36342,6 +36344,7 @@ function finishLeaveSign(a, b) {
     render();
     return;
   }
+  const keepAt = readAppointValue(t.leaveAppointAt);
   t.leaveSign = {
     status: "signed",
     at: nowStamp(),
@@ -36350,6 +36353,11 @@ function finishLeaveSign(a, b) {
     sig2: has2 ? leaveSigFromCanvas(c2) : "",
     name: t.name || ""
   };
+  if (keepAt) {
+    t.leaveAppointAt = keepAt;
+    t.leaveTimeSet = true;
+    t.leaveAppointEditedAt = Date.now();
+  }
   if (!t.leaveApplied) {
     t.leaveApplied = true;
     t.leaveAppliedAt = Date.now();
@@ -37522,6 +37530,7 @@ function bindTenantFold() {
       const at = readAppointValue(inp.value);
       if (!at) return;
       inp.value = at;
+      inp.dataset.pickedAt = at;
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
     };
