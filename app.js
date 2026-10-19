@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-11-40";
-const APP_EDIT_COUNT = 2031;
+const APP_STAMP = "2026-10-19-11-45";
+const APP_EDIT_COUNT = 2032;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1641";
+const FILE_VER = "1642";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["倒數名單的不續約標籤加回，正退申請仍只在租客自己送出後出現"] },
+  { ver: APP_VERSION, items: ["正退申請、中退申請改成和續約申請一樣的黃色，篩選按鈕改名申請"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -4670,8 +4670,8 @@ function flashEarlyNotice(ping) {
   if (earlyPingAlreadySeen(p)) return;
   markEarlyPingSeen(p);
   const line = `${p.roomNo || ""} ${p.name} 申請中途退租　終止日 ${rocSlash(p.date) || ""}　總退還 ${money(p.refund || 0)}${p.elecBalance != null ? "（含電費餘額 " + money(p.elecBalance) + "）" : ""}${p.appointAt ? "　預約 " + formatDateTime12(String(p.appointAt).replace("T", " ")) : ""}${p.reason ? "　理由 " + p.reason : ""}`.trim();
-  try { showOsBanner("中途退租申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
-  try { toast("中途退租申請　" + line); } catch {}
+  try { showOsBanner("中退申請", line, "early-" + (p.id || p.roomNo || "")); } catch {}
+  try { toast("中退申請　" + line); } catch {}
 }
 let pendingEarlyPkt = null;
 function setEarlyAppoint(co, value) {
@@ -4765,7 +4765,7 @@ function submitTenantEarly() {
   try { publishEarlyNow(row); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("中途退租申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　總退還 ${money(paper.refund)}　電費餘額 ${money(paper.elecBalance)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}　理由 ${reason}`, "admin");
+  pushPhoneNotify("中退申請", `${r.no} ${t.name || ""}　終止日 ${rocSlash(at)}　總退還 ${money(paper.refund)}　電費餘額 ${money(paper.elecBalance)}　預約 ${formatDateTime12(appointAt.replace("T", " "))}　理由 ${reason}`, "admin");
   toast("已送出中途退租申請");
   ui.earlyApplyOpen = false;
   ui.earlyReason = "";
@@ -17409,6 +17409,7 @@ function notifyExtra(title, target) {
     "繳費回報": { tag: "tongjie-pay", page: "tenants" },
     "續約申請": { tag: "tongjie-renew", page: "tenants" },
     "正退申請": { tag: "tongjie-leave", page: "tenants" },
+    "中退申請": { tag: "tongjie-early", page: "tenants" },
     "中途退租申請": { tag: "tongjie-early", page: "tenants" },
     "續約確認": { tag: "tongjie-renew", page: "lease" },
     "電子合約已簽署": { tag: "tongjie-sign", page: "tenants" },
@@ -17450,7 +17451,7 @@ function pushPhoneNotify(title, body, target) {
     extra.tag = payNoticeTag(no, payYmNow());
     extra.page = "tenants";
   }
-  if (title === "續約簽約時間" || title === "中途退租簽約時間" || title === "正退申請" || title === "退租點交") {
+  if (title === "續約簽約時間" || title === "中途退租簽約時間" || title === "正退申請" || title === "中退申請" || title === "退租點交") {
     extra.tag = (extra.tag || "tongjie-appoint") + "-t" + Date.now();
     if (target === "admin") extra.page = "tenants";
   }
@@ -36353,7 +36354,7 @@ function tenantEntryCardHtml(kind, entry) {
       ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -37250,7 +37251,7 @@ function adminTenants() {
       <input id="tenant-search" type="search" enterkeyhint="search" placeholder="${tenantSearchPlaceholder(kind)}" value="${escapeHtml(ui.tenantQ || "")}" autocomplete="off" />
       <div class="tenant-search-chips" id="tenant-chip-row">
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "vacant" ? " on" : ""}" data-tenant-chip="vacant" id="tenant-vacant-btn">${kind === "factory" ? "空廠房" : "空套房"}</button>
-        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">續約</button>
+        <button type="button" class="ghost tenant-chip${tenantChipOn() === "count" ? " on" : ""}" data-tenant-chip="count">申請</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "paid" ? " on" : ""}" data-tenant-chip="paid">已繳</button>
         <button type="button" class="ghost tenant-chip${tenantChipOn() === "unpaid" ? " on" : ""}" data-tenant-chip="unpaid">未繳</button>
       </div>
