@@ -3390,6 +3390,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 }
 .appoint-one.has-clock .appoint-face { flex: 0 0 auto; }
 .appoint-one.has-clock .appoint-native.appoint-day { width: 100%; }
+.appoint-one.has-clock { flex-wrap: wrap; }
 .appoint-clock-pick {
   position: relative;
   z-index: 4;
@@ -3404,8 +3405,31 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   padding: 10px 4px;
   min-width: 64px;
   border-radius: 0;
-  appearance: auto;
+  appearance: none;
   cursor: pointer;
+}
+.leave-clock-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 0 2px;
+}
+.leave-clock-list[hidden] { display: none; }
+.leave-clock-opt {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.leave-clock-opt.on {
+  background: #15803d;
+  color: #fff;
+  border-color: transparent;
 }
 .appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .appoint-one input[type="date"]::-webkit-calendar-picker-indicator,

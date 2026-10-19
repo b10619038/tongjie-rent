@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1668";
+const FILE_VER = "1669";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -15514,6 +15514,12 @@ function appointFaceHtml(at, emptyText, hideTime) {
   const hh = String(m[4]).padStart(2, "0");
   return `<span class="appoint-date">${m[1]}/${m[2]}/${m[3]}</span><span class="appoint-week">${weekLabel(m[1], m[2], m[3])}</span>${hideTime ? "" : `<span class="appoint-time">${hh}:${m[5]}</span>`}`;
 }
+function clockShown(clock) {
+  if (!clock) return "";
+  const raw = clock.value || clock.getAttribute("data-leave-clock") || clock.textContent || "";
+  const m = String(raw).match(/(\d{1,2}):(\d{2})/);
+  return m ? String(m[1]).padStart(2, "0") + ":" + m[2] : "";
+}
 function paintAppointFace(inp) {
   const wrap = inp && inp.closest(".appoint-one");
   const face = wrap && wrap.querySelector(".appoint-face");
@@ -15521,7 +15527,7 @@ function paintAppointFace(inp) {
   let val = inp.value || "";
   const clock = wrap && wrap.querySelector("[data-leave-clock]");
   const dayEl = wrap && wrap.querySelector("input[type='date']");
-  if (clock && dayEl) val = (dayEl.value || "") + "T" + (String(clock.value || "11:00").slice(0, 5));
+  if (clock && dayEl) val = (dayEl.value || "") + "T" + (clockShown(clock) || "11:00");
   if (inp.dataset.lockDay && /^\d{1,2}:\d{2}/.test(val)) {
     const hm = val.match(/(\d{1,2}):(\d{2})/);
     val = inp.dataset.lockDay + "T" + String(hm[1]).padStart(2, "0") + ":" + hm[2];
@@ -15566,16 +15572,13 @@ function bindAppointPicker(inp) {
     });
   }
 }
-function leaveClockChoices(selected) {
+function leaveClockButtons(selected) {
   const want = String(selected || "11:00").slice(0, 5);
   const opts = [];
-  let hit = false;
   for (let mins = 9 * 60 + 30; mins <= 17 * 60 + 30; mins += 30) {
     const v = String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
-    if (v === want) hit = true;
-    opts.push(`<option value="${v}"${v === want ? " selected" : ""}>${v}</option>`);
+    opts.push(`<button type="button" class="leave-clock-opt${v === want ? " on" : ""}" data-clock-opt="${v}">${v}</button>`);
   }
-  if (want && !hit) opts.unshift(`<option value="${escapeHtml(want)}" selected>${escapeHtml(want)}</option>`);
   return opts.join("");
 }
 function appointOneHtml(at, extra) {
@@ -15596,7 +15599,8 @@ function appointOneHtml(at, extra) {
       <span class="appoint-face">${appointFaceHtml(day ? day + "T" + hm : "", empty, true)}</span>
       <input type="date" class="appoint-native appoint-day"${x.attr || ""} value="${escapeHtml(day)}" />
     </span>
-    <select class="appoint-clock-pick" data-leave-clock="1">${leaveClockChoices(hm)}</select>
+    <button type="button" class="appoint-clock-pick" data-leave-clock="${hm}">${hm}</button>
+    <div class="leave-clock-list"${ui.clockOpen ? "" : " hidden"}>${leaveClockButtons(hm)}</div>
     ${side ? `<span class="appoint-side">${side}</span>` : ""}
   </div>`;
   }
@@ -26794,7 +26798,7 @@ function leaveInputAt(inp, t) {
     const dayEl = wrap && wrap.querySelector("input[type='date']");
     if (clock && dayEl) {
       const day = dayEl.value || String(normalLeaveAppoint(t) || "").slice(0, 10);
-      const hm = clock.value || "11:00";
+      const hm = clockShown(clock) || "11:00";
       return clampLeaveClock((day || todayYmd()) + "T" + String(hm).slice(0, 5));
     }
   }
@@ -37456,7 +37460,10 @@ function bindTenantFold() {
           toast("點交時間只能選上午 9:30 到下午 5:30");
         }
         const hm = String(at || "").match(/T(\d{2}:\d{2})/);
-        if (hm && clock.value !== hm[1]) clock.value = hm[1];
+        if (hm && clockShown(clock) !== hm[1]) {
+          clock.setAttribute("data-leave-clock", hm[1]);
+          clock.textContent = hm[1];
+        }
       }
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
@@ -37468,10 +37475,28 @@ function bindTenantFold() {
       const clock = wrap && wrap.querySelector("[data-leave-clock]");
       if (clock && clock.dataset.boundClock !== "1") {
         clock.dataset.boundClock = "1";
-        clock.addEventListener("pointerdown", e => e.stopPropagation());
-        clock.addEventListener("click", e => e.stopPropagation());
-        clock.addEventListener("change", applyLeaveClock);
+        clock.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          ui.clockOpen = !ui.clockOpen;
+          ui.keepScroll = true;
+          render();
+        });
       }
+      wrap.querySelectorAll("[data-clock-opt]").forEach(btn => {
+        if (btn.dataset.boundOpt === "1") return;
+        btn.dataset.boundOpt = "1";
+        btn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          clock.setAttribute("data-leave-clock", btn.dataset.clockOpt || "");
+          clock.textContent = btn.dataset.clockOpt || "";
+          ui.clockOpen = false;
+          applyLeaveClock();
+          ui.keepScroll = true;
+          render();
+        });
+      });
     }
   });
   document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
@@ -43444,12 +43469,14 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
     if (touchField) return;
     if (Date.now() - lastScrollAt < 450) {
       const t = e.target && e.target.closest && e.target.closest("input, textarea, select");
-      if (isField(t)) e.preventDefault();
+      if (isField(t) && t.tagName !== "SELECT" && !/date|time/.test(String(t.type || ""))) e.preventDefault();
     }
   }, { capture: true, passive: false });
   document.addEventListener("focusin", e => {
     if (!isField(e.target)) return;
     if (touchField) return;
+    const type = String((e.target && e.target.type) || "").toLowerCase();
+    if (e.target.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local") return;
     if (Date.now() - lastScrollAt < 450) try { e.target.blur(); } catch {}
   });
 })();
