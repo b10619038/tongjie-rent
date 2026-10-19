@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-46";
-const APP_EDIT_COUNT = 2043;
+const APP_STAMP = "2026-10-19-12-52";
+const APP_EDIT_COUNT = 2044;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1653";
+const FILE_VER = "1654";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正退申請和續約申請一樣排到最上面"] },
+  { ver: APP_VERSION, items: ["正常退租的承租人簽名會出現在後台合約上"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3861,6 +3861,7 @@ function ensureLeaveSignCloud(t, r) {
   ensureLeaveSignCloud.at = now;
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
+  try { putLeaveSigFile(t); } catch {}
   if (!ensureLeaveSignCloud.timer) {
     ensureLeaveSignCloud.timer = setInterval(() => {
       try {
@@ -11885,8 +11886,16 @@ function pickNewerEntity(a, b, keys) {
         if (src.leaveAppointAt) out.leaveAppointAt = src.leaveAppointAt;
         if (src.leaveTimeSet) out.leaveTimeSet = true;
         if (!out.renewChoice || out.renewChoice === "open" || out.renewChoice === "yes") out.renewChoice = src.renewChoice || "no";
-        const sig = signed(a) ? a.leaveSign : (signed(b) ? b.leaveSign : null);
-        if (sig) out.leaveSign = Object.assign({}, out.leaveSign || {}, sig);
+        const richer = x => (x && x.leaveSign && (x.leaveSign.sig || x.leaveSign.sigId)) ? x.leaveSign : null;
+        const sig = richer(a) || richer(b) || (signed(a) ? a.leaveSign : (signed(b) ? b.leaveSign : null));
+        if (sig) {
+          const prev = out.leaveSign || {};
+          out.leaveSign = Object.assign({}, prev, sig);
+          if (!out.leaveSign.sig && prev.sig) out.leaveSign.sig = prev.sig;
+          if (!out.leaveSign.sig2 && prev.sig2) out.leaveSign.sig2 = prev.sig2;
+          if (!out.leaveSign.sigId && prev.sigId) out.leaveSign.sigId = prev.sigId;
+          if (!out.leaveSign.sig2Id && prev.sig2Id) out.leaveSign.sig2Id = prev.sig2Id;
+        }
       }
     }
   }
@@ -12266,7 +12275,7 @@ function ingestLiveCloud(raw) {
           const sig = src.leaveSig || (t.leaveSign && t.leaveSign.sig) || "";
           const sig2 = src.leaveSig2 || (t.leaveSign && t.leaveSign.sig2) || "";
           const before = t.leaveSign && t.leaveSign.status;
-          t.leaveSign = Object.assign({}, t.leaveSign || {}, { status: "signed", at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || "", name: t.name || "", sig, sig2 });
+          t.leaveSign = Object.assign({}, t.leaveSign || {}, { status: "signed", at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || "", name: t.name || "", sig, sig2, sigId: src.leaveSigId || (t.leaveSign && t.leaveSign.sigId) || "", sig2Id: src.leaveSig2Id || (t.leaveSign && t.leaveSign.sig2Id) || "" });
           if (!t.leaveApplied) { t.leaveApplied = true; t.leaveAppliedAt = src.leaveAppliedAt || Date.now(); }
           if (before !== "signed" || sig !== (t.leaveSign && t.leaveSign.sig)) changed = true;
         }
@@ -12375,6 +12384,8 @@ function leaveNowRow(t) {
     leaveTimeSet: !!t.leaveTimeSet,
     leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
     leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
+    leaveSigId: (t.leaveSign && t.leaveSign.sigId) || "",
+    leaveSig2Id: (t.leaveSign && t.leaveSign.sig2Id) || "",
     editedAt: Number(t.editedAt) || Date.now()
   };
   const packed = JSON.stringify(row);
@@ -12805,6 +12816,8 @@ function moneyCloudBlob() {
       leaveDoneAt: t.leaveDoneAt || "",
       leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
       leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
+      leaveSigId: (t.leaveSign && t.leaveSign.sigId) || "",
+      leaveSig2Id: (t.leaveSign && t.leaveSign.sig2Id) || "",
       hiddenAnns: Array.isArray(t.hiddenAnns) ? t.hiddenAnns : [],
       eSignStatus: t.eSign && t.eSign.status || "",
       eSignAt: t.eSign && t.eSign.at || "",
@@ -23137,6 +23150,39 @@ function delUploadBlob(id) {
     } catch { res(false); }
   })).catch(() => false);
 }
+function putLeaveSigFile(t) {
+  if (!t || !t.id || !t.leaveSign) return;
+  const id = String(t.id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
+  if (!id) return;
+  const send = (slot, key) => {
+    const src = t.leaveSign[slot];
+    const fileId = "cimg-leave-" + slot + "-" + id;
+    if (!src || String(src).indexOf("data:image") !== 0) return;
+    if (t.leaveSign[key] === fileId) return;
+    putChatImageFile(fileId.replace(/^cimg-/, ""), src).then(ok => {
+      if (!ok) return;
+      if (!t.leaveSign) return;
+      t.leaveSign[key] = fileId;
+      try { save(); } catch {}
+      try { publishPaidCloud(); } catch {}
+      try { publishLeaveNow(t); } catch {}
+    });
+  };
+  send("sig", "sigId");
+  send("sig2", "sig2Id");
+}
+function hydrateLeaveSigImgs(root) {
+  const box = root && root.querySelectorAll ? root : document;
+  box.querySelectorAll("img[data-leave-sig-file]").forEach(img => {
+    if (img.dataset.sigLoaded === "1" || img.getAttribute("src")) return;
+    const id = img.getAttribute("data-leave-sig-file");
+    if (!id) return;
+    img.dataset.sigLoaded = "1";
+    pullUploadCloud(id).then(blob => blobToDataUrl(blob)).then(url => {
+      if (url && img.isConnected) img.src = url;
+    });
+  });
+}
 function fileApiUrl(id) {
   return FILE_API + encodeURIComponent(String(id || ""));
 }
@@ -25918,11 +25964,15 @@ function handoverConfirmPaperHtml(t, r, co) {
   const nameList = splitPair((t && t.name) || "");
   const personChops = (nameList.length > 1 ? [0, 1] : [0]).map(() => `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`).join("");
   const leave = t && t.leaveSign && t.leaveSign.status === "signed" && !(ui && ui.page === "leave-sign") ? t.leaveSign : null;
-  const sigImg = src => (src && String(src).startsWith("data:")) ? `<img class="lease-esig" src="${src}" alt="簽名">` : "";
+  const sigImg = (src, fileId) => {
+    if (src && String(src).startsWith("data:")) return `<img class="lease-esig" src="${src}" alt="簽名">`;
+    if (fileId) return `<img class="lease-esig" alt="簽名" data-leave-sig-file="${escapeHtml(fileId)}">`;
+    return "";
+  };
   const live = ui && ui.page === "leave-sign";
   const sigs = live
     ? `<img class="lease-esig live-ink" data-live-sign="1" alt=""><img class="lease-esig live-ink" data-live-sign="2" alt="">`
-    : (leave ? (sigImg(leave.sig) + sigImg(leave.sig2)) : "");
+    : (leave ? (sigImg(leave.sig, leave.sigId) + sigImg(leave.sig2, leave.sig2Id)) : "");
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -35639,13 +35689,26 @@ function applyLeaveCloudFields(t, src) {
     t.leaveDoneAt = src.leaveDoneAt || t.leaveDoneAt || "";
     changed = true;
   }
-  if (src.leaveSigned && !(t.leaveSign && t.leaveSign.status === "signed" && t.leaveSign.sig)) {
+  if (src.leaveSigId || src.leaveSig2Id || src.leaveSig || src.leaveSig2) {
     t.leaveSign = Object.assign({}, t.leaveSign || {}, {
       status: "signed",
       at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || nowStamp(),
       name: t.name || "",
       sig: src.leaveSig || (t.leaveSign && t.leaveSign.sig) || "",
-      sig2: src.leaveSig2 || (t.leaveSign && t.leaveSign.sig2) || ""
+      sig2: src.leaveSig2 || (t.leaveSign && t.leaveSign.sig2) || "",
+      sigId: src.leaveSigId || (t.leaveSign && t.leaveSign.sigId) || "",
+      sig2Id: src.leaveSig2Id || (t.leaveSign && t.leaveSign.sig2Id) || ""
+    });
+    changed = true;
+  } else if (src.leaveSigned && !(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sigId))) {
+    t.leaveSign = Object.assign({}, t.leaveSign || {}, {
+      status: "signed",
+      at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || nowStamp(),
+      name: t.name || "",
+      sig: (t.leaveSign && t.leaveSign.sig) || "",
+      sig2: (t.leaveSign && t.leaveSign.sig2) || "",
+      sigId: (t.leaveSign && t.leaveSign.sigId) || "",
+      sig2Id: (t.leaveSign && t.leaveSign.sig2Id) || ""
     });
     changed = true;
   } else if (src.leaveSig && t.leaveSign && !t.leaveSign.sig) {
@@ -35947,6 +36010,7 @@ function finishLeaveSign(a, b) {
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
+  try { putLeaveSigFile(t); } catch {}
   pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
@@ -37049,6 +37113,7 @@ function confirmTenantPaid(btn) {
   closeSheetThen(card && card.closest(".sheet-drop"), refreshTenantList);
 }
 function bindTenantFold() {
+  try { hydrateLeaveSigImgs(); } catch {}
   const sc = document.querySelector(".admin-scroll");
   if (sc && !sc.dataset.tenantGuard) {
     sc.dataset.tenantGuard = "1";
@@ -40182,6 +40247,7 @@ function bindAdmin() {
   bindFactoryFold();
   bindLineSwipe();
   bindTenantFold();
+  try { hydrateLeaveSigImgs(); } catch {}
   bindTenantListTools();
   bindTenantSearch();
   bindTenantEdits();
