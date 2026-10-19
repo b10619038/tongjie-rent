@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1666";
+const FILE_VER = "1667";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35395,6 +35395,7 @@ function clearStaleLeave(t) {
   t.leaveTimeSet = false;
   return true;
 }
+function tenantLeaveApplied(t) {
   if (!t || t.leaveDone || t.former) return false;
   if (t.leaveApplied) return true;
   return !!(t.leaveSign && t.leaveSign.status === "signed");
