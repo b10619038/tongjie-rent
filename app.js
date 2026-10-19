@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-28";
-const APP_EDIT_COUNT = 2039;
+const APP_STAMP = "2026-10-19-12-38";
+const APP_EDIT_COUNT = 2040;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1649";
+const FILE_VER = "1650";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租改走小封包同步到後台，簽名後仍可改點交時間"] },
+  { ver: APP_VERSION, items: ["正退申請不再被後台較新的資料蓋掉，張智傑不用重新申請"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3843,20 +3843,33 @@ function leaveSentHomeHtml(t) {
 }
 function ensureLeaveSignCloud(t, r) {
   if (!t || ui.role !== "tenant") return;
-  if (String(t.leaveSignCloud) === "2") return;
   if (!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2))) return;
-  t.leaveSignCloud = "2";
   if (!t.leaveApplied) {
     t.leaveApplied = true;
     t.leaveAppliedAt = Date.now();
+    t.edited = true;
+    t.editedAt = Date.now();
   }
-  t.edited = true;
-  t.editedAt = Date.now();
-  publishLeavePing(t, r, "sign");
-  try { save(); } catch {}
-  try { pushCloud(); } catch {}
+  const now = Date.now();
+  if (String(t.leaveSignCloud) !== "2") {
+    t.leaveSignCloud = "2";
+    publishLeavePing(t, r, "sign");
+    try { save(); } catch {}
+    try { pushCloud(); } catch {}
+  }
+  if (now - (ensureLeaveSignCloud.at || 0) < 15000) return;
+  ensureLeaveSignCloud.at = now;
   try { publishPaidCloud(); } catch {}
-  try { publishLeaveNow(t, r); } catch {}
+  try { publishLeaveNow(t); } catch {}
+  if (!ensureLeaveSignCloud.timer) {
+    ensureLeaveSignCloud.timer = setInterval(() => {
+      try {
+        if (ui.role !== "tenant") return;
+        const who = typeof me === "function" ? me() : null;
+        if (who) ensureLeaveSignCloud(who, typeof myRoom === "function" ? myRoom() : null);
+      } catch {}
+    }, 20000);
+  }
 }
 function sentPulseStyle() {
   const dur = 2200;
@@ -12562,7 +12575,10 @@ function ingestPaidCloud(raw) {
           byId.set(t.id, t);
         } else {
           applyCloudFlags(t, src);
-          if (Number(src.editedAt || 0) < Number(t.editedAt || 0) && Number(src.officialAt || 0) <= (Number(t.officialAt) || 0)) return;
+          if (Number(src.editedAt || 0) < Number(t.editedAt || 0) && Number(src.officialAt || 0) <= (Number(t.officialAt) || 0)) {
+            try { applyLeaveCloudFields(t, src); } catch {}
+            return;
+          }
         }
         if ("paid" in src) t.paid = !!src.paid;
         t.paidTouched = true;
@@ -35193,7 +35209,9 @@ function tenantRenewDone(t, r) {
   ));
 }
 function tenantLeaveApplied(t) {
-  return !!(t && t.leaveApplied && !t.leaveDone && !t.former);
+  if (!t || t.leaveDone || t.former) return false;
+  if (t.leaveApplied) return true;
+  return !!(t.leaveSign && t.leaveSign.status === "signed");
 }
 function tenantRenewNo(t, r) {
   if (!t || tenantRenewDone(t, r)) return false;
@@ -35579,13 +35597,15 @@ function applyLeaveCloudFields(t, src) {
   put("renewChoice", src.renewChoice || "");
   put("leaveAppointAt", src.leaveAppointAt || "");
   if (src.leaveTimeSet) t.leaveTimeSet = true;
-  if ("leaveApplied" in src && (newer || src.leaveApplied)) {
-    const next = !!src.leaveApplied;
-    if (!!t.leaveApplied !== next) {
-      t.leaveApplied = next;
-      if (src.leaveAppliedAt) t.leaveAppliedAt = src.leaveAppliedAt;
+  if (src.leaveApplied || src.leaveSigned) {
+    if (!t.leaveApplied && !t.leaveDone) {
+      t.leaveApplied = true;
+      t.leaveAppliedAt = src.leaveAppliedAt || Date.now();
       changed = true;
     }
+  } else if (newer && t.leaveApplied && !t.leaveDone && (src.renewChoice === "open" || src.renewChoice === "yes")) {
+    t.leaveApplied = false;
+    changed = true;
   }
   if (src.leaveElec != null && String(src.leaveElec) !== "") put("leaveElec", src.leaveElec);
   if (src.leaveElecAdmin != null && String(src.leaveElecAdmin) !== "") put("leaveElecAdmin", src.leaveElecAdmin);
