@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-15-25";
-const APP_EDIT_COUNT = 2054;
+const APP_STAMP = "2026-10-19-15-30";
+const APP_EDIT_COUNT = 2055;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1679";
+const FILE_VER = "1680";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台再改電費餘額，租客端會跟著改成最新金額"] },
+  { ver: APP_VERSION, items: ["電費餘額只退現金，不再寫進退租合約的電費欄"] },
   { ver: "2026-10-19-13-31-2052", items: ["還沒填電費餘額時，退電費顯示點交查卡"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
@@ -26873,7 +26873,6 @@ function showHandoverPrintPreview(t, r, at) {
     at: day,
     appointAt: at || (day + "T10:00"),
     deposit,
-    elecFee: t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? Number(t.leaveElecAdmin) : "",
     property: termPropLabel(r),
     idNo: t.idNo || "",
     phone: t.phone || ""
