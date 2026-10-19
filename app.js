@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-21-10";
-const APP_EDIT_COUNT = 2068;
+const APP_STAMP = "2026-10-19-21-15";
+const APP_EDIT_COUNT = 2069;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1693";
+const FILE_VER = "1694";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租註明點交後不得再入住，未住天數不予退費"] },
+  { ver: APP_VERSION, items: ["押金退款提示拿掉將於"] },
+  { ver: "2026-10-19-21-10-2068", items: ["正常退租註明點交後不得再入住，未住天數不予退費"] },
   { ver: "2026-10-19-18-30-2067", items: ["後台租屋補助的有、無改成同一行"] },
   { ver: "2026-10-19-18-20-2066", items: ["兩人退租交接書改成簽名旁各放一顆個人印章"] },
   { ver: "2026-10-19-18-15-2065", items: ["開發者代送可以先不勾租屋補助，點交當天由後台勾有或無"] },
@@ -3863,7 +3864,7 @@ function leaveSentHomeHtml(t) {
         <div class="field"><span>點交時間</span>
           ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
         </div>
-        <div class="small" data-leave-note="1"><div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>*押金退款作業預計將於退租後7個工作日內完成撥款</div><div>*退租點交後不得再入住且不予退費未入住之天數</div></div>
+        <div class="small" data-leave-note="1"><div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>*押金退款作業預計退租後7個工作日內完成撥款</div><div>*退租點交後不得再入住且不予退費未入住之天數</div></div>
       </div>
     </div>`;
 }
