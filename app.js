@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-15-05";
-const APP_EDIT_COUNT = 2053;
+const APP_STAMP = "2026-10-19-15-25";
+const APP_EDIT_COUNT = 2054;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1678";
+const FILE_VER = "1679";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽完後改點交時間會立刻改畫面，並同步到後台"] },
+  { ver: APP_VERSION, items: ["後台再改電費餘額，租客端會跟著改成最新金額"] },
   { ver: "2026-10-19-13-31-2052", items: ["還沒填電費餘額時，退電費顯示點交查卡"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
@@ -3840,7 +3840,7 @@ function leaveSentHomeHtml(t) {
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
       <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
       <div class="renew-focus">
-        <p>退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
+        <p data-leave-cash-line="${escapeHtml(t.id)}">退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
         <p>${depLabel}${dep ? `<span class="leave-cash">${escapeHtml(moneyDigits(dep))}</span>` : ""}</p>
         <p>請打掃整理套房</p>
         <p>請攜帶個人印章</p>
@@ -12888,6 +12888,7 @@ function ingestPaidCloud(raw) {
       try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     if (JSON.stringify(state.paidMarks || {}) === before && !Array.isArray(o.tenants) && !ping && !(o.applyPing && o.applyPing.at) && !signAt && !renewRowsChanged) return;
+    try { paintLeaveCashLine(); } catch {}
     if (composingNow()) return;
     if (typeof sheetLocked === "function" && sheetLocked()) return;
     if (tenantViewSig() === viewBefore && !ping && !(o.applyPing && o.applyPing.at) && !signAt && !renewRowsChanged) return;
@@ -14149,7 +14150,7 @@ function coreSig(d) {
     return JSON.stringify({
       b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
       n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
-      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, !!x.prospect, !!x.applyPending, x.officialAt || 0, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status]),
+      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, !!x.prospect, !!x.applyPending, x.officialAt || 0, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status, x.leaveElec == null ? "" : x.leaveElec, x.leaveElecAdmin == null ? "" : x.leaveElecAdmin]),
       m: (d.rooms || []).map(x => [x.id, x.status, x.rent, x.tenantId])
     });
   } catch { return String(d && d.updatedAt); }
@@ -27488,10 +27489,12 @@ function pickerBusy() {
   if (ui.appointLock && Date.now() < ui.appointLock) return true;
   const a = document.activeElement;
   if (!a || !a.tagName) return false;
+  if (a.dataset && (a.dataset.leaveElec != null || a.dataset.leaveElecAdmin != null)) return true;
   const type = String(a.type || "").toLowerCase();
   return a.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local";
 }
 function render() {
+  try { paintLeaveCashLine(); } catch {}
   if (pickerBusy()) {
     clearTimeout(render.later);
     render.later = setTimeout(() => render(), 400);
@@ -35981,16 +35984,21 @@ function applyLeaveCloudFields(t, src) {
     changed = true;
   }
   if (src.leaveSigId || src.leaveSig2Id || src.leaveSig || src.leaveSig2) {
-    t.leaveSign = Object.assign({}, t.leaveSign || {}, {
+    const prev = t.leaveSign || {};
+    const nextSign = {
       status: "signed",
-      at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || nowStamp(),
+      at: src.leaveSignAt || prev.at || "",
       name: t.name || "",
-      sig: src.leaveSig || (t.leaveSign && t.leaveSign.sig) || "",
-      sig2: src.leaveSig2 || (t.leaveSign && t.leaveSign.sig2) || "",
-      sigId: src.leaveSigId || (t.leaveSign && t.leaveSign.sigId) || "",
-      sig2Id: src.leaveSig2Id || (t.leaveSign && t.leaveSign.sig2Id) || ""
-    });
-    changed = true;
+      sig: src.leaveSig || prev.sig || "",
+      sig2: src.leaveSig2 || prev.sig2 || "",
+      sigId: src.leaveSigId || prev.sigId || "",
+      sig2Id: src.leaveSig2Id || prev.sig2Id || ""
+    };
+    const sameSign = prev.status === nextSign.status && String(prev.at || "") === String(nextSign.at || "") && prev.sig === nextSign.sig && prev.sig2 === nextSign.sig2 && String(prev.sigId || "") === String(nextSign.sigId || "") && String(prev.sig2Id || "") === String(nextSign.sig2Id || "");
+    if (!sameSign) {
+      t.leaveSign = Object.assign({}, prev, nextSign);
+      changed = true;
+    }
   } else if (src.leaveSigned && !(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sigId))) {
     t.leaveSign = Object.assign({}, t.leaveSign || {}, {
       status: "signed",
@@ -36152,8 +36160,10 @@ function saveAdminLeaveElec(id, value) {
   const raw = String(value == null ? "" : value).trim();
   const next = raw === "" ? "" : String(Math.max(0, Math.round(Number(raw) || 0)));
   if (String(t.leaveElecAdmin == null ? "" : t.leaveElecAdmin) === next) return;
+  const prevAt = Number(t.leaveElecAdminAt) || 0;
+  const cashAt = Number(state.leaveCash && state.leaveCash[t.id] && state.leaveCash[t.id].at) || 0;
   t.leaveElecAdmin = next;
-  t.leaveElecAdminAt = Date.now();
+  t.leaveElecAdminAt = Math.max(Date.now(), prevAt + 1, cashAt + 1);
   rememberLeaveCash(t, "admin");
   t.edited = true;
   t.editedAt = Date.now();
@@ -36163,6 +36173,7 @@ function saveAdminLeaveElec(id, value) {
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
+  try { paintLeaveCashLine(); } catch {}
   toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
 }
 function mergeLeaveCash(a, b) {
@@ -36192,9 +36203,11 @@ function rememberLeaveCash(t, by) {
   const atKey = by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
   if (t[key] == null || String(t[key]) === "") return;
   if (!state.leaveCash) state.leaveCash = {};
-  const at = Number(t[atKey]) || Date.now();
   const cur = state.leaveCash[t.id];
-  if (cur && Number(cur.at) > at) return;
+  let at = Number(t[atKey]) || Date.now();
+  if (cur && String(cur.amt) !== String(t[key])) at = Math.max(at, Number(cur.at || 0) + 1, Date.now());
+  if (cur && String(cur.amt) === String(t[key]) && Number(cur.at) > at) return;
+  t[atKey] = at;
   state.leaveCash[t.id] = { amt: String(t[key]), at, by: by || "admin" };
 }
 function rememberLeaveInk(t) {
@@ -36211,10 +36224,17 @@ function applyLeaveCashOnto(t) {
   if (!row || row.amt == null || String(row.amt) === "") return false;
   const key = row.by === "tenant" ? "leaveElec" : "leaveElecAdmin";
   const atKey = row.by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
-  if (Number(t[atKey]) > Number(row.at || 0)) return false;
-  if (String(t[key] == null ? "" : t[key]) === String(row.amt) && Number(t[atKey] || 0) === Number(row.at || 0)) return false;
+  const fieldAt = Number(t[atKey]) || 0;
+  const rowAt = Number(row.at) || 0;
+  const fieldVal = String(t[key] == null ? "" : t[key]);
+  if (fieldAt > rowAt) {
+    if (fieldVal !== "") state.leaveCash[t.id] = { amt: fieldVal, at: fieldAt, by: row.by || "admin" };
+    return false;
+  }
+  if (!rowAt && fieldVal !== "") return false;
+  if (fieldVal === String(row.amt) && fieldAt === rowAt) return false;
   t[key] = String(row.amt);
-  t[atKey] = Number(row.at) || Date.now();
+  if (rowAt) t[atKey] = rowAt;
   return true;
 }
 function applyLeaveInk(t) {
@@ -36270,12 +36290,23 @@ function takeLeaveAmt(t, key, atKey, val, at) {
   if (!t || val == null || String(val) === "") return false;
   const incoming = Number(at) || 0;
   const cur = Number(t[atKey]) || 0;
+  const prev = String(t[key] == null ? "" : t[key]);
+  if (prev === String(val) && (!incoming || incoming === cur)) return false;
   if (cur && incoming && incoming < cur) return false;
-  if (cur && !incoming && String(t[key] == null ? "" : t[key]) !== "") return false;
-  if (String(t[key] == null ? "" : t[key]) === String(val) && (!incoming || incoming === cur)) return false;
-  t[key] = val;
+  if (cur && !incoming && prev !== "") return false;
+  t[key] = String(val);
   if (incoming) t[atKey] = incoming;
   return true;
+}
+function paintLeaveCashLine() {
+  document.querySelectorAll("[data-leave-cash-line]").forEach(el => {
+    const id = el.getAttribute("data-leave-cash-line");
+    const t = (state.tenants || []).find(x => x && x.id === id);
+    if (!t) return;
+    const shown = leaveElecShown(t);
+    const html = "退電費現金：" + (shown ? `<span class="leave-cash">${escapeHtml(shown)}</span>` : "(點交查卡)");
+    if (el.innerHTML !== html) el.innerHTML = html;
+  });
 }
 function leaveElecCashLine(t) {
   const shown = leaveElecShown(t);
@@ -36297,17 +36328,24 @@ function leaveRefundHtml(t, r, timeOnly) {
 }
 function bindLeaveElecInputs(root) {
   const scope = root || document;
-  scope.querySelectorAll("[data-leave-elec]").forEach(inp => {
-    if (inp.dataset.bound === "1") return;
+  const arm = (inp, save) => {
+    if (!inp || inp.dataset.bound === "1") return;
     inp.dataset.bound = "1";
     inp.addEventListener("click", e => e.stopPropagation());
-    inp.addEventListener("change", () => saveTenantLeaveElec(inp.dataset.leaveElec, inp.value));
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    const commit = () => save(inp.value);
+    inp.addEventListener("input", () => {
+      clearTimeout(inp._elecTimer);
+      inp._elecTimer = setTimeout(commit, 450);
+    });
+    inp.addEventListener("change", () => { clearTimeout(inp._elecTimer); commit(); });
+    inp.addEventListener("blur", () => setTimeout(() => { clearTimeout(inp._elecTimer); commit(); }, 60));
+  };
+  scope.querySelectorAll("[data-leave-elec]").forEach(inp => {
+    arm(inp, value => saveTenantLeaveElec(inp.dataset.leaveElec, value));
   });
   scope.querySelectorAll("[data-leave-elec-admin]").forEach(inp => {
-    if (inp.dataset.bound === "1") return;
-    inp.dataset.bound = "1";
-    inp.addEventListener("click", e => e.stopPropagation());
-    inp.addEventListener("change", () => saveAdminLeaveElec(inp.dataset.leaveElecAdmin, inp.value));
+    arm(inp, value => saveAdminLeaveElec(inp.dataset.leaveElecAdmin, value));
   });
 }
 function normalLeaveCardHtml(t, r, opts) {
