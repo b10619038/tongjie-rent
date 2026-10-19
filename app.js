@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-13-31";
-const APP_EDIT_COUNT = 2052;
+const APP_STAMP = "2026-10-19-15-05";
+const APP_EDIT_COUNT = 2053;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1677";
+const FILE_VER = "1678";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["還沒填電費餘額時，退電費顯示點交查卡"] },
+  { ver: APP_VERSION, items: ["簽完後改點交時間會立刻改畫面，並同步到後台"] },
+  { ver: "2026-10-19-13-31-2052", items: ["還沒填電費餘額時，退電費顯示點交查卡"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -4427,8 +4428,9 @@ function openLeaveSignPage() {
   if (t && !isDevPreview() && !isProspectPreview()) {
     const saved = readAppointValue(t.leaveAppointAt);
     const inp = document.querySelector("[data-leave-appoint=\"" + t.id + "\"]") || document.querySelector("[data-leave-appoint]");
-    const picked = inp && (inp.dataset.pickedAt || "");
-    const at = (t.leaveTimeSet && saved) ? saved : (readAppointValue(picked) || (inp && leaveInputAt(inp, t)) || tenantLeaveAt(t));
+    let fromInput = "";
+    if (inp) fromInput = readAppointValue(inp.dataset.pickedAt || "") || readAppointValue(inp.value || "");
+    const at = fromInput || saved;
     if (at && at !== saved) setNormalLeaveAppoint(t, at, false);
   }
   ui.signAgree = false;
@@ -15628,6 +15630,74 @@ function bindAppointPicker(inp) {
       openAppointPicker(inp);
     });
   }
+}
+
+function bindLeaveAppointInputs(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll("[data-leave-appoint]").forEach(inp => {
+    if (!inp || inp.dataset.leaveBound === "1") return;
+    inp.dataset.leaveBound = "1";
+    bindAppointPicker(inp);
+    inp.addEventListener("click", e => e.stopPropagation());
+    const paintPicked = () => {
+      const at = readAppointValue(inp.value);
+      if (!at) return "";
+      inp.dataset.pickedAt = at;
+      paintAppointFace(inp);
+      const head = document.querySelector("[data-leave-when]");
+      if (head) head.textContent = "已預約 " + formatDateTime12(at.replace("T", " "));
+      return at;
+    };
+    const commit = () => {
+      if (!document.body.contains(inp)) return;
+      const at = paintPicked();
+      const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
+      const prev = String(t && t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
+      if (!at || !t || at === prev) return;
+      ui.appointLock = 0;
+      setNormalLeaveAppoint(t, at, ui.role === "tenant");
+      ui.keepScroll = true;
+      let tries = 0;
+      const later = () => {
+        tries += 1;
+        if (pickerBusy() && tries < 8) {
+          inp._leaveRender = setTimeout(later, 160);
+          return;
+        }
+        ui.appointLock = 0;
+        ui.keepScroll = true;
+        render();
+      };
+      clearTimeout(inp._leaveRender);
+      inp._leaveRender = setTimeout(later, 60);
+    };
+    inp.addEventListener("input", () => { paintPicked(); });
+    inp.addEventListener("change", () => {
+      commit();
+      setTimeout(commit, 120);
+    });
+    inp.addEventListener("blur", () => setTimeout(() => {
+      const at = readAppointValue(inp.value);
+      const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
+      const prev = String(t && t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
+      if (!at || at === prev) { ui.appointLock = 0; return; }
+      commit();
+    }, 80));
+  });
+  scope.querySelectorAll("[data-gcal-leave]").forEach(btn => {
+    if (!btn || btn.dataset.leaveCalBound === "1") return;
+    btn.dataset.leaveCalBound = "1";
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x && x.id === btn.dataset.gcalLeave);
+      const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+      const inp = document.querySelector(sheetAttrSel("data-leave-appoint", btn.dataset.gcalLeave));
+      const at = (inp && (readAppointValue(inp.dataset.pickedAt || "") || readAppointValue(inp.value || ""))) || leaveInputAt(inp, t);
+      if (!at) { toast("請先選擇點交時間"); return; }
+      openGoogleCalendarAt(at, "文東 " + ((r && r.no) || "") + " 退租點交", leaveCalendarBody(t, r));
+    });
+  });
 }
 function leaveClockButtons(selected) {
   const want = String(selected || "11:00").slice(0, 5);
@@ -26872,19 +26942,22 @@ function leaveInputAt(inp, t) {
   const raw = inp && String(inp.value || "").trim();
   return raw || normalLeaveAppoint(t);
 }
+let leaveAppointTold = {};
 function setNormalLeaveAppoint(t, value, fromTenant) {
   if (!t) return;
   const nextRaw = String(value || "").trim().replace(" ", "T").slice(0, 16);
   const next = nextRaw;
+  if (!next) return;
   const prev = String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
-  if (next === prev) return;
+  const changed = next !== prev;
+  if (!changed) return;
   t.leaveAppointAt = next;
   t.leaveTimeSet = true;
   t.leaveAppointEditedAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
-  const room = (state.rooms || []).find(x => x && x.id === t.roomId);
-  publishLeavePing(t, room, "time");
+  const roomSave = (state.rooms || []).find(x => x && x.id === t.roomId);
+  publishLeavePing(t, roomSave, "time");
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
@@ -26892,9 +26965,12 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   const note = document.querySelector("[data-leave-note]");
   if (note) {
     const head = note.querySelector("[data-leave-when]");
-    const text = next ? "已預約 " + formatDateTime12(next.replace("T", " ")) : "選擇點交時間";
-    if (head) head.textContent = text;
+    const shown = "已預約 " + formatDateTime12(next.replace("T", " "));
+    if (head) head.textContent = shown;
   }
+  if (leaveAppointTold[t.id] === next) return;
+  leaveAppointTold[t.id] = next;
+  const room = (state.rooms || []).find(x => x && x.id === t.roomId);
   if (fromTenant) {
     pushPhoneNotify("退租點交", ((room && room.no) || "") + " " + (t.name || "") + " 預約 " + formatDateTime12(next.replace("T", " ")) + " 正常退租", "admin");
   }
@@ -37522,57 +37598,7 @@ function bindTenantFold() {
       toggleTenantLeave(id);
     };
   });
-  document.querySelectorAll("[data-leave-appoint]").forEach(inp => {
-    bindAppointPicker(inp);
-    inp.onclick = e => e.stopPropagation();
-    const applyLeavePick = () => {
-      const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      const at = readAppointValue(inp.value);
-      if (!at) return;
-      inp.value = at;
-      inp.dataset.pickedAt = at;
-      paintAppointFace(inp);
-      setNormalLeaveAppoint(t, at, ui.role === "tenant");
-    };
-    inp.addEventListener("pointerdown", () => {
-      ui.appointLock = Date.now() + 120000;
-      const start = String(inp.value || "");
-      clearInterval(inp._pickWatch);
-      inp._pickWatch = setInterval(() => {
-        if (!document.body.contains(inp) || !ui.appointLock || Date.now() > ui.appointLock) {
-          clearInterval(inp._pickWatch);
-          return;
-        }
-        if (String(inp.value || "") && String(inp.value || "") !== start) {
-          clearInterval(inp._pickWatch);
-          ui.appointLock = 0;
-          applyLeavePick();
-          ui.keepScroll = true;
-          render();
-        }
-      }, 250);
-    });
-    inp.addEventListener("input", applyLeavePick);
-    inp.addEventListener("change", () => {
-      ui.appointLock = 0;
-      applyLeavePick();
-      setTimeout(applyLeavePick, 60);
-      ui.keepScroll = true;
-      setTimeout(() => render(), 120);
-    });
-  });
-  document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const t = (state.tenants || []).find(x => x && x.id === btn.dataset.gcalLeave);
-      const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
-      const inp = document.querySelector(sheetAttrSel("data-leave-appoint", btn.dataset.gcalLeave));
-      const at = leaveInputAt(inp, t);
-      if (!at) { toast("請先選擇點交時間"); return; }
-      openGoogleCalendarAt(at, "文東 " + ((r && r.no) || "") + " 退租點交", leaveCalendarBody(t, r));
-    };
-  });
+  bindLeaveAppointInputs(document);
   document.querySelectorAll("[data-open-early-form]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -38508,6 +38534,7 @@ function bindUpdateBar() {
 }
 
 function bindTenant() {
+  try { bindLeaveAppointInputs(document); } catch {}
   try { bindLeaveElecInputs(document); } catch {}
   mountLeaseFlips();
   bindHistoryBack();
