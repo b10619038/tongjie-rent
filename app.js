@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-13-04";
-const APP_EDIT_COUNT = 2046;
+const APP_STAMP = "2026-10-19-13-10";
+const APP_EDIT_COUNT = 2047;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1656";
+const FILE_VER = "1657";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租提示改成退電費現金、打掃套房、攜帶印章"] },
+  { ver: APP_VERSION, items: ["退電費現金只有金額是綠色，以最後填的餘額為準"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3830,12 +3830,12 @@ function leaveSentHomeHtml(t) {
   if (!t || t.leaveDone || !(t.leaveSign && t.leaveSign.status === "signed")) return "";
   const at = tenantLeaveAt(t);
   const when = at ? formatDateTime12(String(at).replace("T", " ")) : "";
-  const cashAmt = t && t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? money(Number(t.leaveElecAdmin)) : "";
+  const cashAmt = leaveElecShown(t);
   return `<div class="handover-note renew-note">
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
       <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
       <div class="renew-focus">
-        <p class="leave-cash">退電費現金：${cashAmt ? escapeHtml(cashAmt) : ""}</p>
+        <p>退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : ""}</p>
         <p>請打掃整理套房</p>
         <p>請攜帶個人印章</p>
       </div>
@@ -11795,7 +11795,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12392,7 +12392,10 @@ function leaveNowRow(t) {
     leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
     leaveSigId: (t.leaveSign && t.leaveSign.sigId) || "",
     leaveSig2Id: (t.leaveSign && t.leaveSign.sig2Id) || "",
+    leaveElec: t.leaveElec == null ? "" : t.leaveElec,
+    leaveElecAt: Number(t.leaveElecAt) || 0,
     leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
+    leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
     editedAt: Number(t.editedAt) || Date.now()
   };
   const packed = JSON.stringify(row);
@@ -12528,7 +12531,7 @@ function tenantViewSig() {
   const ts = (state.tenants || []).map(t => [
     t && t.id, t && t.roomId, t && t.paid ? 1 : 0, t && (t.paidYm || ""), t && (t.remitOn || ""), t && (t.paidAt || ""),
     t && (t.name || ""), t && (t.leaseStart || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0,
-    t && (t.renewChoice || ""), t && (t.leaveApplied ? 1 : 0), t && (t.leaveAppointAt || ""), t && (t.leaveDone ? 1 : 0), t && (t.leaveSign && t.leaveSign.status || ""), t && (t.leaveElecAdmin == null ? "" : t.leaveElecAdmin)
+    t && (t.renewChoice || ""), t && (t.leaveApplied ? 1 : 0), t && (t.leaveAppointAt || ""), t && (t.leaveDone ? 1 : 0), t && (t.leaveSign && t.leaveSign.status || ""), t && (t.leaveElec == null ? "" : t.leaveElec), t && (t.leaveElecAdmin == null ? "" : t.leaveElecAdmin)
   ].join(":")).join("|");
   const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
@@ -12818,7 +12821,9 @@ function moneyCloudBlob() {
       leaveAppointAt: t.leaveAppointAt || "",
       leaveTimeSet: !!t.leaveTimeSet,
       leaveElec: t.leaveElec == null ? "" : t.leaveElec,
+      leaveElecAt: Number(t.leaveElecAt) || 0,
       leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
+      leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
       leaveDone: !!t.leaveDone,
       leaveDoneAt: t.leaveDoneAt || "",
       leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
@@ -35689,11 +35694,8 @@ function applyLeaveCloudFields(t, src) {
     t.leaveApplied = false;
     changed = true;
   }
-  if (src.leaveElec != null && String(src.leaveElec) !== "") put("leaveElec", src.leaveElec);
-  if (src.leaveElecAdmin != null && String(src.leaveElecAdmin) !== "" && String(t.leaveElecAdmin == null ? "" : t.leaveElecAdmin) !== String(src.leaveElecAdmin)) {
-    t.leaveElecAdmin = src.leaveElecAdmin;
-    changed = true;
-  }
+  if (takeLeaveAmt(t, "leaveElec", "leaveElecAt", src.leaveElec, src.leaveElecAt)) changed = true;
+  if (takeLeaveAmt(t, "leaveElecAdmin", "leaveElecAdminAt", src.leaveElecAdmin, src.leaveElecAdminAt)) changed = true;
   if (src.leaveDone && !t.leaveDone) {
     t.leaveDone = true;
     t.leaveDoneAt = src.leaveDoneAt || t.leaveDoneAt || "";
@@ -35818,8 +35820,9 @@ function postLeaveDepositBook(t, r) {
   );
 }
 function postLeaveElecBook(t, r) {
-  if (!t || t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "") return false;
-  const amt = Math.max(0, Math.round(Number(t.leaveElecAdmin) || 0));
+  const raw = leaveElecFinal(t);
+  if (!t || raw === "") return false;
+  const amt = Math.max(0, Math.round(Number(raw) || 0));
   return upsertLeaveBook(
     "bk-leave-elec-" + t.id,
     "leave-elec-" + t.id,
@@ -35836,12 +35839,15 @@ function saveTenantLeaveElec(id, value) {
   const next = raw === "" ? "" : String(Math.max(0, Math.round(Number(raw) || 0)));
   if (String(t.leaveElec == null ? "" : t.leaveElec) === next) return;
   t.leaveElec = next;
+  t.leaveElecAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  postLeaveElecBook(t, r);
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  try { publishLeaveNow(t); } catch {}
   pushPhoneNotify("電費餘額", ((r && r.no) || "") + " " + (t.name || "") + (next === "" ? " 清空電費餘額" : " 填了電費餘額 " + money(Number(next)) + "（後台可改）"), "admin");
   toast(next === "" ? "已清空電費餘額" : "已記下電費餘額。後台點交時還能改，電費退現金。");
 }
@@ -35852,6 +35858,7 @@ function saveAdminLeaveElec(id, value) {
   const next = raw === "" ? "" : String(Math.max(0, Math.round(Number(raw) || 0)));
   if (String(t.leaveElecAdmin == null ? "" : t.leaveElecAdmin) === next) return;
   t.leaveElecAdmin = next;
+  t.leaveElecAdminAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -35862,9 +35869,36 @@ function saveAdminLeaveElec(id, value) {
   try { publishLeaveNow(t); } catch {}
   toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
 }
+function leaveElecShown(t) {
+  const raw = leaveElecFinal(t);
+  return raw === "" ? "" : money(Number(raw));
+}
+function leaveElecFinal(t) {
+  if (!t) return "";
+  const tenant = t.leaveElec != null && String(t.leaveElec) !== "" ? String(t.leaveElec) : "";
+  const admin = t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? String(t.leaveElecAdmin) : "";
+  if (tenant && admin) {
+    const ta = Number(t.leaveElecAt) || 0;
+    const aa = Number(t.leaveElecAdminAt) || 0;
+    if (ta || aa) return ta >= aa ? tenant : admin;
+    return admin;
+  }
+  return admin || tenant;
+}
+function takeLeaveAmt(t, key, atKey, val, at) {
+  if (!t || val == null || String(val) === "") return false;
+  const incoming = Number(at) || 0;
+  const cur = Number(t[atKey]) || 0;
+  if (cur && incoming && incoming < cur) return false;
+  if (cur && !incoming && String(t[key] == null ? "" : t[key]) !== "") return false;
+  if (String(t[key] == null ? "" : t[key]) === String(val) && (!incoming || incoming === cur)) return false;
+  t[key] = val;
+  if (incoming) t[atKey] = incoming;
+  return true;
+}
 function leaveElecCashLine(t) {
-  if (!t || t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "") return "";
-  return "現場退電費現金 " + money(Number(t.leaveElecAdmin)) + "。";
+  const shown = leaveElecShown(t);
+  return shown ? "現場退電費現金 " + shown + "。" : "";
 }
 function leaveRefundHtml(t, r, timeOnly) {
   const depLine = `<div class="small" style="margin-top:8px">${escapeHtml(depositRefundLine(t, r))}</div>`;
