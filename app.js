@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1665";
+const FILE_VER = "1666";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3853,6 +3853,13 @@ function leaveSentHomeHtml(t) {
     </div>`;
 }
 function ensureLeaveSignCloud(t, r) {
+  if (!t || t.leaveDone || t.former) return;
+  if (clearStaleLeave(t)) {
+    try { save(); } catch {}
+    try { pushCloud(); } catch {}
+    try { publishLeaveNow(t); } catch {}
+    return;
+  }
   if (!t || ui.role !== "tenant") return;
   if (!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2))) return;
   const ink = state.leaveInk && state.leaveInk[t.id];
@@ -11807,7 +11814,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -11937,6 +11944,17 @@ function pickNewerEntity(a, b, keys) {
         out.leaveAppointAt = pick.leaveAppointAt;
         out.leaveAppointEditedAt = pick.leaveAppointEditedAt;
         out.leaveTimeSet = true;
+      }
+    }
+    const resetAt = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0);
+    if (resetAt) {
+      out.leaveResetAt = resetAt;
+      if (leaveApplyTs(out) < resetAt) {
+        out.leaveApplied = false;
+        out.leaveSign = null;
+        out.leaveAppointAt = "";
+        out.leaveAppointEditedAt = 0;
+        out.leaveTimeSet = false;
       }
     }
   }
@@ -12433,6 +12451,7 @@ function leaveNowRow(t) {
     leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
     leaveAppointAt: t.leaveAppointAt || "",
     leaveAppointEditedAt: Number(t.leaveAppointEditedAt) || 0,
+    leaveResetAt: Number(t.leaveResetAt) || 0,
     leaveTimeSet: !!t.leaveTimeSet,
     leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
     leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
@@ -12872,6 +12891,7 @@ function moneyCloudBlob() {
       leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
       leaveAppointAt: t.leaveAppointAt || "",
       leaveAppointEditedAt: Number(t.leaveAppointEditedAt) || 0,
+      leaveResetAt: Number(t.leaveResetAt) || 0,
       leaveTimeSet: !!t.leaveTimeSet,
       leaveElec: t.leaveElec == null ? "" : t.leaveElec,
       leaveElecAt: Number(t.leaveElecAt) || 0,
@@ -35361,7 +35381,20 @@ function tenantRenewDone(t, r) {
     x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
   ));
 }
-function tenantLeaveApplied(t) {
+function leaveApplyTs(t) {
+  return Math.max(Number(t && t.leaveAppliedAt) || 0, Number(t && t.leaveSign && t.leaveSign.ts) || 0);
+}
+function clearStaleLeave(t) {
+  const reset = Number(t && t.leaveResetAt) || 0;
+  if (!t || !reset || leaveApplyTs(t) >= reset) return false;
+  t.leaveApplied = false;
+  t.leaveSign = null;
+  t.leaveSignCloud = "";
+  t.leaveAppointAt = "";
+  t.leaveAppointEditedAt = 0;
+  t.leaveTimeSet = false;
+  return true;
+}
   if (!t || t.leaveDone || t.former) return false;
   if (t.leaveApplied) return true;
   return !!(t.leaveSign && t.leaveSign.status === "signed");
@@ -35747,6 +35780,14 @@ function applyLeaveCloudFields(t, src) {
     t[key] = val;
     changed = true;
   };
+  if (src.leaveResetAt && Number(src.leaveResetAt) > Number(t.leaveResetAt || 0)) {
+    t.leaveResetAt = Number(src.leaveResetAt);
+    changed = true;
+  }
+  if (clearStaleLeave(t)) changed = true;
+  const resetAt = Number(t.leaveResetAt) || 0;
+  const srcOld = resetAt && Math.max(Number(src.leaveAppliedAt) || 0, Number(src.leaveSign && src.leaveSign.ts) || 0, src.leaveSigned ? Number(src.leaveAppliedAt) || 0 : 0) < resetAt;
+  if (srcOld) return changed;
   put("renewChoice", src.renewChoice || "");
   if (src.leaveAppointAt) {
     const srcAt = Number(src.leaveAppointEditedAt) || 0;
@@ -36026,6 +36067,7 @@ function applyLeaveInk(t) {
 }
 function applyLeaveExtras() {
   (state.tenants || []).forEach(t => {
+    try { clearStaleLeave(t); } catch {}
     try { applyLeaveCashOnto(t); } catch {}
     try { applyLeaveInk(t); } catch {}
   });
