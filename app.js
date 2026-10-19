@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1673";
+const FILE_VER = "1674";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -15615,25 +15615,10 @@ function bindAppointPicker(inp) {
   inp.dataset.boundPicker = "1";
   paintAppointFace(inp);
   const wrap = inp.closest(".appoint-one");
-  const open = e => {
-    if (inp.disabled) return;
-    if (e && e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-gcal-leave], [data-appoint-pause], [data-leave-clock]")) return;
-    openAppointPicker(inp);
-  };
-  inp.addEventListener("click", e => {
-    e.stopPropagation();
-    openAppointPicker(inp);
-  });
-  inp.addEventListener("pointerup", e => {
-    e.stopPropagation();
-  });
   if (wrap) {
     wrap.addEventListener("click", e => {
       if (wrap.classList.contains("has-clock")) return;
-      if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-appoint-pause], [data-leave-clock]")) return;
-      if (e.target === inp) return;
-      e.preventDefault();
-      e.stopPropagation();
+      if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-gcal-leave], [data-appoint-pause], [data-leave-clock], input")) return;
       openAppointPicker(inp);
     });
   }
@@ -27411,7 +27396,18 @@ function appointBlock(rep) {
 
 let lastRenderPage = "";
 let lastRenderRole = "";
+function pickerBusy() {
+  const a = document.activeElement;
+  if (!a || !a.tagName) return false;
+  const type = String(a.type || "").toLowerCase();
+  return a.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local";
+}
 function render() {
+  if (pickerBusy()) {
+    clearTimeout(render.later);
+    render.later = setTimeout(() => { if (!pickerBusy()) render(); }, 280);
+    return;
+  }
   markDevice();
   if (EMBED_PAGE) {
     ui.embed = EMBED_PAGE;
@@ -37512,9 +37508,13 @@ function bindTenantFold() {
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
       const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      const at = String(inp.value || "").trim();
+      const at = String(inp.value || "").trim().replace(" ", "T").slice(0, 16);
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at)) return;
+      inp.value = at;
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
+      ui.keepScroll = true;
+      setTimeout(() => { if (!pickerBusy()) render(); }, 40);
     };
   });
   document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
