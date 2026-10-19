@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-11-10";
-const APP_EDIT_COUNT = 2028;
+const APP_STAMP = "2026-10-19-11-20";
+const APP_EDIT_COUNT = 2029;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1638";
+const FILE_VER = "1639";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租申請會即時通知後台並同步到其他電腦，點交日期可自訂"] },
+  { ver: APP_VERSION, items: ["正常退租的點交日期會自動出現在後台行程，改時間也會一起改"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -4351,6 +4351,12 @@ function saveTenantRenewRow(row, opt) {
   ui.keepScroll = true;
 }
 function openLeaveSignPage() {
+  const t = typeof me === "function" ? me() : null;
+  if (t && !isDevPreview() && !isProspectPreview()) {
+    const inp = document.querySelector("[data-leave-appoint=\"" + t.id + "\"]") || document.querySelector("[data-leave-appoint]");
+    const at = (typeof leaveInputAt === "function" && inp && leaveInputAt(inp, t)) || tenantLeaveAt(t);
+    if (at) setNormalLeaveAppoint(t, at, true);
+  }
   ui.signAgree = false;
   ui.signStrokes = [];
   ui.signStrokes2 = [];
@@ -4834,13 +4840,15 @@ function declineTenantRenewal() {
   if (isDevPreview()) { toast("預覽：已記不續約（不會寫入）"); return; }
   if (cur) cur.status = "cancelled";
   t.renewChoice = "no";
+  if (!String(t.leaveAppointAt || "").trim()) t.leaveAppointAt = tenantLeaveAt(t);
   t.edited = true;
   t.editedAt = Date.now();
   publishLeavePing(t, r, "apply");
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("正退申請", (r.no || "") + " " + (t.name || "") + " 申請正常退租，合約至 " + (rocSlash(t.leaseEnd) || t.leaseEnd || ""), "admin");
+  const when = t.leaveAppointAt ? formatDateTime12(String(t.leaveAppointAt).replace("T", " ")) : "";
+  pushPhoneNotify("正退申請", (r.no || "") + " " + (t.name || "") + " 申請正常退租" + (when ? "，點交 " + when : "") + "，合約至 " + (rocSlash(t.leaseEnd) || t.leaseEnd || ""), "admin");
   toast("已確認不續約");
   ui.keepScroll = true;
   render();
@@ -19548,12 +19556,12 @@ function calendarItems() {
     });
   });
   (state.tenants || []).forEach(t => {
-    if (!t || t.former || t.incoming || !t.leaveAppointAt) return;
+    if (!t || t.former || t.incoming || !t.leaveAppointAt || t.leaveDone) return;
     const room = (state.rooms || []).find(x => x && x.id === t.roomId);
-    if (!room || !tenantRenewNo(t, room)) return;
+    if (!leaveOnSchedule(t, room)) return;
     items.push({
       at: t.leaveAppointAt, kind: "leave", id: t.id,
-      title: `文東 ${room.no || ""} 退租點交`,
+      title: `文東 ${(room && room.no) || ""} 退租點交`,
       sub: `${t.name || ""} · ${formatDateTime12(String(t.leaveAppointAt).replace("T", " "))}`
     });
   });
@@ -32732,8 +32740,8 @@ function workAppointMemos() {
     const room = (state.rooms || []).find(x => x && x.id === t.roomId);
     const who = (((room && room.no) || "") + " " + (t.name || "")).trim();
     if (t.invoicePickupAt) push("invpick-" + t.id, t.invoicePickupAt, who + " 領取發票");
-    if (t.leaveAppointAt && !t.leaveDone && typeof tenantRenewNo === "function" && tenantRenewNo(t, room)) {
-      push("leaveap-" + t.id, t.leaveAppointAt, who + " 正常退租");
+    if (t.leaveAppointAt && !t.leaveDone && leaveOnSchedule(t, room)) {
+      push("leaveap-" + t.id, t.leaveAppointAt, who + " 正退點交");
     }
   });
   (state.renewals || []).forEach(r => {
@@ -35342,6 +35350,12 @@ function clampLeaveClock(value) {
 }
 function tenantLeaveAt(t) {
   return clampLeaveClock(normalLeaveAppoint(t));
+}
+function leaveOnSchedule(t, room) {
+  if (!t || t.former || t.incoming || t.demo || t.leaveDone) return false;
+  if (!String(t.leaveAppointAt || "").trim()) return false;
+  if (t.renewChoice === "no") return true;
+  return typeof tenantRenewNo === "function" && tenantRenewNo(t, room);
 }
 function publishLeavePing(t, r, kind) {
   if (!t) return;
