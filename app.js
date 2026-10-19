@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-13-10";
-const APP_EDIT_COUNT = 2047;
+const APP_STAMP = "2026-10-19-13-18";
+const APP_EDIT_COUNT = 2048;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1657";
+const FILE_VER = "1658";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["退電費現金只有金額是綠色，以最後填的餘額為準"] },
+  { ver: APP_VERSION, items: ["電費餘額和退租簽名改成單獨同步，不會再被其他更新蓋掉"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3850,6 +3850,13 @@ function leaveSentHomeHtml(t) {
 function ensureLeaveSignCloud(t, r) {
   if (!t || ui.role !== "tenant") return;
   if (!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2))) return;
+  const ink = state.leaveInk && state.leaveInk[t.id];
+  if ((t.leaveSign.sig || t.leaveSign.sig2) && !(ink && (ink.sig || ink.sig2))) {
+    rememberLeaveInk(t);
+    cloudDirty = true;
+    try { pushCloud(); } catch {}
+    setTimeout(() => { try { publishLeaveNow(t); } catch {} }, 1800);
+  }
   if (!t.leaveApplied) {
     t.leaveApplied = true;
     t.leaveAppliedAt = Date.now();
@@ -11904,6 +11911,19 @@ function pickNewerEntity(a, b, keys) {
         }
       }
     }
+    const pickAmt = (key, atKey) => {
+      const has = x => x && x[key] != null && String(x[key]) !== "";
+      const aHas = has(a);
+      const bHas = has(b);
+      if (!aHas && !bHas) return;
+      const aAt = Number(a[atKey]) || (aHas ? Number(a.editedAt) || 0 : 0);
+      const bAt = Number(b[atKey]) || (bHas ? Number(b.editedAt) || 0 : 0);
+      const chosen = aHas && bHas ? (aAt >= bAt ? a : b) : (aHas ? a : b);
+      out[key] = chosen[key];
+      if (chosen[atKey]) out[atKey] = chosen[atKey];
+    };
+    pickAmt("leaveElec", "leaveElecAt");
+    pickAmt("leaveElecAdmin", "leaveElecAdminAt");
   }
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
   if (keys && keys.indexOf("pinned") >= 0) {
@@ -12272,6 +12292,7 @@ function ingestLiveCloud(raw) {
     }
     if (Array.isArray(o.leaves) && o.leaves.length) {
       let changed = false;
+      if (o.leaveCash && typeof o.leaveCash === "object") state.leaveCash = mergeLeaveCash(state.leaveCash, o.leaveCash);
       o.leaves.forEach(src => {
         if (!src || !src.id) return;
         const t = (state.tenants || []).find(x => x && x.id === src.id);
@@ -12285,6 +12306,8 @@ function ingestLiveCloud(raw) {
           if (!t.leaveApplied) { t.leaveApplied = true; t.leaveAppliedAt = src.leaveAppliedAt || Date.now(); }
           if (before !== "signed" || sig !== (t.leaveSign && t.leaveSign.sig)) changed = true;
         }
+        if (applyLeaveCashOnto(t)) changed = true;
+        if (applyLeaveInk(t)) changed = true;
       });
       if (o.leavePing) state.leavePing = o.leavePing;
       if (ui.role === "admin" && o.leavePing && (o.leavePing.name || o.leavePing.roomNo) && !leavePingAlreadySeen(o.leavePing)) {
@@ -12300,6 +12323,13 @@ function ingestLiveCloud(raw) {
         ui.keepScroll = true;
         try { render(); } catch {}
         try { save(); } catch {}
+        if (ui.role === "admin") {
+          const now = Date.now();
+          if (now - (ingestLiveCloud.inkPull || 0) > 3000) {
+            ingestLiveCloud.inkPull = now;
+            try { pullCloud().then(() => { try { applyLeaveExtras(); ui.keepScroll = true; render(); } catch {} }); } catch {}
+          }
+        }
       }
     }
     if (Array.isArray(o.earlyOuts) && o.earlyOuts.length) {
@@ -12410,6 +12440,7 @@ function publishLeaveNow(t) {
     at: Date.now(),
     device: liveDeviceId(),
     leaves: [row],
+    leaveCash: state.leaveCash || {},
     leavePing: state.leavePing || null
   };
   if (!(paidWs && paidWs.readyState === 1)) {
@@ -12579,6 +12610,10 @@ function ingestPaidCloud(raw) {
     if (!o || typeof o !== "object") return;
     if (o.ym && o.ym !== payYmNow()) return;
     const viewBefore = tenantViewSig();
+    if (o.leaveCash && typeof o.leaveCash === "object") {
+      state.leaveCash = mergeLeaveCash(state.leaveCash, o.leaveCash);
+      try { applyLeaveExtras(); } catch {}
+    }
     const before = JSON.stringify(state.paidMarks || {});
     if (o.marks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, mergePaidMarkMaps(loadPaidMarks(), o.marks));
     if (o.paidMarks) state.paidMarks = mergePaidMarkMaps(state.paidMarks, o.paidMarks);
@@ -12787,6 +12822,7 @@ function moneyCloudBlob() {
     marks: state.paidMarks || {},
     paidMarks: state.paidMarks || {},
     rentUnpaidYm: state.rentUnpaidYm || "",
+    leaveCash: state.leaveCash || {},
     tenants: (state.tenants || []).filter(t => t && t.id).map(t => ({
       id: t.id,
       paid: !!t.paid,
@@ -13488,6 +13524,9 @@ async function pullCloud() {
       try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
+      state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
+      state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
+      try { applyLeaveExtras(); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
       try { enforceSeatLimit(); } catch {}
@@ -13504,6 +13543,7 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
+    try { applyLeaveExtras(); } catch {}
     if (keepCut) state.adminLogoutAt = keepCut;
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
     try {
@@ -14347,7 +14387,9 @@ async function pushCloud() {
       chatImages: mergeChatImages(remote && remote.chatImages, state && state.chatImages, loadChatImageMap()),
       chatImageGone: unionChatImageGone(remote && remote.chatImageGone, state && state.chatImageGone),
       loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
-      presence: mergedPresence(remote && remote.presence, state.presence)
+      presence: mergedPresence(remote && remote.presence, state.presence),
+      leaveCash: mergeLeaveCash(remote && remote.leaveCash, state.leaveCash),
+      leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk)
     });
     applyRepairStatusBox(state.repairs);
     applyRepairStatusBox(payload.repairs);
@@ -14393,6 +14435,9 @@ async function pushCloud() {
       saveLocalChats(ui.chats);
     }
     if (payload.loginSeats) state.loginSeats = payload.loginSeats;
+    if (payload.leaveCash) state.leaveCash = payload.leaveCash;
+    if (payload.leaveInk) state.leaveInk = payload.leaveInk;
+    try { applyLeaveExtras(); } catch {}
     try { enforceSeatLimit(); } catch {}
     applyBookVaultGone(state);
     stripCloudMedia(payload);
@@ -25982,9 +26027,10 @@ function handoverConfirmPaperHtml(t, r, co) {
     return "";
   };
   const live = ui && ui.page === "leave-sign";
+  const ink = (state.leaveInk && t && state.leaveInk[t.id]) || {};
   const sigs = live
     ? `<img class="lease-esig live-ink" data-live-sign="1" alt=""><img class="lease-esig live-ink" data-live-sign="2" alt="">`
-    : (leave ? (sigImg(leave.sig, leave.sigId) + sigImg(leave.sig2, leave.sig2Id)) : "");
+    : (leave ? (sigImg(leave.sig || ink.sig, leave.sigId) + sigImg(leave.sig2 || ink.sig2, leave.sig2Id)) : (sigImg(ink.sig) + sigImg(ink.sig2)));
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -27305,6 +27351,7 @@ function holdTenantSlide() {
   }, 1140);
 }
 function paintApp() {
+  try { applyLeaveExtras(); } catch {}
   captureComposeDraft();
   persistUi();
   enforceTenantSession();
@@ -35840,6 +35887,7 @@ function saveTenantLeaveElec(id, value) {
   if (String(t.leaveElec == null ? "" : t.leaveElec) === next) return;
   t.leaveElec = next;
   t.leaveElecAt = Date.now();
+  rememberLeaveCash(t, "tenant");
   t.edited = true;
   t.editedAt = Date.now();
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -35859,6 +35907,7 @@ function saveAdminLeaveElec(id, value) {
   if (String(t.leaveElecAdmin == null ? "" : t.leaveElecAdmin) === next) return;
   t.leaveElecAdmin = next;
   t.leaveElecAdminAt = Date.now();
+  rememberLeaveCash(t, "admin");
   t.edited = true;
   t.editedAt = Date.now();
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -35868,6 +35917,90 @@ function saveAdminLeaveElec(id, value) {
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
   toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
+}
+function mergeLeaveCash(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    const n = b[id];
+    if (!n || n.amt == null || String(n.amt) === "") return;
+    const o = out[id];
+    if (!o || Number(n.at || 0) >= Number(o.at || 0)) out[id] = { amt: String(n.amt), at: Number(n.at) || 0, by: n.by || "" };
+  });
+  return out;
+}
+function mergeLeaveInk(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    const n = b[id] || {};
+    const o = out[id] || {};
+    const sig = n.sig && String(n.sig).indexOf("data:") === 0 ? n.sig : (o.sig || "");
+    const sig2 = n.sig2 && String(n.sig2).indexOf("data:") === 0 ? n.sig2 : (o.sig2 || "");
+    if (sig || sig2) out[id] = { sig, sig2, at: Math.max(Number(n.at) || 0, Number(o.at) || 0) };
+  });
+  return out;
+}
+function rememberLeaveCash(t, by) {
+  if (!t || !t.id) return;
+  const key = by === "tenant" ? "leaveElec" : "leaveElecAdmin";
+  const atKey = by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
+  if (t[key] == null || String(t[key]) === "") return;
+  if (!state.leaveCash) state.leaveCash = {};
+  const at = Number(t[atKey]) || Date.now();
+  const cur = state.leaveCash[t.id];
+  if (cur && Number(cur.at) > at) return;
+  state.leaveCash[t.id] = { amt: String(t[key]), at, by: by || "admin" };
+}
+function rememberLeaveInk(t) {
+  if (!t || !t.id || !t.leaveSign) return;
+  const sig = t.leaveSign.sig && String(t.leaveSign.sig).indexOf("data:") === 0 ? t.leaveSign.sig : "";
+  const sig2 = t.leaveSign.sig2 && String(t.leaveSign.sig2).indexOf("data:") === 0 ? t.leaveSign.sig2 : "";
+  if (!sig && !sig2) return;
+  if (!state.leaveInk) state.leaveInk = {};
+  const prev = state.leaveInk[t.id] || {};
+  state.leaveInk[t.id] = { sig: sig || prev.sig || "", sig2: sig2 || prev.sig2 || "", at: Date.now() };
+}
+function applyLeaveCashOnto(t) {
+  const row = t && state.leaveCash && state.leaveCash[t.id];
+  if (!row || row.amt == null || String(row.amt) === "") return false;
+  const key = row.by === "tenant" ? "leaveElec" : "leaveElecAdmin";
+  const atKey = row.by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
+  if (Number(t[atKey]) > Number(row.at || 0)) return false;
+  if (String(t[key] == null ? "" : t[key]) === String(row.amt) && Number(t[atKey] || 0) === Number(row.at || 0)) return false;
+  t[key] = String(row.amt);
+  t[atKey] = Number(row.at) || Date.now();
+  return true;
+}
+function applyLeaveInk(t) {
+  const ink = t && state.leaveInk && state.leaveInk[t.id];
+  if (!ink || !(ink.sig || ink.sig2)) return false;
+  if (!t.leaveSign || t.leaveSign.status !== "signed") t.leaveSign = Object.assign({}, t.leaveSign || {}, { status: "signed", name: t.name || "" });
+  let changed = false;
+  if (ink.sig && t.leaveSign.sig !== ink.sig) { t.leaveSign.sig = ink.sig; changed = true; }
+  if (ink.sig2 && t.leaveSign.sig2 !== ink.sig2) { t.leaveSign.sig2 = ink.sig2; changed = true; }
+  return changed;
+}
+function applyLeaveExtras() {
+  (state.tenants || []).forEach(t => {
+    try { applyLeaveCashOnto(t); } catch {}
+    try { applyLeaveInk(t); } catch {}
+  });
+}
+function leaveSigFromCanvas(c) {
+  if (!c) return "";
+  try {
+    const w = 360, h = 126;
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const g = out.getContext("2d");
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, w, h);
+    g.drawImage(c, 0, 0, w, h);
+    if (typeof bleachSigCanvas === "function") bleachSigCanvas(g, w, h);
+    return out.toDataURL("image/jpeg", 0.62);
+  } catch {
+    try { return canvasToSig(c); } catch { return ""; }
+  }
 }
 function leaveElecShown(t) {
   const raw = leaveElecFinal(t);
@@ -36043,8 +36176,8 @@ function finishLeaveSign(a, b) {
     status: "signed",
     at: nowStamp(),
     ts: Date.now(),
-    sig: has1 ? canvasToSig(c1) : "",
-    sig2: has2 ? canvasToSig(c2) : "",
+    sig: has1 ? leaveSigFromCanvas(c1) : "",
+    sig2: has2 ? leaveSigFromCanvas(c2) : "",
     name: t.name || ""
   };
   if (!t.leaveApplied) {
@@ -36053,6 +36186,7 @@ function finishLeaveSign(a, b) {
   }
   if (!t.renewChoice || t.renewChoice === "open") t.renewChoice = "no";
   t.leaveSignCloud = "2";
+  rememberLeaveInk(t);
   t.edited = true;
   t.editedAt = Date.now();
   publishLeavePing(t, r, "sign");
@@ -36060,6 +36194,7 @@ function finishLeaveSign(a, b) {
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
+  setTimeout(() => { try { publishLeaveNow(t); } catch {} }, 1800);
   try { putLeaveSigFile(t); } catch {}
   pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
   ui.signStrokes = [];
