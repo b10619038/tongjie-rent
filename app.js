@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-18";
-const APP_EDIT_COUNT = 2038;
+const APP_STAMP = "2026-10-19-12-28";
+const APP_EDIT_COUNT = 2039;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1648";
+const FILE_VER = "1649";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租簽名後台立刻收到，租客首頁正常退租右邊有往右等待動畫"] },
+  { ver: APP_VERSION, items: ["正常退租改走小封包同步到後台，簽名後仍可改點交時間"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3828,24 +3828,35 @@ function scrollRenewCardIntoPlace() {
 }
 function leaveSentHomeHtml(t) {
   if (!t || t.leaveDone || !(t.leaveSign && t.leaveSign.status === "signed")) return "";
-  const when = t.leaveAppointAt ? formatDateTime12(String(t.leaveAppointAt).replace("T", " ")) : "";
+  const at = tenantLeaveAt(t);
+  const when = at ? formatDateTime12(String(at).replace("T", " ")) : "";
   return `<div class="handover-note renew-note">
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
-      <p>已簽名送出。${when ? "點交 " + escapeHtml(when) + "。" : ""}請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
+      <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
+      <div class="appoint-box" style="margin-top:10px">
+        <label class="field"><span>點交時間</span>
+          ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: true })}
+        </label>
+        <div class="small" data-leave-note="1"><div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div></div>
+      </div>
     </div>`;
 }
 function ensureLeaveSignCloud(t, r) {
-  if (!t || ui.role !== "tenant" || t.leaveSignCloud) return;
+  if (!t || ui.role !== "tenant") return;
+  if (String(t.leaveSignCloud) === "2") return;
   if (!(t.leaveSign && t.leaveSign.status === "signed" && (t.leaveSign.sig || t.leaveSign.sig2))) return;
-  t.leaveSignCloud = Date.now();
+  t.leaveSignCloud = "2";
   if (!t.leaveApplied) {
     t.leaveApplied = true;
     t.leaveAppliedAt = Date.now();
   }
+  t.edited = true;
+  t.editedAt = Date.now();
   publishLeavePing(t, r, "sign");
   try { save(); } catch {}
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
+  try { publishLeaveNow(t, r); } catch {}
 }
 function sentPulseStyle() {
   const dur = 2200;
@@ -4871,6 +4882,7 @@ function declineTenantRenewal() {
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
+  try { publishLeaveNow(t); } catch {}
   const when = t.leaveAppointAt ? formatDateTime12(String(t.leaveAppointAt).replace("T", " ")) : "";
   pushPhoneNotify("正退申請", (r.no || "") + " " + (t.name || "") + " 申請正常退租" + (when ? "，點交 " + when : "") + "，合約至 " + (rocSlash(t.leaseEnd) || t.leaseEnd || ""), "admin");
   toast("已確認不續約");
@@ -12145,7 +12157,7 @@ function ingestLiveCloud(raw) {
     const at = Number(o.at) || 0;
     const hasMemos = (Array.isArray(o.memos) && o.memos.length) || (Array.isArray(o.memoGone) && o.memoGone.length);
     const hasRepairs = Array.isArray(o.repairs) && o.repairs.length;
-    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !hasMemos && !hasRepairs) return;
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !(Array.isArray(o.leaves) && o.leaves.length) && !hasMemos && !hasRepairs) return;
     if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
     if (hasMemos) {
       state.memoGone = unionGone(state.memoGone, o.memoGone);
@@ -12206,6 +12218,38 @@ function ingestLiveCloud(raw) {
       });
       ui.keepScroll = true;
       try { render(); } catch {}
+    }
+    if (Array.isArray(o.leaves) && o.leaves.length) {
+      let changed = false;
+      o.leaves.forEach(src => {
+        if (!src || !src.id) return;
+        const t = (state.tenants || []).find(x => x && x.id === src.id);
+        if (!t) return;
+        if (applyLeaveCloudFields(t, src)) changed = true;
+        if (src.leaveSigned) {
+          const sig = src.leaveSig || (t.leaveSign && t.leaveSign.sig) || "";
+          const sig2 = src.leaveSig2 || (t.leaveSign && t.leaveSign.sig2) || "";
+          const before = t.leaveSign && t.leaveSign.status;
+          t.leaveSign = Object.assign({}, t.leaveSign || {}, { status: "signed", at: src.leaveSignAt || (t.leaveSign && t.leaveSign.at) || "", name: t.name || "", sig, sig2 });
+          if (!t.leaveApplied) { t.leaveApplied = true; t.leaveAppliedAt = src.leaveAppliedAt || Date.now(); }
+          if (before !== "signed" || sig !== (t.leaveSign && t.leaveSign.sig)) changed = true;
+        }
+      });
+      if (o.leavePing) state.leavePing = o.leavePing;
+      if (ui.role === "admin" && o.leavePing && (o.leavePing.name || o.leavePing.roomNo) && !leavePingAlreadySeen(o.leavePing)) {
+        markLeavePingSeen(o.leavePing);
+        const ping = o.leavePing;
+        const when = ping.appointAt ? "　" + formatDateTime12(String(ping.appointAt).replace("T", " ")) : "";
+        const title = ping.kind === "time" ? "退租點交" : (ping.kind === "sign" ? "退租簽名" : "正退申請");
+        const line = `${ping.roomNo || ""} ${ping.name || ""}`.trim();
+        try { showOsBanner(title, line + when, "leave-" + (ping.kind || "apply") + "-" + (ping.id || "") + "-" + (ping.at || "")); } catch {}
+        toast(title + "　" + line);
+      }
+      if (changed) {
+        ui.keepScroll = true;
+        try { render(); } catch {}
+        try { save(); } catch {}
+      }
     }
     if (Array.isArray(o.earlyOuts) && o.earlyOuts.length) {
       const earlyChanged = o.device !== liveDeviceId() ? renewAppointChanges(state.checkouts, o.earlyOuts) : [];
@@ -12279,6 +12323,45 @@ function publishRenewNow(row) {
   try {
     paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRenewPkt), false));
     pendingRenewPkt = null;
+  } catch {}
+}
+let pendingLeavePkt = null;
+function leaveNowRow(t) {
+  if (!t) return null;
+  const sig = (t.leaveSign && t.leaveSign.sig) || "";
+  const sig2 = (t.leaveSign && t.leaveSign.sig2) || "";
+  const row = {
+    id: t.id,
+    renewChoice: t.renewChoice || "",
+    leaveApplied: !!t.leaveApplied,
+    leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
+    leaveAppointAt: t.leaveAppointAt || "",
+    leaveTimeSet: !!t.leaveTimeSet,
+    leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
+    leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
+    editedAt: Number(t.editedAt) || Date.now()
+  };
+  const packed = JSON.stringify(row);
+  if (sig && packed.length + sig.length < 160000) row.leaveSig = sig;
+  if (sig2 && JSON.stringify(row).length + sig2.length < 180000) row.leaveSig2 = sig2;
+  return row;
+}
+function publishLeaveNow(t) {
+  const row = leaveNowRow(t);
+  if (!row) return;
+  pendingLeavePkt = {
+    at: Date.now(),
+    device: liveDeviceId(),
+    leaves: [row],
+    leavePing: state.leavePing || null
+  };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingLeavePkt), false));
+    pendingLeavePkt = null;
   } catch {}
 }
 let pendingLiveMemos = [];
@@ -12683,8 +12766,6 @@ function moneyCloudBlob() {
       leaveDoneAt: t.leaveDoneAt || "",
       leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
       leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
-      leaveSig: (t.leaveSign && t.leaveSign.sig) || "",
-      leaveSig2: (t.leaveSign && t.leaveSign.sig2) || "",
       hiddenAnns: Array.isArray(t.hiddenAnns) ? t.hiddenAnns : [],
       eSignStatus: t.eSign && t.eSign.status || "",
       eSignAt: t.eSign && t.eSign.at || "",
@@ -12747,6 +12828,11 @@ function connectPaidCloud() {
         }, 20000);
         if (moneyPubWait) publishPaidCloud();
         if (pendingRenewPkt) publishRenewNow(pendingRenewPkt.renewals && pendingRenewPkt.renewals[0]);
+        if (pendingLeavePkt && pendingLeavePkt.leaves && pendingLeavePkt.leaves[0]) {
+          const id = pendingLeavePkt.leaves[0].id;
+          const who = (state.tenants || []).find(x => x && x.id === id);
+          if (who) publishLeaveNow(who);
+        }
         if (pendingEarlyPkt) publishEarlyNow(pendingEarlyPkt.earlyOuts && pendingEarlyPkt.earlyOuts[0]);
         if (pendingLiveMemos.length || pendingLiveGone.length) publishLiveCloud();
         if (pendingRepairPkt) publishRepairStatus({ id: pendingRepairPkt.repairs[0].id, status: pendingRepairPkt.repairs[0].status, statusAt: pendingRepairPkt.repairs[0].statusAt });
@@ -26544,12 +26630,12 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  const note = document.querySelector(sheetAttrSel("data-norenew-card", t.id) + " [data-leave-note]");
+  try { publishLeaveNow(t); } catch {}
+  const note = document.querySelector("[data-leave-note]");
   if (note) {
     const head = note.querySelector("[data-leave-when]");
     const text = next ? "已預約 " + formatDateTime12(next.replace("T", " ")) : "選擇點交時間";
     if (head) head.textContent = text;
-    else note.textContent = text + "　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。";
   }
   if (fromTenant) {
     pushPhoneNotify("退租點交", ((room && room.no) || "") + " " + (t.name || "") + " 預約 " + formatDateTime12(next.replace("T", " ")) + " 正常退租", "admin");
@@ -35808,13 +35894,14 @@ function finishLeaveSign(a, b) {
     t.leaveAppliedAt = Date.now();
   }
   if (!t.renewChoice || t.renewChoice === "open") t.renewChoice = "no";
-  t.leaveSignCloud = Date.now();
+  t.leaveSignCloud = "2";
   t.edited = true;
   t.editedAt = Date.now();
   publishLeavePing(t, r, "sign");
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
+  try { publishLeaveNow(t); } catch {}
   pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
@@ -36984,7 +37071,8 @@ function bindTenantFold() {
     };
     inp.onchange = applyLeaveClock;
     if (inp.closest(".appoint-one")) {
-      const clock = inp.parentElement && inp.parentElement.querySelector("[data-leave-clock]");
+      const wrap = inp.closest(".appoint-one");
+      const clock = wrap && wrap.querySelector("[data-leave-clock]");
       if (clock && clock.dataset.boundClock !== "1") {
         clock.dataset.boundClock = "1";
         clock.addEventListener("click", e => e.stopPropagation());
