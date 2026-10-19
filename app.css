@@ -1111,6 +1111,7 @@ button.pay-pill.hand {
 }
 .renew-note .renew-focus b { color: #9a3412; }
 .renew-note .renew-focus .leave-cash { color: #15803d; }
+.renew-note .renew-focus .leave-hot { color: #dc2626; }
 .renew-sent-head {
   display: flex;
   align-items: center;
