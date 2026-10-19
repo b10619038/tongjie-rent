@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-18-20";
-const APP_EDIT_COUNT = 2066;
+const APP_STAMP = "2026-10-19-18-30";
+const APP_EDIT_COUNT = 2067;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1691";
+const FILE_VER = "1692";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["兩人退租交接書改成簽名旁各放一顆個人印章"] },
+  { ver: APP_VERSION, items: ["後台租屋補助的有、無改成同一行"] },
+  { ver: "2026-10-19-18-20-2066", items: ["兩人退租交接書改成簽名旁各放一顆個人印章"] },
   { ver: "2026-10-19-18-15-2065", items: ["開發者代送可以先不勾租屋補助，點交當天由後台勾有或無"] },
   { ver: "2026-10-19-18-05-2064", items: ["退電費餘額改寫成從現金保險箱支出"] },
   { ver: "2026-10-19-17-50-2063", items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
@@ -36442,8 +36443,10 @@ function leaveSubsidyAdminHtml(t) {
   const yes = t.leaveSubsidy === "yes" ? "checked" : "";
   const no = t.leaveSubsidy === "no" ? "checked" : "";
   return `<div class="small" style="margin:10px 0 0;font-weight:700;color:var(--ink)">是否有申請租屋補助</div>
-    <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes" ${yes} /> 有</label>
-    <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no" ${no} /> 無</label>`;
+    <div class="subsidy-row">
+      <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes" ${yes} /> 有</label>
+      <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no" ${no} /> 無</label>
+    </div>`;
 }
 function leaveRefundHtml(t, r, timeOnly) {
   const depLine = leaveDepositFieldHtml(t, r);
