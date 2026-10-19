@@ -1435,13 +1435,19 @@ button.pay-pill[data-open-norenew] {
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--rose-soft);
-  color: var(--rose);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   -webkit-tap-highlight-color: transparent;
+}
+button.pay-pill.unpaid[data-open-norenew] {
+  background: var(--rose-soft);
+  color: var(--rose);
+}
+button.pay-pill.hand[data-open-norenew] {
+  background: #f3e4cf;
+  color: #8a5a22;
 }
 button.pay-pill[data-open-norenew].on,
 button.pay-pill[data-open-norenew]:focus,
