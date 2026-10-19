@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-10-40";
-const APP_EDIT_COUNT = 2026;
+const APP_STAMP = "2026-10-19-10-55";
+const APP_EDIT_COUNT = 2027;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1636";
+const FILE_VER = "1637";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
+  { ver: APP_VERSION, items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
+  { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
   { ver: "2026-10-18-15-46-2009", items: ["報修標題的公共設施、房號和姓名改成小空格"] },
@@ -11726,7 +11727,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -26361,6 +26362,7 @@ function showHandoverPrintPreview(t, r, at) {
     at: day,
     appointAt: at || (day + "T10:00"),
     deposit,
+    elecFee: t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? Number(t.leaveElecAdmin) : "",
     property: termPropLabel(r),
     idNo: t.idNo || "",
     phone: t.phone || ""
@@ -35313,6 +35315,165 @@ function tenantLeaveAt(t) {
   const clock = hm ? hm[1] : "10:00";
   return clampLeaveClock(end ? end + "T" + clock : saved);
 }
+function leaveDepositAmount(t, r) {
+  const no = String((r && r.no) || "");
+  if (no === "7623") return 20000;
+  let n = Number(t && t.deposit);
+  if (!(n > 0) && r) n = Number(r.deposit);
+  const info = (typeof TENANT_INFO !== "undefined" && TENANT_INFO[no]) || null;
+  if (!(n > 0) && info) n = Number(info.deposit);
+  if (!(n > 0) && r && !(typeof roomIsFactory === "function" && roomIsFactory(r))) {
+    const rent = typeof studioContractRent === "function" ? (studioContractRent(t, r) || 0) : (Number(r.rent) || 0);
+    if (rent > 0) n = rent * 2;
+  }
+  return Math.round(n || 0);
+}
+function depositPaidBankOf(t, r) {
+  if (t && t.depositBank) return t.depositBank;
+  const no = String((r && r.no) || "");
+  const info = (typeof TENANT_INFO !== "undefined" && TENANT_INFO[no]) || null;
+  const note = String((t && t.note) || "") + " " + String((info && info.note) || "");
+  if (/兆豐押金|押金.{0,12}兆豐/.test(note)) return "兆豐";
+  if (/農會押金|押金.{0,12}農會/.test(note)) return "農會";
+  if (r && typeof roomIsFactory === "function" && roomIsFactory(r)) return depositBankOf(t, r);
+  if (typeof cashAuntRent === "function" && cashAuntRent(t, r)) return "現金";
+  if (info && info.payBank === "現金") return "現金";
+  const renewed = /已續約|改匯/.test(note);
+  if (info && info.payBank && !renewed) return info.payBank;
+  const start = ymdOf((t && t.leaseStart) || (info && info.leaseStart) || "");
+  if (start && start >= NEW_TENANT_SINCE) return "兆豐";
+  return "農會";
+}
+function depositRefundLine(t, r) {
+  const dep = leaveDepositAmount(t, r);
+  const bank = depositPaidBankOf(t, r);
+  if (!dep) return "這間沒有押金可退。";
+  if (bank === "現金") return "押金 " + money(dep) + "。原本是現金，從保險箱退。";
+  return "押金 " + money(dep) + "。原本進" + payBankDisplay(bank) + "，用這個銀行簿子匯退。";
+}
+function leaveRefundDate(t) {
+  return ymdOf(t && t.leaveAppointAt) || ymdOf(t && t.leaseEnd) || todayYmd();
+}
+function upsertLeaveBook(id, tag, t, r, amount, company, bank, noteTail) {
+  const amt = Math.round(Number(amount) || 0);
+  if (!t || isDemoTenant(t) || (r && isDemoRoom(r))) return false;
+  if (!state.books) state.books = [];
+  const hit = state.books.find(b => b && (b.id === id || b.importTag === tag));
+  if (amt <= 0) {
+    if (!hit) return false;
+    state.books = state.books.filter(b => b !== hit);
+    try { persistLedger(state); } catch {}
+    try { markCloudDirty(); } catch {}
+    return true;
+  }
+  const no = (r && r.no) || t.roomNo || "";
+  const site = (r && r.group) || (r && typeof roomIsFactory === "function" && roomIsFactory(r) ? "" : "牛10");
+  const note = (site ? site + "　" : "") + String(no) + " " + (t.name || "") + "　" + noteTail;
+  const date = leaveRefundDate(t);
+  if (hit) {
+    hit.type = "out";
+    hit.date = date;
+    hit.amount = amt;
+    hit.company = company;
+    hit.bank = bank;
+    hit.roomNo = String(no);
+    hit.note = note;
+    hit.linkedTenantId = t.id;
+    hit.editedAt = Date.now();
+  } else {
+    state.books.push({
+      id, type: "out", date, amount: amt, company, bank, roomNo: String(no), note,
+      importTag: tag, linkedTenantId: t.id, createdAt: nowStamp(), editedAt: Date.now()
+    });
+  }
+  try { persistLedger(state); } catch {}
+  try { markCloudDirty(); } catch {}
+  return true;
+}
+function postLeaveDepositBook(t, r) {
+  const dep = leaveDepositAmount(t, r);
+  if (dep <= 0) return false;
+  const bank = depositPaidBankOf(t, r);
+  const cash = bank === "現金";
+  return upsertLeaveBook(
+    depositBookId("out", t, r),
+    "dep-out-" + t.id,
+    t, r, dep,
+    cash ? "現金(保險箱)" : depositCompanyOf(t, r),
+    cash ? "現金" : bank,
+    cash ? "退還押金　現金" : "退還押金　匯款　" + payBankDisplay(bank)
+  );
+}
+function postLeaveElecBook(t, r) {
+  if (!t || t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "") return false;
+  const amt = Math.max(0, Math.round(Number(t.leaveElecAdmin) || 0));
+  return upsertLeaveBook(
+    "bk-leave-elec-" + t.id,
+    "leave-elec-" + t.id,
+    t, r, amt,
+    "現金(保險箱)",
+    "現金",
+    "退電費餘額　現金"
+  );
+}
+function saveTenantLeaveElec(id, value) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return;
+  const raw = String(value == null ? "" : value).trim();
+  const next = raw === "" ? "" : String(Math.max(0, Math.round(Number(raw) || 0)));
+  if (String(t.leaveElec == null ? "" : t.leaveElec) === next) return;
+  t.leaveElec = next;
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  pushPhoneNotify("電費餘額", ((r && r.no) || "") + " " + (t.name || "") + (next === "" ? " 清空電費餘額" : " 填了電費餘額 " + money(Number(next)) + "（後台可改）"), "admin");
+  toast(next === "" ? "已清空電費餘額" : "已記下電費餘額。後台點交時還能改，電費退現金。");
+}
+function saveAdminLeaveElec(id, value) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return;
+  const raw = String(value == null ? "" : value).trim();
+  const next = raw === "" ? "" : String(Math.max(0, Math.round(Number(raw) || 0)));
+  if (String(t.leaveElecAdmin == null ? "" : t.leaveElecAdmin) === next) return;
+  t.leaveElecAdmin = next;
+  t.edited = true;
+  t.editedAt = Date.now();
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const booked = next !== "" ? postLeaveElecBook(t, r) : false;
+  save();
+  try { pushCloud(); } catch {}
+  toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
+}
+function leaveRefundHtml(t, r, timeOnly) {
+  const depLine = `<div class="small" style="margin-top:8px">${escapeHtml(depositRefundLine(t, r))}</div>`;
+  const signed = !!(t && t.leaveSign && t.leaveSign.status === "signed");
+  const hint = "電費餘額退現金。不確定可以先空白，點交當天由後台依電表填。";
+  if (timeOnly) {
+    if (!signed) return depLine + `<div class="small">${hint}簽完退租後也可以自己先填。</div>`;
+    const val = t.leaveElec != null ? t.leaveElec : "";
+    return depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金）</span><input data-leave-elec="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="不確定可留空" value="${escapeHtml(val)}" /></label><div class="small">${hint}</div>`;
+  }
+  const official = t && t.leaveElecAdmin != null ? t.leaveElecAdmin : "";
+  const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
+  return depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就記入現金保險箱。</div>`;
+}
+function bindLeaveElecInputs(root) {
+  const scope = root || document;
+  scope.querySelectorAll("[data-leave-elec]").forEach(inp => {
+    if (inp.dataset.bound === "1") return;
+    inp.dataset.bound = "1";
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.addEventListener("change", () => saveTenantLeaveElec(inp.dataset.leaveElec, inp.value));
+  });
+  scope.querySelectorAll("[data-leave-elec-admin]").forEach(inp => {
+    if (inp.dataset.bound === "1") return;
+    inp.dataset.bound = "1";
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.addEventListener("change", () => saveAdminLeaveElec(inp.dataset.leaveElecAdmin, inp.value));
+  });
+}
 function normalLeaveCardHtml(t, r, opts) {
   if (!t) return "";
   const timeOnly = !!(opts && opts.timeOnly);
@@ -35339,6 +35500,7 @@ function normalLeaveCardHtml(t, r, opts) {
     </div>
     ${timeOnly ? "" : `<div class="small" style="margin:6px 0 4px">點交當天列印交接確認書，現場蓋章。房間仍住到合約最後一天。</div>`}
     ${signedLeave ? `<div class="small">已完成線上簽名。列印會帶上簽名，現場仍要蓋章。</div>` : ""}
+    ${leaveRefundHtml(t, r, timeOnly)}
     ${timeOnly
       ? `<button type="button" class="btn-navy" data-leave-sign="1" style="margin-top:8px">${signedLeave ? "重新簽名" : "下一步，簽署退租"}</button>`
       : `<button type="button" class="btn-navy" data-print-normal="${escapeHtml(t.id)}" style="margin-top:8px">列印正常退租合約</button>`}
@@ -35351,10 +35513,16 @@ function completeNormalLeave(id) {
   t.leaveDoneAt = nowStamp();
   t.edited = true;
   t.editedAt = Date.now();
+  const r = (state.rooms || []).find(x => x && x.id === t.roomId);
+  const depOk = postLeaveDepositBook(t, r);
+  const elecOk = postLeaveElecBook(t, r);
   save();
   try { pushCloud(); } catch {}
   const end = rocSlash(ymdOf(t.leaseEnd) || "");
-  toast("已完成退租。房間仍住到合約最後一天" + (end ? "（" + end + "）" : ""));
+  const bank = depositPaidBankOf(t, r);
+  const depMsg = depOk ? (bank === "現金" ? "押金已記入保險箱。" : "押金已記入" + payBankDisplay(bank) + "匯退。") : "";
+  const elecMsg = elecOk ? "電費餘額已記入現金。" : (t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "" ? "電費餘額可之後再填。" : "");
+  toast("已完成退租。" + depMsg + elecMsg + "房間仍住到合約最後一天" + (end ? "（" + end + "）" : ""));
   try { refreshTenantList(); } catch { render(); }
 }
 function leaveSignView() {
@@ -35379,7 +35547,7 @@ function leaveSignView() {
       <div class="eyebrow">LEASE</div><h1>簽署退租</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。日期固定是合約最後一天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
+      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。日期固定是合約最後一天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金用當初進來的銀行匯退，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
       ${paper}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
       ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
@@ -35581,6 +35749,7 @@ function closeSheetThen(wrap, done) {
 function bindNewSheet(wrap) {
   if (!wrap) return;
   try { bindTenantFold(); } catch {}
+  try { bindLeaveElecInputs(wrap); } catch {}
   wrap.querySelectorAll("[data-invoice]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -37540,6 +37709,7 @@ function bindUpdateBar() {
 }
 
 function bindTenant() {
+  try { bindLeaveElecInputs(document); } catch {}
   mountLeaseFlips();
   bindHistoryBack();
   flushTenantInbox();
