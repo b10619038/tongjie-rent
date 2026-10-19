@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-18-05";
-const APP_EDIT_COUNT = 2064;
+const APP_STAMP = "2026-10-19-18-15";
+const APP_EDIT_COUNT = 2065;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1689";
+const FILE_VER = "1690";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["退電費餘額改寫成從現金保險箱支出"] },
+  { ver: APP_VERSION, items: ["開發者代送可以先不勾租屋補助，點交當天由後台勾有或無"] },
+  { ver: "2026-10-19-18-05-2064", items: ["退電費餘額改寫成從現金保險箱支出"] },
   { ver: "2026-10-19-17-50-2063", items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
   { ver: "2026-10-19-17-20-2062", items: ["後台退押金上方加上回收鑰匙、磁扣、儲值卡"] },
   { ver: "2026-10-19-17-15-2061", items: ["正常退租提示加上請繳回磁扣、鑰匙、儲值卡"] },
@@ -36257,6 +36258,21 @@ function saveAdminLeaveElec(id, value) {
   try { paintLeaveCashLine(); } catch {}
   toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已從現金保險箱支出" : "已記下電費餘額"));
 }
+function saveAdminLeaveSubsidy(id, value) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return;
+  const next = value === "yes" || value === "no" ? value : "";
+  if (String(t.leaveSubsidy || "") === next) return;
+  t.leaveSubsidy = next;
+  t.leaveSubsidyAt = next ? Date.now() : 0;
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
+  try { publishLeaveNow(t); } catch {}
+  toast(next === "yes" ? "已記下：住戶有申請租屋補助" : next === "no" ? "已記下：住戶無申請租屋補助" : "已清除租屋補助");
+}
 function mergeLeaveCash(a, b) {
   const out = Object.assign({}, a || {});
   Object.keys(b || {}).forEach(id => {
@@ -36414,8 +36430,12 @@ function leaveDepositFieldHtml(t, r) {
   return `<div class="field leave-dep-field"><span>${escapeHtml(label)}</span><div class="leave-dep-amt">${escapeHtml(money(dep))}</div><div class="small">${escapeHtml(note)}</div></div>`;
 }
 function leaveSubsidyAdminHtml(t) {
-  if (!t || (t.leaveSubsidy !== "yes" && t.leaveSubsidy !== "no")) return "";
-  return `<div class="field" style="margin:8px 0 0"><span>住戶${t.leaveSubsidy === "yes" ? "有" : "無"}申請租屋補助</span></div>`;
+  if (!t) return "";
+  const yes = t.leaveSubsidy === "yes" ? "checked" : "";
+  const no = t.leaveSubsidy === "no" ? "checked" : "";
+  return `<div class="small" style="margin:10px 0 0;font-weight:700;color:var(--ink)">是否有申請租屋補助</div>
+    <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes" ${yes} /> 有</label>
+    <label class="sign-agree"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no" ${no} /> 無</label>`;
 }
 function leaveRefundHtml(t, r, timeOnly) {
   const depLine = leaveDepositFieldHtml(t, r);
@@ -36451,6 +36471,22 @@ function bindLeaveElecInputs(root) {
   });
   scope.querySelectorAll("[data-leave-elec-admin]").forEach(inp => {
     arm(inp, value => saveAdminLeaveElec(inp.dataset.leaveElecAdmin, value));
+  });
+  scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(box => {
+    if (box.dataset.bound === "1") return;
+    box.dataset.bound = "1";
+    box.addEventListener("click", e => e.stopPropagation());
+    box.addEventListener("pointerdown", e => e.stopPropagation());
+    box.addEventListener("change", () => {
+      const id = box.getAttribute("data-leave-subsidy-admin");
+      const val = box.getAttribute("data-subsidy");
+      if (box.checked) {
+        scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(o => {
+          if (o !== box && o.getAttribute("data-leave-subsidy-admin") === id) o.checked = false;
+        });
+        saveAdminLeaveSubsidy(id, val);
+      } else saveAdminLeaveSubsidy(id, "");
+    });
   });
 }
 function normalLeaveCardHtml(t, r, opts) {
@@ -36539,6 +36575,7 @@ function leaveSignView() {
       <div class="small" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">是否有申請成功租屋補助</div>
       <label class="sign-agree"><input type="checkbox" data-leave-subsidy="yes" ${ui.leaveSubsidy === "yes" ? "checked" : ""} /> 有，我有申請成功</label>
       <label class="sign-agree"><input type="checkbox" data-leave-subsidy="no" ${ui.leaveSubsidy === "no" ? "checked" : ""} /> 無，我沒有申請</label>
+      ${look ? `<p class="small" style="margin:0 2px 8px">不確定可以先不勾。點交當天由後台勾有或無。</p>` : ""}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
       ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
       <div class="small" style="margin:8px 2px">${escapeHtml(names[0] || "承租人")}　請在白框內用藍筆簽名</div>
@@ -36563,10 +36600,10 @@ function finishLeaveSign(a, b) {
   const t = me();
   const r = t && myRoom();
   if (!t) return;
-  const subsidy = readLeaveSubsidyPick();
-  if (subsidy !== "yes" && subsidy !== "no") { toast("請勾選是否有申請成功租屋補助"); return; }
-  const agree = document.getElementById("sign-agree");
   const look = typeof isTenantLook === "function" && isTenantLook();
+  const subsidy = readLeaveSubsidyPick();
+  if (!look && subsidy !== "yes" && subsidy !== "no") { toast("請勾選是否有申請成功租屋補助"); return; }
+  const agree = document.getElementById("sign-agree");
   const c1 = a && a.c;
   const c2 = b && b.c;
   const has1 = !!(c1 && (c1.dataset.ink === "1" || (ui.signStrokes && ui.signStrokes.length)));
@@ -36576,9 +36613,39 @@ function finishLeaveSign(a, b) {
     if (!has1 && !has2) { toast("請先簽名。兩人可以只簽一位"); return; }
   }
   if (!(has1 || has2)) {
+    if (!look) {
+      ui.page = "home";
+      ui.leaveBook = true;
+      toast("已略過簽名");
+      render();
+      return;
+    }
+    const keepAt = readAppointValue(ui.leaveHoldAt) || readAppointValue(t.leaveAppointAt) || tenantLeaveAt(t);
+    if (keepAt) {
+      t.leaveAppointAt = keepAt;
+      t.leaveTimeSet = true;
+      t.leaveAppointEditedAt = Date.now();
+    }
+    if (!t.leaveApplied) {
+      t.leaveApplied = true;
+      t.leaveAppliedAt = Date.now();
+    }
+    if (!t.renewChoice || t.renewChoice === "open") t.renewChoice = "no";
+    if (subsidy === "yes" || subsidy === "no") {
+      t.leaveSubsidy = subsidy;
+      t.leaveSubsidyAt = Date.now();
+    }
+    t.edited = true;
+    t.editedAt = Date.now();
+    publishLeavePing(t, r, "apply");
+    save();
+    try { pushCloud(); } catch {}
+    try { publishPaidCloud(); } catch {}
+    try { publishLeaveNow(t); } catch {}
+    pushPhoneNotify("正退申請", ((r && r.no) || "") + " " + (t.name || "") + " 申請正常退租，租屋補助點交再確認", "admin");
     ui.page = "home";
     ui.leaveBook = true;
-    toast("已略過簽名");
+    toast("已送出。租屋補助可於點交當天由後台勾選。");
     render();
     return;
   }
@@ -36601,8 +36668,10 @@ function finishLeaveSign(a, b) {
     t.leaveAppliedAt = Date.now();
   }
   if (!t.renewChoice || t.renewChoice === "open") t.renewChoice = "no";
-  t.leaveSubsidy = subsidy;
-  t.leaveSubsidyAt = Date.now();
+  if (subsidy === "yes" || subsidy === "no") {
+    t.leaveSubsidy = subsidy;
+    t.leaveSubsidyAt = Date.now();
+  }
   t.leaveSignCloud = "2";
   rememberLeaveInk(t);
   t.edited = true;
@@ -36614,7 +36683,8 @@ function finishLeaveSign(a, b) {
   try { publishLeaveNow(t); } catch {}
   setTimeout(() => { try { publishLeaveNow(t); } catch {} }, 1800);
   try { putLeaveSigFile(t); } catch {}
-  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租，" + (subsidy === "yes" ? "有" : "無") + "申請租屋補助", "admin");
+  const subNote = subsidy === "yes" ? "，有申請租屋補助" : subsidy === "no" ? "，無申請租屋補助" : "，租屋補助點交再確認";
+  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租" + subNote, "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
   ui.signing = false;
