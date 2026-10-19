@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-10-55";
-const APP_EDIT_COUNT = 2027;
+const APP_STAMP = "2026-10-19-11-10";
+const APP_EDIT_COUNT = 2028;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1637";
+const FILE_VER = "1638";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
+  { ver: APP_VERSION, items: ["正常退租申請會即時通知後台並同步到其他電腦，點交日期可自訂"] },
+  { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
   { ver: "2026-10-18-15-50-2010", items: ["手機看報修時，點後面的房號姓名換到下一行"] },
@@ -3836,7 +3837,7 @@ function renewAskCardHtml(t, r, opts) {
   const full = !!(opts && opts.full);
   if (renewDecisionOf(r.no) === "no") {
     if (!full && !inRenewAskWindow(t)) return "";
-    return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。到期日辦理正常退租。若要提前搬走，下面仍可申請中途退租。</p><div class="renew-reopen-row"><button type="button" class="btn-rose${ui.leaveBook ? " on" : ""}" data-leave-book="1">預約退租點交</button><button type="button" class="btn-navy" data-renew-reopen="1">改申請續約</button></div></div>${ui.leaveBook ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${normalLeaveCardHtml(t, r, { timeOnly: true })}</div></div>` : ""}</div>`;
+    return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">不續約</div><p>已確認不續約，合約至 ${escapeHtml(rocSlash(t.leaseEnd) || "")}。點交日期可以自己選，房間仍住到合約最後一天。若要提前搬走，下面仍可申請中途退租。</p><div class="renew-reopen-row"><button type="button" class="btn-rose${ui.leaveBook ? " on" : ""}" data-leave-book="1">預約退租點交</button><button type="button" class="btn-navy" data-renew-reopen="1">改申請續約</button></div></div>${ui.leaveBook ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${normalLeaveCardHtml(t, r, { timeOnly: true })}</div></div>` : ""}</div>`;
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
@@ -4835,10 +4836,11 @@ function declineTenantRenewal() {
   t.renewChoice = "no";
   t.edited = true;
   t.editedAt = Date.now();
+  publishLeavePing(t, r, "apply");
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
-  pushPhoneNotify("不續約", (r.no || "") + " " + (t.name || "") + " 確認不續約，合約至 " + (t.leaseEnd || ""), "admin");
+  pushPhoneNotify("正退申請", (r.no || "") + " " + (t.name || "") + " 申請正常退租，合約至 " + (rocSlash(t.leaseEnd) || t.leaseEnd || ""), "admin");
   toast("已確認不續約");
   ui.keepScroll = true;
   render();
@@ -12354,7 +12356,8 @@ function mqttParsePublish(buf) {
 function tenantViewSig() {
   const ts = (state.tenants || []).map(t => [
     t && t.id, t && t.roomId, t && t.paid ? 1 : 0, t && (t.paidYm || ""), t && (t.remitOn || ""), t && (t.paidAt || ""),
-    t && (t.name || ""), t && (t.leaseStart || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0
+    t && (t.name || ""), t && (t.leaseStart || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0,
+    t && (t.renewChoice || ""), t && (t.leaveAppointAt || ""), t && (t.leaveDone ? 1 : 0), t && (t.leaveSign && t.leaveSign.status || "")
   ].join(":")).join("|");
   const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
@@ -12385,6 +12388,7 @@ function ingestPaidCloud(raw) {
       ingestPaidCloud.repairPing = Number(m.repairPing) || 0;
       ingestPaidCloud.applyPing = Number(m.applyPing) || 0;
       ingestPaidCloud.renewPing = Number(m.renewPing) || 0;
+      ingestPaidCloud.leavePing = Number(m.leavePing) || 0;
       ingestPaidCloud.eSignPing = Number(m.eSignPing) || 0;
       ingestPaidCloud.payPing = Number(m.payPing) || 0;
       ingestPaidCloud.ready = true;
@@ -12465,6 +12469,7 @@ function ingestPaidCloud(raw) {
         if (src.phone) t.phone = src.phone;
         if (src.roomId) t.roomId = src.roomId;
         if (src.editedAt && Number(src.editedAt) >= Number(t.editedAt || 0)) t.editedAt = src.editedAt;
+        try { applyLeaveCloudFields(t, src); } catch {}
         if (src.eSignStatus === "signed") {
           const ts = Number(src.eSignTs) || 0;
           const cur = t.eSign || {};
@@ -12538,6 +12543,21 @@ function ingestPaidCloud(raw) {
         const when = formatDateTime12(String(x.appointAt || "").replace("T", " "));
         flashAppointChange("續約簽約時間", x.roomNo, x.name, when, "renew-time-" + x.id + "-" + String(x.appointAt || "").replace(/\W/g, ""));
       });
+    }
+    const leaveAt = Number(o.leavePing && o.leavePing.at) || 0;
+    if (leaveAt && leaveAt > (ingestPaidCloud.leavePing || 0)) {
+      ingestPaidCloud.leavePing = leaveAt;
+      stampPing("leavePing", leaveAt);
+      const ping = o.leavePing;
+      if (ping) state.leavePing = ping;
+      if (ui.role === "admin" && ping && ping.kind !== "time" && ping.kind !== "sign" && (ping.name || ping.roomNo) && !leavePingAlreadySeen(ping)) {
+        markLeavePingSeen(ping);
+        const line = `${ping.roomNo || ""} ${ping.name || ""} 申請正常退租`.trim();
+        const when = ping.appointAt ? "　" + formatDateTime12(String(ping.appointAt).replace("T", " ")) : "";
+        try { showOsBanner("正退申請", line + when, "leave-" + (ping.id || ping.roomNo || leaveAt)); } catch {}
+        toast("正退申請　" + line);
+      }
+      try { pullCloud().then(() => { ui.keepScroll = true; try { render(); } catch {} }).catch(() => {}); } catch {}
     }
     if (renewAt && renewAt > (ingestPaidCloud.renewPing || 0)) {
       ingestPaidCloud.renewPing = renewAt;
@@ -12617,6 +12637,14 @@ function moneyCloudBlob() {
       rent: Number(t.rent) || 0,
       invoiceBuyer: t.invoiceBuyer || "",
       phone: t.phone || "",
+      renewChoice: t.renewChoice || "",
+      leaveAppointAt: t.leaveAppointAt || "",
+      leaveElec: t.leaveElec == null ? "" : t.leaveElec,
+      leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
+      leaveDone: !!t.leaveDone,
+      leaveDoneAt: t.leaveDoneAt || "",
+      leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
+      leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
       hiddenAnns: Array.isArray(t.hiddenAnns) ? t.hiddenAnns : [],
       eSignStatus: t.eSign && t.eSign.status || "",
       eSignAt: t.eSign && t.eSign.at || "",
@@ -12626,6 +12654,7 @@ function moneyCloudBlob() {
     repairNotice: state.repairNotice || null,
     applyPing: state.applyPing || null,
     renewPing: state.renewPing || null,
+    leavePing: state.leavePing || null,
     earlyPing: state.earlyPing || null,
     payPing: state.payPing || null,
     renewals: liveRenewalPayload(),
@@ -17365,6 +17394,7 @@ function notifyExtra(title, target) {
     "新報修": { tag: "tongjie-repair", page: "tenants" },
     "繳費回報": { tag: "tongjie-pay", page: "tenants" },
     "續約申請": { tag: "tongjie-renew", page: "tenants" },
+    "正退申請": { tag: "tongjie-leave", page: "tenants" },
     "中途退租申請": { tag: "tongjie-early", page: "tenants" },
     "續約確認": { tag: "tongjie-renew", page: "lease" },
     "電子合約已簽署": { tag: "tongjie-sign", page: "tenants" },
@@ -17406,7 +17436,7 @@ function pushPhoneNotify(title, body, target) {
     extra.tag = payNoticeTag(no, payYmNow());
     extra.page = "tenants";
   }
-  if (title === "續約簽約時間" || title === "中途退租簽約時間") {
+  if (title === "續約簽約時間" || title === "中途退租簽約時間" || title === "正退申請" || title === "退租點交") {
     extra.tag = (extra.tag || "tongjie-appoint") + "-t" + Date.now();
     if (target === "admin") extra.page = "tenants";
   }
@@ -26425,8 +26455,11 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   t.leaveAppointAt = next;
   t.edited = true;
   t.editedAt = Date.now();
+  const room = (state.rooms || []).find(x => x && x.id === t.roomId);
+  publishLeavePing(t, room, "time");
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   const note = document.querySelector(sheetAttrSel("data-norenew-card", t.id) + " [data-leave-note]");
   if (note) {
     const head = note.querySelector("[data-leave-when]");
@@ -26435,7 +26468,6 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
     else note.textContent = text + "　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。";
   }
   if (fromTenant) {
-    const room = (state.rooms || []).find(x => x && x.id === t.roomId);
     pushPhoneNotify("退租點交", ((room && room.no) || "") + " " + (t.name || "") + " 預約 " + formatDateTime12(next.replace("T", " ")) + " 正常退租", "admin");
   }
   toast("已更新退租點交時間");
@@ -29363,7 +29395,7 @@ function bindInvoicePickup() {
 function leaseLeaveLandHtml(t, r) {
   if (!ui.leaveLand || !t || !r) return "";
   if (typeof renewDecisionOf === "function" && renewDecisionOf(r.no) === "no") return renewAskCardHtml(t, r, { full: true });
-  return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">正常退租</div><p>到期日辦理正常退租點交。日期固定在合約最後一天，時間只能選上午 9:30 到下午 5:30。若要提前搬走，下面仍可申請中途退租。</p></div>${normalLeaveCardHtml(t, r, { timeOnly: true })}</div>`;
+  return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">正常退租</div><p>點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。若要提前搬走，下面仍可申請中途退租。</p></div>${normalLeaveCardHtml(t, r, { timeOnly: true })}</div>`;
 }
 function leaseView() {
   try { applyRoom7611(state); } catch {}
@@ -35309,11 +35341,67 @@ function clampLeaveClock(value) {
   return m[1] + "T" + hh + ":" + mm;
 }
 function tenantLeaveAt(t) {
-  const end = ymdOf(t && t.leaseEnd) || "";
-  const saved = normalLeaveAppoint(t);
-  const hm = String(saved || "").match(/T(\d{2}:\d{2})/);
-  const clock = hm ? hm[1] : "10:00";
-  return clampLeaveClock(end ? end + "T" + clock : saved);
+  return clampLeaveClock(normalLeaveAppoint(t));
+}
+function publishLeavePing(t, r, kind) {
+  if (!t) return;
+  state.leavePing = {
+    at: Date.now(),
+    id: t.id,
+    roomNo: (r && r.no) || "",
+    name: t.name || "",
+    appointAt: t.leaveAppointAt || "",
+    kind: kind || "apply"
+  };
+}
+function leavePingKeys(p) {
+  if (!p) return [];
+  const id = String(p.id || "");
+  const at = String(p.at || "");
+  return at ? [id + "|" + at] : [];
+}
+function leavePingAlreadySeen(p) {
+  const keys = leavePingKeys(p);
+  if (!keys.length) return true;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-leave-seen") || "[]");
+    return keys.some(k => raw.indexOf(k) >= 0);
+  } catch { return false; }
+}
+function markLeavePingSeen(p) {
+  const keys = leavePingKeys(p);
+  if (!keys.length) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-leave-seen") || "[]");
+    keys.forEach(k => { if (raw.indexOf(k) < 0) raw.push(k); });
+    localStorage.setItem("tj-leave-seen", JSON.stringify(raw.slice(-80)));
+  } catch {}
+}
+function applyLeaveCloudFields(t, src) {
+  if (!t || !src) return false;
+  const newer = Number(src.editedAt || 0) >= Number(t.editedAt || 0);
+  let changed = false;
+  const put = (key, val) => {
+    if (val == null || val === "") return;
+    if (!newer && t[key] != null && t[key] !== "") return;
+    if (String(t[key] == null ? "" : t[key]) === String(val)) return;
+    t[key] = val;
+    changed = true;
+  };
+  put("renewChoice", src.renewChoice || "");
+  put("leaveAppointAt", src.leaveAppointAt || "");
+  if (src.leaveElec != null && String(src.leaveElec) !== "") put("leaveElec", src.leaveElec);
+  if (src.leaveElecAdmin != null && String(src.leaveElecAdmin) !== "") put("leaveElecAdmin", src.leaveElecAdmin);
+  if (src.leaveDone && !t.leaveDone) {
+    t.leaveDone = true;
+    t.leaveDoneAt = src.leaveDoneAt || t.leaveDoneAt || "";
+    changed = true;
+  }
+  if (src.leaveSigned && !(t.leaveSign && t.leaveSign.status === "signed")) {
+    t.leaveSign = Object.assign({}, t.leaveSign || {}, { status: "signed", at: src.leaveSignAt || nowStamp(), name: t.name || "" });
+    changed = true;
+  }
+  return changed;
 }
 function leaveDepositAmount(t, r) {
   const no = String((r && r.no) || "");
@@ -35427,6 +35515,7 @@ function saveTenantLeaveElec(id, value) {
   t.editedAt = Date.now();
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
   pushPhoneNotify("電費餘額", ((r && r.no) || "") + " " + (t.name || "") + (next === "" ? " 清空電費餘額" : " 填了電費餘額 " + money(Number(next)) + "（後台可改）"), "admin");
   toast(next === "" ? "已清空電費餘額" : "已記下電費餘額。後台點交時還能改，電費退現金。");
@@ -35444,6 +35533,7 @@ function saveAdminLeaveElec(id, value) {
   const booked = next !== "" ? postLeaveElecBook(t, r) : false;
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
 }
 function leaveRefundHtml(t, r, timeOnly) {
@@ -35489,10 +35579,10 @@ function normalLeaveCardHtml(t, r, opts) {
   return `<div class="card card-body renew-alert" data-norenew-card="${escapeHtml(t.id)}">
     <h2 class="dash-h">正常退租</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b>${doneMark}</div>
-    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。到期日辦理正常退租點交。${timeOnly ? "日期固定。時間只能選上午 9:30 到下午 5:30。" : ""}</div>
+    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。</div>
     <div class="appoint-box">
       <label class="field"><span>簽約時間</span>
-        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, lockDay: timeOnly ? end : "", minTime: timeOnly ? "09:30" : "", maxTime: timeOnly ? "17:30" : "" })}
+        ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
       </label>
       <div class="small" data-leave-note="1">${timeOnly
         ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>記得攜帶個人印章。簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
@@ -35516,8 +35606,10 @@ function completeNormalLeave(id) {
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
   const depOk = postLeaveDepositBook(t, r);
   const elecOk = postLeaveElecBook(t, r);
+  publishLeavePing(t, r, "done");
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   const end = rocSlash(ymdOf(t.leaseEnd) || "");
   const bank = depositPaidBankOf(t, r);
   const depMsg = depOk ? (bank === "現金" ? "押金已記入保險箱。" : "押金已記入" + payBankDisplay(bank) + "匯退。") : "";
@@ -35547,7 +35639,7 @@ function leaveSignView() {
       <div class="eyebrow">LEASE</div><h1>簽署退租</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。日期固定是合約最後一天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金用當初進來的銀行匯退，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
+      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。點交日期是你預約的那天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金用當初進來的銀行匯退，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
       ${paper}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
       ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
@@ -35592,8 +35684,10 @@ function finishLeaveSign(a, b) {
   };
   t.edited = true;
   t.editedAt = Date.now();
+  publishLeavePing(t, r, "sign");
   save();
   try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
   pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租", "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
@@ -36226,10 +36320,10 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      ${unread || (renew && renew.status !== "done") || early ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
+      ${unread || (renew && renew.status !== "done") || early || tenantRenewNo(t, r) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${countOn && tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -36745,21 +36839,18 @@ function bindTenantFold() {
     bindAppointPicker(inp);
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
-      if (inp.dataset.lockDay && inp.min && inp.max) {
-        const hm = String(inp.value || "").match(/(\d{1,2}):(\d{2})/);
-        if (hm) {
-          const mins = Number(hm[1]) * 60 + Number(hm[2]);
-          const lo = 9 * 60 + 30;
-          const hi = 17 * 60 + 30;
-          if (mins < lo || mins > hi) {
-            inp.value = mins < lo ? "09:30" : "17:30";
-            toast("點交時間只能選上午 9:30 到下午 5:30");
-          }
+      const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
+      let at = leaveInputAt(inp, t);
+      if (ui.role === "tenant") {
+        const clamped = clampLeaveClock(at);
+        if (clamped && String(at || "").slice(0, 16) !== clamped) {
+          at = clamped;
+          inp.value = clamped;
+          toast("點交時間只能選上午 9:30 到下午 5:30");
         }
       }
       paintAppointFace(inp);
-      const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      setNormalLeaveAppoint(t, leaveInputAt(inp, t), !!inp.dataset.lockDay);
+      setNormalLeaveAppoint(t, at, ui.role === "tenant");
     };
   });
   document.querySelectorAll("[data-gcal-leave]").forEach(btn => {
