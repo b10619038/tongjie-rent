@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1663";
+const FILE_VER = "1664";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3840,7 +3840,7 @@ function leaveSentHomeHtml(t) {
       <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
       <div class="renew-focus">
         <p>退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
-        <p>${depLabel}${dep ? escapeHtml(moneyDigits(dep)) : ""}</p>
+        <p>${depLabel}${dep ? `<span class="leave-cash">${escapeHtml(moneyDigits(dep))}</span>` : ""}</p>
         <p>請打掃整理套房</p>
         <p>請攜帶個人印章</p>
       </div>
