@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1662";
+const FILE_VER = "1663";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35845,7 +35845,7 @@ function leaveCalendarBody(t, r) {
     "統潔＆信潔開發有限公司正常退租點交",
     "租客：" + ((t && t.name) || ""),
     "房號：文東 " + ((r && r.no) || ""),
-    "退電費現金：" + (cash || ""),
+    "退電費現金：" + (cash || "(點交查卡)"),
     depLabel + (dep ? moneyDigits(dep) : ""),
     "請打掃整理套房",
     "請攜帶個人印章"
