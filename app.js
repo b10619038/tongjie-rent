@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-21-15";
-const APP_EDIT_COUNT = 2069;
+const APP_STAMP = "2026-10-19-21-20";
+const APP_EDIT_COUNT = 2070;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1694";
+const FILE_VER = "1695";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["押金退款提示拿掉將於"] },
+  { ver: APP_VERSION, items: ["兩人退租改成請攜帶2位個人印章"] },
+  { ver: "2026-10-19-21-15-2069", items: ["押金退款提示拿掉將於"] },
   { ver: "2026-10-19-21-10-2068", items: ["正常退租註明點交後不得再入住，未住天數不予退費"] },
   { ver: "2026-10-19-18-30-2067", items: ["後台租屋補助的有、無改成同一行"] },
   { ver: "2026-10-19-18-20-2066", items: ["兩人退租交接書改成簽名旁各放一顆個人印章"] },
@@ -3850,12 +3851,13 @@ function leaveSentHomeHtml(t) {
   const dep = leaveDepositAmount(t, room);
   const depBank = depositPaidBankOf(t, room);
   const depLabel = depBank === "現金" ? "退押金現金：" : "退押金匯款：";
+  const sealLine = splitPair(t.name).length > 1 ? "請攜帶2位個人印章" : "請攜帶個人印章";
   return `<div class="handover-note renew-note">
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
       <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
       <div class="renew-focus">
         <p>請打掃整理套房</p>
-        <p>請攜帶個人印章</p>
+        <p>${sealLine}</p>
         <p>請繳回磁扣/鑰匙/儲值卡</p>
         <p data-leave-cash-line="${escapeHtml(t.id)}">退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
         <p>${depLabel}${dep ? `<span class="leave-cash">${escapeHtml(moneyDigits(dep))}</span>` : ""}</p>
@@ -36148,7 +36150,7 @@ function leaveCalendarBody(t, r) {
     "租客：" + ((t && t.name) || ""),
     "房號：文東 " + ((r && r.no) || ""),
     "請打掃整理套房",
-    "請攜帶個人印章",
+    splitPair(t && t.name).length > 1 ? "請攜帶2位個人印章" : "請攜帶個人印章",
     "請繳回磁扣/鑰匙/儲值卡",
     "退電費現金：" + (cash || "(點交查卡)"),
     depLabel + (dep ? moneyDigits(dep) : "")
