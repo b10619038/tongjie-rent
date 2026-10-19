@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-18-15";
-const APP_EDIT_COUNT = 2065;
+const APP_STAMP = "2026-10-19-18-20";
+const APP_EDIT_COUNT = 2066;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1690";
+const FILE_VER = "1691";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["開發者代送可以先不勾租屋補助，點交當天由後台勾有或無"] },
+  { ver: APP_VERSION, items: ["兩人退租交接書改成簽名旁各放一顆個人印章"] },
+  { ver: "2026-10-19-18-15-2065", items: ["開發者代送可以先不勾租屋補助，點交當天由後台勾有或無"] },
   { ver: "2026-10-19-18-05-2064", items: ["退電費餘額改寫成從現金保險箱支出"] },
   { ver: "2026-10-19-17-50-2063", items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
   { ver: "2026-10-19-17-20-2062", items: ["後台退押金上方加上回收鑰匙、磁扣、儲值卡"] },
@@ -26243,9 +26244,16 @@ function handoverConfirmPaperHtml(t, r, co) {
   };
   const live = ui && ui.page === "leave-sign";
   const ink = (state.leaveInk && t && state.leaveInk[t.id]) || {};
-  const sigs = live
-    ? `<img class="lease-esig live-ink" data-live-sign="1" alt=""><img class="lease-esig live-ink" data-live-sign="2" alt="">`
-    : (leave ? (sigImg(leave.sig || ink.sig, leave.sigId) + sigImg(leave.sig2 || ink.sig2, leave.sig2Id)) : (sigImg(ink.sig) + sigImg(ink.sig2)));
+  const chop = `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`;
+  const sigHtml = n => {
+    if (live) return `<img class="lease-esig live-ink" data-live-sign="${n}" alt="">`;
+    if (n === 1) return sigImg((leave && leave.sig) || ink.sig, leave && leave.sigId);
+    return sigImg((leave && leave.sig2) || ink.sig2, leave && leave.sig2Id);
+  };
+  const pair = nameList.length > 1;
+  const tenantBody = pair
+    ? `<span class="hand-sign-pair"><span class="hand-sign-line">${sigHtml(1)}</span>${chop}</span><span class="hand-sign-pair"><span class="hand-sign-line">${sigHtml(2)}</span>${chop}</span>`
+    : `<span class="hand-sign-line">${sigHtml(1)}</span>`;
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -26261,8 +26269,8 @@ function handoverConfirmPaperHtml(t, r, co) {
         <span class="hand-chops"><span class="chop-mark chop-lg"></span><span class="chop-mark chop-sm"></span></span>
       </p>
       <p class="hand-sign-row">
-        <span class="hand-sign-main hand-sign-tenant">承租人：<span class="hand-sign-line">${sigs}</span></span>
-        <span class="hand-person-slot">${personChops}</span>
+        <span class="hand-sign-main hand-sign-tenant${pair ? " is-pair" : ""}">承租人：${tenantBody}</span>
+        ${pair ? "" : `<span class="hand-person-slot">${personChops}</span>`}
       </p>
     </div>
     <p class="term-date" data-lease-sign-date="1">中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日</p>

@@ -7305,6 +7305,35 @@ img.lease-esig.live-ink[src=""] { display: none; }
 }
 .hand-person-chop + .hand-person-chop { left: 14mm; }
 .hand-person-chop .chop-ps { top: 0; left: 0; }
+.hand-sign-pair .hand-person-chop .chop-ps { top: 0; left: 0; }
+.hand-sign-tenant.is-pair {
+  width: auto;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 4mm;
+}
+.hand-sign-main.hand-sign-tenant.is-pair {
+  width: auto;
+  flex: 1 1 auto;
+}
+.hand-sign-pair {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.6mm;
+}
+.hand-sign-pair .hand-sign-line {
+  width: 32mm;
+  min-width: 28mm;
+  flex: 0 0 32mm;
+  margin-left: 0;
+}
+.hand-sign-pair .hand-person-chop {
+  position: relative;
+  left: 0;
+  top: 0;
+  flex: 0 0 10mm;
+}
 
 .errand-ball {
   position: fixed;
