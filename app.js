@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-11-56";
-const APP_EDIT_COUNT = 2035;
+const APP_STAMP = "2026-10-19-12-02";
+const APP_EDIT_COUNT = 2036;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1645";
+const FILE_VER = "1646";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正式退租的時間改回跟日期同一行、同樣字色，下拉仍會照實顯示"] },
+  { ver: APP_VERSION, items: ["正常退租的簽約時間一開始預設早上 11:00"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -11741,7 +11741,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12653,6 +12653,7 @@ function moneyCloudBlob() {
       leaveApplied: !!t.leaveApplied,
       leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
       leaveAppointAt: t.leaveAppointAt || "",
+      leaveTimeSet: !!t.leaveTimeSet,
       leaveElec: t.leaveElec == null ? "" : t.leaveElec,
       leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
       leaveDone: !!t.leaveDone,
@@ -15258,7 +15259,7 @@ function paintAppointFace(inp) {
   let val = inp.value || "";
   const clock = wrap && wrap.querySelector("[data-leave-clock]");
   const dayEl = wrap && wrap.querySelector("input[type='date']");
-  if (clock && dayEl) val = (dayEl.value || "") + "T" + (String(clock.value || "10:00").slice(0, 5));
+  if (clock && dayEl) val = (dayEl.value || "") + "T" + (String(clock.value || "11:00").slice(0, 5));
   if (inp.dataset.lockDay && /^\d{1,2}:\d{2}/.test(val)) {
     const hm = val.match(/(\d{1,2}):(\d{2})/);
     val = inp.dataset.lockDay + "T" + String(hm[1]).padStart(2, "0") + ":" + hm[2];
@@ -15303,7 +15304,7 @@ function bindAppointPicker(inp) {
   }
 }
 function leaveClockChoices(selected) {
-  const want = String(selected || "10:00").slice(0, 5);
+  const want = String(selected || "11:00").slice(0, 5);
   const opts = [];
   let hit = false;
   for (let mins = 9 * 60 + 30; mins <= 17 * 60 + 30; mins += 30) {
@@ -15326,7 +15327,7 @@ function appointOneHtml(at, extra) {
     const snapped = clampLeaveClock(shown || "");
     const dm = String(snapped || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
     const day = dm ? dm[1] : "";
-    const hm = dm ? dm[2] : "10:00";
+    const hm = dm ? dm[2] : "11:00";
     return `<div class="appoint-one has-clock" data-empty="${escapeHtml(empty)}">
     <span class="appoint-datehit">
       <span class="appoint-face">${appointFaceHtml(day ? day + "T" + hm : "", empty, true)}</span>
@@ -26489,7 +26490,7 @@ function leaveInputAt(inp, t) {
     const dayEl = wrap && wrap.querySelector("input[type='date']");
     if (clock && dayEl) {
       const day = dayEl.value || String(normalLeaveAppoint(t) || "").slice(0, 10);
-      const hm = clock.value || "10:00";
+      const hm = clock.value || "11:00";
       return clampLeaveClock((day || todayYmd()) + "T" + String(hm).slice(0, 5));
     }
   }
@@ -26507,6 +26508,7 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   const prev = String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
   if (next === prev) return;
   t.leaveAppointAt = next;
+  t.leaveTimeSet = true;
   t.edited = true;
   t.editedAt = Date.now();
   const room = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -35381,10 +35383,16 @@ function earlyAdminCardHtml(co, t, r) {
   </div>`;
 }
 function normalLeaveAppoint(t) {
-  const saved = String(t && t.leaveAppointAt || "").replace(" ", "T");
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(saved)) return saved.slice(0, 16);
   const end = ymdOf(t && t.leaseEnd) || "";
-  return end ? end + "T10:00" : "";
+  const saved = String(t && t.leaveAppointAt || "").replace(" ", "T");
+  const m = saved.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  if (m && t && !t.leaveTimeSet && (m[2] === "09:30" || m[2] === "10:00")) {
+    const next = m[1] + "T11:00";
+    t.leaveAppointAt = next;
+    return next;
+  }
+  if (m) return saved.slice(0, 16);
+  return end ? end + "T11:00" : "";
 }
 function clampLeaveClock(value) {
   const m = String(value || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{1,2}):(\d{2})/);
@@ -35452,6 +35460,7 @@ function applyLeaveCloudFields(t, src) {
   };
   put("renewChoice", src.renewChoice || "");
   put("leaveAppointAt", src.leaveAppointAt || "");
+  if (src.leaveTimeSet) t.leaveTimeSet = true;
   if ("leaveApplied" in src && (newer || src.leaveApplied)) {
     const next = !!src.leaveApplied;
     if (!!t.leaveApplied !== next) {
