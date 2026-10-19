@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-21-30";
-const APP_EDIT_COUNT = 2072;
+const APP_STAMP = "2026-10-19-21-35";
+const APP_EDIT_COUNT = 2073;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1697";
+const FILE_VER = "1698";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["免簽名送出的正常退租，租客首頁也顯示已送出圖卡"] },
+  { ver: APP_VERSION, items: ["退租提醒改成請繳回磁扣+鑰匙"] },
+  { ver: "2026-10-19-21-30-2072", items: ["免簽名送出的正常退租，租客首頁也顯示已送出圖卡"] },
   { ver: "2026-10-19-21-25-2071", items: ["已簽名的正常退租說明拿掉房間住到最後一天"] },
   { ver: "2026-10-19-21-20-2070", items: ["兩人退租改成請攜帶2位個人印章"] },
   { ver: "2026-10-19-21-15-2069", items: ["押金退款提示拿掉將於"] },
@@ -3866,7 +3867,7 @@ function leaveSentHomeHtml(t) {
       <div class="renew-focus">
         <p>請打掃整理套房</p>
         <p>${sealLine}</p>
-        <p>請繳回磁扣/鑰匙/儲值卡</p>
+        <p>請繳回磁扣+鑰匙</p>
         <p data-leave-cash-line="${escapeHtml(t.id)}">退電費現金：${cashAmt ? `<span class="leave-cash">${escapeHtml(cashAmt)}</span>` : "(點交查卡)"}</p>
         <p>${depLabel}${dep ? `<span class="leave-cash">${escapeHtml(moneyDigits(dep))}</span>` : ""}</p>
       </div>
@@ -36159,7 +36160,7 @@ function leaveCalendarBody(t, r) {
     "房號：文東 " + ((r && r.no) || ""),
     "請打掃整理套房",
     splitPair(t && t.name).length > 1 ? "請攜帶2位個人印章" : "請攜帶個人印章",
-    "請繳回磁扣/鑰匙/儲值卡",
+    "請繳回磁扣+鑰匙",
     "退電費現金：" + (cash || "(點交查卡)"),
     depLabel + (dep ? moneyDigits(dep) : "")
   ].join("\n");
