@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-13-28";
-const APP_EDIT_COUNT = 2050;
+const APP_STAMP = "2026-10-19-13-30";
+const APP_EDIT_COUNT = 2051;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1660";
+const FILE_VER = "1661";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租提示加上退押金匯款金額"] },
+  { ver: APP_VERSION, items: ["加入日曆會寫上退電費、退押金、打掃和印章"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -35836,6 +35836,21 @@ function depositPaidBankOf(t, r) {
   if (start && start >= NEW_TENANT_SINCE) return "兆豐";
   return "農會";
 }
+function leaveCalendarBody(t, r) {
+  const cash = t ? leaveElecShown(t) : "";
+  const dep = leaveDepositAmount(t, r);
+  const bank = depositPaidBankOf(t, r);
+  const depLabel = bank === "現金" ? "退押金現金：" : "退押金匯款：";
+  return [
+    "統潔＆信潔開發有限公司正常退租點交",
+    "租客：" + ((t && t.name) || ""),
+    "房號：文東 " + ((r && r.no) || ""),
+    "退電費現金：" + (cash || ""),
+    depLabel + (dep ? moneyDigits(dep) : ""),
+    "請打掃整理套房",
+    "請攜帶個人印章"
+  ].join("\n");
+}
 function depositRefundLine(t, r) {
   const dep = leaveDepositAmount(t, r);
   const bank = depositPaidBankOf(t, r);
@@ -37416,7 +37431,7 @@ function bindTenantFold() {
       const inp = document.querySelector(sheetAttrSel("data-leave-appoint", btn.dataset.gcalLeave));
       const at = leaveInputAt(inp, t);
       if (!at) { toast("請先選擇點交時間"); return; }
-      openGoogleCalendarAt(at, "文東 " + ((r && r.no) || "") + " 退租點交", "統潔＆信潔開發有限公司正常退租點交\n租客：" + ((t && t.name) || "") + "\n房號：文東 " + ((r && r.no) || "") + "\n請到 7651 簽約室簽名蓋章");
+      openGoogleCalendarAt(at, "文東 " + ((r && r.no) || "") + " 退租點交", leaveCalendarBody(t, r));
     };
   });
   document.querySelectorAll("[data-open-early-form]").forEach(btn => {
