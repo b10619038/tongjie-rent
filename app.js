@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-11-52";
-const APP_EDIT_COUNT = 2034;
+const APP_STAMP = "2026-10-19-11-56";
+const APP_EDIT_COUNT = 2035;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1644";
+const FILE_VER = "1645";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正式退租的簽約時間改成下拉選單，選到的時間會照實顯示"] },
+  { ver: APP_VERSION, items: ["正式退租的時間改回跟日期同一行、同樣字色，下拉仍會照實顯示"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -15328,8 +15328,10 @@ function appointOneHtml(at, extra) {
     const day = dm ? dm[1] : "";
     const hm = dm ? dm[2] : "10:00";
     return `<div class="appoint-one has-clock" data-empty="${escapeHtml(empty)}">
-    <span class="appoint-face">${appointFaceHtml(day ? day + "T" + hm : "", empty, true)}</span>
-    <input type="date" class="appoint-native appoint-day"${x.attr || ""} value="${escapeHtml(day)}" />
+    <span class="appoint-datehit">
+      <span class="appoint-face">${appointFaceHtml(day ? day + "T" + hm : "", empty, true)}</span>
+      <input type="date" class="appoint-native appoint-day"${x.attr || ""} value="${escapeHtml(day)}" />
+    </span>
     <select class="appoint-clock-pick" data-leave-clock="1">${leaveClockChoices(hm)}</select>
     ${side ? `<span class="appoint-side">${side}</span>` : ""}
   </div>`;
