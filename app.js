@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-38";
-const APP_EDIT_COUNT = 2040;
+const APP_STAMP = "2026-10-19-12-42";
+const APP_EDIT_COUNT = 2041;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1650";
+const FILE_VER = "1651";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正退申請不再被後台較新的資料蓋掉，張智傑不用重新申請"] },
+  { ver: APP_VERSION, items: ["正退申請會蓋掉取消收回，後台重整就能看到張智傑"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -11867,6 +11867,29 @@ function pickNewerEntity(a, b, keys) {
   }
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
+  if (keys && keys.indexOf("leaveApplied") >= 0) {
+    const signed = x => !!(x && x.leaveSign && x.leaveSign.status === "signed");
+    const on = x => !!(x && (x.leaveApplied || signed(x)) && !x.leaveDone);
+    const aOn = on(a);
+    const bOn = on(b);
+    if (aOn || bOn) {
+      const src = aOn && bOn
+        ? ((Number(a.leaveAppliedAt) || 0) >= (Number(b.leaveAppliedAt) || 0) ? a : b)
+        : (aOn ? a : b);
+      const other = src === a ? b : a;
+      const srcAt = Number(src.leaveAppliedAt) || Number(src.editedAt) || 0;
+      const cleared = other && other.leaveApplied === false && (other.renewChoice === "open" || other.renewChoice === "yes") && (Number(other.editedAt) || 0) > srcAt;
+      if (!cleared) {
+        out.leaveApplied = true;
+        out.leaveAppliedAt = src.leaveAppliedAt || out.leaveAppliedAt || srcAt;
+        if (src.leaveAppointAt) out.leaveAppointAt = src.leaveAppointAt;
+        if (src.leaveTimeSet) out.leaveTimeSet = true;
+        if (!out.renewChoice || out.renewChoice === "open" || out.renewChoice === "yes") out.renewChoice = src.renewChoice || "no";
+        const sig = signed(a) ? a.leaveSign : (signed(b) ? b.leaveSign : null);
+        if (sig) out.leaveSign = Object.assign({}, out.leaveSign || {}, sig);
+      }
+    }
+  }
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
   if (keys && keys.indexOf("pinned") >= 0) {
     const merged = mergeAnnouncementReactions(a, b);
@@ -13438,6 +13461,8 @@ async function pullCloud() {
       try { ensurePhoneLoginPasses(state); } catch {}
       try { applyRoom7623(state); } catch {}
       try { mergeTabOrder(state, data); } catch {}
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+      try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
       try { enforceSeatLimit(); } catch {}
@@ -36540,7 +36565,7 @@ function tenantEntryCardHtml(kind, entry) {
   const renew = liveRenewalOf(t);
   const undoRenew = retractableRenewalOf(t, r);
   const restoreRenew = restorableRenewalOf(t, r);
-  const restoreBtn = restoreRenew ? `<button type="button" class="pay-pill hand" data-restore-renew="${escapeHtml(restoreRenew.id)}">取消收回</button>` : "";
+  const restoreBtn = restoreRenew && !tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand" data-restore-renew="${escapeHtml(restoreRenew.id)}">取消收回</button>` : "";
   const renewOpen = !!(renew && tenantRenewOpen(renew.id));
   const renewLabel = renew && renew.status === "done" ? "已續約" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
