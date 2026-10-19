@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-17-50";
-const APP_EDIT_COUNT = 2063;
+const APP_STAMP = "2026-10-19-18-05";
+const APP_EDIT_COUNT = 2064;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1688";
+const FILE_VER = "1689";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
+  { ver: APP_VERSION, items: ["退電費餘額改寫成從現金保險箱支出"] },
+  { ver: "2026-10-19-17-50-2063", items: ["簽署退租要勾有無申請成功租屋補助，後台顯示給會計看"] },
   { ver: "2026-10-19-17-20-2062", items: ["後台退押金上方加上回收鑰匙、磁扣、儲值卡"] },
   { ver: "2026-10-19-17-15-2061", items: ["正常退租提示加上請繳回磁扣、鑰匙、儲值卡"] },
   { ver: "2026-10-19-16-50-2060", items: ["簽退租時保留剛選的點交時間，不會被收回紀錄蓋回合約到期日"] },
@@ -36254,7 +36255,7 @@ function saveAdminLeaveElec(id, value) {
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
   try { paintLeaveCashLine(); } catch {}
-  toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已記入現金保險箱" : "已記下電費餘額"));
+  toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已從現金保險箱支出" : "已記下電費餘額"));
 }
 function mergeLeaveCash(a, b) {
   const out = Object.assign({}, a || {});
@@ -36428,7 +36429,7 @@ function leaveRefundHtml(t, r, timeOnly) {
   }
   const official = t && t.leaveElecAdmin != null ? t.leaveElecAdmin : "";
   const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
-  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣+儲值卡</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就記入現金保險箱。</div>`;
+  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣+儲值卡</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
 }
 function bindLeaveElecInputs(root) {
   const scope = root || document;
@@ -36501,7 +36502,7 @@ function completeNormalLeave(id) {
   const end = rocSlash(ymdOf(t.leaseEnd) || "");
   const bank = depositPaidBankOf(t, r);
   const depMsg = depOk ? (bank === "現金" ? "押金已記入保險箱。" : "押金已記入" + payBankDisplay(bank) + "匯退。") : "";
-  const elecMsg = elecOk ? "電費餘額已記入現金。" : (t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "" ? "電費餘額可之後再填。" : "");
+  const elecMsg = elecOk ? "電費餘額已從現金保險箱支出。" : (t.leaveElecAdmin == null || String(t.leaveElecAdmin) === "" ? "電費餘額可之後再填。" : "");
   toast("已完成退租。" + depMsg + elecMsg + "房間仍住到合約最後一天" + (end ? "（" + end + "）" : ""));
   try { refreshTenantList(); } catch { render(); }
 }
