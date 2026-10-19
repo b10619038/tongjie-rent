@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1672";
+const FILE_VER = "1673";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -26878,7 +26878,7 @@ function leaveInputAt(inp, t) {
 function setNormalLeaveAppoint(t, value, fromTenant) {
   if (!t) return;
   const nextRaw = String(value || "").trim().replace(" ", "T").slice(0, 16);
-  const next = fromTenant ? clampLeaveClock(nextRaw) : nextRaw;
+  const next = nextRaw;
   const prev = String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16);
   if (next === prev) return;
   t.leaveAppointAt = next;
@@ -29833,7 +29833,7 @@ function bindInvoicePickup() {
 function leaseLeaveLandHtml(t, r) {
   if (!ui.leaveLand || !t || !r) return "";
   if (typeof renewDecisionOf === "function" && renewDecisionOf(r.no) === "no") return renewAskCardHtml(t, r, { full: true });
-  return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">正常退租</div><p>點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。若要提前搬走，下面仍可申請中途退租。</p></div>${normalLeaveCardHtml(t, r, { timeOnly: true })}</div>`;
+  return `<div class="tenant-leave-block" id="leave-box"><div class="handover-note renew-note"><div class="label">正常退租</div><p>點交日期和時間都可以自己選，不必是合約最後一天。房間仍住到合約最後一天。若要提前搬走，下面仍可申請中途退租。</p></div>${normalLeaveCardHtml(t, r, { timeOnly: true })}</div>`;
 }
 function leaseView() {
   try { applyRoom7611(state); } catch {}
@@ -35801,13 +35801,7 @@ function normalLeaveAppoint(t) {
 function clampLeaveClock(value) {
   const m = String(value || "").match(/^(\d{4}-\d{2}-\d{2})T(\d{1,2}):(\d{2})/);
   if (!m) return String(value || "").slice(0, 16);
-  const mins = Number(m[2]) * 60 + Number(m[3]);
-  const lo = 9 * 60 + 30;
-  const hi = 17 * 60 + 30;
-  const use = mins < lo ? lo : (mins > hi ? hi : mins);
-  const hh = String(Math.floor(use / 60)).padStart(2, "0");
-  const mm = String(use % 60).padStart(2, "0");
-  return m[1] + "T" + hh + ":" + mm;
+  return m[1] + "T" + String(m[2]).padStart(2, "0") + ":" + m[3];
 }
 function tenantLeaveAt(t) {
   return clampLeaveClock(normalLeaveAppoint(t));
@@ -36246,7 +36240,7 @@ function normalLeaveCardHtml(t, r, opts) {
   return `<div class="card card-body renew-alert" data-norenew-card="${escapeHtml(t.id)}">
     <h2 class="dash-h">正常退租</h2>
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b>${doneMark}</div>
-    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。</div>
+    <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。點交日期和時間都可以自己選，不必是合約最後一天。房間仍住到合約最後一天。</div>
     <div class="appoint-box">
       <div class="field"><span>${timeOnly ? "點交時間" : "簽約時間"}</span>
         ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id })}
@@ -37518,15 +37512,7 @@ function bindTenantFold() {
     inp.onclick = e => e.stopPropagation();
     inp.onchange = () => {
       const t = (state.tenants || []).find(x => x && x.id === inp.dataset.leaveAppoint);
-      let at = String(inp.value || "").trim();
-      if (ui.role === "tenant" && at) {
-        const clamped = clampLeaveClock(at);
-        if (clamped && at.slice(0, 16) !== clamped) {
-          at = clamped;
-          inp.value = clamped;
-          toast("點交時間只能選上午 9:30 到下午 5:30");
-        }
-      }
+      const at = String(inp.value || "").trim();
       paintAppointFace(inp);
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
     };
