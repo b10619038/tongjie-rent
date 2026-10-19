@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-11-20";
-const APP_EDIT_COUNT = 2029;
+const APP_STAMP = "2026-10-19-11-30";
+const APP_EDIT_COUNT = 2030;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1639";
+const FILE_VER = "1640";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租的點交日期會自動出現在後台行程，改時間也會一起改"] },
+  { ver: APP_VERSION, items: ["正退申請只在租客自己送出後才出現，舊的不續約標記不再自動顯示"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -4840,6 +4840,8 @@ function declineTenantRenewal() {
   if (isDevPreview()) { toast("預覽：已記不續約（不會寫入）"); return; }
   if (cur) cur.status = "cancelled";
   t.renewChoice = "no";
+  t.leaveApplied = true;
+  t.leaveAppliedAt = Date.now();
   if (!String(t.leaveAppointAt || "").trim()) t.leaveAppointAt = tenantLeaveAt(t);
   t.edited = true;
   t.editedAt = Date.now();
@@ -4860,10 +4862,12 @@ function reopenTenantRenewal() {
   if (isProspectPreview()) { toast("預覽中，不會送出"); return; }
   if (!isDevPreview()) {
     t.renewChoice = "open";
+    t.leaveApplied = false;
     t.edited = true;
     t.editedAt = Date.now();
     save();
     try { pushCloud(); } catch {}
+    try { publishPaidCloud(); } catch {}
   }
   ui.page = "lease";
   ui.scrollRenew = true;
@@ -11737,7 +11741,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveAppointAt", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveSign", "leaveElec", "leaveElecAdmin", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12365,7 +12369,7 @@ function tenantViewSig() {
   const ts = (state.tenants || []).map(t => [
     t && t.id, t && t.roomId, t && t.paid ? 1 : 0, t && (t.paidYm || ""), t && (t.remitOn || ""), t && (t.paidAt || ""),
     t && (t.name || ""), t && (t.leaseStart || ""), t && (t.leaseEnd || ""), t && t.former ? 1 : 0,
-    t && (t.renewChoice || ""), t && (t.leaveAppointAt || ""), t && (t.leaveDone ? 1 : 0), t && (t.leaveSign && t.leaveSign.status || "")
+    t && (t.renewChoice || ""), t && (t.leaveApplied ? 1 : 0), t && (t.leaveAppointAt || ""), t && (t.leaveDone ? 1 : 0), t && (t.leaveSign && t.leaveSign.status || "")
   ].join(":")).join("|");
   const rn = (state.renewals || []).map(x => [x && x.id, x && x.status, x && (x.appointAt || ""), x && (x.moveRoomNo || "")].join(":")).join("|");
   return ts + "#" + rn + "#" + JSON.stringify(state.paidMarks || {});
@@ -12646,6 +12650,8 @@ function moneyCloudBlob() {
       invoiceBuyer: t.invoiceBuyer || "",
       phone: t.phone || "",
       renewChoice: t.renewChoice || "",
+      leaveApplied: !!t.leaveApplied,
+      leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
       leaveAppointAt: t.leaveAppointAt || "",
       leaveElec: t.leaveElec == null ? "" : t.leaveElec,
       leaveElecAdmin: t.leaveElecAdmin == null ? "" : t.leaveElecAdmin,
@@ -35026,6 +35032,9 @@ function tenantRenewDone(t, r) {
     x.tenantId === t.id || (r && x.roomId === r.id) || (no && String(x.roomNo) === no)
   ));
 }
+function tenantLeaveApplied(t) {
+  return !!(t && t.leaveApplied && !t.leaveDone && !t.former);
+}
 function tenantRenewNo(t, r) {
   if (!t || tenantRenewDone(t, r)) return false;
   if (t.renewChoice === "no") return true;
@@ -35354,8 +35363,7 @@ function tenantLeaveAt(t) {
 function leaveOnSchedule(t, room) {
   if (!t || t.former || t.incoming || t.demo || t.leaveDone) return false;
   if (!String(t.leaveAppointAt || "").trim()) return false;
-  if (t.renewChoice === "no") return true;
-  return typeof tenantRenewNo === "function" && tenantRenewNo(t, room);
+  return !!t.leaveApplied;
 }
 function publishLeavePing(t, r, kind) {
   if (!t) return;
@@ -35404,6 +35412,14 @@ function applyLeaveCloudFields(t, src) {
   };
   put("renewChoice", src.renewChoice || "");
   put("leaveAppointAt", src.leaveAppointAt || "");
+  if ("leaveApplied" in src && (newer || src.leaveApplied)) {
+    const next = !!src.leaveApplied;
+    if (!!t.leaveApplied !== next) {
+      t.leaveApplied = next;
+      if (src.leaveAppliedAt) t.leaveAppliedAt = src.leaveAppliedAt;
+      changed = true;
+    }
+  }
   if (src.leaveElec != null && String(src.leaveElec) !== "") put("leaveElec", src.leaveElec);
   if (src.leaveElecAdmin != null && String(src.leaveElecAdmin) !== "") put("leaveElecAdmin", src.leaveElecAdmin);
   if (src.leaveDone && !t.leaveDone) {
@@ -36334,10 +36350,10 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      ${unread || (renew && renew.status !== "done") || early || tenantRenewNo(t, r) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
+      ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : ""}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill unpaid${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中途退租</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
