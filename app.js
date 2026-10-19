@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-16-20";
-const APP_EDIT_COUNT = 2059;
+const APP_STAMP = "2026-10-19-16-50";
+const APP_EDIT_COUNT = 2060;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1684";
+const FILE_VER = "1685";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["再次收回 7221 張智傑的正退申請，租客可重新填寫"] },
+  { ver: APP_VERSION, items: ["簽退租時保留剛選的點交時間，不會被收回紀錄蓋回合約到期日"] },
+  { ver: "2026-10-19-16-20-2059", items: ["再次收回 7221 張智傑的正退申請，租客可重新填寫"] },
   { ver: "2026-10-19-16-10-2058", items: ["收回 7221 張智傑的正退申請，可以重新填寫"] },
   { ver: "2026-10-19-16-00-2057", items: ["後台退押金金額改成跟電費餘額一樣大、一樣深"] },
   { ver: "2026-10-19-15-45-2056", items: ["正常退租提示改成先寫打掃和印章，退電費、退押金放第三、第四行"] },
@@ -4432,10 +4433,16 @@ function openLeaveSignPage() {
   if (t && !isDevPreview() && !isProspectPreview()) {
     const saved = readAppointValue(t.leaveAppointAt);
     const inp = document.querySelector("[data-leave-appoint=\"" + t.id + "\"]") || document.querySelector("[data-leave-appoint]");
-    let fromInput = "";
-    if (inp) fromInput = readAppointValue(inp.dataset.pickedAt || "") || readAppointValue(inp.value || "");
-    const at = fromInput || saved;
+    const picked = inp ? readAppointValue(inp.dataset.pickedAt || "") : "";
+    const fromInput = inp ? readAppointValue(inp.value || "") : "";
+    const at = picked || saved || fromInput;
     if (at && at !== saved) setNormalLeaveAppoint(t, at, false);
+    if (at) {
+      t.leaveAppointAt = at;
+      t.leaveTimeSet = true;
+      t.leaveAppointEditedAt = Math.max(Number(t.leaveAppointEditedAt) || 0, Date.now());
+      ui.leaveHoldAt = at;
+    }
   }
   ui.signAgree = false;
   ui.signStrokes = [];
@@ -11963,7 +11970,7 @@ function pickNewerEntity(a, b, keys) {
     const resetAt = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0);
     if (resetAt) {
       out.leaveResetAt = resetAt;
-      if (leaveApplyTs(out) < resetAt) {
+      if (leaveDraftTs(out) < resetAt) {
         out.leaveApplied = false;
         out.leaveSign = null;
         out.leaveAppointAt = "";
@@ -35559,6 +35566,9 @@ function tenantRenewDone(t, r) {
 function leaveApplyTs(t) {
   return Math.max(Number(t && t.leaveAppliedAt) || 0, Number(t && t.leaveSign && t.leaveSign.ts) || 0);
 }
+function leaveDraftTs(t) {
+  return Math.max(leaveApplyTs(t), Number(t && t.leaveAppointEditedAt) || 0);
+}
 function leaveWithdrawMap() {
   if (!state.leaveWithdrawn || typeof state.leaveWithdrawn !== "object") state.leaveWithdrawn = {};
   return state.leaveWithdrawn;
@@ -35573,7 +35583,7 @@ function mergeLeaveWithdrawn(a, b) {
 function clearStaleLeave(t) {
   if (!t) return false;
   const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
-  if (!reset || leaveApplyTs(t) >= reset) return false;
+  if (!reset || leaveDraftTs(t) >= reset) return false;
   t.leaveApplied = false;
   t.leaveSign = null;
   t.leaveSignCloud = "";
@@ -35973,10 +35983,23 @@ function applyLeaveCloudFields(t, src) {
     t.leaveResetAt = Number(src.leaveResetAt);
     changed = true;
   }
+  if (src.leaveAppointAt) {
+    const srcAt = Number(src.leaveAppointEditedAt) || 0;
+    const curAt = Number(t.leaveAppointEditedAt) || 0;
+    const resetNow = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+    const srcWins = srcAt >= curAt && (!resetNow || srcAt >= resetNow);
+    const nextAt = String(src.leaveAppointAt).replace(" ", "T").slice(0, 16);
+    if (srcWins && String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16) !== nextAt) {
+      t.leaveAppointAt = nextAt;
+      t.leaveAppointEditedAt = srcAt;
+      t.leaveTimeSet = true;
+      changed = true;
+    }
+  }
   if (clearStaleLeave(t)) changed = true;
   const resetAt = Number(t.leaveResetAt) || 0;
-  const srcOld = resetAt && Math.max(Number(src.leaveAppliedAt) || 0, Number(src.leaveSign && src.leaveSign.ts) || 0, src.leaveSigned ? Number(src.leaveAppliedAt) || 0 : 0) < resetAt;
-  if (srcOld) return changed;
+  const srcDraft = Math.max(Number(src.leaveAppliedAt) || 0, Number(src.leaveSign && src.leaveSign.ts) || 0, Number(src.leaveAppointEditedAt) || 0);
+  if (resetAt && srcDraft < resetAt) return changed;
   put("renewChoice", src.renewChoice || "");
   if (src.leaveAppointAt) {
     const srcAt = Number(src.leaveAppointEditedAt) || 0;
@@ -36452,7 +36475,13 @@ function leaveSignView() {
   if (!t || !r) return "";
   const names = splitPair(t.name || "");
   const two = names.length > 1;
-  const at = tenantLeaveAt(t);
+  const held = readAppointValue(ui.leaveHoldAt);
+  const at = held || tenantLeaveAt(t);
+  if (held && readAppointValue(t.leaveAppointAt) !== held) {
+    t.leaveAppointAt = held;
+    t.leaveTimeSet = true;
+    t.leaveAppointEditedAt = Math.max(Number(t.leaveAppointEditedAt) || 0, Date.now());
+  }
   const co = {
     at: ymdOf(at) || ymdOf(t.leaseEnd) || todayYmd(),
     appointAt: at,
@@ -36503,7 +36532,7 @@ function finishLeaveSign(a, b) {
     render();
     return;
   }
-  const keepAt = readAppointValue(t.leaveAppointAt);
+  const keepAt = readAppointValue(ui.leaveHoldAt) || readAppointValue(t.leaveAppointAt) || tenantLeaveAt(t);
   t.leaveSign = {
     status: "signed",
     at: nowStamp(),
