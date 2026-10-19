@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1670";
+const FILE_VER = "1671";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12109,8 +12109,15 @@ function seatMap() {
   if (!state.loginSeats || typeof state.loginSeats !== "object") state.loginSeats = {};
   return state.loginSeats;
 }
+function seatGoneMap() {
+  if (!state.seatGone || typeof state.seatGone !== "object") state.seatGone = {};
+  return state.seatGone;
+}
+function seatFresh(s) {
+  return !!(s && s.id && (Date.now() - (Number(s.at) || 0)) < 3 * 60 * 1000);
+}
 function capSeats(list) {
-  const rows = (Array.isArray(list) ? list : []).filter(s => s && s.id).map(s => ({
+  const rows = (Array.isArray(list) ? list : []).filter(seatFresh).map(s => ({
     id: String(s.id),
     at: Number(s.at) || 0,
     since: Number(s.since) || Number(s.at) || 0
@@ -12122,11 +12129,26 @@ function capSeats(list) {
   });
   return [...map.values()].sort((a, b) => a.since - b.since || a.at - b.at).slice(0, 2);
 }
+function mergeSeatGone(a, b) {
+  const out = {};
+  const keys = new Set([].concat(Object.keys(a || {}), Object.keys(b || {})));
+  const cut = Date.now() - 7 * 86400000;
+  keys.forEach(k => {
+    const n = Math.max(Number(a && a[k]) || 0, Number(b && b[k]) || 0);
+    if (n >= cut) out[k] = n;
+  });
+  return out;
+}
+function liveSeats(tid) {
+  const gone = seatGoneMap();
+  return capSeats(seatMap()[tid]).filter(s => (Number(s.at) || 0) > (Number(gone[tid + "|" + s.id]) || 0));
+}
 function mergeLoginSeats(local, remote) {
+  const gone = seatGoneMap();
   const out = {};
   const keys = new Set([].concat(Object.keys(local || {}), Object.keys(remote || {})));
   keys.forEach(id => {
-    const merged = capSeats([].concat((local && local[id]) || [], (remote && remote[id]) || []));
+    const merged = capSeats([].concat((local && local[id]) || [], (remote && remote[id]) || [])).filter(s => (Number(s.at) || 0) > (Number(gone[id + "|" + s.id]) || 0));
     if (merged.length) out[id] = merged;
   });
   return out;
@@ -12148,7 +12170,7 @@ function claimTenantSeat(tid) {
   if (!tid || seatExempt()) return true;
   const id = liveDeviceId();
   const now = Date.now();
-  const cur = capSeats(seatMap()[tid]);
+  const cur = liveSeats(tid);
   const mine = cur.find(s => s.id === id);
   if (mine) {
     mine.at = now;
@@ -12163,21 +12185,31 @@ function claimTenantSeat(tid) {
   return true;
 }
 function releaseTenantSeat(tid) {
-  if (!tid || !state.loginSeats) return;
+  if (!tid) return;
+  if (!state.loginSeats || typeof state.loginSeats !== "object") state.loginSeats = {};
   const id = liveDeviceId();
-  const cur = capSeats(state.loginSeats[tid]).filter(s => s.id !== id);
+  const stamp = Date.now();
+  seatGoneMap()[tid + "|" + id] = stamp;
+  const cur = liveSeats(tid).filter(s => s.id !== id);
   if (cur.length) state.loginSeats[tid] = cur;
   else delete state.loginSeats[tid];
 }
+function publishSeatGone(tid) {
+  if (!tid) return;
+  const pkt = { at: Date.now(), device: liveDeviceId(), seatGone: { tid, id: liveDeviceId(), at: Date.now() } };
+  try {
+    if (paidWs && paidWs.readyState === 1) paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pkt), false));
+  } catch {}
+}
 function tenantSeatHeld(tid) {
   if (!tid || seatExempt()) return true;
-  return capSeats(seatMap()[tid]).some(s => s.id === liveDeviceId());
+  return liveSeats(tid).some(s => s.id === liveDeviceId());
 }
 function enforceSeatLimit() {
   if (ui.role !== "tenant" || seatExempt() || !ui.tenantId) return;
   const tid = ui.tenantId;
   if (tenantSeatHeld(tid)) return;
-  const full = capSeats(seatMap()[tid]).length >= 2;
+  const full = liveSeats(tid).length >= 2;
   if (!full) {
     claimTenantSeat(tid);
     markCloudDirty();
@@ -12258,6 +12290,15 @@ function ingestLiveCloud(raw) {
   try {
     const o = typeof raw === "string" ? JSON.parse(raw) : raw;
     if (!o || o.device === liveDeviceId()) return;
+    if (o.seatGone && o.seatGone.tid && o.seatGone.id) {
+      const key = o.seatGone.tid + "|" + o.seatGone.id;
+      const stamp = Number(o.seatGone.at) || Number(o.at) || Date.now();
+      seatGoneMap()[key] = Math.max(Number(seatGoneMap()[key]) || 0, stamp);
+      state.loginSeats = mergeLoginSeats(state.loginSeats, {});
+      try { enforceSeatLimit(); } catch {}
+      ui.keepScroll = true;
+      try { render(); } catch {}
+    }
     const at = Number(o.at) || 0;
     const hasMemos = (Array.isArray(o.memos) && o.memos.length) || (Array.isArray(o.memoGone) && o.memoGone.length);
     const hasRepairs = Array.isArray(o.repairs) && o.repairs.length;
@@ -13433,6 +13474,7 @@ async function pullCloud() {
     const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
     if (keepCut) state.adminLogoutAt = keepCut;
     const mineSeats = state.loginSeats;
+    const mineSeatGone = state.seatGone;
     const mineTabOrder = {
       tabOrder: state.tabOrder,
       tabOrderAt: state.tabOrderAt,
@@ -13566,6 +13608,7 @@ async function pullCloud() {
       state.leaveWithdrawn = Object.assign({}, data.leaveWithdrawn || {}, state.leaveWithdrawn || {});
       try { applyLeaveExtras(); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+      state.seatGone = mergeSeatGone(state.seatGone, data.seatGone);
       state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
       try { enforceSeatLimit(); } catch {}
       if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
@@ -13593,6 +13636,7 @@ async function pullCloud() {
         markCloudDirty();
       }
     } catch {}
+    state.seatGone = mergeSeatGone(mineSeatGone, data.seatGone);
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
     mergeSharedInto(state, mineSnap);
     if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
@@ -14156,6 +14200,13 @@ function beatPresence() {
   const prev = state.presence[id];
   if (prev && prev.installed && !/Windows|電腦/.test(String(prev.device || ""))) beat.installed = true;
   state.presence[id] = beat;
+  if (ui.role === "tenant" && ui.tenantId && !seatExempt()) {
+    const mineSeat = liveSeats(ui.tenantId).find(s => s.id === liveDeviceId());
+    if (mineSeat) {
+      mineSeat.at = Date.now();
+      state.loginSeats[ui.tenantId] = liveSeats(ui.tenantId);
+    }
+  }
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   const stale = !prev || !prev.cloudAt || (Date.now() - Number(prev.cloudAt) > 120000);
   if (stale) {
@@ -14186,6 +14237,7 @@ async function pushPresence() {
     mergeLedgerInto(state, data);
     if (!state.presence) state.presence = {};
     state.presence[id] = Object.assign({}, beat, { at: Date.now() });
+    state.seatGone = mergeSeatGone(state.seatGone, data.seatGone);
     state.loginSeats = mergeLoginSeats(state.loginSeats, data.loginSeats);
     try { enforceSeatLimit(); } catch {}
     persistLedger(state);
@@ -14258,7 +14310,7 @@ function tenantAccountRows() {
     if (!room || room.demo || room.status === "office" || isPracticeStudioNo(room.no)) return;
     if (room.kind === "factory" || room.kind === "store" || (typeof isStoreNo === "function" && isStoreNo(room.no))) return;
     const p = (state.presence || {})[t.id] || {};
-    const seats = capSeats((state.loginSeats || {})[t.id] || []);
+    const seats = liveSeats(t.id);
     const on = isOnline(t.id);
     const phoneDev = p.device && !/Windows|電腦/.test(String(p.device));
     const ever = !!(t.loginEverAt || seats.length);
@@ -14369,6 +14421,8 @@ async function pushCloud() {
     const annMerged = mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]);
     state.annGone = unionGone(annGone, (annMerged || []).filter(annIsWasherLost).map(a => String(a.id)));
     state.announcements = dropGone(annMerged, state.annGone);
+    const seatGoneMerged = mergeSeatGone(remote && remote.seatGone, state.seatGone);
+    state.seatGone = seatGoneMerged;
     const payload = Object.assign({}, remote || {}, state, {
       updatedAt: state.updatedAt,
       company: state.company,
@@ -14425,6 +14479,7 @@ async function pushCloud() {
       chatImages: mergeChatImages(remote && remote.chatImages, state && state.chatImages, loadChatImageMap()),
       chatImageGone: unionChatImageGone(remote && remote.chatImageGone, state && state.chatImageGone),
       loginSeats: mergeLoginSeats(remote && remote.loginSeats, state.loginSeats),
+      seatGone: seatGoneMerged,
       presence: mergedPresence(remote && remote.presence, state.presence),
       leaveCash: mergeLeaveCash(remote && remote.leaveCash, state.leaveCash),
       leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk),
@@ -14473,6 +14528,7 @@ async function pushCloud() {
       ui.chats = mergeChatStores(chatStore(), payload.devChats);
       saveLocalChats(ui.chats);
     }
+    if (payload.seatGone) state.seatGone = payload.seatGone;
     if (payload.loginSeats) state.loginSeats = payload.loginSeats;
     if (payload.leaveCash) state.leaveCash = payload.leaveCash;
     if (payload.leaveInk) state.leaveInk = payload.leaveInk;
@@ -15169,7 +15225,8 @@ function logoutToGate() {
   if (ui.role === "tenant" && !isDevPreview() && !isTenantLook() && ui.adminCode !== "1240" && ui.tenantId) {
     releaseTenantSeat(ui.tenantId);
     markCloudDirty();
-    pushCloud().catch(() => {});
+    try { publishSeatGone(ui.tenantId); } catch {}
+    try { pushCloud(); } catch {}
   }
   audit("登出", "登出");
   ui.playIntro = true;
