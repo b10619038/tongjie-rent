@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1671";
+const FILE_VER = "1672";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -14844,6 +14844,15 @@ function captureComposeDraft() {
     const el = document.getElementById(id);
     if (el) ui[key] = el.value;
   });
+  const roomLogin = document.getElementById("room-login");
+  if (roomLogin) {
+    if (ui.page === "admin-login") ui.loginAdmin = roomLogin.value;
+    else ui.loginRoom = roomLogin.value;
+  }
+  const passLogin = document.getElementById("pass-login");
+  if (passLogin) ui.loginPassDraft = passLogin.value;
+  const adminNameBox = document.getElementById("admin-name");
+  if (adminNameBox) ui.loginAdminName = adminNameBox.value;
   const ae = document.activeElement;
   if (ae && ae.id && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA")) {
     ui.composeFocus = { id: ae.id, start: ae.selectionStart, end: ae.selectionEnd };
@@ -27495,11 +27504,13 @@ function paintApp() {
     const overlays = !!(ui.notifyGuide || ui.installSheet || toastHtml);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
     if (same && !overlays && page === "home") return;
+    if (same && !overlays && composingNow() && document.activeElement && document.activeElement.closest && document.activeElement.closest(".gate")) return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
     root.innerHTML = `<div class="${still ? "keep-still" : ""}">${bar}${toastHtml}${gateView()}${sheet}${ver}${guide}${theme}</div>${introHtml()}`;
     lastRenderRole = ui.role;
     lastRenderPage = page;
     safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); bindMoveSubmitConfirm(); });
+    try { restoreComposeDraft(); } catch {}
     if (still && page === "move-in") {
       const sc = document.querySelector(".move-in-page");
       if (sc) {
@@ -28102,7 +28113,7 @@ function gateView() {
       <div class="login-block slide-left">
         ${isAdmin ? `<input id="admin-name" type="text" autocomplete="username" maxlength="12" placeholder="姓名" value="${escapeHtml(ui.loginAdminName || "")}" />` : ""}
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="${isAdmin ? "numeric" : "numeric"}" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
-        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" />`}
+        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" value="${escapeHtml(ui.loginPassDraft || "")}" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
         ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
@@ -43477,29 +43488,13 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
   window.addEventListener("touchmove", e => {
     if (touchField || fieldFrom(e)) return;
     bump();
-    const y = e.touches && e.touches[0] ? e.touches[0].clientY : startY;
-    if (Math.abs(y - startY) < 12) return;
-    const a = document.activeElement;
-    if (isField(a)) try { a.blur(); } catch {}
   }, { capture: true, passive: true });
   window.addEventListener("wheel", e => { if (!fieldFrom(e)) bump(); }, { capture: true, passive: true });
   document.addEventListener("scroll", e => { if (!fieldFrom(e)) bump(); }, { capture: true, passive: true });
   document.addEventListener("touchstart", e => {
     startY = e.touches && e.touches[0] ? e.touches[0].clientY : 0;
     touchField = !!fieldFrom(e);
-    if (touchField) return;
-    if (Date.now() - lastScrollAt < 450) {
-      const t = e.target && e.target.closest && e.target.closest("input, textarea, select");
-      if (isField(t) && t.tagName !== "SELECT" && !/date|time/.test(String(t.type || ""))) e.preventDefault();
-    }
-  }, { capture: true, passive: false });
-  document.addEventListener("focusin", e => {
-    if (!isField(e.target)) return;
-    if (touchField) return;
-    const type = String((e.target && e.target.type) || "").toLowerCase();
-    if (e.target.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local") return;
-    if (Date.now() - lastScrollAt < 450) try { e.target.blur(); } catch {}
-  });
+  }, { capture: true, passive: true });
 })();
 window.addEventListener("pageshow", () => {
   try { restoreUi(); } catch {}
