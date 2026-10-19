@@ -47,7 +47,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-10-19-13-31";
 const APP_EDIT_COUNT = 2052;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1674";
+const FILE_VER = "1675";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27476,7 +27476,7 @@ function paintApp() {
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
-  if (ui.signing && (ui.page === "lease-sign" || ui.page === "leave-sign") && !pageChanged) return;
+  if ((ui.page === "lease-sign" || ui.page === "leave-sign") && !pageChanged && (ui.signing || (ui.signStrokes && ui.signStrokes.length) || (ui.signStrokes2 && ui.signStrokes2.length))) return;
   if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
     ui.slideLockPending = true;
     lastRenderRole = ui.role;
@@ -39392,6 +39392,7 @@ function bindSignPad() {
         c.height = bh;
       }
       redraw();
+      mirrorLive();
     };
     fit();
     if (c.dataset.bound === "1") return { c, fit };
