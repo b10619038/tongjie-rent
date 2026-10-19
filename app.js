@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-56";
-const APP_EDIT_COUNT = 2045;
+const APP_STAMP = "2026-10-19-13-04";
+const APP_EDIT_COUNT = 2046;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1655";
+const FILE_VER = "1656";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["後台填的電費餘額會同步給租客，顯示現場退多少現金"] },
+  { ver: APP_VERSION, items: ["正常退租提示改成退電費現金、打掃套房、攜帶印章"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3830,11 +3830,15 @@ function leaveSentHomeHtml(t) {
   if (!t || t.leaveDone || !(t.leaveSign && t.leaveSign.status === "signed")) return "";
   const at = tenantLeaveAt(t);
   const when = at ? formatDateTime12(String(at).replace("T", " ")) : "";
-  const elecCash = leaveElecCashLine(t);
+  const cashAmt = t && t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? money(Number(t.leaveElecAdmin)) : "";
   return `<div class="handover-note renew-note">
       <div class="label renew-sent-head">正常退租<span class="sent-track" aria-hidden="true"><i class="sent-pulse" style="${sentPulseStyle()}"></i></span></div>
       <p>已簽名送出。可以改下面的點交時間，後台會一起改。請到 5F，電梯出來右轉到底，7651簽約室蓋章，記得攜帶個人印章。房間住到合約最後一天。</p>
-      ${elecCash ? `<p>${escapeHtml(elecCash)}</p>` : ""}
+      <div class="renew-focus">
+        <p class="leave-cash">退電費現金：${cashAmt ? escapeHtml(cashAmt) : ""}</p>
+        <p>請打掃整理套房</p>
+        <p>請攜帶個人印章</p>
+      </div>
       <div class="appoint-box" style="margin-top:10px">
         <label class="field"><span>點交時間</span>
           ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: true })}

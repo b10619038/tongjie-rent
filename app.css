@@ -1110,6 +1110,7 @@ button.pay-pill.hand {
   line-height: 1.55;
 }
 .renew-note .renew-focus b { color: #9a3412; }
+.renew-note .renew-focus .leave-cash { color: #15803d; }
 .renew-sent-head {
   display: flex;
   align-items: center;
