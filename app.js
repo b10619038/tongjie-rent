@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-13-18";
-const APP_EDIT_COUNT = 2048;
+const APP_STAMP = "2026-10-19-13-24";
+const APP_EDIT_COUNT = 2049;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1658";
+const FILE_VER = "1659";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["電費餘額和退租簽名改成單獨同步，不會再被其他更新蓋掉"] },
+  { ver: APP_VERSION, items: ["租客可以改點交日期時間，後台會跟著更新"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -3840,9 +3840,9 @@ function leaveSentHomeHtml(t) {
         <p>請攜帶個人印章</p>
       </div>
       <div class="appoint-box" style="margin-top:10px">
-        <label class="field"><span>點交時間</span>
+        <div class="field"><span>點交時間</span>
           ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: true })}
-        </label>
+        </div>
         <div class="small" data-leave-note="1"><div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div></div>
       </div>
     </div>`;
@@ -11802,7 +11802,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveTimeSet", "leaveSign", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -11924,6 +11924,16 @@ function pickNewerEntity(a, b, keys) {
     };
     pickAmt("leaveElec", "leaveElecAt");
     pickAmt("leaveElecAdmin", "leaveElecAdminAt");
+    const aAp = Number(a.leaveAppointEditedAt) || 0;
+    const bAp = Number(b.leaveAppointEditedAt) || 0;
+    if (aAp || bAp) {
+      const pick = aAp >= bAp ? a : b;
+      if (pick.leaveAppointAt) {
+        out.leaveAppointAt = pick.leaveAppointAt;
+        out.leaveAppointEditedAt = pick.leaveAppointEditedAt;
+        out.leaveTimeSet = true;
+      }
+    }
   }
   if ((!Array.isArray(out.media) || !out.media.length) && Array.isArray(loser.media) && loser.media.length) out.media = loser.media;
   if (keys && keys.indexOf("pinned") >= 0) {
@@ -12417,6 +12427,7 @@ function leaveNowRow(t) {
     leaveApplied: !!t.leaveApplied,
     leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
     leaveAppointAt: t.leaveAppointAt || "",
+    leaveAppointEditedAt: Number(t.leaveAppointEditedAt) || 0,
     leaveTimeSet: !!t.leaveTimeSet,
     leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
     leaveSignAt: (t.leaveSign && t.leaveSign.at) || "",
@@ -12855,6 +12866,7 @@ function moneyCloudBlob() {
       leaveApplied: !!t.leaveApplied,
       leaveAppliedAt: Number(t.leaveAppliedAt) || 0,
       leaveAppointAt: t.leaveAppointAt || "",
+      leaveAppointEditedAt: Number(t.leaveAppointEditedAt) || 0,
       leaveTimeSet: !!t.leaveTimeSet,
       leaveElec: t.leaveElec == null ? "" : t.leaveElec,
       leaveElecAt: Number(t.leaveElecAt) || 0,
@@ -15517,6 +15529,7 @@ function bindAppointPicker(inp) {
   });
   if (wrap) {
     wrap.addEventListener("click", e => {
+      if (wrap.classList.contains("has-clock")) return;
       if (e.target && e.target.closest && e.target.closest(".gcal-in, [data-gcal-draft], [data-gcal-renew], [data-appoint-pause], [data-leave-clock]")) return;
       if (e.target === inp) return;
       e.preventDefault();
@@ -26772,6 +26785,7 @@ function setNormalLeaveAppoint(t, value, fromTenant) {
   if (next === prev) return;
   t.leaveAppointAt = next;
   t.leaveTimeSet = true;
+  t.leaveAppointEditedAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
   const room = (state.rooms || []).find(x => x && x.id === t.roomId);
@@ -35729,7 +35743,18 @@ function applyLeaveCloudFields(t, src) {
     changed = true;
   };
   put("renewChoice", src.renewChoice || "");
-  put("leaveAppointAt", src.leaveAppointAt || "");
+  if (src.leaveAppointAt) {
+    const srcAt = Number(src.leaveAppointEditedAt) || 0;
+    const curAt = Number(t.leaveAppointEditedAt) || 0;
+    const srcWins = (srcAt || curAt) ? srcAt >= curAt : newer;
+    const nextAt = String(src.leaveAppointAt).replace(" ", "T").slice(0, 16);
+    if (srcWins && String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16) !== nextAt) {
+      t.leaveAppointAt = nextAt;
+      if (srcAt) t.leaveAppointEditedAt = srcAt;
+      t.leaveTimeSet = true;
+      changed = true;
+    }
+  }
   if (src.leaveTimeSet) t.leaveTimeSet = true;
   if (src.leaveApplied || src.leaveSigned) {
     if (!t.leaveApplied && !t.leaveDone) {
@@ -36079,9 +36104,9 @@ function normalLeaveCardHtml(t, r, opts) {
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}</b>${doneMark}</div>
     <div class="small" style="margin-bottom:6px">合約至 ${escapeHtml(rocSlash(end) || "—")}。點交日期可以自己選，不必是合約最後一天。時間請選上午 9:30 到下午 5:30。房間仍住到合約最後一天。</div>
     <div class="appoint-box">
-      <label class="field"><span>簽約時間</span>
+      <div class="field"><span>${timeOnly ? "點交時間" : "簽約時間"}</span>
         ${appointOneHtml(at, { attr: ` data-leave-appoint="${escapeHtml(t.id)}"`, gcalLeave: t.id, dayClock: !!timeOnly })}
-      </label>
+      </div>
       <div class="small" data-leave-note="1">${timeOnly
         ? `<div data-leave-when="1">${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}</div><div>地點：5F，電梯出來右轉到底，7651簽約室</div><div>記得攜帶個人印章。簽名後送到後台。點交當天仍要到場蓋章。房間住到合約最後一天。</div>`
         : `${when ? "已預約 " + escapeHtml(when) : "選擇點交時間"}　地點：5F，電梯出來右轉到底，7651簽約室。記得攜帶個人印章。`}</div>
@@ -37365,11 +37390,13 @@ function bindTenantFold() {
       setNormalLeaveAppoint(t, at, ui.role === "tenant");
     };
     inp.onchange = applyLeaveClock;
+    inp.addEventListener("input", applyLeaveClock);
     if (inp.closest(".appoint-one")) {
       const wrap = inp.closest(".appoint-one");
       const clock = wrap && wrap.querySelector("[data-leave-clock]");
       if (clock && clock.dataset.boundClock !== "1") {
         clock.dataset.boundClock = "1";
+        clock.addEventListener("pointerdown", e => e.stopPropagation());
         clock.addEventListener("click", e => e.stopPropagation());
         clock.addEventListener("change", applyLeaveClock);
       }

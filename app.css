@@ -3392,7 +3392,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
 .appoint-one.has-clock .appoint-native.appoint-day { width: 100%; }
 .appoint-clock-pick {
   position: relative;
-  z-index: 3;
+  z-index: 4;
   margin-left: 0.45em;
   border: 0;
   background: transparent;
@@ -3401,10 +3401,11 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
-  padding: 8px 0;
+  padding: 10px 4px;
+  min-width: 64px;
   border-radius: 0;
-  appearance: none;
-  -webkit-appearance: none;
+  appearance: auto;
+  cursor: pointer;
 }
 .appoint-one input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .appoint-one input[type="date"]::-webkit-calendar-picker-indicator,
