@@ -7227,7 +7227,9 @@ html.embed-pane .home-upd { display: none !important; }
   border-bottom: 1px solid #111;
   margin-left: 2mm;
 }
-.hand-sign-line:has(.lease-esig) {
+img.lease-esig.live-ink:not([src]),
+img.lease-esig.live-ink[src=""] { display: none; }
+.hand-sign-line:has(.lease-esig[src]) {
   height: 16mm;
   display: flex;
   align-items: flex-end;

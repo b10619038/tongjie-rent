@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-19-12-02";
-const APP_EDIT_COUNT = 2036;
+const APP_STAMP = "2026-10-19-12-12";
+const APP_EDIT_COUNT = 2037;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1646";
+const FILE_VER = "1647";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租的簽約時間一開始預設早上 11:00"] },
+  { ver: APP_VERSION, items: ["簽名的每一筆會立刻出現在合約的承租人欄"] },
   { ver: "2026-10-19-10-55-2027", items: ["正常退租記押金匯退和電費餘額現金，餘額可簽完或由後台補"] },
   { ver: "2026-10-19-10-40-2026", items: ["官方 LINE 點正常退租，直接打開退租畫面"] },
   { ver: "2026-10-19-01-30-2025", items: ["官方 LINE 選單登入一次，這台手機之後不用再登"] },
@@ -25767,7 +25767,10 @@ function handoverConfirmPaperHtml(t, r, co) {
   const personChops = (nameList.length > 1 ? [0, 1] : [0]).map(() => `<span class="hand-person-chop"><span class="chop-mark chop-ps"></span></span>`).join("");
   const leave = t && t.leaveSign && t.leaveSign.status === "signed" && !(ui && ui.page === "leave-sign") ? t.leaveSign : null;
   const sigImg = src => (src && String(src).startsWith("data:")) ? `<img class="lease-esig" src="${src}" alt="簽名">` : "";
-  const sigs = leave ? (sigImg(leave.sig) + sigImg(leave.sig2)) : "";
+  const live = ui && ui.page === "leave-sign";
+  const sigs = live
+    ? `<img class="lease-esig live-ink" data-live-sign="1" alt=""><img class="lease-esig live-ink" data-live-sign="2" alt="">`
+    : (leave ? (sigImg(leave.sig) + sigImg(leave.sig2)) : "");
   return `<div class="hand-a4-fit"><div class="term-handover-paper" id="term-handover-paper">
     <h3>租屋物件交接確認書</h3>
     <p data-lease-sign-date="1">甲乙方於中華民國　<span class="term-fill amt">${p.y}</span>　年　<span class="term-fill amt">${p.m}</span>　月　<span class="term-fill amt">${p.d}</span>　日點交租屋物件</p>
@@ -29252,7 +29255,9 @@ function tenantMark(t, i, name) {
   return leaseInk(name);
 }
 function tenantSignOnly(t, i, cls) {
-  if (ui && ui.resignRenew && ui.page === "lease-sign") return `<span class="lease-u${cls ? " " + cls : ""}">　</span>`;
+  if (ui && ui.page === "lease-sign") {
+    return `<span class="lease-sign-line"><img class="lease-esig live-ink" data-live-sign="${(Number(i) || 0) + 1}" alt=""></span>`;
+  }
   const img = tenantEsigHtml(t, i);
   if (img) return `<span class="lease-sign-line signed">${img}</span>`;
   return `<span class="lease-u${cls ? " " + cls : ""}">　</span>`;
@@ -38718,6 +38723,41 @@ function bindSignPad() {
   bindFormatField(document.getElementById("sign-phone"), "phone");
   bindFormatField(document.getElementById("sign-idno"), "id");
   const INK = "#1a57c5";
+  const liveInkUrl = c => {
+    try {
+      const w = c.width, h = c.height;
+      const g = c.getContext("2d");
+      const data = g.getImageData(0, 0, w, h).data;
+      let minX = w, minY = h, maxX = 0, maxY = 0, hit = false;
+      const step = 2;
+      for (let y = 0; y < h; y += step) {
+        for (let x = 0; x < w; x += step) {
+          if (data[(y * w + x) * 4 + 3] > 16) {
+            hit = true;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (!hit) return "";
+      const pad = Math.round(6 * (window.devicePixelRatio || 1));
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(w - 1, maxX + pad);
+      maxY = Math.min(h - 1, maxY + pad);
+      const cw = Math.max(1, maxX - minX + 1);
+      const ch = Math.max(1, maxY - minY + 1);
+      const out = document.createElement("canvas");
+      out.width = cw;
+      out.height = ch;
+      out.getContext("2d").drawImage(c, minX, minY, cw, ch, 0, 0, cw, ch);
+      return out.toDataURL("image/png");
+    } catch {
+      try { return c.toDataURL("image/png"); } catch { return ""; }
+    }
+  };
   const bindOne = (c, strokesKey) => {
     if (!c) return;
     const wrap = c.parentElement;
@@ -38728,6 +38768,34 @@ function bindSignPad() {
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeStyle = INK;
+    };
+    const mirrorLive = () => {
+      const which = strokesKey === "signStrokes2" ? "2" : "1";
+      const slots = document.querySelectorAll("[data-live-sign=\"" + which + "\"]");
+      if (!slots.length) return;
+      const ink = (ui[strokesKey] || []).some(line => line && line.length > 1);
+      let url = "";
+      if (ink) {
+        url = liveInkUrl(c);
+      }
+      slots.forEach(slot => {
+        if (url) {
+          slot.src = url;
+          slot.style.display = "";
+        } else {
+          slot.removeAttribute("src");
+          slot.style.display = "none";
+        }
+      });
+    };
+    let mirrorWait = false;
+    const queueMirror = () => {
+      if (mirrorWait) return;
+      mirrorWait = true;
+      requestAnimationFrame(() => {
+        mirrorWait = false;
+        mirrorLive();
+      });
     };
     const redraw = () => {
       const ratio = Math.max(1, window.devicePixelRatio || 1);
@@ -38788,11 +38856,13 @@ function bindSignPad() {
       const line = ui[strokesKey][ui[strokesKey].length - 1];
       if (line) line.push(p);
       c.dataset.ink = "1";
+      queueMirror();
     };
     const end = e => {
       if (e) { e.preventDefault(); e.stopPropagation(); }
       drawing = false;
       ui.signing = false;
+      mirrorLive();
     };
     c.addEventListener("pointerdown", e => {
       try { c.setPointerCapture(e.pointerId); } catch {}
@@ -38811,6 +38881,10 @@ function bindSignPad() {
   if (clr) clr.onclick = () => {
     ui.signStrokes = [];
     ui.signStrokes2 = [];
+    document.querySelectorAll("[data-live-sign]").forEach(slot => {
+      slot.removeAttribute("src");
+      slot.style.display = "none";
+    });
     if (a) { a.c.dataset.ink = ""; a.fit(); }
     if (b) { b.c.dataset.ink = ""; b.fit(); }
   };
