@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-40";
-const APP_EDIT_COUNT = 2086;
+const APP_STAMP = "2026-10-20-20-46";
+const APP_EDIT_COUNT = 2087;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1711";
+const FILE_VER = "1712";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["牛1正面從左到右改成8號、6號、2號"] },
+  { ver: APP_VERSION, items: ["廠房屋簷不再被旁邊那間切到"] },
+  { ver: "2026-10-20-20-40-2086", items: ["牛1正面從左到右改成8號、6號、2號"] },
   { ver: "2026-10-20-20-36-2085", items: ["廠房地板接齊，開模型會停在點到的那一間"] },
   { ver: "2026-10-20-20-32-2084", items: ["廠房模型背景清乾淨，三間再靠緊"] },
   { ver: "2026-10-20-20-28-2083", items: ["廠房模型底改白，接縫陰影拿掉"] },
