@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-12";
-const APP_EDIT_COUNT = 2081;
+const APP_STAMP = "2026-10-20-20-18";
+const APP_EDIT_COUNT = 2082;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1706";
+const FILE_VER = "1707";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["牛1最右兩間改成更側面的左側模型"] },
+  { ver: APP_VERSION, items: ["牛1這三間正面模型連成一排，可左右滑"] },
+  { ver: "2026-10-20-20-12-2081", items: ["牛1最右兩間改成更側面的左側模型"] },
   { ver: "2026-10-20-20-05-2080", items: ["點牛1廠房後先出現模型圖按鈕，進去後改成平面圖"] },
   { ver: "2026-10-20-20-00-2079", items: ["資產平面圖標題旁的小廠房圖拿掉"] },
   { ver: "2026-10-20-19-55-2078", items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
@@ -5572,23 +5573,27 @@ const SITE_MAP_SPOTS = [
   { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" }
 ];
 const NIU1_MODELS = [
-  { no: "牛1-61", label: "牛1 61號", view: "front" },
-  { no: "牛1-59", label: "牛1 59號", view: "front" },
-  { no: "牛1-57巷2", label: "牛1 57巷2號", view: "front" },
-  { no: "牛1-57巷6", label: "牛1 57巷6號", view: "left" },
-  { no: "牛1-57巷8", label: "牛1 57巷8號", view: "left" }
+  { no: "牛1-57巷2", label: "牛1 57巷2號" },
+  { no: "牛1-57巷6", label: "牛1 57巷6號" },
+  { no: "牛1-57巷8", label: "牛1 57巷8號" }
 ];
 function niu1ModelIndex(spot) {
   if (!spot || !spot.nos) return -1;
   return NIU1_MODELS.findIndex(m => spot.nos.indexOf(m.no) >= 0);
 }
-function mapModelSrc(item) {
-  return "images/" + (item && item.view === "left" ? "factory-left.jpg" : "factory-front.jpg") + "?v=" + FILE_VER;
+function mapModelSrc() {
+  return "images/factory-front.jpg?v=" + FILE_VER;
+}
+function mapModelMetrics(model) {
+  const view = model.clientWidth || 1;
+  const slide = Math.round(view * 0.78);
+  const max = Math.max(0, NIU1_MODELS.length * slide - view);
+  return { view, slide, max };
 }
 function mapModelLayerHtml() {
   const i = Number(ui.assetMapModel);
   if (!(i >= 0) || !NIU1_MODELS[i]) return "";
-  const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc(m)}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
+  const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc()}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
   return `<div class="map-model is-in" id="map-model"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
 }
 function assetSiteKey(spot) {
@@ -5769,13 +5774,17 @@ function placeMapModel(anim) {
   const model = document.getElementById("map-model");
   const track = document.getElementById("map-model-track");
   if (!model || !track) return;
-  const w = model.clientWidth || 1;
+  const box = mapModelMetrics(model);
   track.querySelectorAll(".map-model-slide").forEach(s => {
-    s.style.width = w + "px";
-    s.style.flexBasis = w + "px";
+    s.style.width = box.slide + "px";
+    s.style.flexBasis = box.slide + "px";
   });
+  let x = Number(ui.mapModelX);
+  if (!Number.isFinite(x)) x = -(Number(ui.assetMapModel || 0) * box.slide);
+  x = Math.max(-box.max, Math.min(0, x));
+  ui.mapModelX = x;
   track.style.transition = anim ? "" : "none";
-  track.style.transform = "translateX(" + (-Number(ui.assetMapModel || 0) * w) + "px)";
+  track.style.transform = "translateX(" + x + "px)";
 }
 function showModelIndex(next, anim) {
   const n = NIU1_MODELS.length;
@@ -5788,6 +5797,11 @@ function showModelIndex(next, anim) {
   if (pop && spotIndex >= 0) pop.innerHTML = assetMapPopHtml(SITE_MAP_SPOTS[spotIndex]);
   const ringBox = document.getElementById("asset-map-ring");
   if (ringBox && spotIndex >= 0) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
+  const model = document.getElementById("map-model");
+  if (model && anim) {
+    const box = mapModelMetrics(model);
+    ui.mapModelX = Math.max(-box.max, Math.min(0, -ui.assetMapModel * box.slide));
+  }
   placeMapModel(!!anim);
   syncMapToggle();
   try { bindAdminRoomItems(); } catch {}
@@ -5827,34 +5841,49 @@ function bindMapModelSwipe() {
   const model = document.getElementById("map-model");
   if (!model || model.dataset.bound === "1") return;
   model.dataset.bound = "1";
-  let startX = 0, dx = 0, dragging = false;
+  let startX = 0, base = 0, dragging = false;
   model.addEventListener("pointerdown", e => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragging = true;
     ui.mapModelDrag = true;
     startX = e.clientX;
-    dx = 0;
+    base = Number(ui.mapModelX) || 0;
+    const track = document.getElementById("map-model-track");
+    if (track) track.style.transition = "none";
     e.stopPropagation();
     try { model.setPointerCapture(e.pointerId); } catch {}
   });
   model.addEventListener("pointermove", e => {
     if (!dragging) return;
-    dx = e.clientX - startX;
-    const w = model.clientWidth || 1;
     const track = document.getElementById("map-model-track");
     if (!track) return;
+    const box = mapModelMetrics(model);
+    const x = Math.max(-box.max, Math.min(0, base + (e.clientX - startX)));
+    ui.mapModelX = x;
     track.style.transition = "none";
-    track.style.transform = "translateX(" + ((-Number(ui.assetMapModel || 0) * w) + dx) + "px)";
+    track.style.transform = "translateX(" + x + "px)";
     e.stopPropagation();
   });
   const end = e => {
     if (!dragging) return;
     dragging = false;
     ui.mapModelDrag = false;
-    let next = Number(ui.assetMapModel) || 0;
-    if (dx < -48) next += 1;
-    else if (dx > 48) next -= 1;
-    showModelIndex(next, true);
+    const box = mapModelMetrics(model);
+    const x = Math.max(-box.max, Math.min(0, Number(ui.mapModelX) || 0));
+    ui.mapModelX = x;
+    const near = Math.max(0, Math.min(NIU1_MODELS.length - 1, Math.round((-x) / box.slide)));
+    ui.assetMapModel = near;
+    const item = NIU1_MODELS[near];
+    const spotIndex = SITE_MAP_SPOTS.findIndex(s => s.nos && s.nos.indexOf(item.no) >= 0);
+    if (spotIndex >= 0) {
+      ui.assetMapSpot = spotIndex;
+      document.querySelectorAll("[data-map-spot]").forEach(node => node.classList.toggle("on", Number(node.dataset.mapSpot) === spotIndex));
+      const pop = document.getElementById("asset-map-pop");
+      if (pop) pop.innerHTML = assetMapPopHtml(SITE_MAP_SPOTS[spotIndex]);
+      const ringBox = document.getElementById("asset-map-ring");
+      if (ringBox) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
+      try { bindAdminRoomItems(); } catch {}
+    }
     if (e) e.stopPropagation();
   };
   model.addEventListener("pointerup", end);
@@ -5992,7 +6021,10 @@ function bindAssetMap() {
       const idx = niu1ModelIndex(spot);
       if (idx < 0) return;
       if (Number(ui.assetMapModel) >= 0) ui.assetMapModel = -1;
-      else ui.assetMapModel = idx;
+      else {
+        ui.mapModelX = null;
+        ui.assetMapModel = idx;
+      }
       syncMapModel(ui.assetMapModel >= 0);
       syncMapToggle();
     };
