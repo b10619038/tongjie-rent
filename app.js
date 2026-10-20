@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-19-55";
-const APP_EDIT_COUNT = 2078;
+const APP_STAMP = "2026-10-20-20-00";
+const APP_EDIT_COUNT = 2079;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1703";
+const FILE_VER = "1704";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
+  { ver: APP_VERSION, items: ["資產平面圖標題旁的小廠房圖拿掉"] },
+  { ver: "2026-10-20-19-55-2078", items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
   { ver: "2026-10-20-18-20-2077", items: ["退租回收改成鑰匙+磁扣"] },
   { ver: "2026-10-20-18-15-2076", items: ["報修電話刪掉後不再被舊資料補回來"] },
   { ver: "2026-10-20-18-10-2075", items: ["正常退租說明拿掉房間仍住到合約最後一天"] },
@@ -5734,11 +5735,8 @@ function assetMapPopHtml(spot) {
 function assetMapHtml() {
   const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
-  const modelOn = Number(ui.assetMapModel) >= 0 && NIU1_MODELS[ui.assetMapModel];
-  const modelItem = modelOn ? NIU1_MODELS[ui.assetMapModel] : null;
   return `<div class="card card-body asset-map-card">
-    <div class="row asset-map-head"><h2 class="dash-h">資產平面圖</h2>
-      <button type="button" class="map-model-chip" id="map-model-chip" aria-label="關閉廠房模型"${modelItem ? "" : " hidden"}>${modelItem ? `<img src="${mapModelSrc(modelItem)}" alt="" />` : ""}</button>
+    <div class="row"><h2 class="dash-h">資產平面圖</h2>
       <span class="row-end">
         <button type="button" class="ghost" id="map-zoom-out" style="width:auto">－</button>
         <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
@@ -5787,28 +5785,17 @@ function showModelIndex(next, anim) {
   if (pop && spotIndex >= 0) pop.innerHTML = assetMapPopHtml(SITE_MAP_SPOTS[spotIndex]);
   const ringBox = document.getElementById("asset-map-ring");
   if (ringBox && spotIndex >= 0) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
-  const chip = document.getElementById("map-model-chip");
-  if (chip) {
-    chip.hidden = false;
-    chip.innerHTML = `<img src="${mapModelSrc(item)}" alt="">`;
-  }
   placeMapModel(!!anim);
   try { bindAdminRoomItems(); } catch {}
 }
 function syncMapModel(animateIn) {
   const wrap = document.getElementById("asset-map-wrap");
-  const chip = document.getElementById("map-model-chip");
   const i = Number(ui.assetMapModel);
   const item = i >= 0 ? NIU1_MODELS[i] : null;
   if (!item) {
     const old = document.getElementById("map-model");
     if (old) old.remove();
-    if (chip) { chip.hidden = true; chip.innerHTML = ""; }
     return;
-  }
-  if (chip) {
-    chip.hidden = false;
-    chip.innerHTML = `<img src="${mapModelSrc(item)}" alt="">`;
   }
   let model = document.getElementById("map-model");
   if (!model && wrap) {
@@ -5980,13 +5967,6 @@ function bindAssetMap() {
   }
   layout();
   ui.mapLayout = layout;
-  const chip = document.getElementById("map-model-chip");
-  if (chip) chip.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    ui.assetMapModel = -1;
-    syncMapModel(false);
-  };
   bindMapModelSwipe();
   placeMapModel(false);
   if (img && !img.complete) img.addEventListener("load", layout, { once: true });

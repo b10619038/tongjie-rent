@@ -7961,18 +7961,6 @@ html[data-theme="void"] .site-chip {
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .asset-map-card .dash-h { margin: 0; }
-.asset-map-head .map-model-chip { margin-right: auto; }
-.map-model-chip {
-  width: 96px;
-  height: 54px;
-  padding: 0;
-  border: 1px solid #e4e4e0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f7f7f5;
-  flex: 0 0 auto;
-}
-.map-model-chip img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .map-model {
   position: absolute;
   inset: 0;
