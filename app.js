@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-21-10";
-const APP_EDIT_COUNT = 2089;
+const APP_STAMP = "2026-10-20-21-18";
+const APP_EDIT_COUNT = 2090;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1714";
+const FILE_VER = "1715";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["2號模型可以整間滑進來，不再被切到"] },
+  { ver: APP_VERSION, items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
+  { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
   { ver: "2026-10-20-20-46-2087", items: ["廠房屋簷不再被旁邊那間切到"] },
   { ver: "2026-10-20-20-40-2086", items: ["牛1正面從左到右改成8號、6號、2號"] },
@@ -5580,16 +5581,25 @@ const SITE_MAP_SPOTS = [
   { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" }
 ];
 const NIU1_MODELS = [
-  { no: "牛1-57巷8", label: "牛1 57巷8號" },
-  { no: "牛1-57巷6", label: "牛1 57巷6號" },
-  { no: "牛1-57巷2", label: "牛1 57巷2號" }
+  { no: "牛1-57巷8", label: "牛1 57巷8號", view: "front" },
+  { no: "牛1-57巷6", label: "牛1 57巷6號", view: "front" },
+  { no: "牛1-57巷2", label: "牛1 57巷2號", view: "front" },
+  { no: "牛1-59", label: "牛1 59號 左側", view: "left" },
+  { no: "牛1-59", label: "牛1 59號", view: "front" },
+  { no: "牛1-61", label: "牛1 61號", view: "front" }
 ];
 function niu1ModelIndex(spot) {
   if (!spot || !spot.nos) return -1;
-  return NIU1_MODELS.findIndex(m => spot.nos.indexOf(m.no) >= 0);
+  let side = -1;
+  for (let i = 0; i < NIU1_MODELS.length; i++) {
+    if (spot.nos.indexOf(NIU1_MODELS[i].no) < 0) continue;
+    if (NIU1_MODELS[i].view !== "left") return i;
+    if (side < 0) side = i;
+  }
+  return side;
 }
-function mapModelSrc() {
-  return "images/factory-front.jpg?v=" + FILE_VER;
+function mapModelSrc(item) {
+  return "images/" + (item && item.view === "left" ? "factory-left.jpg" : "factory-front.jpg") + "?v=" + FILE_VER;
 }
 function mapModelMetrics(model) {
   const view = model.clientWidth || 1;
@@ -5614,7 +5624,7 @@ function mapModelOriginCss() {
 function mapModelLayerHtml() {
   const i = Number(ui.assetMapModel);
   if (!(i >= 0) || !NIU1_MODELS[i]) return "";
-  const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc()}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
+  const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc(m)}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
   return `<div class="map-model is-in" id="map-model" style="transform-origin:${mapModelOriginCss()}"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
 }
 function assetSiteKey(spot) {
