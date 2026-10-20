@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-21-05";
-const APP_EDIT_COUNT = 2088;
+const APP_STAMP = "2026-10-20-21-10";
+const APP_EDIT_COUNT = 2089;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1713";
+const FILE_VER = "1714";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["模型圖從點到的廠房小按鈕放大出來"] },
+  { ver: APP_VERSION, items: ["2號模型可以整間滑進來，不再被切到"] },
+  { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
   { ver: "2026-10-20-20-46-2087", items: ["廠房屋簷不再被旁邊那間切到"] },
   { ver: "2026-10-20-20-40-2086", items: ["牛1正面從左到右改成8號、6號、2號"] },
   { ver: "2026-10-20-20-36-2085", items: ["廠房地板接齊，開模型會停在點到的那一間"] },
@@ -5592,9 +5593,13 @@ function mapModelSrc() {
 }
 function mapModelMetrics(model) {
   const view = model.clientWidth || 1;
-  const slide = Math.round(view * 0.62);
-  const max = Math.max(0, NIU1_MODELS.length * slide - view);
-  return { view, slide, max };
+  const slide = Math.round(Math.min(view - 28, view * 0.58));
+  const gap = 10;
+  const content = NIU1_MODELS.length * slide + Math.max(0, NIU1_MODELS.length - 1) * gap + 24;
+  let max = Math.max(0, content - view);
+  const track = model.querySelector("#map-model-track");
+  if (track && track.scrollWidth > view) max = Math.max(max, track.scrollWidth - view);
+  return { view, slide, gap, max };
 }
 function mapModelOriginCss() {
   const wrap = document.getElementById("asset-map-wrap");
@@ -5787,8 +5792,11 @@ function assetMapHtml() {
   </div>`;
 }
 function mapModelHomeX(box, index) {
-  const raw = Math.round((box.view - box.slide) / 2 - index * box.slide);
-  return Math.max(-box.max, Math.min(0, raw));
+  const left = index * (box.slide + box.gap);
+  const centered = left - (box.view - box.slide) / 2;
+  const fitRight = left + box.slide + 12 - box.view;
+  const x = -Math.max(0, centered, fitRight);
+  return Math.max(-box.max, Math.min(0, x));
 }
 function placeMapModel(anim) {
   const model = document.getElementById("map-model");
@@ -5800,12 +5808,14 @@ function placeMapModel(anim) {
     s.style.width = box.slide + "px";
     s.style.flexBasis = box.slide + "px";
   });
+  void track.offsetWidth;
+  const laid = mapModelMetrics(model);
   let x = Number(ui.mapModelX);
   if (ui.mapModelJump || !Number.isFinite(x)) {
-    x = mapModelHomeX(box, Number(ui.assetMapModel) || 0);
+    x = mapModelHomeX(laid, Number(ui.assetMapModel) || 0);
     ui.mapModelJump = false;
   }
-  x = Math.max(-box.max, Math.min(0, x));
+  x = Math.max(-laid.max, Math.min(0, x));
   ui.mapModelX = x;
   track.style.transition = anim ? "" : "none";
   track.style.transform = "translateX(" + x + "px)";
@@ -5824,7 +5834,7 @@ function showModelIndex(next, anim) {
   const model = document.getElementById("map-model");
   if (model && anim) {
     const box = mapModelMetrics(model);
-    ui.mapModelX = Math.max(-box.max, Math.min(0, -ui.assetMapModel * box.slide));
+    ui.mapModelX = mapModelHomeX(box, ui.assetMapModel);
   }
   placeMapModel(!!anim);
   syncMapToggle();
@@ -5896,7 +5906,7 @@ function bindMapModelSwipe() {
     const box = mapModelMetrics(model);
     const x = Math.max(-box.max, Math.min(0, Number(ui.mapModelX) || 0));
     ui.mapModelX = x;
-    const near = Math.max(0, Math.min(NIU1_MODELS.length - 1, Math.round((-x) / box.slide)));
+    const near = Math.max(0, Math.min(NIU1_MODELS.length - 1, Math.round((-x) / (box.slide + box.gap))));
     ui.assetMapModel = near;
     const item = NIU1_MODELS[near];
     const spotIndex = SITE_MAP_SPOTS.findIndex(s => s.nos && s.nos.indexOf(item.no) >= 0);

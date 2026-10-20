@@ -7980,6 +7980,8 @@ html[data-theme="void"] .site-chip {
   display: flex;
   height: 100%;
   align-items: stretch;
+  padding: 0 12px;
+  box-sizing: content-box;
   transition: transform .28s cubic-bezier(.22, .82, .24, 1);
 }
 .map-model-slide {
