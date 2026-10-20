@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-22-12";
-const APP_EDIT_COUNT = 2093;
+const APP_STAMP = "2026-10-20-23-10";
+const APP_EDIT_COUNT = 2094;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1718";
+const FILE_VER = "1719";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["更新提示不再一直重複跳出"] },
+  { ver: APP_VERSION, items: ["模型圖打開後不再過幾秒又縮放一次"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -5617,8 +5617,10 @@ function mapModelOriginCss() {
 function mapModelLayerHtml() {
   const i = Number(ui.assetMapModel);
   if (!(i >= 0) || !NIU1_MODELS[i]) return "";
+  const enter = ui.mapModelEnter ? " is-in" : "";
+  ui.mapModelEnter = false;
   const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc(m)}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
-  return `<div class="map-model is-in" id="map-model" style="transform-origin:${mapModelOriginCss()}"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
+  return `<div class="map-model${enter}" id="map-model" style="transform-origin:${mapModelOriginCss()}"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
 }
 function assetSiteKey(spot) {
   const m = String(spot && spot.label || "").match(/^(牛\d+|拉皮)/);
@@ -6097,6 +6099,7 @@ function bindAssetMap() {
       else {
         ui.mapModelX = null;
         ui.mapModelJump = true;
+        ui.mapModelEnter = true;
         ui.assetMapModel = idx;
       }
       syncMapModel(ui.assetMapModel >= 0);
