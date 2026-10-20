@@ -7970,11 +7970,10 @@ html[data-theme="void"] .site-chip {
   background: #fff;
   overflow: hidden;
   touch-action: none;
-  transform-origin: 72% 0;
 }
-.map-model.is-in { animation: mapModelIn .46s cubic-bezier(.22, .82, .24, 1); }
+.map-model.is-in { animation: mapModelIn .48s cubic-bezier(.22, .82, .24, 1); }
 @keyframes mapModelIn {
-  from { transform: scale(.2); opacity: .35; }
+  from { transform: scale(.08); opacity: .2; }
   to { transform: none; opacity: 1; }
 }
 .map-model-track {

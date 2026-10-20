@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-46";
-const APP_EDIT_COUNT = 2087;
+const APP_STAMP = "2026-10-20-21-05";
+const APP_EDIT_COUNT = 2088;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1712";
+const FILE_VER = "1713";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房屋簷不再被旁邊那間切到"] },
+  { ver: APP_VERSION, items: ["模型圖從點到的廠房小按鈕放大出來"] },
+  { ver: "2026-10-20-20-46-2087", items: ["廠房屋簷不再被旁邊那間切到"] },
   { ver: "2026-10-20-20-40-2086", items: ["牛1正面從左到右改成8號、6號、2號"] },
   { ver: "2026-10-20-20-36-2085", items: ["廠房地板接齊，開模型會停在點到的那一間"] },
   { ver: "2026-10-20-20-32-2084", items: ["廠房模型背景清乾淨，三間再靠緊"] },
@@ -5595,11 +5596,21 @@ function mapModelMetrics(model) {
   const max = Math.max(0, NIU1_MODELS.length * slide - view);
   return { view, slide, max };
 }
+function mapModelOriginCss() {
+  const wrap = document.getElementById("asset-map-wrap");
+  const btn = document.querySelector("[data-map-spot].on");
+  if (!wrap || !btn) return "50% 50%";
+  const wr = wrap.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  const x = ((br.left + br.width / 2) - wr.left) / Math.max(1, wr.width) * 100;
+  const y = ((br.top + br.height / 2) - wr.top) / Math.max(1, wr.height) * 100;
+  return Math.max(0, Math.min(100, x)).toFixed(1) + "% " + Math.max(0, Math.min(100, y)).toFixed(1) + "%";
+}
 function mapModelLayerHtml() {
   const i = Number(ui.assetMapModel);
   if (!(i >= 0) || !NIU1_MODELS[i]) return "";
   const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc()}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
-  return `<div class="map-model is-in" id="map-model"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
+  return `<div class="map-model is-in" id="map-model" style="transform-origin:${mapModelOriginCss()}"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
 }
 function assetSiteKey(spot) {
   const m = String(spot && spot.label || "").match(/^(牛\d+|拉皮)/);
