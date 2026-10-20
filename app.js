@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-22-08";
-const APP_EDIT_COUNT = 2092;
+const APP_STAMP = "2026-10-20-22-12";
+const APP_EDIT_COUNT = 2093;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1716";
+const FILE_VER = "1718";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點哪一間廠房，畫面就滑過去停在那一間"] },
+  { ver: APP_VERSION, items: ["更新提示不再一直重複跳出"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -3007,8 +3007,7 @@ function ensureUpdateBar() {
     return;
   }
   const remote = String(ui.pendingFileVer || "");
-  const newer = !!(remote && isNewerBuild(remote) && !isDismissed(remote));
-  const need = newer || unseenAppVersion();
+  const need = !!(remote && isNewerBuild(remote) && !isDismissed(remote));
   let el = document.getElementById("apply-update");
   if (!need) {
     if (el) el.remove();
@@ -3173,19 +3172,13 @@ function watchAppUpdate(reg) {
   setInterval(pollRemoteBuild, 20000);
 }
 let __reloading = false;
-  if ("serviceWorker" in navigator && navigator.serviceWorker.controller && !EMBED_PAGE) {
+if ("serviceWorker" in navigator && navigator.serviceWorker.controller && !EMBED_PAGE) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (__reloading) return;
-    if (ui.undoRenewId || ui.restoreRenewId) return;
     try {
       if (sessionStorage.getItem("tj-sw-reload") === "1") return;
       sessionStorage.setItem("tj-sw-reload", "1");
     } catch {}
-    __reloading = true;
-    try { persistLogin(); persistUi(); } catch {}
-    try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
-    const next = location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now();
-    try { location.replace(next); } catch { location.reload(); }
   });
 }
 function urlBase64ToUint8Array(b64) {
@@ -5585,7 +5578,6 @@ const NIU1_MODELS = [
   { no: "牛1-57巷8", label: "牛1 57巷8號", view: "front" },
   { no: "牛1-57巷6", label: "牛1 57巷6號", view: "front" },
   { no: "牛1-57巷2", label: "牛1 57巷2號", view: "front" },
-  { no: "牛1-59", label: "牛1 59號 左側", view: "left" },
   { no: "牛1-59", label: "牛1 59號", view: "front" },
   { no: "牛1-61", label: "牛1 61號", view: "front" }
 ];
@@ -43926,8 +43918,8 @@ async function boot() {
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
     seedSeenVersion();
-    try { sessionStorage.removeItem("tj-sw-reload"); } catch {}
-    if (!unseenAppVersion()) markVersionSeen();
+    markVersionSeen();
+    try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
     try { connectPaidCloud(); } catch {}
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
