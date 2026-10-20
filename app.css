@@ -7998,6 +7998,7 @@ html[data-theme="void"] .site-chip {
   background: #fff;
 }
 .map-model-slide:last-child { margin-right: 0; }
+.map-model-slide { cursor: pointer; }
 .map-model-slide img {
   width: 100%;
   height: calc(100% - 28px);

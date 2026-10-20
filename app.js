@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-21-18";
-const APP_EDIT_COUNT = 2090;
+const APP_STAMP = "2026-10-20-22-04";
+const APP_EDIT_COUNT = 2091;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1715";
+const FILE_VER = "1716";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
+  { ver: APP_VERSION, items: ["點哪一間廠房，畫面就滑過去停在那一間"] },
+  { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
   { ver: "2026-10-20-20-46-2087", items: ["廠房屋簷不再被旁邊那間切到"] },
@@ -5881,6 +5882,27 @@ function syncMapToggle() {
   btn.hidden = false;
   btn.textContent = Number(ui.assetMapModel) >= 0 ? "平面圖" : "模型圖";
 }
+function focusModelSlide(index) {
+  const model = document.getElementById("map-model");
+  const track = document.getElementById("map-model-track");
+  const item = NIU1_MODELS[index];
+  if (!model || !track || !item) return;
+  const box = mapModelMetrics(model);
+  ui.assetMapModel = index;
+  ui.mapModelJump = false;
+  ui.mapModelX = mapModelHomeX(box, index);
+  track.style.transition = "";
+  track.style.transform = "translateX(" + ui.mapModelX + "px)";
+  const spotIndex = SITE_MAP_SPOTS.findIndex(s => s.nos && s.nos.indexOf(item.no) >= 0);
+  if (spotIndex < 0) return;
+  ui.assetMapSpot = spotIndex;
+  document.querySelectorAll("[data-map-spot]").forEach(node => node.classList.toggle("on", Number(node.dataset.mapSpot) === spotIndex));
+  const pop = document.getElementById("asset-map-pop");
+  if (pop) pop.innerHTML = assetMapPopHtml(SITE_MAP_SPOTS[spotIndex]);
+  const ringBox = document.getElementById("asset-map-ring");
+  if (ringBox) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
+  try { bindAdminRoomItems(); } catch {}
+}
 function bindMapModelSwipe() {
   const model = document.getElementById("map-model");
   if (!model || model.dataset.bound === "1") return;
@@ -5913,6 +5935,20 @@ function bindMapModelSwipe() {
     if (!dragging) return;
     dragging = false;
     ui.mapModelDrag = false;
+    const moved = e ? Math.abs(e.clientX - startX) : 99;
+    if (moved < 14 && e) {
+      const slides = Array.from(model.querySelectorAll(".map-model-slide"));
+      let hit = -1;
+      slides.forEach((s, i) => {
+        const r = s.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right) hit = i;
+      });
+      if (hit >= 0) {
+        focusModelSlide(hit);
+        if (e) e.stopPropagation();
+        return;
+      }
+    }
     const box = mapModelMetrics(model);
     const x = Math.max(-box.max, Math.min(0, Number(ui.mapModelX) || 0));
     ui.mapModelX = x;
