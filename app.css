@@ -7967,7 +7967,7 @@ html[data-theme="void"] .site-chip {
   position: absolute;
   inset: 0;
   z-index: 8;
-  background: #f6f6f4;
+  background: #fff;
   overflow: hidden;
   touch-action: none;
   transform-origin: 72% 0;
@@ -7993,15 +7993,19 @@ html[data-theme="void"] .site-chip {
   gap: 6px;
   padding: 10px 0 14px;
   box-sizing: border-box;
+  background: #fff;
 }
 .map-model-slide img {
   width: 100%;
   height: calc(100% - 28px);
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
+  object-position: center bottom;
   border-radius: 0;
   pointer-events: none;
-  background: #f6f6f4;
+  background: #fff;
+  box-shadow: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent 100%);
 }
 .map-model-slide b { font-size: 15px; color: #243024; }
 .asset-map-card .seg { margin: 0 0 10px; }
