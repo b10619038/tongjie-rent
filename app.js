@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-18-10";
-const APP_EDIT_COUNT = 2075;
+const APP_STAMP = "2026-10-20-18-15";
+const APP_EDIT_COUNT = 2076;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1700";
+const FILE_VER = "1701";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租說明拿掉房間仍住到合約最後一天"] },
+  { ver: APP_VERSION, items: ["報修電話刪掉後不再被舊資料補回來"] },
+  { ver: "2026-10-20-18-10-2075", items: ["正常退租說明拿掉房間仍住到合約最後一天"] },
   { ver: "2026-10-19-21-40-2074", items: ["退租提醒的整理套房、個人印章、磁扣+鑰匙改成紅字"] },
   { ver: "2026-10-19-21-35-2073", items: ["退租提醒改成請繳回磁扣+鑰匙"] },
   { ver: "2026-10-19-21-30-2072", items: ["免簽名送出的正常退租，租客首頁也顯示已送出圖卡"] },
@@ -11915,7 +11916,7 @@ function pickNewerEntity(a, b, keys) {
   }
   const out = Object.assign({}, loser, winner);
   (keys || []).forEach(k => {
-    if ((out[k] == null || out[k] === "") && loser[k] != null && loser[k] !== "") out[k] = loser[k];
+    if (out[k] == null && loser[k] != null && loser[k] !== "") out[k] = loser[k];
   });
   out.edited = !!(a.edited || b.edited);
   out.editedAt = Math.max(sa, sb) || winner.editedAt || loser.editedAt;
@@ -41193,12 +41194,18 @@ function bindAdmin() {
   document.querySelectorAll("[data-rep-phone]").forEach(inp => {
     inp.addEventListener("pointerdown", e => e.stopPropagation());
     inp.addEventListener("click", e => { e.stopPropagation(); try { inp.focus(); } catch {} });
-    inp.onchange = () => {
+    const writePhone = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.repPhone);
       if (!rep) return;
-      rep.vendorPhone = String(inp.value || "").trim();
+      const next = String(inp.value || "").trim();
+      if (String(rep.vendorPhone || "") === next) return;
+      rep.vendorPhone = next;
       stampRepair(rep);
       save();
+    };
+    inp.addEventListener("input", writePhone);
+    inp.onchange = () => {
+      writePhone();
       try { pushCloud(); } catch {}
     };
   });
