@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-18-15";
-const APP_EDIT_COUNT = 2076;
+const APP_STAMP = "2026-10-20-18-20";
+const APP_EDIT_COUNT = 2077;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1701";
+const FILE_VER = "1702";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["報修電話刪掉後不再被舊資料補回來"] },
+  { ver: APP_VERSION, items: ["退租回收改成鑰匙+磁扣"] },
+  { ver: "2026-10-20-18-15-2076", items: ["報修電話刪掉後不再被舊資料補回來"] },
   { ver: "2026-10-20-18-10-2075", items: ["正常退租說明拿掉房間仍住到合約最後一天"] },
   { ver: "2026-10-19-21-40-2074", items: ["退租提醒的整理套房、個人印章、磁扣+鑰匙改成紅字"] },
   { ver: "2026-10-19-21-35-2073", items: ["退租提醒改成請繳回磁扣+鑰匙"] },
@@ -36476,7 +36477,7 @@ function leaveRefundHtml(t, r, timeOnly) {
   }
   const official = t && t.leaveElecAdmin != null ? t.leaveElecAdmin : "";
   const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
-  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣+儲值卡</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
+  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
 }
 function bindLeaveElecInputs(root) {
   const scope = root || document;
