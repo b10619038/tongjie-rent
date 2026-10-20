@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-05";
-const APP_EDIT_COUNT = 2080;
+const APP_STAMP = "2026-10-20-20-12";
+const APP_EDIT_COUNT = 2081;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1705";
+const FILE_VER = "1706";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點牛1廠房後先出現模型圖按鈕，進去後改成平面圖"] },
+  { ver: APP_VERSION, items: ["牛1最右兩間改成更側面的左側模型"] },
+  { ver: "2026-10-20-20-05-2080", items: ["點牛1廠房後先出現模型圖按鈕，進去後改成平面圖"] },
   { ver: "2026-10-20-20-00-2079", items: ["資產平面圖標題旁的小廠房圖拿掉"] },
   { ver: "2026-10-20-19-55-2078", items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
   { ver: "2026-10-20-18-20-2077", items: ["退租回收改成鑰匙+磁扣"] },
