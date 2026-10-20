@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-18-20";
-const APP_EDIT_COUNT = 2077;
+const APP_STAMP = "2026-10-20-19-55";
+const APP_EDIT_COUNT = 2078;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1702";
+const FILE_VER = "1703";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["退租回收改成鑰匙+磁扣"] },
+  { ver: APP_VERSION, items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
+  { ver: "2026-10-20-18-20-2077", items: ["退租回收改成鑰匙+磁扣"] },
   { ver: "2026-10-20-18-15-2076", items: ["報修電話刪掉後不再被舊資料補回來"] },
   { ver: "2026-10-20-18-10-2075", items: ["正常退租說明拿掉房間仍住到合約最後一天"] },
   { ver: "2026-10-19-21-40-2074", items: ["退租提醒的整理套房、個人印章、磁扣+鑰匙改成紅字"] },
@@ -5567,6 +5568,26 @@ const SITE_MAP_SPOTS = [
   { cx:33.72, cy:84.42, w:2.61, h:1.53, rot:151.8, kind:"factory", nos:["牛7-2F"], label:"牛7 93-63 2F" },
   { cx:34.3, cy:86.16, w:2.62, h:1.34, rot:150.5, kind:"factory", nos:["牛7-1F"], label:"牛7 93-63 1F" }
 ];
+const NIU1_MODELS = [
+  { no: "牛1-61", label: "牛1 61號", view: "front" },
+  { no: "牛1-59", label: "牛1 59號", view: "front" },
+  { no: "牛1-57巷2", label: "牛1 57巷2號", view: "front" },
+  { no: "牛1-57巷6", label: "牛1 57巷6號", view: "left" },
+  { no: "牛1-57巷8", label: "牛1 57巷8號", view: "left" }
+];
+function niu1ModelIndex(spot) {
+  if (!spot || !spot.nos) return -1;
+  return NIU1_MODELS.findIndex(m => spot.nos.indexOf(m.no) >= 0);
+}
+function mapModelSrc(item) {
+  return "images/" + (item && item.view === "left" ? "factory-left.jpg" : "factory-front.jpg") + "?v=" + FILE_VER;
+}
+function mapModelLayerHtml() {
+  const i = Number(ui.assetMapModel);
+  if (!(i >= 0) || !NIU1_MODELS[i]) return "";
+  const slides = NIU1_MODELS.map(m => `<div class="map-model-slide"><img src="${mapModelSrc(m)}" alt="${escapeHtml(m.label)}" /><b>${escapeHtml(m.label)}</b></div>`).join("");
+  return `<div class="map-model is-in" id="map-model"><div class="map-model-track" id="map-model-track">${slides}</div></div>`;
+}
 function assetSiteKey(spot) {
   const m = String(spot && spot.label || "").match(/^(牛\d+|拉皮)/);
   return m ? m[1] : "";
@@ -5713,8 +5734,11 @@ function assetMapPopHtml(spot) {
 function assetMapHtml() {
   const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
+  const modelOn = Number(ui.assetMapModel) >= 0 && NIU1_MODELS[ui.assetMapModel];
+  const modelItem = modelOn ? NIU1_MODELS[ui.assetMapModel] : null;
   return `<div class="card card-body asset-map-card">
-    <div class="row"><h2 class="dash-h">資產平面圖</h2>
+    <div class="row asset-map-head"><h2 class="dash-h">資產平面圖</h2>
+      <button type="button" class="map-model-chip" id="map-model-chip" aria-label="關閉廠房模型"${modelItem ? "" : " hidden"}>${modelItem ? `<img src="${mapModelSrc(modelItem)}" alt="" />` : ""}</button>
       <span class="row-end">
         <button type="button" class="ghost" id="map-zoom-out" style="width:auto">－</button>
         <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
@@ -5735,9 +5759,104 @@ function assetMapHtml() {
           ${SITE_MAP_SPOTS.map((s, i) => `<button type="button" class="map-hot ${assetMapSpotTone(s)}${ui.assetMapSpot === i ? " on" : ""}" style="left:${s.cx}%;top:${s.cy}%;width:${s.w}%;height:${s.h}%;--rot:${s.rot}deg" data-map-spot="${i}" aria-label="${escapeHtml(s.label)}"></button>`).join("")}
         </div>
       </div>
+      ${mapModelLayerHtml()}
     </div>
     <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>
   </div>`;
+}
+function placeMapModel(anim) {
+  const model = document.getElementById("map-model");
+  const track = document.getElementById("map-model-track");
+  if (!model || !track) return;
+  const w = model.clientWidth || 1;
+  track.querySelectorAll(".map-model-slide").forEach(s => {
+    s.style.width = w + "px";
+    s.style.flexBasis = w + "px";
+  });
+  track.style.transition = anim ? "" : "none";
+  track.style.transform = "translateX(" + (-Number(ui.assetMapModel || 0) * w) + "px)";
+}
+function showModelIndex(next, anim) {
+  const n = NIU1_MODELS.length;
+  ui.assetMapModel = Math.max(0, Math.min(n - 1, next));
+  const item = NIU1_MODELS[ui.assetMapModel];
+  const spotIndex = SITE_MAP_SPOTS.findIndex(s => s.nos && s.nos.indexOf(item.no) >= 0);
+  ui.assetMapSpot = spotIndex;
+  document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === spotIndex));
+  const pop = document.getElementById("asset-map-pop");
+  if (pop && spotIndex >= 0) pop.innerHTML = assetMapPopHtml(SITE_MAP_SPOTS[spotIndex]);
+  const ringBox = document.getElementById("asset-map-ring");
+  if (ringBox && spotIndex >= 0) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
+  const chip = document.getElementById("map-model-chip");
+  if (chip) {
+    chip.hidden = false;
+    chip.innerHTML = `<img src="${mapModelSrc(item)}" alt="">`;
+  }
+  placeMapModel(!!anim);
+  try { bindAdminRoomItems(); } catch {}
+}
+function syncMapModel(animateIn) {
+  const wrap = document.getElementById("asset-map-wrap");
+  const chip = document.getElementById("map-model-chip");
+  const i = Number(ui.assetMapModel);
+  const item = i >= 0 ? NIU1_MODELS[i] : null;
+  if (!item) {
+    const old = document.getElementById("map-model");
+    if (old) old.remove();
+    if (chip) { chip.hidden = true; chip.innerHTML = ""; }
+    return;
+  }
+  if (chip) {
+    chip.hidden = false;
+    chip.innerHTML = `<img src="${mapModelSrc(item)}" alt="">`;
+  }
+  let model = document.getElementById("map-model");
+  if (!model && wrap) {
+    wrap.insertAdjacentHTML("beforeend", mapModelLayerHtml());
+    model = document.getElementById("map-model");
+    if (model && animateIn === false) model.classList.remove("is-in");
+    bindMapModelSwipe();
+    placeMapModel(false);
+    return;
+  }
+  placeMapModel(true);
+}
+function bindMapModelSwipe() {
+  const model = document.getElementById("map-model");
+  if (!model || model.dataset.bound === "1") return;
+  model.dataset.bound = "1";
+  let startX = 0, dx = 0, dragging = false;
+  model.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragging = true;
+    ui.mapModelDrag = true;
+    startX = e.clientX;
+    dx = 0;
+    e.stopPropagation();
+    try { model.setPointerCapture(e.pointerId); } catch {}
+  });
+  model.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    dx = e.clientX - startX;
+    const w = model.clientWidth || 1;
+    const track = document.getElementById("map-model-track");
+    if (!track) return;
+    track.style.transition = "none";
+    track.style.transform = "translateX(" + ((-Number(ui.assetMapModel || 0) * w) + dx) + "px)";
+    e.stopPropagation();
+  });
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    ui.mapModelDrag = false;
+    let next = Number(ui.assetMapModel) || 0;
+    if (dx < -48) next += 1;
+    else if (dx > 48) next -= 1;
+    showModelIndex(next, true);
+    if (e) e.stopPropagation();
+  };
+  model.addEventListener("pointerup", end);
+  model.addEventListener("pointercancel", end);
 }
 function bindAssetMap() {
   const wrap = document.getElementById("asset-map-wrap");
@@ -5779,6 +5898,7 @@ function bindAssetMap() {
     ui.assetMapY = clamp(Number(ui.assetMapY) || 0, -maxY, maxY);
     turn.style.transform = "translate(" + ui.assetMapX + "px," + ui.assetMapY + "px) scale(" + z + ")";
     watchMapTag();
+    if (!ui.mapModelDrag) placeMapModel(false);
   };
   const zoomAt = (next, clientX, clientY) => {
     if (!wrap) return;
@@ -5800,8 +5920,10 @@ function bindAssetMap() {
       e.preventDefault();
       e.stopPropagation();
       const i = Number(btn.dataset.mapSpot);
+      const hadModel = Number(ui.assetMapModel) >= 0;
       const opening = ui.assetMapSpot !== i;
       ui.assetMapSpot = opening ? i : -1;
+      ui.assetMapModel = opening ? niu1ModelIndex(SITE_MAP_SPOTS[i]) : -1;
       document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === ui.assetMapSpot));
       if (pop) pop.innerHTML = ui.assetMapSpot >= 0 ? assetMapPopHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
       const ringBox = document.getElementById("asset-map-ring");
@@ -5827,6 +5949,7 @@ function bindAssetMap() {
       layout();
       clearTimeout(ui.mapGlideTimer);
       ui.mapGlideTimer = setTimeout(() => { if (turn) turn.classList.remove("is-glide"); }, 520);
+      syncMapModel(!(hadModel && ui.assetMapModel >= 0));
       if (pop && ui.assetMapSpot >= 0) {
         try { pop.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
         try { bindAdminRoomItems(); } catch {}
@@ -5857,6 +5980,15 @@ function bindAssetMap() {
   }
   layout();
   ui.mapLayout = layout;
+  const chip = document.getElementById("map-model-chip");
+  if (chip) chip.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.assetMapModel = -1;
+    syncMapModel(false);
+  };
+  bindMapModelSwipe();
+  placeMapModel(false);
   if (img && !img.complete) img.addEventListener("load", layout, { once: true });
   if (!ui.mapResizeBound) {
     ui.mapResizeBound = true;
@@ -5874,6 +6006,7 @@ function bindAssetMap() {
     ui.mapSkipTimer = setTimeout(() => { ui.mapSkipClick = false; }, 280);
   };
   const onDown = e => {
+    if (e.target && e.target.closest && e.target.closest(".map-model")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size >= 2) {
