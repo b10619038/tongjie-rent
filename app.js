@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-00";
-const APP_EDIT_COUNT = 2079;
+const APP_STAMP = "2026-10-20-20-05";
+const APP_EDIT_COUNT = 2080;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1704";
+const FILE_VER = "1705";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["資產平面圖標題旁的小廠房圖拿掉"] },
+  { ver: APP_VERSION, items: ["點牛1廠房後先出現模型圖按鈕，進去後改成平面圖"] },
+  { ver: "2026-10-20-20-00-2079", items: ["資產平面圖標題旁的小廠房圖拿掉"] },
   { ver: "2026-10-20-19-55-2078", items: ["點牛1廠房會放大成模型，可左右滑過五間"] },
   { ver: "2026-10-20-18-20-2077", items: ["退租回收改成鑰匙+磁扣"] },
   { ver: "2026-10-20-18-15-2076", items: ["報修電話刪掉後不再被舊資料補回來"] },
@@ -5736,7 +5737,8 @@ function assetMapHtml() {
   const portrait = ui.assetMapPaper === "portrait";
   const open = SITE_MAP_SPOTS[ui.assetMapSpot];
   return `<div class="card card-body asset-map-card">
-    <div class="row"><h2 class="dash-h">資產平面圖</h2>
+    <div class="row"><span class="map-title-side"><h2 class="dash-h">資產平面圖</h2>
+      <button type="button" class="ghost map-model-toggle" id="map-model-toggle" style="width:auto"${open && niu1ModelIndex(open) >= 0 ? "" : " hidden"}>${Number(ui.assetMapModel) >= 0 ? "平面圖" : "模型圖"}</button></span>
       <span class="row-end">
         <button type="button" class="ghost" id="map-zoom-out" style="width:auto">－</button>
         <button type="button" class="ghost" id="map-zoom-in" style="width:auto">＋</button>
@@ -5786,6 +5788,7 @@ function showModelIndex(next, anim) {
   const ringBox = document.getElementById("asset-map-ring");
   if (ringBox && spotIndex >= 0) ringBox.innerHTML = assetMapSiteRingHtml(SITE_MAP_SPOTS[spotIndex]);
   placeMapModel(!!anim);
+  syncMapToggle();
   try { bindAdminRoomItems(); } catch {}
 }
 function syncMapModel(animateIn) {
@@ -5795,6 +5798,7 @@ function syncMapModel(animateIn) {
   if (!item) {
     const old = document.getElementById("map-model");
     if (old) old.remove();
+    syncMapToggle();
     return;
   }
   let model = document.getElementById("map-model");
@@ -5804,9 +5808,19 @@ function syncMapModel(animateIn) {
     if (model && animateIn === false) model.classList.remove("is-in");
     bindMapModelSwipe();
     placeMapModel(false);
+    syncMapToggle();
     return;
   }
   placeMapModel(true);
+  syncMapToggle();
+}
+function syncMapToggle() {
+  const btn = document.getElementById("map-model-toggle");
+  if (!btn) return;
+  const spot = SITE_MAP_SPOTS[ui.assetMapSpot];
+  if (niu1ModelIndex(spot) < 0) { btn.hidden = true; return; }
+  btn.hidden = false;
+  btn.textContent = Number(ui.assetMapModel) >= 0 ? "平面圖" : "模型圖";
 }
 function bindMapModelSwipe() {
   const model = document.getElementById("map-model");
@@ -5907,10 +5921,9 @@ function bindAssetMap() {
       e.preventDefault();
       e.stopPropagation();
       const i = Number(btn.dataset.mapSpot);
-      const hadModel = Number(ui.assetMapModel) >= 0;
       const opening = ui.assetMapSpot !== i;
       ui.assetMapSpot = opening ? i : -1;
-      ui.assetMapModel = opening ? niu1ModelIndex(SITE_MAP_SPOTS[i]) : -1;
+      ui.assetMapModel = -1;
       document.querySelectorAll("[data-map-spot]").forEach(x => x.classList.toggle("on", Number(x.dataset.mapSpot) === ui.assetMapSpot));
       if (pop) pop.innerHTML = ui.assetMapSpot >= 0 ? assetMapPopHtml(SITE_MAP_SPOTS[ui.assetMapSpot]) : "";
       const ringBox = document.getElementById("asset-map-ring");
@@ -5936,7 +5949,8 @@ function bindAssetMap() {
       layout();
       clearTimeout(ui.mapGlideTimer);
       ui.mapGlideTimer = setTimeout(() => { if (turn) turn.classList.remove("is-glide"); }, 520);
-      syncMapModel(!(hadModel && ui.assetMapModel >= 0));
+      syncMapModel(false);
+      syncMapToggle();
       if (pop && ui.assetMapSpot >= 0) {
         try { pop.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch {}
         try { bindAdminRoomItems(); } catch {}
@@ -5967,6 +5981,21 @@ function bindAssetMap() {
   }
   layout();
   ui.mapLayout = layout;
+  const modelBtn = document.getElementById("map-model-toggle");
+  if (modelBtn) {
+    bindIosPress(modelBtn);
+    modelBtn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const spot = SITE_MAP_SPOTS[ui.assetMapSpot];
+      const idx = niu1ModelIndex(spot);
+      if (idx < 0) return;
+      if (Number(ui.assetMapModel) >= 0) ui.assetMapModel = -1;
+      else ui.assetMapModel = idx;
+      syncMapModel(ui.assetMapModel >= 0);
+      syncMapToggle();
+    };
+  }
   bindMapModelSwipe();
   placeMapModel(false);
   if (img && !img.complete) img.addEventListener("load", layout, { once: true });

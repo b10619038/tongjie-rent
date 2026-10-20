@@ -7961,6 +7961,8 @@ html[data-theme="void"] .site-chip {
   transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 .asset-map-card .dash-h { margin: 0; }
+.map-title-side { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.map-model-toggle { padding: 6px 12px; border-radius: 999px; }
 .map-model {
   position: absolute;
   inset: 0;
