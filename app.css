@@ -8004,8 +8004,6 @@ html[data-theme="void"] .site-chip {
   pointer-events: none;
   background: #fff;
   box-shadow: none;
-  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent 100%);
-  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 36px), transparent 100%);
 }
 .map-model-slide b { font-size: 15px; color: #243024; }
 .asset-map-card .seg { margin: 0 0 10px; }
