@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-23-10";
-const APP_EDIT_COUNT = 2094;
+const APP_STAMP = "2026-10-20-23-12";
+const APP_EDIT_COUNT = 2095;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1719";
+const FILE_VER = "1720";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["模型圖打開後不再過幾秒又縮放一次"] },
+  { ver: APP_VERSION, items: ["模型開啟時，下面不再重複顯示門牌"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -5744,9 +5744,10 @@ function assetMapSpotTone(spot) {
 }
 function assetMapPopHtml(spot) {
   if (!spot) return "";
+  const head = Number(ui.assetMapModel) >= 0 ? "" : `<div class="map-pop-h">${escapeHtml(spot.label)}</div>`;
   const rooms = assetMapRooms(spot);
   if (!rooms.length) {
-    return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div><div class="small">這格還沒對到房間資料</div></div>`;
+    return `<div class="map-pop">${head}<div class="small">這格還沒對到房間資料</div></div>`;
   }
   const rows = rooms.map(r => {
     const t = (state.tenants || []).find(x => x && !x.former && !x.incoming && (x.id === r.tenantId || x.roomId === r.id));
@@ -5763,7 +5764,7 @@ function assetMapPopHtml(spot) {
       <span class="small">${escapeHtml(rent)}</span>
     </button>`;
   }).join("");
-  return `<div class="map-pop"><div class="map-pop-h">${escapeHtml(spot.label)}</div>${rows}</div>`;
+  return `<div class="map-pop">${head}${rows}</div>`;
 }
 function assetMapHtml() {
   const portrait = ui.assetMapPaper === "portrait";
