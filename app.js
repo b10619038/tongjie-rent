@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-20-32";
-const APP_EDIT_COUNT = 2084;
+const APP_STAMP = "2026-10-20-20-36";
+const APP_EDIT_COUNT = 2085;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1709";
+const FILE_VER = "1710";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,8 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["廠房模型背景清乾淨，三間再靠緊"] },
+  { ver: APP_VERSION, items: ["廠房地板接齊，開模型會停在點到的那一間"] },
+  { ver: "2026-10-20-20-32-2084", items: ["廠房模型背景清乾淨，三間再靠緊"] },
   { ver: "2026-10-20-20-28-2083", items: ["廠房模型底改白，接縫陰影拿掉"] },
   { ver: "2026-10-20-20-18-2082", items: ["牛1這三間正面模型連成一排，可左右滑"] },
   { ver: "2026-10-20-20-12-2081", items: ["牛1最右兩間改成更側面的左側模型"] },
@@ -5772,17 +5773,25 @@ function assetMapHtml() {
     <div id="asset-map-pop">${open ? assetMapPopHtml(open) : ""}</div>
   </div>`;
 }
+function mapModelHomeX(box, index) {
+  const raw = Math.round((box.view - box.slide) / 2 - index * box.slide);
+  return Math.max(-box.max, Math.min(0, raw));
+}
 function placeMapModel(anim) {
   const model = document.getElementById("map-model");
   const track = document.getElementById("map-model-track");
   if (!model || !track) return;
   const box = mapModelMetrics(model);
+  if (box.view < 40) return;
   track.querySelectorAll(".map-model-slide").forEach(s => {
     s.style.width = box.slide + "px";
     s.style.flexBasis = box.slide + "px";
   });
   let x = Number(ui.mapModelX);
-  if (!Number.isFinite(x)) x = -(Number(ui.assetMapModel || 0) * box.slide);
+  if (ui.mapModelJump || !Number.isFinite(x)) {
+    x = mapModelHomeX(box, Number(ui.assetMapModel) || 0);
+    ui.mapModelJump = false;
+  }
   x = Math.max(-box.max, Math.min(0, x));
   ui.mapModelX = x;
   track.style.transition = anim ? "" : "none";
@@ -5848,6 +5857,7 @@ function bindMapModelSwipe() {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragging = true;
     ui.mapModelDrag = true;
+    ui.mapModelJump = false;
     startX = e.clientX;
     base = Number(ui.mapModelX) || 0;
     const track = document.getElementById("map-model-track");
@@ -6025,6 +6035,7 @@ function bindAssetMap() {
       if (Number(ui.assetMapModel) >= 0) ui.assetMapModel = -1;
       else {
         ui.mapModelX = null;
+        ui.mapModelJump = true;
         ui.assetMapModel = idx;
       }
       syncMapModel(ui.assetMapModel >= 0);

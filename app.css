@@ -7992,9 +7992,11 @@ html[data-theme="void"] .site-chip {
   justify-content: flex-end;
   gap: 6px;
   padding: 10px 0 14px;
+  margin-right: -14px;
   box-sizing: border-box;
   background: #fff;
 }
+.map-model-slide:last-child { margin-right: 0; }
 .map-model-slide img {
   width: 100%;
   height: calc(100% - 28px);
