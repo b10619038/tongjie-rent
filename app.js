@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-22-17-35";
-const APP_EDIT_COUNT = 2097;
+const APP_STAMP = "2026-10-22-17-40";
+const APP_EDIT_COUNT = 2098;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1722";
+const FILE_VER = "1723";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -9383,8 +9383,14 @@ function dropEmptyLeaveElecBooks(data) {
     if (t && leaveElecFinal(t) !== "") return;
     if (data.ledgerGone.indexOf(b.id) < 0) data.ledgerGone.push(b.id);
     if (data.leaveCash && data.leaveCash[tid]) delete data.leaveCash[tid];
+    data._dropLeaveElec = true;
   });
-  data.books = dropGone(data.books, data.ledgerGone);
+  if (data._dropLeaveElec) {
+    data.books = dropGone(data.books, data.ledgerGone);
+    delete data._dropLeaveElec;
+    return true;
+  }
+  return false;
 }
 function liveLeaveElecIds(tenants) {
   const ids = new Set();
@@ -14834,6 +14840,7 @@ async function pushCloud() {
     payload.repairs = dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone));
     applyRepairStatusBox(payload.repairs);
     mergeLedgerInto(payload, loadLedgerBackup());
+    try { dropEmptyLeaveElecBooks(payload); } catch {}
     persistLedger(payload);
     persistMemoDone(payload);
     state.ledgerGone = payload.ledgerGone;
@@ -22010,11 +22017,17 @@ function ensureCalMonth() {
 let _ledgerCache = null;
 function collectLedger() {
   if (_ledgerCache) return _ledgerCache;
+  try { if (dropEmptyLeaveElecBooks(state)) markCloudDirty(); } catch {}
   const rows = [];
   (state.books || []).forEach(b => {
     const amount = Number(b.amount) || 0;
     if (!amount) return;
     if (b.demo || b.roomNo === "0000" || b.roomNo === "DEMO") return;
+    if (String(b.id || "").indexOf("bk-leave-elec-") === 0 || String(b.importTag || "").indexOf("leave-elec-") === 0) {
+      const tid = b.linkedTenantId || String(b.id || "").replace(/^bk-leave-elec-/, "");
+      const t = (state.tenants || []).find(x => x && x.id === tid);
+      if (!t || leaveElecFinal(t) === "") return;
+    }
     rows.push({
       id: b.id, type: b.type === "out" ? "out" : "in", date: ymdOf(b.date), amount,
       roomNo: b.roomNo || "", note: b.note || "", company: b.company || "統潔",
