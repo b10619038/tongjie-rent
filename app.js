@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-20-23-16";
-const APP_EDIT_COUNT = 2096;
+const APP_STAMP = "2026-10-22-17-35";
+const APP_EDIT_COUNT = 2097;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1721";
+const FILE_VER = "1722";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["平面圖點廠房後，下面不再重複顯示門牌"] },
+  { ver: APP_VERSION, items: ["張智傑測試用的退電費 10,000 已從帳上移除，沒填餘額不再記支出"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -7565,6 +7565,7 @@ function normalize(data) {
   applyXuxuAugCash(data);
   applySlip0915(data);
   applySep115Close(data);
+  try { dropEmptyLeaveElecBooks(data); } catch {}
   applyJinfangEng0921(data);
   applyRenewal7221(data);
   applyRenewal7222(data);
@@ -9369,6 +9370,29 @@ const SEP115_CLOSE_BOOKS = [
   ["2026-09-14", "out", 400000, "個人戶·趙苡真", "個人轉出", "聯邦", ""],
   ["2026-09-15", "in", 70312, "個人戶·趙苡真", "租金收入　57巷1弄35號　9、10月", "聯邦", "牛2-35"]
 ];
+function dropEmptyLeaveElecBooks(data) {
+  if (!data || !Array.isArray(data.books)) return;
+  if (!Array.isArray(data.ledgerGone)) data.ledgerGone = [];
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    const id = String(b.id || "");
+    const tag = String(b.importTag || "");
+    if (id.indexOf("bk-leave-elec-") !== 0 && tag.indexOf("leave-elec-") !== 0) return;
+    const tid = b.linkedTenantId || id.replace(/^bk-leave-elec-/, "") || tag.replace(/^leave-elec-/, "");
+    const t = (data.tenants || []).find(x => x && x.id === tid);
+    if (t && leaveElecFinal(t) !== "") return;
+    if (data.ledgerGone.indexOf(b.id) < 0) data.ledgerGone.push(b.id);
+    if (data.leaveCash && data.leaveCash[tid]) delete data.leaveCash[tid];
+  });
+  data.books = dropGone(data.books, data.ledgerGone);
+}
+function liveLeaveElecIds(tenants) {
+  const ids = new Set();
+  (tenants || []).forEach(t => {
+    if (t && t.id && leaveElecFinal(t) !== "") ids.add("bk-leave-elec-" + t.id);
+  });
+  return ids;
+}
 function applySep115Close(data) {
   if (!data) return;
   if (!Array.isArray(data.books)) data.books = [];
@@ -13863,6 +13887,7 @@ async function pullCloud() {
       applyXuxuAugCash(state);
       applySlip0915(state);
       try { applySep115Close(state); } catch {}
+      try { dropEmptyLeaveElecBooks(state); } catch {}
       applyJinfangEng0921(state);
       applyRenewal7221(state);
       applyRenewal7222(state);
@@ -14004,6 +14029,7 @@ async function pullCloud() {
     applyXuxuAugCash(state);
     applySlip0915(state);
     try { applySep115Close(state); } catch {}
+    try { dropEmptyLeaveElecBooks(state); } catch {}
     applyJinfangEng0921(state);
     applyRenewal7221(state);
     applyRenewal7222(state);
@@ -14734,7 +14760,7 @@ async function pushCloud() {
     } catch {}
     const cut = Math.max(Number(state.adminLogoutAt) || 0, Number(remote && remote.adminLogoutAt) || 0);
     if (cut) state.adminLogoutAt = cut;
-    const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone);
+    const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone).filter(id => !liveLeaveElecIds(mergeTenants(remote && remote.tenants, state.tenants)).has(String(id)));
     const annGone = unionGone(remote && remote.annGone, state.annGone);
     const annMerged = mergeEntities(remote && remote.announcements, state.announcements, ["title", "body", "text", "pinned", "media", "publishAt", "annSent"]);
     state.annGone = unionGone(annGone, (annMerged || []).filter(annIsWasherLost).map(a => String(a.id)));
@@ -36437,12 +36463,10 @@ function upsertLeaveBook(id, tag, t, r, amount, company, bank, noteTail) {
   if (!state.books) state.books = [];
   const hit = state.books.find(b => b && (b.id === id || b.importTag === tag));
   if (amt <= 0) {
-    if (!hit) return false;
-    state.books = state.books.filter(b => b !== hit);
-    try { persistLedger(state); } catch {}
-    try { markCloudDirty(); } catch {}
-    return true;
+    markLedgerGone([id].concat(hit && hit.id ? [hit.id] : []));
+    return !!hit;
   }
+  if (state.ledgerGone) state.ledgerGone = (state.ledgerGone || []).filter(x => String(x) !== String(id) && String(x) !== String(hit && hit.id));
   const no = (r && r.no) || t.roomNo || "";
   const site = (r && r.group) || (r && typeof roomIsFactory === "function" && roomIsFactory(r) ? "" : "牛10");
   const note = (site ? site + "　" : "") + String(no) + " " + (t.name || "") + "　" + noteTail;
@@ -36482,9 +36506,9 @@ function postLeaveDepositBook(t, r) {
   );
 }
 function postLeaveElecBook(t, r) {
+  if (!t) return false;
   const raw = leaveElecFinal(t);
-  if (!t || raw === "") return false;
-  const amt = Math.max(0, Math.round(Number(raw) || 0));
+  const amt = raw === "" ? 0 : Math.max(0, Math.round(Number(raw) || 0));
   return upsertLeaveBook(
     "bk-leave-elec-" + t.id,
     "leave-elec-" + t.id,
@@ -36528,13 +36552,13 @@ function saveAdminLeaveElec(id, value) {
   t.edited = true;
   t.editedAt = Date.now();
   const r = (state.rooms || []).find(x => x && x.id === t.roomId);
-  const booked = next !== "" ? postLeaveElecBook(t, r) : false;
+  postLeaveElecBook(t, r);
   save();
   try { pushCloud(); } catch {}
   try { publishPaidCloud(); } catch {}
   try { publishLeaveNow(t); } catch {}
   try { paintLeaveCashLine(); } catch {}
-  toast(next === "" ? "已清空電費餘額" : (booked ? "電費餘額 " + money(Number(next)) + " 已從現金保險箱支出" : "已記下電費餘額"));
+  toast(next === "" ? "已清空電費餘額" : (leaveElecFinal(t) !== "" ? "電費餘額 " + money(Number(leaveElecFinal(t))) + " 已從現金保險箱支出" : "已記下電費餘額"));
 }
 function saveAdminLeaveSubsidy(id, value) {
   const t = (state.tenants || []).find(x => x && x.id === id);
