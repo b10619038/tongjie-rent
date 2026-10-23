@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-14-28";
-const APP_EDIT_COUNT = 2105;
+const APP_STAMP = "2026-10-23-15-54";
+const APP_EDIT_COUNT = 2106;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1730";
+const FILE_VER = "1731";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["高雄颱風假會標在日曆上，日期變紅，內容寫颱風假"] },
+  { ver: APP_VERSION, items: ["出租率的少收金額改成同一行"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -35238,10 +35238,12 @@ function rentVsDetailHtml(p) {
   return items || `<div class="small">${escapeHtml(p.label)}這個月滿收，沒有差額房間。</div>`;
 }
 function occRentUnderHtml(p) {
+  return `<div class="small occ-rent-line">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>`;
+}
+function occRentGapHtml(p) {
   const w = rentVsWord(p);
   const on = String(ui.rentVsOpen || "") === p.label;
-  return `<div class="small occ-rent-line">滿租應收 ${money(p.full)}　實收 ${money(p.got)}</div>
-    <button type="button" class="rent-vs-amt ${w.cls}${on ? " on" : ""}" data-rent-vs-open="${escapeHtml(p.label)}">${w.word}</button>`;
+  return `<button type="button" class="rent-vs-amt occ-rent-gap ${w.cls}${on ? " on" : ""}" data-rent-vs-open="${escapeHtml(p.label)}">${w.word}</button>`;
 }
 function occRingBlock(occ, pack, ringCls, img, imgCls) {
   const on = String(ui.rentVsOpen || "") === pack.label;
@@ -35254,6 +35256,7 @@ function occRingBlock(occ, pack, ringCls, img, imgCls) {
       </div>
       <img class="occ-shot${ui.keepScroll ? "" : " shot-in"}${imgCls ? " " + imgCls : ""}" src="${img}" alt="${escapeHtml(pack.label)}">
     </div>
+    ${occRentGapHtml(pack)}
     ${on ? `<div class="rent-vs-list occ-rent-detail">${rentVsDetailHtml(pack)}</div>` : ""}`;
 }
 function rentVsNavHtml() {
