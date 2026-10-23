@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-11-08";
-const APP_EDIT_COUNT = 2103;
+const APP_STAMP = "2026-10-23-11-40";
+const APP_EDIT_COUNT = 2104;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1728";
+const FILE_VER = "1729";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客所在縣市若放颱風假，首頁天氣改成颱風動畫"] },
+  { ver: APP_VERSION, items: ["代操租客也看高雄颱風假，有停班就換成颱風動畫"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -16461,15 +16461,22 @@ const COUNTY_CENTERS = [
   ["連江縣", 26.160, 119.951]
 ];
 function countyHere() {
+  if (ui && ui.role === "tenant") return "高雄市";
   const raw = [locFix && locFix.addr, ui.geoAddr].filter(Boolean).join(" ");
   const blob = normCountyName(raw);
   const names = COUNTY_CENTERS.map(c => c[0]).slice().sort((a, b) => b.length - a.length);
-  for (const n of names) if (blob.indexOf(n) >= 0) return n;
+  let hit = "";
+  let hitAt = 1e9;
+  names.forEach(n => {
+    const at = blob.indexOf(n);
+    if (at >= 0 && at < hitAt) { hitAt = at; hit = n; }
+  });
+  if (hit) return hit;
   const low = raw.toLowerCase();
   const en = [["kaohsiung", "高雄市"], ["pingtung", "屏東縣"], ["tainan", "台南市"], ["new taipei", "新北市"], ["taipei", "台北市"], ["taoyuan", "桃園市"], ["taichung", "台中市"], ["hsinchu", "新竹市"], ["keelung", "基隆市"], ["yilan", "宜蘭縣"], ["hualien", "花蓮縣"], ["taitung", "台東縣"], ["penghu", "澎湖縣"], ["kinmen", "金門縣"], ["miaoli", "苗栗縣"], ["changhua", "彰化縣"], ["nantou", "南投縣"], ["yunlin", "雲林縣"], ["chiayi", "嘉義市"]];
   for (const pair of en) if (low.indexOf(pair[0]) >= 0) return pair[1];
-  const lat = (locFix && isFinite(locFix.lat)) ? Number(locFix.lat) : 22.6438;
-  const lon = (locFix && isFinite(locFix.lng)) ? Number(locFix.lng) : 120.3732;
+  const lat = (locFix && isFinite(locFix.lat) && locFix.lat) ? Number(locFix.lat) : 22.6438;
+  const lon = (locFix && isFinite(locFix.lng) && locFix.lng) ? Number(locFix.lng) : 120.3732;
   let best = "高雄市";
   let bestD = 1e9;
   COUNTY_CENTERS.forEach(c => {
@@ -16478,16 +16485,30 @@ function countyHere() {
   });
   return best;
 }
+async function loadTyphoonMap() {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 12000) : 0;
+  try {
+    const res = await fetch("/api/typhoon?t=" + Date.now(), { cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
+    const type = (res.headers.get("content-type") || "").toLowerCase();
+    if (!res.ok || type.indexOf("json") < 0) return null;
+    const data = await res.json();
+    if (!data || !Array.isArray(data.counties) || !data.counties.length) return null;
+    const map = {};
+    data.counties.forEach(row => {
+      if (row && row.name) map[normCountyName(row.name)] = String(row.status || "");
+    });
+    return map;
+  } catch { return null; }
+  finally { if (timer) clearTimeout(timer); }
+}
 async function areaTyphoonOff() {
   const now = Date.now();
   let map = ui.typhoonMap;
   if (!map || !ui.typhoonAt || now - ui.typhoonAt > 10 * 60 * 1000) {
-    const data = await fetchJson("/api/typhoon");
-    if (data && Array.isArray(data.counties) && data.counties.length) {
-      map = {};
-      data.counties.forEach(row => {
-        if (row && row.name) map[normCountyName(row.name)] = String(row.status || "");
-      });
+    const fresh = await loadTyphoonMap();
+    if (fresh) {
+      map = fresh;
       ui.typhoonMap = map;
       ui.typhoonAt = now;
     }
@@ -17775,6 +17796,7 @@ function enterDevPreview() {
   persistUi();
   render();
   flushTenantInbox();
+  refreshSky(true).catch(() => {});
 }
 function exitDevPreview() {
   ui.devPreview = false;
@@ -17810,6 +17832,7 @@ function enterTenantLook(t, page) {
   applyTenantGo();
   persistUi();
   render();
+  refreshSky(true).catch(() => {});
 }
 function enterStaffLook(name) {
   const who = staffOpsName(name);

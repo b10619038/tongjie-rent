@@ -269,7 +269,7 @@ input, textarea, select {
 .weather-hero[data-sky="cloud"] { background: linear-gradient(180deg, #8f9eab 0%, #c4ced6 58%, #e6ece8 100%); }
 .weather-hero[data-sky="rain"] { background: linear-gradient(180deg, #5f717f 0%, #8a99a6 58%, #d4dbd7 100%); }
 .weather-hero[data-sky="storm"] { background: linear-gradient(180deg, #33404c 0%, #566573 55%, #c8d0cc 100%); }
-.weather-hero[data-sky="typhoon"] { background: linear-gradient(180deg, #1a2733 0%, #3c5364 46%, #9aa8ae 100%); }
+.weather-hero[data-sky="typhoon"] { background: linear-gradient(180deg, #10202c 0%, #2d4558 42%, #8ea0a8 100%); }
 .sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .weather-hero.sky-off {
   background: transparent !important;
