@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-10-36";
-const APP_EDIT_COUNT = 2101;
+const APP_STAMP = "2026-10-23-10-42";
+const APP_EDIT_COUNT = 2102;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1726";
+const FILE_VER = "1727";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["喻涵風格只給趙文榮和許喻涵，並排在極黑右邊"] },
+  { ver: APP_VERSION, items: ["租客調色盤最後一格是奶油風格，配色跟喻涵風格一樣"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -1353,10 +1353,16 @@ const THEMES = [
 ];
 function canUseYuhanTheme() {
   try {
-    if (!ui || ui.role !== "admin") return false;
+    if (!ui) return false;
+    if (ui.role === "tenant" && ui.tenantId) return true;
+    if (ui.role !== "admin") return false;
     if (ui.adminCode === "1240") return true;
     return normAdminName(ui.adminName) === "許喻涵";
   } catch { return false; }
+}
+function themeLabel(t) {
+  if (t && t.id === "yuhan" && ui && ui.role === "tenant") return "奶油風格";
+  return t ? t.name : "";
 }
 function visibleThemes() {
   return THEMES.filter(t => t.id !== "yuhan" || canUseYuhanTheme());
@@ -1604,7 +1610,7 @@ function themePanelMarkup() {
       <h2>選擇色調</h2>
       <div class="theme-grid">
         ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
-          <i></i><span>${t.name}</span>
+          <i></i><span>${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
       <button type="button" class="btn-navy" id="theme-close">確定</button>
@@ -41727,7 +41733,7 @@ function lookSettingsHtml() {
       <p class="small">選擇整體色調。</p>
       <div class="theme-grid in-page">
         ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
-          <i></i><span>${t.name}</span>
+          <i></i><span>${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
     </div>
