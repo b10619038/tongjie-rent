@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-22-17-40";
-const APP_EDIT_COUNT = 2098;
+const APP_STAMP = "2026-10-23-10-14";
+const APP_EDIT_COUNT = 2099;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1723";
+const FILE_VER = "1724";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["張智傑測試用的退電費 10,000 已從帳上移除，沒填餘額不再記支出"] },
+  { ver: APP_VERSION, items: ["點開發者後台標題可進入設定"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -31081,7 +31081,8 @@ function adminView() {
     ? splitStageHtml()
     : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
   const title = ui.adminCode === "1240" ? "開發者後台" : (isBossAdmin() ? "負責人後台" : "管理員後台");
-  const titleHtml = isBossAdmin()
+  const titleTap = isBossAdmin() || ui.adminCode === "1240";
+  const titleHtml = titleTap
     ? `<button type="button" id="boss-title" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">${title}</button>`
     : `<h1 style="font-size:24px">${title}</h1>`;
   return `
