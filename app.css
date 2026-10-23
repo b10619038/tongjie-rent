@@ -3163,9 +3163,12 @@ html[data-theme="void"] .tab-repair img.nav-tool { filter: brightness(0) invert(
   box-shadow: none;
 }
 .shell.admin-wide .tab,
-.shell.admin-wide .tab:active,
-.shell.admin-wide .tab.is-press {
+.shell.admin-wide .tab:active {
   transform: none;
+}
+.shell.admin-wide .tab.is-press {
+  transform: scale(0.92);
+  transition-duration: .06s;
 }
 .shell.admin-wide .tab-ic {
   transform-origin: center center;
