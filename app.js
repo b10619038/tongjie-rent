@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-20-26";
-const APP_EDIT_COUNT = 2108;
+const APP_STAMP = "2026-10-23-20-42";
+const APP_EDIT_COUNT = 2109;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1733";
+const FILE_VER = "1734";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["下方選單改成先亮起，瀏覽紀錄不再擋住換頁"] },
+  { ver: APP_VERSION, items: ["換頁不再被背景整本存檔卡住"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -13834,7 +13834,9 @@ function mergeLedgerInto(target, other) {
   }
 }
 async function pullCloud() {
+  if (pullCloud.ctrl) { try { pullCloud.ctrl.abort(); } catch {} }
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  pullCloud.ctrl = ctrl;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
   try {
     const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
@@ -14145,6 +14147,7 @@ async function pullCloud() {
     ui.cloudOk = false;
     return false;
   } finally {
+    if (pullCloud.ctrl === ctrl) pullCloud.ctrl = null;
     if (timer) clearTimeout(timer);
   }
 }
@@ -14516,12 +14519,26 @@ function mergePresenceInto(target, other) {
 }
 function coreSig(d) {
   try {
-    return JSON.stringify({
-      b: d.books, o: d.accountOpenings, r: d.repairs, a: d.announcements,
-      n: d.renewals, s: d.bankSlips, e: d.errands, mm: d.aiMemos, dm: d.devMemos, dl: d.devLogs, al: d.aiLogs,
-      t: (d.tenants || []).map(x => [x.id, x.paid, x.name, x.loginPass, x.paidAt, x.note, !!x.former, !!x.incoming, !!x.prospect, !!x.applyPending, x.officialAt || 0, x.roomId, x.lastNudgeAt, (x.inbox || []).length, x.eSign && x.eSign.status, x.leaveElec == null ? "" : x.leaveElec, x.leaveElecAdmin == null ? "" : x.leaveElecAdmin]),
-      m: (d.rooms || []).map(x => [x.id, x.status, x.rent, x.tenantId])
-    });
+    const books = d.books || [];
+    const last = books.length ? books[books.length - 1] : null;
+    const repairs = d.repairs || [];
+    const anns = d.announcements || [];
+    const renewals = d.renewals || [];
+    let paid = 0;
+    (d.tenants || []).forEach(t => { if (t && t.paid) paid += 1; });
+    return [
+      d.updatedAt || 0,
+      books.length, last && last.id, last && last.amount, last && last.date,
+      repairs.length, repairs.length ? repairs[repairs.length - 1].id : "",
+      anns.length, anns.length ? anns[anns.length - 1].id : "",
+      renewals.length,
+      (d.tenants || []).length, paid,
+      (d.rooms || []).length,
+      (d.aiMemos || []).length,
+      (d.checkouts || []).length,
+      (d.bankSlips || []).length,
+      (d.errands || []).length
+    ].join("|");
   } catch { return String(d && d.updatedAt); }
 }
 const ONLINE_MS = 90000;
@@ -22204,6 +22221,7 @@ function ensureCalMonth() {
   ui.calDay = n.getDate();
 }
 let _ledgerCache = null;
+let _ledgerStamp = 0;
 function collectLedger() {
   if (_ledgerCache) return _ledgerCache;
   try { if (dropEmptyLeaveElecBooks(state)) markCloudDirty(); } catch {}
@@ -28053,7 +28071,11 @@ function render() {
     if (ui.role === "admin") ui.page = EMBED_PAGE;
     try { document.documentElement.classList.add("embed-pane"); } catch {}
   }
-  _ledgerCache = null;
+  _ledgerStamp = _ledgerStamp || 0;
+  if (_ledgerStamp !== (state && state.updatedAt)) {
+    _ledgerCache = null;
+    _ledgerStamp = state && state.updatedAt;
+  }
   try { syncThemeForWho(); } catch {}
   try { tickDueRenewals(); } catch {}
   try {
@@ -31474,7 +31496,6 @@ function bindTabReorder() {
     bar.classList.add("sorting");
     dragEl.classList.add("dragging");
     try { if (navigator.vibrate) navigator.vibrate(12); } catch {}
-    try { dragEl.setPointerCapture(pid); } catch {}
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
     window.addEventListener("pointercancel", onEnd);
@@ -31572,8 +31593,8 @@ function bindTabPage() {
     const dx = e.touches[0].clientX - x0;
     const dy = e.touches[0].clientY - y0;
     if (!lock) {
-      if (Math.hypot(dx, dy) < 8) return;
-      lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (Math.hypot(dx, dy) < 22) return;
+      lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? "x" : "y";
     }
     if (lock !== "x") return;
     if (e.cancelable) e.preventDefault();
@@ -41339,6 +41360,8 @@ function bindAdmin() {
       }
       ui.page = id;
       ui.keepScroll = false;
+      ui.adminNavAt = Date.now();
+      if (typeof pullCloud === "function" && pullCloud.ctrl) { try { pullCloud.ctrl.abort(); } catch {} }
       document.querySelectorAll(".tabs .tab").forEach(t => {
         t.classList.toggle("on", t.dataset.admin === id);
         t.classList.remove("land");
@@ -44235,6 +44258,7 @@ async function boot() {
   hideSplash();
   const syncTick = async () => {
     if (syncTick.busy) return;
+    if (ui.adminNavAt && Date.now() - ui.adminNavAt < 2200) return;
     syncTick.busy = true;
     try {
       try { releaseDueAnnouncements(); } catch {}
@@ -44283,7 +44307,7 @@ async function boot() {
     }
   };
   if (!EMBED_PAGE) {
-  setInterval(syncTick, 1500);
+  setInterval(syncTick, 4000);
   setTimeout(syncTick, 200);
   setInterval(beatPresence, 25000);
   try { startAdminPayWatch(); } catch {}
