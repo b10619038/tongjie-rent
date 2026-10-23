@@ -4568,6 +4568,8 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 }
 .work-cal-d.out { color: #c5cad3; }
 .work-cal-d.wk:not(.on) { color: #e25b5b; }
+.work-cal-d.typhoon:not(.on) { color: #e25b5b; }
+.work-cal-d.typhoon.on em { background: #e25b5b; color: #fff; }
 .work-cal-d.on em { background: var(--teal); color: #fff; }
 .work-cal-d .dot {
   position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
@@ -4576,6 +4578,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .work-cal-d .dot.empty { background: transparent; }
 .work-cal-d.late .dot { background: #e25b5b; }
 .work-cal-dayh { margin: 14px 2px 8px; font-size: 17px; font-weight: 800; }
+.work-cal-typhoon { text-align: center; color: #e25b5b; padding: 28px 8px 18px; font-weight: 800; font-size: 16px; }
 #work-card .work-add-bar {
   display: flex;
   flex-direction: column;

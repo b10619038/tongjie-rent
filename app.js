@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-11-40";
-const APP_EDIT_COUNT = 2104;
+const APP_STAMP = "2026-10-23-14-28";
+const APP_EDIT_COUNT = 2105;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1729";
+const FILE_VER = "1730";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["代操租客也看高雄颱風假，有停班就換成颱風動畫"] },
+  { ver: APP_VERSION, items: ["高雄颱風假會標在日曆上，日期變紅，內容寫颱風假"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -13977,6 +13977,7 @@ async function pullCloud() {
       state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
       state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
       state.leaveWithdrawn = mergeLeaveWithdrawn(data.leaveWithdrawn, state.leaveWithdrawn);
+      try { absorbTyphoonDays(data.typhoonDays, false); } catch {}
       try { applyLeaveExtras(); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       state.seatGone = mergeSeatGone(state.seatGone, data.seatGone);
@@ -13995,6 +13996,7 @@ async function pullCloud() {
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
     state = normalize(data);
+    try { absorbTyphoonDays(state.typhoonDays, false); } catch {}
     try { applyLeaveExtras(); } catch {}
     if (keepCut) state.adminLogoutAt = keepCut;
     try { if (mergeTabOrder(state, mineTabOrder)) markCloudDirty(); } catch {}
@@ -14855,7 +14857,8 @@ async function pushCloud() {
       presence: mergedPresence(remote && remote.presence, state.presence),
       leaveCash: mergeLeaveCash(remote && remote.leaveCash, state.leaveCash),
       leaveInk: mergeLeaveInk(remote && remote.leaveInk, state.leaveInk),
-      leaveWithdrawn: mergeLeaveWithdrawn(remote && remote.leaveWithdrawn, state.leaveWithdrawn)
+      leaveWithdrawn: mergeLeaveWithdrawn(remote && remote.leaveWithdrawn, state.leaveWithdrawn),
+      typhoonDays: saveTyphoonDays([].concat(readTyphoonDays(), (remote && remote.typhoonDays) || []))
     });
     applyRepairStatusBox(state.repairs);
     applyRepairStatusBox(payload.repairs);
@@ -16498,19 +16501,90 @@ async function loadTyphoonMap() {
     data.counties.forEach(row => {
       if (row && row.name) map[normCountyName(row.name)] = String(row.status || "");
     });
-    return map;
+    return { map, date: /^\d{4}-\d{2}-\d{2}$/.test(String(data.date || "")) ? String(data.date) : "" };
   } catch { return null; }
   finally { if (timer) clearTimeout(timer); }
+}
+function readTyphoonDays() {
+  const out = [];
+  const push = d => {
+    const s = String(d || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s) && out.indexOf(s) < 0) out.push(s);
+  };
+  try {
+    const raw = JSON.parse(localStorage.getItem("tongjie_typhoon_days_v1") || "[]");
+    (Array.isArray(raw) ? raw : []).forEach(push);
+  } catch {}
+  (state && Array.isArray(state.typhoonDays) ? state.typhoonDays : []).forEach(push);
+  out.sort();
+  return out;
+}
+function saveTyphoonDays(list) {
+  const days = [];
+  (list || []).forEach(d => {
+    const s = String(d || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s) && days.indexOf(s) < 0) days.push(s);
+  });
+  days.sort();
+  try { localStorage.setItem("tongjie_typhoon_days_v1", JSON.stringify(days)); } catch {}
+  if (typeof state !== "undefined" && state) state.typhoonDays = days;
+  return days;
+}
+function absorbTyphoonDays(extra, dirtyIfNew) {
+  const cur = readTyphoonDays();
+  let grew = false;
+  (extra || []).forEach(d => {
+    const s = String(d || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s) && cur.indexOf(s) < 0) { cur.push(s); grew = true; }
+  });
+  if (grew) saveTyphoonDays(cur);
+  else if (state && (!Array.isArray(state.typhoonDays) || state.typhoonDays.join() !== cur.join())) state.typhoonDays = cur;
+  if (grew && dirtyIfNew) { try { markCloudDirty(); } catch {} }
+  return grew;
+}
+function shiftYmd(ymd, n) {
+  const parts = String(ymd || "").split("-").map(Number);
+  if (parts.length < 3 || !parts[0]) return "";
+  const dt = new Date(parts[0], parts[1] - 1, parts[2] + Number(n || 0));
+  const p = x => String(x).padStart(2, "0");
+  return dt.getFullYear() + "-" + p(dt.getMonth() + 1) + "-" + p(dt.getDate());
+}
+function noteKaohsiungTyphoon(pack) {
+  if (!pack || !pack.map || !pack.date) return false;
+  const status = pack.map["高雄市"] || "";
+  if (!/停止上班/.test(status) || /照常上班/.test(status)) return false;
+  const days = [];
+  if (!/明天/.test(status) || /今天/.test(status)) days.push(pack.date);
+  if (/明天/.test(status)) days.push(shiftYmd(pack.date, 1));
+  return absorbTyphoonDays(days, true);
+}
+function kickTyphoonDays() {
+  if (ui.typhoonKick) return;
+  ui.typhoonKick = 1;
+  const now = Date.now();
+  const cached = ui.typhoonMap && ui.typhoonDate && ui.typhoonAt && now - ui.typhoonAt < 10 * 60 * 1000;
+  const job = cached ? Promise.resolve({ map: ui.typhoonMap, date: ui.typhoonDate }) : loadTyphoonMap();
+  job.then(fresh => {
+    if (fresh && fresh.map) {
+      ui.typhoonMap = fresh.map;
+      ui.typhoonDate = fresh.date || ui.typhoonDate || "";
+      ui.typhoonAt = Date.now();
+    }
+    const changed = noteKaohsiungTyphoon(fresh && fresh.map ? fresh : { map: ui.typhoonMap, date: ui.typhoonDate });
+    if (changed && ui.role === "admin") { ui.keepScroll = true; render(); }
+  }).catch(() => {});
 }
 async function areaTyphoonOff() {
   const now = Date.now();
   let map = ui.typhoonMap;
   if (!map || !ui.typhoonAt || now - ui.typhoonAt > 10 * 60 * 1000) {
     const fresh = await loadTyphoonMap();
-    if (fresh) {
-      map = fresh;
+    if (fresh && fresh.map) {
+      map = fresh.map;
       ui.typhoonMap = map;
+      ui.typhoonDate = fresh.date || "";
       ui.typhoonAt = now;
+      noteKaohsiungTyphoon(fresh);
     }
   }
   if (!map) return false;
@@ -33917,11 +33991,13 @@ function workCalHtml(memoRows) {
         const n = list.length;
         const on = !c.out && cd === ui.workCalDay;
         const wk = new Date(cy, cm - 1, cd).getDay();
-        return `<button type="button" class="work-cal-d${c.out ? " out" : ""}${on ? " on" : ""}${!c.out && (wk === 0 || wk === 6) ? " wk" : ""}${late ? " late" : ""}" data-work-cal-day="${ymd}"><em>${cd}</em>${n ? `<i class="dot"></i>` : `<i class="dot empty"></i>`}</button>`;
+        const typhoon = !c.out && readTyphoonDays().indexOf(ymd) >= 0;
+        return `<button type="button" class="work-cal-d${c.out ? " out" : ""}${on ? " on" : ""}${!c.out && (wk === 0 || wk === 6) ? " wk" : ""}${typhoon ? " typhoon" : ""}${late ? " late" : ""}" data-work-cal-day="${ymd}"><em>${cd}</em>${n ? `<i class="dot"></i>` : `<i class="dot empty"></i>`}</button>`;
       }).join("")}
     </div>
     <div class="work-cal-dayh">${head}</div>
-    ${dayMemos.length ? memoRows(dayMemos, true) : `<div class="work-cal-empty">這天沒有工作</div>`}
+    ${readTyphoonDays().indexOf(sel) >= 0 ? `<div class="work-cal-typhoon">颱風假</div>` : ""}
+    ${dayMemos.length ? memoRows(dayMemos, true) : (readTyphoonDays().indexOf(sel) >= 0 ? "" : `<div class="work-cal-empty">這天沒有工作</div>`)}
     ${workAddHtml(sel)}
   </div>`;
 }
@@ -41090,6 +41166,7 @@ function bindRepairFold() {
   });
 }
 function bindAdmin() {
+  kickTyphoonDays();
   try {
     const p = state.renewPing || (state.renewals || []).filter(x => x && x.status !== "done" && x.status !== "applied").slice(-1)[0];
     if (p && !renewPingAlreadySeen({ id: p.id || p.roomNo, roomNo: p.roomNo, name: p.name })) setTimeout(() => flashRenewNotice(), 400);

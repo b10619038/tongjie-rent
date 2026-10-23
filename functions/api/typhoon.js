@@ -16,7 +16,13 @@ export async function onRequest() {
     while ((m = re.exec(html))) {
       counties.push({ name: m[1].replace(/\s/g, ""), status: m[2].replace(/\s+/g, "") });
     }
-    return new Response(JSON.stringify({ ok: true, counties }), { status: 200, headers });
+    let date = "";
+    const head = html.match(/(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if (head) {
+      const y = Number(head[1]) + 1911;
+      date = y + "-" + String(head[2]).padStart(2, "0") + "-" + String(head[3]).padStart(2, "0");
+    }
+    return new Response(JSON.stringify({ ok: true, date, counties }), { status: 200, headers });
   } catch {
     return new Response(JSON.stringify({ ok: false, counties: [] }), { status: 200, headers });
   }
