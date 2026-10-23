@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-16-10";
-const APP_EDIT_COUNT = 2107;
+const APP_STAMP = "2026-10-23-20-26";
+const APP_EDIT_COUNT = 2108;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1732";
+const FILE_VER = "1733";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["下方選單按下去先亮起，不再等整頁算完"] },
+  { ver: APP_VERSION, items: ["下方選單改成先亮起，瀏覽紀錄不再擋住換頁"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -16741,7 +16741,16 @@ function audit(action, detail) {
       address: auditAddress()
     });
     if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
-    save();
+    if (action === "瀏覽") {
+      const later = window.requestIdleCallback || (fn => setTimeout(fn, 500));
+      clearTimeout(audit.browseWait);
+      if (audit.browseIdle && window.cancelIdleCallback) { try { cancelIdleCallback(audit.browseIdle); } catch {} }
+      audit.browseIdle = 0;
+      audit.browseWait = 0;
+      const run = () => { audit.browseIdle = 0; audit.browseWait = 0; try { save(); } catch {} };
+      if (window.requestIdleCallback) audit.browseIdle = requestIdleCallback(run, { timeout: 1200 });
+      else audit.browseWait = setTimeout(run, 500);
+    } else save();
   } catch {}
 }
 function maybeAuditBrowse() {
@@ -28203,21 +28212,15 @@ function paintApp() {
         t.style.transform = "";
       });
       bindTabPill();
-      if (pageChanged && !ui.adminBodyNow) {
-        if (!ui.adminBodyTimer) {
-          ui.adminBodyTimer = setTimeout(() => {
-            ui.adminBodyTimer = 0;
-            ui.adminBodyNow = 1;
-            try { render(); } finally { ui.adminBodyNow = 0; }
-          }, 0);
-        }
-        return;
-      }
       const html = adminBody();
       const box = sc.querySelector(":scope > .admin-static");
-      let paintKey = 0;
-      for (let i = 0; i < html.length; i++) paintKey = (paintKey * 33 + html.charCodeAt(i)) | 0;
-      const paint = html.length + ":" + paintKey;
+      let paint = "";
+      if (!pageChanged) {
+        let paintKey = 0;
+        const step = Math.max(1, Math.floor(html.length / 48));
+        for (let i = 0; i < html.length; i += step) paintKey = (paintKey * 33 + html.charCodeAt(i)) | 0;
+        paint = html.length + ":" + paintKey;
+      }
       const samePaint = !pageChanged && box && box.dataset.paint === paint;
       if (!samePaint) {
         sc.innerHTML = `<div class="admin-static" data-paint="${paint}">${html}</div>`;
@@ -41336,14 +41339,24 @@ function bindAdmin() {
       }
       ui.page = id;
       ui.keepScroll = false;
-      render();
-      if (id === "ai") {
-        const scAi = document.querySelector(".admin-scroll");
-        if (scAi) {
-          scAi.scrollTop = 0;
-          requestAnimationFrame(() => { scAi.scrollTop = 0; });
+      document.querySelectorAll(".tabs .tab").forEach(t => {
+        t.classList.toggle("on", t.dataset.admin === id);
+        t.classList.remove("land");
+        t.style.transform = "";
+      });
+      try { bindTabPill(); } catch {}
+      clearTimeout(render.tabWait);
+      render.tabWait = setTimeout(() => {
+        render.tabWait = 0;
+        render();
+        if (id === "ai") {
+          const scAi = document.querySelector(".admin-scroll");
+          if (scAi) {
+            scAi.scrollTop = 0;
+            requestAnimationFrame(() => { scAi.scrollTop = 0; });
+          }
         }
-      }
+      }, 0);
     };
   });
   bindTabReorder();
