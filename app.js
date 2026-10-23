@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-10-42";
-const APP_EDIT_COUNT = 2102;
+const APP_STAMP = "2026-10-23-11-08";
+const APP_EDIT_COUNT = 2103;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1727";
+const FILE_VER = "1728";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客調色盤最後一格是奶油風格，配色跟喻涵風格一樣"] },
+  { ver: APP_VERSION, items: ["租客所在縣市若放颱風假，首頁天氣改成颱風動畫"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -16221,11 +16221,12 @@ function isNightHour() {
 }
 function displaySky(sky) {
   const s = sky || "cloud";
+  if (s === "typhoon") return "typhoon";
   if (isNightHour() && (s === "sun" || s === "cloud")) return "night";
   return s;
 }
 function skyLabel(sky) {
-  return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨", night: "夜晚" }[displaySky(sky)] || "陰天";
+  return { sun: "晴天", cloud: "陰天", rain: "雨天", storm: "大雷雨", night: "夜晚", typhoon: "颱風假" }[displaySky(sky)] || "陰天";
 }
 function skyFxHtml(sky) {
   const s = sky || "cloud";
@@ -16238,6 +16239,13 @@ function skyFxHtml(sky) {
   }
   if (s === "cloud") {
     return `<span class="cld a"></span><span class="cld b"></span><span class="cld c"></span><span class="cld d"></span>`;
+  }
+  if (s === "typhoon") {
+    const drops = Array.from({ length: 46 }, (_, i) => {
+      const left = (i * 29) % 108;
+      return `<span class="drop ty" style="left:${left}%;height:${14 + (i % 6) * 3}px;--i:${i}"></span>`;
+    }).join("");
+    return `<span class="ty-spin"></span><span class="ty-spin b"></span><span class="ty-core"></span>` + drops;
   }
   const n = s === "storm" ? 40 : 30;
   const drops = Array.from({ length: n }, (_, i) => {
@@ -16379,6 +16387,8 @@ function attachSkyLive() {
     hero.classList.toggle("sky-off", !on);
     if (on) hero.setAttribute("data-sky", sky);
     else hero.removeAttribute("data-sky");
+    const eye = hero.querySelector(".eyebrow");
+    if (eye && !/代操|預覽|DEVELOPER/.test(eye.textContent || "")) eye.textContent = skyLabel(sky);
     if (moving) hero.insertBefore(el, hero.firstChild);
     if (!on || moving || wasHidden) el.style.display = "none";
   } else {
@@ -16415,25 +16425,76 @@ function applySkyDom() {
 }
 async function refreshSky(force) {
   const now = Date.now();
-  if (!force && ui.skyAt && now - ui.skyAt < 15 * 60 * 1000 && ui.sky) {
-    applySkyDom();
-    return ui.sky;
-  }
-  try {
-    const lat = (locFix && isFinite(locFix.lat)) ? locFix.lat : 22.6438;
-    const lon = (locFix && isFinite(locFix.lng)) ? locFix.lng : 120.3732;
-    const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=weather_code,temperature_2m,relative_humidity_2m&timezone=Asia%2FTaipei");
-    const cur = data && data.current;
-    const code = cur && cur.weather_code;
-    ui.sky = skyFromCode(code);
-    ui.temp = isFinite(Number(cur && cur.temperature_2m)) ? Number(cur.temperature_2m) : ui.temp;
-    ui.humidity = isFinite(Number(cur && cur.relative_humidity_2m)) ? Number(cur.relative_humidity_2m) : ui.humidity;
+  const weatherOk = !force && ui.skyAt && now - ui.skyAt < 15 * 60 * 1000 && ui.skyBase;
+  if (!weatherOk) {
+    try {
+      const lat = (locFix && isFinite(locFix.lat)) ? locFix.lat : 22.6438;
+      const lon = (locFix && isFinite(locFix.lng)) ? locFix.lng : 120.3732;
+      const data = await fetchJson("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=weather_code,temperature_2m,relative_humidity_2m&timezone=Asia%2FTaipei");
+      const cur = data && data.current;
+      const code = cur && cur.weather_code;
+      ui.skyBase = skyFromCode(code);
+      ui.temp = isFinite(Number(cur && cur.temperature_2m)) ? Number(cur.temperature_2m) : ui.temp;
+      ui.humidity = isFinite(Number(cur && cur.relative_humidity_2m)) ? Number(cur.relative_humidity_2m) : ui.humidity;
+    } catch {
+      if (!ui.skyBase) ui.skyBase = ui.sky && ui.sky !== "typhoon" ? ui.sky : "cloud";
+    }
     ui.skyAt = now;
-  } catch {
-    if (!ui.sky) ui.sky = "cloud";
   }
+  let off = false;
+  try { off = await areaTyphoonOff(); } catch { off = false; }
+  ui.sky = off ? "typhoon" : (ui.skyBase || "cloud");
   applySkyDom();
   return ui.sky;
+}
+function normCountyName(s) {
+  return String(s || "").replace(/臺/g, "台").replace(/\s/g, "");
+}
+const COUNTY_CENTERS = [
+  ["基隆市", 25.128, 121.741], ["台北市", 25.038, 121.564], ["新北市", 25.017, 121.463],
+  ["桃園市", 24.994, 121.301], ["新竹市", 24.804, 120.971], ["新竹縣", 24.827, 121.018],
+  ["苗栗縣", 24.561, 120.821], ["台中市", 24.148, 120.674], ["彰化縣", 24.076, 120.542],
+  ["南投縣", 23.916, 120.686], ["雲林縣", 23.709, 120.431], ["嘉義市", 23.480, 120.449],
+  ["嘉義縣", 23.459, 120.293], ["台南市", 23.000, 120.227], ["高雄市", 22.627, 120.301],
+  ["屏東縣", 22.552, 120.548], ["宜蘭縣", 24.757, 121.753], ["花蓮縣", 23.987, 121.601],
+  ["台東縣", 22.761, 121.144], ["澎湖縣", 23.571, 119.579], ["金門縣", 24.449, 118.376],
+  ["連江縣", 26.160, 119.951]
+];
+function countyHere() {
+  const raw = [locFix && locFix.addr, ui.geoAddr].filter(Boolean).join(" ");
+  const blob = normCountyName(raw);
+  const names = COUNTY_CENTERS.map(c => c[0]).slice().sort((a, b) => b.length - a.length);
+  for (const n of names) if (blob.indexOf(n) >= 0) return n;
+  const low = raw.toLowerCase();
+  const en = [["kaohsiung", "高雄市"], ["pingtung", "屏東縣"], ["tainan", "台南市"], ["new taipei", "新北市"], ["taipei", "台北市"], ["taoyuan", "桃園市"], ["taichung", "台中市"], ["hsinchu", "新竹市"], ["keelung", "基隆市"], ["yilan", "宜蘭縣"], ["hualien", "花蓮縣"], ["taitung", "台東縣"], ["penghu", "澎湖縣"], ["kinmen", "金門縣"], ["miaoli", "苗栗縣"], ["changhua", "彰化縣"], ["nantou", "南投縣"], ["yunlin", "雲林縣"], ["chiayi", "嘉義市"]];
+  for (const pair of en) if (low.indexOf(pair[0]) >= 0) return pair[1];
+  const lat = (locFix && isFinite(locFix.lat)) ? Number(locFix.lat) : 22.6438;
+  const lon = (locFix && isFinite(locFix.lng)) ? Number(locFix.lng) : 120.3732;
+  let best = "高雄市";
+  let bestD = 1e9;
+  COUNTY_CENTERS.forEach(c => {
+    const d = (lat - c[1]) * (lat - c[1]) + (lon - c[2]) * (lon - c[2]);
+    if (d < bestD) { bestD = d; best = c[0]; }
+  });
+  return best;
+}
+async function areaTyphoonOff() {
+  const now = Date.now();
+  let map = ui.typhoonMap;
+  if (!map || !ui.typhoonAt || now - ui.typhoonAt > 10 * 60 * 1000) {
+    const data = await fetchJson("/api/typhoon");
+    if (data && Array.isArray(data.counties) && data.counties.length) {
+      map = {};
+      data.counties.forEach(row => {
+        if (row && row.name) map[normCountyName(row.name)] = String(row.status || "");
+      });
+      ui.typhoonMap = map;
+      ui.typhoonAt = now;
+    }
+  }
+  if (!map) return false;
+  const status = map[countyHere()] || "";
+  return /停止上班/.test(status) && !/照常上班/.test(status);
 }
 async function fetchJson(url) {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;

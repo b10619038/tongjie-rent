@@ -269,6 +269,7 @@ input, textarea, select {
 .weather-hero[data-sky="cloud"] { background: linear-gradient(180deg, #8f9eab 0%, #c4ced6 58%, #e6ece8 100%); }
 .weather-hero[data-sky="rain"] { background: linear-gradient(180deg, #5f717f 0%, #8a99a6 58%, #d4dbd7 100%); }
 .weather-hero[data-sky="storm"] { background: linear-gradient(180deg, #33404c 0%, #566573 55%, #c8d0cc 100%); }
+.weather-hero[data-sky="typhoon"] { background: linear-gradient(180deg, #1a2733 0%, #3c5364 46%, #9aa8ae 100%); }
 .sky-live { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .weather-hero.sky-off {
   background: transparent !important;
@@ -339,6 +340,52 @@ input, textarea, select {
 .weather-hero[data-sky="storm"] .sky-fx .drop {
   width: 2.5px;
   background: linear-gradient(transparent, rgba(50,70,90,.95));
+}
+.sky-fx .ty-spin {
+  position: absolute;
+  right: -36px;
+  top: -48px;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 12deg, rgba(255,255,255,.28) 0 8deg, transparent 8deg 28deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 16%, #000 34%, #000 68%, transparent 78%);
+  mask-image: radial-gradient(circle, transparent 16%, #000 34%, #000 68%, transparent 78%);
+  animation: tySpin 5.6s linear infinite;
+  animation-delay: calc(var(--sky-shift, 0s) * -1);
+  opacity: .8;
+}
+.sky-fx .ty-spin.b {
+  width: 116px;
+  height: 116px;
+  right: 4px;
+  top: -8px;
+  opacity: .55;
+  animation-duration: 3.1s;
+  animation-direction: reverse;
+}
+.sky-fx .ty-core {
+  position: absolute;
+  right: 28px;
+  top: 10px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(232,240,244,.2) 0 16%, transparent 17% 38%, rgba(214,226,232,.55) 39% 46%, transparent 47% 62%, rgba(200,214,222,.35) 63% 70%, transparent 71%);
+  animation: tySpin 2.8s linear infinite;
+  animation-delay: calc(var(--sky-shift, 0s) * -1);
+}
+.weather-hero[data-sky="typhoon"] .sky-fx .drop {
+  width: 2.6px;
+  background: linear-gradient(transparent, rgba(226,236,240,.95));
+  animation-name: tyDrop;
+  animation-duration: calc(0.38s + (var(--i, 0) * 0.012s));
+}
+@keyframes tySpin { to { transform: rotate(360deg); } }
+@keyframes tyDrop {
+  from { transform: translate3d(16px, -24px, 0) rotate(34deg); }
+  to { transform: translate3d(-78px, 168px, 0) rotate(34deg); }
 }
 .sky-fx .flash {
   position: absolute; inset: 0;
