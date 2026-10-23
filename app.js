@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-10-14";
-const APP_EDIT_COUNT = 2099;
+const APP_STAMP = "2026-10-23-10-32";
+const APP_EDIT_COUNT = 2100;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1724";
+const FILE_VER = "1725";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["點開發者後台標題可進入設定"] },
+  { ver: APP_VERSION, items: ["調色盤新增喻涵風格，奶油底配灰綠"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -1335,6 +1335,7 @@ const THEME_KEY = "tongjie_theme";
 const FONT_KEY = "tongjie_font";
 const THEMES = [
   { id: "sage", name: "原木綠", teal: "#62765b", mid: "#738a6c", soft: "#e6ede3", chip: "#f7f0e8", ink: "#17211f" },
+  { id: "yuhan", name: "喻涵風格", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fbf9f4", line: "#e4ddd2", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" },
   { id: "navy", name: "海霧藍", teal: "#3d5a80", mid: "#4f6f99", soft: "#e4edf6", chip: "#eef3f8", ink: "#1b2838" },
   { id: "sky", name: "青空", teal: "#4a7c9b", mid: "#5b90b0", soft: "#e3f0f6", chip: "#eef6fa", ink: "#173040" },
   { id: "moss", name: "松針", teal: "#3f6b58", mid: "#52856d", soft: "#e3efe8", chip: "#eef5f0", ink: "#163028" },
