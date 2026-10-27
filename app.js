@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-13-32";
-const APP_EDIT_COUNT = 2112;
+const APP_STAMP = "2026-10-27-13-42";
+const APP_EDIT_COUNT = 2113;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1737";
+const FILE_VER = "1738";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["租客篩選色點按下立刻展開"] },
+  { ver: APP_VERSION, items: ["正常退租要填退款銀行代碼和帳戶"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -4495,6 +4495,11 @@ function openLeaveSignPage() {
       t.leaveTimeSet = true;
       t.leaveAppointEditedAt = Math.max(Number(t.leaveAppointEditedAt) || 0, Date.now());
       ui.leaveHoldAt = at;
+    }
+    commitLeaveRefund(t.id, false);
+    if (!leaveRefundOptional() && !leaveRefundReady(t)) {
+      toast("請先填 3 碼銀行代碼和銀行帳戶，押金才知道要退到哪");
+      return;
     }
   }
   ui.signAgree = false;
@@ -12158,7 +12163,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveRefundCode", "leaveRefundAccount", "leaveRefundAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12286,6 +12291,14 @@ function pickNewerEntity(a, b, keys) {
     };
     pickAmt("leaveElec", "leaveElecAt");
     pickAmt("leaveElecAdmin", "leaveElecAdminAt");
+    const aRef = Number(a.leaveRefundAt) || 0;
+    const bRef = Number(b.leaveRefundAt) || 0;
+    if (aRef || bRef || a.leaveRefundCode || b.leaveRefundCode || a.leaveRefundAccount || b.leaveRefundAccount) {
+      const pick = aRef >= bRef ? a : b;
+      out.leaveRefundCode = String(pick.leaveRefundCode || "").replace(/\D/g, "").slice(0, 3);
+      out.leaveRefundAccount = String(pick.leaveRefundAccount || "").replace(/\D/g, "").slice(0, 16);
+      if (pick.leaveRefundAt) out.leaveRefundAt = pick.leaveRefundAt;
+    }
     const aSub = a.leaveSubsidy === "yes" || a.leaveSubsidy === "no";
     const bSub = b.leaveSubsidy === "yes" || b.leaveSubsidy === "no";
     if (aSub || bSub) {
@@ -12316,6 +12329,9 @@ function pickNewerEntity(a, b, keys) {
         out.leaveTimeSet = false;
         out.leaveSubsidy = "";
         out.leaveSubsidyAt = 0;
+        out.leaveRefundCode = "";
+        out.leaveRefundAccount = "";
+        out.leaveRefundAt = 0;
       }
     }
   }
@@ -12868,6 +12884,9 @@ function leaveNowRow(t) {
     leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
     leaveSubsidy: t.leaveSubsidy === "yes" || t.leaveSubsidy === "no" ? t.leaveSubsidy : "",
     leaveSubsidyAt: Number(t.leaveSubsidyAt) || 0,
+    leaveRefundCode: leaveRefundCodeOf(t),
+    leaveRefundAccount: leaveRefundAcctOf(t),
+    leaveRefundAt: Number(t.leaveRefundAt) || 0,
     editedAt: Number(t.editedAt) || Date.now()
   };
   const packed = JSON.stringify(row);
@@ -13307,6 +13326,9 @@ function moneyCloudBlob() {
       leaveElecAdminAt: Number(t.leaveElecAdminAt) || 0,
       leaveSubsidy: t.leaveSubsidy === "yes" || t.leaveSubsidy === "no" ? t.leaveSubsidy : "",
       leaveSubsidyAt: Number(t.leaveSubsidyAt) || 0,
+      leaveRefundCode: leaveRefundCodeOf(t),
+      leaveRefundAccount: leaveRefundAcctOf(t),
+      leaveRefundAt: Number(t.leaveRefundAt) || 0,
       leaveDone: !!t.leaveDone,
       leaveDoneAt: t.leaveDoneAt || "",
       leaveSigned: !!(t.leaveSign && t.leaveSign.status === "signed"),
@@ -36223,6 +36245,9 @@ function clearStaleLeave(t) {
   t.leaveElecAdminAt = 0;
   t.leaveSubsidy = "";
   t.leaveSubsidyAt = 0;
+  t.leaveRefundCode = "";
+  t.leaveRefundAccount = "";
+  t.leaveRefundAt = 0;
   t.leaveResetAt = reset;
   if (state.leaveInk && state.leaveInk[t.id]) delete state.leaveInk[t.id];
   if (state.leaveCash && state.leaveCash[t.id]) delete state.leaveCash[t.id];
@@ -36664,6 +36689,18 @@ function applyLeaveCloudFields(t, src) {
       t.leaveSubsidyAt = srcAt || Date.now();
     }
   }
+  if (src.leaveRefundAt || src.leaveRefundCode || src.leaveRefundAccount) {
+    const srcAt = Number(src.leaveRefundAt) || Number(src.editedAt) || 0;
+    const curAt = Number(t.leaveRefundAt) || 0;
+    if (!curAt || srcAt >= curAt) {
+      const code = String(src.leaveRefundCode || "").replace(/\D/g, "").slice(0, 3);
+      const acct = String(src.leaveRefundAccount || "").replace(/\D/g, "").slice(0, 16);
+      if (t.leaveRefundCode !== code || t.leaveRefundAccount !== acct) changed = true;
+      t.leaveRefundCode = code;
+      t.leaveRefundAccount = acct;
+      t.leaveRefundAt = srcAt || Date.now();
+    }
+  }
   if (src.leaveDone && !t.leaveDone) {
     t.leaveDone = true;
     t.leaveDoneAt = src.leaveDoneAt || t.leaveDoneAt || "";
@@ -36702,6 +36739,70 @@ function applyLeaveCloudFields(t, src) {
     changed = true;
   }
   return changed;
+}
+function leaveRefundOptional() {
+  return (typeof isTenantLook === "function" && isTenantLook()) || (typeof isDevPreview === "function" && isDevPreview());
+}
+const TW_BANK_NAMES = {
+  "004": "臺灣銀行", "005": "土地銀行", "006": "合作金庫", "007": "第一銀行", "008": "華南銀行",
+  "009": "彰化銀行", "011": "上海商銀", "012": "台北富邦", "013": "國泰世華", "017": "兆豐銀行",
+  "048": "王道銀行", "050": "臺灣企銀", "053": "台中商銀", "054": "京城銀行", "103": "新光銀行",
+  "108": "陽信銀行", "118": "板信銀行", "147": "三信銀行", "700": "中華郵政", "803": "聯邦銀行",
+  "805": "遠東銀行", "806": "元大銀行", "807": "永豐銀行", "808": "玉山銀行", "812": "台新銀行",
+  "816": "安泰銀行", "822": "中國信託"
+};
+function leaveRefundCodeOf(t) {
+  return String(t && t.leaveRefundCode || "").replace(/\D/g, "").slice(0, 3);
+}
+function leaveRefundAcctOf(t) {
+  return String(t && t.leaveRefundAccount || "").replace(/\D/g, "").slice(0, 16);
+}
+function leaveRefundBankName(code) {
+  return TW_BANK_NAMES[String(code || "")] || "";
+}
+function leaveRefundReady(t) {
+  return leaveRefundCodeOf(t).length === 3 && leaveRefundAcctOf(t).length >= 6;
+}
+function saveLeaveRefund(id, codeRaw, acctRaw, opts) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return false;
+  const code = String(codeRaw || "").replace(/\D/g, "").slice(0, 3);
+  const acct = String(acctRaw || "").replace(/\D/g, "").slice(0, 16);
+  if (leaveRefundCodeOf(t) === code && leaveRefundAcctOf(t) === acct) return false;
+  t.leaveRefundCode = code;
+  t.leaveRefundAccount = acct;
+  t.leaveRefundAt = Date.now();
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  try { publishPaidCloud(); } catch {}
+  try { publishLeaveNow(t); } catch {}
+  if (opts && opts.toast && code.length === 3 && acct.length >= 6) toast("已記下退款帳戶 " + code + " " + acct);
+  return true;
+}
+function commitLeaveRefund(id, toastIt) {
+  if (!id) return false;
+  const codeInp = document.querySelector('[data-leave-refund-code="' + id + '"], [data-leave-refund-code-admin="' + id + '"]');
+  const acctInp = document.querySelector('[data-leave-refund-acct="' + id + '"], [data-leave-refund-acct-admin="' + id + '"]');
+  if (!codeInp && !acctInp) return leaveRefundReady((state.tenants || []).find(x => x && x.id === id));
+  return saveLeaveRefund(id, codeInp ? codeInp.value : "", acctInp ? acctInp.value : "", { toast: !!toastIt }) || leaveRefundReady((state.tenants || []).find(x => x && x.id === id));
+}
+function leaveRefundBankFieldsHtml(t, who) {
+  if (!t) return "";
+  const code = leaveRefundCodeOf(t);
+  const acct = leaveRefundAcctOf(t);
+  const name = leaveRefundBankName(code);
+  const admin = who === "admin";
+  const codeAttr = admin ? "data-leave-refund-code-admin" : "data-leave-refund-code";
+  const acctAttr = admin ? "data-leave-refund-acct-admin" : "data-leave-refund-acct";
+  const hint = admin
+    ? "退押金要匯進這個帳戶。租客沒填的話，在這裡補上。"
+    : (leaveRefundOptional() ? "開發者代申請可以先留白，後台再補銀行代碼和帳戶。" : "請填本人銀行代碼（3碼）和帳戶，押金會匯到這裡。");
+  return `<label class="field" style="margin-top:8px"><span>銀行代碼</span><input ${codeAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3碼，例如 822" value="${escapeHtml(code)}" /></label>
+    <div class="small" data-leave-bank-name="${escapeHtml(t.id)}">${escapeHtml(name)}</div>
+    <label class="field"><span>銀行帳戶</span><input ${acctAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="退押金要匯入的帳號" value="${escapeHtml(acct)}" /></label>
+    <div class="small">${escapeHtml(hint)}</div>`;
 }
 function leaveDepositAmount(t, r) {
   const no = String((r && r.no) || "");
@@ -36745,8 +36846,9 @@ function leaveCalendarBody(t, r) {
     splitPair(t && t.name).length > 1 ? "請攜帶2位個人印章" : "請攜帶個人印章",
     "請繳回磁扣+鑰匙",
     "退電費現金：" + (cash || "(點交查卡)"),
-    depLabel + (dep ? moneyDigits(dep) : "")
-  ].join("\n");
+    depLabel + (dep ? moneyDigits(dep) : ""),
+    (leaveRefundCodeOf(t) || leaveRefundAcctOf(t)) ? ("退款帳戶：" + [leaveRefundCodeOf(t), leaveRefundBankName(leaveRefundCodeOf(t)), leaveRefundAcctOf(t)].filter(Boolean).join(" ")) : ""
+  ].filter(Boolean).join("\n");
 }
 function depositRefundLine(t, r) {
   const dep = leaveDepositAmount(t, r);
@@ -37047,14 +37149,15 @@ function leaveRefundHtml(t, r, timeOnly) {
   const signed = !!(t && t.leaveSign && t.leaveSign.status === "signed");
   const hint = "電費餘額退現金。不確定可以先空白，點交當天由後台依電表填。";
   if (timeOnly) {
-    if (!signed) return depLine + `<div class="small">${hint}簽完退租後也可以自己先填。</div>`;
+    const bank = leaveRefundBankFieldsHtml(t, "tenant");
+    if (!signed) return depLine + bank + `<div class="small">${hint}簽完退租後也可以自己先填。</div>`;
     const val = t.leaveElec != null ? t.leaveElec : "";
     const cash = leaveElecCashLine(t);
-    return depLine + (cash ? `<div class="small">${escapeHtml(cash)}</div>` : "") + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金）</span><input data-leave-elec="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="不確定可留空" value="${escapeHtml(val)}" /></label><div class="small">${hint}</div>`;
+    return depLine + bank + (cash ? `<div class="small">${escapeHtml(cash)}</div>` : "") + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金）</span><input data-leave-elec="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="不確定可留空" value="${escapeHtml(val)}" /></label><div class="small">${hint}</div>`;
   }
   const official = t && t.leaveElecAdmin != null ? t.leaveElecAdmin : "";
   const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
-  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣</span></div>` + depLine + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
+  return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣</span></div>` + depLine + leaveRefundBankFieldsHtml(t, "admin") + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
 }
 function bindLeaveElecInputs(root) {
   const scope = root || document;
@@ -37077,6 +37180,29 @@ function bindLeaveElecInputs(root) {
   scope.querySelectorAll("[data-leave-elec-admin]").forEach(inp => {
     arm(inp, value => saveAdminLeaveElec(inp.dataset.leaveElecAdmin, value));
   });
+  const armBank = inp => {
+    if (!inp || inp.dataset.bound === "1") return;
+    inp.dataset.bound = "1";
+    inp.addEventListener("click", e => e.stopPropagation());
+    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    const id = inp.getAttribute("data-leave-refund-code") || inp.getAttribute("data-leave-refund-code-admin") || inp.getAttribute("data-leave-refund-acct") || inp.getAttribute("data-leave-refund-acct-admin");
+    const paintName = () => {
+      const codeInp = scope.querySelector('[data-leave-refund-code="' + id + '"], [data-leave-refund-code-admin="' + id + '"]');
+      const nameEl = scope.querySelector('[data-leave-bank-name="' + id + '"]');
+      if (nameEl) nameEl.textContent = leaveRefundBankName(codeInp ? codeInp.value.replace(/\D/g, "").slice(0, 3) : "");
+    };
+    inp.addEventListener("input", () => {
+      const max = Number(inp.getAttribute("maxlength")) || 16;
+      const digits = String(inp.value || "").replace(/\D/g, "").slice(0, max);
+      if (inp.value !== digits) inp.value = digits;
+      paintName();
+      clearTimeout(inp._bankTimer);
+      inp._bankTimer = setTimeout(() => commitLeaveRefund(id, false), 500);
+    });
+    inp.addEventListener("change", () => { clearTimeout(inp._bankTimer); commitLeaveRefund(id, !!inp.hasAttribute("data-leave-refund-acct-admin") || !!inp.hasAttribute("data-leave-refund-code-admin")); });
+    inp.addEventListener("blur", () => setTimeout(() => { clearTimeout(inp._bankTimer); commitLeaveRefund(id, false); }, 60));
+  };
+  scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);
   scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(box => {
     if (box.dataset.bound === "1") return;
     box.dataset.bound = "1";
@@ -37175,8 +37301,9 @@ function leaveSignView() {
       <div class="eyebrow">LEASE</div><h1>簽署退租</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。點交日期是你預約的那天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金用當初進來的銀行匯退，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
+      <p class="small" style="margin:0 2px 10px">請核對這份交接確認書。點交日期是你預約的那天。簽名後會送到後台，列印時帶上你的簽名。現場仍要到 7651 蓋章。押金匯到你填的銀行帳戶，電費餘額退現金。簽完可以先填餘額，不確定就留空，點交當天後台再填。${two ? "兩人都有簽名框，只簽一位也可以送出。" : ""}</p>
       ${paper}
+      ${leaveRefundBankFieldsHtml(t, "tenant")}
       <div class="small" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">是否有申請成功租屋補助</div>
       <label class="sign-agree"><input type="checkbox" data-leave-subsidy="yes" ${ui.leaveSubsidy === "yes" ? "checked" : ""} /> 有，我有申請成功</label>
       <label class="sign-agree"><input type="checkbox" data-leave-subsidy="no" ${ui.leaveSubsidy === "no" ? "checked" : ""} /> 無，我沒有申請</label>
@@ -37206,7 +37333,9 @@ function finishLeaveSign(a, b) {
   const r = t && myRoom();
   if (!t) return;
   const look = typeof isTenantLook === "function" && isTenantLook();
+  commitLeaveRefund(t.id, false);
   const subsidy = readLeaveSubsidyPick();
+  if (!leaveRefundOptional() && !leaveRefundReady(t)) { toast("請先填 3 碼銀行代碼和銀行帳戶"); return; }
   if (!look && subsidy !== "yes" && subsidy !== "no") { toast("請勾選是否有申請成功租屋補助"); return; }
   const agree = document.getElementById("sign-agree");
   const c1 = a && a.c;
@@ -37247,7 +37376,7 @@ function finishLeaveSign(a, b) {
     try { pushCloud(); } catch {}
     try { publishPaidCloud(); } catch {}
     try { publishLeaveNow(t); } catch {}
-    pushPhoneNotify("正退申請", ((r && r.no) || "") + " " + (t.name || "") + " 申請正常退租，租屋補助點交再確認", "admin");
+    pushPhoneNotify("正退申請", ((r && r.no) || "") + " " + (t.name || "") + " 申請正常退租" + (leaveRefundReady(t) ? "，退款 " + leaveRefundCodeOf(t) + " " + leaveRefundAcctOf(t) : "，退款帳戶後台再補"), "admin");
     ui.page = "home";
     ui.leaveBook = true;
     toast("已送出。租屋補助可於點交當天由後台勾選。");
@@ -37288,8 +37417,9 @@ function finishLeaveSign(a, b) {
   try { publishLeaveNow(t); } catch {}
   setTimeout(() => { try { publishLeaveNow(t); } catch {} }, 1800);
   try { putLeaveSigFile(t); } catch {}
+  const bankNote = leaveRefundReady(t) ? "，退款 " + leaveRefundCodeOf(t) + " " + leaveRefundAcctOf(t) : "";
   const subNote = subsidy === "yes" ? "，有申請租屋補助" : subsidy === "no" ? "，無申請租屋補助" : "，租屋補助點交再確認";
-  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租" + subNote, "admin");
+  pushPhoneNotify("退租簽名", ((r && r.no) || "") + " " + (t.name || "") + " 已簽署正常退租" + bankNote + subNote, "admin");
   ui.signStrokes = [];
   ui.signStrokes2 = [];
   ui.signing = false;
