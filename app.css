@@ -2478,39 +2478,54 @@ input.bank-oval {
   color: var(--ink);
   box-sizing: border-box;
 }
-.bank-pick {
+.bank-suggest {
   position: fixed;
   z-index: 80;
-  max-height: 280px;
-  overflow: auto;
-  background: var(--card, #fff);
-  color: var(--ink);
-  border-radius: 18px;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, .16);
-  padding: 4px 0;
+  display: block;
+  max-height: min(320px, 46vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #fff;
+  color: #5c6770;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .14);
+  padding: 0;
 }
-.bank-pick button {
+.bank-suggest button {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 16px;
   width: 100%;
+  min-height: 48px;
   margin: 0;
-  padding: 13px 16px;
+  padding: 12px 16px;
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: #fff;
   color: #5c6770;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
   text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
 }
-.bank-pick button + button { border-top: 1px solid var(--line, #eee); }
-.bank-pick button b { min-width: 42px; color: var(--ink); font-size: 16px; }
-.bank-pick button span { font-weight: 650; }
-.bank-pick-empty { padding: 14px 16px; color: var(--muted); font-size: 14px; }
-html[data-theme="void"] .bank-pick { background: #1c1c1c; box-shadow: 0 14px 36px rgba(0, 0, 0, .45); }
-html[data-theme="void"] .bank-pick button,
-html[data-theme="void"] .bank-pick button b { color: #eee; }
+.bank-suggest button + button { border-top: 1px solid #eceae6; }
+.bank-suggest button b {
+  min-width: 44px;
+  color: #4e5962;
+  font-size: 16px;
+  font-weight: 750;
+}
+.bank-suggest button span { font-weight: 650; white-space: nowrap; }
+.bank-suggest .bank-pick-empty { padding: 14px 16px; color: var(--muted); font-size: 14px; }
+html[data-theme="void"] .bank-suggest,
+html[data-theme="void"] .bank-suggest button { background: #1c1c1c; color: #eee; }
+html[data-theme="void"] .bank-suggest button b { color: #fff; }
+html[data-theme="void"] .bank-suggest button + button { border-top-color: #333; }
 #checkout-form-card .field { margin-bottom: 14px; }
 #checkout-form-card .row { margin: 2px 0 10px; }
 textarea { min-height: 92px; resize: vertical; }
