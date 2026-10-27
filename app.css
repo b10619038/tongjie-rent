@@ -2478,6 +2478,26 @@ input.bank-oval {
   color: var(--ink);
   box-sizing: border-box;
 }
+.bank-code-box { position: relative; }
+.bank-oval-wrap { position: relative; display: block; }
+.bank-code-box .bank-oval { padding-right: 108px; }
+.bank-code-name {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3d4a52;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1;
+  pointer-events: none;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-theme="void"] .bank-code-name { color: #eee; }
 .bank-suggest {
   position: static;
   display: block;
@@ -2517,7 +2537,7 @@ input.bank-oval {
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
-  touch-action: pan-y;
+  touch-action: manipulation;
 }
 .bank-suggest button + button { border-top: 1px solid #eceae6; }
 .bank-suggest button b {

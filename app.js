@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-14-22";
-const APP_EDIT_COUNT = 2118;
+const APP_STAMP = "2026-10-27-14-32";
+const APP_EDIT_COUNT = 2119;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1743";
+const FILE_VER = "1744";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36799,33 +36799,32 @@ function leaveRefundAcctOf(t) {
 function leaveRefundBankName(code) {
   return TW_BANK_NAMES[String(code || "")] || "";
 }
-function revealBankField(inp, list) {
+function bankAnchor(inp) {
+  return (inp && inp.closest && (inp.closest(".bank-code-box") || inp.closest("label"))) || inp;
+}
+function revealBankField(inp) {
   const scroller = inp && inp.closest && inp.closest(".tenant-scroll, .admin-scroll");
-  if (!scroller) return;
-  const vv = window.visualViewport;
-  const viewTop = vv ? vv.offsetTop : 0;
-  const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-  const shown = list && !list.hidden ? list : inp;
-  const rect = shown.getBoundingClientRect();
-  const limit = viewBottom - 96;
-  if (rect.bottom > limit) scroller.scrollTop += rect.bottom - limit + 16;
-  const top = inp.getBoundingClientRect().top;
-  if (top < viewTop + 12) scroller.scrollTop -= (viewTop + 12) - top;
+  if (!scroller || !window.visualViewport) return;
+  const rect = inp.getBoundingClientRect();
+  const limit = window.visualViewport.offsetTop + window.visualViewport.height - 220;
+  if (rect.bottom > limit) scroller.scrollTop += rect.bottom - limit + 8;
 }
 function bankPickEl(inp) {
-  if (!inp || !inp.parentNode) return null;
-  let el = inp.nextElementSibling;
+  const anchor = bankAnchor(inp);
+  if (!anchor || !anchor.parentNode) return null;
+  let el = anchor.nextElementSibling;
   if (!el || !el.classList || !el.classList.contains("bank-suggest")) {
     el = document.createElement("div");
     el.className = "bank-suggest";
     el.hidden = true;
-    inp.parentNode.insertBefore(el, inp.nextSibling);
+    anchor.parentNode.insertBefore(el, anchor.nextSibling);
   }
   el._inp = inp;
   if (el.dataset.bound === "1") return el;
   el.dataset.bound = "1";
   const choose = btn => {
-    if (!btn) return;
+    if (!btn || el._busy) return;
+    el._busy = true;
     const code = btn.getAttribute("data-bank-code") || "";
     const input = el._inp;
     if (input) input.value = code;
@@ -36834,33 +36833,16 @@ function bankPickEl(inp) {
     if (nameEl) nameEl.textContent = leaveRefundBankName(code);
     el.hidden = true;
     el._hold = false;
-    ui.bankPickLock = Date.now() + 500;
+    el._picked = Date.now();
     commitLeaveRefund(id, false);
+    setTimeout(() => { el._busy = false; }, 400);
   };
   el.addEventListener("pointerdown", e => {
+    const btn = e.target.closest("[data-bank-code]");
+    if (!btn) return;
+    e.preventDefault();
     e.stopPropagation();
     el._hold = true;
-    el._moved = false;
-    ui.bankPickLock = Date.now() + 900;
-  });
-  el.addEventListener("pointerup", e => {
-    const btn = e.target.closest("[data-bank-code]");
-    if (!btn || el._moved) {
-      setTimeout(() => { el._hold = false; }, 350);
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    choose(btn);
-  });
-  el.addEventListener("pointercancel", () => { el._hold = false; });
-  el.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
-  el.addEventListener("touchmove", e => { el._moved = true; e.stopPropagation(); }, { passive: true });
-  el.addEventListener("click", e => {
-    const btn = e.target.closest("[data-bank-code]");
-    if (!btn || el.hidden) return;
-    e.preventDefault();
-    e.stopPropagation();
     choose(btn);
   });
   if (!bankPickEl.outside) {
@@ -36868,25 +36850,21 @@ function bankPickEl(inp) {
     document.addEventListener("pointerdown", e => {
       document.querySelectorAll(".bank-suggest").forEach(box => {
         if (box.hidden) return;
-        if (box.contains(e.target) || box.previousElementSibling === e.target) return;
+        if (box.contains(e.target)) return;
+        const anchor = box.previousElementSibling;
+        if (anchor && (anchor === e.target || anchor.contains(e.target))) return;
         box.hidden = true;
       });
     }, true);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
-        const input = document.activeElement;
-        const box = input && input.nextElementSibling;
-        if (box && box.classList && box.classList.contains("bank-suggest") && !box.hidden) revealBankField(input, box);
-      });
-    }
   }
   return el;
 }
 function placeBankPick(inp, id) {
   const el = bankPickEl(inp);
   if (!el) return;
+  if (el._picked && Date.now() - el._picked < 500) { el.hidden = true; return; }
   const q = String(inp && inp.value || "").replace(/\D/g, "");
-  if (!q) { el.hidden = true; return; }
+  if (!q || (q.length === 3 && leaveRefundBankName(q))) { el.hidden = true; return; }
   const hits = leaveBankHits(q).slice(0, 24);
   const html = hits.length
     ? hits.map(row => `<button type="button" data-bank-code="${row[0]}"><b>${row[0]}</b><span>${escapeHtml(row[1])}</span></button>`).join("")
@@ -36898,8 +36876,6 @@ function placeBankPick(inp, id) {
   el._id = id;
   el._inp = inp;
   el.hidden = false;
-  requestAnimationFrame(() => revealBankField(inp, el));
-  setTimeout(() => { if (!el.hidden) revealBankField(inp, el); }, 280);
 }
 function leaveRefundReady(t) {
   return leaveRefundCodeOf(t).length === 3 && leaveRefundAcctOf(t).length >= 6;
@@ -36940,8 +36916,7 @@ function leaveRefundBankFieldsHtml(t, who) {
   const hint = admin
     ? "退押金要匯進這個帳戶。租客沒填的話，在這裡補上。"
     : (leaveRefundOptional() ? "開發者代申請可以先留白，後台再補銀行代碼和帳戶。" : "請填本人銀行代碼（3碼）和帳戶，押金會匯到這裡。");
-  return `<label class="field" style="margin-top:8px"><span>銀行代碼</span><input class="bank-oval" ${codeAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3碼，例如 822" value="${escapeHtml(code)}" /></label>
-    <div class="small" data-leave-bank-name="${escapeHtml(t.id)}">${escapeHtml(name)}</div>
+  return `<div class="bank-code-box"><label class="field" style="margin-top:8px"><span>銀行代碼</span><span class="bank-oval-wrap"><input class="bank-oval" ${codeAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3碼，例如 822" value="${escapeHtml(code)}" /><em class="bank-code-name" data-leave-bank-name="${escapeHtml(t.id)}">${escapeHtml(name)}</em></span></label></div>
     <label class="field"><span>銀行帳戶</span><input class="bank-oval" ${acctAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="退押金要匯入的帳號" value="${escapeHtml(acct)}" /></label>
     <div class="small">${escapeHtml(hint)}</div>`;
 }
@@ -37350,14 +37325,19 @@ function bindLeaveElecInputs(root) {
       clearTimeout(inp._bankTimer);
       inp._bankTimer = setTimeout(() => commitLeaveRefund(id, false), 280);
     });
-    inp.addEventListener("focus", () => { if (isCode) placeBankPick(inp, id); });
+    inp.addEventListener("focus", () => {
+      if (!isCode) return;
+      placeBankPick(inp, id);
+      setTimeout(() => revealBankField(inp), 60);
+    });
     inp.addEventListener("change", () => { clearTimeout(inp._bankTimer); commitLeaveRefund(id, false); });
     inp.addEventListener("blur", () => setTimeout(() => {
       clearTimeout(inp._bankTimer);
       commitLeaveRefund(id, false);
-      const box = inp.nextElementSibling;
+      const anchor = bankAnchor(inp);
+      const box = anchor && anchor.nextElementSibling;
       if (box && box.classList.contains("bank-suggest") && !box._hold) box.hidden = true;
-    }, 240));
+    }, 80));
   };
   scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);
   scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(box => {
