@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-19-40";
-const APP_EDIT_COUNT = 2132;
+const APP_STAMP = "2026-10-27-19-50";
+const APP_EDIT_COUNT = 2133;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1757";
+const FILE_VER = "1758";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -37289,12 +37289,12 @@ function leaveDepositFieldHtml(t, r) {
 }
 function leaveSubsidyAdminHtml(t) {
   if (!t) return "";
-  const yes = t.leaveSubsidy === "yes" ? "checked" : "";
-  const no = t.leaveSubsidy === "no" ? "checked" : "";
+  const yes = t.leaveSubsidy === "yes" ? " on" : "";
+  const no = t.leaveSubsidy === "no" ? " on" : "";
   return `<div class="small" style="margin:10px 0 0;font-weight:700;color:var(--ink)">是否有申請租屋補助</div>
     <div class="subsidy-row">
-      <label class="sign-agree subsidy-opt"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes" ${yes} /><span class="subsidy-dot"></span> 有</label>
-      <label class="sign-agree subsidy-opt"><input type="checkbox" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no" ${no} /><span class="subsidy-dot"></span> 無</label>
+      <button type="button" class="subsidy-opt${yes}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes"><span class="subsidy-dot"></span>有</button>
+      <button type="button" class="subsidy-opt${no}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no"><span class="subsidy-dot"></span>無</button>
     </div>`;
 }
 function leaveRefundHtml(t, r, timeOnly) {
@@ -37396,26 +37396,20 @@ function bindLeaveElecInputs(root) {
     }, 80));
   };
   scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);
-  scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(box => {
-    if (box.dataset.bound === "1") return;
-    box.dataset.bound = "1";
-    const lab = box.closest("label");
-    const pick = () => {
-      const id = box.getAttribute("data-leave-subsidy-admin");
-      const val = box.getAttribute("data-subsidy");
-      if (box.checked) {
-        scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(o => {
-          if (o !== box && o.getAttribute("data-leave-subsidy-admin") === id) o.checked = false;
-        });
-        saveAdminLeaveSubsidy(id, val);
-      } else saveAdminLeaveSubsidy(id, "");
-    };
-    box.addEventListener("change", pick);
-    if (lab) lab.addEventListener("click", e => {
+  scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(btn => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", e => {
       e.preventDefault();
       e.stopPropagation();
-      box.checked = !box.checked;
-      pick();
+      const id = btn.getAttribute("data-leave-subsidy-admin");
+      const val = btn.getAttribute("data-subsidy");
+      const was = btn.classList.contains("on");
+      scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(o => {
+        if (o.getAttribute("data-leave-subsidy-admin") === id) o.classList.remove("on");
+      });
+      if (!was) btn.classList.add("on");
+      saveAdminLeaveSubsidy(id, was ? "" : val);
     });
   });
 }
@@ -37504,8 +37498,10 @@ function leaveSignView() {
       ${paper}
       ${leaveRefundBankFieldsHtml(t, "tenant")}
       <div class="small" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">是否有申請成功租屋補助</div>
-      <label class="sign-agree subsidy-opt"><input type="checkbox" data-leave-subsidy="yes" ${ui.leaveSubsidy === "yes" ? "checked" : ""} /><span class="subsidy-dot"></span> 有，我有申請成功</label>
-      <label class="sign-agree subsidy-opt"><input type="checkbox" data-leave-subsidy="no" ${ui.leaveSubsidy === "no" ? "checked" : ""} /><span class="subsidy-dot"></span> 無，我沒有申請</label>
+      <div class="subsidy-row">
+        <button type="button" class="subsidy-opt${ui.leaveSubsidy === "yes" ? " on" : ""}" data-leave-subsidy="yes"><span class="subsidy-dot"></span>有，我有申請成功</button>
+        <button type="button" class="subsidy-opt${ui.leaveSubsidy === "no" ? " on" : ""}" data-leave-subsidy="no"><span class="subsidy-dot"></span>無，我沒有申請</button>
+      </div>
       ${look ? `<p class="small" style="margin:0 2px 8px">不確定可以先不勾。點交當天由後台勾有或無。</p>` : ""}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
       ${look ? `<p class="small" style="margin:8px 2px">開發者代操可以不簽名直接送出。租客自己的帳號仍然要簽名。</p>` : ""}
@@ -37522,7 +37518,7 @@ function leaveSignView() {
 function readLeaveSubsidyPick() {
   let picked = "";
   document.querySelectorAll("[data-leave-subsidy]").forEach(box => {
-    if (box.checked) picked = box.getAttribute("data-leave-subsidy") || "";
+    if (box.classList.contains("on")) picked = box.getAttribute("data-leave-subsidy") || "";
   });
   if (picked !== "yes" && picked !== "no") picked = ui.leaveSubsidy === "yes" || ui.leaveSubsidy === "no" ? ui.leaveSubsidy : "";
   return picked;
@@ -40530,20 +40526,14 @@ function bindSignAgree() {
     };
   }
   document.querySelectorAll("[data-leave-subsidy]").forEach(opt => {
-    const lab = opt.closest("label");
-    const pick = () => {
-      const val = opt.getAttribute("data-leave-subsidy") || "";
-      if (opt.checked) {
-        ui.leaveSubsidy = val;
-        document.querySelectorAll("[data-leave-subsidy]").forEach(o => { if (o !== opt) o.checked = false; });
-      } else if (ui.leaveSubsidy === val) ui.leaveSubsidy = "";
-    };
-    opt.onchange = pick;
-    if (lab) lab.onclick = e => {
+    opt.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      opt.checked = !opt.checked;
-      pick();
+      const val = opt.getAttribute("data-leave-subsidy") || "";
+      const was = opt.classList.contains("on");
+      document.querySelectorAll("[data-leave-subsidy]").forEach(o => o.classList.remove("on"));
+      if (!was) opt.classList.add("on");
+      ui.leaveSubsidy = was ? "" : val;
     };
   });
 }

@@ -2219,6 +2219,7 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
 .subsidy-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 18px;
   margin: 4px 2px 8px;
 }
@@ -2235,13 +2236,19 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   -webkit-appearance: checkbox;
   appearance: checkbox;
 }
-.subsidy-opt { align-items: center; position: relative; }
-.subsidy-opt input {
-  position: absolute;
-  opacity: 0;
-  width: 22px;
-  height: 22px;
+.subsidy-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.4;
+  cursor: pointer;
 }
 .subsidy-dot {
   width: 22px;
@@ -2254,7 +2261,7 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   flex: none;
   display: inline-block;
 }
-.subsidy-opt input:checked + .subsidy-dot {
+.subsidy-opt.on .subsidy-dot {
   border-color: #3d4a52;
   background: radial-gradient(circle at center, #3d4a52 0 5px, #fff 6px);
 }
