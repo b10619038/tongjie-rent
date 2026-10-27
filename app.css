@@ -2466,6 +2466,51 @@ textarea, input[type="text"], input[type="password"], input[type="email"], input
   line-height: 1.35;
 }
 html[data-theme="void"] .leave-dep-amt { color: #f5f5f5; }
+input.bank-oval {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 12px 18px;
+  min-height: 48px;
+  font: inherit;
+  font-size: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+.bank-pick {
+  position: fixed;
+  z-index: 80;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--card, #fff);
+  color: var(--ink);
+  border-radius: 18px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .16);
+  padding: 4px 0;
+}
+.bank-pick button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #5c6770;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.bank-pick button + button { border-top: 1px solid var(--line, #eee); }
+.bank-pick button b { min-width: 42px; color: var(--ink); font-size: 16px; }
+.bank-pick button span { font-weight: 650; }
+.bank-pick-empty { padding: 14px 16px; color: var(--muted); font-size: 14px; }
+html[data-theme="void"] .bank-pick { background: #1c1c1c; box-shadow: 0 14px 36px rgba(0, 0, 0, .45); }
+html[data-theme="void"] .bank-pick button,
+html[data-theme="void"] .bank-pick button b { color: #eee; }
 #checkout-form-card .field { margin-bottom: 14px; }
 #checkout-form-card .row { margin: 2px 0 10px; }
 textarea { min-height: 92px; resize: vertical; }
