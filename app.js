@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-14-32";
-const APP_EDIT_COUNT = 2119;
+const APP_STAMP = "2026-10-27-16-30";
+const APP_EDIT_COUNT = 2120;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1744";
+const FILE_VER = "1745";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36832,6 +36832,7 @@ function bankPickEl(inp) {
     const nameEl = id && document.querySelector('[data-leave-bank-name="' + id + '"]');
     if (nameEl) nameEl.textContent = leaveRefundBankName(code);
     el.hidden = true;
+    el.style.display = "none";
     el._hold = false;
     el._picked = Date.now();
     commitLeaveRefund(id, false);
@@ -36845,6 +36846,13 @@ function bankPickEl(inp) {
     el._hold = true;
     choose(btn);
   });
+  el.addEventListener("click", e => {
+    const btn = e.target.closest("[data-bank-code]");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    choose(btn);
+  });
   if (!bankPickEl.outside) {
     bankPickEl.outside = true;
     document.addEventListener("pointerdown", e => {
@@ -36854,6 +36862,7 @@ function bankPickEl(inp) {
         const anchor = box.previousElementSibling;
         if (anchor && (anchor === e.target || anchor.contains(e.target))) return;
         box.hidden = true;
+        box.style.display = "none";
       });
     }, true);
   }
@@ -36862,9 +36871,17 @@ function bankPickEl(inp) {
 function placeBankPick(inp, id) {
   const el = bankPickEl(inp);
   if (!el) return;
-  if (el._picked && Date.now() - el._picked < 500) { el.hidden = true; return; }
+  if (el._picked && Date.now() - el._picked < 500) {
+    el.hidden = true;
+    el.style.display = "none";
+    return;
+  }
   const q = String(inp && inp.value || "").replace(/\D/g, "");
-  if (!q || (q.length === 3 && leaveRefundBankName(q))) { el.hidden = true; return; }
+  if (!q || (q.length === 3 && leaveRefundBankName(q))) {
+    el.hidden = true;
+    el.style.display = "none";
+    return;
+  }
   const hits = leaveBankHits(q).slice(0, 24);
   const html = hits.length
     ? hits.map(row => `<button type="button" data-bank-code="${row[0]}"><b>${row[0]}</b><span>${escapeHtml(row[1])}</span></button>`).join("")
@@ -36876,6 +36893,7 @@ function placeBankPick(inp, id) {
   el._id = id;
   el._inp = inp;
   el.hidden = false;
+  el.style.display = "";
 }
 function leaveRefundReady(t) {
   return leaveRefundCodeOf(t).length === 3 && leaveRefundAcctOf(t).length >= 6;
@@ -37336,7 +37354,10 @@ function bindLeaveElecInputs(root) {
       commitLeaveRefund(id, false);
       const anchor = bankAnchor(inp);
       const box = anchor && anchor.nextElementSibling;
-      if (box && box.classList.contains("bank-suggest") && !box._hold) box.hidden = true;
+      if (box && box.classList.contains("bank-suggest") && !box._hold) {
+        box.hidden = true;
+        box.style.display = "none";
+      }
     }, 80));
   };
   scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);

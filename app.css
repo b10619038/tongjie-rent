@@ -2479,25 +2479,37 @@ input.bank-oval {
   box-sizing: border-box;
 }
 .bank-code-box { position: relative; }
-.bank-oval-wrap { position: relative; display: block; }
-.bank-code-box .bank-oval { padding-right: 108px; }
+.bank-oval-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  min-height: 48px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+.bank-oval-wrap .bank-oval {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  flex: 1;
+  min-width: 72px;
+  width: auto;
+  padding-right: 8px;
+}
 .bank-code-name {
-  position: absolute;
-  right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: none;
   color: #3d4a52;
   font-size: 16px;
   font-style: normal;
   font-weight: 750;
   line-height: 1;
   pointer-events: none;
-  max-width: 42%;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 html[data-theme="void"] .bank-code-name { color: #eee; }
+.bank-suggest[hidden] { display: none !important; }
 .bank-suggest {
   position: static;
   display: block;
