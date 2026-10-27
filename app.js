@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-19-54";
-const APP_EDIT_COUNT = 2134;
+const APP_STAMP = "2026-10-27-20-02";
+const APP_EDIT_COUNT = 2135;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1759";
+const FILE_VER = "1760";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -37314,6 +37314,28 @@ function leaveRefundHtml(t, r, timeOnly) {
   const guess = t && t.leaveElec != null && String(t.leaveElec) !== "" ? "租客填了 " + money(Number(t.leaveElec)) + "，只供參考。" : "租客還沒填。";
   return leaveSubsidyAdminHtml(t) + `<div class="field" style="margin:8px 0 0"><span>回收 鑰匙+磁扣</span></div>` + depLine + leaveRefundBankFieldsHtml(t, "admin") + `<label class="field" style="margin-top:8px"><span>電費餘額（退現金，後台填）</span><input data-leave-elec-admin="${escapeHtml(t.id)}" type="number" inputmode="numeric" min="0" step="1" placeholder="點交後填" value="${escapeHtml(official)}" /></label><div class="small">${escapeHtml(guess)}填了就從現金保險箱支出。</div>`;
 }
+function armSubsidyDots() {
+  if (window.__subsidyDots) return;
+  window.__subsidyDots = true;
+  document.addEventListener("click", e => {
+    const dot = e.target && e.target.closest && e.target.closest("button.subsidy-dot");
+    if (!dot) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const row = dot.closest(".subsidy-row") || document;
+    const was = dot.classList.contains("on");
+    row.querySelectorAll("button.subsidy-dot").forEach(o => o.classList.remove("on"));
+    if (!was) dot.classList.add("on");
+    const adminId = dot.getAttribute("data-leave-subsidy-admin");
+    if (adminId) {
+      saveAdminLeaveSubsidy(adminId, was ? "" : (dot.getAttribute("data-subsidy") || ""));
+      return;
+    }
+    const val = dot.getAttribute("data-leave-subsidy") || "";
+    if (val) ui.leaveSubsidy = was ? "" : val;
+  }, true);
+}
+armSubsidyDots();
 function bindLeaveElecInputs(root) {
   const scope = root || document;
   const arm = (inp, save) => {
@@ -37398,22 +37420,6 @@ function bindLeaveElecInputs(root) {
     }, 80));
   };
   scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);
-  scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(btn => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
-    btn.addEventListener("click", e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const id = btn.getAttribute("data-leave-subsidy-admin");
-      const val = btn.getAttribute("data-subsidy");
-      const was = btn.classList.contains("on");
-      scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(o => {
-        if (o.getAttribute("data-leave-subsidy-admin") === id) o.classList.remove("on");
-      });
-      if (!was) btn.classList.add("on");
-      saveAdminLeaveSubsidy(id, was ? "" : val);
-    });
-  });
 }
 function normalLeaveCardHtml(t, r, opts) {
   if (!t) return "";
@@ -40527,17 +40533,6 @@ function bindSignAgree() {
       sync();
     };
   }
-  document.querySelectorAll("[data-leave-subsidy]").forEach(opt => {
-    opt.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const val = opt.getAttribute("data-leave-subsidy") || "";
-      const was = opt.classList.contains("on");
-      document.querySelectorAll("[data-leave-subsidy]").forEach(o => o.classList.remove("on"));
-      if (!was) opt.classList.add("on");
-      ui.leaveSubsidy = was ? "" : val;
-    };
-  });
 }
 function bindSignPad() {
   bindFormatField(document.getElementById("sign-emname"), "name");
