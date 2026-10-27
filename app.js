@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-23-20-42";
-const APP_EDIT_COUNT = 2109;
+const APP_STAMP = "2026-10-27-10-05";
+const APP_EDIT_COUNT = 2110;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1734";
+const FILE_VER = "1735";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["換頁不再被背景整本存檔卡住"] },
+  { ver: APP_VERSION, items: ["調色盤的喻涵風格改名奶油風格"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -1349,7 +1349,7 @@ const THEMES = [
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
   { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" },
-  { id: "yuhan", name: "喻涵風格", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fbf9f4", line: "#e4ddd2", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" }
+  { id: "yuhan", name: "奶油風格", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fbf9f4", line: "#e4ddd2", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" }
 ];
 function canUseYuhanTheme() {
   try {
@@ -1361,7 +1361,6 @@ function canUseYuhanTheme() {
   } catch { return false; }
 }
 function themeLabel(t) {
-  if (t && t.id === "yuhan" && ui && ui.role === "tenant") return "奶油風格";
   return t ? t.name : "";
 }
 function visibleThemes() {
