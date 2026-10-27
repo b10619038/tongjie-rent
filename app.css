@@ -1785,7 +1785,7 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   overflow: hidden;
   white-space: nowrap;
   text-align: center;
-  transition: max-width .34s cubic-bezier(.22,1,.36,1), height .34s cubic-bezier(.22,1,.36,1), padding .34s cubic-bezier(.22,1,.36,1), color .16s ease;
+  transition: max-width .16s cubic-bezier(.22,1,.36,1), height .16s cubic-bezier(.22,1,.36,1), padding .16s cubic-bezier(.22,1,.36,1), color .05s linear;
 }
 #tenant-vacant-btn.on,
 .tenant-search .tenant-chip.on {
