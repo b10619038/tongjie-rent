@@ -2241,27 +2241,28 @@ html[data-theme="void"] .esign-cta { background: #2a2a2a; color: #f5f5f5; }
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: inherit;
-  font: inherit;
   font-size: 15px;
   line-height: 1.4;
-  cursor: pointer;
 }
-.subsidy-dot {
+.subsidy-opt > span { pointer-events: none; }
+button.subsidy-dot {
   width: 22px;
   height: 22px;
   min-width: 22px;
+  margin: 0;
+  padding: 0;
   border: 1.5px solid #c8c2b8;
   border-radius: 50%;
   background: #fff;
   box-sizing: border-box;
   flex: none;
   display: inline-block;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.subsidy-opt.on .subsidy-dot {
+button.subsidy-dot.on {
   border-color: #3d4a52;
   background: radial-gradient(circle at center, #3d4a52 0 5px, #fff 6px);
 }

@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-19-50";
-const APP_EDIT_COUNT = 2133;
+const APP_STAMP = "2026-10-27-19-54";
+const APP_EDIT_COUNT = 2134;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1758";
+const FILE_VER = "1759";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12301,14 +12301,15 @@ function pickNewerEntity(a, b, keys) {
       out.leaveRefundAccount = String(pick.leaveRefundAccount || "").replace(/\D/g, "").slice(0, 16);
       if (pick.leaveRefundAt) out.leaveRefundAt = pick.leaveRefundAt;
     }
+    const aAt = Number(a.leaveSubsidyAt) || 0;
+    const bAt = Number(b.leaveSubsidyAt) || 0;
     const aSub = a.leaveSubsidy === "yes" || a.leaveSubsidy === "no";
     const bSub = b.leaveSubsidy === "yes" || b.leaveSubsidy === "no";
-    if (aSub || bSub) {
-      const aAt = Number(a.leaveSubsidyAt) || (aSub ? Number(a.editedAt) || 0 : 0);
-      const bAt = Number(b.leaveSubsidyAt) || (bSub ? Number(b.editedAt) || 0 : 0);
-      const pick = aSub && bSub ? (aAt >= bAt ? a : b) : (aSub ? a : b);
-      out.leaveSubsidy = pick.leaveSubsidy;
-      if (pick.leaveSubsidyAt) out.leaveSubsidyAt = pick.leaveSubsidyAt;
+    if (aAt || bAt || aSub || bSub) {
+      const chosen = (aAt || bAt) ? (aAt >= bAt ? a : b) : (aSub ? a : b);
+      const picked = chosen && (chosen.leaveSubsidy === "yes" || chosen.leaveSubsidy === "no") ? chosen.leaveSubsidy : "";
+      out.leaveSubsidy = picked;
+      if (Number(chosen && chosen.leaveSubsidyAt)) out.leaveSubsidyAt = Number(chosen.leaveSubsidyAt);
     }
     const aAp = Number(a.leaveAppointEditedAt) || 0;
     const bAp = Number(b.leaveAppointEditedAt) || 0;
@@ -36712,13 +36713,14 @@ function applyLeaveCloudFields(t, src) {
   }
   if (takeLeaveAmt(t, "leaveElec", "leaveElecAt", src.leaveElec, src.leaveElecAt)) changed = true;
   if (takeLeaveAmt(t, "leaveElecAdmin", "leaveElecAdminAt", src.leaveElecAdmin, src.leaveElecAdminAt)) changed = true;
-  if (src.leaveSubsidy === "yes" || src.leaveSubsidy === "no") {
-    const srcAt = Number(src.leaveSubsidyAt) || Number(src.editedAt) || 0;
+  if (src.leaveSubsidyAt || src.leaveSubsidy === "yes" || src.leaveSubsidy === "no") {
+    const srcAt = Number(src.leaveSubsidyAt) || 0;
     const curAt = Number(t.leaveSubsidyAt) || 0;
-    if (!curAt || srcAt >= curAt) {
-      if (t.leaveSubsidy !== src.leaveSubsidy) changed = true;
-      t.leaveSubsidy = src.leaveSubsidy;
-      t.leaveSubsidyAt = srcAt || Date.now();
+    const next = src.leaveSubsidy === "yes" || src.leaveSubsidy === "no" ? src.leaveSubsidy : "";
+    if ((srcAt && srcAt >= curAt) || (!srcAt && !curAt && next)) {
+      if (t.leaveSubsidy !== next) changed = true;
+      t.leaveSubsidy = next;
+      if (srcAt) t.leaveSubsidyAt = srcAt;
     }
   }
   if (src.leaveRefundAt || src.leaveRefundCode || src.leaveRefundAccount) {
@@ -37113,7 +37115,7 @@ function saveAdminLeaveSubsidy(id, value) {
   const next = value === "yes" || value === "no" ? value : "";
   if (String(t.leaveSubsidy || "") === next) return;
   t.leaveSubsidy = next;
-  t.leaveSubsidyAt = next ? Date.now() : 0;
+  t.leaveSubsidyAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
   save();
@@ -37293,8 +37295,8 @@ function leaveSubsidyAdminHtml(t) {
   const no = t.leaveSubsidy === "no" ? " on" : "";
   return `<div class="small" style="margin:10px 0 0;font-weight:700;color:var(--ink)">是否有申請租屋補助</div>
     <div class="subsidy-row">
-      <button type="button" class="subsidy-opt${yes}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes"><span class="subsidy-dot"></span>有</button>
-      <button type="button" class="subsidy-opt${no}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no"><span class="subsidy-dot"></span>無</button>
+      <span class="subsidy-opt"><button type="button" class="subsidy-dot${yes}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="yes" aria-label="有"></button><span>有</span></span>
+      <span class="subsidy-opt"><button type="button" class="subsidy-dot${no}" data-leave-subsidy-admin="${escapeHtml(t.id)}" data-subsidy="no" aria-label="無"></button><span>無</span></span>
     </div>`;
 }
 function leaveRefundHtml(t, r, timeOnly) {
@@ -37499,8 +37501,8 @@ function leaveSignView() {
       ${leaveRefundBankFieldsHtml(t, "tenant")}
       <div class="small" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">是否有申請成功租屋補助</div>
       <div class="subsidy-row">
-        <button type="button" class="subsidy-opt${ui.leaveSubsidy === "yes" ? " on" : ""}" data-leave-subsidy="yes"><span class="subsidy-dot"></span>有，我有申請成功</button>
-        <button type="button" class="subsidy-opt${ui.leaveSubsidy === "no" ? " on" : ""}" data-leave-subsidy="no"><span class="subsidy-dot"></span>無，我沒有申請</button>
+        <span class="subsidy-opt"><button type="button" class="subsidy-dot${ui.leaveSubsidy === "yes" ? " on" : ""}" data-leave-subsidy="yes" aria-label="有"></button><span>有，我有申請成功</span></span>
+        <span class="subsidy-opt"><button type="button" class="subsidy-dot${ui.leaveSubsidy === "no" ? " on" : ""}" data-leave-subsidy="no" aria-label="無"></button><span>無，我沒有申請</span></span>
       </div>
       ${look ? `<p class="small" style="margin:0 2px 8px">不確定可以先不勾。點交當天由後台勾有或無。</p>` : ""}
       <label class="sign-agree" for="sign-agree"><input id="sign-agree" type="checkbox" ${ui.signAgree ? "checked" : ""} /> 我已閱讀交接確認書，願以電子簽名確認正常退租。</label>
