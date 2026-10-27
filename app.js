@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-16-58";
-const APP_EDIT_COUNT = 2128;
+const APP_STAMP = "2026-10-27-17-12";
+const APP_EDIT_COUNT = 2129;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1753";
+const FILE_VER = "1754";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -37344,14 +37344,18 @@ function bindLeaveElecInputs(root) {
     const id = inp.getAttribute("data-leave-refund-code") || inp.getAttribute("data-leave-refund-code-admin") || inp.getAttribute("data-leave-refund-acct") || inp.getAttribute("data-leave-refund-acct-admin");
     const isCode = inp.hasAttribute("data-leave-refund-code") || inp.hasAttribute("data-leave-refund-code-admin");
     const paintName = () => {
-      const codeInp = scope.querySelector('[data-leave-refund-code="' + id + '"], [data-leave-refund-code-admin="' + id + '"]');
-      const nameEl = scope.querySelector('[data-leave-bank-name="' + id + '"]');
-      const code = codeInp ? codeInp.value.replace(/\D/g, "").slice(0, 3) : "";
-      if (nameEl) nameEl.textContent = leaveRefundBankName(code);
-      if (codeInp) {
+      const nodes = isCode
+        ? [inp]
+        : Array.from(scope.querySelectorAll('[data-leave-refund-code="' + id + '"], [data-leave-refund-code-admin="' + id + '"]'));
+      nodes.forEach(codeInp => {
+        if (!codeInp) return;
+        const code = String(codeInp.value || "").replace(/\D/g, "").slice(0, 3);
+        const box = codeInp.closest(".bank-oval-wrap");
+        const nameEl = box && box.querySelector("[data-leave-bank-name]");
+        if (nameEl) nameEl.textContent = code.length === 3 ? (leaveRefundBankName(code) || "") : "";
         codeInp.classList.toggle("bank-code-hug", code.length > 0);
         codeInp.style.width = "";
-      }
+      });
     };
     paintName();
     inp.addEventListener("input", () => {
