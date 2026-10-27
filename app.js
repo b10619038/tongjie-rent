@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-13-42";
-const APP_EDIT_COUNT = 2113;
+const APP_STAMP = "2026-10-27-13-50";
+const APP_EDIT_COUNT = 2114;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1738";
+const FILE_VER = "1739";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["正常退租要填退款銀行代碼和帳戶"] },
+  { ver: APP_VERSION, items: ["收回 7631 蔡文銘的正退申請"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -12243,7 +12243,7 @@ function pickNewerEntity(a, b, keys) {
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
   if (keys && keys.indexOf("paid") >= 0) mergePaidFields(out, a, b);
   if (keys && keys.indexOf("leaveApplied") >= 0) {
-    const resetAtEarly = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0);
+    const resetAtEarly = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0, leaveForceResetAt(a && a.id), leaveForceResetAt(b && b.id));
     const signed = x => !!(x && x.leaveSign && x.leaveSign.status === "signed");
     const on = x => {
       if (!x || x.leaveDone) return false;
@@ -12318,7 +12318,7 @@ function pickNewerEntity(a, b, keys) {
         out.leaveTimeSet = true;
       }
     }
-    const resetAt = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0);
+    const resetAt = Math.max(Number(a.leaveResetAt) || 0, Number(b.leaveResetAt) || 0, leaveForceResetAt(a && a.id), leaveForceResetAt(b && b.id));
     if (resetAt) {
       out.leaveResetAt = resetAt;
       if (leaveDraftTs(out) < resetAt) {
@@ -12749,7 +12749,7 @@ function ingestLiveCloud(raw) {
         const t = (state.tenants || []).find(x => x && x.id === src.id);
         if (!t) return;
         if (applyLeaveCloudFields(t, src)) changed = true;
-        const resetNow = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+        const resetNow = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
         const srcTs = Math.max(Number(src.leaveAppliedAt) || 0, Number(src.leaveSign && src.leaveSign.ts) || 0, Number(src.editedAt) || 0);
         const srcStale = resetNow && srcTs < resetNow;
         if (src.leaveSigned && !srcStale) {
@@ -14977,6 +14977,17 @@ async function pushCloud() {
     try { applyRenewal6823(payload); } catch {}
     try { applyRenewedPayBanks(payload); } catch {}
     try { apply7241CashAunt(payload); } catch {}
+    try {
+      (payload.tenants || []).forEach(t => { try { clearStaleLeave(t); } catch {} });
+      if (!payload.leaveWithdrawn || typeof payload.leaveWithdrawn !== "object") payload.leaveWithdrawn = {};
+      Object.keys(payload.leaveWithdrawn).forEach(id => {
+        payload.leaveWithdrawn[id] = Math.max(Number(payload.leaveWithdrawn[id]) || 0, leaveForceResetAt(id));
+      });
+      (payload.tenants || []).forEach(t => {
+        const floor = leaveForceResetAt(t && t.id);
+        if (floor) payload.leaveWithdrawn[t.id] = Math.max(Number(payload.leaveWithdrawn[t.id]) || 0, floor);
+      });
+    } catch {}
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
@@ -36229,10 +36240,21 @@ function mergeLeaveWithdrawn(a, b) {
   });
   return out;
 }
+function leaveForceResetAt(id) {
+  if (id === "t27") return 1793080200000;
+  return 0;
+}
 function clearStaleLeave(t) {
   if (!t) return false;
-  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
   if (!reset || leaveDraftTs(t) >= reset) return false;
+  const dirty = !!(t.leaveApplied || t.leaveTimeSet || t.leaveAppointAt || (t.leaveSign && (t.leaveSign.status || t.leaveSign.sig || t.leaveSign.sig2)) || (t.leaveElec != null && String(t.leaveElec) !== "") || (t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "") || t.leaveSubsidy || t.leaveRefundCode || t.leaveRefundAccount);
+  if (Number(t.leaveResetAt) !== reset) t.leaveResetAt = reset;
+  if (leaveForceResetAt(t.id)) {
+    const map = leaveWithdrawMap();
+    if (Number(map[t.id]) < reset) map[t.id] = reset;
+  }
+  if (!dirty) return false;
   t.leaveApplied = false;
   t.leaveSign = null;
   t.leaveSignCloud = "";
@@ -36255,6 +36277,8 @@ function clearStaleLeave(t) {
 }
 function tenantLeaveApplied(t) {
   if (!t || t.leaveDone || t.former) return false;
+  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
+  if (reset && leaveDraftTs(t) < reset) return false;
   if (t.leaveApplied) return true;
   return !!(t.leaveSign && t.leaveSign.status === "signed");
 }
@@ -36640,7 +36664,7 @@ function applyLeaveCloudFields(t, src) {
   if (src.leaveAppointAt) {
     const srcAt = Number(src.leaveAppointEditedAt) || 0;
     const curAt = Number(t.leaveAppointEditedAt) || 0;
-    const resetNow = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+    const resetNow = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
     const srcWins = srcAt >= curAt && (!resetNow || srcAt >= resetNow);
     const nextAt = String(src.leaveAppointAt).replace(" ", "T").slice(0, 16);
     if (srcWins && String(t.leaveAppointAt || "").replace(" ", "T").slice(0, 16) !== nextAt) {
@@ -36651,7 +36675,7 @@ function applyLeaveCloudFields(t, src) {
     }
   }
   if (clearStaleLeave(t)) changed = true;
-  const resetAt = Number(t.leaveResetAt) || 0;
+  const resetAt = Math.max(Number(t.leaveResetAt) || 0, leaveForceResetAt(t.id));
   const srcDraft = Math.max(Number(src.leaveAppliedAt) || 0, Number(src.leaveSign && src.leaveSign.ts) || 0, Number(src.leaveAppointEditedAt) || 0);
   if (resetAt && srcDraft < resetAt) return changed;
   put("renewChoice", src.renewChoice || "");
@@ -37022,7 +37046,7 @@ function rememberLeaveInk(t) {
   state.leaveInk[t.id] = { sig: sig || prev.sig || "", sig2: sig2 || prev.sig2 || "", at: Date.now() };
 }
 function applyLeaveCashOnto(t) {
-  const reset = Math.max(Number(t && t.leaveResetAt) || 0, Number(t && leaveWithdrawMap()[t.id]) || 0);
+  const reset = Math.max(Number(t && t.leaveResetAt) || 0, Number(t && leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t && t.id));
   const row = t && state.leaveCash && state.leaveCash[t.id];
   if (row && reset && Number(row.at || 0) <= reset) {
     delete state.leaveCash[t.id];
@@ -37047,7 +37071,7 @@ function applyLeaveCashOnto(t) {
 function applyLeaveInk(t) {
   const ink = t && state.leaveInk && state.leaveInk[t.id];
   if (!ink || !(ink.sig || ink.sig2)) return false;
-  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0);
+  const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
   const inkAt = Number(ink.at) || 0;
   if (reset && (!inkAt || inkAt <= reset)) {
     delete state.leaveInk[t.id];
@@ -37060,11 +37084,19 @@ function applyLeaveInk(t) {
   return changed;
 }
 function applyLeaveExtras() {
+  let cleared = false;
   (state.tenants || []).forEach(t => {
-    try { clearStaleLeave(t); } catch {}
+    try { if (clearStaleLeave(t)) cleared = true; } catch {}
     try { applyLeaveCashOnto(t); } catch {}
     try { applyLeaveInk(t); } catch {}
   });
+  if (cleared && !applyLeaveExtras.pushWait) {
+    try { cloudDirty = true; } catch {}
+    applyLeaveExtras.pushWait = setTimeout(() => {
+      applyLeaveExtras.pushWait = 0;
+      try { pushCloud(); } catch {}
+    }, 700);
+  }
 }
 function leaveSigFromCanvas(c) {
   if (!c) return "";
