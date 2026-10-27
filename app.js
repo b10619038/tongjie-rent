@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-10-05";
-const APP_EDIT_COUNT = 2110;
+const APP_STAMP = "2026-10-27-10-12";
+const APP_EDIT_COUNT = 2111;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1735";
+const FILE_VER = "1736";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -524,7 +524,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["調色盤的喻涵風格改名奶油風格"] },
+  { ver: APP_VERSION, items: ["連續點下方選單不再越點越慢"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -13840,6 +13840,7 @@ async function pullCloud() {
   try {
     const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
     if (!res.ok) { ui.cloudOk = false; return false; }
+    if (ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 1600) return false;
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
@@ -14788,6 +14789,11 @@ let pushBusy = false;
 let pushAgain = false;
 function markCloudDirty() { cloudDirty = true; }
 async function pushCloud() {
+  if (!pushBusy && ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 2500 && (cloudDirty || pushAgain)) {
+    clearTimeout(pushCloud.navWait);
+    pushCloud.navWait = setTimeout(() => { try { pushCloud(); } catch {} }, 2600);
+    return;
+  }
   if (!cloudDirty && !pushAgain) return;
   if (pushBusy) { pushAgain = true; return; }
   pushBusy = true;
@@ -16757,16 +16763,7 @@ function audit(action, detail) {
       address: auditAddress()
     });
     if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
-    if (action === "瀏覽") {
-      const later = window.requestIdleCallback || (fn => setTimeout(fn, 500));
-      clearTimeout(audit.browseWait);
-      if (audit.browseIdle && window.cancelIdleCallback) { try { cancelIdleCallback(audit.browseIdle); } catch {} }
-      audit.browseIdle = 0;
-      audit.browseWait = 0;
-      const run = () => { audit.browseIdle = 0; audit.browseWait = 0; try { save(); } catch {} };
-      if (window.requestIdleCallback) audit.browseIdle = requestIdleCallback(run, { timeout: 1200 });
-      else audit.browseWait = setTimeout(run, 500);
-    } else save();
+    if (action !== "瀏覽") save();
   } catch {}
 }
 function maybeAuditBrowse() {
@@ -28233,36 +28230,77 @@ function paintApp() {
         t.style.transform = "";
       });
       bindTabPill();
-      const html = adminBody();
-      const box = sc.querySelector(":scope > .admin-static");
-      let paint = "";
-      if (!pageChanged) {
-        let paintKey = 0;
-        const step = Math.max(1, Math.floor(html.length / 48));
-        for (let i = 0; i < html.length; i += step) paintKey = (paintKey * 33 + html.charCodeAt(i)) | 0;
-        paint = html.length + ":" + paintKey;
+      const pageId = ui.page === "home" || !ui.page ? "dash" : ui.page;
+      const viewKey = adminPaneKey();
+      const sitting = sc.querySelector(":scope > .admin-static");
+      if (sitting && !sitting.dataset.page) {
+        const prev = lastRenderPage === "home" || !lastRenderPage ? "dash" : lastRenderPage;
+        sitting.dataset.page = prev;
+        if (prev !== pageId) sitting.dataset.view = "";
       }
-      const samePaint = !pageChanged && box && box.dataset.paint === paint;
-      if (!samePaint) {
-        sc.innerHTML = `<div class="admin-static" data-paint="${paint}">${html}</div>`;
-        safeBind(() => {
-          bindAdmin();
-          bindInstallSheet();
-          bindNotifyGuide();
-          bindUpdateBar();
-          bindThemePicker();
-        });
-        restoreComposeDraft();
+      if (sitting && sitting.dataset.page && sitting.dataset.page !== pageId) {
+        sitting.dataset.scroll = String(sc.scrollTop || 0);
+        parkAdminPane(sitting);
       }
-      if (!samePaint && ui.adminJump) {
+      let slot = sc.querySelector(':scope > .admin-static');
+      if (!slot || slot.dataset.page !== pageId) {
+        const saved = adminPaneStore.get(pageId);
+        if (saved && saved.dataset.view === viewKey && saved.dataset.bound === "1") {
+          saved.hidden = false;
+          sc.appendChild(saved);
+          adminPaneStore.delete(pageId);
+          sc.scrollTop = ui.keepScroll ? oldAdmin : Number(saved.dataset.scroll || 0);
+          ui.adminJump = "";
+          lastRenderRole = ui.role;
+          lastRenderPage = ui.page;
+          ui.keepScroll = false;
+          return;
+        }
+        if (saved) adminPaneStore.delete(pageId);
+        slot = null;
+      }
+      const reuse = false;
+      if (!reuse) {
+        const html = adminBody();
+        let paint = "";
+        if (!pageChanged) {
+          let paintKey = 0;
+          const step = Math.max(1, Math.floor(html.length / 48));
+          for (let i = 0; i < html.length; i += step) paintKey = (paintKey * 33 + html.charCodeAt(i)) | 0;
+          paint = html.length + ":" + paintKey;
+        }
+        const samePaint = !pageChanged && slot && slot.dataset.paint === paint && slot.dataset.view === viewKey;
+        if (!samePaint) {
+          if (!slot) {
+            slot = document.createElement("div");
+            slot.className = "admin-static";
+            slot.dataset.page = pageId;
+            sc.appendChild(slot);
+          }
+          slot.dataset.view = viewKey;
+          slot.dataset.paint = paint;
+          slot.dataset.bound = "1";
+          slot.hidden = false;
+          slot.innerHTML = html;
+          safeBind(() => {
+            bindAdmin();
+            bindInstallSheet();
+            bindNotifyGuide();
+            bindUpdateBar();
+            bindThemePicker();
+          });
+          restoreComposeDraft();
+        }
+      }
+      if (ui.adminJump) {
         const el = document.getElementById(ui.adminJump);
         const top = el ? (el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 8) : 0;
         sc.scrollTop = Math.max(0, top);
         requestAnimationFrame(() => { sc.scrollTop = Math.max(0, top); });
-      } else if (!samePaint && (!pageChanged || ui.keepScroll)) {
+      } else if (!reuse && (!pageChanged || ui.keepScroll)) {
         sc.scrollTop = oldAdmin;
         requestAnimationFrame(() => { sc.scrollTop = oldAdmin; });
-      } else if (!samePaint) {
+      } else if (!reuse) {
         sc.scrollTop = 0;
       }
       ui.adminJump = "";
@@ -31670,6 +31708,37 @@ function updateTabBadges() {
     em.textContent = "";
     em.classList.add("tab-dot");
   });
+}
+const adminPaneStore = new Map();
+function parkAdminPane(node) {
+  if (!node || !node.dataset || !node.dataset.page) return;
+  adminPaneStore.set(node.dataset.page, node);
+  if (node.parentNode) node.remove();
+  while (adminPaneStore.size > 5) {
+    const first = adminPaneStore.keys().next().value;
+    if (!first || first === node.dataset.page) break;
+    adminPaneStore.delete(first);
+  }
+}
+function adminPaneKey() {
+  const page = ui.page === "home" || !ui.page ? "dash" : ui.page;
+  return [
+    page,
+    state && state.updatedAt || 0,
+    ui.dashView || "",
+    ui.reportView || "",
+    ui.reportMonth || "",
+    ui.assetKind || "",
+    ui.tenantKind || "",
+    ui.rentVsYear || "",
+    ui.rentVsMonth || "",
+    ui.rentVsOpen || "",
+    ui.calYear || "",
+    ui.calMonth || "",
+    ui.calDay || "",
+    ui.calFirm || "",
+    ui.calBank || ""
+  ].join("|");
 }
 function adminBody() {
   try {
@@ -44257,7 +44326,7 @@ async function boot() {
   hideSplash();
   const syncTick = async () => {
     if (syncTick.busy) return;
-    if (ui.adminNavAt && Date.now() - ui.adminNavAt < 2200) return;
+    if (ui.adminNavAt && Date.now() - ui.adminNavAt < 4000) return;
     syncTick.busy = true;
     try {
       try { releaseDueAnnouncements(); } catch {}
