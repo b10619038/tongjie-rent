@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-16-34";
-const APP_EDIT_COUNT = 2122;
+const APP_STAMP = "2026-10-27-16-40";
+const APP_EDIT_COUNT = 2123;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1747";
+const FILE_VER = "1748";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36827,16 +36827,19 @@ function bankPickEl(inp) {
     el._busy = true;
     const code = btn.getAttribute("data-bank-code") || "";
     const input = el._inp;
-    if (input) input.value = code;
     const id = el._id;
+    if (input) input.value = code;
     const nameEl = id && document.querySelector('[data-leave-bank-name="' + id + '"]');
     if (nameEl) nameEl.textContent = leaveRefundBankName(code);
     el.hidden = true;
     el.style.display = "none";
     el._hold = false;
     el._picked = Date.now();
-    commitLeaveRefund(id, false);
-    setTimeout(() => { el._busy = false; }, 400);
+    try { ui.bankPickLock = Date.now() + 800; } catch {}
+    setTimeout(() => {
+      try { commitLeaveRefund(id, false); } catch {}
+      el._busy = false;
+    }, 40);
   };
   el.addEventListener("pointerdown", e => {
     const btn = e.target.closest("[data-bank-code]");
