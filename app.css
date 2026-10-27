@@ -1770,10 +1770,10 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 .tenant-search .tenant-chip,
 .tenant-search .ghost {
   box-sizing: border-box;
-  width: auto !important;
+  width: 20px !important;
   flex: 0 0 auto;
   min-width: 20px;
-  max-width: 20px;
+  max-width: none;
   height: 20px;
   padding: 0 !important;
   font-size: 12px;
@@ -1785,15 +1785,30 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   overflow: hidden;
   white-space: nowrap;
   text-align: center;
-  transition: max-width .16s cubic-bezier(.22,1,.36,1), height .16s cubic-bezier(.22,1,.36,1), padding .16s cubic-bezier(.22,1,.36,1), color .05s linear;
+  transform-origin: center center;
+  transition:
+    width .46s cubic-bezier(.22, 1, .36, 1),
+    height .46s cubic-bezier(.22, 1, .36, 1),
+    padding .46s cubic-bezier(.22, 1, .36, 1),
+    color .16s ease;
 }
 #tenant-vacant-btn.on,
 .tenant-search .tenant-chip.on {
-  max-width: 96px;
   height: 28px;
   padding: 0 12px !important;
   line-height: 28px;
+  transition:
+    width .46s cubic-bezier(.22, 1, .36, 1),
+    height .46s cubic-bezier(.22, 1, .36, 1),
+    padding .46s cubic-bezier(.22, 1, .36, 1),
+    color .28s ease .12s;
 }
+.tenant-chip.on[data-tenant-chip="count"],
+.tenant-chip.on[data-tenant-chip="paid"],
+.tenant-chip.on[data-tenant-chip="unpaid"] {
+  width: 58px !important;
+}
+#tenant-vacant-btn.on { width: 74px !important; }
 #tenant-vacant-btn,
 #tenant-vacant-btn.on {
   background: #e5e5e5;
