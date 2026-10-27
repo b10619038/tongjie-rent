@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-17-12";
-const APP_EDIT_COUNT = 2129;
+const APP_STAMP = "2026-10-27-17-19";
+const APP_EDIT_COUNT = 2130;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1754";
+const FILE_VER = "1755";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12279,15 +12279,17 @@ function pickNewerEntity(a, b, keys) {
       }
     }
     const pickAmt = (key, atKey) => {
-      const has = x => x && x[key] != null && String(x[key]) !== "";
+      const atOf = x => Number(x && x[atKey]) || 0;
+      const has = x => !!(x && x[key] != null && String(x[key]) !== "");
+      const aAt = atOf(a);
+      const bAt = atOf(b);
       const aHas = has(a);
       const bHas = has(b);
-      if (!aHas && !bHas) return;
-      const aAt = Number(a[atKey]) || (aHas ? Number(a.editedAt) || 0 : 0);
-      const bAt = Number(b[atKey]) || (bHas ? Number(b.editedAt) || 0 : 0);
-      const chosen = aHas && bHas ? (aAt >= bAt ? a : b) : (aHas ? a : b);
-      out[key] = chosen[key];
-      if (chosen[atKey]) out[atKey] = chosen[atKey];
+      if (!aAt && !bAt && !aHas && !bHas) return;
+      const chosen = (aAt || bAt) ? (aAt >= bAt ? a : b) : (aHas ? a : b);
+      out[key] = chosen && chosen[key] != null ? chosen[key] : "";
+      const chosenAt = atOf(chosen);
+      if (chosenAt) out[atKey] = chosenAt;
     };
     pickAmt("leaveElec", "leaveElecAt");
     pickAmt("leaveElecAdmin", "leaveElecAdminAt");
@@ -37124,9 +37126,11 @@ function mergeLeaveCash(a, b) {
   const out = Object.assign({}, a || {});
   Object.keys(b || {}).forEach(id => {
     const n = b[id];
-    if (!n || n.amt == null || String(n.amt) === "") return;
+    if (!n) return;
     const o = out[id];
-    if (!o || Number(n.at || 0) >= Number(o.at || 0)) out[id] = { amt: String(n.amt), at: Number(n.at) || 0, by: n.by || "" };
+    const nAt = Number(n.at || 0);
+    const oAt = Number(o && o.at || 0);
+    if (!o || nAt >= oAt) out[id] = { amt: n.amt == null ? "" : String(n.amt), at: nAt, by: n.by || "" };
   });
   return out;
 }
@@ -37145,14 +37149,13 @@ function rememberLeaveCash(t, by) {
   if (!t || !t.id) return;
   const key = by === "tenant" ? "leaveElec" : "leaveElecAdmin";
   const atKey = by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
-  if (t[key] == null || String(t[key]) === "") return;
   if (!state.leaveCash) state.leaveCash = {};
+  const amt = t[key] == null ? "" : String(t[key]);
   const cur = state.leaveCash[t.id];
   let at = Number(t[atKey]) || Date.now();
-  if (cur && String(cur.amt) !== String(t[key])) at = Math.max(at, Number(cur.at || 0) + 1, Date.now());
-  if (cur && String(cur.amt) === String(t[key]) && Number(cur.at) > at) return;
+  if (cur && String(cur.amt == null ? "" : cur.amt) !== amt) at = Math.max(at, Number(cur.at || 0) + 1, Date.now());
   t[atKey] = at;
-  state.leaveCash[t.id] = { amt: String(t[key]), at, by: by || "admin" };
+  state.leaveCash[t.id] = { amt, at, by: by || "admin" };
 }
 function rememberLeaveInk(t) {
   if (!t || !t.id || !t.leaveSign) return;
@@ -37170,19 +37173,20 @@ function applyLeaveCashOnto(t) {
     delete state.leaveCash[t.id];
     return false;
   }
-  if (!row || row.amt == null || String(row.amt) === "") return false;
+  if (!row) return false;
   const key = row.by === "tenant" ? "leaveElec" : "leaveElecAdmin";
   const atKey = row.by === "tenant" ? "leaveElecAt" : "leaveElecAdminAt";
   const fieldAt = Number(t[atKey]) || 0;
   const rowAt = Number(row.at) || 0;
   const fieldVal = String(t[key] == null ? "" : t[key]);
+  const rowAmt = row.amt == null ? "" : String(row.amt);
   if (fieldAt > rowAt) {
-    if (fieldVal !== "") state.leaveCash[t.id] = { amt: fieldVal, at: fieldAt, by: row.by || "admin" };
+    state.leaveCash[t.id] = { amt: fieldVal, at: fieldAt, by: row.by || "admin" };
     return false;
   }
   if (!rowAt && fieldVal !== "") return false;
-  if (fieldVal === String(row.amt) && fieldAt === rowAt) return false;
-  t[key] = String(row.amt);
+  if (fieldVal === rowAmt && fieldAt === rowAt) return false;
+  t[key] = rowAmt;
   if (rowAt) t[atKey] = rowAt;
   return true;
 }
@@ -37241,23 +37245,22 @@ function leaveElecFinal(t) {
   if (!t) return "";
   const tenant = t.leaveElec != null && String(t.leaveElec) !== "" ? String(t.leaveElec) : "";
   const admin = t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "" ? String(t.leaveElecAdmin) : "";
-  if (tenant && admin) {
-    const ta = Number(t.leaveElecAt) || 0;
-    const aa = Number(t.leaveElecAdminAt) || 0;
-    if (ta || aa) return ta >= aa ? tenant : admin;
-    return admin;
-  }
+  const ta = Number(t.leaveElecAt) || 0;
+  const aa = Number(t.leaveElecAdminAt) || 0;
+  if (aa || ta) return aa >= ta ? admin : tenant;
   return admin || tenant;
 }
 function takeLeaveAmt(t, key, atKey, val, at) {
-  if (!t || val == null || String(val) === "") return false;
+  if (!t) return false;
   const incoming = Number(at) || 0;
   const cur = Number(t[atKey]) || 0;
+  const next = val == null ? "" : String(val);
   const prev = String(t[key] == null ? "" : t[key]);
-  if (prev === String(val) && (!incoming || incoming === cur)) return false;
+  if (!incoming && next === "" && prev === "") return false;
   if (cur && incoming && incoming < cur) return false;
-  if (cur && !incoming && prev !== "") return false;
-  t[key] = String(val);
+  if (!incoming && prev !== "" && next === "") return false;
+  if (prev === next && (!incoming || incoming === cur)) return false;
+  t[key] = next;
   if (incoming) t[atKey] = incoming;
   return true;
 }
@@ -37319,7 +37322,7 @@ function bindLeaveElecInputs(root) {
     const commit = () => save(inp.value);
     inp.addEventListener("input", () => {
       clearTimeout(inp._elecTimer);
-      inp._elecTimer = setTimeout(commit, 450);
+      inp._elecTimer = setTimeout(commit, 180);
     });
     inp.addEventListener("change", () => { clearTimeout(inp._elecTimer); commit(); });
     inp.addEventListener("blur", () => setTimeout(() => { clearTimeout(inp._elecTimer); commit(); }, 60));
