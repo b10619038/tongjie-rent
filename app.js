@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-14-14";
-const APP_EDIT_COUNT = 2117;
+const APP_STAMP = "2026-10-27-14-22";
+const APP_EDIT_COUNT = 2118;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1742";
+const FILE_VER = "1743";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -28081,8 +28081,10 @@ let lastRenderPage = "";
 let lastRenderRole = "";
 function pickerBusy() {
   if (ui.appointLock && Date.now() < ui.appointLock) return true;
+  if (ui.bankPickLock && Date.now() < ui.bankPickLock) return true;
   const a = document.activeElement;
   if (!a || !a.tagName) return false;
+  if (a.matches && a.matches("[data-leave-refund-code], [data-leave-refund-code-admin], [data-leave-refund-acct], [data-leave-refund-acct-admin]")) return true;
   if (a.dataset && (a.dataset.leaveElec != null || a.dataset.leaveElecAdmin != null)) return true;
   const type = String(a.type || "").toLowerCase();
   return a.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local";
@@ -36247,7 +36249,11 @@ function leaveForceResetAt(id) {
 function clearStaleLeave(t) {
   if (!t) return false;
   const reset = Math.max(Number(t.leaveResetAt) || 0, Number(leaveWithdrawMap()[t.id]) || 0, leaveForceResetAt(t.id));
-  if (!reset || leaveDraftTs(t) >= reset) return false;
+  const draft = leaveDraftTs(t);
+  if (!reset || !draft || draft >= reset) {
+    if (Number(t.leaveResetAt) < reset) t.leaveResetAt = reset;
+    return false;
+  }
   const dirty = !!(t.leaveApplied || t.leaveTimeSet || t.leaveAppointAt || (t.leaveSign && (t.leaveSign.status || t.leaveSign.sig || t.leaveSign.sig2)) || (t.leaveElec != null && String(t.leaveElec) !== "") || (t.leaveElecAdmin != null && String(t.leaveElecAdmin) !== "") || t.leaveSubsidy || t.leaveRefundCode || t.leaveRefundAccount);
   if (Number(t.leaveResetAt) !== reset) t.leaveResetAt = reset;
   if (leaveForceResetAt(t.id)) {
@@ -36793,6 +36799,19 @@ function leaveRefundAcctOf(t) {
 function leaveRefundBankName(code) {
   return TW_BANK_NAMES[String(code || "")] || "";
 }
+function revealBankField(inp, list) {
+  const scroller = inp && inp.closest && inp.closest(".tenant-scroll, .admin-scroll");
+  if (!scroller) return;
+  const vv = window.visualViewport;
+  const viewTop = vv ? vv.offsetTop : 0;
+  const viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const shown = list && !list.hidden ? list : inp;
+  const rect = shown.getBoundingClientRect();
+  const limit = viewBottom - 96;
+  if (rect.bottom > limit) scroller.scrollTop += rect.bottom - limit + 16;
+  const top = inp.getBoundingClientRect().top;
+  if (top < viewTop + 12) scroller.scrollTop -= (viewTop + 12) - top;
+}
 function bankPickEl(inp) {
   if (!inp || !inp.parentNode) return null;
   let el = inp.nextElementSibling;
@@ -36802,31 +36821,47 @@ function bankPickEl(inp) {
     el.hidden = true;
     inp.parentNode.insertBefore(el, inp.nextSibling);
   }
+  el._inp = inp;
   if (el.dataset.bound === "1") return el;
   el.dataset.bound = "1";
-  const hold = on => { el._hold = on; };
-  el.addEventListener("pointerdown", e => {
-    e.stopPropagation();
-    hold(true);
-  });
-  el.addEventListener("pointerup", () => setTimeout(() => hold(false), 350));
-  el.addEventListener("pointercancel", () => hold(false));
-  el.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
-  el.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
-  el.addEventListener("click", e => {
-    const btn = e.target.closest("[data-bank-code]");
+  const choose = btn => {
     if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
     const code = btn.getAttribute("data-bank-code") || "";
-    const input = el.previousElementSibling;
+    const input = el._inp;
     if (input) input.value = code;
     const id = el._id;
     const nameEl = id && document.querySelector('[data-leave-bank-name="' + id + '"]');
     if (nameEl) nameEl.textContent = leaveRefundBankName(code);
     el.hidden = true;
-    hold(false);
+    el._hold = false;
+    ui.bankPickLock = Date.now() + 500;
     commitLeaveRefund(id, false);
+  };
+  el.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    el._hold = true;
+    el._moved = false;
+    ui.bankPickLock = Date.now() + 900;
+  });
+  el.addEventListener("pointerup", e => {
+    const btn = e.target.closest("[data-bank-code]");
+    if (!btn || el._moved) {
+      setTimeout(() => { el._hold = false; }, 350);
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    choose(btn);
+  });
+  el.addEventListener("pointercancel", () => { el._hold = false; });
+  el.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+  el.addEventListener("touchmove", e => { el._moved = true; e.stopPropagation(); }, { passive: true });
+  el.addEventListener("click", e => {
+    const btn = e.target.closest("[data-bank-code]");
+    if (!btn || el.hidden) return;
+    e.preventDefault();
+    e.stopPropagation();
+    choose(btn);
   });
   if (!bankPickEl.outside) {
     bankPickEl.outside = true;
@@ -36837,6 +36872,13 @@ function bankPickEl(inp) {
         box.hidden = true;
       });
     }, true);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        const input = document.activeElement;
+        const box = input && input.nextElementSibling;
+        if (box && box.classList && box.classList.contains("bank-suggest") && !box.hidden) revealBankField(input, box);
+      });
+    }
   }
   return el;
 }
@@ -36854,7 +36896,10 @@ function placeBankPick(inp, id) {
     el._html = html;
   }
   el._id = id;
+  el._inp = inp;
   el.hidden = false;
+  requestAnimationFrame(() => revealBankField(inp, el));
+  setTimeout(() => { if (!el.hidden) revealBankField(inp, el); }, 280);
 }
 function leaveRefundReady(t) {
   return leaveRefundCodeOf(t).length === 3 && leaveRefundAcctOf(t).length >= 6;
