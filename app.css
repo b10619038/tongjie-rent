@@ -2479,17 +2479,22 @@ input.bank-oval {
   box-sizing: border-box;
 }
 .bank-suggest {
-  position: fixed;
-  z-index: 80;
+  position: static;
   display: block;
-  max-height: min(320px, 46vh);
+  width: 100%;
+  margin: 8px 0 0;
+  max-height: 260px;
   overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: #fff;
   color: #5c6770;
   border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
   padding: 0;
+  z-index: 3;
 }
 .bank-suggest button {
   display: flex;
@@ -2512,6 +2517,7 @@ input.bank-oval {
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 .bank-suggest button + button { border-top: 1px solid #eceae6; }
 .bank-suggest button b {

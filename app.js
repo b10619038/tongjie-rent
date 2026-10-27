@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-14-00";
-const APP_EDIT_COUNT = 2116;
+const APP_STAMP = "2026-10-27-14-14";
+const APP_EDIT_COUNT = 2117;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1741";
+const FILE_VER = "1742";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36793,60 +36793,68 @@ function leaveRefundAcctOf(t) {
 function leaveRefundBankName(code) {
   return TW_BANK_NAMES[String(code || "")] || "";
 }
-function bankPickEl() {
-  let el = document.getElementById("bank-suggest");
-  if (el) return el;
-  el = document.createElement("div");
-  el.id = "bank-suggest";
-  el.className = "bank-suggest";
-  el.hidden = true;
+function bankPickEl(inp) {
+  if (!inp || !inp.parentNode) return null;
+  let el = inp.nextElementSibling;
+  if (!el || !el.classList || !el.classList.contains("bank-suggest")) {
+    el = document.createElement("div");
+    el.className = "bank-suggest";
+    el.hidden = true;
+    inp.parentNode.insertBefore(el, inp.nextSibling);
+  }
+  if (el.dataset.bound === "1") return el;
+  el.dataset.bound = "1";
+  const hold = on => { el._hold = on; };
   el.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    hold(true);
+  });
+  el.addEventListener("pointerup", () => setTimeout(() => hold(false), 350));
+  el.addEventListener("pointercancel", () => hold(false));
+  el.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+  el.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
+  el.addEventListener("click", e => {
     const btn = e.target.closest("[data-bank-code]");
-    if (!btn || !el._inp) return;
+    if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
     const code = btn.getAttribute("data-bank-code") || "";
-    el._inp.value = code;
+    const input = el.previousElementSibling;
+    if (input) input.value = code;
     const id = el._id;
     const nameEl = id && document.querySelector('[data-leave-bank-name="' + id + '"]');
     if (nameEl) nameEl.textContent = leaveRefundBankName(code);
     el.hidden = true;
+    hold(false);
     commitLeaveRefund(id, false);
   });
-  document.body.appendChild(el);
-  if (!bankPickEl.scrollBound) {
-    bankPickEl.scrollBound = true;
-    document.addEventListener("scroll", e => {
-      if (e.target && (e.target.id === "bank-suggest" || (e.target.closest && e.target.closest("#bank-suggest")))) return;
-      const box = document.getElementById("bank-suggest");
-      if (box) box.hidden = true;
+  if (!bankPickEl.outside) {
+    bankPickEl.outside = true;
+    document.addEventListener("pointerdown", e => {
+      document.querySelectorAll(".bank-suggest").forEach(box => {
+        if (box.hidden) return;
+        if (box.contains(e.target) || box.previousElementSibling === e.target) return;
+        box.hidden = true;
+      });
     }, true);
   }
   return el;
 }
 function placeBankPick(inp, id) {
-  const el = bankPickEl();
+  const el = bankPickEl(inp);
+  if (!el) return;
   const q = String(inp && inp.value || "").replace(/\D/g, "");
-  if (!inp || !q) { el.hidden = true; return; }
+  if (!q) { el.hidden = true; return; }
   const hits = leaveBankHits(q).slice(0, 24);
-  el.innerHTML = hits.length
+  const html = hits.length
     ? hits.map(row => `<button type="button" data-bank-code="${row[0]}"><b>${row[0]}</b><span>${escapeHtml(row[1])}</span></button>`).join("")
     : `<div class="bank-pick-empty">沒有符合的銀行，仍可手動填這 3 碼</div>`;
-  el._inp = inp;
-  el._id = id;
-  const r = inp.getBoundingClientRect();
-  const width = Math.max(220, r.width);
-  el.hidden = false;
-  el.style.width = width + "px";
-  el.style.left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8)) + "px";
-  const below = window.innerHeight - r.bottom;
-  if (below < 190 && r.top > 210) {
-    el.style.top = "auto";
-    el.style.bottom = (window.innerHeight - r.top + 6) + "px";
-  } else {
-    el.style.bottom = "auto";
-    el.style.top = (r.bottom + 6) + "px";
+  if (el._html !== html) {
+    el.innerHTML = html;
+    el._html = html;
   }
+  el._id = id;
+  el.hidden = false;
 }
 function leaveRefundReady(t) {
   return leaveRefundCodeOf(t).length === 3 && leaveRefundAcctOf(t).length >= 6;
@@ -37302,9 +37310,9 @@ function bindLeaveElecInputs(root) {
     inp.addEventListener("blur", () => setTimeout(() => {
       clearTimeout(inp._bankTimer);
       commitLeaveRefund(id, false);
-      const box = document.getElementById("bank-suggest");
-      if (box && box._inp === inp) box.hidden = true;
-    }, 180));
+      const box = inp.nextElementSibling;
+      if (box && box.classList.contains("bank-suggest") && !box._hold) box.hidden = true;
+    }, 240));
   };
   scope.querySelectorAll("[data-leave-refund-code], [data-leave-refund-acct], [data-leave-refund-code-admin], [data-leave-refund-acct-admin]").forEach(armBank);
   scope.querySelectorAll("[data-leave-subsidy-admin]").forEach(box => {
