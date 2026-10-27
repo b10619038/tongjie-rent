@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-16-54";
-const APP_EDIT_COUNT = 2127;
+const APP_STAMP = "2026-10-27-16-58";
+const APP_EDIT_COUNT = 2128;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1752";
+const FILE_VER = "1753";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -37333,8 +37333,14 @@ function bindLeaveElecInputs(root) {
   const armBank = inp => {
     if (!inp || inp.dataset.bound === "1") return;
     inp.dataset.bound = "1";
+    inp.readOnly = false;
+    inp.disabled = false;
     inp.addEventListener("click", e => e.stopPropagation());
-    inp.addEventListener("pointerdown", e => e.stopPropagation());
+    inp.addEventListener("pointerdown", e => {
+      e.stopPropagation();
+      setTimeout(() => { try { inp.focus(); } catch {} }, 0);
+    });
+    inp.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
     const id = inp.getAttribute("data-leave-refund-code") || inp.getAttribute("data-leave-refund-code-admin") || inp.getAttribute("data-leave-refund-acct") || inp.getAttribute("data-leave-refund-acct-admin");
     const isCode = inp.hasAttribute("data-leave-refund-code") || inp.hasAttribute("data-leave-refund-code-admin");
     const paintName = () => {
@@ -37352,6 +37358,14 @@ function bindLeaveElecInputs(root) {
       const max = Number(inp.getAttribute("maxlength")) || 16;
       const digits = String(inp.value || "").replace(/\D/g, "").slice(0, max);
       if (inp.value !== digits) inp.value = digits;
+      const row = (state.tenants || []).find(x => x && x.id === id);
+      if (row) {
+        if (isCode) row.leaveRefundCode = digits;
+        else row.leaveRefundAccount = digits;
+        row.leaveRefundAt = Date.now();
+        row.edited = true;
+        row.editedAt = row.leaveRefundAt;
+      }
       paintName();
       if (isCode) placeBankPick(inp, id);
       clearTimeout(inp._bankTimer);
@@ -37640,6 +37654,8 @@ function tenantRenewOpen(id) {
   return !!(id && ui.renewOpen && ui.renewOpen[id]);
 }
 function refreshTenantList() {
+  const typing = document.activeElement;
+  if (typing && typing.matches && typing.matches("[data-leave-refund-code],[data-leave-refund-code-admin],[data-leave-refund-acct],[data-leave-refund-acct-admin]")) return;
   ui.keepScroll = true;
   const box = document.getElementById("tenant-list");
   if (box) {
