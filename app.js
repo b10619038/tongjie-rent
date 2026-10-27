@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-16-43";
-const APP_EDIT_COUNT = 2124;
+const APP_STAMP = "2026-10-27-16-45";
+const APP_EDIT_COUNT = 2125;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1749";
+const FILE_VER = "1750";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36941,7 +36941,7 @@ function leaveRefundBankFieldsHtml(t, who) {
   const hint = admin
     ? "退押金要匯進這個帳戶。租客沒填的話，在這裡補上。"
     : (leaveRefundOptional() ? "開發者代申請可以先留白，後台再補銀行代碼和帳戶。" : "請填本人銀行代碼（3碼）和帳戶，押金會匯到這裡。");
-  return `<div class="bank-code-box"><label class="field" style="margin-top:8px"><span>銀行代碼</span><span class="bank-oval-wrap"><input class="bank-oval" ${codeAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3碼，例如 822" value="${escapeHtml(code)}" /><em class="bank-code-name" data-leave-bank-name="${escapeHtml(t.id)}">${escapeHtml(name)}</em></span></label></div>
+  return `<div class="bank-code-box"><label class="field" style="margin-top:8px"><span>銀行代碼</span><span class="bank-oval-wrap"><input class="bank-oval" ${codeAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="3位數" value="${escapeHtml(code)}" /><em class="bank-code-name" data-leave-bank-name="${escapeHtml(t.id)}">${escapeHtml(name)}</em></span></label></div>
     <label class="field"><span>銀行帳戶</span><input class="bank-oval" ${acctAttr}="${escapeHtml(t.id)}" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="退押金要匯入的帳號" value="${escapeHtml(acct)}" /></label>
     <div class="small">${escapeHtml(hint)}</div>`;
 }
