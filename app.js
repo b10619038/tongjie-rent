@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-28-22-42";
-const APP_EDIT_COUNT = 2142;
+const APP_STAMP = "2026-10-28-22-58";
+const APP_EDIT_COUNT = 2143;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1767";
+const FILE_VER = "1768";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12727,14 +12727,40 @@ function ingestLiveCloud(raw) {
         if (!x || !x.id || !x.status) return;
         const cur = (state.repairs || []).find(r => r && r.id === x.id);
         if (!cur) return;
-        const stamp = Number(x.statusAt) || at || 0;
-        if (stamp < Number(cur.statusAt || 0)) return;
-        if (cur.status === x.status && Number(cur.statusAt || 0) >= stamp) return;
-        cur.status = x.status;
-        cur.statusAt = stamp;
-        if (stamp > Number(cur.editedAt || 0)) cur.editedAt = stamp;
-        try { rememberRepairStatus(cur); } catch {}
-        changed = true;
+        if (x.status) {
+          const stamp = Number(x.statusAt) || at || 0;
+          if (stamp >= Number(cur.statusAt || 0) && (cur.status !== x.status || Number(cur.statusAt || 0) < stamp)) {
+            cur.status = x.status;
+            cur.statusAt = stamp;
+            if (stamp > Number(cur.editedAt || 0)) cur.editedAt = stamp;
+            try { rememberRepairStatus(cur); } catch {}
+            changed = true;
+          }
+        }
+        if ("appointAt" in x && Number(x.appointAtAt) && Number(x.appointAtAt) >= Number(cur.appointAtAt || 0)) {
+          if (String(x.appointAt || "") !== String(cur.appointAt || "") || !!x.appointPaused !== !!cur.appointPaused) {
+            cur.appointAt = x.appointAt || "";
+            cur.appointPaused = !!x.appointPaused;
+            cur.appointAtAt = Number(x.appointAtAt);
+            changed = true;
+          }
+        }
+        if ("vendor" in x && String(x.vendor || "") && String(x.vendor || "") !== String(cur.vendor || "")) {
+          cur.vendor = x.vendor || "";
+          changed = true;
+        }
+        if ("vendorPhone" in x && String(x.vendorPhone || "") && String(x.vendorPhone || "") !== String(cur.vendorPhone || "")) {
+          cur.vendorPhone = x.vendorPhone || "";
+          changed = true;
+        }
+        if ("cost" in x && String(x.cost == null ? "" : x.cost) && String(x.cost) !== String(cur.cost == null ? "" : cur.cost)) {
+          cur.cost = x.cost;
+          changed = true;
+        }
+        if ("doneNote" in x && String(x.doneNote || "") && String(x.doneNote || "") !== String(cur.doneNote || "")) {
+          cur.doneNote = x.doneNote || "";
+          changed = true;
+        }
       });
       if (changed) {
         ui.keepScroll = true;
@@ -12853,7 +12879,18 @@ function publishRepairStatus(rep) {
   pendingRepairPkt = {
     at: Date.now(),
     device: liveDeviceId(),
-    repairs: [{ id: rep.id, status: rep.status || "open", statusAt: Number(rep.statusAt) || Date.now() }]
+    repairs: [{
+      id: rep.id,
+      status: rep.status || "open",
+      statusAt: Number(rep.statusAt) || Date.now(),
+      appointAt: rep.appointAt || "",
+      appointAtAt: Number(rep.appointAtAt) || 0,
+      appointPaused: !!rep.appointPaused,
+      vendor: rep.vendor || "",
+      vendorPhone: rep.vendorPhone || "",
+      cost: rep.cost == null ? "" : rep.cost,
+      doneNote: rep.doneNote || ""
+    }]
   };
   if (!(paidWs && paidWs.readyState === 1)) {
     try { connectPaidCloud(); } catch {}
@@ -31008,7 +31045,7 @@ function fixPhase(ms) {
   return (-((Date.now() % ms) / 1000)).toFixed(3) + "s";
 }
 function repairRunHtml(rep) {
-  if (!rep || !String(rep.vendor || "").trim() || !rep.appointAt || rep.status === "done") return "";
+  if (!rep || !rep.appointAt || rep.status === "done") return "";
   const pct = repairRunPct(rep);
   const start = parseStampMs(rep.createdAt);
   const end = parseStampMs(rep.appointAt);
@@ -42112,7 +42149,9 @@ function bindAdmin() {
     inp.onchange = () => {
       const rep = state.repairs.find(x => x.id === inp.dataset.appoint);
       if (!rep) return;
-      rep.appointAt = inp.value; rep.appointPaused = false; rep.appointRead = !inp.value; stampRepair(rep); save();
+      rep.appointAt = inp.value; rep.appointPaused = false; rep.appointRead = !inp.value; rep.appointAtAt = Date.now(); stampRepair(rep); save();
+      try { publishRepairStatus(rep); } catch {}
+      try { pushCloud(); } catch {}
       paintAppointFace(inp);
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
       if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
@@ -42134,8 +42173,10 @@ function bindAdmin() {
       if (!rep) return;
       if (!rep.appointAt) { toast("請先選擇維修時間"); return; }
       rep.appointPaused = !rep.appointPaused;
+      rep.appointAtAt = Date.now();
       stampRepair(rep);
       save();
+      try { publishRepairStatus(rep); } catch {}
       try { pushCloud(); } catch {}
       ui.keepScroll = true;
       render();
@@ -42162,6 +42203,8 @@ function bindAdmin() {
       rep.vendor = String(inp.value || "").trim();
       stampRepair(rep);
       save();
+      try { publishRepairStatus(rep); } catch {}
+      try { pushCloud(); } catch {}
     };
   });
   document.querySelectorAll("[data-rep-phone]").forEach(inp => {
@@ -42175,6 +42218,7 @@ function bindAdmin() {
       rep.vendorPhone = next;
       stampRepair(rep);
       save();
+      try { publishRepairStatus(rep); } catch {}
     };
     inp.addEventListener("input", writePhone);
     inp.onchange = () => {
@@ -42197,6 +42241,8 @@ function bindAdmin() {
       }
       stampRepair(rep);
       save();
+      try { publishRepairStatus(rep); } catch {}
+      try { pushCloud(); } catch {}
     };
   });
   document.querySelectorAll("[data-rep-done-note]").forEach(inp => {
@@ -42208,6 +42254,8 @@ function bindAdmin() {
       rep.doneNote = String(inp.value || "").trim();
       stampRepair(rep);
       save();
+      try { publishRepairStatus(rep); } catch {}
+      try { pushCloud(); } catch {}
     };
   });
   bindAdminSettings();
