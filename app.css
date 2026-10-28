@@ -6115,6 +6115,20 @@ img.avatar { object-fit: cover; display: block; }
 .dash-switch { margin-top: 0; }
 #dash-view-body { display: contents; }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
+#tenant-list .only-count { display: none; }
+#tenant-list.chip-count .only-normal { display: none; }
+#tenant-list.chip-count .only-count { display: inline-flex; }
+#tenant-list.chip-count .tenant-renew-block { order: var(--count-order); }
+#tenant-list.chip-paid .tenant-renew-block:not([data-pay="paid"]),
+#tenant-list.chip-unpaid .tenant-renew-block:not([data-pay="unpaid"]),
+#tenant-list.chip-paid > .card,
+#tenant-list.chip-unpaid > .card,
+#tenant-list.chip-count > .card,
+#tenant-list.chip-vacant > .card,
+#tenant-list.chip-vacant > .tenant-renew-block,
+#tenant-list.chip-vacant > .empty { display: none; }
+.chip-vacant-set { display: none; }
+#tenant-list.chip-vacant .chip-vacant-set { display: contents; }
 .seg button {
   position: relative; z-index: 2; border: 0; background: transparent; border-radius: 999px;
   padding: 10px 8px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer;

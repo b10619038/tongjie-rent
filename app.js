@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-27-20-09";
-const APP_EDIT_COUNT = 2137;
+const APP_STAMP = "2026-10-28-16-40";
+const APP_EDIT_COUNT = 2138;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1762";
+const FILE_VER = "1763";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36449,6 +36449,7 @@ function tenantListOfKind(kind, opts) {
   try { ensureDemoTenant(state); } catch {}
   const factory = kind === "factory";
   const all = !!(opts && opts.all);
+  const chip = (opts && opts.ignoreChip) ? "" : tenantChipOn();
   const q = all ? "" : normSearch(ui.tenantQ);
   const list = state.tenants.filter(t => {
     let r = state.rooms.find(x => x.id === t.roomId);
@@ -36462,10 +36463,9 @@ function tenantListOfKind(kind, opts) {
     if (!factory && typeof sameTenantName === "function" && sameTenantName(t.name, "趙文榮")) return false;
     if (all) return true;
     if (q && !tenantMatchesQ(t, r, q, factory ? "factory" : "studio")) return false;
-    if (!tenantPayChipMatch(t, r, tenantChipOn())) return false;
+    if (!tenantPayChipMatch(t, r, chip)) return false;
     return true;
   }).sort((a, b) => {
-    const chip = tenantChipOn();
     const ra = state.rooms.find(x => x.id === a.roomId);
     const rb = state.rooms.find(x => x.id === b.roomId);
     const byNo = () => String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant", { numeric: true });
@@ -36504,8 +36504,8 @@ function tenantListOfKind(kind, opts) {
     }
     uniq.push(t);
   });
-  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + tenantChipOn() + "|c8|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
-  const countOn = tenantChipOn() === "count";
+  const orderKey = (factory ? "f" : "s") + "|" + q + "|" + chip + "|c8|r" + (state.renewals || []).filter(x => x && x.status !== "done").length;
+  const countOn = chip === "count";
   if (countOn || ui.tenantOrderKey !== orderKey || !Array.isArray(ui.tenantOrder) || !ui.tenantOrder.length) {
     ui.tenantOrderKey = orderKey;
     ui.tenantOrder = uniq.map(t => t.id);
@@ -36516,12 +36516,12 @@ function tenantListOfKind(kind, opts) {
     const da = isDemoTenant(a) ? 0 : 1;
     const db = isDemoTenant(b) ? 0 : 1;
     if (da !== db) return da - db;
-    if (!tenantChipOn() && !factory) {
+    if (!chip && !factory) {
       const ra = state.rooms.find(x => x.id === a.roomId);
       const rb = state.rooms.find(x => x.id === b.roomId);
       return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant", { numeric: true });
     }
-    if (tenantChipOn() === "count") {
+    if (chip === "count") {
       const fa = tenantCountRank(a);
       const fb = tenantCountRank(b);
       if (fa !== fb) return fa - fb;
@@ -36532,12 +36532,12 @@ function tenantListOfKind(kind, opts) {
       const rb = state.rooms.find(x => x.id === b.roomId);
       return String(ra?.no || "").localeCompare(String(rb?.no || ""), "zh-Hant", { numeric: true });
     }
-    if (tenantChipOn() !== "count") {
+    if (chip !== "count") {
       const aa = tenantApplyRank(a);
       const ab = tenantApplyRank(b);
       if (aa !== ab) return aa - ab;
     }
-    if (tenantChipOn() === "paid" && !factory) {
+    if (chip === "paid" && !factory) {
       const ra = state.rooms.find(x => x.id === a.roomId);
       const rb = state.rooms.find(x => x.id === b.roomId);
       return String(ra && ra.no || "").localeCompare(String(rb && rb.no || ""), "zh-Hant", { numeric: true });
@@ -38053,15 +38053,7 @@ function payAdminCardHtml(t, r) {
   </div>`;
 }
 function tenantListInnerHtml(kind) {
-  if (tenantChipOn() === "vacant") {
-    const rooms = vacantRoomsOfKind(kind);
-    const empty = kind === "factory" ? "目前沒有空廠房" : "目前沒有空套房";
-    const miss = kind === "factory" ? "找不到符合的空廠房" : "找不到符合的空套房";
-    return rooms.length
-      ? rooms.map(r => vacantRoomCardHtml(r)).join("")
-      : `<div class="empty">${normSearch(ui.tenantQ) ? miss : empty}</div>`;
-  }
-  const entries = tenantEntriesOfKind(kind).filter(e =>
+  const entries = tenantEntriesOfKind(kind, { ignoreChip: true }).filter(e =>
     !(e.tenants || []).some(t => isDemoTenant(t) || /開發者測試/.test(String(t.name || ""))) &&
     !(e.rooms || []).some(r => isDemoRoom(r) || isDemoFactoryRoom(r) || r.no === "F0000" || r.no === "0000")
   );
@@ -38087,17 +38079,11 @@ function tenantListInnerHtml(kind) {
     if (q && !normSearch(vacantRoomHay(r)).includes(q)) return false;
     return true;
   });
-  const renews = q ? [] : (state.renewals || []).filter(x => {
-    if (!x || x.status === "done") return false;
-    const room = (state.rooms || []).find(r => r && (r.id === x.roomId || String(r.no) === String(x.roomNo)));
-    if (room && room.status === "office") return false;
-    if (!room && String(x.roomNo || "") !== "7221" && String(x.roomNo || "") !== "7032") return false;
-    const factoryRoom = room ? roomIsFactory(room) : false;
-    return kind === "factory" ? factoryRoom : !factoryRoom;
-  }).slice().reverse();
-  return `${entries.length || vacantHits.length || applyVacant.length || formerVacant.length
+  const vacantAll = vacantRoomsOfKind(kind).map(r => vacantRoomCardHtml(r)).join("");
+  const people = entries.length || vacantHits.length || applyVacant.length || formerVacant.length
       ? applyVacant.map(r => vacantRoomCardHtml(r)).join("") + entries.map(entry => tenantEntryCardHtml(kind, entry)).join("") + formerVacant.map(r => vacantRoomCardHtml(r)).join("") + vacantHits.map(r => vacantRoomCardHtml(r)).join("")
-      : `<div class="empty">${q ? "找不到符合的租客" : (tenantChipOn() === "paid" ? "目前沒有已繳" : tenantChipOn() === "unpaid" ? "目前沒有未繳" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客"))}</div>`}`;
+      : `<div class="empty">${q ? "找不到符合的租客" : (kind === "factory" ? "目前沒有廠房租客" : "目前沒有套房租客")}</div>`;
+  return people + `<div class="chip-vacant-set">${vacantAll || `<div class="empty">${kind === "factory" ? "目前沒有空廠房" : "目前沒有空套房"}</div>`}</div>`;
 }
 function tenantEntryDetailsHtml(kind, entry) {
   const tenants = entry.tenants || [];
@@ -38247,19 +38233,25 @@ function tenantEntryCardHtml(kind, entry) {
   const renewLabel = renew && renew.status === "done" ? "已續約" : "續約申請";
   const renewCls = renew && renew.status === "done" ? "paid" : "hand";
   const payOpen = tenantPayOpen(t.id);
-  const countOn = tenantChipOn() === "count";
   const early = tenantEarlyApply(t);
   const earlyOpen = !!(early && ui.earlyOpen && ui.earlyOpen[t.id]);
   const leaveOpen = !!(ui.leaveOpen && ui.leaveOpen[t.id]);
-  const leftCls = countOn && tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
-  return `<div class="tenant-renew-block">
+  const leftCls = tenantRemainDays(t, r) <= 30 ? " unpaid" : "";
+  const payFlag = paidThisMonth(t) ? "paid" : ((firstStudioPayDue(t, r) || leaseCoversYm(t, r, payYmNow())) ? "unpaid" : "na");
+  const countOrder = (tenantCountRank(t) + 2) * 100000 + Math.max(0, Math.min(99999, tenantRemainDays(t, r)));
+  const normalRenew = undoRenew
+    ? `<button type="button" class="pay-pill paid only-normal" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>`
+    : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""} only-normal" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "");
+  const countRenew = tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""} only-count" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : "";
+  const countUndo = undoRenew ? `<button type="button" class="pay-pill paid only-count" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : "";
+  return `<div class="tenant-renew-block" data-pay="${payFlag}" style="--count-order:${countOrder}">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${countOn ? "" : (undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : ""))}${countOn ? "" : (pill ? `<span class="pay-pill ${pill.cls}">${pill.text}</span>` : "")}${countOn && tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""}" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : ""}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countOn && undoRenew ? `<button type="button" class="pay-pill paid" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : ""}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}${countOn ? `<span class="pay-pill count-left${leftCls}">${tenantRemainLabel(t, r)}</span>` : `<button type="button" class="pay-pill pay-toggle ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button>`}<span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${normalRenew}${pill ? `<span class="pay-pill ${pill.cls} only-normal">${pill.text}</span>` : ""}${countRenew}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countUndo}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}<span class="pay-pill count-left only-count${leftCls}">${tenantRemainLabel(t, r)}</span><button type="button" class="pay-pill pay-toggle only-normal ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
@@ -38663,22 +38655,16 @@ function bindTenantSearch() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      const prev = tenantChipOn();
-      const picked = btn.getAttribute("data-tenant-chip") || "";
-      setTenantChip(picked);
+      setTenantChip(btn.getAttribute("data-tenant-chip") || "");
       document.querySelectorAll("[data-tenant-chip]").forEach(b => {
         b.classList.toggle("on", tenantChipOn() === b.getAttribute("data-tenant-chip"));
       });
-      const token = (apply.chipToken = (apply.chipToken || 0) + 1);
-      const heavy = picked === "count" || prev === "count" || tenantChipOn() === "count";
-      const run = () => {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          if (apply.chipToken !== token) return;
-          apply();
-        }));
-      };
-      if (heavy) setTimeout(run, 480);
-      else run();
+      const box = document.getElementById("tenant-list");
+      if (box) {
+        box.classList.remove("chip-paid", "chip-unpaid", "chip-vacant", "chip-count");
+        const chip = tenantChipOn();
+        if (chip) box.classList.add("chip-" + chip);
+      }
     };
   });
 }
@@ -39146,7 +39132,7 @@ function adminTenants() {
     </div>
     <div id="tenant-suggest-wrap">${tenantSuggestHtml(kind)}</div>
     <p class="small" id="tenant-kind-hint" style="padding:0 4px"${tenantKindHint(kind) ? "" : " hidden"}>${tenantKindHint(kind)}</p>
-    <div id="tenant-list">${tenantListInnerHtml(kind)}</div>
+    <div id="tenant-list" class="${tenantChipOn() ? "chip-" + tenantChipOn() : ""}">${tenantListInnerHtml(kind)}</div>
     <div class="line-dock" id="line-dock">
       <div class="line-dock-bar">
         <div>
