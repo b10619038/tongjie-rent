@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-28-22-40";
-const APP_EDIT_COUNT = 2141;
+const APP_STAMP = "2026-10-28-22-42";
+const APP_EDIT_COUNT = 2142;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1766";
+const FILE_VER = "1767";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -504,6 +504,24 @@ function isDemoTenant(t) {
     const r = (typeof state !== "undefined" && state.rooms || []).find(x => x.id === t.roomId);
     return isDemoRoom(r);
   } catch { return false; }
+}
+function ensure7641Fan(data) {
+  if (!data) return false;
+  const id = "r7641-fan-20261028";
+  if ((data.repairGone || []).map(String).indexOf(id) >= 0) return false;
+  if (!Array.isArray(data.repairs)) data.repairs = [];
+  if (data.repairs.some(r => r && r.id === id)) return false;
+  data.repairs.push({
+    id, roomId: "r7641", tenantId: "t7641", roomNo: "7641",
+    type: "公共設施", facility: "抽風機", note: "會不定時發出怪聲音",
+    photo: "", media: [], status: "open",
+    createdAt: "2026-10-28 下午 10:00", edited: true, editedAt: Date.now()
+  });
+  if (!Array.isArray(data.notices)) data.notices = [];
+  if (!data.notices.some(n => n && n.repairId === id)) {
+    data.notices.push({ id: "n7641-fan-20261028", type: "repair", repairId: id, roomNo: "7641", text: "7641 公共設施　抽風機報修", createdAt: "2026-10-28 下午 10:00", read: false });
+  }
+  return true;
 }
 function isDemoRepair(r) {
   if (!r) return false;
@@ -7502,6 +7520,7 @@ function normalize(data) {
   if (!Array.isArray(data.lunchSpots)) data.lunchSpots = [];
   if (!Array.isArray(data.lunchHidden)) data.lunchHidden = [];
   if (!Array.isArray(data.repairs)) data.repairs = [];
+  try { ensure7641Fan(data); } catch {}
   applyRepairMedia(data);
   applyRepairStat(data);
   applyAvatars(data);
@@ -13917,6 +13936,7 @@ async function pullCloud() {
       state.repairGone = unionGone(data.repairGone, state.repairGone);
       state.notices = dropGone(mergeEntities(data.notices, state.notices, ["title", "body", "text"]), unionGone(data.noticeGone, state.noticeGone));
       state.noticeGone = unionGone(data.noticeGone, state.noticeGone);
+      if (ensure7641Fan(state)) { try { markCloudDirty(); } catch {} }
       applyCompany(state);
       mergeDevBundle(state, data);
       mergeLedgerInto(state, data);
@@ -14828,6 +14848,7 @@ async function pushCloud() {
   pushBusy = true;
   pushAgain = false;
   try {
+    try { if (ensure7641Fan(state)) cloudDirty = true; } catch {}
     applyCompany(state);
     try { apply6832OctPaid(state); } catch {}
     stripDevMemosFromState();
@@ -31061,6 +31082,7 @@ function repairCard(rep, extraClass) {
   return `<div class="card card-body tenant-slim${open ? " open" : ""} ${extraClass || ""}" data-fold-mine="${escapeHtml(rep.id)}">${head}<div class="tenant-slim-body"><div class="tenant-slim-inner">${body}</div></div></div>`;
 }
 function repairView() {
+  if (ensure7641Fan(state)) { try { markCloudDirty(); pushCloud(); } catch {} }
   const tid = (me() && me().id) || ui.tenantId;
   const mine = (state.repairs || []).filter(r => r.tenantId === tid).slice().reverse();
   if (ui.page === "repair-done") {
@@ -39187,6 +39209,7 @@ function adminRepairList() {
   return (state.repairs || []).filter(r => r && !isDemoRepair(r));
 }
 function adminRepairs() {
+  if (ensure7641Fan(state)) { try { markCloudDirty(); pushCloud(); } catch {} }
   const list = adminRepairList();
   if (!list.length) return `<div class="empty">目前沒有報修</div>`;
   if (!ui.repairOpen) ui.repairOpen = {};
