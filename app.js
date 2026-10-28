@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-28-22-25";
-const APP_EDIT_COUNT = 2140;
+const APP_STAMP = "2026-10-28-22-40";
+const APP_EDIT_COUNT = 2141;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1765";
+const FILE_VER = "1766";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -13913,6 +13913,10 @@ async function pullCloud() {
     if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
     applyAvatars(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
+      state.repairs = dropGone(mergeEntities(data.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(data.repairGone, state.repairGone));
+      state.repairGone = unionGone(data.repairGone, state.repairGone);
+      state.notices = dropGone(mergeEntities(data.notices, state.notices, ["title", "body", "text"]), unionGone(data.noticeGone, state.noticeGone));
+      state.noticeGone = unionGone(data.noticeGone, state.noticeGone);
       applyCompany(state);
       mergeDevBundle(state, data);
       mergeLedgerInto(state, data);
