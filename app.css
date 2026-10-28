@@ -7226,7 +7226,7 @@ html.embed-pane .home-upd { display: none !important; }
 }
 .theme-swatch i {
   width: 28px; height: 28px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--sw) 55%, var(--sw2) 55%);
+  background: linear-gradient(135deg, var(--swh, var(--sw)) 55%, var(--sw2) 55%);
   display: block;
 }
 .theme-swatch span { font-size: 12px; font-weight: 700; color: var(--ink); }

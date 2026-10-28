@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-28-16-40";
-const APP_EDIT_COUNT = 2138;
+const APP_STAMP = "2026-10-28-16-42";
+const APP_EDIT_COUNT = 2139;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1763";
+const FILE_VER = "1764";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1608,7 +1608,7 @@ function themePanelMarkup() {
       <div class="label">整體風格</div>
       <h2>選擇色調</h2>
       <div class="theme-grid">
-        ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
+        ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft};--swh:${t.id === "yuhan" ? t.paper : t.teal}">
           <i></i><span>${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
@@ -42332,7 +42332,7 @@ function lookSettingsHtml() {
       <div class="label">調色盤</div>
       <p class="small">選擇整體色調。</p>
       <div class="theme-grid in-page">
-        ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft}">
+        ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft};--swh:${t.id === "yuhan" ? t.paper : t.teal}">
           <i></i><span>${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
