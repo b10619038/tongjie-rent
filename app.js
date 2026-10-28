@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-28-16-42";
-const APP_EDIT_COUNT = 2139;
+const APP_STAMP = "2026-10-28-22-25";
+const APP_EDIT_COUNT = 2140;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1764";
+const FILE_VER = "1765";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -14819,8 +14819,8 @@ async function pushCloud() {
     pushCloud.navWait = setTimeout(() => { try { pushCloud(); } catch {} }, 2600);
     return;
   }
-  if (!cloudDirty && !pushAgain) return;
-  if (pushBusy) { pushAgain = true; return; }
+  if (!cloudDirty && !pushAgain) return false;
+  if (pushBusy) { pushAgain = true; return false; }
   pushBusy = true;
   pushAgain = false;
   try {
@@ -15082,6 +15082,22 @@ async function pushCloud() {
     try { applyChatImages(state); persistChatImages(state); } catch {}
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) {
+      try {
+        const chk = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+        if (chk.ok) {
+          const live = await chk.json();
+          const ids = new Set((live.repairs || []).map(r => r && r.id));
+          const gone = new Set([].concat(live.repairGone || [], state.repairGone || []).map(String));
+          const missing = (state.repairs || []).filter(r => r && r.id && !ids.has(r.id) && !gone.has(String(r.id)));
+          if (missing.length) {
+            live.repairs = (live.repairs || []).concat(missing.map(r => Object.assign({}, r, { photo: "", media: [] })));
+            const fix = await put(JSON.stringify(live));
+            if (!fix.ok) ui.cloudOk = false;
+          }
+        }
+      } catch {}
+    }
+    if (ui.cloudOk) {
       cloudDirty = false;
       try { clearRepairStatusBox(state.repairs); } catch {}
       try { publishLiveCloud(); } catch {}
@@ -15095,6 +15111,18 @@ async function pushCloud() {
     cloudDirty = true;
     setTimeout(() => { try { pushCloud(); } catch {} }, 30);
   }
+  return !!ui.cloudOk;
+}
+async function flushRepairCloud() {
+  cloudDirty = true;
+  for (let i = 0; i < 8; i++) {
+    if (!pushBusy) {
+      try { await pushCloud(); } catch {}
+    }
+    if (ui.cloudOk && !cloudDirty && !pushBusy) return true;
+    await new Promise(r => setTimeout(r, 320));
+  }
+  return !!ui.cloudOk && !cloudDirty;
 }
 function cloudAnnMedia(list) {
   return (list || []).map(m => {
@@ -30893,7 +30921,7 @@ function bindRepairDelete() {
   });
   document.querySelectorAll("[data-save-repair]").forEach(btn => {
     bindIosPress(btn);
-    btn.onclick = e => {
+    btn.onclick = async e => {
       e.preventDefault();
       e.stopPropagation();
       const rep = (state.repairs || []).find(x => x && x.id === btn.dataset.saveRepair);
@@ -30917,8 +30945,9 @@ function bindRepairDelete() {
       state.repairNotice = { at: Date.now(), id: rep.id, roomNo: (room && room.no) || rep.roomNo || "", name: (me() && me().name) || "", type: rep.type || "", note, edited: true };
       persistRepairMedia(state);
       persistRepairStat(state);
-      save();
-      try { pushCloud(); } catch {}
+      save(true);
+      const ok = await flushRepairCloud();
+      if (!ok) { toast("後台還沒收到這筆修改，請再按一次"); return; }
       pushPhoneNotify("報修已更新", `${(room && room.no) || ""} ${repairTypeLabel(rep)}　${note}`, "admin");
       ui.repairEditId = "";
       ui.repairEditType = "";
@@ -40083,7 +40112,7 @@ function bindTenant() {
   bindPendingMedia();
   const submit = document.getElementById("submit-repair");
   if (submit) {
-    submit.onclick = e => {
+    submit.onclick = async e => {
       e.preventDefault();
       e.stopPropagation();
       const note = ((document.getElementById("repair-note") || {}).value || ui.repairNote || "").trim();
@@ -40111,8 +40140,12 @@ function bindTenant() {
       try { save(true); } catch {
         state.repairs.pop(); state.notices.pop(); toast("檔案太大，請改傳較小的照片或影片"); return;
       }
+      const ok = await flushRepairCloud();
+      if (!ok) {
+        toast("後台還沒收到這筆報修，請再按一次");
+        return;
+      }
       try { publishPaidCloud(); } catch {}
-      try { pushCloud(); } catch {}
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, "admin");
       if (isDevPreview() && room && !isDemoRoom(room) && !room.demo) {
         sendRemoteNotify("admin", "新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, notifyExtra("新報修", "admin"));
