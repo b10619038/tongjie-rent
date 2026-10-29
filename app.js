@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-22";
-const APP_EDIT_COUNT = 2150;
+const APP_STAMP = "2026-10-29-11-26";
+const APP_EDIT_COUNT = 2151;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1775";
+const FILE_VER = "1776";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3852,6 +3852,17 @@ function toggleRoomWait(t, room) {
   } catch {}
   return !had;
 }
+function homeWaitHtml(t) {
+  const waits = roomWaitList(t);
+  if (!t || !waits.length || (typeof isProspectPreview === "function" && isProspectPreview())) return "";
+  const nos = waits.map(w => w.roomNo).filter(Boolean);
+  const buttons = waits.map(w => `<button type="button" class="ghost" data-cancel-wait="${escapeHtml(w.roomId || w.roomNo || "")}">取消排 ${escapeHtml(w.roomNo || "")}</button>`).join("");
+  return `<div class="handover-note wait-home">
+    <div class="label">已排 ${escapeHtml(nos.join("、"))}</div>
+    <p>等原租客退完才能看。這不是不續約，上面那張還是要自己選。</p>
+    <div class="wait-home-actions">${buttons}</div>
+  </div>`;
+}
 function closeRoomWaitPop() {
   const mask = document.getElementById("wait-pop");
   if (mask) mask.remove();
@@ -4474,6 +4485,19 @@ function bindRenewForm() {
   });
   document.querySelectorAll("[data-renew-decline]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); e.stopPropagation(); openRenewDeclineConfirm(); };
+  });
+  document.querySelectorAll("[data-cancel-wait]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const who = typeof me === "function" ? me() : null;
+      const room = renewMoveRoomOf(btn.dataset.cancelWait || "");
+      if (!who || !room || !roomWaitOn(who, room)) return;
+      toggleRoomWait(who, room);
+      toast("已取消排隊");
+      ui.keepScroll = true;
+      render();
+    };
   });
   document.querySelectorAll("[data-renew-reopen]").forEach(btn => {
     btn.onclick = e => { e.preventDefault(); e.stopPropagation(); reopenTenantRenewal(); };
@@ -29965,6 +29989,7 @@ function homeView() {
       ${tenantNudgeNoteHtml(t)}
       ${leaveSentHomeHtml(t)}
       ${renewAskCardHtml(t, r)}
+      ${homeWaitHtml(t)}
       ${handoverNote}
       <div class="hero-card">
         ${roomFestHtml()}

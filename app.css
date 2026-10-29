@@ -1142,6 +1142,15 @@ button.pay-pill.hand {
   background: var(--chip);
   border: 1px solid #efe2d4;
 }
+.wait-home {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+}
+.wait-home .label { color: var(--ink); font-size: 15px; }
+.wait-home p { color: var(--muted); }
+.wait-home-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.wait-home .ghost { width: auto; margin: 0; padding: 6px 12px; }
 .renew-note .renew-focus {
   margin-top: 10px;
   padding: 10px 12px;
