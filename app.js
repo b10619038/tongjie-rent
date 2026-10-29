@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-09-42";
-const APP_EDIT_COUNT = 2144;
+const APP_STAMP = "2026-10-29-09-48";
+const APP_EDIT_COUNT = 2145;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1769";
+const FILE_VER = "1770";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -18033,7 +18033,7 @@ function exitDevPreview() {
   render();
 }
 function enterTenantLook(t, page) {
-  if (!ui || ui.role !== "admin") return;
+  if (!isDeveloper()) return;
   if (!t) { toast("找不到租客"); return; }
   const r = (state.rooms || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id));
   ui.lookBack = {
@@ -39054,7 +39054,7 @@ function bindTenantFold() {
   bindTenantLook();
 }
 function bindTenantLook() {
-  if (!ui || ui.role !== "admin") return;
+  if (typeof isDeveloper !== "function" || !isDeveloper()) return;
   document.querySelectorAll("[data-look-tenant]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
@@ -39258,7 +39258,7 @@ function adminRepairs() {
     const st = rep.status === "open" ? "待處理" : rep.status === "doing" ? "處理中" : "已完成";
     const who = isDemoRepair(rep) ? "DEMO　開發者（測試）" : ((r ? r.no : "") + (t && t.name ? " " + t.name : ""));
     const label = "<span class=\"repair-kind\">" + escapeHtml(repairTypeLabel(rep)) + "</span>" + (who ? " ·<span class=\"repair-who\">" + escapeHtml(who) + "</span>" : "");
-    const head = (ui.role === "admin" && t)
+    const head = (typeof isDeveloper === "function" && isDeveloper() && t)
       ? `<button type="button" class="k repair-look" data-look-tenant="${escapeHtml(t.id)}" data-look-page="repair">${label}</button>`
       : `<span class="k">${label}</span>`;
     return `<div class="card card-body clickable tenant-slim${open ? " open" : ""}" data-fold-repair="${rep.id}">
