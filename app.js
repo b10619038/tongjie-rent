@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-10-24";
-const APP_EDIT_COUNT = 2146;
+const APP_STAMP = "2026-10-29-10-36";
+const APP_EDIT_COUNT = 2147;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1771";
+const FILE_VER = "1772";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7045,6 +7045,50 @@ function videoKey(v) {
   if (!v) return "";
   const src = v.currentSrc || (v.querySelector("source") && v.querySelector("source").getAttribute("src")) || "";
   return String(src).split("?")[0].split("/").pop();
+}
+function repairSceneKey() {
+  const tid = (typeof me === "function" && me() && me().id) || (ui && ui.tenantId) || "";
+  const rows = (state.repairs || []).filter(r => r && r.tenantId === tid);
+  return rows.map(r => [r.id, r.status, r.appointAt || "", r.appointPaused ? 1 : 0, r.note || "", r.facility || "", r.type || "", r.vendor || "", r.vendorPhone || "", r.cost == null ? "" : r.cost, r.doneNote || "", (r.media || []).length, r.photo ? 1 : 0].join("\u001f")).join("\u001e")
+    + "|" + (ui.repairEditId || "") + "|" + (ui.repairEditType || "") + "|" + (ui.repairType || "") + "|" + (ui.repairFacility || "") + "|" + (ui.page || "");
+}
+function sameRepairScene() {
+  if (ui.role !== "tenant" || (ui.page !== "repair" && ui.page !== "repair-done")) return false;
+  if (!document.querySelector(".fix-run")) return false;
+  return repairSceneKey() === sameRepairScene.last;
+}
+function noteRepairScene() {
+  if (ui.role === "tenant" && (ui.page === "repair" || ui.page === "repair-done")) sameRepairScene.last = repairSceneKey();
+}
+function parkFixRuns() {
+  const nodes = [...document.querySelectorAll(".fix-run")];
+  if (!nodes.length) return null;
+  const hold = document.createElement("div");
+  hold.setAttribute("aria-hidden", "true");
+  hold.style.cssText = "position:fixed;left:-10000px;top:0;width:420px;height:90px;overflow:hidden;pointer-events:none;opacity:0";
+  document.body.appendChild(hold);
+  const items = nodes.map(node => {
+    const key = [node.dataset.start || "", node.dataset.end || "", node.dataset.paused || "", node.dataset.done || ""].join("|");
+    hold.appendChild(node);
+    return { node, key };
+  });
+  return { hold, items };
+}
+function restoreFixRuns(parked) {
+  if (!parked) return;
+  const used = new Set();
+  document.querySelectorAll(".fix-run").forEach(fresh => {
+    const key = [fresh.dataset.start || "", fresh.dataset.end || "", fresh.dataset.paused || "", fresh.dataset.done || ""].join("|");
+    const hit = parked.items.find(x => x.key === key && !used.has(x));
+    if (!hit) return;
+    used.add(hit);
+    const p = fresh.style.getPropertyValue("--p");
+    if (p) hit.node.style.setProperty("--p", p);
+    hit.node.classList.toggle("is-in", fresh.classList.contains("is-in"));
+    hit.node.classList.toggle("is-paused", fresh.classList.contains("is-paused"));
+    fresh.replaceWith(hit.node);
+  });
+  if (parked.hold) parked.hold.remove();
 }
 function parkRoomVideo() {
   const v = document.querySelector(".room-hero-video");
@@ -28528,10 +28572,19 @@ function paintApp() {
   if (lastRenderRole === "tenant" && scKeep && navKeep && root.querySelector(".shell") && !overlays) {
     const onBtn = navKeep.querySelector("button.active");
     if (onBtn) ui.navPill = { x: Math.max(0, onBtn.offsetLeft - 3), w: onBtn.offsetWidth + 6 };
+    if (!pageChanged && sameRepairScene()) {
+      try { tickRepairRuns(); } catch {}
+      try { updateTabBadges(); } catch {}
+      lastRenderRole = ui.role;
+      lastRenderPage = ui.page;
+      return;
+    }
     scKeep.classList.toggle("tenant-still", !pageChanged);
     const parked = pageChanged ? null : parkRoomVideo();
+    const parkedRun = pageChanged ? null : parkFixRuns();
     scKeep.innerHTML = `${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
     restoreRoomVideo(parked);
+    restoreFixRuns(parkedRun);
     refreshNavButtons(navKeep);
     safeBind(() => {
       bindTenant();
@@ -28563,11 +28616,14 @@ function paintApp() {
     scrollSignFormIntoPlace();
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
+    noteRepairScene();
     return;
   }
   const parked = pageChanged ? null : parkRoomVideo();
+  const parkedRun = pageChanged ? null : parkFixRuns();
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
   restoreRoomVideo(parked);
+  restoreFixRuns(parkedRun);
   safeBind(() => {
     bindTenant();
     bindNavPill();
@@ -28599,6 +28655,7 @@ function paintApp() {
   scrollSignFormIntoPlace();
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
+  noteRepairScene();
 }
 
 function installSheetHtml() {

@@ -3539,12 +3539,14 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   background-image: url("images/fix-town.png?v=1079");
   background-size: 640px 62px;
   animation: fix-town 28s linear infinite;
+  animation-fill-mode: both;
 }
 .fix-tree {
   height: 52px; z-index: 1; bottom: 8px;
   background-image: url("images/fix-tree.png?v=1082");
   background-size: 755px 52px;
   animation: fix-tree 26s linear infinite;
+  animation-fill-mode: both;
   opacity: 0.72;
 }
 .fix-car, .fix-van, .fix-truck { opacity: 1; }
@@ -3553,24 +3555,28 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   background-image: url("images/fix-truck.png?v=1088");
   background-size: 388px 36px;
   animation: fix-truck 16s linear infinite;
+  animation-fill-mode: both;
 }
 .fix-van {
   height: 24.2px; z-index: 2;
   background-image: url("images/fix-van.png?v=1089");
   background-size: 201.3px 24.2px;
   animation: fix-van 5.4s linear infinite;
+  animation-fill-mode: both;
 }
 .fix-car {
   height: 22px; z-index: 2;
   background-image: url("images/fix-car.png?v=1084");
   background-size: 160px 22px;
   animation: fix-car 3.2s linear infinite;
+  animation-fill-mode: both;
 }
 .fix-poles {
   height: 58px; z-index: 3;
   background-image: url("images/fix-pole.png?v=1076");
   background-size: 420px 58px;
   animation: fix-poles 18s linear infinite;
+  animation-fill-mode: both;
 }
 .fix-line {
   position: absolute; left: 16px; right: 16px; bottom: 4px; height: 4px;
@@ -3586,6 +3592,7 @@ html[data-theme="void"] .shell.admin-wide .tab.on .tab-ic {
   left: calc(16px + (100% - 32px) * var(--p));
   margin-left: -14px;
   animation: fix-bob .45s ease-in-out infinite;
+  animation-fill-mode: both;
 }
 .fix-rider img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .fix-run.is-in .fix-rider,
