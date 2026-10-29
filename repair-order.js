@@ -63,7 +63,7 @@
     if (typeof save === "function") save();
   }
   function splitRepairLook() {
-    if (typeof isDeveloper !== "function" || !isDeveloper()) return;
+    if (!window.ui || ui.role !== "admin") return;
     document.querySelectorAll("button.repair-look").forEach(btn => {
       const who = btn.querySelector(".repair-who");
       let type = "";
