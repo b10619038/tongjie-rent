@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-02";
-const APP_EDIT_COUNT = 2148;
+const APP_STAMP = "2026-10-29-11-12";
+const APP_EDIT_COUNT = 2149;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1773";
+const FILE_VER = "1774";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3814,13 +3814,66 @@ function toggleRoomWait(t, room) {
   } catch {}
   return !had;
 }
+function closeRoomWaitPop() {
+  const mask = document.getElementById("wait-pop");
+  if (mask) mask.remove();
+}
+function markWaitRow(room, on) {
+  const key = String((room && (room.id || room.no)) || "");
+  document.querySelectorAll("[data-room-ask]").forEach(row => {
+    if (String(row.dataset.roomAsk || "") !== key) return;
+    row.classList.toggle("waiting", !!on);
+    let tag = row.querySelector(".renew-move-queued");
+    if (on && !tag) {
+      const st = row.querySelector(".renew-move-st");
+      if (!st) return;
+      tag = document.createElement("em");
+      tag.className = "renew-move-queued";
+      tag.textContent = "已排隊";
+      st.appendChild(tag);
+    } else if (!on && tag) tag.remove();
+  });
+}
+function openRoomWaitPop(room) {
+  if (!room) return;
+  closeRoomWaitPop();
+  const t = typeof me === "function" ? me() : null;
+  const waiting = roomWaitOn(t, room);
+  const no = (typeof studioListNo === "function" ? studioListNo(room) : "") || room.no || "";
+  const st = renewMoveStatus(room);
+  const mask = document.createElement("div");
+  mask.className = "wait-pop-mask";
+  mask.id = "wait-pop";
+  mask.innerHTML = `<div class="wait-pop" role="dialog">
+    <div class="label">${escapeHtml(no)} 套房</div>
+    <p>${waiting ? "你已排這間。要等原租客退完才能看。" : "目前有人住" + (st.sub ? "，" + escapeHtml(st.sub) : "") + "。現在先排隊，等退完才能看。"}</p>
+    <button type="button" class="btn-navy" id="wait-pop-yes">${waiting ? "取消排隊" : "我想排這間"}</button>
+    <button type="button" class="ghost" id="wait-pop-no">取消</button>
+  </div>`;
+  document.body.appendChild(mask);
+  const pop = mask.querySelector(".wait-pop");
+  if (pop) pop.onclick = e => e.stopPropagation();
+  mask.onclick = () => closeRoomWaitPop();
+  const noBtn = mask.querySelector("#wait-pop-no");
+  if (noBtn) noBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); closeRoomWaitPop(); };
+  const yes = mask.querySelector("#wait-pop-yes");
+  if (yes) yes.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!t) { closeRoomWaitPop(); return; }
+    const on = toggleRoomWait(t, room);
+    markWaitRow(room, on);
+    closeRoomWaitPop();
+    toast(on ? "已排這間，等原租客退完才能看" : "已取消排隊");
+  };
+}
 function renewMovePickHtml(t, r) {
   const list = renewMoveTargets(r);
   const pick = String(ui.renewMoveRoomId || "");
   const can = list.filter(x => renewMoveStatus(x).selectable);
   const head = can.length
-    ? "空房可以直接選。目前有人住、還沒續約的，可以按「我想排這間」，再按一次取消。已續約的不能排。"
-    : "目前沒有可立即換的房間。有人住、還沒續約的可以先排，等退租後才能看。";
+    ? "空房直接點選。有人住、還沒續約的，點一下可以排隊。已續約的不能排。"
+    : "目前沒有可立即換的房間。有人住、還沒續約的，點一下可以先排。";
   return `<div class="renew-move-box">
     <div class="small" style="margin:8px 0 6px">${head}</div>
     <div class="renew-move-list">${list.map(x => {
@@ -3834,16 +3887,13 @@ function renewMovePickHtml(t, r) {
       const planBtn = plan
         ? `<button type="button" class="move-pick-plan renew-move-plan" data-move-plan="1" data-zoom-photo="${(plan.view || plan.hd || "images/plan-6821-view.webp")}?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + (x.no || "")))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
         : `<span class="move-pick-slot"></span>`;
-      const waitBtn = st.kind === "occupied"
-        ? `<button type="button" class="renew-wait${waiting ? " on" : ""}" data-room-wait="${escapeHtml(x.id || x.no || "")}">${waiting ? "取消排隊" : "我想排這間"}</button>`
-        : "";
-      return `<div class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}${waiting ? " waiting" : ""}" ${st.selectable ? `data-renew-pick="${escapeHtml(x.id || x.no || "")}"` : ""}>
+      const ask = st.kind === "occupied" ? ` data-room-ask="${escapeHtml(x.id || x.no || "")}"` : "";
+      return `<div class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}${waiting ? " waiting" : ""}" ${st.selectable ? `data-renew-pick="${escapeHtml(x.id || x.no || "")}"` : ""}${ask}>
         ${planBtn}
         <span class="renew-move-hit">
           <span class="renew-move-left"><b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${studioPickMarksHtml(x)}</b>${rent ? `<em class="renew-move-rent">${escapeHtml(money(rent))}</em>` : ""}</span>
-          <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}${st.soon ? `<em class="renew-move-soon">最快可入住 ${escapeHtml(st.soon)}</em>` : ""}</span>
+          <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}${st.soon ? `<em class="renew-move-soon">最快可入住 ${escapeHtml(st.soon)}</em>` : ""}${waiting ? `<em class="renew-move-queued">已排隊</em>` : ""}</span>
         </span>
-        ${waitBtn}
       </div>`;
     }).join("")}</div>
     <div class="small" id="renew-move-chosen"></div>
@@ -4242,19 +4292,11 @@ function bindRenewPicks() {
       paintRenewRange();
     };
   });
-  document.querySelectorAll("[data-room-wait]").forEach(btn => {
-    btn.onclick = e => {
+  document.querySelectorAll(".renew-move-item[data-room-ask]").forEach(row => {
+    row.onclick = e => {
+      if (e.target && e.target.closest && e.target.closest(".renew-move-plan")) return;
       e.preventDefault();
-      e.stopPropagation();
-      const t = typeof me === "function" ? me() : null;
-      const room = renewMoveRoomOf(btn.dataset.roomWait || "");
-      if (!t || !room) return;
-      const on = toggleRoomWait(t, room);
-      btn.textContent = on ? "取消排隊" : "我想排這間";
-      btn.classList.toggle("on", on);
-      const row = btn.closest(".renew-move-item");
-      if (row) row.classList.toggle("waiting", on);
-      toast(on ? "已排這間，等原租客退完才能看" : "已取消排隊");
+      openRoomWaitPop(renewMoveRoomOf(row.dataset.roomAsk || ""));
     };
   });
   paintRenewMoveChosen();
