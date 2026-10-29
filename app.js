@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-32";
-const APP_EDIT_COUNT = 2152;
+const APP_STAMP = "2026-10-29-11-34";
+const APP_EDIT_COUNT = 2153;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1777";
+const FILE_VER = "1778";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3954,7 +3954,7 @@ function openRoomWaitPop(room) {
     const on = toggleRoomWait(t, room);
     markWaitRow(room, on);
     closeRoomWaitPop();
-    toast(on ? "已排這間，等原租客退完才能看" : "已取消排隊");
+    toast(on ? ("已排" + (room.no || "") + "這間，等原租客退完才能看") : ("已取消排" + (room.no || "") + "這間"));
   };
 }
 function renewMovePickHtml(t, r) {
