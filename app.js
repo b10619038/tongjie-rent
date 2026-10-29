@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-36";
-const APP_EDIT_COUNT = 2154;
+const APP_STAMP = "2026-10-29-11-42";
+const APP_EDIT_COUNT = 2155;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1779";
+const FILE_VER = "1780";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3795,10 +3795,37 @@ function mergeRoomWaits(a, b, gone) {
   const drop = new Set((gone || []).map(String));
   return [...map.values()].filter(x => x && !drop.has(String(x.id)) && !x.off);
 }
+function roomWaitGoneId(x) {
+  if (!x) return "";
+  return String(typeof x === "string" ? x : (x.id || ""));
+}
+function settleRoomWaits(waitsA, waitsB, goneA, goneB) {
+  const waits = mergeRoomWaits(waitsA, waitsB, []);
+  const gone = new Map();
+  [].concat(goneA || [], goneB || []).forEach(x => {
+    const id = roomWaitGoneId(x);
+    if (!id) return;
+    const at = typeof x === "string" ? 0 : (Number(x.at) || 0);
+    const prev = gone.get(id);
+    if (prev == null || at >= prev) gone.set(id, at);
+  });
+  waits.forEach(w => {
+    if (!w || !w.id) return;
+    const g = gone.get(String(w.id));
+    if (g != null && Number(w.at) > Number(g)) gone.delete(String(w.id));
+  });
+  return {
+    roomWaits: waits.filter(w => {
+      const g = gone.get(String(w && w.id));
+      return g == null || Number(w.at) > Number(g);
+    }),
+    roomWaitGone: [...gone.entries()].map(([id, at]) => (at ? { id, at } : id))
+  };
+}
 function stampTenantWaits(dest) {
   if (!dest) return;
   const rows = Array.isArray(dest.roomWaits) ? dest.roomWaits : [];
-  const gone = new Set((dest.roomWaitGone || []).map(String));
+  const gone = new Set((dest.roomWaitGone || []).map(roomWaitGoneId).filter(Boolean));
   const ids = new Set();
   rows.forEach(w => { if (w && w.tenantId) ids.add(w.tenantId); });
   gone.forEach(id => { const tid = String(id).split("|")[0]; if (tid) ids.add(tid); });
@@ -3826,8 +3853,9 @@ function applyRoomWaitBox(dest) {
   try { box = JSON.parse(localStorage.getItem("tj-room-waits-v1") || "null"); } catch {}
   if (!box) return false;
   const before = JSON.stringify(target.roomWaits || []) + "|" + JSON.stringify(target.roomWaitGone || []);
-  target.roomWaitGone = unionGone(target.roomWaitGone, box.gone);
-  target.roomWaits = mergeRoomWaits(target.roomWaits, box.rows, target.roomWaitGone);
+  const settled = settleRoomWaits(target.roomWaits, box.rows, target.roomWaitGone, box.gone);
+  target.roomWaits = settled.roomWaits;
+  target.roomWaitGone = settled.roomWaitGone;
   if (box.ping && Number(box.ping.at) > Number(target.roomWaitPing && target.roomWaitPing.at)) target.roomWaitPing = box.ping;
   stampTenantWaits(target);
   const after = JSON.stringify(target.roomWaits || []) + "|" + JSON.stringify(target.roomWaitGone || []);
@@ -3835,7 +3863,7 @@ function applyRoomWaitBox(dest) {
 }
 function roomWaitList(t) {
   const tid = t && t.id;
-  const gone = new Set(((state && state.roomWaitGone) || []).map(String));
+  const gone = new Set(((state && state.roomWaitGone) || []).map(roomWaitGoneId).filter(Boolean));
   const shared = Array.isArray(state && state.roomWaits) ? state.roomWaits : [];
   const fromShared = shared.filter(x => x && tid && x.tenantId === tid && !gone.has(String(x.id)));
   if (fromShared.length) return fromShared;
@@ -3868,9 +3896,10 @@ function toggleRoomWait(t, room) {
   if (!Array.isArray(state.roomWaitGone)) state.roomWaitGone = [];
   if (had) {
     state.roomWaits = state.roomWaits.filter(x => x && x.id !== wid);
-    if (state.roomWaitGone.indexOf(wid) < 0) state.roomWaitGone.push(wid);
+    state.roomWaitGone = (state.roomWaitGone || []).filter(x => roomWaitGoneId(x) !== wid);
+    state.roomWaitGone.push({ id: wid, at: t.roomWaitAt });
   } else {
-    state.roomWaitGone = state.roomWaitGone.filter(x => String(x) !== wid);
+    state.roomWaitGone = (state.roomWaitGone || []).filter(x => roomWaitGoneId(x) !== wid);
     state.roomWaits = state.roomWaits.filter(x => x && x.id !== wid).concat([{
       id: wid,
       tenantId: t.id,
@@ -13058,8 +13087,9 @@ function ingestLiveCloud(raw) {
       }
     }
     if (Array.isArray(o.roomWaits) || Array.isArray(o.roomWaitGone) || o.roomWaitPing) {
-      state.roomWaitGone = unionGone(state.roomWaitGone, o.roomWaitGone);
-      if (Array.isArray(o.roomWaits)) state.roomWaits = mergeRoomWaits(state.roomWaits, o.roomWaits, state.roomWaitGone);
+      const settled = settleRoomWaits(state.roomWaits, o.roomWaits || [], state.roomWaitGone, o.roomWaitGone || []);
+      state.roomWaits = settled.roomWaits;
+      state.roomWaitGone = settled.roomWaitGone;
       if (o.roomWaitPing && Number(o.roomWaitPing.at) >= Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = o.roomWaitPing;
       try { stampTenantWaits(state); } catch {}
       try { rememberRoomWaits(); } catch {}
@@ -14400,8 +14430,9 @@ async function pullCloud() {
       try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
-      state.roomWaitGone = unionGone(state.roomWaitGone, data.roomWaitGone);
-      state.roomWaits = mergeRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone);
+      const settledWaits = settleRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone, data.roomWaitGone);
+      state.roomWaits = settledWaits.roomWaits;
+      state.roomWaitGone = settledWaits.roomWaitGone;
       if (data.roomWaitPing && Number(data.roomWaitPing.at) > Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = data.roomWaitPing;
       try { if (applyRoomWaitBox(state)) markCloudDirty(); } catch {}
       try { stampTenantWaits(state); rememberRoomWaits(); } catch {}
@@ -14430,8 +14461,9 @@ async function pullCloud() {
     const mineWaitGone = state.roomWaitGone;
     const mineWaitPing = state.roomWaitPing;
     state = normalize(data);
-    state.roomWaitGone = unionGone(state.roomWaitGone, mineWaitGone);
-    state.roomWaits = mergeRoomWaits(state.roomWaits, mineWaits, state.roomWaitGone);
+    const settledMine = settleRoomWaits(state.roomWaits, mineWaits, state.roomWaitGone, mineWaitGone);
+    state.roomWaits = settledMine.roomWaits;
+    state.roomWaitGone = settledMine.roomWaitGone;
     if (mineWaitPing && Number(mineWaitPing.at) > Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = mineWaitPing;
     try { if (applyRoomWaitBox(state)) markCloudDirty(); } catch {}
     try { stampTenantWaits(state); rememberRoomWaits(); } catch {}
@@ -15263,6 +15295,10 @@ async function pushCloud() {
     state.announcements = dropGone(annMerged, state.annGone);
     const seatGoneMerged = mergeSeatGone(remote && remote.seatGone, state.seatGone);
     state.seatGone = seatGoneMerged;
+    const settledWaits = settleRoomWaits(state.roomWaits, remote && remote.roomWaits, state.roomWaitGone, remote && remote.roomWaitGone);
+    state.roomWaits = settledWaits.roomWaits;
+    state.roomWaitGone = settledWaits.roomWaitGone;
+    try { stampTenantWaits(state); } catch {}
     const payload = Object.assign({}, remote || {}, state, {
       updatedAt: state.updatedAt,
       company: state.company,
@@ -15296,8 +15332,8 @@ async function pushCloud() {
       ),
       eSigns: mergeESignMaps(collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
-      roomWaits: mergeRoomWaits(remote && remote.roomWaits, state.roomWaits, unionGone(remote && remote.roomWaitGone, state.roomWaitGone)),
-      roomWaitGone: unionGone(remote && remote.roomWaitGone, state.roomWaitGone),
+      roomWaits: state.roomWaits || [],
+      roomWaitGone: state.roomWaitGone || [],
       roomWaitPing: (Number(state.roomWaitPing && state.roomWaitPing.at) >= Number(remote && remote.roomWaitPing && remote.roomWaitPing.at) ? state.roomWaitPing : (remote && remote.roomWaitPing)) || null,
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
