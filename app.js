@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-42";
-const APP_EDIT_COUNT = 2155;
+const APP_STAMP = "2026-10-29-11-48";
+const APP_EDIT_COUNT = 2156;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1780";
+const FILE_VER = "1781";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -13087,21 +13087,28 @@ function ingestLiveCloud(raw) {
       }
     }
     if (Array.isArray(o.roomWaits) || Array.isArray(o.roomWaitGone) || o.roomWaitPing) {
+      const beforeWaits = JSON.stringify(state.roomWaits || []) + "|" + JSON.stringify(state.roomWaitGone || []);
       const settled = settleRoomWaits(state.roomWaits, o.roomWaits || [], state.roomWaitGone, o.roomWaitGone || []);
       state.roomWaits = settled.roomWaits;
       state.roomWaitGone = settled.roomWaitGone;
       if (o.roomWaitPing && Number(o.roomWaitPing.at) >= Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = o.roomWaitPing;
-      try { stampTenantWaits(state); } catch {}
-      try { rememberRoomWaits(); } catch {}
-      if (ui.role === "admin" && o.roomWaitPing && !o.roomWaitPing.off) {
+      const changedWaits = beforeWaits !== JSON.stringify(state.roomWaits || []) + "|" + JSON.stringify(state.roomWaitGone || []);
+      if (changedWaits) {
+        try { stampTenantWaits(state); } catch {}
+        try { rememberRoomWaits(); } catch {}
+      }
+      if (ui.role === "admin" && o.roomWaitPing && !o.roomWaitPing.off && Number(o.roomWaitPing.at) > Number(ingestLiveCloud.waitSeen || 0)) {
+        ingestLiveCloud.waitSeen = Number(o.roomWaitPing.at);
         const line = `${o.roomWaitPing.fromNo || ""} ${o.roomWaitPing.name || ""} 想排 ${o.roomWaitPing.roomNo || ""}`.trim();
         try { showOsBanner("排隊看房", line, "wait-" + (o.roomWaitPing.id || o.roomWaitPing.roomNo || "")); } catch {}
         try { toast("排隊看房　" + line); } catch {}
       }
-      ui.keepScroll = true;
-      try { render(); } catch {}
-      if (o.device !== liveDeviceId()) {
-        try { markCloudDirty(); pushCloud(); } catch {}
+      if (changedWaits) {
+        ui.keepScroll = true;
+        try { render(); } catch {}
+        if (o.device !== liveDeviceId()) {
+          try { markCloudDirty(); pushCloud(); } catch {}
+        }
       }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
@@ -13228,6 +13235,12 @@ function publishRoomWaitNow() {
     pendingRoomWaitPkt = null;
   } catch {}
 }
+setInterval(() => {
+  try {
+    if (!state || !(state.roomWaits || []).length) return;
+    publishRoomWaitNow();
+  } catch {}
+}, 8000);
 let pendingRepairPkt = null;
 function publishRepairStatus(rep) {
   if (!rep || !rep.id) return;
@@ -14280,10 +14293,16 @@ function mergeLedgerInto(target, other) {
   }
 }
 async function pullCloud() {
-  if (pullCloud.ctrl) { try { pullCloud.ctrl.abort(); } catch {} }
+  if (pullCloud.busy) return pullCloud.busy;
+  const run = pullCloudNow();
+  pullCloud.busy = run;
+  try { return await run; }
+  finally { if (pullCloud.busy === run) pullCloud.busy = null; }
+}
+async function pullCloudNow() {
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   pullCloud.ctrl = ctrl;
-  const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 18000) : 0;
   try {
     const res = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
     if (!res.ok) { ui.cloudOk = false; return false; }
