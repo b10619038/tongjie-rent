@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-10-36";
-const APP_EDIT_COUNT = 2147;
+const APP_STAMP = "2026-10-29-11-02";
+const APP_EDIT_COUNT = 2148;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1772";
+const FILE_VER = "1773";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3785,31 +3785,65 @@ function renewMoveStatus(room) {
   const sub = until ? "約至 " + until : "";
   return { kind: "occupied", label: "目前有人住 " + sub, line: "目前有人住", sub, soon, selectable: false };
 }
+function roomWaitList(t) {
+  return Array.isArray(t && t.roomWaits) ? t.roomWaits.filter(x => x && (x.roomId || x.roomNo)) : [];
+}
+function roomWaitOn(t, room) {
+  if (!t || !room) return false;
+  const id = room.id || "";
+  const no = String(room.no || "");
+  return roomWaitList(t).some(x => (id && x.roomId === id) || (no && String(x.roomNo) === no));
+}
+function toggleRoomWait(t, room) {
+  if (!t || !room) return false;
+  const id = room.id || "";
+  const no = String(room.no || "");
+  const had = roomWaitOn(t, room);
+  const list = roomWaitList(t).filter(x => !((id && x.roomId === id) || (no && String(x.roomNo) === no)));
+  if (!had) list.push({ roomId: id, roomNo: no, at: Date.now() });
+  t.roomWaits = list;
+  t.roomWaitAt = Date.now();
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { save(); } catch {}
+  try { markCloudDirty(); } catch {}
+  try { pushCloud(); } catch {}
+  const from = typeof myRoom === "function" ? myRoom() : null;
+  try {
+    pushPhoneNotify(had ? "取消排隊" : "排隊看房", `${(from && from.no) || ""} ${t.name || ""} ${had ? "取消排" : "想排"} ${no}。要等原租客退完才能看。`, "admin");
+  } catch {}
+  return !had;
+}
 function renewMovePickHtml(t, r) {
   const list = renewMoveTargets(r);
   const pick = String(ui.renewMoveRoomId || "");
   const can = list.filter(x => renewMoveStatus(x).selectable);
   const head = can.length
-    ? "請選一間空房。有人住或原住戶已續約的不能選。"
-    : "目前沒有可立即換的房間。下面仍列出各房現況，方便你知道。";
+    ? "空房可以直接選。目前有人住、還沒續約的，可以按「我想排這間」，再按一次取消。已續約的不能排。"
+    : "目前沒有可立即換的房間。有人住、還沒續約的可以先排，等退租後才能看。";
   return `<div class="renew-move-box">
     <div class="small" style="margin:8px 0 6px">${head}</div>
     <div class="renew-move-list">${list.map(x => {
       if (typeof preloadPlanView === "function") preloadPlanView();
       const st = renewMoveStatus(x);
       const on = pick === x.id || pick === String(x.no);
+      const waiting = st.kind === "occupied" && roomWaitOn(t, x);
       const listed = typeof studioRentOf === "function" ? studioRentOf(x.no) : 0;
       const rent = Number(x.rent) || (Number(listed) > 0 ? Number(listed) : 0);
       const plan = typeof floorPlanOf === "function" ? floorPlanOf(x.no) : null;
       const planBtn = plan
         ? `<button type="button" class="move-pick-plan renew-move-plan" data-move-plan="1" data-zoom-photo="${(plan.view || plan.hd || "images/plan-6821-view.webp")}?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + (x.no || "")))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
         : `<span class="move-pick-slot"></span>`;
-      return `<div class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}" ${st.selectable ? `data-renew-pick="${escapeHtml(x.id || x.no || "")}"` : ""}>
+      const waitBtn = st.kind === "occupied"
+        ? `<button type="button" class="renew-wait${waiting ? " on" : ""}" data-room-wait="${escapeHtml(x.id || x.no || "")}">${waiting ? "取消排隊" : "我想排這間"}</button>`
+        : "";
+      return `<div class="ghost renew-move-item${on ? " on" : ""}${st.selectable ? "" : " off"}${waiting ? " waiting" : ""}" ${st.selectable ? `data-renew-pick="${escapeHtml(x.id || x.no || "")}"` : ""}>
         ${planBtn}
         <span class="renew-move-hit">
           <span class="renew-move-left"><b>${escapeHtml(studioListNo(x) || x.no || "")} 套房${studioPickMarksHtml(x)}</b>${rent ? `<em class="renew-move-rent">${escapeHtml(money(rent))}</em>` : ""}</span>
           <span class="renew-move-st"><em>${escapeHtml(st.line || st.label)}</em>${st.sub ? `<em class="renew-move-until">${escapeHtml(st.sub)}</em>` : ""}${st.soon ? `<em class="renew-move-soon">最快可入住 ${escapeHtml(st.soon)}</em>` : ""}</span>
         </span>
+        ${waitBtn}
       </div>`;
     }).join("")}</div>
     <div class="small" id="renew-move-chosen"></div>
@@ -4206,6 +4240,21 @@ function bindRenewPicks() {
       document.querySelectorAll(".renew-move-item").forEach(b => b.classList.toggle("on", b === row));
       paintRenewMoveChosen();
       paintRenewRange();
+    };
+  });
+  document.querySelectorAll("[data-room-wait]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = typeof me === "function" ? me() : null;
+      const room = renewMoveRoomOf(btn.dataset.roomWait || "");
+      if (!t || !room) return;
+      const on = toggleRoomWait(t, room);
+      btn.textContent = on ? "取消排隊" : "我想排這間";
+      btn.classList.toggle("on", on);
+      const row = btn.closest(".renew-move-item");
+      if (row) row.classList.toggle("waiting", on);
+      toast(on ? "已排這間，等原租客退完才能看" : "已取消排隊");
     };
   });
   paintRenewMoveChosen();
@@ -12254,7 +12303,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveRefundCode", "leaveRefundAccount", "leaveRefundAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveRefundCode", "leaveRefundAccount", "leaveRefundAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver", "roomWaits", "roomWaitAt"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -12339,6 +12388,15 @@ function pickNewerEntity(a, b, keys) {
       out.appointAt = pick.appointAt || "";
       out.appointPaused = !!pick.appointPaused;
       out.appointAtAt = Math.max(aWhen, bWhen);
+    }
+  }
+  if (keys && keys.indexOf("roomWaits") >= 0) {
+    const aWait = Number(a.roomWaitAt) || 0;
+    const bWait = Number(b.roomWaitAt) || 0;
+    if (aWait !== bWait) {
+      const pick = aWait > bWait ? a : b;
+      out.roomWaits = Array.isArray(pick.roomWaits) ? pick.roomWaits : [];
+      out.roomWaitAt = Math.max(aWait, bWait);
     }
   }
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
@@ -18647,7 +18705,7 @@ function pushPhoneNotify(title, body, target) {
     extra.tag = payNoticeTag(no, payYmNow());
     extra.page = "tenants";
   }
-  if (title === "續約簽約時間" || title === "中途退租簽約時間" || title === "正退申請" || title === "中退申請" || title === "退租點交") {
+  if (title === "續約簽約時間" || title === "中途退租簽約時間" || title === "正退申請" || title === "中退申請" || title === "退租點交" || title === "排隊看房" || title === "取消排隊") {
     extra.tag = (extra.tag || "tongjie-appoint") + "-t" + Date.now();
     if (target === "admin") extra.page = "tenants";
   }
@@ -38446,14 +38504,16 @@ function tenantEntryCardHtml(kind, entry) {
     : (renew ? `<button type="button" class="pay-pill ${renewCls}${renewOpen ? " on" : ""} only-normal" data-open-renew="${escapeHtml(renew.id)}">${renewLabel}</button>` : "");
   const countRenew = tenantRenewApply(t, r) && renew ? `<button type="button" class="pay-pill hand${renewOpen ? " on" : ""} only-count" data-open-renew="${escapeHtml(renew.id)}">續約申請</button>` : "";
   const countUndo = undoRenew ? `<button type="button" class="pay-pill paid only-count" data-undo-renew="${escapeHtml(undoRenew.id)}">已續約</button>` : "";
+  const waits = roomWaitList(t);
+  const waitPill = waits.length ? `<span class="pay-pill hand">${waits.length === 1 ? ("想排" + escapeHtml(waits[0].roomNo || "")) : ("想排" + waits.length + "間")}</span>` : "";
   return `<div class="tenant-renew-block" data-pay="${payFlag}" style="--count-order:${countOrder}">
       <div class="swipe-wrap slim" data-swipe-tenant="${t.id}">
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
-      ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
+      ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) || waits.length ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
       <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
-        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${normalRenew}${pill ? `<span class="pay-pill ${pill.cls} only-normal">${pill.text}</span>` : ""}${countRenew}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countUndo}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}<span class="pay-pill count-left only-count${leftCls}">${tenantRemainLabel(t, r)}</span><button type="button" class="pay-pill pay-toggle only-normal ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
+        : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${normalRenew}${pill ? `<span class="pay-pill ${pill.cls} only-normal">${pill.text}</span>` : ""}${countRenew}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countUndo}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}${waitPill}<span class="pay-pill count-left only-count${leftCls}">${tenantRemainLabel(t, r)}</span><button type="button" class="pay-pill pay-toggle only-normal ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
     </div>
     ${payOpen ? `<div class="sheet-drop sheet-drop-ready"><div class="sheet-drop-inner">${payAdminCardHtml(t, r)}</div></div>` : ""}
