@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-26";
-const APP_EDIT_COUNT = 2151;
+const APP_STAMP = "2026-10-29-11-32";
+const APP_EDIT_COUNT = 2152;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1776";
+const FILE_VER = "1777";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3795,6 +3795,44 @@ function mergeRoomWaits(a, b, gone) {
   const drop = new Set((gone || []).map(String));
   return [...map.values()].filter(x => x && !drop.has(String(x.id)) && !x.off);
 }
+function stampTenantWaits(dest) {
+  if (!dest) return;
+  const rows = Array.isArray(dest.roomWaits) ? dest.roomWaits : [];
+  const gone = new Set((dest.roomWaitGone || []).map(String));
+  const ids = new Set();
+  rows.forEach(w => { if (w && w.tenantId) ids.add(w.tenantId); });
+  gone.forEach(id => { const tid = String(id).split("|")[0]; if (tid) ids.add(tid); });
+  ids.forEach(tid => {
+    const t = (dest.tenants || []).find(x => x && x.id === tid);
+    if (!t) return;
+    const mine = rows.filter(w => w && w.tenantId === tid && !gone.has(String(w.id)));
+    t.roomWaits = mine.map(w => ({ roomId: w.roomId || "", roomNo: w.roomNo || "", at: Number(w.at) || 0 }));
+    const at = mine.reduce((m, w) => Math.max(m, Number(w.at) || 0), 0);
+    if (at) t.roomWaitAt = Math.max(Number(t.roomWaitAt) || 0, at);
+  });
+}
+function rememberRoomWaits() {
+  try {
+    localStorage.setItem("tj-room-waits-v1", JSON.stringify({
+      rows: state.roomWaits || [],
+      gone: state.roomWaitGone || [],
+      ping: state.roomWaitPing || null
+    }));
+  } catch {}
+}
+function applyRoomWaitBox(dest) {
+  const target = dest || state;
+  let box = null;
+  try { box = JSON.parse(localStorage.getItem("tj-room-waits-v1") || "null"); } catch {}
+  if (!box) return false;
+  const before = JSON.stringify(target.roomWaits || []) + "|" + JSON.stringify(target.roomWaitGone || []);
+  target.roomWaitGone = unionGone(target.roomWaitGone, box.gone);
+  target.roomWaits = mergeRoomWaits(target.roomWaits, box.rows, target.roomWaitGone);
+  if (box.ping && Number(box.ping.at) > Number(target.roomWaitPing && target.roomWaitPing.at)) target.roomWaitPing = box.ping;
+  stampTenantWaits(target);
+  const after = JSON.stringify(target.roomWaits || []) + "|" + JSON.stringify(target.roomWaitGone || []);
+  return before !== after;
+}
 function roomWaitList(t) {
   const tid = t && t.id;
   const gone = new Set(((state && state.roomWaitGone) || []).map(String));
@@ -3844,9 +3882,12 @@ function toggleRoomWait(t, room) {
     }]);
   }
   state.roomWaitPing = { at: t.roomWaitAt, id: wid, roomNo: no, name: t.name || "", fromNo: (from && from.no) || "", off: had };
+  try { stampTenantWaits(state); } catch {}
+  try { rememberRoomWaits(); } catch {}
   try { save(); } catch {}
   try { markCloudDirty(); } catch {}
   try { pushCloud(); } catch {}
+  try { publishRoomWaitNow(); } catch {}
   try {
     pushPhoneNotify(had ? "取消排隊" : "排隊看房", `${(from && from.no) || ""} ${t.name || ""} ${had ? "取消排" : "想排"} ${no}。要等原租客退完才能看。`, "admin");
   } catch {}
@@ -12945,7 +12986,7 @@ function ingestLiveCloud(raw) {
     const at = Number(o.at) || 0;
     const hasMemos = (Array.isArray(o.memos) && o.memos.length) || (Array.isArray(o.memoGone) && o.memoGone.length);
     const hasRepairs = Array.isArray(o.repairs) && o.repairs.length;
-    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !(Array.isArray(o.leaves) && o.leaves.length) && !hasMemos && !hasRepairs) return;
+    if (at && at <= lastLiveAt && !(Array.isArray(o.renewals) && o.renewals.length) && !(Array.isArray(o.earlyOuts) && o.earlyOuts.length) && !(Array.isArray(o.leaves) && o.leaves.length) && !hasMemos && !hasRepairs && !(Array.isArray(o.roomWaits) || Array.isArray(o.roomWaitGone) || o.roomWaitPing)) return;
     if (at) lastLiveAt = Math.max(lastLiveAt || 0, at);
     if (hasMemos) {
       state.memoGone = unionGone(state.memoGone, o.memoGone);
@@ -13014,6 +13055,23 @@ function ingestLiveCloud(raw) {
         if (o.device !== liveDeviceId()) {
           try { markCloudDirty(); pushCloud(); } catch {}
         }
+      }
+    }
+    if (Array.isArray(o.roomWaits) || Array.isArray(o.roomWaitGone) || o.roomWaitPing) {
+      state.roomWaitGone = unionGone(state.roomWaitGone, o.roomWaitGone);
+      if (Array.isArray(o.roomWaits)) state.roomWaits = mergeRoomWaits(state.roomWaits, o.roomWaits, state.roomWaitGone);
+      if (o.roomWaitPing && Number(o.roomWaitPing.at) >= Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = o.roomWaitPing;
+      try { stampTenantWaits(state); } catch {}
+      try { rememberRoomWaits(); } catch {}
+      if (ui.role === "admin" && o.roomWaitPing && !o.roomWaitPing.off) {
+        const line = `${o.roomWaitPing.fromNo || ""} ${o.roomWaitPing.name || ""} 想排 ${o.roomWaitPing.roomNo || ""}`.trim();
+        try { showOsBanner("排隊看房", line, "wait-" + (o.roomWaitPing.id || o.roomWaitPing.roomNo || "")); } catch {}
+        try { toast("排隊看房　" + line); } catch {}
+      }
+      ui.keepScroll = true;
+      try { render(); } catch {}
+      if (o.device !== liveDeviceId()) {
+        try { markCloudDirty(); pushCloud(); } catch {}
       }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
@@ -13120,6 +13178,24 @@ function ingestLiveCloud(raw) {
         try { enforceTenantSession(); } catch {}
       }
     }, 200);
+  } catch {}
+}
+let pendingRoomWaitPkt = null;
+function publishRoomWaitNow() {
+  pendingRoomWaitPkt = {
+    at: Date.now(),
+    device: typeof liveDeviceId === "function" ? liveDeviceId() : "",
+    roomWaits: state.roomWaits || [],
+    roomWaitGone: state.roomWaitGone || [],
+    roomWaitPing: state.roomWaitPing || null
+  };
+  if (!(paidWs && paidWs.readyState === 1)) {
+    try { connectPaidCloud(); } catch {}
+    return;
+  }
+  try {
+    paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRoomWaitPkt), false));
+    pendingRoomWaitPkt = null;
   } catch {}
 }
 let pendingRepairPkt = null;
@@ -13716,6 +13792,12 @@ function connectPaidCloud() {
           try {
             paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRepairPkt), false));
             pendingRepairPkt = null;
+          } catch {}
+        }
+        if (pendingRoomWaitPkt && paidWs && paidWs.readyState === 1) {
+          try {
+            paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRoomWaitPkt), false));
+            pendingRoomWaitPkt = null;
           } catch {}
         }
         return;
@@ -14321,6 +14403,8 @@ async function pullCloud() {
       state.roomWaitGone = unionGone(state.roomWaitGone, data.roomWaitGone);
       state.roomWaits = mergeRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone);
       if (data.roomWaitPing && Number(data.roomWaitPing.at) > Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = data.roomWaitPing;
+      try { if (applyRoomWaitBox(state)) markCloudDirty(); } catch {}
+      try { stampTenantWaits(state); rememberRoomWaits(); } catch {}
       state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
       state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
       state.leaveWithdrawn = mergeLeaveWithdrawn(data.leaveWithdrawn, state.leaveWithdrawn);
@@ -14342,7 +14426,15 @@ async function pullCloud() {
     const mineCompany = (state.company && Number(state.company.updatedAt) > 0) ? state.company : loadPersistedCompany();
     const mineBooksVer = state.booksImportVer;
     const mineDocsVer = state.docsImportVer;
+    const mineWaits = state.roomWaits;
+    const mineWaitGone = state.roomWaitGone;
+    const mineWaitPing = state.roomWaitPing;
     state = normalize(data);
+    state.roomWaitGone = unionGone(state.roomWaitGone, mineWaitGone);
+    state.roomWaits = mergeRoomWaits(state.roomWaits, mineWaits, state.roomWaitGone);
+    if (mineWaitPing && Number(mineWaitPing.at) > Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = mineWaitPing;
+    try { if (applyRoomWaitBox(state)) markCloudDirty(); } catch {}
+    try { stampTenantWaits(state); rememberRoomWaits(); } catch {}
     try { absorbTyphoonDays(state.typhoonDays, false); } catch {}
     try { applyLeaveExtras(); } catch {}
     if (keepCut) state.adminLogoutAt = keepCut;
@@ -14882,7 +14974,9 @@ function coreSig(d) {
       (d.aiMemos || []).length,
       (d.checkouts || []).length,
       (d.bankSlips || []).length,
-      (d.errands || []).length
+      (d.errands || []).length,
+      (d.roomWaits || []).map(w => [w && w.id, w && w.at, w && w.roomNo].join(":")).join(","),
+      (d.roomWaitGone || []).length
     ].join("|");
   } catch { return String(d && d.updatedAt); }
 }
@@ -15140,6 +15234,9 @@ async function pushCloud() {
     return;
   }
   if (!cloudDirty && !pushAgain) return false;
+  try {
+    if (applyRoomWaitBox(state)) cloudDirty = true;
+  } catch {}
   if (pushBusy) { pushAgain = true; return false; }
   pushBusy = true;
   pushAgain = false;
