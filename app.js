@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-11-12";
-const APP_EDIT_COUNT = 2149;
+const APP_STAMP = "2026-10-29-11-22";
+const APP_EDIT_COUNT = 2150;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1774";
+const FILE_VER = "1775";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3785,8 +3785,27 @@ function renewMoveStatus(room) {
   const sub = until ? "約至 " + until : "";
   return { kind: "occupied", label: "目前有人住 " + sub, line: "目前有人住", sub, soon, selectable: false };
 }
+function mergeRoomWaits(a, b, gone) {
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id) return;
+    const cur = map.get(x.id);
+    if (!cur || Number(x.at) >= Number(cur.at)) map.set(x.id, Object.assign({}, x));
+  });
+  const drop = new Set((gone || []).map(String));
+  return [...map.values()].filter(x => x && !drop.has(String(x.id)) && !x.off);
+}
 function roomWaitList(t) {
-  return Array.isArray(t && t.roomWaits) ? t.roomWaits.filter(x => x && (x.roomId || x.roomNo)) : [];
+  const tid = t && t.id;
+  const gone = new Set(((state && state.roomWaitGone) || []).map(String));
+  const shared = Array.isArray(state && state.roomWaits) ? state.roomWaits : [];
+  const fromShared = shared.filter(x => x && tid && x.tenantId === tid && !gone.has(String(x.id)));
+  if (fromShared.length) return fromShared;
+  return Array.isArray(t && t.roomWaits) ? t.roomWaits.filter(x => {
+    if (!x || !(x.roomId || x.roomNo)) return false;
+    const id = x.id || (tid ? tid + "|" + x.roomNo : "");
+    return !gone.has(String(id));
+  }) : [];
 }
 function roomWaitOn(t, room) {
   if (!t || !room) return false;
@@ -3799,16 +3818,35 @@ function toggleRoomWait(t, room) {
   const id = room.id || "";
   const no = String(room.no || "");
   const had = roomWaitOn(t, room);
+  const from = typeof myRoom === "function" ? myRoom() : null;
   const list = roomWaitList(t).filter(x => !((id && x.roomId === id) || (no && String(x.roomNo) === no)));
   if (!had) list.push({ roomId: id, roomNo: no, at: Date.now() });
   t.roomWaits = list;
   t.roomWaitAt = Date.now();
   t.edited = true;
   t.editedAt = Date.now();
+  const wid = (t.id || "") + "|" + no;
+  if (!Array.isArray(state.roomWaits)) state.roomWaits = [];
+  if (!Array.isArray(state.roomWaitGone)) state.roomWaitGone = [];
+  if (had) {
+    state.roomWaits = state.roomWaits.filter(x => x && x.id !== wid);
+    if (state.roomWaitGone.indexOf(wid) < 0) state.roomWaitGone.push(wid);
+  } else {
+    state.roomWaitGone = state.roomWaitGone.filter(x => String(x) !== wid);
+    state.roomWaits = state.roomWaits.filter(x => x && x.id !== wid).concat([{
+      id: wid,
+      tenantId: t.id,
+      name: t.name || "",
+      fromNo: (from && from.no) || "",
+      roomId: room.id || "",
+      roomNo: no,
+      at: t.roomWaitAt
+    }]);
+  }
+  state.roomWaitPing = { at: t.roomWaitAt, id: wid, roomNo: no, name: t.name || "", fromNo: (from && from.no) || "", off: had };
   try { save(); } catch {}
   try { markCloudDirty(); } catch {}
   try { pushCloud(); } catch {}
-  const from = typeof myRoom === "function" ? myRoom() : null;
   try {
     pushPhoneNotify(had ? "取消排隊" : "排隊看房", `${(from && from.no) || ""} ${t.name || ""} ${had ? "取消排" : "想排"} ${no}。要等原租客退完才能看。`, "admin");
   } catch {}
@@ -14256,6 +14294,9 @@ async function pullCloud() {
       try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
+      state.roomWaitGone = unionGone(state.roomWaitGone, data.roomWaitGone);
+      state.roomWaits = mergeRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone);
+      if (data.roomWaitPing && Number(data.roomWaitPing.at) > Number(state.roomWaitPing && state.roomWaitPing.at)) state.roomWaitPing = data.roomWaitPing;
       state.leaveCash = mergeLeaveCash(state.leaveCash, data.leaveCash);
       state.leaveInk = mergeLeaveInk(state.leaveInk, data.leaveInk);
       state.leaveWithdrawn = mergeLeaveWithdrawn(data.leaveWithdrawn, state.leaveWithdrawn);
@@ -15134,6 +15175,9 @@ async function pushCloud() {
       ),
       eSigns: mergeESignMaps(collectESigns(remote), collectESigns(state)),
       tenants: mergeTenants(remote && remote.tenants, state.tenants),
+      roomWaits: mergeRoomWaits(remote && remote.roomWaits, state.roomWaits, unionGone(remote && remote.roomWaitGone, state.roomWaitGone)),
+      roomWaitGone: unionGone(remote && remote.roomWaitGone, state.roomWaitGone),
+      roomWaitPing: (Number(state.roomWaitPing && state.roomWaitPing.at) >= Number(remote && remote.roomWaitPing && remote.roomWaitPing.at) ? state.roomWaitPing : (remote && remote.roomWaitPing)) || null,
       rooms: mergeRooms(remote && remote.rooms, state.rooms),
       paidMarks: mergePaidMarkMaps(remote && remote.paidMarks, mergePaidMarkMaps(loadPaidMarks(), state.paidMarks)),
       rentUnpaidYm: state.rentUnpaidYm || (remote && remote.rentUnpaidYm),
@@ -15183,6 +15227,8 @@ async function pushCloud() {
     if (payload.aiMemos) state.aiMemos = payload.aiMemos;
     if (payload.memoGone) state.memoGone = payload.memoGone;
     if (payload.tenants) state.tenants = payload.tenants;
+    if (payload.roomWaits) state.roomWaits = payload.roomWaits;
+    if (payload.roomWaitGone) state.roomWaitGone = payload.roomWaitGone;
     if (payload.rooms) state.rooms = payload.rooms;
     applyAvatars(state);
     persistAvatars(state);
