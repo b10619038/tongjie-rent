@@ -1145,12 +1145,42 @@ button.pay-pill.hand {
 .wait-home {
   background: #fff;
   border: 1px solid var(--line);
-  padding: 12px 14px;
+  padding: 12px 16px;
 }
 .wait-home .label { color: var(--ink); font-size: 15px; }
 .wait-home p { color: var(--muted); }
-.wait-home-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.wait-home .ghost { width: auto; margin: 0; padding: 6px 12px; }
+.wait-home-actions { margin-top: 8px; }
+.wait-match-main,
+.wait-match-side {
+  visibility: hidden;
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.wait-match-main {
+  min-width: 148px;
+  padding: 8px 28px;
+}
+.wait-align-slot {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+}
+.wait-match-side {
+  padding: 8px 16px;
+  border: 1.5px solid transparent;
+}
+.wait-align-slot .ghost {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto;
+  margin: 0;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
 .renew-note .renew-focus {
   margin-top: 10px;
   padding: 10px 12px;
