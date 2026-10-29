@@ -11,6 +11,40 @@
     }
   } catch (e) {}
 
+  function readAppoint() {
+    try { return JSON.parse(localStorage.getItem("tj-repair-appoint-v1") || "{}") || {}; } catch (e) { return {}; }
+  }
+  function writeAppoint(box) {
+    try { localStorage.setItem("tj-repair-appoint-v1", JSON.stringify(box || {})); } catch (e) {}
+  }
+  function applyAppoint(list) {
+    const box = readAppoint();
+    let changed = false;
+    (list || []).forEach(function (r) {
+      if (!r || !r.id || !box[r.id]) return;
+      const hit = box[r.id];
+      const stamp = Number(hit.appointAtAt) || 0;
+      if (!stamp || stamp < Number(r.appointAtAt || 0)) return;
+      if (String(r.appointAt || "") === String(hit.appointAt || "") && !!r.appointPaused === !!hit.appointPaused && Number(r.appointAtAt || 0) === stamp) return;
+      r.appointAt = hit.appointAt || "";
+      r.appointPaused = !!hit.appointPaused;
+      r.appointAtAt = stamp;
+      if (stamp > Number(r.editedAt || 0)) r.editedAt = stamp;
+      changed = true;
+    });
+    return changed;
+  }
+  function noteAppoint(id, appointAt, appointAtAt, appointPaused) {
+    const stamp = Number(appointAtAt) || 0;
+    if (!id || !stamp) return false;
+    const box = readAppoint();
+    const cur = box[id];
+    if (cur && Number(cur.appointAtAt || 0) > stamp) return false;
+    if (cur && Number(cur.appointAtAt || 0) === stamp && String(cur.appointAt || "") === String(appointAt || "") && !!cur.appointPaused === !!appointPaused) return false;
+    box[id] = { appointAt: appointAt || "", appointAtAt: stamp, appointPaused: !!appointPaused };
+    writeAppoint(box);
+    return true;
+  }
   function readBox() {
     try { return JSON.parse(localStorage.getItem(LIVE) || "{}") || {}; } catch (e) { return {}; }
   }
@@ -58,6 +92,7 @@
     try {
       if (value && Array.isArray(value.repairs) && (Array.isArray(value.rooms) || Array.isArray(value.tenants))) {
         applyBox(value.repairs);
+        applyAppoint(value.repairs);
       }
     } catch (e) {}
     return origStringify.apply(JSON, arguments);
@@ -92,12 +127,22 @@
   let pubTimer = 0;
   function boxPayload() {
     const box = readBox();
-    const repairs = [];
+    const appoint = readAppoint();
+    const map = {};
     Object.keys(box).forEach(function (id) {
       const x = box[id];
       if (!x || !x.status) return;
-      repairs.push({ id: id, status: x.status, statusAt: Number(x.statusAt) || 0 });
+      map[id] = { id: id, status: x.status, statusAt: Number(x.statusAt) || 0 };
     });
+    Object.keys(appoint).forEach(function (id) {
+      const x = appoint[id];
+      if (!x || !Number(x.appointAtAt)) return;
+      if (!map[id]) map[id] = { id: id, status: "", statusAt: 0 };
+      map[id].appointAt = x.appointAt || "";
+      map[id].appointAtAt = Number(x.appointAtAt) || 0;
+      map[id].appointPaused = !!x.appointPaused;
+    });
+    const repairs = Object.keys(map).map(function (id) { return map[id]; });
     if (!repairs.length) return "";
     return origStringify({ at: Date.now(), device: device, repairs: repairs });
   }
@@ -120,12 +165,13 @@
     if (!o || !Array.isArray(o.repairs)) return;
     let learned = false;
     o.repairs.forEach(function (x) {
-      if (!x || !x.id || !x.status) return;
-      if (remember(x.id, x.status, Number(x.statusAt) || Number(o.at) || 0)) learned = true;
+      if (!x || !x.id) return;
+      if (x.status && remember(x.id, x.status, Number(x.statusAt) || Number(o.at) || 0)) learned = true;
+      if (noteAppoint(x.id, x.appointAt, x.appointAtAt, x.appointPaused)) learned = true;
     });
     let painted = false;
     try {
-      if (typeof state !== "undefined" && state && applyBox(state.repairs)) painted = true;
+      if (typeof state !== "undefined" && state && (applyBox(state.repairs) || applyAppoint(state.repairs))) painted = true;
     } catch (e) {}
     if (painted) {
       paint();
@@ -168,7 +214,7 @@
   function heal() {
     try {
       if (typeof state === "undefined" || !state || !Array.isArray(state.repairs)) return;
-      if (applyBox(state.repairs)) {
+      if (applyBox(state.repairs) || applyAppoint(state.repairs)) {
         paint();
         push();
       }

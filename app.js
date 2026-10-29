@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-29-09-48";
-const APP_EDIT_COUNT = 2145;
+const APP_STAMP = "2026-10-29-10-24";
+const APP_EDIT_COUNT = 2146;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1770";
+const FILE_VER = "1771";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12080,6 +12080,34 @@ function stampRepair(rep) {
   rep.edited = true;
   rep.editedAt = Date.now();
 }
+function rememberRepairAppoint(rep) {
+  if (!rep || !rep.id) return;
+  let box = {};
+  try { box = JSON.parse(localStorage.getItem("tj-repair-appoint-v1") || "{}") || {}; } catch { box = {}; }
+  const stamp = Number(rep.appointAtAt) || Date.now();
+  const cur = box[rep.id];
+  if (cur && Number(cur.appointAtAt || 0) > stamp) return;
+  box[rep.id] = { appointAt: rep.appointAt || "", appointPaused: !!rep.appointPaused, appointAtAt: stamp };
+  try { localStorage.setItem("tj-repair-appoint-v1", JSON.stringify(box)); } catch {}
+}
+function applyRepairAppointBox(list) {
+  let box = {};
+  try { box = JSON.parse(localStorage.getItem("tj-repair-appoint-v1") || "{}") || {}; } catch { return false; }
+  let changed = false;
+  (list || []).forEach(r => {
+    const hit = r && box[r.id];
+    if (!hit) return;
+    const stamp = Number(hit.appointAtAt) || 0;
+    if (!stamp || stamp < Number(r.appointAtAt || 0)) return;
+    if (String(r.appointAt || "") === String(hit.appointAt || "") && !!r.appointPaused === !!hit.appointPaused && Number(r.appointAtAt || 0) === stamp) return;
+    r.appointAt = hit.appointAt || "";
+    r.appointPaused = !!hit.appointPaused;
+    r.appointAtAt = stamp;
+    if (stamp > Number(r.editedAt || 0)) r.editedAt = stamp;
+    changed = true;
+  });
+  return changed;
+}
 function unionById(a, b) {
   const map = new Map();
   [].concat(a || [], b || []).forEach(x => {
@@ -12257,6 +12285,16 @@ function pickNewerEntity(a, b, keys) {
     if (pick && pick.status) {
       out.status = pick.status;
       out.statusAt = Math.max(aAt, bAt) || Date.now();
+    }
+  }
+  if (keys && keys.indexOf("appointAt") >= 0) {
+    const aWhen = Number(a.appointAtAt) || 0;
+    const bWhen = Number(b.appointAtAt) || 0;
+    if (aWhen !== bWhen) {
+      const pick = aWhen > bWhen ? a : b;
+      out.appointAt = pick.appointAt || "";
+      out.appointPaused = !!pick.appointPaused;
+      out.appointAtAt = Math.max(aWhen, bWhen);
     }
   }
   if (a.demo || b.demo || a.id === "t-demo" || b.id === "t-demo") out.demo = true;
@@ -12742,6 +12780,8 @@ function ingestLiveCloud(raw) {
             cur.appointAt = x.appointAt || "";
             cur.appointPaused = !!x.appointPaused;
             cur.appointAtAt = Number(x.appointAtAt);
+            if (Number(x.appointAtAt) > Number(cur.editedAt || 0)) cur.editedAt = Number(x.appointAtAt);
+            try { rememberRepairAppoint(cur); } catch {}
             changed = true;
           }
         }
@@ -12765,6 +12805,9 @@ function ingestLiveCloud(raw) {
       if (changed) {
         ui.keepScroll = true;
         try { render(); } catch {}
+        if (o.device !== liveDeviceId()) {
+          try { markCloudDirty(); pushCloud(); } catch {}
+        }
       }
     }
     if (Array.isArray(o.renewals) && o.renewals.length) {
@@ -13463,7 +13506,12 @@ function connectPaidCloud() {
         }
         if (pendingEarlyPkt) publishEarlyNow(pendingEarlyPkt.earlyOuts && pendingEarlyPkt.earlyOuts[0]);
         if (pendingLiveMemos.length || pendingLiveGone.length) publishLiveCloud();
-        if (pendingRepairPkt) publishRepairStatus({ id: pendingRepairPkt.repairs[0].id, status: pendingRepairPkt.repairs[0].status, statusAt: pendingRepairPkt.repairs[0].statusAt });
+        if (pendingRepairPkt && paidWs && paidWs.readyState === 1) {
+          try {
+            paidWs.send(mqttPubPkt(LIVE_TOPIC, JSON.stringify(pendingRepairPkt), false));
+            pendingRepairPkt = null;
+          } catch {}
+        }
         return;
       }
       if (pkt.type === 3 && pkt.payload) {
@@ -13966,10 +14014,12 @@ async function pullCloud() {
     applyAnnMedia(state);
     applyRepairMedia(state);
     applyRepairStat(state);
+    try { if (applyRepairAppointBox(state.repairs)) markCloudDirty(); } catch {}
     if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
     applyAvatars(state);
     if (state.updatedAt && data.updatedAt && data.updatedAt <= state.updatedAt) {
       state.repairs = dropGone(mergeEntities(data.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(data.repairGone, state.repairGone));
+      try { if (applyRepairAppointBox(state.repairs)) markCloudDirty(); } catch {}
       state.repairGone = unionGone(data.repairGone, state.repairGone);
       state.notices = dropGone(mergeEntities(data.notices, state.notices, ["title", "body", "text"]), unionGone(data.noticeGone, state.noticeGone));
       state.noticeGone = unionGone(data.noticeGone, state.noticeGone);
@@ -14615,7 +14665,7 @@ function coreSig(d) {
     return [
       d.updatedAt || 0,
       books.length, last && last.id, last && last.amount, last && last.date,
-      repairs.length, repairs.length ? repairs[repairs.length - 1].id : "",
+      repairs.length, repairs.map(r => [r && r.id, r && r.status, r && r.appointAt, r && r.appointPaused ? 1 : 0].join(":")).join(","),
       anns.length, anns.length ? anns[anns.length - 1].id : "",
       renewals.length,
       (d.tenants || []).length, paid,
@@ -14892,6 +14942,7 @@ async function pushCloud() {
     stripDevLogsFromState();
     state.updatedAt = Date.now();
     applyRepairStatusBox(state.repairs);
+    try { applyRepairAppointBox(state.repairs); } catch {}
     let remote = null;
     try {
       const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
@@ -15073,6 +15124,7 @@ async function pushCloud() {
       }
     } catch {}
     try { applyRepairStatusBox(payload.repairs); } catch {}
+    try { applyRepairAppointBox(payload.repairs); } catch {}
     try { payload.repairPins = applyRepairPins(payload.repairs, payload.repairPins || {}); } catch {}
     state.repairs = payload.repairs;
     state.repairPins = payload.repairPins;
@@ -42147,22 +42199,35 @@ function bindAdmin() {
   });
   document.querySelectorAll("[data-appoint]").forEach(inp => {
     bindAppointPicker(inp);
-    inp.onchange = () => {
+    if (inp.dataset.appointCommit === "1") return;
+    inp.dataset.appointCommit = "1";
+    const commitAppoint = notify => {
       const rep = state.repairs.find(x => x.id === inp.dataset.appoint);
       if (!rep) return;
-      rep.appointAt = inp.value; rep.appointPaused = false; rep.appointRead = !inp.value; rep.appointAtAt = Date.now(); stampRepair(rep); save();
+      const next = String(inp.value || "");
+      if (next && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(next)) return;
+      if (String(rep.appointAt || "") === next && !rep.appointPaused) return;
+      rep.appointAt = next;
+      rep.appointPaused = false;
+      rep.appointRead = !next;
+      rep.appointAtAt = Date.now();
+      stampRepair(rep);
+      try { rememberRepairAppoint(rep); } catch {}
+      save();
       try { publishRepairStatus(rep); } catch {}
       try { pushCloud(); } catch {}
       paintAppointFace(inp);
       const shown = inp.closest(".card") && inp.closest(".card").querySelector(".appoint-shown");
-      if (shown) shown.textContent = inp.value ? "已預約 " + formatDateTime12(String(inp.value).replace("T", " ")) : "選擇完成維修的時間";
+      if (shown) shown.textContent = next ? "已預約 " + formatDateTime12(next.replace("T", " ")) : "選擇完成維修的時間";
       const cal = inp.closest(".appoint-one") && inp.closest(".appoint-one").querySelector("[data-gcal]");
-      if (cal) cal.hidden = !inp.value;
-      if (inp.value) {
+      if (cal) cal.hidden = !next;
+      if (notify && next) {
         const room = state.rooms.find(x => x.id === rep.roomId);
-        pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(String(inp.value).replace("T", " "))}`, room ? room.no : "tenants");
+        pushPhoneNotify("報修預約已安排", `${room ? room.no : ""} ${formatDateTime12(next.replace("T", " "))}`, room ? room.no : "tenants");
       }
     };
+    inp.addEventListener("input", () => commitAppoint(false));
+    inp.onchange = () => commitAppoint(true);
   });
   document.querySelectorAll("[data-appoint-pause]").forEach(btn => {
     bindIosPress(btn);
@@ -42176,6 +42241,7 @@ function bindAdmin() {
       rep.appointPaused = !rep.appointPaused;
       rep.appointAtAt = Date.now();
       stampRepair(rep);
+      try { rememberRepairAppoint(rep); } catch {}
       save();
       try { publishRepairStatus(rep); } catch {}
       try { pushCloud(); } catch {}
