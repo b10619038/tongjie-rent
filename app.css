@@ -1291,11 +1291,17 @@ button.pay-pill.hand {
 }
 .renew-year-picks {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   width: 100%;
+}
+.renew-side-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 .renew-year-picks button {
   border: 1px solid #e6dfd6;
