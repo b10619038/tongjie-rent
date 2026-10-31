@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-31-23-48";
-const APP_EDIT_COUNT = 2161;
+const APP_STAMP = "2026-11-01-00-30";
+const APP_EDIT_COUNT = 2162;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1786";
+const FILE_VER = "1787";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -9991,6 +9991,8 @@ function applyRenewal7221(data) {
     room = again.room || room;
     t = again.tenant || t;
   }
+  if (t && endedCheckoutTenant(t) && !hasStayingRenewal(data, t, room)) return;
+  if (!t && (data.tenants || []).some(x => x && sameTenantName(x.name, "張智傑") && endedCheckoutTenant(x) && room && (x.roomId === room.id || x.id === "t7221") && !hasStayingRenewal(data, x, room))) return;
   if (!t) {
     t = {
       id: "t7221",
@@ -11535,6 +11537,65 @@ function isMoveInTenant(x) {
   if (x.applyAt || x.signAppointAt) return true;
   return false;
 }
+function endedCheckoutTenant(t) {
+  if (!t || t.demo || t.incoming || t.placeholder || !t.leaveDone) return false;
+  const end = ymdOf(t.leaseEnd);
+  return !!(end && todayYmd() > end);
+}
+function hasStayingRenewal(data, t, room) {
+  return ((data && data.renewals) || []).some(item => {
+    if (!item || item.status === "cancelled") return false;
+    if (item.status !== "done" && item.status !== "applied") return false;
+    if (t && item.tenantId && item.tenantId === t.id) return true;
+    if (!room) return false;
+    return item.roomId === room.id || String(item.roomNo) === String(room.no);
+  });
+}
+function releaseEndedCheckouts(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  let changed = false;
+  data.tenants.forEach(t => {
+    if (!endedCheckoutTenant(t)) return;
+    const room = data.rooms.find(r => r && r.id === t.roomId);
+    if (!room || room.demo || room.kind === "factory" || room.status === "office") return;
+    if (hasStayingRenewal(data, t, room)) return;
+    if (!t.former || !t.leftOn || !t.loginRevoked || !t.sessionEnded) {
+      t.former = true;
+      t.incoming = false;
+      t.leftOn = t.leftOn || ymdOf(t.leaseEnd) || todayYmd();
+      t.sessionEnded = true;
+      t.loginRevoked = true;
+      t.edited = true;
+      t.editedAt = Date.now();
+      changed = true;
+    }
+    const other = data.tenants.find(x => x && x !== t && x.roomId === room.id && !x.former && !x.demo && !x.placeholder && String(x.name || "").trim());
+    if (other) {
+      if (other.incoming) {
+        other.incoming = false;
+        other.former = false;
+        other.prospect = false;
+        other.applyPending = false;
+        changed = true;
+      }
+      if (room.tenantId !== other.id || (room.status !== "repair" && room.status !== "rented")) {
+        room.tenantId = other.id;
+        if (room.status !== "repair") room.status = "rented";
+        changed = true;
+      }
+      return;
+    }
+    if (room.tenantId || (room.status !== "vacant" && room.status !== "repair")) {
+      room.tenantId = null;
+      delete room.incomingTenantId;
+      if (room.status !== "repair") room.status = "vacant";
+      room.edited = true;
+      changed = true;
+    }
+  });
+  if (changed) { try { markCloudDirty(); } catch {} }
+  return changed;
+}
 function applyTenantRoster(data) {
   const fillStudio = (no, allowOffice) => {
     const info = TENANT_INFO[no] || {};
@@ -11563,6 +11624,14 @@ function applyTenantRoster(data) {
       } else {
       if (!t) {
         t = data.tenants.find(x => x.roomId === room.id && !x.demo && sameTenantName(x.name, info.name));
+        if (t && endedCheckoutTenant(t) && !hasStayingRenewal(data, t, room)) {
+          const other = (data.tenants || []).find(x => x && x !== t && x.roomId === room.id && !x.former && !x.incoming && !x.demo && !x.placeholder && String(x.name || "").trim());
+          if (!other && room.status !== "repair" && room.status !== "office") {
+            room.status = "vacant";
+            if (!room.tenantId || room.tenantId === t.id) room.tenantId = null;
+          }
+          return;
+        }
         if (t) { t.former = false; t.incoming = false; t.leftOn = ""; t.loginRevoked = false; t.sessionEnded = false; }
       }
       if (!t) {
@@ -11640,6 +11709,7 @@ function applyTenantRoster(data) {
   fillStudio("7651", true);
   foldStudioRoommateCards(data);
   applyFormerStudio(data);
+  releaseEndedCheckouts(data);
 }
 function foldStudioRoommateCards(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
@@ -11759,6 +11829,15 @@ function ensureStudioTenant(data, no) {
     data.rooms.push(room);
   }
   room.no = String(no);
+  const left = (data.tenants || []).find(x => x && (x.roomId === room.id || x.id === "t" + no) && sameTenantName(x.name, info.name) && endedCheckoutTenant(x) && !hasStayingRenewal(data, x, room));
+  if (left) {
+    const live = (data.tenants || []).find(x => x && x !== left && x.roomId === room.id && !x.former && !x.incoming && !x.demo && !x.placeholder && String(x.name || "").trim());
+    if (!live) {
+      if (!room.tenantId || room.tenantId === left.id) room.tenantId = null;
+      if (room.status !== "repair" && room.status !== "office") room.status = "vacant";
+    }
+    return;
+  }
   let t = data.tenants.find(x => x && !x.demo && !x.incoming && !x.former && (x.roomId === room.id || x.id === "t" + no) && sameTenantName(x.name, info.name));
   if (t) {
     if (room.status === "vacant") room.status = "rented";
