@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-30-23-15";
-const APP_EDIT_COUNT = 2158;
+const APP_STAMP = "2026-10-31-15-20";
+const APP_EDIT_COUNT = 2159;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1783";
+const FILE_VER = "1784";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7946,6 +7946,7 @@ function normalize(data) {
   try { apply7232OctPrepaid(data); } catch {}
   try { apply7041OctPrepaid(data); } catch {}
   try { apply7222OctPaid(data); } catch {}
+  try { apply7222NovPrepaid(data); } catch {}
   repairTrashNotes(data);
   applyNonghuiSepPaid(data);
   try { applySepRemitBooks(data); } catch {}
@@ -8997,6 +8998,52 @@ function apply7222OctPaid(data) {
   if (!changed) return;
   t.editedAt = Date.now();
   try { stampPaidMark(data, t); } catch {}
+  try { persistLedger(data); } catch {}
+  try { markCloudDirty(); } catch {}
+}
+function apply7222NovPrepaid(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7222");
+  if (!room) return;
+  const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  const ym = "2026-11";
+  const on = "2026-10-31";
+  if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  if (t.prepaidYm.indexOf(ym) < 0) t.prepaidYm.push(ym);
+  if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+  if (t.prepaidOn[ym] !== on) t.prepaidOn[ym] = on;
+  if (!Array.isArray(data.books)) data.books = [];
+  const id = "bk-7222-202611-prepaid";
+  const gone = data.ledgerGone || [];
+  const exists = (data.books || []).some(b => {
+    if (!b || b.type === "out") return false;
+    if (b.id === id) return true;
+    if (String(b.roomNo || "") !== "7222" && String(b.note || "").indexOf("7222") < 0) return false;
+    if (Number(b.amount) !== 7000) return false;
+    if (String(b.importTag || "") === "rent-prepaid-2026-11") return true;
+    return /11月租金/.test(String(b.note || ""));
+  });
+  let changed = t.nov26Prepaid7222 !== on;
+  if (!exists && gone.indexOf(id) < 0) {
+    data.books.push({
+      id,
+      type: "in",
+      date: on,
+      amount: 7000,
+      company: "統潔",
+      note: "牛10　7222 林呈澔廖晉億　11月租金（10/31預繳）",
+      bank: "農會",
+      roomNo: "7222",
+      importTag: "rent-prepaid-2026-11",
+      linkedTenantId: t.id,
+      createdAt: "2026-10-31 14:53"
+    });
+    changed = true;
+  }
+  t.nov26Prepaid7222 = on;
+  if (!changed) return;
+  t.editedAt = Date.now();
   try { persistLedger(data); } catch {}
   try { markCloudDirty(); } catch {}
 }
@@ -14441,6 +14488,7 @@ async function pullCloudNow() {
       try { apply7232OctPrepaid(state); } catch {}
       try { apply7041OctPrepaid(state); } catch {}
       try { apply7222OctPaid(state); } catch {}
+    try { apply7222NovPrepaid(state); } catch {}
       repairTrashNotes(state);
       applyNonghuiSepPaid(state);
       try { applySepRemitBooks(state); } catch {}
@@ -14600,6 +14648,7 @@ async function pullCloudNow() {
     try { apply7232OctPrepaid(state); } catch {}
     try { apply7041OctPrepaid(state); } catch {}
     try { apply7222OctPaid(state); } catch {}
+    try { apply7222NovPrepaid(state); } catch {}
     repairTrashNotes(state);
     applyNonghuiSepPaid(state);
     try { applySepRemitBooks(state); } catch {}
@@ -21562,7 +21611,12 @@ function leasePayRows(t, r, sheet) {
     const actual = synced || (early ? (pre || paid[ym] || "") : (future ? "" : (paid[ym] || "")));
     const past = ym < thisYm;
     const thisPaid = ym === thisYm && typeof paidThisMonth === "function" && paidThisMonth(t);
-    const note = carry ? rentCarryNote(t, ym) : "";
+    let note = carry ? rentCarryNote(t, ym) : "";
+    if (early && ym > thisYm) {
+      const when = pre && typeof rentMd === "function" ? rentMd(pre) : "";
+      const tag = when ? (when + " 預繳") : "預繳";
+      note = note ? (tag + "　" + note) : tag;
+    }
     const bill = carry ? rentBillOf(t, r, ym, amount) : amount;
     rows.push({ due, amount: bill, actual, paid: early || thisPaid || (!future && (!!actual || past)), carryNote: note });
   };
@@ -21918,6 +21972,29 @@ function thisMonthRentCardHtml(t, r) {
   if (!leaseCoversYm(t, r, payYmNow())) return `<span class="remain-wait">尚無需繳費</span>`;
   const n = rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r));
   return n ? money(n) : "—";
+}
+function prepaidAheadRows(t, r) {
+  if (!t) return [];
+  const now = payYmNow();
+  const seen = new Set();
+  const rows = [];
+  (t.prepaidYm || []).forEach(raw => {
+    const ym = String(raw || "").slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym) || ym <= now || seen.has(ym)) return;
+    seen.add(ym);
+    const on = ymdOf(t.prepaidOn && t.prepaidOn[ym]);
+    const amount = (typeof tenantRentForYm === "function" ? tenantRentForYm(t, r, ym) : 0) || Number(t.rent) || 0;
+    rows.push({ ym, on, amount, month: Number(ym.slice(5, 7)) });
+  });
+  rows.sort((a, b) => a.ym < b.ym ? -1 : a.ym > b.ym ? 1 : 0);
+  return rows;
+}
+function prepaidAheadHtml(t, r) {
+  return prepaidAheadRows(t, r).map(row => {
+    const when = row.on ? rocSlash(row.on) : "";
+    const amt = row.amount ? money(row.amount) : "";
+    return row.month + "月租金" + (when ? "已於 " + when + " " : "已") + "預繳" + (amt ? " " + amt : "");
+  }).join("　");
 }
 function rentPaidStampHtml(t) {
   if (!t || !paidThisMonth(t)) return "";
@@ -30252,6 +30329,7 @@ function homeView() {
           <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" data-scroll-pay="1" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
         </div>
         ${firstPay ? `<div class="small" style="margin-top:8px">${escapeHtml(firstPayHintHtml(firstPay))}</div>` : (stubNow && studioContractRent(t, r) ? `<div class="small" style="margin-top:8px">下個月起每月 ${money(studioContractRent(t, r))}</div>` : "")}
+        ${prepaidAheadHtml(t, r) ? `<div class="small" style="margin-top:8px">${escapeHtml(prepaidAheadHtml(t, r))}</div>` : ""}
         ${isProspectPreview()
           ? (tenantContractStatus(t, r) === "signed"
             ? (roomTakenByOther(t, r)
@@ -30264,6 +30342,7 @@ function homeView() {
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
       <div class="card card-body slide-left">
         <div class="row"><span class="k">繳費狀態</span><span class="pay-pill ${pay.cls}" data-page="pay" role="button">${pay.text}</span></div>
+        ${prepaidAheadHtml(t, r) ? `<div class="row wrap"><span class="k">預繳</span><span class="v">${escapeHtml(prepaidAheadHtml(t, r))}</span></div>` : ""}
         <div class="row wrap"><span class="k">${thisMonthRentLineHtml(t, r)}</span><span class="v">${dueNow && thisMonthRentOf(t, r) ? money(rentBillOf(t, r, payYmNow(), thisMonthRentOf(t, r))) : "尚無需繳費"}</span></div>
         <div class="row"><span class="k">實際匯款日</span><span class="v">${dueNow ? remitDateLabel(t) : "—"}</span></div>
         <div class="row"><span class="k">應繳日期</span><span class="v">${!dueNow ? "—" : (stubNow ? "請馬上繳費" : rentDueLabel(t))}</span></div>
@@ -30532,6 +30611,7 @@ function payView() {
         <div class="small" id="pay-due">${firstPay ? "首次應繳（2押1租＋不足月＋水電）" : "本月應繳"}${stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div>
         <div style="font-size:26px;font-weight:800;margin:6px 0 4px">${money(dueAmt)}</div>
         ${dueHint}
+        ${prepaidAheadHtml(t, r) ? `<div class="small" style="margin-top:8px">${escapeHtml(prepaidAheadHtml(t, r))}。下個月 1 號起這筆直接顯示已繳，不用再匯。</div>` : ""}
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
           ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
