@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-10-31-15-20";
-const APP_EDIT_COUNT = 2159;
+const APP_STAMP = "2026-10-31-23-50";
+const APP_EDIT_COUNT = 2160;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1784";
+const FILE_VER = "1785";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4246,7 +4246,9 @@ function renewAskCardHtml(t, r, opts) {
   }
   const replacing = (people || []).some(p => p && p.replace);
   const minAt = todayYmd() + "T09:00";
-  const maxDay = t.leaseEnd || addDaysYmd(todayYmd(), 40);
+  const horizon = addDaysYmd(todayYmd(), 40);
+  const leaseCap = ymdOf(t.leaseEnd);
+  const maxDay = (leaseCap && leaseCap > horizon) ? leaseCap : horizon;
   const mode = ui.renewMode === "move" ? "move" : "same";
   const dest = mode === "move" ? renewMoveRoomOf(ui.renewMoveRoomId) : null;
   const destRent = dest ? (Number(dest.rent) || studioContractRent(t, dest) || 0) : studioContractRent(t, r);
@@ -4266,7 +4268,7 @@ function renewAskCardHtml(t, r, opts) {
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
-    <div class="small" style="margin:6px 0 0">簽約地點：5F，電梯出來右轉到底，7651簽約室。${replacing ? "新承租人請攜帶身分證、個人印章。" : "記得攜帶個人印章。"}</div>
+    <div class="small" style="margin:6px 0 0">到期當天也能改約下週，不必卡在合約最後一天。簽約地點：5F，電梯出來右轉到底，7651簽約室。${replacing ? "新承租人請攜帶身分證、個人印章。" : "記得攜帶個人印章。"}</div>
     ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 0 0">開發者代操會直接寫進正式資料，這一步不必簽名。租客自己登入仍然要簽名。</p>` : ""}
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${typeof isTenantLook === "function" && isTenantLook() ? (mode === "move" ? "送出換房續約申請" : "送出續約申請") : (mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約")}</button>
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
@@ -4382,7 +4384,9 @@ function renewPeoplePlan(t, people) {
   const wantMove = ui && ui.renewMode === "move";
   const depositNote = replaced && wantMove
     ? "換房押金差額現場處理。新約第一天起改成新承租人。"
-    : (replaced ? "押金沿用不重收。新約第一天起改成新承租人。" : "換房不重收 2 押 1 租，押金差額現場處理。");
+    : (replaced
+      ? "押金沿用不重收。新約第一天起改成新承租人。"
+      : (wantMove ? "換房不重收 2 押 1 租，押金差額現場處理。" : ""));
   return {
     stay,
     start,
