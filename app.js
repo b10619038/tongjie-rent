@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-17-10";
-const APP_EDIT_COUNT = 2165;
+const APP_STAMP = "2026-11-01-18-30";
+const APP_EDIT_COUNT = 2166;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1790";
+const FILE_VER = "1791";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4320,11 +4320,14 @@ function renewPeopleFormHtml(people) {
       </div>`;
     }
     if (!p.added && !p.replace && p.renew === false && !replacing) p.renew = true;
+    const firstKeep = list.findIndex(x => x && !x.added && !x.replace);
     const side = replacing
-      ? `<button type="button" class="ghost renew-add" data-renew-unreplace="1">取消改名字</button>`
-      : (canAdd
+      ? (i === firstKeep ? `<button type="button" class="ghost renew-add" data-renew-unreplace="1">取消改名字</button>` : "")
+      : (canAdd && i === firstKeep
         ? `<span class="renew-side-btns"><button type="button" class="ghost renew-add" data-renew-add="1">再加一個人一起租</button><button type="button" class="ghost renew-add" data-renew-replace="1">合約改成別人</button></span>`
-        : (adding ? `<button type="button" class="ghost renew-add" data-renew-remove="${list.findIndex(x => x && x.added)}">移除第二人一起租</button>` : ""));
+        : (adding && i === firstKeep
+          ? `<button type="button" class="ghost renew-add" data-renew-remove="${list.findIndex(x => x && x.added)}">移除第二人一起租</button>`
+          : (!replacing && !adding && i === firstKeep ? `<button type="button" class="ghost renew-add" data-renew-replace="1">合約改成別人</button>` : "")));
     return `<div class="renew-person">
       <div class="renew-year-picks">
         <div class="renew-person-name">${escapeHtml(p.name)}${replacing ? "　原約到期不掛名" : ""}</div>
@@ -18755,6 +18758,12 @@ function enterTenantLook(t, page) {
   ui.roomId = r ? r.id : t.roomId;
   ui.roomNo = (r && r.no) || "";
   ui.page = page === "repair" ? "repair" : "home";
+  ui.renewPeople = null;
+  ui.renewDraft = null;
+  ui.renewAppoint = "";
+  ui.renewMode = "same";
+  ui.renewMoveRoomId = "";
+  ui.resignRenew = false;
   applyTenantGo();
   persistUi();
   render();
@@ -22802,8 +22811,7 @@ function renewPeopleState(t) {
   const base = defaultRenewPeople(t);
   const prev = Array.isArray(ui.renewPeople) ? ui.renewPeople : [];
   const headOk = prev.length >= base.length && base.every((p, i) => prev[i] && !prev[i].added && !prev[i].replace && prev[i].name === p.name);
-  const extra = prev.filter(p => p && (p.added || p.replace)).slice(0, 1);
-  const source = headOk ? prev : base.concat(extra);
+  const source = headOk ? prev : base;
   const list = source.map(p => ({
     name: String(p.name || "").trim(),
     renew: p.renew !== false,
@@ -40376,6 +40384,12 @@ function enterTenant(room, tenant) {
   ui.roomId = room.id;
   ui.roomNo = room.no;
   ui.page = "home";
+  ui.renewPeople = null;
+  ui.renewDraft = null;
+  ui.renewAppoint = "";
+  ui.renewMode = "same";
+  ui.renewMoveRoomId = "";
+  ui.resignRenew = false;
   applyTenantGo();
   ui.loginError = "";
   ui.loginRoom = "";
@@ -45595,7 +45609,7 @@ async function boot() {
   const splashAt = setTimeout(hideSplash, 2200);
   try {
     armCompanySave();
-    armAiSend();
+    try { if (typeof armAiSend === "function") armAiSend(); } catch {}
     armRoomEditSave();
     try { await pullKeepSession(); } catch {}
     restoreUi();
