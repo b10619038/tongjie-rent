@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-16-50";
-const APP_EDIT_COUNT = 2164;
+const APP_STAMP = "2026-11-01-17-10";
+const APP_EDIT_COUNT = 2165;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1789";
+const FILE_VER = "1790";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4231,16 +4231,22 @@ function renewAskCardHtml(t, r, opts) {
   const people = renewPeopleState(t);
   ui.renewPeople = people;
   const plan = renewPeoplePlan(t, people);
+  const reapply = renewReapplyOpen(t);
   const polite = left != null && left < 0
-    ? "續約申請已取消，可以重新填一次。請再選期間，並預約簽約日。"
+    ? (reapply
+      ? "續約申請已取消，可以重新填一次。請再選期間，並預約簽約日。"
+      : `合約已於 ${rocSlash(t.leaseEnd)} 到期。仍可申請續約，並預約這幾天到 7651 簽約。`)
     : (windowOn
     ? `您好，合約將於 ${rocSlash(t.leaseEnd)} 到期（還有 ${left} 天）。若方便續住，懇請盡早確認並預約簽約日，我們好為您準備新約。`
     : `現有租客可於到期前 200 天申請續約。再加進來的人跟原本同一段時間，半年也一起。`);
   if (!full) {
     const ended = left != null && left < 0;
+    const endedText = reapply
+      ? `續約申請已取消。合約已於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，仍可重新申請。`
+      : `合約已於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期。仍可申請續約，請到下一頁選期間並預約簽約日。`;
     return `<div class="handover-note renew-note">
       <div class="label">請問您是否要續約?</div>
-      <p>${ended ? `續約申請已取消。合約已於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，仍可重新申請。` : `合約將於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，還有 ${left} 天。請確認是否續約。`}</p>
+      <p>${ended ? endedText : `合約將於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，還有 ${left} 天。請確認是否續約。`}</p>
       <div class="renew-ask-actions">
         <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1">前往續約</button>
         <button type="button" class="ghost" data-renew-decline="1">不續約</button>
@@ -4271,7 +4277,7 @@ function renewAskCardHtml(t, r, opts) {
     <div class="field"><span>預約實際簽約日期</span>
       ${appointOneHtml(ui.renewAppoint || "", { id: "renew-appoint", min: minAt, max: maxDay + "T18:00" })}
     </div>
-    <div class="small" style="margin:6px 0 0">到期當天也能改約下週，不必卡在合約最後一天。簽約地點：5F，電梯出來右轉到底，7651簽約室。${replacing ? "新承租人請攜帶身分證、個人印章。" : "記得攜帶個人印章。"}</div>
+    <div class="small" style="margin:6px 0 0">合約到期後 40 天內仍可申請，簽約日可以約下週。簽約地點：5F，電梯出來右轉到底，7651簽約室。${replacing ? "新承租人請攜帶身分證、個人印章。" : "記得攜帶個人印章。"}</div>
     ${typeof isTenantLook === "function" && isTenantLook() ? `<p class="small" style="margin:8px 0 0">開發者代操會直接寫進正式資料，這一步不必簽名。租客自己登入仍然要簽名。</p>` : ""}
     <button type="button" class="btn-navy slide-left" id="renew-submit" style="margin-top:10px">${typeof isTenantLook === "function" && isTenantLook() ? (mode === "move" ? "送出換房續約申請" : "送出續約申請") : (mode === "move" ? "下一步，簽署換房新約" : "下一步，簽署新約")}</button>
     <button type="button" class="ghost" data-renew-decline="1" style="margin-top:8px">不續約</button>
@@ -4866,9 +4872,26 @@ function toggleTenantLeaveBook(btn) {
   btn.classList.add("on");
   insertTenantSheet(block, normalLeaveCardHtml(t, r, { timeOnly: true }), btn);
 }
+function quietReleasePicker() {
+  if (ui) ui.appointLock = 0;
+  const a = document.activeElement;
+  if (!a || !a.blur) return;
+  const type = String(a.type || "").toLowerCase();
+  if (type === "date" || type === "time" || type === "datetime-local") {
+    try { a.blur(); } catch {}
+  }
+}
+function releasePickerForNav() {
+  quietReleasePicker();
+  if (ui) ui.forceRender = true;
+}
 function openRenewSignFirst() {
   const row = buildTenantRenewRow();
-  if (!row) return;
+  if (!row) {
+    quietReleasePicker();
+    return;
+  }
+  releasePickerForNav();
   if (typeof isTenantLook === "function" && isTenantLook()) {
     row.byDev = true;
     saveTenantRenewRow(row);
@@ -16193,6 +16216,7 @@ function onTongjiePop(e) {
     lastRenderRole = "";
     lastRenderPage = "";
     ui.keepScroll = false;
+    releasePickerForNav();
     render();
   } finally {
     ui.navPop = false;
@@ -16814,6 +16838,14 @@ function bindAppointPicker(inp) {
   inp.addEventListener("pointerdown", hold);
   inp.addEventListener("focus", hold);
   inp.addEventListener("cancel", () => { ui.appointLock = 0; });
+  inp.addEventListener("change", () => {
+    setTimeout(() => {
+      ui.appointLock = 0;
+      if (document.activeElement === inp) {
+        try { inp.blur(); } catch {}
+      }
+    }, 350);
+  });
   const wrap = inp.closest(".appoint-one");
   if (wrap) {
     wrap.addEventListener("click", e => {
@@ -22512,7 +22544,18 @@ function renewConfirmYmd(t) {
 }
 function inRenewFormWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
-  return left != null && left >= 0 && left <= 200;
+  if (left == null || left > 200) return false;
+  if (left >= 0) return true;
+  return left >= -40 && renewStillOpen(t);
+}
+function renewStillOpen(t) {
+  if (!t || t.former || t.demo || t.incoming || t.placeholder) return false;
+  if (t.renewChoice === "no" || t.leaveDone) return false;
+  const room = (typeof state !== "undefined" && state && state.rooms || []).find(x => x && x.id === t.roomId);
+  if (!room) return true;
+  if (room.status === "office" || room.kind === "factory") return false;
+  if (typeof roomIsFactory === "function" && roomIsFactory(room)) return false;
+  return true;
 }
 function renewReapplyOpen(t) {
   if (!t || t.former || t.demo || t.renewChoice === "no") return false;
@@ -22530,7 +22573,9 @@ function renewReapplyOpen(t) {
 }
 function inRenewAskWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
-  return left != null && left >= 0 && left <= 100;
+  if (left == null || left > 100) return false;
+  if (left >= 0) return true;
+  return left >= -40 && renewStillOpen(t);
 }
 function renewAskPending(t, r) {
   if (!t || !r || (typeof roomIsFactory === "function" && roomIsFactory(r))) return false;
@@ -22548,7 +22593,9 @@ function nudgeRenewAsk() {
   try { if (localStorage.getItem(key) === "1") return; } catch { return; }
   try { localStorage.setItem(key, "1"); } catch {}
   const left = daysLeft(end);
-  const body = "您好，合約將於 " + t.leaseEnd + " 到期，還有 " + left + " 天。若方便續住，懇請盡早在 App 確認並預約簽約日。";
+  const body = left != null && left < 0
+    ? "您好，合約已於 " + t.leaseEnd + " 到期。仍可在 App 申請續約，並預約這幾天到 7651 簽約。"
+    : "您好，合約將於 " + t.leaseEnd + " 到期，還有 " + left + " 天。若方便續住，懇請盡早在 App 確認並預約簽約日。";
   showOsBanner("續約確認", body, "lease-" + t.id + "-" + end);
   sendRemoteNotify(room.no || t.id, "續約確認", body, { tag: "lease-" + t.id + "-" + end, page: "home" });
 }
@@ -22941,7 +22988,9 @@ function ensureRenewNudges(data) {
     if (!Array.isArray(t.inbox)) t.inbox = [];
     if (t.inbox.some(n => n && n.id === tag)) return;
     const left = daysLeft(t.leaseEnd);
-    const body = `您好，合約將於 ${t.leaseEnd} 到期（還有 ${left} 天）。若方便續住，懇請盡早在 App 確認續約並預約簽約日，我們好為您準備新約。`;
+    const body = left != null && left < 0
+      ? `您好，合約已於 ${t.leaseEnd} 到期。仍可在 App 申請續約，並預約這幾天到 7651 簽約。`
+      : `您好，合約將於 ${t.leaseEnd} 到期（還有 ${left} 天）。若方便續住，懇請盡早在 App 確認續約並預約簽約日，我們好為您準備新約。`;
     t.inbox.push({
       id: tag,
       title: "續約確認",
@@ -28927,7 +28976,9 @@ function pickerBusy() {
 }
 function render() {
   try { paintLeaveCashLine(); } catch {}
-  if (pickerBusy()) {
+  const force = !!(ui && ui.forceRender);
+  if (ui && ui.forceRender) ui.forceRender = false;
+  if (!force && pickerBusy()) {
     clearTimeout(render.later);
     render.later = setTimeout(() => render(), 400);
     return;
@@ -36399,6 +36450,7 @@ function bindDashViewBody() {
       if (!next || next === ui.page) return;
       if (next === "solar") ui.solarEnter = true;
       ui.page = next;
+      releasePickerForNav();
       render();
     };
   });
@@ -40694,8 +40746,8 @@ function bindTenant() {
         });
         if (changed) save();
       }
-      if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => render(), 140);
-      else render();
+      if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => { releasePickerForNav(); render(); }, 140);
+      else { releasePickerForNav(); render(); }
     };
   });
   document.querySelectorAll("[data-copy]").forEach(btn => {
@@ -42554,6 +42606,7 @@ function bindAdmin() {
       if (ui.sheetGuard && Date.now() < ui.sheetGuard && ui.page === "tenant-sheet") return;
       if (next === "solar") ui.solarEnter = true;
       ui.page = next;
+      releasePickerForNav();
       render();
     };
   });
