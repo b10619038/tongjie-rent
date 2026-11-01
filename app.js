@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-00-30";
-const APP_EDIT_COUNT = 2162;
+const APP_STAMP = "2026-11-01-13-25";
+const APP_EDIT_COUNT = 2163;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1787";
+const FILE_VER = "1788";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8046,6 +8046,7 @@ function normalize(data) {
   persistLedger(data);
   try { applyDevChats(data); } catch {}
   try { applySharedTabOrder(data); } catch {}
+  try { releaseEndedCheckouts(data); } catch {}
   return data;
 }
 const TAB_ORDER_VER = "pc-2026-10-03";
@@ -11590,6 +11591,7 @@ function releaseEndedCheckouts(data) {
       delete room.incomingTenantId;
       if (room.status !== "repair") room.status = "vacant";
       room.edited = true;
+      room.editedAt = Date.now();
       changed = true;
     }
   });
@@ -11617,6 +11619,23 @@ function applyTenantRoster(data) {
     }
     if (info.name) {
       let t = data.tenants.find(x => x.roomId === room.id && !x.former && !x.demo && !x.incoming && !x.loginRevoked);
+      if (t && endedCheckoutTenant(t) && !hasStayingRenewal(data, t, room)) {
+        t.former = true;
+        t.incoming = false;
+        t.leftOn = t.leftOn || ymdOf(t.leaseEnd) || todayYmd();
+        t.sessionEnded = true;
+        t.loginRevoked = true;
+        t.edited = true;
+        t.editedAt = Date.now();
+        const other = (data.tenants || []).find(x => x && x !== t && x.roomId === room.id && !x.former && !x.incoming && !x.demo && !x.placeholder && String(x.name || "").trim());
+        if (!other && room.status !== "repair" && room.status !== "office") {
+          room.status = "vacant";
+          if (!room.tenantId || room.tenantId === t.id) room.tenantId = null;
+          room.edited = true;
+          room.editedAt = Date.now();
+        }
+        return;
+      }
       const keepNew = t && (isMoveInTenant(t) || (t.name && !sameTenantName(t.name, info.name)));
       if (keepNew) {
         room.tenantId = t.id;
@@ -11743,6 +11762,20 @@ function foldStudioRoommateCards(data) {
       || live.find(x => !x.incoming)
       || live[0];
     if (!keep) return;
+    if (endedCheckoutTenant(keep) && !hasStayingRenewal(data, keep, room)) {
+      keep.former = true;
+      keep.incoming = false;
+      keep.leftOn = keep.leftOn || ymdOf(keep.leaseEnd) || todayYmd();
+      keep.sessionEnded = true;
+      keep.loginRevoked = true;
+      keep.edited = true;
+      keep.editedAt = Date.now();
+      if (!room.tenantId || room.tenantId === keep.id) room.tenantId = null;
+      if (room.status !== "repair" && room.status !== "office") room.status = "vacant";
+      room.edited = true;
+      room.editedAt = Date.now();
+      return;
+    }
     const swapOn = (data.renewals || []).some(item => {
       if (!item || item.status === "cancelled" || (item.status !== "applied" && item.status !== "done")) return false;
       if (typeof renewalStartReached === "function" && !renewalStartReached(item)) return false;
@@ -11831,6 +11864,15 @@ function ensureStudioTenant(data, no) {
   room.no = String(no);
   const left = (data.tenants || []).find(x => x && (x.roomId === room.id || x.id === "t" + no) && sameTenantName(x.name, info.name) && endedCheckoutTenant(x) && !hasStayingRenewal(data, x, room));
   if (left) {
+    if (!left.former || !left.leftOn || !left.loginRevoked || !left.sessionEnded) {
+      left.former = true;
+      left.incoming = false;
+      left.leftOn = left.leftOn || ymdOf(left.leaseEnd) || todayYmd();
+      left.sessionEnded = true;
+      left.loginRevoked = true;
+      left.edited = true;
+      left.editedAt = Date.now();
+    }
     const live = (data.tenants || []).find(x => x && x !== left && x.roomId === room.id && !x.former && !x.incoming && !x.demo && !x.placeholder && String(x.name || "").trim());
     if (!live) {
       if (!room.tenantId || room.tenantId === left.id) room.tenantId = null;
@@ -14654,6 +14696,7 @@ async function pullCloudNow() {
       try { mergeTabOrder(state, data); } catch {}
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
+      try { releaseEndedCheckouts(state); } catch {}
       const settledWaits = settleRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone, data.roomWaitGone);
       state.roomWaits = settledWaits.roomWaits;
       state.roomWaitGone = settledWaits.roomWaitGone;
@@ -14831,6 +14874,7 @@ async function pullCloudNow() {
     try { apply7042RentShort(state); } catch {}
     try { apply7042SepPaid(state); } catch {}
     try { apply7042OctUnpaid(state); } catch {}
+    try { releaseEndedCheckouts(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -15698,6 +15742,7 @@ async function pushCloud() {
     try { applyRepairStatusBox(payload.repairs); } catch {}
     try { applyRepairAppointBox(payload.repairs); } catch {}
     try { payload.repairPins = applyRepairPins(payload.repairs, payload.repairPins || {}); } catch {}
+    try { releaseEndedCheckouts(payload); } catch {}
     state.repairs = payload.repairs;
     state.repairPins = payload.repairPins;
     let body;
