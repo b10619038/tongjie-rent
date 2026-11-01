@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-18-30";
-const APP_EDIT_COUNT = 2166;
+const APP_STAMP = "2026-11-01-19-20";
+const APP_EDIT_COUNT = 2167;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1791";
+const FILE_VER = "1792";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8076,6 +8076,7 @@ function normalize(data) {
   try { applyDevChats(data); } catch {}
   try { applySharedTabOrder(data); } catch {}
   try { releaseEndedCheckouts(data); } catch {}
+  try { restoreStartedRenewalLeases(data); } catch {}
   return data;
 }
 const TAB_ORDER_VER = "pc-2026-10-03";
@@ -11692,8 +11693,10 @@ function applyTenantRoster(data) {
       t.placeholder = false;
       if (info.phone) t.phone = info.phone;
       if (info.contactName) t.contactName = info.contactName;
-      if (info.leaseStart) t.leaseStart = info.leaseStart;
-      if (info.leaseEnd) t.leaseEnd = info.leaseEnd;
+      if (!startedRenewalFor(data, t, room)) {
+        if (info.leaseStart) t.leaseStart = info.leaseStart;
+        if (info.leaseEnd) t.leaseEnd = info.leaseEnd;
+      }
       if (info.bankLast5) t.bankLast5 = info.bankLast5;
       if (info.note) t.note = info.note;
       else if (info.shop && !t.note) t.note = "店面：" + info.shop;
@@ -11812,12 +11815,13 @@ function foldStudioRoommateCards(data) {
       if (!newbie) return false;
       return item.tenantId === keep.id || item.roomId === room.id || String(item.roomNo) === String(room.no);
     });
+    const termOn = swapOn || !!startedRenewalFor(data, keep, room);
     if (!swapOn) {
       keep.name = info.name;
       if (info.phone) keep.phone = info.phone;
       if (info.contactName) keep.contactName = info.contactName;
-      if (info.leaseStart) keep.leaseStart = info.leaseStart;
-      if (info.leaseEnd) keep.leaseEnd = info.leaseEnd;
+      if (!termOn && info.leaseStart) keep.leaseStart = info.leaseStart;
+      if (!termOn && info.leaseEnd) keep.leaseEnd = info.leaseEnd;
       if (info.note) keep.note = info.note;
     }
     keep.incoming = false;
@@ -11826,8 +11830,8 @@ function foldStudioRoommateCards(data) {
     if (!swapOn) {
       if (info.phone) keep.phone = info.phone;
       if (info.contactName) keep.contactName = info.contactName;
-      if (info.leaseStart) keep.leaseStart = info.leaseStart;
-      if (info.leaseEnd) keep.leaseEnd = info.leaseEnd;
+      if (!termOn && info.leaseStart) keep.leaseStart = info.leaseStart;
+      if (!termOn && info.leaseEnd) keep.leaseEnd = info.leaseEnd;
       if (info.note) keep.note = info.note;
     }
     if (info.payBank && !keep.payBankLock && !keep.payBank) keep.payBank = info.payBank;
@@ -14726,6 +14730,7 @@ async function pullCloudNow() {
       try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
       try { state.tenants = mergeEntities(state.tenants, data.tenants, TENANT_SYNC_KEYS); } catch {}
       try { releaseEndedCheckouts(state); } catch {}
+      try { restoreStartedRenewalLeases(state); } catch {}
       const settledWaits = settleRoomWaits(state.roomWaits, data.roomWaits, state.roomWaitGone, data.roomWaitGone);
       state.roomWaits = settledWaits.roomWaits;
       state.roomWaitGone = settledWaits.roomWaitGone;
@@ -14904,6 +14909,7 @@ async function pullCloudNow() {
     try { apply7042SepPaid(state); } catch {}
     try { apply7042OctUnpaid(state); } catch {}
     try { releaseEndedCheckouts(state); } catch {}
+    try { restoreStartedRenewalLeases(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
     if (state.renew7032NeedPush || state.renewWaterBookNeedPush) flushSeededRenewal();
     try { onChatsUpdated(); } catch {}
@@ -15772,6 +15778,7 @@ async function pushCloud() {
     try { applyRepairAppointBox(payload.repairs); } catch {}
     try { payload.repairPins = applyRepairPins(payload.repairs, payload.repairPins || {}); } catch {}
     try { releaseEndedCheckouts(payload); } catch {}
+    try { restoreStartedRenewalLeases(payload); } catch {}
     state.repairs = payload.repairs;
     state.repairPins = payload.repairPins;
     let body;
@@ -22753,6 +22760,75 @@ function applySignedRenewalLease(t, r, item) {
   }
   item.status = "applied";
   item.appliedAt = nowStamp();
+}
+function startedRenewalFor(data, t, room) {
+  if (!data || !t) return null;
+  const hits = (data.renewals || []).filter(item => {
+    if (!item || (item.status !== "applied" && item.status !== "done")) return false;
+    if (typeof renewalStartReached === "function" && !renewalStartReached(item)) return false;
+    if (!ymdOf(item.start) || !ymdOf(item.end)) return false;
+    return item.tenantId === t.id || (room && (item.roomId === room.id || String(item.roomNo) === String(room.no)));
+  });
+  return hits[hits.length - 1] || null;
+}
+function rentReceiptCoversYm(data, t, room, ym) {
+  const no = String((room && room.no) || "");
+  return (data.books || []).some(b => {
+    if (!b || b.type === "out") return false;
+    const tag = String(b.importTag || "");
+    if (tag.indexOf("rent-auto-") === 0) return false;
+    const day = ymdOf(b.date);
+    if (!day || day.slice(0, 7) !== ym) return false;
+    const note = String(b.note || "");
+    const isRent = tag.indexOf("rent") === 0 || note.indexOf("租金") >= 0;
+    if (!isRent) return false;
+    if (b.linkedTenantId && t && b.linkedTenantId === t.id) return true;
+    return !!(no && (String(b.roomNo || "") === no || note.indexOf(no) >= 0));
+  });
+}
+function restoreStartedRenewalLeases(data) {
+  if (!data || !Array.isArray(data.renewals) || !Array.isArray(data.tenants)) return;
+  const now = Date.now();
+  let changed = false;
+  (data.renewals || []).forEach(item => {
+    if (!item || (item.status !== "applied" && item.status !== "done")) return;
+    if (typeof renewalStartReached === "function" && !renewalStartReached(item)) return;
+    const start = ymdOf(item.start);
+    const end = ymdOf(item.end);
+    if (!start || !end) return;
+    const room = (data.rooms || []).find(x => x && (x.id === item.roomId || String(x.no) === String(item.roomNo)));
+    const t = (data.tenants || []).find(x => x && !x.former && !x.demo && (x.id === item.tenantId || (room && x.roomId === room.id)));
+    if (!t) return;
+    const rent = (Array.isArray(t.leases) && t.leases[0] && Number(t.leases[0].rent)) || Number(t.rent) || Number(room && room.rent) || 0;
+    const leases = Array.isArray(t.leases) ? t.leases : [];
+    const leaseOk = ymdOf(t.leaseStart) === start && ymdOf(t.leaseEnd) === end
+      && leases.length === 1 && ymdOf(leases[0].start) === start && ymdOf(leases[0].end) === end;
+    if (!leaseOk) {
+      t.leaseStart = start;
+      t.leaseEnd = end;
+      t.leases = [{ kind: "year", start, end, rent }];
+      t.stubRent = 0;
+      t.edited = true;
+      t.editedAt = now;
+      changed = true;
+    }
+    const ym = start.slice(0, 7);
+    const prepaid = (t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym);
+    if (ym === payYmNow() && t.paid && String(t.paidYm || "").slice(0, 7) === ym && !ymdOf(t.paidAt) && !remitCoversPayYm(t, ym) && !prepaid && !rentReceiptCoversYm(data, t, room, ym)) {
+      t.paid = false;
+      t.paidAt = "";
+      t.paidVia = "";
+      t.paidYm = ym;
+      t.paidTouched = true;
+      t.edited = true;
+      t.editedAt = now;
+      if (!data.paidMarks) data.paidMarks = {};
+      data.paidMarks[t.id] = { paid: false, paidAt: "", paidVia: "", paidYm: ym, editedAt: now, name: t.name || "" };
+      try { persistPaidMarks(data); } catch {}
+      changed = true;
+    }
+  });
+  if (changed) { try { markCloudDirty(); } catch {} }
 }
 function applyDueRenewals(data) {
   const st = data || (typeof state !== "undefined" ? state : null);
