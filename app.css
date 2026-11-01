@@ -1676,6 +1676,13 @@ button.pay-toggle.paid.on {
   background: #eef3ea;
 }
 .renew-alert .dash-h { color: #3f4f3a; }
+.renew-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; }
+.renew-card-head .dash-h { margin: 0; min-width: 0; }
+.renew-card-head .ghost.renew-cancel {
+  width: auto; flex: 0 0 auto; margin: 0; padding: 6px 12px;
+  font-size: 13px; line-height: 1.2; border-radius: 999px; white-space: nowrap;
+  color: var(--rose); background: transparent; border: 1.5px solid var(--rose);
+}
 [data-norenew-card].renew-alert .dash-h { color: var(--rose); }
 [data-norenew-card] .mini.renew-hit { background: var(--rose-soft); }
 [data-norenew-card] .btn-navy { background: var(--rose); color: #fff; }

@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-13-25";
-const APP_EDIT_COUNT = 2163;
+const APP_STAMP = "2026-11-01-16-50";
+const APP_EDIT_COUNT = 2164;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1788";
+const FILE_VER = "1789";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4193,9 +4193,9 @@ function renewAskCardHtml(t, r, opts) {
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
-  const windowOn = inRenewAskWindow(t);
+  const windowOn = inRenewAskWindow(t) || renewReapplyOpen(t);
   if (!full && !windowOn && !cur) return "";
-  if (full && !cur && !inRenewFormWindow(t)) return "";
+  if (full && !cur && !inRenewFormWindow(t) && !renewReapplyOpen(t)) return "";
   if (cur) {
     const years = renewYearsOf(cur);
     const extra = renewExtraMonthsOf(cur);
@@ -4231,13 +4231,16 @@ function renewAskCardHtml(t, r, opts) {
   const people = renewPeopleState(t);
   ui.renewPeople = people;
   const plan = renewPeoplePlan(t, people);
-  const polite = windowOn
+  const polite = left != null && left < 0
+    ? "續約申請已取消，可以重新填一次。請再選期間，並預約簽約日。"
+    : (windowOn
     ? `您好，合約將於 ${rocSlash(t.leaseEnd)} 到期（還有 ${left} 天）。若方便續住，懇請盡早確認並預約簽約日，我們好為您準備新約。`
-    : `現有租客可於到期前 200 天申請續約。再加進來的人跟原本同一段時間，半年也一起。`;
+    : `現有租客可於到期前 200 天申請續約。再加進來的人跟原本同一段時間，半年也一起。`);
   if (!full) {
+    const ended = left != null && left < 0;
     return `<div class="handover-note renew-note">
       <div class="label">請問您是否要續約?</div>
-      <p>合約將於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，還有 ${left} 天。請確認是否續約。</p>
+      <p>${ended ? `續約申請已取消。合約已於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，仍可重新申請。` : `合約將於 ${escapeHtml(rocSlash(t.leaseEnd) || "")} 到期，還有 ${left} 天。請確認是否續約。`}</p>
       <div class="renew-ask-actions">
         <button type="button" class="btn-navy" data-page="lease" data-scroll-renew="1">前往續約</button>
         <button type="button" class="ghost" data-renew-decline="1">不續約</button>
@@ -22511,6 +22514,20 @@ function inRenewFormWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
   return left != null && left >= 0 && left <= 200;
 }
+function renewReapplyOpen(t) {
+  if (!t || t.former || t.demo || t.renewChoice === "no") return false;
+  if (typeof liveRenewalOf === "function" && liveRenewalOf(t)) return false;
+  const room = (typeof state !== "undefined" && state && state.rooms || []).find(x => x && x.id === t.roomId);
+  const list = ((typeof state !== "undefined" && state && state.renewals) || []).filter(x => {
+    if (!x || x.status !== "cancelled" || !(Number(x.cancelledTs) > 0)) return false;
+    if (x.tenantId && x.tenantId === t.id) return true;
+    return !!(room && (x.roomId === room.id || String(x.roomNo) === String(room.no)));
+  });
+  if (!list.length) return false;
+  const latest = list.slice().sort((a, b) => (Number(b.cancelledTs) || 0) - (Number(a.cancelledTs) || 0))[0];
+  const age = Date.now() - (Number(latest.cancelledTs) || 0);
+  return age >= 0 && age < 45 * 86400000;
+}
 function inRenewAskWindow(t) {
   const left = daysLeft(ymdOf(t && t.leaseEnd));
   return left != null && left >= 0 && left <= 100;
@@ -38473,8 +38490,38 @@ function finishLeaveSign(a, b) {
   toast("已簽名，後台列印會帶上簽名");
   render();
 }
+function cancelOpenRenewal(id) {
+  if (!id || !ui || ui.role !== "admin") return false;
+  const item = (state.renewals || []).find(x => x && x.id === id);
+  if (!item) { toast("找不到這筆續約申請"); return false; }
+  if (item.status === "cancelled") { toast("這筆已經取消"); return false; }
+  if (item.status === "done" || item.status === "applied") { toast("已經完成簽約，請按收回續約"); return false; }
+  const now = Date.now();
+  item.status = "cancelled";
+  item.cancelledAt = nowStamp();
+  item.cancelledTs = now;
+  item.editedAt = now;
+  const t = (state.tenants || []).find(x => x && (x.id === item.tenantId || (!x.former && !x.demo && item.roomId && x.roomId === item.roomId)));
+  if (t && t.renewChoice !== "no") {
+    const still = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
+    if (!still) {
+      t.renewChoice = "open";
+      t.edited = true;
+      t.editedAt = now;
+    }
+  }
+  if (state.renewPing && state.renewPing.id === item.id) state.renewPing = null;
+  if (ui.renewOpen) ui.renewOpen[item.id] = false;
+  save();
+  try { publishRenewNow(item); } catch {}
+  try { pushCloud(); } catch {}
+  toast("已取消續約申請　" + ((item.roomNo || "") + " " + (item.name || "")).trim() + "　可以重新申請");
+  ui.keepScroll = true;
+  render();
+  return true;
+}
 function renewalAdminCardHtml(x) {
-  if (!x || x.status === "applied") return "";
+  if (!x || x.status === "applied" || x.status === "cancelled") return "";
   const room = (state.rooms || []).find(r => r && (r.id === x.roomId || String(r.no) === String(x.roomNo)));
   const tenant = (state.tenants || []).find(t => t && (t.id === x.tenantId || (room && t.roomId === room.id && !t.former)));
   const years = renewYearsOf(x);
@@ -38487,7 +38534,7 @@ function renewalAdminCardHtml(x) {
     ? `<div class="small" style="margin-bottom:6px">換房　${escapeHtml(who)} → ${escapeHtml(x.moveRoomNo)}。新約第一天才搬過去，此前仍住原房。押金差額現場處理。新約生效後發票改開 ${escapeHtml(x.moveRoomNo)}、月租與合約期間一併更新。</div>`
     : "";
   return `<div class="card card-body renew-alert" data-renew-card="${escapeHtml(x.id)}">
-    <h2 class="dash-h">${signed ? "續約完成" : (x.wantMove ? "換房續約" : "續約申請")}</h2>
+    ${signed ? `<h2 class="dash-h">續約完成</h2>` : `<div class="renew-card-head"><h2 class="dash-h">${x.wantMove ? "換房續約" : "續約申請"}</h2><button type="button" class="ghost renew-cancel" data-cancel-renew="${escapeHtml(x.id)}">取消續約申請</button></div>`}
     <div class="mini renew-hit"><b>${escapeHtml(who)} · ${escapeHtml(name)}${x.wantMove && x.moveRoomNo ? " → " + escapeHtml(x.moveRoomNo) : ""}</b>
       ${signed ? `<span class="pay-pill paid">已簽約</span>` : `<button type="button" class="ghost" data-renew-done="${x.id}" style="width:auto">完成簽約</button>`}</div>
     <div class="small renew-brief" style="margin-bottom:6px">
@@ -38653,6 +38700,13 @@ function bindNewSheet(wrap) {
       if (!item) { toast("找不到這筆續約"); return; }
       completeRenewal(item);
       closeRenewSheet(item.id, refreshTenantList);
+    };
+  });
+  wrap.querySelectorAll("[data-cancel-renew]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelOpenRenewal(btn.dataset.cancelRenew);
     };
   });
   wrap.querySelectorAll("[data-open-early-form]").forEach(btn => {
@@ -39677,6 +39731,13 @@ function bindTenantFold() {
         if (!item) { toast("找不到這筆續約"); return; }
         completeRenewal(item);
         closeRenewSheet(item.id, refreshTenantList);
+        return;
+      }
+      const cancelBtn = e.target.closest("[data-cancel-renew]");
+      if (cancelBtn && list.contains(cancelBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelOpenRenewal(cancelBtn.dataset.cancelRenew);
         return;
       }
       const gcalBtn = e.target.closest("[data-gcal-renew]");
@@ -42882,6 +42943,13 @@ function bindAdmin() {
       if (!item) return;
       completeRenewal(item);
       closeRenewSheet(item.id, () => render());
+    };
+  });
+  document.querySelectorAll("[data-cancel-renew]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelOpenRenewal(btn.dataset.cancelRenew);
     };
   });
   document.querySelectorAll("[data-renew-appoint]").forEach(inp => {
