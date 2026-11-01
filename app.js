@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-19-20";
-const APP_EDIT_COUNT = 2167;
+const APP_STAMP = "2026-11-01-21-45";
+const APP_EDIT_COUNT = 2168;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1792";
+const FILE_VER = "1793";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -20102,19 +20102,49 @@ function invoiceBankKey(t, r, ym, onNew) {
   if (onNew) return NEW_TENANT_PAY_BANK;
   ym = String(ym || payYmNow()).slice(0, 7);
   if (ym === payYmNow()) return tenantPayBankKey(t, r);
-  const start = renewedLeaseStart(t, r);
-  if (start && ym < String(start).slice(0, 7)) {
-    const born = ymdOf(t && t.leaseStart);
+  const item = renewalForInvoice(t, r);
+  const renewStart = ymdOf(item && item.start);
+  if (renewStart && ym < renewStart.slice(0, 7)) {
+    const born = ymdOf(item && item.oldStart) || ymdOf(t && t.leaseStart);
     if (born && born >= NEW_TENANT_SINCE) return NEW_TENANT_PAY_BANK;
     return "農會";
   }
   return tenantPayBankKey(t, r);
 }
+function invoiceSpanForYm(t, room, ym) {
+  const y = String(ym || "").slice(0, 7);
+  if (!t || !/^\d{4}-\d{2}$/.test(y)) return null;
+  const part = leasePartForYm(t, room, y);
+  if (part && part.start && part.end) return { start: ymdOf(part.start), end: ymdOf(part.end) };
+  const curS = ymdOf(t.leaseStart);
+  const curE = ymdOf(t.leaseEnd);
+  if (curS && curE && curS.slice(0, 7) <= y && curE.slice(0, 7) >= y) return { start: curS, end: curE };
+  const item = renewalForInvoice(t, room);
+  const oldS = ymdOf(item && item.oldStart);
+  const oldE = ymdOf(item && item.oldEnd);
+  if (oldS && oldE && oldS.slice(0, 7) <= y && oldE.slice(0, 7) >= y && (!curS || y < curS.slice(0, 7))) {
+    return { start: oldS, end: oldE, prior: true };
+  }
+  return null;
+}
 function studioInvoiceEligible(t, room) {
-  if (!t || t.former || t.demo || t.placeholder || t.loginRevoked || t.sessionEnded) return false;
+  if (!t || t.demo || t.placeholder) return false;
   if (!String(t.name || "").trim()) return false;
-  if (t.applyPending || t.incoming || t.prospect) return false;
+  if (t.applyPending || t.prospect) return false;
+  if (room && typeof isPracticeStudioNo === "function" && isPracticeStudioNo(room.no)) return false;
   const ym = sheetYm();
+  const past = ym < payYmNow();
+  const gone = !!(t.former || t.loginRevoked || t.sessionEnded);
+  if (t.incoming && !past) return false;
+  if (gone && !past) return false;
+  if (gone && past) {
+    const left = ymdOf(t.leftOn) || ymdOf(t.leaseEnd);
+    if (left && left.slice(0, 7) < ym) return false;
+    const moved = ymdOf(t.leaseStart);
+    if (moved && moved.slice(0, 7) > ym) return false;
+    return !!invoiceSpanForYm(t, room, ym);
+  }
+  if (invoiceSpanForYm(t, room, ym)) return true;
   const item = renewalForInvoice(t, room);
   if (item && renewalActiveOnYm(item, ym)) return true;
   if (room && !leaseCoversYm(t, room, ym)) return false;
@@ -20248,6 +20278,7 @@ function studioInvoiceRow(no, room, t, info) {
   info = info || {};
   const item = t ? renewalForInvoice(t, room) : null;
   const nowYm = sheetYm();
+  const span = t ? invoiceSpanForYm(t, room, nowYm) : null;
   const viewingNow = nowYm === payYmNow();
   const prepaidNow = viewingNow && !!((t && t.prepaidYm) || []).some(y => String(y).slice(0, 7) === nowYm);
   const paid = viewingNow ? !!(t && paidThisMonth(t)) : !!(t && paidInYm(t, room, nowYm));
@@ -20269,8 +20300,8 @@ function studioInvoiceRow(no, room, t, info) {
     ? Number(part.rent)
     : (listed || (part && Number(part.rent) > 0 ? Number(part.rent) : 0) || tenantRentForYm(invT, invRoom || room, billYm, info));
   const note = String((t && t.note) || "") + " " + String(info.note || "");
-  const start = (onNew && item.start) || (invT && invT.leaseStart) || (t && t.leaseStart) || (part && part.start) || info.leaseStart || "";
-  const end = (onNew && item.end) || (invT && invT.leaseEnd) || (t && t.leaseEnd) || (part && part.end) || info.leaseEnd || "";
+  const start = (onNew && item.start) || (span && span.start) || (invT && invT.leaseStart) || (t && t.leaseStart) || (part && part.start) || info.leaseStart || "";
+  const end = (onNew && item.end) || (span && span.end) || (invT && invT.leaseEnd) || (t && t.leaseEnd) || (part && part.end) || info.leaseEnd || "";
   return {
     remitYmd: remitYmd || "",
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
@@ -20375,6 +20406,15 @@ function invoiceOverviewRows(kind) {
     if (!/^\d{4}$/.test(no) || no === "0000") return;
     if (seen.has(no)) return;
     if (studioMirrorHostNo(no)) return;
+    if (t.former || t.sessionEnded || t.loginRevoked) {
+      const better = (state.tenants || []).some(x => {
+        if (!x || x === t || x.demo || x.roomId !== room.id) return false;
+        if (!studioInvoiceEligible(x, room)) return false;
+        if (!x.former && !x.sessionEnded && !x.loginRevoked) return true;
+        return String(x.leftOn || x.leaseEnd || "") > String(t.leftOn || t.leaseEnd || "");
+      });
+      if (better) return;
+    }
     seen.add(no);
     invoicePushStudio(rows, no, room, t, TENANT_INFO[no] || {});
   });
