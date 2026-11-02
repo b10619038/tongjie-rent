@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-02-12-40";
-const APP_EDIT_COUNT = 2169;
+const APP_STAMP = "2026-11-02-17-15";
+const APP_EDIT_COUNT = 2170;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1794";
+const FILE_VER = "1795";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -22726,9 +22726,25 @@ function renewStillOpen(t) {
   if (typeof roomIsFactory === "function" && roomIsFactory(room)) return false;
   return true;
 }
+function currentLeaseRenewed(t) {
+  if (!t) return false;
+  const room = (typeof state !== "undefined" && state && state.rooms || []).find(x => x && x.id === t.roomId);
+  const end = ymdOf(t.leaseEnd);
+  const start = ymdOf(t.leaseStart);
+  return ((typeof state !== "undefined" && state && state.renewals) || []).some(x => {
+    if (!x || (x.status !== "applied" && x.status !== "done")) return false;
+    const hit = x.tenantId === t.id || (room && (x.roomId === room.id || String(x.roomNo) === String(room.no)));
+    if (!hit) return false;
+    const rEnd = ymdOf(x.end);
+    const rStart = ymdOf(x.start);
+    if (end && rEnd && end === rEnd) return true;
+    return !!(start && rStart && start === rStart && end && rEnd && end <= rEnd);
+  });
+}
 function renewReapplyOpen(t) {
   if (!t || t.former || t.demo || t.renewChoice === "no") return false;
   if (typeof liveRenewalOf === "function" && liveRenewalOf(t)) return false;
+  if (currentLeaseRenewed(t)) return false;
   const room = (typeof state !== "undefined" && state && state.rooms || []).find(x => x && x.id === t.roomId);
   const list = ((typeof state !== "undefined" && state && state.renewals) || []).filter(x => {
     if (!x || x.status !== "cancelled" || !(Number(x.cancelledTs) > 0)) return false;
