@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-01-21-45";
-const APP_EDIT_COUNT = 2168;
+const APP_STAMP = "2026-11-02-12-40";
+const APP_EDIT_COUNT = 2169;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1793";
+const FILE_VER = "1794";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8760,6 +8760,119 @@ function apply6841RenewLai(data) {
   if (!data || data.room6841RenewVer === ROOM_6841_RENEW_VER) return;
   data.room6841RenewVer = ROOM_6841_RENEW_VER;
   try { markCloudDirty(); } catch {}
+}
+function putRenewField(obj, key, val, mark) {
+  if (!obj) return false;
+  const cur = obj[key];
+  const same = Array.isArray(val) || (val && typeof val === "object")
+    ? JSON.stringify(cur || null) === JSON.stringify(val)
+    : cur === val;
+  if (same) return false;
+  obj[key] = val;
+  if (mark) mark.changed = true;
+  return true;
+}
+function applyRenew6841Lai(data) {
+  if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return;
+  if (!Array.isArray(data.renewals)) data.renewals = [];
+  const room = data.rooms.find(r => r && String(r.no) === "6841");
+  if (!room) return;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && (x.id === "t6" || x.roomId === room.id) && /劉冠德|賴欣怡/.test(String(x.name || "")));
+  if (!t) return;
+  const start = "2026-11-01";
+  const end = "2027-10-31";
+  const people = [
+    { name: "劉冠德", renew: false, years: 0, months: 0, start: "", end: "", water: 0 },
+    { name: "賴欣怡", renew: true, replace: true, years: 1, months: 0, start, end, water: 1800 }
+  ];
+  const mark = { changed: false };
+  let row = data.renewals.find(x => x && x.id === "rn-6841-lai-2026");
+  if (!row) {
+    row = { id: "rn-6841-lai-2026", createdAt: "2026-11-02 12:40", importTag: "renew6841lai" };
+    data.renewals.push(row);
+    mark.changed = true;
+  }
+  const fields = {
+    roomId: room.id, tenantId: t.id, roomNo: "6841", name: "劉冠德", status: "applied",
+    years: 1, extraMonths: 0, people, renewNames: "賴欣怡", replaceName: true,
+    start, end, oldStart: "2025-11-01", oldEnd: "2026-10-31",
+    waterFee: 1800, waterCash: false, appointAt: "", wantMove: false,
+    moveRoomId: "", moveRoomNo: "", byDev: true, appointRead: true,
+    doneAt: "2026-11-01 上午 12:00", appliedAt: "2026-11-01 上午 12:00",
+    cancelledAt: "", cancelledTs: 0
+  };
+  Object.keys(fields).forEach(k => putRenewField(row, k, fields[k], mark));
+  putRenewField(t, "name", "賴欣怡", mark);
+  putRenewField(t, "leaseStart", start, mark);
+  putRenewField(t, "leaseEnd", end, mark);
+  putRenewField(t, "leases", [{ kind: "year", start, end, rent: 9000 }], mark);
+  putRenewField(t, "stubRent", 0, mark);
+  putRenewField(t, "rent", 9000, mark);
+  putRenewField(t, "waterYear", 1800, mark);
+  putRenewField(t, "residents", 1, mark);
+  putRenewField(t, "renewChoice", "yes", mark);
+  if (!t.payBankLock) putRenewField(t, "payBank", "兆豐", mark);
+  const note = "115/10/31 到期換約改掛女友 賴欣怡。已續約 1 年。新約 115/11/1～116/10/31，11/1 起生效。續約後改匯統潔兆豐。水費年 1,800。";
+  if (!/賴欣怡/.test(String(t.note || "")) || !/已續約/.test(String(t.note || ""))) putRenewField(t, "note", note, mark);
+  putRenewField(room, "rent", 9000, mark);
+  if (room.tenantId !== t.id) { room.tenantId = t.id; mark.changed = true; }
+  if (room.status !== "repair" && room.status !== "office" && room.status !== "rented") { room.status = "rented"; mark.changed = true; }
+  if (!mark.changed) return;
+  t.edited = true;
+  t.editedAt = Date.now();
+  row.editedAt = t.editedAt;
+  try { markCloudDirty(); } catch {}
+}
+function applyRenew7022Year(data) {
+  if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return;
+  if (!Array.isArray(data.renewals)) data.renewals = [];
+  const room = data.rooms.find(r => r && String(r.no) === "7022");
+  if (!room) return;
+  const t = data.tenants.find(x => x && !x.former && !x.demo && (x.id === "t9" || x.roomId === room.id) && /郭雅萱/.test(String(x.name || "")));
+  if (!t) return;
+  const start = "2026-11-01";
+  const end = "2027-10-31";
+  const people = [{ name: "郭雅萱", renew: true, years: 1, months: 0, start, end, water: 1800 }];
+  const mark = { changed: false };
+  let row = data.renewals.find(x => x && x.id === "rn-7022-2026");
+  if (!row) {
+    row = { id: "rn-7022-2026", createdAt: "2026-11-02 12:40", importTag: "renew7022" };
+    data.renewals.push(row);
+    mark.changed = true;
+  }
+  const fields = {
+    roomId: room.id, tenantId: t.id, roomNo: "7022", name: "郭雅萱", status: "applied",
+    years: 1, extraMonths: 0, people, renewNames: "郭雅萱", replaceName: false,
+    start, end, oldStart: "2025-11-01", oldEnd: "2026-10-31",
+    waterFee: 1800, waterCash: false, appointAt: "", wantMove: false,
+    moveRoomId: "", moveRoomNo: "", byDev: true, appointRead: true,
+    doneAt: "2026-11-01 上午 12:00", appliedAt: "2026-11-01 上午 12:00",
+    cancelledAt: "", cancelledTs: 0
+  };
+  Object.keys(fields).forEach(k => putRenewField(row, k, fields[k], mark));
+  putRenewField(t, "leaseStart", start, mark);
+  putRenewField(t, "leaseEnd", end, mark);
+  putRenewField(t, "leases", [{ kind: "year", start, end, rent: 7000 }], mark);
+  putRenewField(t, "stubRent", 0, mark);
+  putRenewField(t, "rent", 7000, mark);
+  putRenewField(t, "waterYear", 1800, mark);
+  putRenewField(t, "residents", 1, mark);
+  putRenewField(t, "renewChoice", "yes", mark);
+  if (!t.payBankLock) putRenewField(t, "payBank", "兆豐", mark);
+  const note = "已續約 1 年。新約 115/11/1～116/10/31，11/1 起生效。續約後改匯統潔兆豐。水費年 1,800。";
+  if (!/已續約/.test(String(t.note || ""))) putRenewField(t, "note", note, mark);
+  putRenewField(room, "rent", 7000, mark);
+  if (room.tenantId !== t.id) { room.tenantId = t.id; mark.changed = true; }
+  if (room.status !== "repair" && room.status !== "office" && room.status !== "rented") { room.status = "rented"; mark.changed = true; }
+  if (!mark.changed) return;
+  t.edited = true;
+  t.editedAt = Date.now();
+  row.editedAt = t.editedAt;
+  try { markCloudDirty(); } catch {}
+}
+function applyBackfillRenewals(data) {
+  try { applyRenew6841Lai(data); } catch {}
+  try { applyRenew7022Year(data); } catch {}
 }
 const ROOM_6841_SEP_VER = "6841-sep-0910-v1";
 function apply6841SepPay(data) {
@@ -20307,7 +20420,7 @@ function studioInvoiceRow(no, room, t, info) {
     remitDate: remitYmd ? rocSlash(remitYmd) : "",
     invoiceYmd: invoiceYmd || "",
     invoiceDate: invoiceYmd ? rocSlash(invoiceYmd) : "",
-    buyer: (t && (t.invoiceBuyer || t.name)) || info.name || "",
+    buyer: (span && span.prior && item && item.replaceName && item.name) || (t && (t.invoiceBuyer || t.name)) || info.name || "",
     room: invNo,
     amount: rent,
     bank,
@@ -22827,6 +22940,7 @@ function rentReceiptCoversYm(data, t, room, ym) {
   });
 }
 function restoreStartedRenewalLeases(data) {
+  try { applyBackfillRenewals(data); } catch {}
   if (!data || !Array.isArray(data.renewals) || !Array.isArray(data.tenants)) return;
   const now = Date.now();
   let changed = false;
