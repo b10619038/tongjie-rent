@@ -230,9 +230,22 @@ export async function lineAvatarData(userId) {
   const type = String(img.headers.get("content-type") || "image/jpeg").split(";")[0];
   if (!/^image\//.test(type)) return "";
   const small = await shrinkAvatar(raw, type);
-  const bytes = small || (raw.byteLength <= 90000 ? raw : null);
+  let bytes = small;
+  let mime = small ? "image/jpeg" : type;
+  if (!bytes) {
+    try {
+      const resized = await fetch(url, { cf: { image: { width: 128, height: 128, fit: "cover", gravity: "center", quality: 72, format: "jpeg" } } });
+      if (resized.ok) {
+        const alt = new Uint8Array(await resized.arrayBuffer());
+        if (alt.byteLength > 80 && alt.byteLength < 80000 && alt.byteLength < raw.byteLength) {
+          bytes = alt;
+          mime = "image/jpeg";
+        }
+      }
+    } catch {}
+  }
+  if (!bytes && raw.byteLength <= 180000) { bytes = raw; mime = type; }
   if (!bytes) return "";
-  const mime = small ? "image/jpeg" : type;
   return "data:" + mime + ";base64," + bytesToB64(bytes);
 }
 async function loadFaceCache() {
