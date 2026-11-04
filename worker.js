@@ -5,7 +5,6 @@ const BIND_URL = "https://internal/binds";
 const STATE_URL = "https://internal/app";
 const PUSH_URL = "https://internal/push-subs";
 const BUILD_URL = "https://internal/build";
-const HINT = "請傳送「房號 姓名」，例如 1234 許光漢";
 function payYmNow() {
   try {
     return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 7);
@@ -698,10 +697,7 @@ export default {
     for (const ev of body.events || []) {
       const userId = ev.source && ev.source.userId;
       const replyToken = ev.replyToken;
-      if (ev.type === "follow" && replyToken) {
-        await reply(replyToken, HINT);
-        continue;
-      }
+      if (ev.type === "follow") continue;
       if (ev.type !== "message") continue;
       const msg = ev.message || {};
       const text = msg.type === "text" ? String(msg.text || "").trim() : "";

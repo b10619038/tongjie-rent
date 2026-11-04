@@ -1,5 +1,4 @@
 const BIND_URL = "https://internal/binds";
-const HINT = "請傳送「房號 姓名」，例如 1234 許光漢";
 const CID = "2011285350";
 const SEC = "478666c7c2aabed2b6c2ccb2a3a00ab2";
 
@@ -355,10 +354,7 @@ export async function handleLineEvents(request) {
   for (const ev of body.events || []) {
     const userId = ev.source && ev.source.userId;
     const replyToken = ev.replyToken;
-    if (ev.type === "follow" && replyToken) {
-      await reply(replyToken, HINT);
-      continue;
-    }
+    if (ev.type === "follow") continue;
     if (ev.type !== "message") continue;
     const msg = ev.message || {};
     const text = msg.type === "text" ? String(msg.text || "").trim() : "";
