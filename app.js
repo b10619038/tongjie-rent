@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-04-10-25";
-const APP_EDIT_COUNT = 2171;
+const APP_STAMP = "2026-11-04-10-30";
+const APP_EDIT_COUNT = 2172;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1796";
+const FILE_VER = "1797";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27152,7 +27152,7 @@ function maybePromoteProspect(t) {
   save();
   try { pushCloud(); } catch {}
   if (ui.role === "tenant" && ui.tenantId === t.id) {
-    toast("已成為 " + (r.no || "") + " 租客。換手機用房號＋姓名或手機號碼");
+    toast("已成為 " + (r.no || "") + " 租客。換手機用房號＋姓名、手機或身分證字號");
   }
   return true;
 }
@@ -30057,7 +30057,7 @@ function gateView() {
         <input id="forgot-name" type="text" placeholder="租客姓名" value="${escapeHtml(ui.forgotName || "")}" />
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         ${ui.foundPass != null ? `<div class="pass-found">${ui.foundPass ? escapeHtml(ui.foundPass) : "尚未設定密碼"}</div>
-          <div class="small">可用任一人的姓名或手機號碼登入。</div>` : ""}
+          <div class="small">可用姓名、手機號碼或身分證字號登入。</div>` : ""}
         <button class="btn-navy" id="do-forgot" type="button">找回密碼</button>
       </div>
     </div>`;
@@ -30085,12 +30085,12 @@ function gateView() {
       <div class="slide-right">
         <div class="logo">TONG JIE</div>
         <h1>${isAdmin ? "後台登入" : "租客登入"}</h1>
-        <p class="lead">${isAdmin ? "請輸入姓名與密碼。管理員、開發者、負責人都可以從這裡進入。" : "請輸入房號。密碼可用姓名或手機號碼。"}</p>
+        <p class="lead">${isAdmin ? "請輸入姓名與密碼。管理員、開發者、負責人都可以從這裡進入。" : "請輸入房號。密碼可用姓名、手機號碼或身分證字號。"}</p>
       </div>
       <div class="login-block slide-left">
         ${isAdmin ? `<input id="admin-name" type="text" autocomplete="username" maxlength="12" placeholder="姓名" value="${escapeHtml(ui.loginAdminName || "")}" />` : ""}
         <input id="room-login" type="${isAdmin ? "password" : "text"}" inputmode="${isAdmin ? "numeric" : "numeric"}" autocomplete="${isAdmin ? "current-password" : "username"}" maxlength="8" placeholder="${isAdmin ? "密碼" : "房號"}" value="${escapeHtml(isAdmin ? (ui.loginAdmin || "") : (ui.loginRoom || ""))}" />
-        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名或手機號碼" value="${escapeHtml(ui.loginPassDraft || "")}" />`}
+        ${isAdmin ? "" : `<input id="pass-login" type="text" inputmode="text" lang="zh-Hant" autocomplete="off" maxlength="20" placeholder="姓名、手機或身分證字號" value="${escapeHtml(ui.loginPassDraft || "")}" />`}
         ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
         <button class="btn-navy" id="do-login" type="button">${isAdmin ? "進入後台" : "登入"}</button>
         ${bioEnrolled() ? `<button class="ghost" id="bio-login" type="button">${bioLabel()}</button>` : ""}
@@ -30112,7 +30112,7 @@ function gateView() {
     </button>
     <button class="role-btn slide-left r2" data-go="tenant-login">
       <strong>租客登入</strong>
-      <span>請輸入房號，密碼可用姓名或手機號碼。</span>
+      <span>請輸入房號，密碼可用姓名、手機或身分證字號。</span>
     </button>
     <button class="role-btn slide-left r3" data-go="admin-login">
       <strong>後台登入</strong>
@@ -40738,10 +40738,31 @@ function enterTenant(room, tenant) {
   enablePush().then(() => maybeNudgeNotifies());
   armPushAsk();
 }
+function tenantIdNos(t) {
+  const out = [];
+  const take = raw => {
+    const v = typeof normalizeIdNo === "function" ? normalizeIdNo(raw) : "";
+    String(v || "").split(/[／/]/).forEach(p => {
+      const id = String(p || "").trim().toUpperCase();
+      if (/^[A-Z]\d{9}$/.test(id)) out.push(id);
+    });
+  };
+  take(t && t.idNo);
+  const note = String((t && t.note) || "");
+  const re = /身分證(?:字號)?\s*([A-Za-z][0-9]{9}(?:\s*[／/、]\s*[A-Za-z][0-9]{9})?)/g;
+  let m;
+  while ((m = re.exec(note))) take(m[1]);
+  try {
+    const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && t && r.id === t.roomId);
+    const info = room && typeof TENANT_INFO !== "undefined" ? TENANT_INFO[String(room.no || "")] : null;
+    if (info && info.idNo && (!t || !t.name || sameTenantName(t.name, info.name) || sameTenantName(t.name, info.renewName))) take(info.idNo);
+  } catch {}
+  return [...new Set(out)];
+}
 function tenantPassHint(t) {
   const names = String((t && t.name) || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
   const phones = normalizeMobile((t && t.phone) || "").split(/[、／]/).filter(Boolean);
-  const bits = [...names, ...phones];
+  const bits = [...names, ...phones, ...tenantIdNos(t)];
   return bits.length ? bits.join("　或　") : "";
 }
 function tenantPassKeys(t) {
@@ -40768,6 +40789,7 @@ function tenantPassKeys(t) {
     if (d.length >= 4) add(d.slice(-4));
   });
   String((t && t.phone) || "").split(/[、，,\/\s]+/).forEach(add);
+  tenantIdNos(t).forEach(add);
   return keys;
 }
 function tenantPassOk(t, pass) {
@@ -40778,6 +40800,7 @@ function tenantPassOk(t, pass) {
   if (!typed) return false;
   const keys = tenantPassKeys(t);
   if (keys.has(typed) || keys.has(compact)) return true;
+  if (/^[A-Za-z]\d{9}$/.test(compact) && keys.has(compact.toUpperCase())) return true;
   if (/^09\d{8}$/.test(compact) || /^09\d{8}$/.test(normalizeMobile(typed))) {
     const mob = normalizeMobile(typed);
     if (keys.has(mob)) return true;
