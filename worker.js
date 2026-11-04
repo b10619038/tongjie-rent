@@ -5,7 +5,7 @@ const BIND_URL = "https://internal/binds";
 const STATE_URL = "https://internal/app";
 const PUSH_URL = "https://internal/push-subs";
 const BUILD_URL = "https://internal/build";
-const HINT = "請傳送「房號 姓名」，例如 6821 黃宥宇";
+const HINT = "請傳送「房號 姓名」，例如 7651 許光漢";
 function payYmNow() {
   try {
     return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 7);

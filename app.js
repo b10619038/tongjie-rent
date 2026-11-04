@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-04-10-35";
-const APP_EDIT_COUNT = 2173;
+const APP_STAMP = "2026-11-04-13-15";
+const APP_EDIT_COUNT = 2174;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1798";
+const FILE_VER = "1799";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35612,7 +35612,7 @@ function adminAnnounce() {
       <div class="row"><span class="k">LINE ID</span><span class="v">${LINE_OA_ID}</span></div>
       <div class="row"><span class="k">Channel ID</span><span class="v">2011285350</span></div>
       <div class="row"><span class="k">Webhook</span><span class="v">已驗證成功</span></div>
-      <div class="small" style="margin-top:8px">租客加入 @773zynao 後傳送「房號 姓名」，例如 6821 黃宥宇，就會綁定。</div>
+      <div class="small" style="margin-top:8px">租客加入 @773zynao 後傳送「房號 姓名」，例如 7651 許光漢，就會綁定。</div>
       <a class="ghost" href="${LINE_CHAT_URL}" target="_blank" rel="noopener" style="margin-top:10px;display:block;text-align:center">開啟 LINE 聊天室後台</a>
     </div>
   </div>`;
@@ -40457,7 +40457,7 @@ function adminTenants() {
       </div>
       <iframe id="line-dock-frame" src="${LINE_CHAT_URL}" title="官方 LINE 聊天室"></iframe>
       <div class="line-dock-fallback">
-        <p id="line-dock-note">租客請在官方 LINE 傳送「房號 姓名」，例如 6821 黃宥宇。</p>
+        <p id="line-dock-note">租客請在官方 LINE 傳送「房號 姓名」，例如 7651 許光漢。</p>
         <a class="btn-navy" href="${LINE_CHAT_URL}" target="_blank" rel="noopener">開啟 LINE 聊天室視窗</a>
         <a class="ghost" href="${LINE_OA_URL}" target="_blank" rel="noopener" style="margin-top:8px;display:block;text-align:center">官方帳號 ${LINE_OA_URL.replace("https://","")}</a>
       </div>

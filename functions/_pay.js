@@ -1,5 +1,5 @@
 const BIND_URL = "https://internal/binds";
-const HINT = "請傳送「房號 姓名」，例如 6821 黃宥宇";
+const HINT = "請傳送「房號 姓名」，例如 7651 許光漢";
 const CID = "2011285350";
 const SEC = "478666c7c2aabed2b6c2ccb2a3a00ab2";
 
