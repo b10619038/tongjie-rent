@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-02-17-15";
-const APP_EDIT_COUNT = 2170;
+const APP_STAMP = "2026-11-04-10-25";
+const APP_EDIT_COUNT = 2171;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1795";
+const FILE_VER = "1796";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8870,9 +8870,96 @@ function applyRenew7022Year(data) {
   row.editedAt = t.editedAt;
   try { markCloudDirty(); } catch {}
 }
+function ensureLedgerIn(data, row) {
+  if (!data || !row || !row.id) return false;
+  if (!Array.isArray(data.books)) data.books = [];
+  if ((data.ledgerGone || []).indexOf(row.id) >= 0) return false;
+  const hit = data.books.find(b => b && b.id === row.id);
+  if (hit) return false;
+  data.books.push(row);
+  return true;
+}
+function apply7631Shen(data) {
+  if (!data || !Array.isArray(data.rooms) || !Array.isArray(data.tenants)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7631");
+  if (!room) return;
+  const old = data.tenants.find(x => x && (x.id === "t27" || sameTenantName(x.name, "蔡文銘")) && (x.roomId === room.id || x.id === "t27"));
+  if (old && (!old.former || !old.loginRevoked)) {
+    old.former = true;
+    old.incoming = false;
+    old.leftOn = old.leftOn || "2026-10-31";
+    old.sessionEnded = true;
+    old.loginRevoked = true;
+    old.renewChoice = "no";
+  }
+  let t = data.tenants.find(x => x && x.id === "tin7631");
+  if (!t) {
+    t = data.tenants.find(x => x && !x.former && !x.demo && x.roomId === room.id && sameTenantName(x.name, "沈妮采"));
+  }
+  const mark = { changed: false };
+  if (!t) {
+    t = { id: "tin7631", roomId: room.id, dueDay: 1 };
+    data.tenants.push(t);
+    mark.changed = true;
+  }
+  const start = "2026-11-01";
+  const end = "2027-10-31";
+  const note = "115/11/1 起租至 116/10/31。押金 18,000＋11月租金 9,000＝27,000，115/11/3 21:37 匯入統潔兆豐；水費年 1,800＋電儲值 1,000＝2,800 現金。無仲介。身分證 T225472921。女。民國90年6月19日生。出生地臺灣省屏東縣。父沈載進、母許文鳳。戶籍屏東縣里港鄉過江村6鄰過江路44號。105年4月9日屏縣初發。";
+  const fields = {
+    name: "沈妮采", roomId: room.id, former: false, incoming: false, placeholder: false,
+    demo: false, loginRevoked: false, sessionEnded: false, leftOn: "", renewChoice: "open",
+    idNo: "T225472921", address: "屏東縣里港鄉過江村6鄰過江路44號",
+    leaseStart: start, leaseEnd: end,
+    leases: [{ kind: "year", start, end, rent: 9000 }],
+    stubRent: 0, rent: 9000, deposit: 18000, waterYear: 1800, residents: 1, dueDay: 1,
+    payBank: "兆豐", paid: true, paidTouched: true, paidYm: "2026-11",
+    paidAt: "2026-11-03 21:37", paidVia: "remit", remitOn: "2026-11-03", note
+  };
+  Object.keys(fields).forEach(k => putRenewField(t, k, fields[k], mark));
+  if (room.tenantId !== t.id) { room.tenantId = t.id; mark.changed = true; }
+  if (room.status !== "rented") { room.status = "rented"; mark.changed = true; }
+  if (Number(room.rent) !== 9000) { room.rent = 9000; mark.changed = true; }
+  if (Number(room.deposit) !== 18000) { room.deposit = 18000; mark.changed = true; }
+  try { dropRentAutoBookOn(data, t); } catch {}
+  const books = [
+    { id: "bk-7631-shen-deposit", type: "in", date: "2026-11-03", amount: 18000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈妮采　押金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-rent-202611", type: "in", date: "2026-11-03", amount: 9000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈妮采　11月租金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-water", type: "in", date: "2026-11-03", amount: 1800, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "水費收入　7631 沈妮采　現場現金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-elec", type: "in", date: "2026-11-03", amount: 1000, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "電儲值　7631 沈妮采　現場現金", importTag: "movein7631", linkedTenantId: t.id }
+  ];
+  books.forEach(row => { if (ensureLedgerIn(data, row)) mark.changed = true; });
+  if (!data.paidMarks) data.paidMarks = {};
+  const markPaid = data.paidMarks[t.id];
+  if (!markPaid || markPaid.paid !== true || markPaid.paidYm !== "2026-11" || markPaid.paidAt !== "2026-11-03 21:37") {
+    data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-03 21:37", paidVia: "remit", paidYm: "2026-11", editedAt: Date.now(), name: "沈妮采" };
+    mark.changed = true;
+  }
+  if (!mark.changed) return;
+  t.edited = true;
+  t.editedAt = Date.now();
+  room.edited = true;
+  room.editedAt = t.editedAt;
+  try { markCloudDirty(); } catch {}
+}
+function apply7023AskRent(data) {
+  if (!data || !Array.isArray(data.rooms)) return;
+  const room = data.rooms.find(r => r && String(r.no) === "7023");
+  if (!room || room.status === "office" || room.status === "repair") return;
+  const live = (data.tenants || []).find(x => x && !x.former && !x.demo && !x.incoming && x.roomId === room.id && String(x.name || "").trim());
+  if (live) return;
+  let changed = false;
+  if (Number(room.rent) !== 11000) { room.rent = 11000; changed = true; }
+  if (Number(room.deposit) !== 22000) { room.deposit = 22000; changed = true; }
+  if (!changed) return;
+  room.edited = true;
+  room.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+}
 function applyBackfillRenewals(data) {
   try { applyRenew6841Lai(data); } catch {}
   try { applyRenew7022Year(data); } catch {}
+  try { apply7631Shen(data); } catch {}
+  try { apply7023AskRent(data); } catch {}
 }
 const ROOM_6841_SEP_VER = "6841-sep-0910-v1";
 function apply6841SepPay(data) {
@@ -11929,7 +12016,8 @@ function foldStudioRoommateCards(data) {
       return item.tenantId === keep.id || item.roomId === room.id || String(item.roomNo) === String(room.no);
     });
     const termOn = swapOn || !!startedRenewalFor(data, keep, room);
-    if (!swapOn) {
+    const movedIn = isMoveInTenant(keep) || (keep.name && !sameTenantName(keep.name, info.name));
+    if (!swapOn && !movedIn) {
       keep.name = info.name;
       if (info.phone) keep.phone = info.phone;
       if (info.contactName) keep.contactName = info.contactName;
@@ -11940,7 +12028,7 @@ function foldStudioRoommateCards(data) {
     keep.incoming = false;
     keep.former = false;
     keep.placeholder = false;
-    if (!swapOn) {
+    if (!swapOn && !movedIn) {
       if (info.phone) keep.phone = info.phone;
       if (info.contactName) keep.contactName = info.contactName;
       if (!termOn && info.leaseStart) keep.leaseStart = info.leaseStart;
@@ -11950,7 +12038,7 @@ function foldStudioRoommateCards(data) {
     if (info.payBank && !keep.payBankLock && !keep.payBank) keep.payBank = info.payBank;
     if (info.waterYear) keep.waterYear = Number(info.waterYear);
     if (info.residents) keep.residents = Number(info.residents);
-    if (info.deposit != null) keep.deposit = info.deposit;
+    if (!movedIn && info.deposit != null) keep.deposit = info.deposit;
     room.tenantId = keep.id;
     delete room.incomingTenantId;
     if (room.status === "vacant") room.status = "rented";
@@ -12212,6 +12300,7 @@ function applyRenewNoMarks(data) {
     const t = (data.tenants || []).find(x => x && !x.former && !x.demo && !x.incoming && (
       (room && (x.roomId === room.id || x.id === room.tenantId)) || x.id === "t" + no
     ));
+    if (no === "7631" && t && !sameTenantName(t.name, "蔡文銘")) return;
     if (t && (t.renewChoice === "open" || t.renewChoice === "yes")) return;
     if (t && t.renewChoice !== "no") {
       t.renewChoice = "no";
@@ -20314,7 +20403,8 @@ function renewDecisionOf(no) {
     if (t && t.renewChoice === "open") return "";
     if (t && (t.renewChoice === "no" || t.renewChoice === "yes")) return t.renewChoice;
   } catch {}
-  if (s === "6822" || s === "7023" || s === "7631") return "no";
+  if (s === "6822" || s === "7023") return "no";
+  if (s === "7631" && (!t || sameTenantName(t.name, "蔡文銘"))) return "no";
   if (s === "7021") return "yes";
   return "";
 }
