@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-04-10-30";
-const APP_EDIT_COUNT = 2172;
+const APP_STAMP = "2026-11-04-10-35";
+const APP_EDIT_COUNT = 2173;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1797";
+const FILE_VER = "1798";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8894,7 +8894,7 @@ function apply7631Shen(data) {
   }
   let t = data.tenants.find(x => x && x.id === "tin7631");
   if (!t) {
-    t = data.tenants.find(x => x && !x.former && !x.demo && x.roomId === room.id && sameTenantName(x.name, "沈妮采"));
+    t = data.tenants.find(x => x && !x.former && !x.demo && x.roomId === room.id && sameTenantName(x.name, "沈怩采"));
   }
   const mark = { changed: false };
   if (!t) {
@@ -8906,7 +8906,7 @@ function apply7631Shen(data) {
   const end = "2027-10-31";
   const note = "115/11/1 起租至 116/10/31。押金 18,000＋11月租金 9,000＝27,000，115/11/3 21:37 匯入統潔兆豐；水費年 1,800＋電儲值 1,000＝2,800 現金。無仲介。身分證 T225472921。女。民國90年6月19日生。出生地臺灣省屏東縣。父沈載進、母許文鳳。戶籍屏東縣里港鄉過江村6鄰過江路44號。105年4月9日屏縣初發。";
   const fields = {
-    name: "沈妮采", roomId: room.id, former: false, incoming: false, placeholder: false,
+    name: "沈怩采", roomId: room.id, former: false, incoming: false, placeholder: false,
     demo: false, loginRevoked: false, sessionEnded: false, leftOn: "", renewChoice: "open",
     idNo: "T225472921", address: "屏東縣里港鄉過江村6鄰過江路44號",
     leaseStart: start, leaseEnd: end,
@@ -8922,16 +8922,21 @@ function apply7631Shen(data) {
   if (Number(room.deposit) !== 18000) { room.deposit = 18000; mark.changed = true; }
   try { dropRentAutoBookOn(data, t); } catch {}
   const books = [
-    { id: "bk-7631-shen-deposit", type: "in", date: "2026-11-03", amount: 18000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈妮采　押金", importTag: "movein7631", linkedTenantId: t.id },
-    { id: "bk-7631-shen-rent-202611", type: "in", date: "2026-11-03", amount: 9000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈妮采　11月租金", importTag: "movein7631", linkedTenantId: t.id },
-    { id: "bk-7631-shen-water", type: "in", date: "2026-11-03", amount: 1800, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "水費收入　7631 沈妮采　現場現金", importTag: "movein7631", linkedTenantId: t.id },
-    { id: "bk-7631-shen-elec", type: "in", date: "2026-11-03", amount: 1000, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "電儲值　7631 沈妮采　現場現金", importTag: "movein7631", linkedTenantId: t.id }
+    { id: "bk-7631-shen-deposit", type: "in", date: "2026-11-03", amount: 18000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈怩采　押金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-rent-202611", type: "in", date: "2026-11-03", amount: 9000, company: "統潔", bank: "兆豐", roomNo: "7631", note: "牛10　7631 沈怩采　11月租金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-water", type: "in", date: "2026-11-03", amount: 1800, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "水費收入　7631 沈怩采　現場現金", importTag: "movein7631", linkedTenantId: t.id },
+    { id: "bk-7631-shen-elec", type: "in", date: "2026-11-03", amount: 1000, company: "現金(保險箱)", bank: "現金", roomNo: "7631", note: "電儲值　7631 沈怩采　現場現金", importTag: "movein7631", linkedTenantId: t.id }
   ];
   books.forEach(row => { if (ensureLedgerIn(data, row)) mark.changed = true; });
+  (data.books || []).forEach(b => {
+    if (!b || String(b.importTag || "") !== "movein7631") return;
+    const note = String(b.note || "").replace(/沈妮采/g, "沈怩采");
+    if (note !== b.note) { b.note = note; mark.changed = true; }
+  });
   if (!data.paidMarks) data.paidMarks = {};
   const markPaid = data.paidMarks[t.id];
   if (!markPaid || markPaid.paid !== true || markPaid.paidYm !== "2026-11" || markPaid.paidAt !== "2026-11-03 21:37") {
-    data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-03 21:37", paidVia: "remit", paidYm: "2026-11", editedAt: Date.now(), name: "沈妮采" };
+    data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-03 21:37", paidVia: "remit", paidYm: "2026-11", editedAt: Date.now(), name: "沈怩采" };
     mark.changed = true;
   }
   if (!mark.changed) return;
