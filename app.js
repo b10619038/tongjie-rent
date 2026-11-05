@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-14-15";
-const APP_EDIT_COUNT = 2180;
+const APP_STAMP = "2026-11-05-14-25";
+const APP_EDIT_COUNT = 2181;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1805";
+const FILE_VER = "1806";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31391,7 +31391,7 @@ function keyCardHtml(r) {
         <div class="row"><span class="k">實體鑰匙</span><span class="v">房門</span></div>
         <div class="row"><span class="k">感應磁扣</span><span class="v">大門</span></div>
         <div class="row"><span class="k">公設密碼</span><span class="v">${year} #</span></div>
-        <p class="small" style="margin:8px 0 0">輸入 ${year} 後，再按 #</p>
+        <p class="small" style="margin:8px 0 0;text-align:right">輸入 ${year} 後，再按 #</p>
         <button type="button" class="ghost" data-forgot-key="1" style="margin-top:12px">忘記帶鑰匙？</button>
         ${open ? `<div class="key-help">
           <p class="small">現在不是平日 09:00～18:00。請自行連絡鎖匠，費用自付。</p>
@@ -41438,8 +41438,11 @@ function bindTenant() {
       e.preventDefault();
       e.stopPropagation();
       if (deskCanOpenDoor()) {
-        const no = (typeof myRoom === "function" && myRoom() && myRoom().no) || "";
-        openLineDraft((no ? "房號" + no + " " : "") + "忘記帶鑰匙 請協助開門 謝謝");
+        const room = typeof myRoom === "function" ? myRoom() : null;
+        const who = typeof me === "function" ? me() : null;
+        const no = (room && room.no) || "";
+        const name = (who && who.name) || "";
+        openLineDraft("我是 房號" + (no || "XXXX") + (name ? " " + name : "") + " 不好意思 忘記帶鑰匙 請協助開門 非常謝謝您");
         return;
       }
       ui.keyHelpOpen = !ui.keyHelpOpen;
