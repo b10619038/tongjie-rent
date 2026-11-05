@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-04-13-20";
-const APP_EDIT_COUNT = 2175;
+const APP_STAMP = "2026-11-05-12-30";
+const APP_EDIT_COUNT = 2176;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1800";
+const FILE_VER = "1801";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35403,9 +35403,10 @@ function workCalHtml(memoRows) {
 function workAddHtml(sel) {
   const open = !!ui.workAddOpen;
   return `<div class="work-add-bar${open ? " is-open" : ""}">
-    ${open ? `<form class="work-edit work-add-form" id="work-add-form">
+    ${open ? `<form class="work-edit work-add-form" id="work-add-form" novalidate>
       <input name="text" type="text" placeholder="行程" autocomplete="off" />
-      <input name="when" type="datetime-local" value="${escapeHtml(sel || "")}" />
+      <input name="when" type="date" value="${escapeHtml(sel || "")}" />
+      <input name="time" type="time" value="" />
       <select name="cycle">
         <option value="">不重複</option>
         <option value="1">每個月</option>
@@ -44723,9 +44724,9 @@ function bindAdminAi() {
       e.stopPropagation();
       const fd = new FormData(workAddForm);
       const text = String(fd.get("text") || "").trim();
-      const when = String(fd.get("when") || "").trim();
-      const date = when.slice(0, 10);
-      const time = /^\d{2}:\d{2}/.test(when.slice(11, 16)) ? when.slice(11, 16) : "";
+      const date = String(fd.get("when") || "").trim().slice(0, 10);
+      const timeRaw = String(fd.get("time") || "").trim();
+      const time = /^\d{2}:\d{2}/.test(timeRaw) ? timeRaw.slice(0, 5) : "";
       const cycle = String(fd.get("cycle") || "");
       if (!text) { toast("請先填行程"); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast("請先選日期"); return; }
