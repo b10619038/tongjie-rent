@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-12-40";
-const APP_EDIT_COUNT = 2178;
+const APP_STAMP = "2026-11-05-13-45";
+const APP_EDIT_COUNT = 2179;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1803";
+const FILE_VER = "1804";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35066,31 +35066,40 @@ function bookOutFromDepositRefund(text, rec) {
   try { pushCloud(); } catch {}
   return row;
 }
+function memoClockHm(m) {
+  const raw = String((m && m.time) || "").trim();
+  if (!raw) return "";
+  const mins = workMemoMinutes({ time: raw });
+  if (mins == null) return "";
+  return String(Math.floor(mins / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
+}
 function openGoogleMemo(m) {
   if (!m) return;
   const title = encodeURIComponent(m.text || "工作提醒");
   const details = encodeURIComponent("統潔工作助手提醒");
+  const hm = memoClockHm(m);
+  const dayOnly = ymd => {
+    const day = String(ymd || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return "";
+    const start = day.replace(/-/g, "");
+    const nx = new Date(day + "T00:00:00");
+    if (isNaN(nx.getTime())) return "";
+    nx.setDate(nx.getDate() + 1);
+    const p = n => String(n).padStart(2, "0");
+    return start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
+  };
   let range = "";
   let recur = "";
   if (m.monthDay || m.intervalMonths) {
     const next = nextCycleDate(m);
-    if (m.time) range = gcalRange(next + "T" + m.time);
-    else {
-      const start = String(next).replace(/-/g, "");
-      const nx = new Date(next + "T00:00:00");
-      nx.setDate(nx.getDate() + 1);
-      const p = n => String(n).padStart(2, "0");
-      range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
-    }
+    if (hm && next) range = gcalRange(next + "T" + hm);
+    if (!range) range = dayOnly(next);
     const interval = m.intervalMonths && m.intervalMonths > 1 ? (";INTERVAL=" + m.intervalMonths) : "";
     recur = "&recur=RRULE:FREQ=MONTHLY" + interval + ";BYMONTHDAY=" + Number(m.monthDay || 1);
-  } else if (m.date && m.time) range = gcalRange(m.date + "T" + m.time);
-  else if (m.date) {
-    const start = m.date.replace(/-/g, "");
-    const nx = new Date(m.date + "T00:00:00");
-    nx.setDate(nx.getDate() + 1);
-    const p = n => String(n).padStart(2, "0");
-    range = start + "/" + nx.getFullYear() + p(nx.getMonth() + 1) + p(nx.getDate());
+  } else {
+    const ymd = /^\d{4}-\d{2}-\d{2}/.test(String(m.date || "")) ? String(m.date).slice(0, 10) : "";
+    if (hm && ymd) range = gcalRange(ymd + "T" + hm);
+    if (!range) range = dayOnly(ymd);
   }
   if (!range) { toast("這筆還沒有日期，跟助手說星期或幾月幾日"); return; }
   window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + title + "&dates=" + range + "&details=" + details + "&ctz=Asia/Taipei" + recur, "_blank", "noopener");
