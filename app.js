@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-12-35";
-const APP_EDIT_COUNT = 2177;
+const APP_STAMP = "2026-11-05-12-40";
+const APP_EDIT_COUNT = 2178;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1802";
+const FILE_VER = "1803";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35441,7 +35441,7 @@ function workAddHtml(sel) {
         <option value="12">每年</option>
       </select>
       <div class="unpaid-tools work-memo-tools">
-        <button type="submit" class="ghost">儲存</button>
+        <button type="button" class="ghost" id="work-add-save">儲存</button>
       </div>
     </form>` : `<button type="button" class="work-add" id="work-add" aria-label="新增行程">+</button>`}
   </div>`;
@@ -44691,13 +44691,9 @@ function bindAdminAi() {
       const form = document.getElementById("work-add-form");
       if (!form || form.classList.contains("is-closing")) return;
       const inside = form.contains(e.target);
-      if (inside) {
-        const field = e.target.closest && e.target.closest("button, input, select, textarea, label");
-        if (field && form.contains(field)) return;
-      } else {
-        const hit = e.target && e.target.closest ? e.target.closest("button, a, input, select, textarea, label, .work-memo, .work-cal-d, .work-cal-nav") : null;
-        if (hit) return;
-      }
+      if (inside) return;
+      const hit = e.target && e.target.closest ? e.target.closest("button, a, input, select, textarea, label, .work-memo, .work-cal-d, .work-cal-nav") : null;
+      if (hit) return;
       e.preventDefault();
       e.stopPropagation();
       const sc = document.querySelector(".admin-scroll");
@@ -44744,16 +44740,19 @@ function bindAdminAi() {
   const workAddForm = document.getElementById("work-add-form");
   if (workAddForm) {
     workAddForm.addEventListener("pointerdown", e => e.stopPropagation());
-    workAddForm.onsubmit = e => {
-      e.preventDefault();
-      e.stopPropagation();
+    const commit = () => {
+      if (workAddForm.dataset.saving === "1") return;
+      workAddForm.dataset.saving = "1";
+      const ae = document.activeElement;
+      if (ae && ae.blur) { try { ae.blur(); } catch {} }
+      ui.forceRender = true;
       const fd = new FormData(workAddForm);
       const text = String(fd.get("text") || "").trim();
       const date = String(fd.get("when") || "").trim().slice(0, 10);
       const time = hmFromForm(fd);
       const cycle = String(fd.get("cycle") || "");
-      if (!text) { toast("請先填行程"); return; }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast("請先選日期"); return; }
+      if (!text) { workAddForm.dataset.saving = ""; toast("請先填行程"); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { workAddForm.dataset.saving = ""; toast("請先選日期"); return; }
       const day = Number(date.slice(8, 10));
       const month = Number(date.slice(5, 7));
       const rec = {
@@ -44780,16 +44779,20 @@ function bindAdminAi() {
         rec.onlyMonth = month;
         rec.cycle = true;
       }
-      saveMemoChange(rec);
+      try { saveMemoChange(rec); }
+      catch (err) { workAddForm.dataset.saving = ""; toast("沒有存進去，請再按一次"); return; }
       ui.workAddOpen = false;
       ui.workOpen = true;
       ui.workCalYear = Number(date.slice(0, 4));
       ui.workCalMonth = month;
       ui.workCalDay = day;
       ui.keepScroll = true;
+      ui.forceRender = true;
       toast("已加入行程");
-      render();
     };
+    workAddForm.onsubmit = e => { e.preventDefault(); e.stopPropagation(); commit(); };
+    const saveBtn = document.getElementById("work-add-save");
+    if (saveBtn) saveBtn.onclick = e => { e.preventDefault(); e.stopPropagation(); commit(); };
   }
   const meterFold = document.getElementById("meter-fold");
   const meterCard = document.getElementById("meter-card");
@@ -44907,6 +44910,7 @@ function bindAdminAi() {
       ui.workEditId = "";
       ui.workMemoId = id;
       ui.keepScroll = true;
+      ui.forceRender = true;
       toast("已更新這筆工作");
       render();
     };
