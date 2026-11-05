@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-12-30";
-const APP_EDIT_COUNT = 2176;
+const APP_STAMP = "2026-11-05-12-35";
+const APP_EDIT_COUNT = 2177;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1801";
+const FILE_VER = "1802";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -34640,7 +34640,7 @@ function adminAi() {
             ${editing ? `<form class="work-edit" data-work-save="${m.id}">
               <input name="text" type="text" value="${escapeHtml(m.text || "")}" placeholder="工作內容" autocomplete="off" />
               <input name="date" type="date" value="${escapeHtml(dateVal || "")}" />
-              <input name="time" type="time" value="${escapeHtml(memoTimeInputValue(m))}" />
+              ${workTimeFields(memoTimeInputValue(m))}
               <div class="unpaid-tools work-memo-tools">
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
@@ -35237,6 +35237,31 @@ function clockLabelFromHm(hm) {
   let h12 = h % 12; if (!h12) h12 = 12;
   return period + " " + h12 + ":" + min;
 }
+function workTimeFields(hm) {
+  const hit = String(hm || "").match(/^(\d{2}):(\d{2})$/);
+  const hour = hit ? hit[1] : "";
+  const minute = hit ? hit[2] : "";
+  const opt = (v, cur, label) => `<option value="${v}"${v === cur ? " selected" : ""}>${label || v}</option>`;
+  const hours = [opt("", hour, "時")];
+  for (let i = 0; i < 24; i++) {
+    const v = String(i).padStart(2, "0");
+    hours.push(opt(v, hour));
+  }
+  const mins = [opt("", minute, "分")];
+  for (let i = 0; i < 60; i += 5) {
+    const v = String(i).padStart(2, "0");
+    mins.push(opt(v, minute));
+  }
+  if (minute && Number(minute) % 5) mins.push(opt(minute, minute));
+  return `<div class="cal-form-row"><select name="hour">${hours.join("")}</select><select name="minute">${mins.join("")}</select></div>`;
+}
+function hmFromForm(fd) {
+  const h = String(fd.get("hour") || "").trim();
+  let m = String(fd.get("minute") || "").trim();
+  if (!/^\d{2}$/.test(h)) return "";
+  if (!/^\d{2}$/.test(m)) m = "00";
+  return h + ":" + m;
+}
 function undoMemoDone(m) {
   if (!m) return;
   const ym = ymNow();
@@ -35406,7 +35431,7 @@ function workAddHtml(sel) {
     ${open ? `<form class="work-edit work-add-form" id="work-add-form" novalidate>
       <input name="text" type="text" placeholder="行程" autocomplete="off" />
       <input name="when" type="date" value="${escapeHtml(sel || "")}" />
-      <input name="time" type="time" value="" />
+      ${workTimeFields("")}
       <select name="cycle">
         <option value="">不重複</option>
         <option value="1">每個月</option>
@@ -44725,8 +44750,7 @@ function bindAdminAi() {
       const fd = new FormData(workAddForm);
       const text = String(fd.get("text") || "").trim();
       const date = String(fd.get("when") || "").trim().slice(0, 10);
-      const timeRaw = String(fd.get("time") || "").trim();
-      const time = /^\d{2}:\d{2}/.test(timeRaw) ? timeRaw.slice(0, 5) : "";
+      const time = hmFromForm(fd);
       const cycle = String(fd.get("cycle") || "");
       if (!text) { toast("請先填行程"); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast("請先選日期"); return; }
@@ -44866,7 +44890,7 @@ function bindAdminAi() {
       const fd = new FormData(form);
       const text = String(fd.get("text") || "").trim();
       const date = String(fd.get("date") || "").trim();
-      const time = String(fd.get("time") || "").trim();
+      const time = hmFromForm(fd);
       if (!text) { toast("請先填工作內容"); return; }
       m.text = text;
       m.edited = true;
