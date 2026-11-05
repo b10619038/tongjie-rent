@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-14-25";
-const APP_EDIT_COUNT = 2181;
+const APP_STAMP = "2026-11-05-14-30";
+const APP_EDIT_COUNT = 2182;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1806";
+const FILE_VER = "1807";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31377,6 +31377,13 @@ function deskCanOpenDoor() {
   const mins = d.getHours() * 60 + d.getMinutes();
   return day >= 1 && day <= 5 && mins >= 9 * 60 && mins <= 18 * 60;
 }
+function tenantLineWho() {
+  const room = typeof myRoom === "function" ? myRoom() : null;
+  const who = typeof me === "function" ? me() : null;
+  const no = (room && room.no) || "XXXX";
+  const name = (who && who.name) || "";
+  return "我是 房號" + no + (name ? " " + name : "");
+}
 function keyCardHtml(r) {
   const year = gateCodeYear();
   const open = !!ui.keyHelpOpen;
@@ -31392,7 +31399,10 @@ function keyCardHtml(r) {
         <div class="row"><span class="k">感應磁扣</span><span class="v">大門</span></div>
         <div class="row"><span class="k">公設密碼</span><span class="v">${year} #</span></div>
         <p class="small" style="margin:8px 0 0;text-align:right">輸入 ${year} 後，再按 #</p>
-        <button type="button" class="ghost" data-forgot-key="1" style="margin-top:12px">忘記帶鑰匙？</button>
+        <div class="key-actions">
+          <button type="button" class="ghost" data-elock="1">申請安裝電子門鎖</button>
+          <button type="button" class="ghost" data-forgot-key="1">忘記帶鑰匙？</button>
+        </div>
         ${open ? `<div class="key-help">
           <p class="small">現在不是平日 09:00～18:00。請自行連絡鎖匠，費用自付。</p>
           ${shops.map(s => `<a href="tel:${s.phone}"><span>${escapeHtml(s.name)}<small>${escapeHtml(s.note)}</small></span><b>${escapeHtml(s.show)}</b></a>`).join("")}
@@ -41432,17 +41442,21 @@ function bindTenant() {
   }
   bindMediaViewers();
   bindZoomPhotos();
+  document.querySelectorAll("[data-elock]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openLineDraft(tenantLineWho() + " 想申請房門安裝電子門鎖，請協助安排時間與報價，非常謝謝您");
+    };
+  });
   document.querySelectorAll("[data-forgot-key]").forEach(btn => {
     bindIosPress(btn);
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       if (deskCanOpenDoor()) {
-        const room = typeof myRoom === "function" ? myRoom() : null;
-        const who = typeof me === "function" ? me() : null;
-        const no = (room && room.no) || "";
-        const name = (who && who.name) || "";
-        openLineDraft("我是 房號" + (no || "XXXX") + (name ? " " + name : "") + " 不好意思 忘記帶鑰匙 請協助開門 非常謝謝您");
+        openLineDraft(tenantLineWho() + " 不好意思 忘記帶鑰匙 請協助開門 非常謝謝您");
         return;
       }
       ui.keyHelpOpen = !ui.keyHelpOpen;

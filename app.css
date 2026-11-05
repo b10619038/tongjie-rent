@@ -4889,6 +4889,19 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   from { transform: scale(.45); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+#key-card .key-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+#key-card .key-actions .ghost {
+  width: 100%;
+  margin: 0;
+  padding: 12px 8px;
+  font-size: 14px;
+  line-height: 1.35;
+}
 #key-card .key-help { margin-top: 12px; display: grid; gap: 8px; }
 #key-card .key-help a {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
