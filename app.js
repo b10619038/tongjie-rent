@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-13-45";
-const APP_EDIT_COUNT = 2179;
+const APP_STAMP = "2026-11-05-14-15";
+const APP_EDIT_COUNT = 2180;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1804";
+const FILE_VER = "1805";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31365,7 +31365,39 @@ function roomExtrasHtml(r) {
         <div class="row"><span class="k">帳號</span><span class="v">${escapeHtml(wifi)}</span></div>
         <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
       </div>
+      ${ui.role === "tenant" && r.kind !== "factory" ? keyCardHtml(r) : ""}
       ${floorPlanCardHtml(r)}`;
+}
+function gateCodeYear() {
+  return String(taipeiNow().getFullYear());
+}
+function deskCanOpenDoor() {
+  const d = taipeiNow();
+  const day = d.getDay();
+  const mins = d.getHours() * 60 + d.getMinutes();
+  return day >= 1 && day <= 5 && mins >= 9 * 60 && mins <= 18 * 60;
+}
+function keyCardHtml(r) {
+  const year = gateCodeYear();
+  const open = !!ui.keyHelpOpen;
+  const shops = [
+    { name: "中崙鎖印行", phone: "0939067079", show: "0939-067-079", note: "鳳山中崙路" },
+    { name: "鳳山開鎖", phone: "077412919", show: "07-741-2919", note: "力行路" },
+    { name: "強匠鎖店", phone: "0906921957", show: "0906-921-957", note: "夜間可聯絡" }
+  ];
+  return `
+      <div class="section-title"><h2 class="slide-right">鑰匙</h2></div>
+      <div class="card card-body slide-left" id="key-card">
+        <div class="row"><span class="k">實體鑰匙</span><span class="v">房門</span></div>
+        <div class="row"><span class="k">感應磁扣</span><span class="v">大門</span></div>
+        <div class="row"><span class="k">公設密碼</span><span class="v">${year} #</span></div>
+        <p class="small" style="margin:8px 0 0">輸入 ${year} 後，再按 #</p>
+        <button type="button" class="ghost" data-forgot-key="1" style="margin-top:12px">忘記帶鑰匙？</button>
+        ${open ? `<div class="key-help">
+          <p class="small">現在不是平日 09:00～18:00。請自行連絡鎖匠，費用自付。</p>
+          ${shops.map(s => `<a href="tel:${s.phone}"><span>${escapeHtml(s.name)}<small>${escapeHtml(s.note)}</small></span><b>${escapeHtml(s.show)}</b></a>`).join("")}
+        </div>` : ""}
+      </div>`;
 }
 function floorPlanOf(no) {
   const n = String(no || "");
@@ -41400,6 +41432,22 @@ function bindTenant() {
   }
   bindMediaViewers();
   bindZoomPhotos();
+  document.querySelectorAll("[data-forgot-key]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (deskCanOpenDoor()) {
+        const no = (typeof myRoom === "function" && myRoom() && myRoom().no) || "";
+        openLineDraft((no ? "房號" + no + " " : "") + "忘記帶鑰匙 請協助開門 謝謝");
+        return;
+      }
+      ui.keyHelpOpen = !ui.keyHelpOpen;
+      ui.keepScroll = true;
+      ui.forceRender = true;
+      render();
+    };
+  });
   document.querySelectorAll("[data-open-topup]").forEach(el => {
     bindIosPress(el);
     el.onclick = e => {

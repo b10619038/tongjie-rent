@@ -4889,6 +4889,14 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   from { transform: scale(.45); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+#key-card .key-help { margin-top: 12px; display: grid; gap: 8px; }
+#key-card .key-help a {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--line);
+  text-decoration: none; color: inherit; background: var(--card);
+}
+#key-card .key-help small { display: block; color: var(--muted); font-weight: 600; margin-top: 2px; }
+#key-card .key-help b { font-size: 15px; white-space: nowrap; }
 #work-card .work-add-form select { width: 100%; min-width: 0; box-sizing: border-box; }
 #work-card .work-add-form input,
 #work-card .work-add-form select {
