@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-48";
-const APP_EDIT_COUNT = 2216;
+const APP_STAMP = "2026-11-06-16-52";
+const APP_EDIT_COUNT = 2217;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1842";
+const FILE_VER = "1843";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17537,7 +17537,7 @@ function burstBirthdayConfetti(x, y, fall) {
     piece.style.setProperty("--w", w + "px");
     piece.style.setProperty("--h", h + "px");
     el.appendChild(piece);
-    setTimeout(() => piece.remove(), fall ? 2700 : 950);
+    setTimeout(() => piece.remove(), fall ? 3600 : 950);
   }
 }
 function onBirthdayTouch(e) {
@@ -17577,9 +17577,10 @@ function birthdayHelloTarget(hero) {
   const w = Math.min(168, room);
   const ratio = 416 / 900;
   const h = w * ratio;
+  const lift = 11;
   const left = textBox.right - heroBox.left + gap;
-  const top = textBox.top - heroBox.top + (textBox.height - h) / 2;
-  return { w, h, left, top, pageLeft: textBox.right + gap, pageTop: textBox.top + (textBox.height - h) / 2 };
+  const top = textBox.top - heroBox.top + (textBox.height - h) / 2 - lift;
+  return { w, h, left, top, pageLeft: textBox.right + gap, pageTop: textBox.top + (textBox.height - h) / 2 - lift };
 }
 function placeBirthdayHello(hero, img) {
   const box = birthdayHelloTarget(hero);
