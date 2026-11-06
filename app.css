@@ -804,8 +804,8 @@ html[data-theme="void"] .screen > .hero-card:hover {
 html[data-theme="caramel"] .hero-card.room-hero,
 html[data-theme="caramel"] .screen > .hero-card.room-hero,
 html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
+  background: #f2eee5 !important;
+  background-color: #f2eee5 !important;
   border: 1.5px solid #483b2a !important;
   color: #483b2a;
 }
