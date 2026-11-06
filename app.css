@@ -801,6 +801,20 @@ html[data-theme="void"] .screen > .hero-card:hover {
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
+html[data-theme="caramel"] .hero-card .label,
+html[data-theme="caramel"] .hero-card .small,
+html[data-theme="caramel"] .stat .label { color: #7d6b5c; }
+html[data-theme="caramel"] .hero-card .room-name,
+html[data-theme="caramel"] .stat,
+html[data-theme="caramel"] .stat b { color: #2c241c; }
+html[data-theme="caramel"] .stat { background: #fffdf9; border-color: #cbb89a; }
+html[data-theme="caramel"] .badge.rented,
+html[data-theme="caramel"] .badge.doing,
+html[data-theme="caramel"] .fix-pills span,
+html[data-theme="caramel"] .cal-kind.memo { background: #f3e6d4; color: #5a4332; }
+html[data-theme="caramel"] .issue-opt.selected,
+html[data-theme="caramel"] .issue-opt.selected:hover { background: #f3e6d4; border-color: #c4a882; color: #2c241c; }
+html[data-theme="caramel"] .badge.vacant { background: #f3eee6; color: #5c5146; }
 html[data-theme="void"] .hero-card .label,
 html[data-theme="void"] .hero-card .small { color: #a3a3a3; }
 html[data-theme="void"] .hero-card .room-name { color: #f7f7f7; }
