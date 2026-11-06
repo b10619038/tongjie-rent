@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-28";
-const APP_EDIT_COUNT = 2211;
+const APP_STAMP = "2026-11-06-16-36";
+const APP_EDIT_COUNT = 2212;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1837";
+const FILE_VER = "1838";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17531,15 +17531,114 @@ function syncBirthdayConfetti() {
   const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
   const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
   if (!on) {
+    syncBirthdayHello.done = false;
     if (el) el.remove();
     return;
   }
+  if (!syncBirthdayHello.done) return;
   if (el) return;
   el = document.createElement("div");
   el.id = "bday-confetti";
   el.setAttribute("aria-hidden", "true");
   el.innerHTML = birthdayConfettiHtml();
   document.body.appendChild(el);
+}
+function birthdayHelloTarget(hero) {
+  const pay = hero.querySelector(".stat.is-pay");
+  if (!pay) return null;
+  const heroBox = hero.getBoundingClientRect();
+  const payBox = pay.getBoundingClientRect();
+  const w = Math.max(96, Math.min(payBox.width * 0.92, 180));
+  const ratio = 416 / 900;
+  const h = w * ratio;
+  const left = payBox.left - heroBox.left + (payBox.width - w) / 2;
+  const top = Math.max(10, payBox.top - heroBox.top - h - 6);
+  return { w, h, left, top, pageLeft: payBox.left + (payBox.width - w) / 2, pageTop: Math.max(8, payBox.top - h - 6) };
+}
+function placeBirthdayHello(hero, img) {
+  const box = birthdayHelloTarget(hero);
+  if (!box) return;
+  img.className = "bday-hello";
+  img.alt = "";
+  img.style.cssText = "";
+  if (img.parentNode !== hero) hero.appendChild(img);
+  img.style.left = box.left + "px";
+  img.style.top = box.top + "px";
+  img.style.width = box.w + "px";
+}
+function syncBirthdayHello() {
+  const layer = document.getElementById("bday-intro");
+  const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
+  const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
+  if (!on) {
+    syncBirthdayHello.done = false;
+    const app = document.getElementById("app");
+    if (app) { app.style.transition = ""; app.style.opacity = ""; }
+    if (layer) layer.remove();
+    return;
+  }
+  const hero = document.querySelector(".hero-card.room-hero.is-bday");
+  if (!hero) return;
+  if (syncBirthdayHello.done) {
+    if (!hero.querySelector(".bday-hello") && !(layer && layer.querySelector("img"))) {
+      const img = document.createElement("img");
+      img.src = "images/birthday-hello.png?v=" + FILE_VER;
+      img.onload = () => placeBirthdayHello(document.querySelector(".hero-card.room-hero.is-bday") || hero, img);
+      placeBirthdayHello(hero, img);
+    }
+    return;
+  }
+  if (layer) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const app = document.getElementById("app");
+  const wrap = document.createElement("div");
+  wrap.id = "bday-intro";
+  const img = document.createElement("img");
+  img.alt = "";
+  img.src = "images/birthday-hello.png?v=" + FILE_VER;
+  wrap.appendChild(img);
+  document.body.appendChild(wrap);
+  const finish = () => {
+    if (syncBirthdayHello.done) return;
+    syncBirthdayHello.done = true;
+    const live = document.querySelector(".hero-card.room-hero.is-bday");
+    if (live) placeBirthdayHello(live, img);
+    else img.remove();
+    wrap.remove();
+    if (app) { app.style.transition = ""; app.style.opacity = ""; }
+    try { syncBirthdayConfetti(); } catch {}
+  };
+  if (reduce) { finish(); return; }
+  if (app) app.style.opacity = "0";
+  const run = () => {
+    if (syncBirthdayHello.done) return;
+    const ratio = (img.naturalHeight || 416) / (img.naturalWidth || 900);
+    const big = Math.min(window.innerWidth * 0.86, 460);
+    const startX = (window.innerWidth - big) / 2;
+    const startY = window.innerHeight * 0.42 - big * ratio / 2;
+    img.style.width = big + "px";
+    img.style.transform = "translate(" + startX + "px," + startY + "px)";
+    requestAnimationFrame(() => {
+      img.style.transition = "opacity .4s ease";
+      img.style.opacity = "1";
+      setTimeout(() => {
+        const live = document.querySelector(".hero-card.room-hero.is-bday");
+        const box = live && birthdayHelloTarget(live);
+        if (!box) { finish(); return; }
+        img.style.transition = "transform .75s cubic-bezier(.2,.8,.2,1), opacity .4s ease";
+        img.style.transform = "translate(" + box.pageLeft + "px," + box.pageTop + "px) scale(" + (box.w / big) + ")";
+        wrap.classList.add("go");
+        if (app) {
+          app.style.transition = "opacity .75s ease";
+          app.style.opacity = "1";
+        }
+        setTimeout(finish, 820);
+      }, 780);
+    });
+  };
+  if (img.complete && img.naturalWidth) run();
+  else img.addEventListener("load", run, { once: true });
+  setTimeout(finish, 2800);
 }
 function roomFestHtml() {
   if (!festPrefOn()) return "";
@@ -29492,6 +29591,7 @@ function render() {
   try { syncHistory(); } catch {}
   try { ensureIntro(); } catch {}
   try { ensureErrandBall(); } catch {}
+  try { syncBirthdayHello(); } catch {}
   try { syncBirthdayConfetti(); } catch {}
 }
 function safeBind(fn) {

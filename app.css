@@ -639,7 +639,35 @@ input, textarea, select {
   }
 }
 .hero-card.room-hero.is-bday { overflow: hidden; }
-.hero-card.room-hero.is-bday > :not(.bday-mark) { position: relative; z-index: 3; }
+.hero-card.room-hero.is-bday > :not(.bday-mark):not(.bday-hello) { position: relative; z-index: 3; }
+.hero-card.room-hero.is-bday .room-name,
+.hero-card.room-hero.is-bday .label,
+.hero-card.room-hero.is-bday .small { position: relative; z-index: 3; }
+.bday-hello {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  height: auto;
+  pointer-events: none;
+}
+#bday-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: #fff;
+  pointer-events: auto;
+  transition: background .75s ease;
+}
+#bday-intro.go { background: transparent; pointer-events: none; }
+#bday-intro img {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: auto;
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+}
 .bday-mark {
   position: absolute;
   z-index: 1;
