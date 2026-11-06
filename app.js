@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-10-55";
-const APP_EDIT_COUNT = 2183;
+const APP_STAMP = "2026-11-06-14-35";
+const APP_EDIT_COUNT = 2184;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1808";
+const FILE_VER = "1809";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -574,6 +574,7 @@ const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
   { ver: APP_VERSION, items: ["退款銀行代碼可選，租客和後台互相同步"] },
+  { ver: "2026-11-06-14-35", onlyDev: true, items: ["租客設定可送出意見分享，只進開發者的發送訊息"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -2101,7 +2102,7 @@ async function sendDevChat(tid, text, image) {
   const msg = {
     id: "m" + Date.now() + Math.random().toString(36).slice(2, 6),
     from,
-    text: String(text || "").trim().slice(0, 400),
+    text: String(text || "").trim().slice(0, 900),
     image: image && String(image).indexOf("data:image") === 0 ? image : "",
     imageId: "",
     at: Date.now()
@@ -44094,6 +44095,12 @@ function tenantSettings() {
       ${lookSettingsHtml()}
       ${tenantNdaHtml()}
       <div class="card card-body">
+        <div class="label">意見分享</div>
+        <p class="small" style="margin-top:8px">對這個 App 的想法、建議，或哪裡可以再改善，都可以寫在這裡。送出後會出現在「發送訊息」，只有開發者看得到。</p>
+        <textarea id="idea-note" rows="4" maxlength="800" autocomplete="off" placeholder="例如：繳費畫面想再清楚一點" style="margin-top:10px"></textarea>
+        <button type="button" class="btn-navy" id="idea-send" style="margin-top:10px">送出意見</button>
+      </div>
+      <div class="card card-body">
         <button type="button" class="ghost" id="logout-set">${isProspectPreview() ? "離開預覽" : "登出"}</button>
       </div>
     </div>`;
@@ -44283,6 +44290,22 @@ function bindTenantSettings() {
       const msg = (r ? r.no : "") + (t && t.name ? " " + t.name : "");
       openLineDraft(msg);
       toast("已帶好房號和姓名，請按傳送");
+    };
+  }
+  const idea = document.getElementById("idea-send");
+  if (idea) {
+    bindIosPress(idea);
+    idea.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const box = document.getElementById("idea-note");
+      const text = String(box && box.value || "").trim();
+      if (!text) { toast("請先寫下意見或建議"); if (box) box.focus(); return; }
+      const t = me();
+      if (!t || !t.id) { toast("請先登入再送出"); return; }
+      sendDevChat(t.id, "【意見分享】\n" + text);
+      if (box) box.value = "";
+      toast("已送出，開發者會看到");
     };
   }
   const out = document.getElementById("logout-set");
