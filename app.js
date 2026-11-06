@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-56";
-const APP_EDIT_COUNT = 2218;
+const APP_STAMP = "2026-11-06-17-08";
+const APP_EDIT_COUNT = 2219;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1844";
+const FILE_VER = "1845";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17493,9 +17493,7 @@ function roomFestKind() {
   return "";
 }
 function tenantBirthdayOn(t, r) {
-  if (r && String(r.no) === "7651") return true;
   if (!t) return false;
-  if (/吳[惠慧]青/.test(String(t.name || "")) || t.id === "t7651") return true;
   const blob = [t.note, t.memo, t.birthday, t.birth, t.born].filter(Boolean).join("\n");
   const roc = blob.match(/民國\s*\d+\s*年\s*(\d+)\s*月\s*(\d+)\s*日生/);
   if (!roc) return false;
