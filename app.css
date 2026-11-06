@@ -640,8 +640,7 @@ input, textarea, select {
 }
 .hero-card.room-hero.is-bday > :not(.bday-deco) { position: relative; z-index: 1; }
 .bday-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
-.bday-cake { position: absolute; right: -6%; top: -2%; width: 76%; height: auto; }
-.bday-wish { position: absolute; right: 8px; top: 20%; width: 124px; height: auto; }
+.bday-wish { position: absolute; right: 10px; top: 4px; width: 108px; height: auto; }
 .fest {
   position: absolute;
   z-index: 2;
