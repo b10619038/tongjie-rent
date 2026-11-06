@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-17-53";
-const APP_EDIT_COUNT = 2226;
+const APP_STAMP = "2026-11-06-18-55";
+const APP_EDIT_COUNT = 2227;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1852";
+const FILE_VER = "1853";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1454,6 +1454,54 @@ function syncThemeForWho() {
   if (root.dataset.theme === id && root.dataset.themeScope === themeScope()) return;
   applyTheme(id);
 }
+function hexRgb(h) {
+  const n = parseInt(String(h || "").replace("#", ""), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbHex(r, g, b) {
+  const c = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+  return "#" + c(r) + c(g) + c(b);
+}
+function rgbHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m;
+  let H = 0, S = 0, L = (M + m) / 2;
+  if (d) {
+    S = d / (1 - Math.abs(2 * L - 1));
+    switch (M) {
+      case r: H = ((g - b) / d) % 6; break;
+      case g: H = (b - r) / d + 2; break;
+      default: H = (r - g) / d + 4;
+    }
+    H *= 60;
+    if (H < 0) H += 360;
+  }
+  return [H, S, L];
+}
+function hslHex(H, S, L) {
+  const c = (1 - Math.abs(2 * L - 1)) * S;
+  const x = c * (1 - Math.abs((H / 60) % 2 - 1));
+  const m = L - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (H < 60) [r, g, b] = [c, x, 0];
+  else if (H < 120) [r, g, b] = [x, c, 0];
+  else if (H < 180) [r, g, b] = [0, c, x];
+  else if (H < 240) [r, g, b] = [0, x, c];
+  else if (H < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return rgbHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+function roomCardTones(t) {
+  if (!t) return null;
+  if (t.id === "caramel") return { hero: "#f2eee5", stat: "#e9e1d0", ink: "#483b2a" };
+  if (t.id === "void") return null;
+  const [H, S, L] = rgbHsl(...hexRgb(t.soft));
+  return {
+    hero: hslHex(H, Math.min(1, S * 0.59), Math.min(0.96, L + 0.032)),
+    stat: hslHex(H, Math.min(1, S * 0.64), Math.max(0.7, L - 0.027)),
+    ink: t.ink
+  };
+}
 function applyTheme(id) {
   if (id === "yuhan" && !canUseYuhanTheme()) id = "sage";
   const t = THEMES.find(x => x.id === id) || THEMES[0];
@@ -1473,6 +1521,16 @@ function applyTheme(id) {
   r.style.setProperty("--card", t.card || "#ffffff");
   r.style.setProperty("--on-teal", t.onTeal || "#ffffff");
   r.style.setProperty("--bar", bar);
+  const tones = roomCardTones(t);
+  if (tones) {
+    r.style.setProperty("--room-hero", tones.hero);
+    r.style.setProperty("--room-stat", tones.stat);
+    r.style.setProperty("--room-ink", tones.ink);
+  } else {
+    r.style.removeProperty("--room-hero");
+    r.style.removeProperty("--room-stat");
+    r.style.removeProperty("--room-ink");
+  }
   const dark = t.id === "void" || t.paper === "#000000";
   r.style.setProperty("--mask", dark ? "rgba(0,0,0,.58)" : "rgba(255,255,255,.72)");
   r.style.setProperty("--press", dark ? "#343434" : "#f3f3f3");

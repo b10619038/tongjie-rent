@@ -881,29 +881,30 @@ html[data-theme="void"] .screen > .hero-card:hover {
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
-html[data-theme="caramel"] .hero-card.room-hero,
-html[data-theme="caramel"] .screen > .hero-card.room-hero,
-html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
-  background: #f2eee5 !important;
-  background-color: #f2eee5 !important;
-  border: 0 !important;
-  color: #483b2a;
-}
-html[data-theme="caramel"] .hero-card.room-hero .label,
-html[data-theme="caramel"] .hero-card.room-hero .small,
-html[data-theme="caramel"] .hero-card.room-hero .room-name,
-html[data-theme="caramel"] .hero-card.room-hero .stat,
-html[data-theme="caramel"] .hero-card.room-hero .stat .label,
-html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #483b2a; }
-html[data-theme="caramel"] .hero-card.room-hero .stat {
-  background: #e9e1d0;
-  border: 0;
-}
 .hero-card.room-hero.is-bday .stat {
   background: rgba(255, 255, 255, 0.62);
 }
-html[data-theme="caramel"] .hero-card.room-hero.is-bday .stat {
-  background: rgba(233, 225, 208, 0.62);
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero,
+html[data-theme]:not([data-theme="void"]) .screen > .hero-card.room-hero,
+html[data-theme]:not([data-theme="void"]) .screen > .hero-card.room-hero:hover {
+  background: var(--room-hero, #ececec) !important;
+  background-color: var(--room-hero, #ececec) !important;
+  border: 0 !important;
+  color: var(--room-ink, #17211f);
+}
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .label,
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .small,
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .room-name,
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .stat,
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .stat .label,
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .stat b { color: var(--room-ink, #17211f); }
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .stat b .remain-warn { color: #c45b4a; }
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero .stat {
+  background: var(--room-stat, #ffffff);
+  border: 0;
+}
+html[data-theme]:not([data-theme="void"]) .hero-card.room-hero.is-bday .stat {
+  background: color-mix(in srgb, var(--room-stat, #e9e1d0) 62%, transparent);
   border: 0;
 }
 html[data-theme="caramel"] .badge.rented,
