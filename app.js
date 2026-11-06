@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-17-16";
-const APP_EDIT_COUNT = 2220;
+const APP_STAMP = "2026-11-06-17-22";
+const APP_EDIT_COUNT = 2221;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1846";
+const FILE_VER = "1847";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -4339,8 +4339,9 @@ function renewPeopleFormHtml(people) {
         <label class="field renew-add-field"><span>新承租人</span><input data-renew-name="${i}" maxlength="20" placeholder="新合約的姓名" value="${escapeHtml(p.name || "")}" /></label>
         <label class="field renew-add-field"><span>身分證字號</span><input data-renew-idno="${i}" maxlength="10" placeholder="身分證字號" value="${escapeHtml(p.idNo || "")}" autocomplete="off" /></label>
         <label class="field renew-add-field"><span>聯絡電話</span><input data-renew-phone="${i}" maxlength="12" placeholder="手機號碼" value="${escapeHtml(p.phone || "")}" autocomplete="off" /></label>
+        <label class="field renew-add-field"><span>生日</span><input data-renew-bday="${i}" type="date" value="${escapeHtml(parseOneBirthday(p.birthday) || "")}" /></label>
         <label class="field renew-add-field"><span>戶籍地址</span><input data-renew-addr="${i}" maxlength="80" placeholder="身分證上的戶籍地址" value="${escapeHtml(p.address || "")}" autocomplete="off" /></label>
-        <p class="small">新約第一天起只有這位。${escapeHtml(src.name || "原承租人")}不再掛名。租金不變，水費仍收一位，押金沿用不重收。</p>
+        <p class="small">生日不會印在合約上，只用來在生日當天顯示特效。新約第一天起只有這位。${escapeHtml(src.name || "原承租人")}不再掛名。租金不變，水費仍收一位，押金沿用不重收。</p>
       </div>`;
     }
     if (p.added) {
@@ -4350,7 +4351,8 @@ function renewPeopleFormHtml(people) {
         : "時間跟" + (src.name || "上面") + "同一段：" + renewSpanLabel(src.years, src.months) + "。半年也一起。";
       return `<div class="renew-person">
         <label class="field renew-add-field"><span>一起租的人</span><input data-renew-name="${i}" maxlength="20" placeholder="第二個人的姓名" value="${escapeHtml(p.name || "")}" /></label>
-        <p class="small">${escapeHtml(same)}</p>
+        <label class="field renew-add-field"><span>生日</span><input data-renew-bday="${i}" type="date" value="${escapeHtml(parseOneBirthday(p.birthday) || "")}" /></label>
+        <p class="small">生日不會印在合約上，只用來在生日當天顯示特效。${escapeHtml(same)}</p>
       </div>`;
     }
     if (!p.added && !p.replace && p.renew === false && !replacing) p.renew = true;
@@ -4383,7 +4385,7 @@ function renewPeopleFormHtml(people) {
           </span>
         </div>
       </div>
-      ${replacing ? `<p class="small">年、月是新約期間。新承租人跟這段一樣，${escapeHtml(p.name)}本人不掛新約。</p>` : ""}
+      ${replacing ? `<p class="small">年、月是新約期間。新承租人跟這段一樣，${escapeHtml(p.name)}本人不掛新約。</p>` : `<label class="field renew-add-field"><span>生日</span><input data-renew-bday="${i}" type="date" value="${escapeHtml(parseOneBirthday(p.birthday) || "")}" /><span class="small">不會印在合約上。生日當天會有房間特效。</span></label>`}
     </div>`;
   }).join("");
   return rows;
@@ -4536,16 +4538,18 @@ function bindRenewForm() {
         setPerson(Number(btn.dataset.renewStep), { part: btn.dataset.part, dir: btn.dataset.dir });
       };
     });
-    document.querySelectorAll("[data-renew-name], [data-renew-idno], [data-renew-phone], [data-renew-addr]").forEach(inp => {
-      inp.oninput = () => {
+    document.querySelectorAll("[data-renew-name], [data-renew-idno], [data-renew-phone], [data-renew-addr], [data-renew-bday]").forEach(inp => {
+      const keep = () => {
         const people = ui.renewPeople || [];
         const key = inp.dataset.renewName != null ? "name"
-          : (inp.dataset.renewIdno != null ? "idNo" : (inp.dataset.renewPhone != null ? "phone" : "address"));
-        const index = Number(inp.dataset.renewName || inp.dataset.renewIdno || inp.dataset.renewPhone || inp.dataset.renewAddr);
+          : (inp.dataset.renewIdno != null ? "idNo" : (inp.dataset.renewPhone != null ? "phone" : (inp.dataset.renewBday != null ? "birthday" : "address")));
+        const index = Number(inp.dataset.renewName || inp.dataset.renewIdno || inp.dataset.renewPhone || inp.dataset.renewAddr || inp.dataset.renewBday);
         const row = people[index];
-        if (row) row[key] = key === "name" ? String(inp.value || "").trim() : String(inp.value || "").trim();
+        if (row) row[key] = String(inp.value || "").trim();
         paintRenewRange();
       };
+      inp.oninput = keep;
+      inp.onchange = keep;
     });
     document.querySelectorAll("[data-renew-add]").forEach(btn => {
       btn.onclick = e => {
@@ -4761,10 +4765,10 @@ function buildTenantRenewRow() {
   const at = String((inp && inp.value) || ui.renewAppoint || "").trim();
   if (!at) { toast("請先預約實際簽約日期"); return null; }
   const people = renewPeopleState(t);
-  document.querySelectorAll("[data-renew-name], [data-renew-idno], [data-renew-phone], [data-renew-addr]").forEach(inp => {
+  document.querySelectorAll("[data-renew-name], [data-renew-idno], [data-renew-phone], [data-renew-addr], [data-renew-bday]").forEach(inp => {
     const key = inp.dataset.renewName != null ? "name"
-      : (inp.dataset.renewIdno != null ? "idNo" : (inp.dataset.renewPhone != null ? "phone" : "address"));
-    const index = Number(inp.dataset.renewName || inp.dataset.renewIdno || inp.dataset.renewPhone || inp.dataset.renewAddr);
+      : (inp.dataset.renewIdno != null ? "idNo" : (inp.dataset.renewPhone != null ? "phone" : (inp.dataset.renewBday != null ? "birthday" : "address")));
+    const index = Number(inp.dataset.renewName || inp.dataset.renewIdno || inp.dataset.renewPhone || inp.dataset.renewAddr || inp.dataset.renewBday);
     const rowp = people[index];
     if (rowp) rowp[key] = String(inp.value || "").trim();
   });
@@ -4811,6 +4815,7 @@ function buildTenantRenewRow() {
         idNo: p.idNo || "",
         phone: p.phone || "",
         address: p.address || "",
+        birthday: parseOneBirthday(p.birthday) || "",
         emergencyName: p.emergencyName || "",
         emergencyPhone: p.emergencyPhone || ""
       });
@@ -23307,8 +23312,16 @@ function applySignedRenewalLease(t, r, item) {
       if (newbie.address) t.address = newbie.address;
       if (newbie.emergencyName) t.emergencyName = newbie.emergencyName;
       if (newbie.emergencyPhone) t.emergencyPhone = newbie.emergencyPhone;
+      t.birthday = parseOneBirthday(newbie.birthday) || "";
+      t.birthdaySet = true;
       if (item.eSign && item.eSign.sig) {
         try { saveESignRecord(t, item.eSign); } catch {}
+      }
+    } else {
+      const bdays = stay.map(p => parseOneBirthday(p.birthday)).filter(Boolean);
+      if (bdays.length) {
+        t.birthday = bdays.join("／");
+        t.birthdaySet = true;
       }
     }
     const fixedWater = Number(t.waterYear) || 0;
@@ -23470,7 +23483,8 @@ function renewPeopleState(t) {
   const prev = Array.isArray(ui.renewPeople) ? ui.renewPeople : [];
   const headOk = prev.length >= base.length && base.every((p, i) => prev[i] && !prev[i].added && !prev[i].replace && prev[i].name === p.name);
   const source = headOk ? prev : base;
-  const list = source.map(p => ({
+  const known = typeof birthdayList === "function" ? birthdayList(t) : [];
+  const list = source.map((p, i) => ({
     name: String(p.name || "").trim(),
     renew: p.renew !== false,
     years: Math.max(0, Math.min(5, Math.round(Number(p.years) || 0))),
@@ -23480,6 +23494,7 @@ function renewPeopleState(t) {
     idNo: String(p.idNo || "").trim(),
     phone: String(p.phone || "").trim(),
     address: String(p.address || "").trim(),
+    birthday: p.birthday != null ? (parseOneBirthday(p.birthday) || "") : (!p.added && !p.replace ? (known[i] || "") : ""),
     emergencyName: String(p.emergencyName || "").trim(),
     emergencyPhone: String(p.emergencyPhone || "").trim()
   })).filter((p, i) => i < base.length || p.added || p.replace).slice(0, base.length + 1);
@@ -27261,7 +27276,7 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function ensureMoveIn() {
-  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "" };
+  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "" };
   return ui.moveIn;
 }
 function phonePassOf(phone) {
@@ -27513,6 +27528,7 @@ function submitMoveIn() {
   if (existSame) {
     existSame.phone = phone || existSame.phone;
     existSame.idNo = d.idNo || existSame.idNo;
+    if (parseOneBirthday(d.birthday)) { existSame.birthday = parseOneBirthday(d.birthday); existSame.birthdaySet = true; }
     existSame.signAppointAt = d.signAppointAt || existSame.signAppointAt;
     existSame.leaseStart = d.leaseStart || existSame.leaseStart;
     existSame.leaseEnd = d.leaseEnd || existSame.leaseEnd;
@@ -27561,6 +27577,7 @@ function submitMoveIn() {
   t.agentFee = Number(d.agentFee) || (d.hasAgent ? studioContractRent(null, room) : 0);
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
+  if (parseOneBirthday(d.birthday)) { t.birthday = parseOneBirthday(d.birthday); t.birthdaySet = true; }
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -30326,6 +30343,8 @@ function moveInView() {
       <div class="label">基本資料</div>
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
+      <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /></label>
+      <p class="small" style="margin:0 0 8px">生日不會印在合約上，只用來在生日當天顯示房間特效。</p>
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
@@ -41939,6 +41958,7 @@ function captureMoveInDraft() {
   if (document.getElementById("move-name")) d.name = normalizePersonName(val("move-name"));
   if (document.getElementById("move-phone")) d.phone = normalizeMobile(val("move-phone"));
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
+  if (document.getElementById("move-bday")) d.birthday = parseOneBirthday(val("move-bday"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
   const agent = document.getElementById("move-agent");
@@ -42037,7 +42057,7 @@ function bindMoveInForm() {
     el.onblur = captureMoveInDraft;
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
-  ["move-name", "move-phone", "move-idno", "move-end"].forEach(id => {
+  ["move-name", "move-phone", "move-idno", "move-bday", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.onchange = captureMoveInDraft;
