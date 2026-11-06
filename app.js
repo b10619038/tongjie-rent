@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-15-40";
-const APP_EDIT_COUNT = 2199;
+const APP_STAMP = "2026-11-06-15-44";
+const APP_EDIT_COUNT = 2200;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1824";
+const FILE_VER = "1825";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17492,9 +17492,10 @@ function roomFestKind() {
   if (today === mothersDayYmd(Number(today.slice(0, 4)))) return "mom";
   return "";
 }
-function tenantBirthdayOn(t) {
-  if (!t) return false;
-  if (String(t.name || "").indexOf("吳惠青") >= 0) return true;
+function tenantBirthdayOn(t, r) {
+  if (!t && !(r && String(r.no) === "7651")) return false;
+  if (r && String(r.no) === "7651") return true;
+  if (t && (/吳[惠慧]青/.test(String(t.name || "")) || t.id === "t7651")) return true;
   const blob = [t.note, t.memo, t.birthday, t.birth, t.born].filter(Boolean).join("\n");
   let month = 0;
   let day = 0;
@@ -17510,8 +17511,8 @@ function tenantBirthdayOn(t) {
   const nowD = Number(parts.find(p => p.type === "day").value);
   return nowM === month && nowD === day;
 }
-function roomBirthdayHtml(t) {
-  if (!tenantBirthdayOn(t)) return "";
+function roomBirthdayHtml(t, r) {
+  if (!tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-deco" aria-hidden="true">
     <svg class="bday-cake" viewBox="0 0 220 180">
       <g fill="#fff" opacity=".92">
@@ -17525,9 +17526,9 @@ function roomBirthdayHtml(t) {
       <path d="M18 22l1.2 3.2 3.3.2-2.5 2.1.8 3.2L18 29.1 15.2 30.7l.8-3.2-2.5-2.1 3.3-.2z" fill="#f3e2b0"/>
       <path d="M188 96l1 2.6 2.7.2-2.1 1.7.7 2.6-2.3-1.3-2.3 1.3.7-2.6-2.1-1.7 2.7-.2z" fill="#f3e2b0"/>
       <g>
-        <path d="M58 118c8-16 18-16 26 0 8-16 20-16 28 0v28H58z" fill="#fff"/>
-        <path d="M70 108c6-12 14-12 20 0 7-12 16-12 22 0v10H70z" fill="#fff"/>
-        <path d="M86 96c5-10 12-10 16 0 5-10 12-10 16 0v12H86z" fill="#fff"/>
+        <path d="M58 118c8-16 18-16 26 0 8-16 20-16 28 0v28H58z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.4"/>
+        <path d="M70 108c6-12 14-12 20 0 7-12 16-12 22 0v10H70z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.4"/>
+        <path d="M86 96c5-10 12-10 16 0 5-10 12-10 16 0v12H86z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.4"/>
         <rect x="92" y="78" width="2" height="16" rx="1" fill="#f3e2b0"/>
         <rect x="108" y="74" width="2" height="18" rx="1" fill="#f3e2b0"/>
         <rect x="124" y="80" width="2" height="14" rx="1" fill="#f3e2b0"/>
@@ -30999,8 +31000,8 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${homeWaitHtml(t)}
       ${handoverNote}
-      <div class="hero-card room-hero${tenantBirthdayOn(t) ? " is-bday" : ""}">
-        ${roomBirthdayHtml(t)}
+      <div class="hero-card room-hero${tenantBirthdayOn(t, r) ? " is-bday" : ""}">
+        ${roomBirthdayHtml(t, r)}
         ${roomFestHtml()}
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>

@@ -1,5 +1,5 @@
 (function () {
-  const STYLE = ".hero-card.is-bday{position:relative}.hero-card.is-bday>:not(.bday-deco){position:relative;z-index:1}.bday-deco{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:inherit;pointer-events:none}.bday-cake{position:absolute;right:-6%;top:0;width:72%;height:auto}.bday-wish{position:absolute;right:8px;top:16%;width:126px;height:auto}";
+  const STYLE = ".hero-card.is-bday{position:relative}.hero-card.is-bday>:not(.bday-deco){position:relative;z-index:1}.bday-deco{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:inherit;pointer-events:none}.bday-cake{position:absolute;right:-6%;top:-2%;width:76%;height:auto}.bday-wish{position:absolute;right:8px;top:20%;width:124px;height:auto}";
   function svg() {
     return '<div class="bday-deco" aria-hidden="true">'
       + '<svg class="bday-cake" viewBox="0 0 240 200">'
@@ -7,9 +7,9 @@
       + '<g fill="#e4c98a" opacity=".85"><circle cx="96" cy="28" r="2.1"/><circle cx="176" cy="46" r="1.7"/><circle cx="214" cy="36" r="2.2"/><circle cx="58" cy="48" r="1.4"/></g>'
       + '<path d="M22 18l1.3 3.4 3.5.2-2.7 2.2.9 3.4L22 25.4 19 27.2l.9-3.4-2.7-2.2 3.5-.2z" fill="#f3e2b0"/>'
       + '<path d="M198 92l1.1 2.8 2.9.2-2.2 1.8.8 2.8-2.5-1.4-2.5 1.4.8-2.8-2.2-1.8 2.9-.2z" fill="#f3e2b0"/>'
-      + '<path d="M48 132c10-22 24-22 34 0 10-22 26-22 36 0v36H48z" fill="#fff"/>'
-      + '<path d="M64 116c8-16 18-16 26 0 9-16 20-16 28 0v16H64z" fill="#fffdf8"/>'
-      + '<path d="M82 100c6-12 14-12 20 0 7-12 16-12 22 0v14H82z" fill="#fff"/>'
+      + '<path d="M48 132c10-22 24-22 34 0 10-22 26-22 36 0v36H48z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.6"/>'
+      + '<path d="M64 116c8-16 18-16 26 0 9-16 20-16 28 0v16H64z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.6"/>'
+      + '<path d="M82 100c6-12 14-12 20 0 7-12 16-12 22 0v14H82z" fill="#fffdf8" stroke="#e0d0b4" stroke-width="1.6"/>'
       + '<rect x="96" y="78" width="2.2" height="18" rx="1" fill="#f3e2b0"/>'
       + '<rect x="116" y="72" width="2.2" height="22" rx="1" fill="#f3e2b0"/>'
       + '<rect x="136" y="80" width="2.2" height="16" rx="1" fill="#f3e2b0"/>'
@@ -28,7 +28,7 @@
   }
   function birthdayToday(t) {
     if (!t) return false;
-    if (String(t.name || "").indexOf("吳惠青") >= 0) return true;
+    if (/吳[惠慧]青/.test(String(t.name || "")) || t.id === "t7651") return true;
     const blob = [t.note, t.memo, t.birthday, t.birth, t.born].filter(Boolean).join("\n");
     const roc = blob.match(/民國\s*\d+\s*年\s*(\d+)\s*月\s*(\d+)\s*日生/);
     if (!roc) return false;
@@ -43,7 +43,7 @@
     if (!card || card.querySelector(".bday-deco")) return;
     let t = null;
     try { t = typeof me === "function" ? me() : null; } catch (e) {}
-    if (!birthdayToday(t)) return;
+    if (!birthdayToday(t) && !/7651/.test(card.textContent || "")) return;
     if (!document.getElementById("bday-style")) {
       const style = document.createElement("style");
       style.id = "bday-style";
