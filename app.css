@@ -2243,11 +2243,17 @@ html[data-device="tablet"] .renew-brief > div + div::before {
   aspect-ratio: 1;
   flex: none;
 }
-.nav-ic img.nav-tool {
+.nav-ic i.nav-tool {
   width: 30px;
   height: 26px;
-  object-fit: contain;
   display: block;
+  background: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 .nav-ic img.nav-tool[src*="lease-spark"] {
   width: 26px;
