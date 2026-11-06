@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-46";
-const APP_EDIT_COUNT = 2215;
+const APP_STAMP = "2026-11-06-16-48";
+const APP_EDIT_COUNT = 2216;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1841";
+const FILE_VER = "1842";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17537,7 +17537,7 @@ function burstBirthdayConfetti(x, y, fall) {
     piece.style.setProperty("--w", w + "px");
     piece.style.setProperty("--h", h + "px");
     el.appendChild(piece);
-    setTimeout(() => piece.remove(), fall ? 1900 : 950);
+    setTimeout(() => piece.remove(), fall ? 2700 : 950);
   }
 }
 function onBirthdayTouch(e) {
