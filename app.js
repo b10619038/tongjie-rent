@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-44";
-const APP_EDIT_COUNT = 2214;
+const APP_STAMP = "2026-11-06-16-46";
+const APP_EDIT_COUNT = 2215;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1840";
+const FILE_VER = "1841";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17508,7 +17508,7 @@ function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
-function burstBirthdayConfetti(x, y) {
+function burstBirthdayConfetti(x, y, fall) {
   let el = document.getElementById("bday-confetti");
   if (!el) {
     el = document.createElement("div");
@@ -17518,24 +17518,26 @@ function burstBirthdayConfetti(x, y) {
   }
   const colors = ["#ef4d4d", "#f15b8a", "#4aa3e8", "#3dcdb8", "#7ed957", "#f2c14e", "#ff7a45", "#6ec6ff", "#ff8fbf"];
   const kinds = ["sq", "rect", "star", "rib", "dot", "star", "sq"];
-  for (let i = 0; i < 18; i++) {
+  const count = fall ? 28 : 18;
+  for (let i = 0; i < count; i++) {
     const piece = document.createElement("i");
     const kind = kinds[i % kinds.length];
-    piece.className = kind;
-    const ang = Math.PI * 2 * i / 18 + (Math.random() - 0.5) * 0.5;
-    const dist = 36 + Math.random() * 78;
+    piece.className = kind + (fall ? " fall" : "");
+    const ang = Math.PI * 2 * i / count + (Math.random() - 0.5) * 0.4;
+    const dist = (fall ? 54 : 36) + Math.random() * (fall ? 120 : 78);
     const w = kind === "rib" ? 5 : kind === "rect" ? 7 : kind === "dot" ? 8 : kind === "star" ? 14 : 10;
     const h = kind === "rib" ? 22 : kind === "rect" ? 12 : w;
     piece.style.left = x + "px";
     piece.style.top = y + "px";
     piece.style.setProperty("--c", colors[i % colors.length]);
     piece.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    piece.style.setProperty("--dy", Math.sin(ang) * dist + 28 + "px");
-    piece.style.setProperty("--rot", ((Math.random() > 0.5 ? 1 : -1) * (120 + Math.random() * 220)) + "deg");
+    piece.style.setProperty("--dy", Math.sin(ang) * dist + (fall ? 0 : 28) + "px");
+    piece.style.setProperty("--drift", ((Math.random() - 0.5) * 48) + "px");
+    piece.style.setProperty("--rot", ((Math.random() > 0.5 ? 1 : -1) * (160 + Math.random() * 260)) + "deg");
     piece.style.setProperty("--w", w + "px");
     piece.style.setProperty("--h", h + "px");
     el.appendChild(piece);
-    setTimeout(() => piece.remove(), 950);
+    setTimeout(() => piece.remove(), fall ? 1900 : 950);
   }
 }
 function onBirthdayTouch(e) {
@@ -17656,6 +17658,7 @@ function syncBirthdayHello() {
           app.style.transition = "opacity .75s ease";
           app.style.opacity = "1";
         }
+        setTimeout(() => burstBirthdayConfetti(box.pageLeft + box.w / 2, box.pageTop + box.h / 2, true), 700);
         setTimeout(finish, 820);
       }, 780);
     });
