@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-14-45";
-const APP_EDIT_COUNT = 2185;
+const APP_STAMP = "2026-11-06-14-50";
+const APP_EDIT_COUNT = 2186;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1810";
+const FILE_VER = "1811";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1389,7 +1389,6 @@ const THEMES = [
   { id: "sky", name: "青空", teal: "#4a7c9b", mid: "#5b90b0", soft: "#e3f0f6", chip: "#eef6fa", ink: "#173040" },
   { id: "moss", name: "松針", teal: "#3f6b58", mid: "#52856d", soft: "#e3efe8", chip: "#eef5f0", ink: "#163028" },
   { id: "tea", name: "暖茶", teal: "#8a6a4f", mid: "#a07d5e", soft: "#f3ebe3", chip: "#f7f0e8", ink: "#2a1f16" },
-  { id: "caramel", name: "焦糖", teal: "#5a4332", mid: "#6e5642", soft: "#f3e6d4", chip: "#f6eee3", ink: "#2c241c", paper: "#f7f3ec", card: "#fffdf9", line: "#cbb89a", muted: "#7d6b5c", inkSoft: "#5c5146", onTeal: "#fbf6ef", bar: "#f3eadf" },
   { id: "sand", name: "沙金", teal: "#b08948", mid: "#c49a55", soft: "#f6eedc", chip: "#f8f1e0", ink: "#2c2414" },
   { id: "clay", name: "赤陶", teal: "#b5694f", mid: "#c47b62", soft: "#f6e6df", chip: "#f8eee9", ink: "#2e1b14" },
   { id: "rose", name: "豆沙", teal: "#a65d63", mid: "#b87076", soft: "#f6e6e8", chip: "#f8eef0", ink: "#2c1719" },
@@ -1400,7 +1399,8 @@ const THEMES = [
   { id: "snow", name: "極白", teal: "#111111", mid: "#2a2a2a", soft: "#f2f2f2", chip: "#f7f7f7", ink: "#111111", paper: "#ffffff", card: "#ffffff", line: "#e6e6e6", muted: "#8a8a8a", inkSoft: "#4a4a4a", onTeal: "#ffffff", bar: "#ffffff" },
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
   { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" },
-  { id: "yuhan", name: "奶油", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fffcf8", line: "#d6ccb8", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" }
+  { id: "yuhan", name: "奶油", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fffcf8", line: "#d6ccb8", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" },
+  { id: "caramel", name: "焦糖", teal: "#5a4332", mid: "#6e5642", soft: "#f3e6d4", chip: "#f6eee3", ink: "#2c241c", paper: "#f7f3ec", card: "#fffdf9", line: "#cbb89a", muted: "#7d6b5c", inkSoft: "#5c5146", onTeal: "#fbf6ef", bar: "#f3eadf" }
 ];
 function canUseYuhanTheme() {
   try {
