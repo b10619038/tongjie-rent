@@ -638,6 +638,26 @@ input, textarea, select {
     border-color: #dedede !important;
   }
 }
+.hero-card.room-hero.is-bday { overflow: hidden; }
+.bday-mark {
+  position: absolute;
+  z-index: 2;
+  right: -22%;
+  top: 46%;
+  width: 78%;
+  margin: 0;
+  pointer-events: none;
+  transform: translateY(-50%) rotate(45deg);
+  transform-origin: center center;
+}
+.bday-mark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.42;
+  filter: brightness(1.35) saturate(0.65);
+  mix-blend-mode: soft-light;
+}
 .fest {
   position: absolute;
   z-index: 2;
