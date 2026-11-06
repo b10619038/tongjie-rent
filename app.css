@@ -801,40 +801,6 @@ html[data-theme="void"] .screen > .hero-card:hover {
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
-.room-hero-head, .room-hero-body { display: contents; }
-html[data-theme="caramel"] .hero-card.room-hero,
-html[data-theme="caramel"] .screen > .hero-card.room-hero,
-html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
-  background: #fff !important;
-  background-color: #fff !important;
-  border: 1.5px solid #5a4332 !important;
-  color: #2c241c;
-  padding: 0;
-  overflow: hidden;
-}
-html[data-theme="caramel"] .room-hero-head,
-html[data-theme="caramel"] .room-hero-body { display: block; }
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-head {
-  background: #5a4332;
-  padding: 16px 18px 14px;
-}
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-head .label { color: #f6efe4; margin-bottom: 6px; }
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-head .room-name { color: #fbf6ef; margin: 0 0 4px; }
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-head .small { color: #e7d3bc; margin: 0; }
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-body { padding: 14px 14px 16px; background: #fff; }
-html[data-theme="caramel"] .hero-card.room-hero .room-hero-body .small { color: #7a6554; }
-html[data-theme="caramel"] .hero-card.room-hero .stat {
-  background: #f6efe4;
-  border-color: transparent;
-  color: #2c241c;
-}
-html[data-theme="caramel"] .hero-card.room-hero .stat .label { color: #7a6554; }
-html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #2c241c; }
-html[data-theme="caramel"] .hero-card.room-hero .rent-stamp {
-  --stamp: #8a6244;
-  background: rgba(138, 98, 68, 0.1);
-}
-html[data-theme="caramel"] .hero-card.room-hero .remain-plus { color: #8a6244; }
 html[data-theme="caramel"] .badge.rented,
 html[data-theme="caramel"] .badge.doing,
 html[data-theme="caramel"] .fix-pills span,

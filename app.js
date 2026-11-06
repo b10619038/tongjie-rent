@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-15-05";
-const APP_EDIT_COUNT = 2189;
+const APP_STAMP = "2026-11-06-15-08";
+const APP_EDIT_COUNT = 2190;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1814";
+const FILE_VER = "1815";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1400,7 +1400,7 @@ const THEMES = [
   { id: "mist", name: "極灰", teal: "#6e6e6e", mid: "#858585", soft: "#ececec", chip: "#f1f1f1", ink: "#2a2a2a", paper: "#f2f2f2", card: "#f6f6f6", line: "#e2e2e2", muted: "#8a8a8a", inkSoft: "#5a5a5a", onTeal: "#ffffff", bar: "#f2f2f2" },
   { id: "void", name: "極黑", teal: "#f0f0f0", mid: "#d6d6d6", soft: "#383838", chip: "#3e3e3e", ink: "#f5f5f5", paper: "#1a1a1a", card: "#2b2b2b", line: "#5e5e5e", muted: "#b0b0b0", inkSoft: "#d0d0d0", onTeal: "#111111", bar: "#1a1a1a" },
   { id: "yuhan", name: "奶油", teal: "#6d7b6c", mid: "#80907e", soft: "#e6ebe2", chip: "#f3eee6", ink: "#353430", paper: "#f7f4ee", card: "#fffcf8", line: "#d6ccb8", muted: "#8d8a82", inkSoft: "#5e5c56", onTeal: "#f7f4ee", bar: "#e7dfd4" },
-  { id: "caramel", name: "焦糖", teal: "#5a4332", mid: "#6e5642", soft: "#f3e6d4", chip: "#f6eee3", ink: "#2c241c", paper: "#f7f3ec", card: "#fffdf9", line: "#cbb89a", muted: "#7d6b5c", inkSoft: "#5c5146", onTeal: "#fbf6ef", bar: "#f3eadf" }
+  { id: "caramel", name: "焦糖", teal: "#5a4332", mid: "#6e5642", soft: "#f3e6d4", chip: "#f6eee3", ink: "#2c241c", paper: "#ffffff", card: "#ffffff", line: "#cbb89a", muted: "#7d6b5c", inkSoft: "#5c5146", onTeal: "#fbf6ef", bar: "#ffffff" }
 ];
 function canUseYuhanTheme() {
   try {
@@ -30939,14 +30939,11 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${homeWaitHtml(t)}
       ${handoverNote}
-      <div class="hero-card room-hero">
+      <div class="hero-card">
         ${roomFestHtml()}
-        <div class="room-hero-head">
-          <div class="label">我的房間</div>
-          <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
-          <div class="small">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
-        </div>
-        <div class="room-hero-body">
+        <div class="label">我的房間</div>
+        <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
+        <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
         <div class="hero-stats">
           <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" data-scroll-pay="1" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
@@ -30960,7 +30957,6 @@ function homeView() {
               : `<div class="esign-cta${ui.stampChop ? " anim" : ""}" style="pointer-events:none">已簽約　等待後台確認</div>`)
             : `<button type="button" class="esign-cta${ui.stampChop ? " anim" : ""}" data-page="lease-sign">我要簽約</button>`)
           : ((t.incoming || t.prospect || t.applyPending) && tenantContractStatus(t, r) === "unsigned" ? `<button type="button" class="esign-cta${ui.stampChop ? " anim" : ""}" data-page="lease-sign">尚未簽約　點此線上簽署</button>` : "")}
-        </div>
       </div>
       ${isDemoTenant(t) || isDemoRoom(r) ? demoResetBarHtml() : ""}
       <div class="section-title"><h2 class="slide-right">繳費狀態</h2><span class="slide-left" data-page="lease">看租約</span></div>
