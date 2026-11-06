@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-05-14-30";
-const APP_EDIT_COUNT = 2182;
+const APP_STAMP = "2026-11-06-10-55";
+const APP_EDIT_COUNT = 2183;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1807";
+const FILE_VER = "1808";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -142,6 +142,37 @@ const NONGHUI_SEP_PAID = {
   "7651": ["2026-09-05", 5000],
   "7232": ["2026-08-27", 14000],
   "6841": ["2026-09-10", 9000]
+};
+const STUDIO_OCT_SHEET = {
+  "7232": { on: "2026-09-25", amount: 14000, bank: "農會", name: "林紜亦" },
+  "7041": { on: "2026-09-30", amount: 9000, bank: "兆豐", name: "劉恩彤" },
+  "7223": { on: "2026-09-30", amount: 10000, bank: "農會", name: "許芸慈" },
+  "7222": { on: "2026-09-30", amount: 7000, bank: "農會", name: "林呈澔、廖晉億" },
+  "7242": { on: "2026-10-01", amount: 14000, bank: "兆豐", name: "張育慈、周聖傑" },
+  "6822": { on: "2026-10-01", amount: 7000, bank: "農會", name: "吳孟書、黃莉晏" },
+  "6831": { on: "2026-10-01", amount: 9000, bank: "農會", name: "吳昱瑋" },
+  "7221": { on: "2026-10-01", amount: 7000, bank: "農會", name: "張智傑" },
+  "6841": { on: "2026-10-01", amount: 9000, bank: "農會", name: "劉冠德" },
+  "6823": { on: "2026-10-02", amount: 10000, bank: "農會", name: "顏家蓁" },
+  "6832": { on: "2026-10-02", amount: 14000, bank: "兆豐", name: "周婕妤、許軒偉" },
+  "7611": { on: "2026-10-03", amount: 42000, bank: "農會", name: "波波奇" },
+  "7031": { on: "2026-10-03", amount: 9000, bank: "農會", name: "朱甫晟" },
+  "7021": { on: "2026-10-05", amount: 7000, bank: "農會", name: "陳信安" },
+  "7621": { on: "2026-10-05", amount: 7000, bank: "農會", name: "王俊典、曾郁庭" },
+  "7642": { on: "2026-10-05", amount: 14000, bank: "農會", name: "陳智泓" },
+  "7032": { on: "2026-10-05", amount: 12000, bank: "兆豐", name: "楊旻憲" },
+  "7623": { on: "2026-10-05", amount: 10000, bank: "農會", name: "陳財源" },
+  "7651": { on: "2026-10-07", amount: 5000, bank: "農會", name: "吳慧青" },
+  "7241": { on: "2026-10-08", amount: 8000, bank: "農會", name: "陳逸仁" },
+  "6842": { on: "2026-10-08", amount: 14000, bank: "農會", name: "蘇冠達、吳汶修" },
+  "7042": { on: "2026-10-10", amount: 14000, bank: "兆豐", name: "周佳瑩" },
+  "6821": { on: "2026-10-11", amount: 7000, bank: "農會", name: "黃宥宇" },
+  "7622": { on: "2026-10-13", amount: 7000, bank: "農會", name: "邱育琳" },
+  "7231": { on: "2026-10-14", amount: 9000, bank: "兆豐", name: "林安安" },
+  "7641": { on: "2026-10-15", amount: 9000, bank: "農會", name: "洪子軒" },
+  "7631": { on: "2026-10-16", amount: 9000, bank: "農會", name: "蔡文銘" },
+  "7632": { on: "2026-10-27", amount: 14000, bank: "兆豐", name: "謝佩君" },
+  "7022": { on: "2026-10-27", amount: 7000, bank: "農會", name: "郭雅萱" }
 };
 const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
@@ -7986,6 +8017,7 @@ function normalize(data) {
   repairTrashNotes(data);
   applyNonghuiSepPaid(data);
   try { applySepRemitBooks(data); } catch {}
+  try { applyStudioOctSheet(data); } catch {}
   applyXinjie0909(data);
   applyXinjieSepPaid(data);
   applyTongjieFed0909(data);
@@ -9312,6 +9344,44 @@ function applySepRemitBooks(data) {
   });
   data.sepRemitBookVer = "20260929-sep-remit";
   if (changed) { try { markCloudDirty(); } catch {} }
+}
+function octSheetBookHit(b, no) {
+  if (!b || String(b.roomNo || "") !== String(no)) return false;
+  const tag = String(b.importTag || "");
+  const note = String(b.note || "");
+  return tag.indexOf("2026-10") >= 0 || /10月租金/.test(note);
+}
+function applyStudioOctSheet(data) {
+  if (!data || data.studioOctSheetVer === "20261106-oct-sheet") return;
+  if (!Array.isArray(data.books)) data.books = [];
+  Object.keys(STUDIO_OCT_SHEET).forEach(no => {
+    const row = STUDIO_OCT_SHEET[no];
+    const hit = data.books.find(b => octSheetBookHit(b, no));
+    if (hit) {
+      if (no === "7231") hit.date = row.on;
+      if (no === "7041") hit.bank = "兆豐";
+      return;
+    }
+    const room = (data.rooms || []).find(r => r && String(r.no) === no);
+    const t = room && (data.tenants || []).find(x => x && x.roomId === room.id && !x.demo && sameTenantName(x.name, row.name));
+    const early = row.on < "2026-10-01";
+    data.books.push({
+      id: "bk-oct115-" + no,
+      type: "in",
+      date: row.on,
+      amount: row.amount,
+      company: "統潔",
+      bank: row.bank,
+      roomNo: no,
+      note: "牛10　" + no + " " + row.name + "　10月租金",
+      importTag: early ? "rent-prepaid-2026-10" : "oct-sheet-2026-10",
+      linkedTenantId: (t && t.id) || "",
+      createdAt: "2026-11-06 10:50"
+    });
+  });
+  data.studioOctSheetVer = "20261106-oct-sheet";
+  try { persistLedger(data); } catch {}
+  try { markCloudDirty(); } catch {}
 }
 function apply7241CashAunt(data) {
   if (!data) return;
@@ -14860,6 +14930,7 @@ async function pullCloudNow() {
       repairTrashNotes(state);
       applyNonghuiSepPaid(state);
       try { applySepRemitBooks(state); } catch {}
+      try { applyStudioOctSheet(state); } catch {}
       applyXinjie0909(state);
       applyXinjieSepPaid(state);
       applyTongjieFed0909(state);
@@ -15022,6 +15093,7 @@ async function pullCloudNow() {
     repairTrashNotes(state);
     applyNonghuiSepPaid(state);
     try { applySepRemitBooks(state); } catch {}
+    try { applyStudioOctSheet(state); } catch {}
     applyXinjie0909(state);
     applyXinjieSepPaid(state);
     applyTongjieFed0909(state);
@@ -20443,6 +20515,7 @@ function rentPayDateFor(t, r, ym) {
   const pre = ymdOf(t && t.prepaidOn && t.prepaidOn[ym]);
   if (pre) return pre;
   const no = String((r && r.no) || "");
+  if (ym === "2026-10" && STUDIO_OCT_SHEET[no]) return STUDIO_OCT_SHEET[no].on;
   const known = no && NONGHUI_SEP_PAID[no];
   if (ym === "2026-09" && known && ymdOf(known[0])) return ymdOf(known[0]);
   let best = "";
@@ -20550,51 +20623,47 @@ function invoicePushStudio(rows, no, room, t, info) {
       return;
     }
     if (ym === "2026-10") {
-      const octPaid = !!(t && String(t.paidYm || "").slice(0, 7) === "2026-10" && (t.paid || ymdOf(t.remitOn).slice(0, 7) === "2026-10"));
-      const octRemit = octPaid ? (ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
-      const octInv = octRemit ? invoiceYmdFromRemit(octRemit, "2026-10") : "";
+      const octRemit = "2026-10-10";
+      const octInv = invoiceYmdFromRemit(octRemit, "2026-10");
       rows.push(Object.assign({}, base, {
         amount: 14000,
         remitYmd: octRemit,
-        remitDate: octRemit ? rocSlash(octRemit) : "",
+        remitDate: rocSlash(octRemit),
         invoiceYmd: octInv,
         invoiceDate: octInv ? rocSlash(octInv) : "",
         stub: false,
-        remark: "連同9月發票一併交付"
+        remark: "欠租$4,000　先開9月發票"
       }));
       return;
     }
   }
   if (String(no) === "7632") {
     const ym = sheetYm();
-    if (ym === "2026-09") return;
     if (ym === "2026-10") {
       const base = studioInvoiceRow(no, room, t, info);
-      const octPaid = !!(t && String(t.paidYm || "").slice(0, 7) === "2026-10" && (t.paid || ymdOf(t.remitOn).slice(0, 7) === "2026-10"));
-      const octRemit = octPaid ? (rentPayDateFor(t, room, "2026-10") || ymdOf(t.remitOn) || ymdOf(t.paidAt) || "") : "";
-      const octInv = octRemit ? invoiceYmdFromRemit(octRemit, "2026-10") : "";
+      const octRemit = "2026-10-27";
+      const octInv = invoiceYmdFromRemit(octRemit, "2026-10");
       rows.push(Object.assign({}, base, {
-        amount: 28000,
+        amount: 14000,
         remitYmd: octRemit,
-        remitDate: octRemit ? rocSlash(octRemit) : "",
+        remitDate: rocSlash(octRemit),
         invoiceYmd: octInv,
-        invoiceDate: octInv ? rocSlash(octInv) : "",
-        stub: false,
-        remark: "9、10月租金收入"
+        invoiceDate: rocSlash(octInv),
+        stub: false
       }));
       return;
     }
   }
-  if (String(no) === "7231" && sheetYm() === "2026-10") {
+  if (String(no) === "7023" && sheetYm() === "2026-10") {
     const base = studioInvoiceRow(no, room, t, info);
-    const on = "2026-09-08";
     rows.push(Object.assign({}, base, {
-      amount: 9000,
-      remitYmd: on,
-      remitDate: rocSlash(on),
-      invoiceYmd: "2026-10-01",
-      invoiceDate: rocSlash("2026-10-01"),
-      stub: false
+      amount: 0,
+      remitYmd: "",
+      remitDate: "",
+      invoiceYmd: "",
+      invoiceDate: "",
+      stub: false,
+      remark: "退押金扣租金　到期不續約"
     }));
     return;
   }
