@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-24";
-const APP_EDIT_COUNT = 2210;
+const APP_STAMP = "2026-11-06-16-28";
+const APP_EDIT_COUNT = 2211;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1836";
+const FILE_VER = "1837";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17505,7 +17505,7 @@ function tenantBirthdayOn(t, r) {
   return month === Number(roc[1]) && day === Number(roc[2]);
 }
 function roomBirthdayHtml(t, r) {
-  if (!tenantBirthdayOn(t, r)) return "";
+  if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
 function birthdayConfettiHtml() {
@@ -17529,7 +17529,7 @@ function birthdayConfettiHtml() {
 function syncBirthdayConfetti() {
   let el = document.getElementById("bday-confetti");
   const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
-  const on = !!(home && tenantBirthdayOn(me(), myRoom()));
+  const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
   if (!on) {
     if (el) el.remove();
     return;
@@ -30989,7 +30989,7 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${homeWaitHtml(t)}
       ${handoverNote}
-      <div class="hero-card room-hero${tenantBirthdayOn(t, r) ? " is-bday" : ""}">
+      <div class="hero-card room-hero${festPrefOn() && tenantBirthdayOn(t, r) ? " is-bday" : ""}">
         ${roomBirthdayHtml(t, r)}
         ${roomFestHtml()}
         <div class="label">我的房間</div>
@@ -44121,7 +44121,7 @@ function tenantSettings() {
           <span>${festPrefOn() ? "節日會出現小布置" : "已關閉"}</span>
           <button type="button" class="pref-knob${festPrefOn() ? " on" : ""}" id="fest-toggle" aria-pressed="${festPrefOn() ? "true" : "false"}"></button>
         </div>
-        <p class="small">元旦、春節、元宵、清明、端午、七夕、中秋、重陽、萬聖節、聖誕、跨年，還有母親節、父親節。到了那幾天，我的房間圖卡會加上節慶布置。這台手機會記住。</p>
+        <p class="small">元旦、春節、元宵、清明、端午、七夕、中秋、重陽、萬聖節、聖誕、跨年，還有母親節、父親節、生日。到了那幾天，我的房間圖卡會加上節慶布置。這台手機會記住。</p>
       </div>
       <div class="card card-body">
         <div class="label">日期倒數與印章特效</div>
