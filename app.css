@@ -801,6 +801,24 @@ html[data-theme="void"] .screen > .hero-card:hover {
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
+html[data-theme="caramel"] .hero-card.room-hero,
+html[data-theme="caramel"] .screen > .hero-card.room-hero,
+html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
+  background: #f6f2e9 !important;
+  background-color: #f6f2e9 !important;
+  border-color: #e4dccf !important;
+  color: #483b2a;
+}
+html[data-theme="caramel"] .hero-card.room-hero .label,
+html[data-theme="caramel"] .hero-card.room-hero .small,
+html[data-theme="caramel"] .hero-card.room-hero .room-name,
+html[data-theme="caramel"] .hero-card.room-hero .stat,
+html[data-theme="caramel"] .hero-card.room-hero .stat .label,
+html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #483b2a; }
+html[data-theme="caramel"] .hero-card.room-hero .stat {
+  background: #f6f2e9;
+  border-color: #e0d6c6;
+}
 html[data-theme="caramel"] .badge.rented,
 html[data-theme="caramel"] .badge.doing,
 html[data-theme="caramel"] .fix-pills span,
