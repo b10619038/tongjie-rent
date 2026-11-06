@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-40";
-const APP_EDIT_COUNT = 2213;
+const APP_STAMP = "2026-11-06-16-44";
+const APP_EDIT_COUNT = 2214;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1839";
+const FILE_VER = "1840";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17560,16 +17560,24 @@ function syncBirthdayConfetti() {
   syncBirthdayConfetti.bound = true;
 }
 function birthdayHelloTarget(hero) {
-  const pay = hero.querySelector(".stat.is-pay");
-  if (!pay) return null;
+  const name = hero.querySelector(".room-name");
+  if (!name) return null;
   const heroBox = hero.getBoundingClientRect();
-  const payBox = pay.getBoundingClientRect();
-  const w = Math.max(96, Math.min(payBox.width * 0.92, 180));
+  let textBox = name.getBoundingClientRect();
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(name);
+    const box = range.getBoundingClientRect();
+    if (box && box.width > 8) textBox = box;
+  } catch {}
+  const gap = 6;
+  const room = Math.max(64, heroBox.right - textBox.right - gap - 12);
+  const w = Math.min(168, room);
   const ratio = 416 / 900;
   const h = w * ratio;
-  const left = payBox.left - heroBox.left + (payBox.width - w) / 2;
-  const top = Math.max(10, payBox.top - heroBox.top - h - 6);
-  return { w, h, left, top, pageLeft: payBox.left + (payBox.width - w) / 2, pageTop: Math.max(8, payBox.top - h - 6) };
+  const left = textBox.right - heroBox.left + gap;
+  const top = textBox.top - heroBox.top + (textBox.height - h) / 2;
+  return { w, h, left, top, pageLeft: textBox.right + gap, pageTop: textBox.top + (textBox.height - h) / 2 };
 }
 function placeBirthdayHello(hero, img) {
   const box = birthdayHelloTarget(hero);
