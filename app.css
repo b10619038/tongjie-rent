@@ -638,9 +638,10 @@ input, textarea, select {
     border-color: #dedede !important;
   }
 }
-.hero-card.room-hero.is-bday > :not(.bday-deco) { position: relative; z-index: 1; }
-.bday-deco { position: absolute; inset: 0; z-index: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
-.bday-wish { position: absolute; right: 10px; top: 4px; width: 108px; height: auto; }
+.room-name-line { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.room-name-line .room-name { margin: 0; min-width: 0; }
+.room-name-line .bday-wish { position: static; width: 118px; height: auto; flex: 0 0 auto; display: block; }
+.hero-card.room-hero.is-bday .room-name-line + .small { margin: 8px 0 14px !important; }
 .fest {
   position: absolute;
   z-index: 2;
