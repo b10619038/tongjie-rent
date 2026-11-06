@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-36";
-const APP_EDIT_COUNT = 2212;
+const APP_STAMP = "2026-11-06-16-40";
+const APP_EDIT_COUNT = 2213;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1838";
+const FILE_VER = "1839";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17508,40 +17508,56 @@ function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
-function birthdayConfettiHtml() {
+function burstBirthdayConfetti(x, y) {
+  let el = document.getElementById("bday-confetti");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "bday-confetti";
+    el.setAttribute("aria-hidden", "true");
+    document.body.appendChild(el);
+  }
   const colors = ["#ef4d4d", "#f15b8a", "#4aa3e8", "#3dcdb8", "#7ed957", "#f2c14e", "#ff7a45", "#6ec6ff", "#ff8fbf"];
-  const kinds = ["sq", "rect", "star", "rib", "dot", "sq", "star"];
-  let html = "";
-  [0, 2.6].forEach(base => {
-    for (let i = 0; i < 28; i++) {
-      const kind = kinds[i % kinds.length];
-      const c = colors[(i * 3 + (base ? 2 : 0)) % colors.length];
-      const x = 3 + ((i * 37) % 94);
-      const dx = (i % 2 ? 1 : -1) * (16 + (i * 19) % 54);
-      const rot = (i % 2 ? 1 : -1) * (220 + (i * 53) % 420);
-      const w = kind === "rib" ? 5 : kind === "rect" ? 7 : kind === "dot" ? 8 : kind === "star" ? 15 : 11;
-      const h = kind === "rib" ? 26 : kind === "rect" ? 13 : w;
-      html += `<i class="${kind}" style="--x:${x}%;--c:${c};--dx:${dx}px;--rot:${rot}deg;--delay:${(base + (i % 6) * 0.05).toFixed(2)}s;--dur:${(3.15 + (i % 5) * 0.16).toFixed(2)}s;--w:${w}px;--h:${h}px"></i>`;
-    }
-  });
-  return html;
+  const kinds = ["sq", "rect", "star", "rib", "dot", "star", "sq"];
+  for (let i = 0; i < 18; i++) {
+    const piece = document.createElement("i");
+    const kind = kinds[i % kinds.length];
+    piece.className = kind;
+    const ang = Math.PI * 2 * i / 18 + (Math.random() - 0.5) * 0.5;
+    const dist = 36 + Math.random() * 78;
+    const w = kind === "rib" ? 5 : kind === "rect" ? 7 : kind === "dot" ? 8 : kind === "star" ? 14 : 10;
+    const h = kind === "rib" ? 22 : kind === "rect" ? 12 : w;
+    piece.style.left = x + "px";
+    piece.style.top = y + "px";
+    piece.style.setProperty("--c", colors[i % colors.length]);
+    piece.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+    piece.style.setProperty("--dy", Math.sin(ang) * dist + 28 + "px");
+    piece.style.setProperty("--rot", ((Math.random() > 0.5 ? 1 : -1) * (120 + Math.random() * 220)) + "deg");
+    piece.style.setProperty("--w", w + "px");
+    piece.style.setProperty("--h", h + "px");
+    el.appendChild(piece);
+    setTimeout(() => piece.remove(), 950);
+  }
+}
+function onBirthdayTouch(e) {
+  if (!e || document.getElementById("bday-intro")) return;
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  burstBirthdayConfetti(e.clientX, e.clientY);
 }
 function syncBirthdayConfetti() {
-  let el = document.getElementById("bday-confetti");
+  const el = document.getElementById("bday-confetti");
   const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
   const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
   if (!on) {
     syncBirthdayHello.done = false;
+    document.removeEventListener("pointerdown", onBirthdayTouch);
+    syncBirthdayConfetti.bound = false;
     if (el) el.remove();
     return;
   }
   if (!syncBirthdayHello.done) return;
-  if (el) return;
-  el = document.createElement("div");
-  el.id = "bday-confetti";
-  el.setAttribute("aria-hidden", "true");
-  el.innerHTML = birthdayConfettiHtml();
-  document.body.appendChild(el);
+  if (syncBirthdayConfetti.bound) return;
+  document.addEventListener("pointerdown", onBirthdayTouch);
+  syncBirthdayConfetti.bound = true;
 }
 function birthdayHelloTarget(hero) {
   const pay = hero.querySelector(".stat.is-pay");
