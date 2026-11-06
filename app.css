@@ -801,13 +801,29 @@ html[data-theme="void"] .screen > .hero-card:hover {
   color: #f5f5f5;
   border-color: #5e5e5e !important;
 }
-html[data-theme="caramel"] .hero-card .label,
-html[data-theme="caramel"] .hero-card .small,
-html[data-theme="caramel"] .stat .label { color: #7d6b5c; }
-html[data-theme="caramel"] .hero-card .room-name,
-html[data-theme="caramel"] .stat,
-html[data-theme="caramel"] .stat b { color: #2c241c; }
-html[data-theme="caramel"] .stat { background: #fffdf9; border-color: #cbb89a; }
+html[data-theme="caramel"] .hero-card.room-hero,
+html[data-theme="caramel"] .screen > .hero-card.room-hero,
+html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
+  background: #fff6ec !important;
+  background-color: #fff6ec !important;
+  border-color: #c4a882 !important;
+  color: #2c241c;
+}
+html[data-theme="caramel"] .hero-card.room-hero .label,
+html[data-theme="caramel"] .hero-card.room-hero .small,
+html[data-theme="caramel"] .hero-card.room-hero .stat .label { color: #7a6554; }
+html[data-theme="caramel"] .hero-card.room-hero .room-name,
+html[data-theme="caramel"] .hero-card.room-hero .stat,
+html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #2c241c; }
+html[data-theme="caramel"] .hero-card.room-hero .stat {
+  background: #f6eee3;
+  border-color: #e0cfb8;
+}
+html[data-theme="caramel"] .hero-card.room-hero .rent-stamp {
+  --stamp: #8a6244;
+  background: rgba(138, 98, 68, 0.1);
+}
+html[data-theme="caramel"] .hero-card.room-hero .remain-plus { color: #8a6244; }
 html[data-theme="caramel"] .badge.rented,
 html[data-theme="caramel"] .badge.doing,
 html[data-theme="caramel"] .fix-pills span,
