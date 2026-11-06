@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-17-08";
-const APP_EDIT_COUNT = 2219;
+const APP_STAMP = "2026-11-06-17-16";
+const APP_EDIT_COUNT = 2220;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1845";
+const FILE_VER = "1846";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -8995,10 +8995,25 @@ function apply7023AskRent(data) {
   room.editedAt = Date.now();
   try { markCloudDirty(); } catch {}
 }
+function applyBirthdaySeed(data) {
+  if (!data || !Array.isArray(data.tenants)) return;
+  let changed = false;
+  data.tenants.forEach(t => {
+    if (!t || t.birthday || t.birthdaySet) return;
+    const list = birthdayList(t);
+    if (!list.length) return;
+    t.birthday = list.join("／");
+    t.birthdaySet = true;
+    changed = true;
+  });
+  if (!changed) return;
+  try { markCloudDirty(); } catch {}
+}
 function applyBackfillRenewals(data) {
   try { applyRenew6841Lai(data); } catch {}
   try { applyRenew7022Year(data); } catch {}
   try { apply7631Shen(data); } catch {}
+  try { applyBirthdaySeed(data); } catch {}
   try { apply7023AskRent(data); } catch {}
 }
 const ROOM_6841_SEP_VER = "6841-sep-0910-v1";
@@ -17492,15 +17507,34 @@ function roomFestKind() {
   if (today === mothersDayYmd(Number(today.slice(0, 4)))) return "mom";
   return "";
 }
+function isoBirthday(y, m, d) {
+  const yy = Number(y), mm = Number(m), dd = Number(d);
+  if (!yy || mm < 1 || mm > 12 || dd < 1 || dd > 31) return "";
+  return yy + "-" + String(mm).padStart(2, "0") + "-" + String(dd).padStart(2, "0");
+}
+function parseOneBirthday(s) {
+  const text = String(s || "").trim();
+  let m = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (m) return isoBirthday(m[1], m[2], m[3]);
+  m = text.match(/民國\s*(\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/);
+  if (m) return isoBirthday(Number(m[1]) + 1911, m[2], m[3]);
+  return "";
+}
+function birthdayList(t) {
+  const saved = String(t && t.birthday || "").split(/[／/、]+/).map(parseOneBirthday).filter(Boolean);
+  if (saved.length || (t && t.birthdaySet)) return saved.slice(0, 2);
+  const notes = String((t && t.note) || "").match(/民國\s*\d+\s*年\s*\d+\s*月\s*\d+\s*日生/g) || [];
+  return notes.map(parseOneBirthday).filter(Boolean).slice(0, 2);
+}
 function tenantBirthdayOn(t, r) {
   if (!t) return false;
-  const blob = [t.note, t.memo, t.birthday, t.birth, t.born].filter(Boolean).join("\n");
-  const roc = blob.match(/民國\s*\d+\s*年\s*(\d+)\s*月\s*(\d+)\s*日生/);
-  if (!roc) return false;
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }).formatToParts(new Date());
   const month = Number(parts.find(p => p.type === "month").value);
   const day = Number(parts.find(p => p.type === "day").value);
-  return month === Number(roc[1]) && day === Number(roc[2]);
+  return birthdayList(t).some(iso => {
+    const m = String(iso).match(/-(\d{2})-(\d{2})$/);
+    return !!(m && Number(m[1]) === month && Number(m[2]) === day);
+  });
 }
 function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
@@ -39807,6 +39841,7 @@ function tenantEntryDetailsHtml(kind, entry) {
         return `<div class="row" data-line-status="${r ? r.no : ""}"><span class="k">LINE</span>${bound ? `<span class="badge rented">已綁定${lineBindName(r.no) ? " · " + escapeHtml(lineBindName(r.no)) : ""}</span>` : `<span class="small">尚未綁定</span>`}</div>`;
       })()}
       ${teField("電話", "phone", t.id, r && r.id, kind === "factory" ? (t.phone || "") : slashPair(normalizeMobile(t.phone || "")), "tel", splitPair(t.name).length > 1 ? "兩人請用／分開" : "手機號碼")}
+      ${kind !== "factory" ? teField("生日", "birthday", t.id, r && r.id, birthdayList(t).join("／"), "text", splitPair(t.name).length > 1 ? "兩人請用／分開，如 1998-11-29" : "如 1998-11-29") : ""}
       ${kind !== "factory" ? teField("身分證", "idNo", t.id, r && r.id, slashPair(t.idNo || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") + teField("戶籍地址", "address", t.id, r && r.id, slashPair(t.address || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "身分證上的戶籍地址") + teField("緊急聯絡人", "emergencyName", t.id, r && r.id, slashPair(t.emergencyName || ""), "text", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") + teField("緊急電話", "emergencyPhone", t.id, r && r.id, slashPair(normalizeMobile(t.emergencyPhone || "")), "tel", splitPair(t.name).length > 1 ? "兩人請用／分開" : "") : ""}
       ${t.contactName ? teField("聯絡人", "contactName", t.id, r && r.id, t.contactName || "") : ""}
       ${t.taxId ? teField("統編", "taxId", t.id, r && r.id, t.taxId || "") : ""}
@@ -39956,6 +39991,12 @@ function applyLiveTenantEdit(el) {
     }
   }
   else if (key === "loginPass" && t) t.loginPass = val || phonePassOf(t.phone) || "";
+  else if (key === "birthday" && t) {
+    const list = String(val || "").split(/[／/、]+/).map(parseOneBirthday).filter(Boolean).slice(0, 2);
+    if (val && !list.length) { toast("生日請用 1998-11-29"); return; }
+    t.birthday = list.join("／");
+    t.birthdaySet = true;
+  }
   else if (key === "idNo" && t) t.idNo = normalizeIdNo(val);
   else if (key === "address" && t) t.address = slashPair(val);
   else if (key === "emergencyName" && t) t.emergencyName = slashPair(val);
@@ -44248,6 +44289,7 @@ function tenantSettings() {
           <div>
             <div class="row" style="padding-top:0"><span class="k">房號</span><span class="v">${escapeHtml(r.no || ui.roomNo || "")}</span></div>
             <div class="row"><span class="k">姓名</span><span class="v">${escapeHtml(t.name || "")}</span></div>
+            ${tenantBirthdayInputs(t)}
           </div>
         </div>
         <p class="small">點頭像可更換大頭貼。</p>
@@ -44479,7 +44521,31 @@ function bindLookSettings() {
     ringSlider.addEventListener("change", () => { applyRing(ringSlider.value); ringChime(); });
   };
 }
+function tenantBirthdayInputs(t) {
+  const names = splitPair(t && t.name).filter(Boolean).slice(0, 2);
+  const bits = birthdayList(t);
+  const rows = (names.length > 1 ? names : [""]).map((name, i) => `<label class="row bday-row"><span class="k">生日${name ? "　" + escapeHtml(name) : ""}</span><input class="bday-edit" type="date" data-tenant-bday="${i}" value="${escapeHtml(bits[i] || "")}" /></label>`);
+  return rows.join("");
+}
+function saveTenantBirthday() {
+  const t = me();
+  if (!t) return;
+  const vals = [...document.querySelectorAll("[data-tenant-bday]")].map(el => parseOneBirthday(el.value)).filter(Boolean).slice(0, 2);
+  t.birthday = vals.join("／");
+  t.birthdaySet = true;
+  t.edited = true;
+  t.editedAt = Date.now();
+  save();
+  try { pushCloud(); } catch {}
+  toast(vals.length ? "生日已儲存，後台同步看得到" : "已清除生日");
+  ui.keepScroll = true;
+  render();
+}
 function bindTenantSettings() {
+  document.querySelectorAll("[data-tenant-bday]").forEach(el => {
+    el.addEventListener("click", e => e.stopPropagation());
+    el.onchange = () => saveTenantBirthday();
+  });
   bindLookSettings();
   bindHowtoFold();
   document.querySelectorAll("[data-notify-info]").forEach(btn => {

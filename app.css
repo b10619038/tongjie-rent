@@ -2198,6 +2198,18 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   background: #fff;
   text-align: right;
 }
+.bday-edit {
+  flex: 1;
+  min-width: 0;
+  max-width: 62%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  text-align: right;
+}
 .te-row select.v-edit {
   position: relative;
   z-index: 4;
