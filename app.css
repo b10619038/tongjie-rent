@@ -659,6 +659,45 @@ input, textarea, select {
   filter: none;
   mix-blend-mode: normal;
 }
+#bday-confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+#bday-confetti i {
+  position: absolute;
+  left: var(--x);
+  top: -8%;
+  width: var(--w);
+  height: var(--h);
+  background: var(--c);
+  border-radius: 2px;
+  opacity: 0;
+  animation: bdayPop var(--dur) linear var(--delay) infinite;
+}
+#bday-confetti i.dot { border-radius: 50%; }
+#bday-confetti i.rib { border-radius: 4px; }
+#bday-confetti i.star {
+  background: transparent;
+}
+#bday-confetti i.star::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--c);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+@keyframes bdayPop {
+  0% { transform: translate3d(0, -4vh, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  42% { transform: translate3d(calc(var(--dx) * .5), 36vh, 0) rotate(calc(var(--rot) * .35)); opacity: 1; }
+  100% { transform: translate3d(var(--dx), 108vh, 0) rotate(var(--rot)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #bday-confetti { display: none; }
+}
 .fest {
   position: absolute;
   z-index: 2;
