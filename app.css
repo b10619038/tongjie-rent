@@ -655,7 +655,7 @@ input, textarea, select {
   display: block;
   width: 100%;
   height: auto;
-  opacity: 0.72;
+  opacity: 0.5;
   filter: none;
   mix-blend-mode: normal;
 }
