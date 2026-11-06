@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-17-48";
-const APP_EDIT_COUNT = 2225;
+const APP_STAMP = "2026-11-06-17-53";
+const APP_EDIT_COUNT = 2226;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1851";
+const FILE_VER = "1852";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3701,7 +3701,9 @@ function armLinePayProofPoll() {
       if (document.visibilityState && document.visibilityState !== "visible") return;
       if (ui.page !== "pay") return;
       syncLinePayProof().then(ok => {
-        if (!ok || ui.page !== "pay") return;
+        if (!ok || ui.payStepTold) return;
+        ui.payStepTold = true;
+        toast("可以按本月已繳費了");
         ui.keepScroll = true;
         render();
       });
@@ -3718,6 +3720,10 @@ function armLinePayProofPoll() {
     if (!watching) return;
     const ok = await syncLinePayProof();
     if (ok && (ui.page === "pay" || ui.page === "home")) {
+      if (!ui.payStepTold) {
+        ui.payStepTold = true;
+        toast("可以按本月已繳費了");
+      }
       ui.keepScroll = true;
       render();
     }
@@ -31419,7 +31425,7 @@ function payAccountCardHtml(b, title) {
 function payView() {
   try { applyDueRenewals(state); } catch {}
   const t = me(); const r = myRoom();
-  const paid = typeof paidThisMonth === "function" ? paidThisMonth(t) : !!(t && t.paid);
+  const paid = !!(t && t.paid);
   const pack = tenantPayAccounts(t, r);
   const co = companyInfo();
   const firstPay = firstStudioPayDue(t, r);
@@ -31428,12 +31434,12 @@ function payView() {
   const split = firstPay ? firstPaySplitOf(t, firstPay) : null;
   const proof = linePayProofOf(r && r.no);
   const cashFirst = !!(firstPay && split && split.way === "cash");
-  const ready = !paid && cashFirst;
+  const ready = !paid && (cashFirst || tenantLineUnlocked(t, r));
   const hasText = !!(proof && proof.hasText);
   const hasImage = !!(proof && proof.hasImage);
   const payMode = paid ? "done" : ready ? "mark" : "line";
   const payLabelText = paid
-    ? "本月已繳費"
+    ? "已回報本月已繳費"
     : ready
       ? "本月已繳費"
       : hasText && !hasImage
@@ -31444,11 +31450,13 @@ function payView() {
   const stepGuide = paid || cashFirst
     ? ""
     : `<div class="pay-steps slide-left" id="pay-report"><p>${
-        hasText && !hasImage
-          ? "已收到回報文字，請再在 LINE 傳轉帳截圖。入帳後這裡才會顯示已繳費。"
-          : hasImage && !hasText
-            ? "已收到截圖，請再在 LINE 傳回報文字。入帳後這裡才會顯示已繳費。"
-            : "匯款後按下面按鈕，把回報和轉帳截圖傳到官方 LINE。錢入帳之後，這裡才會變成已繳費，現在不能先按。"
+        ready
+          ? "可以按本月已繳費了。"
+          : hasText && !hasImage
+            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完回到這裡，按鈕會變成本月已繳費。"
+            : hasImage && !hasText
+              ? "已收到截圖，請再在 LINE 傳回報文字。傳完回到這裡，按鈕會變成本月已繳費。"
+              : "先按回報按鈕傳送訊息，把截圖傳到官方 LINE。<br>傳完回到這裡，按鈕會變成本月已繳費。"
       }</p></div>`;
   const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const megaSoon = !!(renew && (renew.status === "done" || renew.status === "applied") && renew.start && !(typeof renewalStartReached === "function" && renewalStartReached(renew)));
@@ -31493,7 +31501,7 @@ function payView() {
         ${prepaidAheadHtml(t, r) ? `<div class="small" style="margin-top:8px">${escapeHtml(prepaidAheadHtml(t, r))}。下個月 1 號起這筆直接顯示已繳，不用再匯。</div>` : ""}
         <div class="small">${r.no}　${escapeHtml(t && t.name ? t.name : "")}</div>
         <div style="margin-top:10px"><span class="pay-pill ${pay.cls}">${pay.text}</span>
-          ${paid && t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : paid && t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
+          ${t && t.paidVia === "line" ? `<span class="badge rented" style="margin-left:6px">LINE 已通知</span>` : t && t.paidVia === "app" ? `<span class="badge doing" style="margin-left:6px">App 回報</span>` : ""}</div>
         <div class="row" style="margin-top:10px"><span class="k">${firstPay ? "收款方式" : "實際匯款日"}</span><span class="v">${firstPay ? (paid ? firstPayWayLabel(t, firstPay) + "已收" : firstPayWayLabel(t, firstPay)) : remitDateLabel(t)}</span></div>
       </div>
       ${firstPay && split && split.way === "cash" ? `<div class="card card-body slide-left" style="margin-top:12px"><div class="small">第一次付款</div><div style="font-weight:700;margin-top:4px">簽約現場現金 ${money(firstPay.total)}</div><div class="small" style="margin-top:6px">之後每月租金匯兆豐。電費每度 NT$ 5.5。</div></div>` : ""}
@@ -41622,6 +41630,10 @@ function bindTenant() {
     if (ui.page === "pay") {
       syncLinePayProof().then(ok => {
         if (!ok) return;
+        if (!ui.payStepTold) {
+          ui.payStepTold = true;
+          toast("可以按本月已繳費了");
+        }
         ui.keepScroll = true;
         render();
       });
