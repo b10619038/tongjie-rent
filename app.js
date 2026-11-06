@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-16-52";
-const APP_EDIT_COUNT = 2217;
+const APP_STAMP = "2026-11-06-16-56";
+const APP_EDIT_COUNT = 2218;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1843";
+const FILE_VER = "1844";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17508,6 +17508,32 @@ function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
+const bdayBits = [];
+function stepBirthdayBits(now) {
+  const el = document.getElementById("bday-confetti");
+  if (!el) { bdayBits.length = 0; stepBirthdayBits.on = 0; return; }
+  const last = stepBirthdayBits.last || now;
+  const dt = Math.max(0.5, Math.min(1.5, (now - last) / 16.67));
+  stepBirthdayBits.last = now;
+  for (let i = bdayBits.length - 1; i >= 0; i--) {
+    const p = bdayBits[i];
+    p.vy += 0.042 * dt;
+    p.vx *= Math.pow(0.994, dt);
+    p.vy *= Math.pow(0.993, dt);
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.rot += p.vr * dt;
+    p.age += dt;
+    p.node.style.transform = "translate3d(" + p.x + "px," + p.y + "px,0) rotate(" + p.rot + "deg)";
+    if (p.age > p.fadeAt) p.node.style.opacity = String(Math.max(0, 1 - (p.age - p.fadeAt) / 24));
+    if (p.age > p.fadeAt + 24 || p.y > window.innerHeight + 36) {
+      p.node.remove();
+      bdayBits.splice(i, 1);
+    }
+  }
+  if (bdayBits.length) stepBirthdayBits.on = requestAnimationFrame(stepBirthdayBits);
+  else stepBirthdayBits.on = 0;
+}
 function burstBirthdayConfetti(x, y, fall) {
   let el = document.getElementById("bday-confetti");
   if (!el) {
@@ -17518,45 +17544,56 @@ function burstBirthdayConfetti(x, y, fall) {
   }
   const colors = ["#ef4d4d", "#f15b8a", "#4aa3e8", "#3dcdb8", "#7ed957", "#f2c14e", "#ff7a45", "#6ec6ff", "#ff8fbf"];
   const kinds = ["sq", "rect", "star", "rib", "dot", "star", "sq"];
-  const count = fall ? 28 : 18;
+  const count = fall ? 28 : 16;
   for (let i = 0; i < count; i++) {
     const piece = document.createElement("i");
     const kind = kinds[i % kinds.length];
-    piece.className = kind + (fall ? " fall" : "");
-    const ang = Math.PI * 2 * i / count + (Math.random() - 0.5) * 0.4;
-    const dist = (fall ? 54 : 36) + Math.random() * (fall ? 120 : 78);
+    piece.className = kind;
+    const ang = Math.PI * 2 * i / count + (Math.random() - 0.5) * 0.35;
+    const speed = (fall ? 2.2 : 1.8) + Math.random() * (fall ? 2.8 : 2.2);
     const w = kind === "rib" ? 5 : kind === "rect" ? 7 : kind === "dot" ? 8 : kind === "star" ? 14 : 10;
     const h = kind === "rib" ? 22 : kind === "rect" ? 12 : w;
     piece.style.left = x + "px";
     piece.style.top = y + "px";
     piece.style.setProperty("--c", colors[i % colors.length]);
-    piece.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    piece.style.setProperty("--dy", Math.sin(ang) * dist + (fall ? 0 : 28) + "px");
-    piece.style.setProperty("--drift", ((Math.random() - 0.5) * 48) + "px");
-    piece.style.setProperty("--rot", ((Math.random() > 0.5 ? 1 : -1) * (160 + Math.random() * 260)) + "deg");
     piece.style.setProperty("--w", w + "px");
     piece.style.setProperty("--h", h + "px");
     el.appendChild(piece);
-    setTimeout(() => piece.remove(), fall ? 3600 : 950);
+    bdayBits.push({
+      node: piece,
+      x: 0,
+      y: 0,
+      vx: Math.cos(ang) * speed,
+      vy: Math.sin(ang) * speed * 0.75,
+      rot: Math.random() * 40,
+      vr: (Math.random() > 0.5 ? 1 : -1) * (1.1 + Math.random() * 1.8),
+      age: 0,
+      fadeAt: fall ? 150 : 110
+    });
   }
+  if (!stepBirthdayBits.on) {
+    stepBirthdayBits.last = 0;
+    stepBirthdayBits.on = requestAnimationFrame(stepBirthdayBits);
+  }
+}
+function birthdayConfettiOn() {
+  return !!(ui && ui.role === "tenant" && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
 }
 function onBirthdayTouch(e) {
   if (!e || document.getElementById("bday-intro")) return;
+  if (!birthdayConfettiOn()) return;
   if (e.pointerType === "mouse" && e.button !== 0) return;
-  burstBirthdayConfetti(e.clientX, e.clientY);
+  burstBirthdayConfetti(e.clientX, e.clientY, false);
 }
 function syncBirthdayConfetti() {
-  const el = document.getElementById("bday-confetti");
-  const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
-  const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
-  if (!on) {
-    syncBirthdayHello.done = false;
+  if (!birthdayConfettiOn()) {
     document.removeEventListener("pointerdown", onBirthdayTouch);
     syncBirthdayConfetti.bound = false;
+    const el = document.getElementById("bday-confetti");
     if (el) el.remove();
+    bdayBits.length = 0;
     return;
   }
-  if (!syncBirthdayHello.done) return;
   if (syncBirthdayConfetti.bound) return;
   document.addEventListener("pointerdown", onBirthdayTouch);
   syncBirthdayConfetti.bound = true;

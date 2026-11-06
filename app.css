@@ -702,7 +702,8 @@ input, textarea, select {
   margin-top: calc(var(--h) / -2);
   background: var(--c);
   border-radius: 2px;
-  animation: bdayBurst .9s ease-out forwards;
+  animation: none;
+  will-change: transform;
 }
 #bday-confetti i.dot { border-radius: 50%; }
 #bday-confetti i.rib { border-radius: 4px; }
@@ -713,17 +714,6 @@ input, textarea, select {
   inset: 0;
   background: var(--c);
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
-}
-#bday-confetti i.fall { animation: bdayShoot 3.4s linear forwards; }
-@keyframes bdayBurst {
-  0% { transform: translate(0, 0) rotate(0deg) scale(.35); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); opacity: 0; }
-}
-@keyframes bdayShoot {
-  0% { transform: translate(0, 0) rotate(0deg) scale(.45); opacity: 1; }
-  12% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * .12)) scale(1); opacity: 1; }
-  70% { transform: translate(calc(var(--dx) + var(--drift) * .66), calc(var(--dy) + 72vh)) rotate(calc(var(--rot) * .66)); opacity: 1; }
-  100% { transform: translate(calc(var(--dx) + var(--drift)), calc(var(--dy) + 110vh)) rotate(var(--rot)); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   #bday-confetti { display: none; }
