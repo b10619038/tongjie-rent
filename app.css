@@ -816,8 +816,8 @@ html[data-theme="caramel"] .hero-card.room-hero .room-name,
 html[data-theme="caramel"] .hero-card.room-hero .stat,
 html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #2c241c; }
 html[data-theme="caramel"] .hero-card.room-hero .stat {
-  background: #f6eee3;
-  border-color: #e0cfb8;
+  background: #fffdf9;
+  border-color: #d7c0a0;
 }
 html[data-theme="caramel"] .hero-card.room-hero .rent-stamp {
   --stamp: #8a6244;
