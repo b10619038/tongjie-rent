@@ -806,7 +806,7 @@ html[data-theme="caramel"] .screen > .hero-card.room-hero,
 html[data-theme="caramel"] .screen > .hero-card.room-hero:hover {
   background: #f2eee5 !important;
   background-color: #f2eee5 !important;
-  border: 1px solid #483b2a !important;
+  border: 0 !important;
   color: #483b2a;
 }
 html[data-theme="caramel"] .hero-card.room-hero .label,
@@ -817,7 +817,7 @@ html[data-theme="caramel"] .hero-card.room-hero .stat .label,
 html[data-theme="caramel"] .hero-card.room-hero .stat b { color: #483b2a; }
 html[data-theme="caramel"] .hero-card.room-hero .stat {
   background: #e0d4bc;
-  border: 1px solid #483b2a;
+  border: 0;
 }
 html[data-theme="caramel"] .badge.rented,
 html[data-theme="caramel"] .badge.doing,
