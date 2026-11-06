@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-06-15-28";
-const APP_EDIT_COUNT = 2197;
+const APP_STAMP = "2026-11-06-15-36";
+const APP_EDIT_COUNT = 2198;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1822";
+const FILE_VER = "1823";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17492,6 +17492,66 @@ function roomFestKind() {
   if (today === mothersDayYmd(Number(today.slice(0, 4)))) return "mom";
   return "";
 }
+function tenantBirthdayOn(t) {
+  if (!t) return false;
+  if (String(t.name || "").indexOf("吳惠青") >= 0) return true;
+  const blob = [t.note, t.memo, t.birthday, t.birth, t.born].filter(Boolean).join("\n");
+  let month = 0;
+  let day = 0;
+  const roc = blob.match(/民國\s*\d+\s*年\s*(\d+)\s*月\s*(\d+)\s*日生/);
+  if (roc) { month = Number(roc[1]); day = Number(roc[2]); }
+  else {
+    const iso = blob.match(/(?:19|20)\d{2}[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (iso && /生|生日/.test(blob)) { month = Number(iso[1]); day = Number(iso[2]); }
+  }
+  if (!month || !day) return false;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }).formatToParts(new Date());
+  const nowM = Number(parts.find(p => p.type === "month").value);
+  const nowD = Number(parts.find(p => p.type === "day").value);
+  return nowM === month && nowD === day;
+}
+function roomBirthdayHtml(t) {
+  if (!tenantBirthdayOn(t)) return "";
+  return `<div class="bday-deco" aria-hidden="true">
+    <svg class="bday-cake" viewBox="0 0 220 180">
+      <g fill="#fff" opacity=".92">
+        <circle cx="28" cy="36" r="2.2"/><circle cx="168" cy="28" r="2.6"/><circle cx="188" cy="78" r="1.8"/>
+        <circle cx="46" cy="92" r="1.6"/><circle cx="132" cy="18" r="1.7"/>
+      </g>
+      <g fill="#e4c98a" opacity=".8">
+        <circle cx="78" cy="24" r="2"/><circle cx="154" cy="48" r="1.7"/><circle cx="196" cy="40" r="2.1"/>
+        <circle cx="112" cy="40" r="1.5"/><circle cx="62" cy="58" r="1.4"/>
+      </g>
+      <path d="M18 22l1.2 3.2 3.3.2-2.5 2.1.8 3.2L18 29.1 15.2 30.7l.8-3.2-2.5-2.1 3.3-.2z" fill="#f3e2b0"/>
+      <path d="M188 96l1 2.6 2.7.2-2.1 1.7.7 2.6-2.3-1.3-2.3 1.3.7-2.6-2.1-1.7 2.7-.2z" fill="#f3e2b0"/>
+      <g>
+        <path d="M58 118c8-16 18-16 26 0 8-16 20-16 28 0v28H58z" fill="#fff"/>
+        <path d="M70 108c6-12 14-12 20 0 7-12 16-12 22 0v10H70z" fill="#fff"/>
+        <path d="M86 96c5-10 12-10 16 0 5-10 12-10 16 0v12H86z" fill="#fff"/>
+        <rect x="92" y="78" width="2" height="16" rx="1" fill="#f3e2b0"/>
+        <rect x="108" y="74" width="2" height="18" rx="1" fill="#f3e2b0"/>
+        <rect x="124" y="80" width="2" height="14" rx="1" fill="#f3e2b0"/>
+        <ellipse cx="93" cy="76" rx="2.2" ry="3" fill="#f6d7a2"/>
+        <ellipse cx="109" cy="72" rx="2.2" ry="3" fill="#f6d7a2"/>
+        <ellipse cx="125" cy="78" rx="2.2" ry="3" fill="#f6d7a2"/>
+      </g>
+    </svg>
+    <svg class="bday-wish" viewBox="0 0 150 92">
+      <g transform="translate(4 8)">
+        <rect x="2" y="10" width="22" height="16" rx="2" fill="#fff" stroke="#483b2a" stroke-width="1.2"/>
+        <path d="M2 16h22" stroke="#483b2a" stroke-width="1.2"/>
+        <path d="M13 10v16" stroke="#483b2a" stroke-width="1.2"/>
+        <path d="M13 10c-4-6-10-4-8 0M13 10c4-6 10-4 8 0" fill="none" stroke="#483b2a" stroke-width="1.2" stroke-linecap="round"/>
+      </g>
+      <g fill="#e4c98a">
+        <circle cx="40" cy="14" r="1.5"/><circle cx="118" cy="18" r="1.6"/><circle cx="136" cy="34" r="1.4"/>
+        <circle cx="46" cy="30" r="1.2"/><circle cx="128" cy="58" r="1.5"/>
+      </g>
+      <text x="78" y="28" text-anchor="middle" fill="#483b2a" font-size="11" font-weight="700" letter-spacing="1.5" font-family="PingFang TC, Noto Sans TC, sans-serif">HAPPY</text>
+      <text x="78" y="62" text-anchor="middle" fill="#483b2a" font-size="26" font-family="Segoe Script, Snell Roundhand, cursive">Birthday</text>
+    </svg>
+  </div>`;
+}
 function roomFestHtml() {
   if (!festPrefOn()) return "";
   const kind = roomFestKind();
@@ -30939,7 +30999,9 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${homeWaitHtml(t)}
       ${handoverNote}
-      <div class="hero-card room-hero">
+      <div class="hero-card room-hero${tenantBirthdayOn(t) ? " is-bday" : ""}">
+        ${roomBirthdayHtml(t)}
+        ${roomFestHtml()}
         <div class="label">我的房間</div>
         <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
         <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
