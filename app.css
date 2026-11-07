@@ -475,6 +475,14 @@ input, textarea, select {
   border: 1px solid var(--line);
   border-radius: 22px;
 }
+.zoom-page:not(.keep-still) .screen.settings-stack > .card {
+  animation: slideLeft .8s ease both;
+}
+.tenant-still .screen.settings-stack > .card,
+.keep-still .screen.settings-stack > .card {
+  animation: none !important;
+  transform: none !important;
+}
 #gate-card .gate-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
