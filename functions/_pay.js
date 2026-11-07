@@ -269,7 +269,20 @@ function roomUser(row) {
   if (typeof row === "string") return row;
   return row.userId || "";
 }
-export async function syncLineFaces(only, posted) {
+function latestPayRooms(local, remote, postedPay) {
+  const users = Object.assign({}, (local && local.payUsers) || {}, (remote && remote.payUsers) || {}, postedPay || {});
+  const best = {};
+  Object.keys(users).forEach(uid => {
+    if (!/^U[0-9a-f]{32}$/i.test(String(uid))) return;
+    const row = users[uid] || {};
+    const room = String(row.room || "");
+    if (!/^(68|70|72|76)\d{2}$/.test(room)) return;
+    const at = Number(row.at) || 0;
+    if (!best[room] || at >= best[room].at) best[room] = { userId: String(uid), at };
+  });
+  return best;
+}
+export async function syncLineFaces(only, posted, postedPay) {
   const local = await getBinds();
   const remote = await workerBinds();
   const byRoom = Object.assign({}, local.byRoom || {}, remote.byRoom || {});
@@ -282,6 +295,11 @@ export async function syncLineFaces(only, posted) {
       byRoom[String(no)] = { userId: String(uid), name: (row && row.name) || "" };
     });
   }
+  const payBest = latestPayRooms(local, remote, postedPay);
+  Object.keys(payBest).forEach(room => {
+    if (roomUser(byRoom[room])) return;
+    byRoom[room] = { userId: payBest[room].userId, name: "" };
+  });
   const cache = await loadFaceCache();
   const faces = {};
   let more = false;
@@ -380,6 +398,7 @@ export async function handleLineEvents(request) {
       let proof = notePayProof(data, target, "text");
       if (takePendingImage(data, userId)) proof = notePayProof(data, target, "image");
       dirty = true;
+      if (!roomUser(data.byRoom && data.byRoom[target])) justBound.push({ room: target, userId });
       if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
       continue;
     }
@@ -391,6 +410,7 @@ export async function handleLineEvents(request) {
         rememberPayUser(data, userId, imgRoom);
         const proof = notePayProof(data, imgRoom, "image");
         dirty = true;
+        if (!roomUser(data.byRoom && data.byRoom[imgRoom])) justBound.push({ room: imgRoom, userId });
         if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
       } else {
         notePendingImage(data, userId, imgRoom);

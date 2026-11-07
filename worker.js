@@ -24,6 +24,12 @@ function roomFromPayText(text) {
   const m = s.match(/【繳費通知】\s*(\d{4})/) || s.match(/繳費通知[^\d]{0,12}(\d{4})/);
   return m && /^\d{4}$/.test(m[1]) ? m[1] : "";
 }
+function roomHasBind(data, room) {
+  const row = data && data.byRoom && data.byRoom[String(room || "")];
+  if (!row) return false;
+  const uid = typeof row === "string" ? row : row.userId;
+  return !!uid;
+}
 function payUserRoom(data, userId) {
   const u = data && data.payUsers && data.payUsers[userId];
   if (u && u.ym === payYmNow() && /^\d{4}$/.test(String(u.room || ""))) return String(u.room);
@@ -729,6 +735,10 @@ export default {
         let proof = notePayProof(data, target, "text");
         if (takePendingImage(data, userId)) proof = notePayProof(data, target, "image");
         dirty = true;
+        if (!roomHasBind(data, target)) {
+          const job = saveLineAvatar(env, userId, target);
+          if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+        }
         if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
         continue;
       }
@@ -740,6 +750,10 @@ export default {
           rememberPayUser(data, userId, imgRoom);
           const proof = notePayProof(data, imgRoom, "image");
           dirty = true;
+          if (!roomHasBind(data, imgRoom)) {
+            const job = saveLineAvatar(env, userId, imgRoom);
+            if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+          }
           if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
         } else {
           notePendingImage(data, userId, imgRoom);

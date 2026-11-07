@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-07-09-42";
-const APP_EDIT_COUNT = 2230;
+const APP_STAMP = "2026-11-07-09-50";
+const APP_EDIT_COUNT = 2231;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1856";
+const FILE_VER = "1857";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3710,7 +3710,10 @@ async function pullLineFaces() {
       const res = await fetch("/line-faces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ byRoom: (ui.lineBinds && ui.lineBinds.byRoom) || {} })
+        body: JSON.stringify({
+          byRoom: (ui.lineBinds && ui.lineBinds.byRoom) || {},
+          payUsers: (ui.lineBinds && ui.lineBinds.payUsers) || {}
+        })
       });
       if (!res.ok) break;
       const data = await res.json();
