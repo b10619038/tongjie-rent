@@ -44,10 +44,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-07-09-50";
-const APP_EDIT_COUNT = 2231;
+const APP_STAMP = "2026-11-08-20-32";
+const APP_EDIT_COUNT = 2232;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1857";
+const FILE_VER = "1858";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -5853,6 +5853,12 @@ function applyMonthlyUnpaid(data) {
       t.paid = true;
       t.paidYm = ym;
       t.paidTouched = true;
+      const count = ymdOf(t.prepaidCountOn && t.prepaidCountOn[ym]);
+      if (count && count.slice(0, 7) === ym) {
+        t.paidAt = count + " 00:01";
+        t.remitOn = count;
+        if (!t.paidVia) t.paidVia = "remit";
+      }
       return;
     }
     if (paidThisMonth(t)) return;
@@ -8083,6 +8089,7 @@ function normalize(data) {
   try { apply7041OctPrepaid(data); } catch {}
   try { apply7222OctPaid(data); } catch {}
   try { apply7222NovPrepaid(data); } catch {}
+  try { apply7223NovDecPay(data); } catch {}
   repairTrashNotes(data);
   applyNonghuiSepPaid(data);
   try { applySepRemitBooks(data); } catch {}
@@ -8378,6 +8385,7 @@ function syncStudioLeaseMirrors(data) {
     guest.tenant.paidVia = host.tenant.paidVia || "";
     guest.tenant.prepaidYm = Array.isArray(host.tenant.prepaidYm) ? host.tenant.prepaidYm.slice() : [];
     guest.tenant.prepaidOn = host.tenant.prepaidOn && typeof host.tenant.prepaidOn === "object" ? Object.assign({}, host.tenant.prepaidOn) : {};
+    guest.tenant.prepaidCountOn = host.tenant.prepaidCountOn && typeof host.tenant.prepaidCountOn === "object" ? Object.assign({}, host.tenant.prepaidCountOn) : {};
     guest.tenant.editedAt = Math.max(Number(guest.tenant.editedAt) || 0, Number(host.tenant.editedAt) || 0, Date.now());
   });
 }
@@ -8400,6 +8408,7 @@ function mirrorPaidFromTenant(data, t) {
     x.paidVia = t.paidVia || "";
     x.prepaidYm = Array.isArray(t.prepaidYm) ? t.prepaidYm.slice() : [];
     x.prepaidOn = t.prepaidOn && typeof t.prepaidOn === "object" ? Object.assign({}, t.prepaidOn) : {};
+    x.prepaidCountOn = t.prepaidCountOn && typeof t.prepaidCountOn === "object" ? Object.assign({}, t.prepaidCountOn) : {};
     x.editedAt = Date.now();
   });
   syncStudioLeaseMirrors(data);
@@ -9401,6 +9410,57 @@ function apply7222NovPrepaid(data) {
     changed = true;
   }
   t.nov26Prepaid7222 = on;
+  if (!changed) return;
+  t.editedAt = Date.now();
+  try { persistLedger(data); } catch {}
+  try { markCloudDirty(); } catch {}
+}
+function apply7223NovDecPay(data) {
+  if (!data) return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7223");
+  if (!room) return;
+  const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  const on = "2026-11-08";
+  const at = on + " 19:44";
+  const dec = "2026-12";
+  const count = "2026-12-01";
+  if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  if (t.prepaidYm.indexOf(dec) < 0) t.prepaidYm.push(dec);
+  if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+  if (t.prepaidOn[dec] !== on) t.prepaidOn[dec] = on;
+  if (!t.prepaidCountOn || typeof t.prepaidCountOn !== "object") t.prepaidCountOn = {};
+  if (t.prepaidCountOn[dec] !== count) t.prepaidCountOn[dec] = count;
+  let changed = t.nov26Pay7223 !== at;
+  if (payYmNow() === "2026-11") {
+    t.paid = true;
+    t.paidYm = "2026-11";
+    t.paidTouched = true;
+    t.remitOn = on;
+    if (!t.paidAt || String(t.paidAt).indexOf("10:00") >= 0) t.paidAt = at;
+    if (!t.paidVia || t.paidVia === "app") t.paidVia = "remit";
+    if (!data.paidMarks) data.paidMarks = {};
+    const mark = data.paidMarks[t.id] || {};
+    if (!mark.paid || mark.paidAt !== t.paidAt || mark.paidVia !== t.paidVia || String(mark.paidYm || "") !== "2026-11") {
+      data.paidMarks[t.id] = { paid: true, paidAt: t.paidAt, paidVia: t.paidVia, paidYm: "2026-11", editedAt: Date.now(), name: t.name || "許芸慈" };
+      changed = true;
+    }
+  }
+  if (!Array.isArray(data.books)) data.books = [];
+  const gone = data.ledgerGone || [];
+  [
+    ["bk-7223-202611-rent", "牛10　7223 許芸慈　11月租金", "rent-line-2026-11"],
+    ["bk-7223-202612-prepaid", "牛10　7223 許芸慈　12月租金（11/08預繳，12/01入帳）", "rent-prepaid-2026-12"]
+  ].forEach(([id, note, tag]) => {
+    const exists = (data.books || []).some(b => b && (b.id === id || (b.type === "in" && String(b.importTag || "") === tag && (String(b.roomNo || "") === "7223" || String(b.note || "").indexOf("7223") >= 0))));
+    if (exists || gone.indexOf(id) >= 0) return;
+    data.books.push({
+      id, type: "in", date: on, amount: 10000, company: "統潔", note, bank: "兆豐",
+      roomNo: "7223", importTag: tag, linkedTenantId: t.id, createdAt: at
+    });
+    changed = true;
+  });
+  t.nov26Pay7223 = at;
   if (!changed) return;
   t.editedAt = Date.now();
   try { persistLedger(data); } catch {}
@@ -13117,7 +13177,7 @@ function unionLedgerById(a, b) {
   });
   return [...map.values()];
 }
-const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveRefundCode", "leaveRefundAccount", "leaveRefundAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver", "roomWaits", "roomWaitAt"];
+const TENANT_SYNC_KEYS = ["name", "phone", "idNo", "address", "emergencyName", "emergencyPhone", "loginPass", "contactName", "taxId", "bankLast5", "leaseStart", "leaseEnd", "leases", "stubRent", "dueDay", "paid", "paidAt", "paidVia", "payBank", "payBankLock", "payCompany", "note", "rent", "deposit", "renewChoice", "leaveApplied", "leaveAppliedAt", "leaveAppointAt", "leaveAppointEditedAt", "leaveResetAt", "leaveTimeSet", "leaveSign", "leaveSubsidy", "leaveSubsidyAt", "leaveElec", "leaveElecAt", "leaveElecAdmin", "leaveElecAdminAt", "leaveRefundCode", "leaveRefundAccount", "leaveRefundAt", "leaveDone", "leaveDoneAt", "invoicePickupAt", "rentShort", "lineNotified", "lineProofYm", "payToldYm", "paidTouched", "paidYm", "remitOn", "hiddenAnns", "hiddenInbox", "inbox", "lastNudgeAt", "rentDueNoticeOn", "signAppointAt", "signRoomId", "applyPending", "applyUnread", "applyAt", "prospect", "former", "incoming", "leftOn", "sessionEnded", "clearedApply", "loginRevoked", "officialAt", "invoiceBuyer", "eSignRev", "eSign", "cancelledApply", "practiceStay", "avatar", "avatarAt", "avatarFrom", "loginEverAt", "installEver", "roomWaits", "roomWaitAt", "prepaidYm", "prepaidOn", "prepaidCountOn"];
 const ROOM_SYNC_KEYS = ["rent", "deposit", "location", "note", "status", "title", "company", "shop", "no", "tenantId", "area"];
 function entityStamp(x) {
   return Number((x && (x.editedAt || x.updatedAt)) || 0);
@@ -15011,6 +15071,7 @@ async function pullCloudNow() {
       try { apply7041OctPrepaid(state); } catch {}
       try { apply7222OctPaid(state); } catch {}
     try { apply7222NovPrepaid(state); } catch {}
+      try { apply7223NovDecPay(state); } catch {}
       repairTrashNotes(state);
       applyNonghuiSepPaid(state);
       try { applySepRemitBooks(state); } catch {}
@@ -15174,6 +15235,7 @@ async function pullCloudNow() {
     try { apply7041OctPrepaid(state); } catch {}
     try { apply7222OctPaid(state); } catch {}
     try { apply7222NovPrepaid(state); } catch {}
+    try { apply7223NovDecPay(state); } catch {}
     repairTrashNotes(state);
     applyNonghuiSepPaid(state);
     try { applySepRemitBooks(state); } catch {}
@@ -18630,11 +18692,20 @@ function monthActualPayYmd(t, r, ym) {
   ym = String(ym || payYmNow()).slice(0, 7);
   if (!t || !/^\d{4}-\d{2}$/.test(ym)) return "";
   if (String(r && r.no) === "7231" && ym === "2026-10") return "2026-09-08";
+  const counted = prepaidCountYmd(t, ym);
+  if (counted) return counted;
   const pre = ymdOf(t.prepaidOn && t.prepaidOn[ym]);
   if (pre) return pre;
   let known = "";
   try { known = rentPayDateFor(t, r, ym); } catch {}
   return known || "";
+}
+function prepaidCountYmd(t, ym) {
+  ym = String(ym || "").slice(0, 7);
+  const on = ymdOf(t && t.prepaidCountOn && t.prepaidCountOn[ym]);
+  if (!on || on.slice(0, 7) !== ym) return "";
+  if (on > todayYmd()) return "";
+  return on;
 }
 function currentRemitYmd(t, r) {
   if (!paidThisMonth(t)) return "";
@@ -20826,6 +20897,8 @@ function invoiceRenewChecked(t, room, item, note, no, invNo) {
 function rentPayDateFor(t, r, ym) {
   ym = String(ym || "").slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(ym)) return "";
+  const counted = prepaidCountYmd(t, ym);
+  if (counted) return counted;
   const pre = ymdOf(t && t.prepaidOn && t.prepaidOn[ym]);
   if (pre) return pre;
   const no = String((r && r.no) || "");
@@ -22427,7 +22500,9 @@ function leasePayRows(t, r, sheet) {
     let note = carry ? rentCarryNote(t, ym) : "";
     if (early && ym > thisYm) {
       const when = pre && typeof rentMd === "function" ? rentMd(pre) : "";
-      const tag = when ? (when + " 預繳") : "預繳";
+      const count = ymdOf(t && t.prepaidCountOn && t.prepaidCountOn[ym]);
+      const countBit = count && typeof rentMd === "function" ? ("，" + rentMd(count) + " 入帳") : "";
+      const tag = (when ? (when + " 預繳") : "預繳") + countBit;
       note = note ? (tag + "　" + note) : tag;
     }
     const bill = carry ? rentBillOf(t, r, ym, amount) : amount;
@@ -22805,8 +22880,10 @@ function prepaidAheadRows(t, r) {
 function prepaidAheadHtml(t, r) {
   return prepaidAheadRows(t, r).map(row => {
     const when = row.on ? rocSlash(row.on) : "";
+    const count = ymdOf(t && t.prepaidCountOn && t.prepaidCountOn[row.ym]);
+    const countBit = count ? ("，" + rocSlash(count) + " 入帳") : "";
     const amt = row.amount ? money(row.amount) : "";
-    return row.month + "月租金" + (when ? "已於 " + when + " " : "已") + "預繳" + (amt ? " " + amt : "");
+    return row.month + "月租金" + (when ? "已於 " + when + " " : "已") + "預繳" + countBit + (amt ? " " + amt : "");
   }).join("　");
 }
 function rentPaidStampHtml(t) {
