@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-09-10-11";
-const APP_EDIT_COUNT = 2237;
+const APP_STAMP = "2026-11-10-01-10";
+const APP_EDIT_COUNT = 2239;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1864";
+const FILE_VER = "1865";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -29995,6 +29995,7 @@ function paintApp() {
     if (same && !overlays && composingNow() && document.activeElement && document.activeElement.closest && document.activeElement.closest(".gate")) return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
     root.innerHTML = `<div class="${still ? "keep-still" : ""}">${bar}${toastHtml}${gateView()}${sheet}${ver}${guide}${theme}</div>${introHtml()}`;
+    if (typeof applyUiLang === "function") applyUiLang(root);
     lastRenderRole = ui.role;
     lastRenderPage = page;
     safeBind(() => { bindGate(); bindIntro(); bindInstallSheet(); bindNotifyGuide(); bindUpdateBar(); bindThemePicker(); bindMoveSubmitConfirm(); });
@@ -30145,6 +30146,7 @@ function paintApp() {
       return;
     }
     root.innerHTML = `${bar}<div class="shell admin-wide" data-staff-look="${isStaffLook() ? escapeHtml(normAdminName(ui.adminName) || "1") : ""}">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`;
+    if (typeof applyUiLang === "function") applyUiLang(root);
     ui.keepScroll = false;
     safeBind(() => {
       bindAdmin();
@@ -30232,6 +30234,7 @@ function paintApp() {
   const parked = pageChanged ? null : parkRoomVideo();
   const parkedRun = pageChanged ? null : parkFixRuns();
   root.innerHTML = `${bar}<div class="shell">${toastHtml}<div class="tenant-scroll${pageChanged ? "" : " tenant-still"}">${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div></div>${nav()}</div>${sheet}${ver}${guide}${theme}`;
+  if (typeof applyUiLang === "function") applyUiLang(root);
   restoreRoomVideo(parked);
   restoreFixRuns(parkedRun);
   safeBind(() => {
@@ -44622,6 +44625,7 @@ function tenantSettings() {
         <p class="small">可以選圖示和文字一起、只留文字，或只留圖示。這台手機會記住。</p>
       </div>
       ${lookSettingsHtml()}
+      ${typeof langCardHtml === "function" ? langCardHtml() : ""}
       ${tenantNdaHtml()}
       <div class="card card-body">
         <div class="label">意見分享</div>
@@ -44636,6 +44640,7 @@ function tenantSettings() {
 }
 function bindLookSettings() {
   bindGeoSettings();
+  if (typeof bindUiLang === "function") bindUiLang();
   bindGhostPress();
   bindZoomPhotos();
   const skyBtn = document.getElementById("sky-toggle");

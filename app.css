@@ -57,7 +57,24 @@ html:has(.gate), body:has(.gate) {
   box-sizing: border-box;
   overflow: hidden;
 }
-body { font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
+html[lang="th"] body { font-family: "Noto Sans Thai", "PingFang TC", "Noto Sans TC", sans-serif; }
+html[lang="ko"] body { font-family: "Noto Sans KR", "Noto Sans CJK KR", "PingFang TC", sans-serif; }
+html[lang="ja"] body { font-family: "Hiragino Sans", "Noto Sans JP", "PingFang TC", "Noto Sans TC", sans-serif; }
+.lang-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.lang-pick button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lang-pick button.on { border-color: var(--teal); background: var(--soft, var(--gold-soft)); color: var(--ink); }
 button, input, textarea, select { font: inherit; }
 button, .nav, .tab, .seg, .issue-opt, .ghost, .btn-navy, .theme-fab, .switch-tile {
   -webkit-user-select: none;
