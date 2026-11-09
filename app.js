@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-09-09-50";
-const APP_EDIT_COUNT = 2234;
+const APP_STAMP = "2026-11-09-09-58";
+const APP_EDIT_COUNT = 2235;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1860";
+const FILE_VER = "1861";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -504,10 +504,13 @@ function canPilotTenant() {
   const back = typeof ui !== "undefined" && ui && ui.lookBack;
   return !!(isTenantLook() && back && back.adminCode === "1240");
 }
-function tenantAvatarLookHtml(t) {
+function tenantAvatarLookHtml(t, ids) {
   const face = avatarHtml(t, "sm");
   if (!t || typeof isDeveloper !== "function" || !isDeveloper()) return face;
-  return `<button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="以這位租客操作 App（開發者）">${face}</button>`;
+  const list = (Array.isArray(ids) && ids.length ? ids : [t.id]).filter(Boolean);
+  const on = list.some(id => typeof isTenantOnline === "function" && isTenantOnline(id));
+  const lamp = `<i class="live-lamp${on ? " on" : ""}" data-live-lamp="${escapeHtml(list.join(","))}" aria-hidden="true"></i>`;
+  return `<button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="以這位租客操作 App（開發者）"><span class="face-live">${lamp}${face}</span></button>`;
 }
 function isDemoRoom(r) { return !!(r && (r.demo || r.id === "r-demo" || r.id === "r-demo-f" || r.no === "DEMO" || r.no === "0000" || r.no === "F0000")); }
 function isDemoFactoryRoom(r) { return !!(r && (r.id === "r-demo-f" || r.no === "F0000" || (r.demo && r.kind === "factory"))); }
@@ -16047,6 +16050,10 @@ function refreshOnlineBadges() {
     const on = named ? staffPresenceOn(named) : isOnline(id);
     el.classList.toggle("on", on);
     if (!el.classList.contains("live-dot")) el.textContent = on ? "在線中" : "離線中";
+  });
+  document.querySelectorAll("[data-live-lamp]").forEach(el => {
+    const ids = String(el.dataset.liveLamp || "").split(",").filter(Boolean);
+    el.classList.toggle("on", ids.some(id => isTenantOnline(id)));
   });
   const box = document.getElementById("online-tenants");
   if (box) box.innerHTML = onlineTenantLinesHtml();
@@ -40193,7 +40200,7 @@ function tenantEntryCardHtml(kind, entry) {
       <div class="swipe-reveal">LINE</div>
       <div class="card card-body clickable swipe-front tenant-slim${payOpen ? (unpaid ? " pay-hit unpaid" : " pay-hit paid") : ""}" data-fold-tenant="${escapeHtml(foldId)}">
       ${unread || (renew && renew.status !== "done") || early || tenantLeaveApplied(t) || waits.length ? `<em class="apply-dot" aria-hidden="true"></em>` : ""}
-      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
+      <div class="row tenant-slim-head"><span class="who-mini">${tenantAvatarLookHtml(t, tenants.map(x => x && x.id).filter(Boolean))}${isDeveloper()
         ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
         : `<span class="who-text"><span class="k">${tenantCardWhoHtml(t, r, inc)}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span><span class="row-end">${t.demo || (r && r.demo) ? `<span class="pay-pill">測試</span>` : ""}${r && r.status === "office" ? `<span class="pay-pill">補助掛名</span>` : ""}${normalRenew}${pill ? `<span class="pay-pill ${pill.cls} only-normal">${pill.text}</span>` : ""}${countRenew}${restoreBtn}${tenantLeaveApplied(t) ? `<button type="button" class="pay-pill hand${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">正退申請</button>` : (tenantRenewNo(t, r) ? `<button type="button" class="pay-pill unpaid${leaveOpen ? " on" : ""}" data-open-norenew="${escapeHtml(t.id)}">不續約</button>` : "")}${countUndo}${early ? `<button type="button" class="pay-pill hand${earlyOpen ? " on" : ""}" data-open-early="${escapeHtml(t.id)}">中退申請</button>` : ""}${waitPill}<span class="pay-pill count-left only-count${leftCls}">${tenantRemainLabel(t, r)}</span><button type="button" class="pay-pill pay-toggle only-normal ${pay.cls}${payOpen ? " on" : ""}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button><span class="fold-caret go-right"></span></span></div>
     </div>
@@ -41011,7 +41018,7 @@ function tenantSheetView() {
     </div></div>
     <div class="card card-body slide-left" id="tenant-sheet">
       <div class="row tenant-slim-head" style="margin-bottom:12px">
-        <span class="who-mini">${tenantAvatarLookHtml(t)}${isDeveloper()
+        <span class="who-mini">${tenantAvatarLookHtml(t, (entry.tenants || []).map(x => x && x.id).filter(Boolean))}${isDeveloper()
           ? `<button type="button" class="who-chat" data-open-chat="${escapeHtml(t.id)}"><span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>${chatUnreadOf(t.id) ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`
           : `<span class="who-text"><span class="k">${escapeHtml(t.name || "")}</span>${r && r.no ? `<span class="who-room">${escapeHtml(listRoomNo(r))}</span>` : ""}</span>`}</span>
         <span class="row-end"><button type="button" class="pay-pill pay-toggle ${pay.cls}" data-toggle-pay="${escapeHtml(t.id)}">${pay.text}</button></span>
