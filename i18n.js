@@ -500,14 +500,72 @@ const UI_DICT = {
     "看房預覽": "방 미리보기"
   }
 };
+let UI_LANG_NOW = "";
+try { UI_LANG_NOW = localStorage.getItem(UI_LANG_KEY) || "zh"; } catch { UI_LANG_NOW = "zh"; }
+if (UI_LANG_NOW !== "zh" && !UI_DICT[UI_LANG_NOW]) UI_LANG_NOW = "zh";
+(function addMoreLang() {
+  const rows = {
+    "陽台": ["Balcony", "ベランダ", "ระเบียง", "베란다"],
+    "本房專用": ["For this room", "この部屋専用", "ของห้องนี้", "이 방 전용"],
+    "已配": ["Included", "付き", "มีให้", "포함"],
+    "公共露臺": ["Shared terrace", "共用テラス", "ระเบียงส่วนกลาง", "공용 테라스"],
+    "曬衣露臺": ["Drying terrace", "物干しテラス", "ตากผ้า", "빨래 테라스"],
+    "停車位": ["Parking", "駐車場", "ที่จอดรถ", "주차"],
+    "子母車": ["Cart", "台車", "รถเข็น", "카트"],
+    "垃圾桶": ["Trash bins", "ごみ箱", "ถังขยะ", "쓰레기통"],
+    "承租房間": ["Room", "契約の部屋", "ห้องที่เช่า", "계약 방"],
+    "地址": ["Address", "住所", "ที่อยู่", "주소"],
+    "起租日": ["Start", "開始日", "วันเริ่ม", "시작일"],
+    "到期日": ["End", "終了日", "วันสิ้นสุด", "종료일"],
+    "剩餘天數": ["Days left", "残り日数", "วันที่เหลือ", "남은 날"],
+    "押金": ["Deposit", "敷金", "เงินมัดจำ", "보증금"],
+    "每月租金": ["Monthly rent", "月額家賃", "ค่าเช่ารายเดือน", "월 임대료"],
+    "本月應繳": ["Due this month", "今月の支払い", "ยอดเดือนนี้", "이번 달 납부"],
+    "下月起月租": ["From next month", "来月からの家賃", "เดือนหน้าเป็นต้นไป", "다음 달부터"],
+    "原合約": ["Current contract", "今の契約", "สัญญาเดิม", "현재 계약"],
+    "新合約": ["New contract", "新しい契約", "สัญญาใหม่", "새 계약"],
+    "目前合約（舊約）": ["Current lease", "今の契約", "สัญญาปัจจุบัน", "현재 계약"],
+    "新約期間": ["New term", "新しい期間", "ช่วงสัญญาใหม่", "새 계약 기간"],
+    "合約狀態": ["Status", "状態", "สถานะสัญญา", "계약 상태"],
+    "已簽署　待生效": ["Signed, not yet active", "署名済み・未開始", "เซ็นแล้ว ยังไม่เริ่ม", "서명됨, 아직 시작 전"],
+    "已提交報修": ["Repair sent", "修理を送りました", "ส่งแจ้งซ่อมแล้ว", "수리를 보냈습니다"],
+    "下面已自動出現這筆報修。": ["It is listed below.", "下にこの修理が出ています。", "รายการนี้อยู่ด้านล่าง", "아래에 이 수리가 나옵니다."],
+    "我的報修": ["My repairs", "わたしの修理", "การซ่อมของฉัน", "내 수리"],
+    "冷氣": ["Air conditioner", "エアコン", "แอร์", "에어컨"],
+    "馬桶": ["Toilet", "トイレ", "ชักโครก", "변기"],
+    "電燈": ["Light", "照明", "ไฟ", "조명"],
+    "冰箱": ["Fridge", "冷蔵庫", "ตู้เย็น", "냉장고"],
+    "網路": ["Internet", "ネット", "อินเทอร์เน็ต", "인터넷"],
+    "電視": ["TV", "テレビ", "ทีวี", "TV"],
+    "電子鎖": ["Door lock", "電子錠", "กลอนดิจิทัล", "도어락"],
+    "家具": ["Furniture", "家具", "เฟอร์นิเจอร์", "가구"],
+    "公共設施": ["Shared facility", "共用設備", "ส่วนกลาง", "공용 시설"],
+    "地板": ["Floor", "床", "พื้น", "바닥"],
+    "是什麼公共設施，例如：插座": ["Which facility, for example a socket", "どの共用設備か。例：コンセント", "ส่วนกลางอะไร เช่น ปลั๊ก", "어떤 공용 시설인지, 예: 콘센트"],
+    "請描述問題，例如：冷氣不制冷、晚上會滴水…": ["Describe the problem, for example the AC is not cold", "状況を書いてください。例：エアコンが冷えない", "อธิบายปัญหา เช่น แอร์ไม่เย็น", "문제를 적어 주세요. 예: 에어컨이 안 시원함"],
+    "上傳照片/影片": ["Upload photo or video", "写真／動画を送る", "อัปโหลดรูปหรือวิดีโอ", "사진/영상 올리기"],
+    "提交報修": ["Submit repair", "修理を送る", "ส่งแจ้งซ่อม", "수리 보내기"],
+    "還沒有報修紀錄": ["No repairs yet", "修理の記録はまだありません", "ยังไม่มีรายการซ่อม", "수리 기록이 없습니다"],
+    "已回報本月已繳費": ["Reported as paid", "今月の支払いを連絡済み", "แจ้งแล้วว่าจ่ายเดือนนี้แล้ว", "이번 달 납부를 알림"],
+    "本月已繳費": ["I have paid", "今月支払いました", "จ่ายเดือนนี้แล้ว", "이번 달 냈습니다"],
+    "再傳轉帳截圖": ["Send the transfer screenshot", "振込画面をもう一度送る", "ส่งภาพหน้าจอโอนอีกครั้ง", "이체 화면을 다시 보내기"],
+    "再傳回報文字": ["Send the text report", "報告の文章をもう一度送る", "ส่งข้อความแจ้งอีกครั้ง", "알림 글을 다시 보내기"],
+    "回報已繳費並附上截圖": ["Report payment and attach a screenshot", "支払いを連絡して画面を添付", "แจ้งว่าจ่ายแล้วและแนบภาพ", "납부 알림과 화면 첨부"],
+    "可以按本月已繳費了。": ["You can mark this month as paid.", "「今月支払いました」を押せます。", "กดว่าจ่ายเดือนนี้แล้วได้แล้ว", "이번 달 냈다고 누를 수 있습니다."],
+    "開發者預覽租客　測試用、不計入金額": ["Developer preview. Test only.", "開発者プレビュー。テスト用。", "ตัวอย่างผู้พัฒนา ใช้ทดสอบ", "개발자 미리보기. 테스트용."],
+    "返回後台": ["Back to admin", "管理画面へ戻る", "กลับไปหลังบ้าน", "관리 화면으로"]
+  };
+  Object.keys(rows).forEach(k => {
+    ["en", "ja", "th", "ko"].forEach((lang, i) => { UI_DICT[lang][k] = rows[k][i]; });
+  });
+})();
 function uiLang() {
-  try {
-    const v = localStorage.getItem(UI_LANG_KEY) || "zh";
-    return UI_DICT[v] || v === "zh" ? v : "zh";
-  } catch { return "zh"; }
+  if (UI_LANG_NOW === "zh" || UI_DICT[UI_LANG_NOW]) return UI_LANG_NOW || "zh";
+  return "zh";
 }
 function setUiLang(code) {
-  const next = UI_DICT[code] || code === "zh" ? code : "zh";
+  const next = (code === "zh" || UI_DICT[code]) ? code : "zh";
+  UI_LANG_NOW = next;
   try { localStorage.setItem(UI_LANG_KEY, next); } catch {}
   document.documentElement.lang = next === "zh" ? "zh-Hant" : next;
 }
@@ -520,8 +578,8 @@ function tr(s) {
 function langCardHtml() {
   const cur = uiLang();
   return `<div class="card card-body">
-    <div class="label">語言</div>
-    <p class="small">選擇 App 介面語言。這台手機會記住。</p>
+    <div class="label">${tr("語言")}</div>
+    <p class="small">${tr("選擇 App 介面語言。這台手機會記住。")}</p>
     <div class="lang-pick">${UI_LANGS.map(([id, name]) => `<button type="button" data-ui-lang="${id}" class="${cur === id ? "on" : ""}">${name}</button>`).join("")}</div>
   </div>`;
 }
@@ -546,23 +604,36 @@ function applyUiLang(root) {
     if (!Object.prototype.hasOwnProperty.call(dict, key)) return;
     node.nodeValue = raw.replace(key, dict[key]);
   });
-  root.querySelectorAll("[placeholder], [aria-label], [title]").forEach(el => {
-    ["placeholder", "aria-label", "title"].forEach(attr => {
+  root.querySelectorAll("[placeholder], [aria-label], [title], [alt]").forEach(el => {
+    ["placeholder", "aria-label", "title", "alt"].forEach(attr => {
       const v = el.getAttribute(attr);
       if (v && Object.prototype.hasOwnProperty.call(dict, v)) el.setAttribute(attr, dict[v]);
     });
   });
 }
 function bindUiLang() {
-  document.querySelectorAll("[data-ui-lang]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const next = btn.getAttribute("data-ui-lang") || "zh";
-      if (next === uiLang()) return;
-      setUiLang(next);
-      if (typeof ui !== "undefined" && ui) ui.keepScroll = true;
-      if (typeof render === "function") render();
-    };
-  });
+  if (window.__uiLangBound) return;
+  window.__uiLangBound = 1;
+  document.addEventListener("click", e => {
+    const btn = e.target && e.target.closest && e.target.closest("[data-ui-lang]");
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    const next = btn.getAttribute("data-ui-lang") || "zh";
+    if (next === uiLang()) return;
+    setUiLang(next);
+    document.querySelectorAll("[data-ui-lang]").forEach(el => {
+      el.classList.toggle("on", el.getAttribute("data-ui-lang") === next);
+    });
+    if (typeof ui !== "undefined" && ui) {
+      ui.keepScroll = true;
+      ui.slideLock = 0;
+      ui.slideLockPending = false;
+      ui.langPaint = true;
+      ui.forceRender = true;
+    }
+    if (typeof render === "function") render();
+  }, true);
 }
+bindUiLang();

@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-01-10";
-const APP_EDIT_COUNT = 2239;
+const APP_STAMP = "2026-11-10-01-18";
+const APP_EDIT_COUNT = 2240;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1865";
+const FILE_VER = "1866";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -29969,7 +29969,9 @@ function paintApp() {
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
   if ((ui.page === "lease-sign" || ui.page === "leave-sign") && !pageChanged && (ui.signing || (ui.signStrokes && ui.signStrokes.length) || (ui.signStrokes2 && ui.signStrokes2.length))) return;
-  if (ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
+  const langPaint = !!(ui && ui.langPaint);
+  if (ui && ui.langPaint) ui.langPaint = false;
+  if (!langPaint && ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
     ui.slideLockPending = true;
     lastRenderRole = ui.role;
     lastRenderPage = ui.page;
