@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-01-18";
-const APP_EDIT_COUNT = 2240;
+const APP_STAMP = "2026-11-10-01-25";
+const APP_EDIT_COUNT = 2241;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1866";
+const FILE_VER = "1867";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31973,7 +31973,7 @@ function keyCardHtml(r) {
         <div class="row"><span class="k">實體鑰匙</span><span class="v">房門</span></div>
         <div class="row"><span class="k">感應磁扣</span><span class="v">大門</span></div>
         <div class="row"><span class="k">公設密碼</span><span class="v">${year} #</span></div>
-        <p class="small" style="margin:8px 0 0;text-align:right">輸入 ${year} 後，再按 #</p>
+        <p class="small" style="margin:8px 0 0;text-align:right">${typeof tr === "function" ? tr("輸入 {year} 後，再按 #").replace("{year}", year) : ("輸入 " + year + " 後，再按 #")}</p>
         <div class="key-actions">
           <button type="button" class="ghost" data-elock="1">申請安裝電子門鎖</button>
           <button type="button" class="ghost" data-forgot-key="1">忘記帶鑰匙？</button>

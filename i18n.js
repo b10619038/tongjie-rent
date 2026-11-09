@@ -589,6 +589,11 @@ function applyUiLang(root) {
   if (!root || lang === "zh") return;
   const dict = UI_DICT[lang];
   if (!dict) return;
+  if (!applyUiLang.keys || applyUiLang.lang !== lang) {
+    applyUiLang.lang = lang;
+    applyUiLang.keys = Object.keys(dict).filter(k => k.length >= 4).sort((a, b) => b.length - a.length);
+  }
+  const phraseKeys = applyUiLang.keys;
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const nodes = [];
   let n;
@@ -596,13 +601,18 @@ function applyUiLang(root) {
   nodes.forEach(node => {
     const el = node.parentElement;
     if (!el || el.closest("script, style, textarea")) return;
-    if (el.closest(".nda-doc") && !el.classList.contains("label") && !el.classList.contains("small")) return;
-    if (el.closest(".nda-doc") && el.classList.contains("small") && el.querySelector("b")) return;
     const raw = node.nodeValue;
-    if (!raw || !/[^\s]/.test(raw)) return;
+    if (!raw || !/[\u4e00-\u9fff]/.test(raw)) return;
     const key = raw.trim();
-    if (!Object.prototype.hasOwnProperty.call(dict, key)) return;
-    node.nodeValue = raw.replace(key, dict[key]);
+    if (Object.prototype.hasOwnProperty.call(dict, key)) {
+      node.nodeValue = raw.replace(key, dict[key]);
+      return;
+    }
+    let next = raw;
+    phraseKeys.forEach(k => {
+      if (next.indexOf(k) >= 0) next = next.split(k).join(dict[k]);
+    });
+    if (next !== raw) node.nodeValue = next;
   });
   root.querySelectorAll("[placeholder], [aria-label], [title], [alt]").forEach(el => {
     ["placeholder", "aria-label", "title", "alt"].forEach(attr => {
