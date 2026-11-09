@@ -3417,7 +3417,7 @@ button.avatar-look { overflow: visible; }
 .live-lamp {
   display: none;
   position: absolute;
-  top: 0;
+  top: -0.3cm;
   left: 0;
   width: 10px;
   height: 10px;
