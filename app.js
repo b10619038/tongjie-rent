@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-09-09-58";
-const APP_EDIT_COUNT = 2235;
+const APP_STAMP = "2026-11-09-10-08";
+const APP_EDIT_COUNT = 2236;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1861";
+const FILE_VER = "1862";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -15862,7 +15862,11 @@ function isOnline(id) {
   const p = (state.presence || {})[id];
   return !!(p && p.at && (Date.now() - p.at) < ONLINE_MS);
 }
-function isTenantOnline(id) { return isOnline(id); }
+function isTenantOnline(id) { return isOnline(id) || lampPreviewOn(id); }
+function lampPreviewOn(id) {
+  if (String(id || "") !== "t7651") return false;
+  return Date.now() < Date.parse("2026-11-09T10:40:00+08:00");
+}
 function beatPresence() {
   if (isDevPreview() || isTenantLook() || isStaffLook()) return;
   const id = presenceKey();
