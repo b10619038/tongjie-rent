@@ -15,6 +15,7 @@ const LINE_OA_ID = "@773zynao";
 const LINE_CHAT_URL = "https://chat.line.biz/";
 const LINE_HOOK = "https://tongjie-line.b10619038.workers.dev";
 const DATA_API = LINE_HOOK + "/api/state";
+const ANN_API = "/api/ann";
 const CHAT_API = LINE_HOOK + "/api/chat";
 const FILE_API = LINE_HOOK + "/api/file/";
 const BUILD_API = LINE_HOOK + "/api/build";
@@ -44,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-09-09-42";
-const APP_EDIT_COUNT = 2233;
+const APP_STAMP = "2026-11-09-09-50";
+const APP_EDIT_COUNT = 2234;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1859";
+const FILE_VER = "1860";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -14991,6 +14992,84 @@ function mergeLedgerInto(target, other) {
   else if (target.lastBookImport && other.lastBookImport && String(other.lastBookImport.at || "") > String(target.lastBookImport.at || "")) {
     target.lastBookImport = other.lastBookImport;
   }
+}
+function annLiveItem(a) {
+  if (!a || !a.id) return null;
+  return {
+    id: a.id,
+    title: a.title || "",
+    body: a.body || "",
+    text: a.text || "",
+    media: a.media || [],
+    createdAt: a.createdAt || "",
+    editedAt: Number(a.editedAt) || Date.now(),
+    publishAt: a.publishAt || "",
+    annSent: a.annSent !== false,
+    postedBy: a.postedBy || "",
+    pinned: !!a.pinned
+  };
+}
+function pushAnnLive() {
+  if (!state || ui.role !== "admin") return;
+  const items = (state.announcements || []).map(annLiveItem).filter(Boolean);
+  fetch(ANN_API, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+    body: JSON.stringify({ items, gone: state.annGone || [] })
+  }).catch(() => {});
+}
+function applyAnnLive(pack) {
+  if (!state || !pack || !Array.isArray(pack.items)) return false;
+  const gone = new Set((pack.gone || []).map(String));
+  if (!Array.isArray(state.announcements)) state.announcements = [];
+  let changed = false;
+  pack.items.forEach(item => {
+    if (!item || !item.id || gone.has(String(item.id))) return;
+    const cur = state.announcements.find(a => a && String(a.id) === String(item.id));
+    const nextAt = Number(item.editedAt) || 0;
+    if (!cur) {
+      state.announcements.push(item);
+      changed = true;
+      return;
+    }
+    const curAt = Number(cur.editedAt) || 0;
+    if (nextAt < curAt && cur.title === item.title && cur.body === item.body) return;
+    if (cur.title !== item.title || cur.body !== item.body || String(cur.publishAt || "") !== String(item.publishAt || "") || curAt !== nextAt) {
+      cur.title = item.title || "";
+      cur.body = item.body || "";
+      cur.text = item.text || cur.text || "";
+      if (item.media && item.media.length) cur.media = item.media;
+      cur.createdAt = item.createdAt || cur.createdAt;
+      cur.publishAt = item.publishAt || "";
+      cur.annSent = item.annSent !== false;
+      cur.postedBy = item.postedBy || cur.postedBy || "";
+      cur.editedAt = nextAt || cur.editedAt;
+      changed = true;
+    }
+  });
+  if (gone.size) {
+    const before = state.announcements.length;
+    state.announcements = state.announcements.filter(a => a && !gone.has(String(a.id)));
+    if (state.announcements.length !== before) changed = true;
+  }
+  return changed;
+}
+async function pullAnnLive() {
+  if (pullAnnLive.busy || !state) return;
+  pullAnnLive.busy = true;
+  try {
+    const res = await fetch(ANN_API + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (!res.ok) return;
+    const pack = await res.json();
+    if (!pack || !pack.at || pullAnnLive.at === pack.at) return;
+    const changed = applyAnnLive(pack);
+    pullAnnLive.at = pack.at;
+    if (changed && !(typeof composingNow === "function" && composingNow())) {
+      ui.keepScroll = true;
+      try { render(); } catch {}
+    }
+  } catch {}
+  finally { pullAnnLive.busy = false; }
 }
 async function pullCloud() {
   if (pullCloud.busy) return pullCloud.busy;
@@ -31005,7 +31084,9 @@ function deleteAnnounce(id) {
   if (key) state.annGone = unionGone(state.annGone, [key]);
   state.announcements = dropGone(state.announcements, state.annGone);
   if (String(ui.announceEditId) === key) { ui.announceEditId = null; ui.editAnnounceMedia = []; }
-  save(); render();
+  save();
+  try { pushAnnLive(); } catch {}
+  render();
 }
 function cancelAnnounceEdit() {
   ui.announceEditId = null;
@@ -31043,6 +31124,7 @@ function saveAnnounceEdit() {
   ui.editAnnounceMedia = [];
   persistAnnMedia(state);
   save();
+  try { pushAnnLive(); } catch {}
   try { pushCloud(); } catch {}
   toast("已更新公告");
   render();
@@ -44250,6 +44332,7 @@ function bindAdmin() {
       ui.annAt = "";
       try { persistAnnMedia(state); } catch {}
       try { save(); } catch {}
+      try { pushAnnLive(); } catch {}
       try { pushCloud(); } catch {}
       if (later) toast("已預約，到時間會自動公告");
       else {
@@ -46753,6 +46836,11 @@ async function boot() {
   if (!EMBED_PAGE) {
   setInterval(syncTick, 4000);
   setTimeout(syncTick, 200);
+  setInterval(() => {
+    if (document.visibilityState === "hidden") return;
+    pullAnnLive();
+  }, 1000);
+  setTimeout(() => { try { pullAnnLive(); } catch {} }, 400);
   setInterval(beatPresence, 25000);
   try { startAdminPayWatch(); } catch {}
   setInterval(() => { refreshSky().catch(() => {}); }, 15 * 60 * 1000);
