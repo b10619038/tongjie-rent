@@ -118,4 +118,5 @@
     ["en", "ja", "th", "ko"].forEach((lang, i) => { UI_DICT[lang][k] = rows[k][i]; });
   });
   if (typeof applyUiLang === "function") applyUiLang.keys = null;
+  if (typeof translateText === "function") translateText.keys = null;
 })();

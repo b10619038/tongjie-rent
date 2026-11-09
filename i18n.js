@@ -569,12 +569,39 @@ function setUiLang(code) {
   try { localStorage.setItem(UI_LANG_KEY, next); } catch {}
   document.documentElement.lang = next === "zh" ? "zh-Hant" : next;
 }
-function tr(s) {
+function translateText(text) {
   const lang = uiLang();
-  if (!s || lang === "zh") return s;
-  const dict = UI_DICT[lang] || {};
-  return Object.prototype.hasOwnProperty.call(dict, s) ? dict[s] : s;
+  if (!text || lang === "zh" || !/[\u4e00-\u9fff]/.test(text)) return text;
+  const dict = UI_DICT[lang];
+  if (!dict) return text;
+  if (!translateText.keys || translateText.lang !== lang) {
+    translateText.lang = lang;
+    translateText.keys = Object.keys(dict).filter(k => k.length >= 2).sort((a, b) => b.length - a.length);
+  }
+  const trimmed = String(text).trim();
+  if (Object.prototype.hasOwnProperty.call(dict, trimmed)) return String(text).replace(trimmed, dict[trimmed]);
+  const keys = translateText.keys;
+  let out = "";
+  const src = String(text);
+  for (let i = 0; i < src.length; ) {
+    let hit = "";
+    for (let n = 0; n < keys.length; n++) {
+      const k = keys[n];
+      if (src.startsWith(k, i)) { hit = k; break; }
+    }
+    if (hit) { out += dict[hit]; i += hit.length; }
+    else { out += src.charAt(i); i += 1; }
+  }
+  return out;
 }
+function translateMarkup(html) {
+  if (!html || uiLang() === "zh") return html;
+  let out = String(html);
+  out = out.replace(/>([^<]*[\u4e00-\u9fff][^<]*)</g, (all, text) => ">" + translateText(text) + "<");
+  out = out.replace(/((?:placeholder|aria-label|title|alt)=")([^"]*[\u4e00-\u9fff][^"]*)"/g, (all, pre, text) => pre + translateText(text) + "\"");
+  return out;
+}
+function tr(s) { return translateText(s); }
 function langCardHtml() {
   const cur = uiLang();
   return `<div class="card card-body">
