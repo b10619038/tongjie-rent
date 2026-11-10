@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-14-48";
-const APP_EDIT_COUNT = 2247;
+const APP_STAMP = "2026-11-10-14-58";
+const APP_EDIT_COUNT = 2248;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1873";
+const FILE_VER = "1874";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17758,6 +17758,20 @@ function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
+const DEV_BDAY_PREVIEW = true;
+function devBirthdayOn() {
+  if (!ui || ui.role !== "admin" || String(ui.adminCode) !== "1240") return false;
+  if (ui.devPreview || ui.staffLook || ui.tenantLook) return false;
+  if (DEV_BDAY_PREVIEW) return true;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }).formatToParts(new Date());
+  const month = Number(parts.find(p => p.type === "month").value);
+  const day = Number(parts.find(p => p.type === "day").value);
+  return month === 11 && day === 29;
+}
+function devBirthdayMarkHtml() {
+  if (!devBirthdayOn()) return "";
+  return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
+}
 const bdayBits = [];
 function stepBirthdayBits(now) {
   const el = document.getElementById("bday-confetti");
@@ -17827,7 +17841,7 @@ function burstBirthdayConfetti(x, y, fall) {
   }
 }
 function birthdayConfettiOn() {
-  return !!(ui && ui.role === "tenant" && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
+  return !!((ui && ui.role === "tenant" && festPrefOn() && tenantBirthdayOn(me(), myRoom())) || devBirthdayOn());
 }
 function onBirthdayTouch(e) {
   if (!e || document.getElementById("bday-intro")) return;
@@ -17849,7 +17863,7 @@ function syncBirthdayConfetti() {
   syncBirthdayConfetti.bound = true;
 }
 function birthdayHelloTarget(hero) {
-  const name = hero.querySelector(".room-name");
+  const name = hero.querySelector(".room-name, .dev-bday-name");
   if (!name) return null;
   const heroBox = hero.getBoundingClientRect();
   let textBox = name.getBoundingClientRect();
@@ -17880,10 +17894,17 @@ function placeBirthdayHello(hero, img) {
   img.style.top = box.top + "px";
   img.style.width = box.w + "px";
 }
+function birthdayStage() {
+  if (ui && ui.role === "tenant" && (ui.page === "home" || !ui.page) && festPrefOn() && tenantBirthdayOn(me(), myRoom())) {
+    return document.querySelector(".hero-card.room-hero.is-bday");
+  }
+  if (devBirthdayOn()) return document.querySelector(".admin-id.is-bday");
+  return null;
+}
 function syncBirthdayHello() {
   const layer = document.getElementById("bday-intro");
-  const home = ui && ui.role === "tenant" && (ui.page === "home" || !ui.page);
-  const on = !!(home && festPrefOn() && tenantBirthdayOn(me(), myRoom()));
+  const heroNow = birthdayStage();
+  const on = !!heroNow;
   if (!on) {
     syncBirthdayHello.done = false;
     const app = document.getElementById("app");
@@ -17891,13 +17912,13 @@ function syncBirthdayHello() {
     if (layer) layer.remove();
     return;
   }
-  const hero = document.querySelector(".hero-card.room-hero.is-bday");
+  const hero = birthdayStage();
   if (!hero) return;
   if (syncBirthdayHello.done) {
     if (!hero.querySelector(".bday-hello") && !(layer && layer.querySelector("img"))) {
       const img = document.createElement("img");
       img.src = "images/birthday-hello.png?v=" + FILE_VER;
-      img.onload = () => placeBirthdayHello(document.querySelector(".hero-card.room-hero.is-bday") || hero, img);
+      img.onload = () => placeBirthdayHello(birthdayStage() || hero, img);
       placeBirthdayHello(hero, img);
     }
     return;
@@ -17915,7 +17936,7 @@ function syncBirthdayHello() {
   const finish = () => {
     if (syncBirthdayHello.done) return;
     syncBirthdayHello.done = true;
-    const live = document.querySelector(".hero-card.room-hero.is-bday");
+    const live = birthdayStage();
     if (live) placeBirthdayHello(live, img);
     else img.remove();
     wrap.remove();
@@ -17936,7 +17957,7 @@ function syncBirthdayHello() {
       img.style.transition = "opacity .4s ease";
       img.style.opacity = "1";
       setTimeout(() => {
-        const live = document.querySelector(".hero-card.room-hero.is-bday");
+        const live = birthdayStage();
         const box = live && birthdayHelloTarget(live);
         if (!box) { finish(); return; }
         img.style.transition = "transform .75s cubic-bezier(.2,.8,.2,1), opacity .4s ease";
@@ -33276,13 +33297,14 @@ function adminView() {
     : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
   const title = ui.adminCode === "1240" ? "開發者後台" : (isBossAdmin() ? "負責人後台" : "管理員後台");
   const titleTap = isBossAdmin() || ui.adminCode === "1240";
+  const devBday = devBirthdayOn();
   const titleHtml = titleTap
-    ? `<button type="button" id="boss-title" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">${title}</button>`
-    : `<h1 style="font-size:24px">${title}</h1>`;
+    ? `<button type="button" id="boss-title" class="dev-bday-name" style="font:inherit;font-size:24px;font-weight:700;line-height:1.2;background:none;border:0;padding:0;margin:8px 0 0;color:inherit;cursor:pointer;text-align:left">${title}</button>`
+    : `<h1 class="dev-bday-name" style="font-size:24px">${title}</h1>`;
   return `
     <div class="admin-bar">
-      <div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
-      </div>
+      <div class="admin-id${devBday ? " is-bday" : ""}">${devBirthdayMarkHtml()}<div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
+      </div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${canOpenExtraWindow() ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
         <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>

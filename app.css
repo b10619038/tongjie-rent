@@ -3392,7 +3392,12 @@ input[type="file"] {
   position: relative;
   z-index: 12;
 }
-.admin-bar h1 { margin-top: 8px; }
+.admin-id { position: relative; flex: 1; min-width: 0; }
+.admin-id.is-bday { overflow: hidden; min-height: 72px; }
+.admin-id.is-bday .bday-mark { width: 168px; left: 58%; top: 62%; }
+.admin-id.is-bday .bday-mark img { opacity: 0.5; }
+.admin-id.is-bday .eyebrow,
+.admin-id.is-bday .dev-bday-name { position: relative; z-index: 3; }
 .switch-pair { display: flex; gap: 8px; flex-shrink: 0; }
 .switch-tile {
   width: auto; min-width: 72px; margin: 0;
