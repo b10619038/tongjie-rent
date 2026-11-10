@@ -57,9 +57,10 @@ html:has(.gate), body:has(.gate) {
   box-sizing: border-box;
   overflow: hidden;
 }
-html[lang="th"] body { font-family: "Noto Sans Thai", "PingFang TC", "Noto Sans TC", sans-serif; }
-html[lang="ko"] body { font-family: "Noto Sans KR", "Noto Sans CJK KR", "PingFang TC", sans-serif; }
-html[lang="ja"] body { font-family: "Hiragino Sans", "Noto Sans JP", "PingFang TC", "Noto Sans TC", sans-serif; }
+body { font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
+html[lang="th"] body { font-family: "PingFang TC", "Noto Sans TC", "Noto Sans Thai", sans-serif; }
+html[lang="ko"] body { font-family: "PingFang TC", "Noto Sans TC", "Noto Sans KR", sans-serif; }
+html[lang="ja"] body { font-family: "PingFang TC", "Noto Sans TC", "Hiragino Sans", "Noto Sans JP", sans-serif; }
 .lang-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .lang-pick button {
   appearance: none;
