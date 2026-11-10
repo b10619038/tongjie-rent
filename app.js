@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-10-24";
-const APP_EDIT_COUNT = 2243;
+const APP_STAMP = "2026-11-10-10-32";
+const APP_EDIT_COUNT = 2244;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1869";
+const FILE_VER = "1870";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31390,9 +31390,9 @@ function announceCardsHtml() {
 function tenantNameHeadingHtml(name) {
   const parts = String(name || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
   if (parts.length >= 2) {
-    return `<h1 class="name-stack">${parts.slice(0, 2).map(p => `<span>${escapeHtml(p)}</span>`).join("")}</h1>`;
+    return `<h1 class="name-stack" data-keep-lang="1">${parts.slice(0, 2).map(p => `<span data-keep-lang="1">${escapeHtml(p)}</span>`).join("")}</h1>`;
   }
-  return `<h1>${escapeHtml(parts[0] || "租客")}</h1>`;
+  return `<h1 data-keep-lang="1">${escapeHtml(parts[0] || "租客")}</h1>`;
 }
 function homeView() {
   const t = me() || {};

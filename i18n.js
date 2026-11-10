@@ -6,7 +6,7 @@ const UI_LANGS = [
   ["th", "ไทย"],
   ["ko", "한국어"]
 ];
-const UI_DICT = {
+var UI_DICT = {
   en: {
     "語言": "Language",
     "選擇 App 介面語言。這台手機會記住。": "Choose the app language. This phone will remember.",
@@ -579,7 +579,7 @@ function translateText(text) {
     translateText.keys = Object.keys(dict).filter(k => k.length >= 2).sort((a, b) => b.length - a.length);
   }
   const trimmed = String(text).trim();
-  if (Object.prototype.hasOwnProperty.call(dict, trimmed)) return String(text).replace(trimmed, dict[trimmed]);
+  if (Object.prototype.hasOwnProperty.call(dict, trimmed)) return finishUnits(String(text).replace(trimmed, dict[trimmed]));
   const keys = translateText.keys;
   let out = "";
   const src = String(text);
@@ -592,13 +592,51 @@ function translateText(text) {
     if (hit) { out += dict[hit]; i += hit.length; }
     else { out += src.charAt(i); i += 1; }
   }
-  return out;
+  return finishUnits(out);
+}
+function finishUnits(text) {
+  const lang = uiLang();
+  if (!text || lang === "zh" || !/[\u4e00-\u9fff]/.test(text)) return text;
+  let s = String(text);
+  if (lang === "en") {
+    s = s.replace(/(\d+)\s*天/g, "$1 days");
+    s = s.replace(/(\d+)月(\d+)號/g, "$1/$2");
+    s = s.replace(/(\d+)\s*號/g, "$1");
+    s = s.replace(/(\d+(?:\.\d+)?)坪/g, "$1 ping");
+    s = s.replace(/\/月/g, "/mo");
+  } else if (lang === "ja") {
+    s = s.replace(/(\d+)\s*天/g, "$1日");
+    s = s.replace(/(\d+)月(\d+)號/g, "$1月$2日");
+    s = s.replace(/(\d+)\s*號/g, "$1日");
+    s = s.replace(/(\d+)\s*年\s*(\d+)\s*月租金/g, "$1年$2月の家賃");
+  } else if (lang === "ko") {
+    s = s.replace(/(\d+)\s*天/g, "$1일");
+    s = s.replace(/(\d+)月(\d+)號/g, "$1월 $2일");
+    s = s.replace(/(\d+)\s*號/g, "$1일");
+    s = s.replace(/(\d+(?:\.\d+)?)坪/g, "$1평");
+    s = s.replace(/(\d+)\s*年\s*(\d+)\s*月租金/g, "$1년 $2월 임대료");
+    s = s.replace(/\/月/g, "/월");
+  } else if (lang === "th") {
+    s = s.replace(/(\d+)\s*天/g, "$1 วัน");
+    s = s.replace(/(\d+)月(\d+)號/g, "$2/$1");
+    s = s.replace(/(\d+)\s*號/g, "วันที่ $1");
+    s = s.replace(/(\d+(?:\.\d+)?)坪/g, "$1 ตารางวา");
+    s = s.replace(/(\d+)\s*年\s*(\d+)\s*月租金/g, "ค่าเช่าเดือน $2 ปี $1");
+    s = s.replace(/\/月/g, "/เดือน");
+  }
+  return s;
 }
 function translateMarkup(html) {
   if (!html || uiLang() === "zh") return html;
-  let out = String(html);
+  const saved = [];
+  let out = String(html).replace(/<([a-zA-Z0-9]+)([^>]*\sdata-keep-lang="1"[^>]*)>[\s\S]*?<\/\1>/g, (block) => {
+    const token = "\u0000KEEP" + saved.length + "\u0000";
+    saved.push(block);
+    return token;
+  });
   out = out.replace(/>([^<]*[\u4e00-\u9fff][^<]*)</g, (all, text) => ">" + translateText(text) + "<");
   out = out.replace(/((?:placeholder|aria-label|title|alt)=")([^"]*[\u4e00-\u9fff][^"]*)"/g, (all, pre, text) => pre + translateText(text) + "\"");
+  saved.forEach((block, i) => { out = out.split("\u0000KEEP" + i + "\u0000").join(block); });
   return out;
 }
 function tr(s) { return translateText(s); }
@@ -627,7 +665,7 @@ function applyUiLang(root) {
   while ((n = walker.nextNode())) nodes.push(n);
   nodes.forEach(node => {
     const el = node.parentElement;
-    if (!el || el.closest("script, style, textarea")) return;
+    if (!el || el.closest("script, style, textarea, [data-keep-lang]")) return;
     const raw = node.nodeValue;
     if (!raw || !/[\u4e00-\u9fff]/.test(raw)) return;
     const key = raw.trim();
