@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-10-40";
-const APP_EDIT_COUNT = 2245;
+const APP_STAMP = "2026-11-10-10-44";
+const APP_EDIT_COUNT = 2246;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1871";
+const FILE_VER = "1872";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31177,10 +31177,10 @@ function announceBodyHtml(a, actions) {
       ${staffAvatarHtml("sm", poster)}
       <div class="ann-meta">
         <div class="row"><span class="small">${escapeHtml(poster)}　${formatDateTime12(a.createdAt)}</span>${unread ? `<span class="badge unpaid">新</span>` : ""}</div>
-        <div class="k">${escapeHtml(a.title)}</div>
+        <div class="k" data-keep-lang="1">${escapeHtml(typeof tr === "function" ? tr(a.title || "") : (a.title || ""))}</div>
       </div>
     </div>
-    <p style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(a.body)}</p>
+    <p data-keep-lang="1" style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(typeof trAnn === "function" ? trAnn(a.body || "") : (a.body || ""))}</p>
     ${announceMediaHtml(a)}
     ${actions || ""}
     ${reactBarHtml(a)}`;

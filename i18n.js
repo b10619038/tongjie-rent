@@ -640,6 +640,11 @@ function translateMarkup(html) {
   return out;
 }
 function tr(s) { return translateText(s); }
+function trAnn(text) {
+  const raw = String(text || "");
+  if (!raw || uiLang() === "zh") return raw;
+  return raw.split(/(\n)/).map(part => (part === "\n" ? part : translateText(part))).join("");
+}
 function langCardHtml() {
   const cur = uiLang();
   return `<div class="card card-body">
