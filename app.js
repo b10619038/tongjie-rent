@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-14-58";
-const APP_EDIT_COUNT = 2248;
+const APP_STAMP = "2026-11-10-15-08";
+const APP_EDIT_COUNT = 2249;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1874";
+const FILE_VER = "1875";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17758,15 +17758,16 @@ function roomBirthdayHtml(t, r) {
   if (!festPrefOn() || !tenantBirthdayOn(t, r)) return "";
   return `<div class="bday-mark" aria-hidden="true"><img src="images/birthday-mark.png?v=${FILE_VER}" alt=""></div>`;
 }
-const DEV_BDAY_PREVIEW = true;
+const ADMIN_BDAYS = { "趙文榮": [11, 29], "許喻涵": [2, 28], "趙洪漳": [10, 25] };
 function devBirthdayOn() {
-  if (!ui || ui.role !== "admin" || String(ui.adminCode) !== "1240") return false;
-  if (ui.devPreview || ui.staffLook || ui.tenantLook) return false;
-  if (DEV_BDAY_PREVIEW) return true;
+  if (!ui || ui.role !== "admin") return false;
+  if (ui.devPreview || ui.tenantLook) return false;
+  const hit = ADMIN_BDAYS[normAdminName(ui.adminName)];
+  if (!hit) return false;
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric" }).formatToParts(new Date());
   const month = Number(parts.find(p => p.type === "month").value);
   const day = Number(parts.find(p => p.type === "day").value);
-  return month === 11 && day === 29;
+  return month === hit[0] && day === hit[1];
 }
 function devBirthdayMarkHtml() {
   if (!devBirthdayOn()) return "";
