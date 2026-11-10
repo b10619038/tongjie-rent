@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-10-44";
-const APP_EDIT_COUNT = 2246;
+const APP_STAMP = "2026-11-10-14-48";
+const APP_EDIT_COUNT = 2247;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1872";
+const FILE_VER = "1873";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -19681,19 +19681,22 @@ function toast(msg) {
   }, 1800);
 }
 function sendRemoteNotify(target, title, body, extra) {
-  fetch(LINE_HOOK + "/api/push", {
+  const pkt = JSON.stringify({
+    target: target || "all",
+    title,
+    body,
+    tag: extra && extra.tag,
+    page: extra && extra.page,
+    chat: !!(extra && extra.chat),
+    tid: (extra && extra.tid) || ""
+  });
+  const go = () => fetch(LINE_HOOK + "/api/push", {
     method: "POST",
+    keepalive: true,
     headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
-    body: JSON.stringify({
-      target: target || "all",
-      title,
-      body,
-      tag: extra && extra.tag,
-      page: extra && extra.page,
-      chat: !!(extra && extra.chat),
-      tid: (extra && extra.tid) || ""
-    })
-  }).catch(() => {});
+    body: pkt
+  });
+  go().catch(() => { setTimeout(() => { go().catch(() => {}); }, 1200); });
 }
 function isIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
 function isAndroid() { return /android/i.test(navigator.userAgent); }
@@ -19873,8 +19876,23 @@ async function enablePush(forceAsk) {
 }
 function armPushAsk() {
   if (!ui.role) return;
+  try { subscribePushOnly(); } catch {}
+  if (!armPushAsk.kept) {
+    armPushAsk.kept = true;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") { try { subscribePushOnly(); } catch {} }
+    });
+    setInterval(() => { try { subscribePushOnly(); } catch {} }, 10 * 60 * 1000);
+  }
   if (ui.role === "admin") {
-    enablePush(true).then(ok => { if (ok) maybeNudgeNotifies(); });
+    enablePush(true).then(ok => {
+      if (ok) { maybeNudgeNotifies(); return; }
+      if (notifyStatus() !== "granted" && !notifyDismissed()) {
+        ui.notifyChecked = true;
+        ui.notifyGuide = true;
+        render();
+      }
+    });
     return;
   }
   if (!isInstalledApp()) return;
@@ -20020,7 +20038,7 @@ function announceAdminRepairs(list) {
 function pushPhoneNotify(title, body, target) {
   const text = body || "";
   const extra = Object.assign({}, notifyExtra(title, target));
-  if (title === "繳費回報") {
+  if (title === "繳費回報" || title === "已轉帳") {
     const no = String(text).trim().split(/\s+/)[0] || "";
     extra.tag = payNoticeTag(no, payYmNow());
     extra.page = "tenants";
@@ -31646,7 +31664,7 @@ function markTenantPaid(via) {
   try { pushCloud(); } catch {}
   if (!told) {
     state.payPing = { at: Date.now(), roomNo: String(r.no || ""), name: t.name || "", ym: payYmNow(), via: via || "app" };
-    pushPhoneNotify("繳費回報", `${r.no} ${t.name || ""} 已回報繳費（${via === "line" ? "官方 LINE" : "App"}）`, "admin");
+    pushPhoneNotify(via === "line" ? "繳費回報" : "已轉帳", `${r.no} ${t.name || ""} ${via === "line" ? "已回報繳費（官方 LINE）" : "已用 App 完成轉帳"}`, "admin");
     try { publishPayNow(); } catch {}
   }
 }

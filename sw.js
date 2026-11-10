@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v2124";
+const CACHE = "tongjie-app-v2125";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
 self.addEventListener("install", e => {
@@ -95,21 +95,26 @@ self.addEventListener("push", event => {
     } catch {
       try { data.body = event.data ? event.data.text() : ""; } catch {}
     }
-    const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const visible = cl.some(c => c.visibilityState === "visible");
-    if (visible) return;
-    await self.registration.showNotification(data.title || "統潔＆信潔開發", {
-      body: data.body || "",
+    const title = data.title || "統潔＆信潔開發";
+    const body = data.body || "";
+    await self.registration.showNotification(title, {
+      body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       lang: "zh-Hant",
       subtitle: data.subtitle || "統潔開發",
       vibrate: [200, 80, 200],
-      tag: data.tag || "tongjie",
+      tag: data.tag || ("tongjie-" + title),
       renotify: true,
       silent: false,
       data
     });
+    try {
+      const cl = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      cl.forEach(c => {
+        try { c.postMessage({ type: "PUSH", title, body, tag: data.tag || "", page: data.page || "" }); } catch {}
+      });
+    } catch {}
   })());
 });
 self.addEventListener("notificationclick", event => {

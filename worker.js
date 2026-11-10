@@ -418,9 +418,31 @@ function matchSub(sub, target) {
   const role = String((sub && sub.role) || "");
   const room = String((sub && sub.roomNo) || "");
   if (!t || t === "all") return true;
-  if (t === "admin") return role === "admin";
+  if (t === "admin") return role === "admin" || room === "7651" || room === "1240";
   if (t === "tenants") return role === "tenant";
   return room === t || String((sub && sub.tenantId) || "") === t;
+}
+async function fanoutPush(env, target, payload) {
+  let sent = 0, fail = 0;
+  const list = await getSubs(env);
+  const signKey = await vapidSignKey();
+  const keep = [];
+  for (const sub of list) {
+    if (!sub || !sub.endpoint) continue;
+    if (!matchSub(sub, target)) { keep.push(sub); continue; }
+    try {
+      const st = await sendWebPush(sub, payload, signKey);
+      if (st === 404 || st === 410) { fail += 1; continue; }
+      if (st >= 200 && st < 300) sent += 1;
+      else fail += 1;
+      keep.push(sub);
+    } catch (e) {
+      fail += 1;
+      keep.push(sub);
+    }
+  }
+  if (keep.length !== list.length) await saveSubs(env, keep);
+  return { sent, fail };
 }
 
 export default {
@@ -565,7 +587,25 @@ export default {
       if (request.method === "PUT") {
         try {
           const data = await request.json();
+          const prev = await getState(env);
           await putState(env, data);
+          const prevAt = prev && prev.payPing ? Number(prev.payPing.at) || 0 : 0;
+          const next = data && data.payPing;
+          const nextAt = next ? Number(next.at) || 0 : 0;
+          if (next && nextAt > prevAt && Date.now() - nextAt < 10 * 60 * 1000) {
+            const no = String(next.roomNo || "");
+            const who = String(next.name || "");
+            const via = next.via === "line" ? "官方 LINE" : "App";
+            const job = fanoutPush(env, "admin", {
+              title: "已轉帳",
+              body: (no + " " + who + " 已用" + via + "完成轉帳").replace(/\s+/g, " ").trim(),
+              tag: "tongjie-pay-" + no + "-" + String(next.ym || ""),
+              page: "tenants",
+              subtitle: "統潔開發"
+            });
+            if (ctx && ctx.waitUntil) ctx.waitUntil(job);
+            else await job;
+          }
           return cors({ ok: true });
         } catch (e) {
           return cors({ error: String((e && e.message) || e) }, 500);
@@ -599,7 +639,7 @@ export default {
 
     if (url.pathname === "/binds" && request.method === "GET") {
       const data = await getBinds();
-      return cors(Object.assign({}, data, { workerVer: "0236" }));
+      return cors(Object.assign({}, data, { workerVer: "0237" }));
     }
 
     if (url.pathname === "/unbind" && request.method === "POST") {
@@ -662,24 +702,9 @@ export default {
         }
       } catch (e) {}
       try {
-        const list = await getSubs(env);
-        const signKey = await vapidSignKey();
-        const keep = [];
-        for (const sub of list) {
-          if (!sub || !sub.endpoint) continue;
-          if (!matchSub(sub, target)) { keep.push(sub); continue; }
-          try {
-            const st = await sendWebPush(sub, payload, signKey);
-            if (st === 404 || st === 410) { fail += 1; continue; }
-            if (st >= 200 && st < 300) sent += 1;
-            else fail += 1;
-            keep.push(sub);
-          } catch (e) {
-            fail += 1;
-            keep.push(sub);
-          }
-        }
-        if (keep.length !== list.length) await saveSubs(env, keep);
+        const out = await fanoutPush(env, target, payload);
+        sent = out.sent;
+        fail = out.fail;
       } catch (e) {}
       return cors({ ok: true, sent, fail });
     }
