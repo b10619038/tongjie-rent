@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-10-32";
-const APP_EDIT_COUNT = 2244;
+const APP_STAMP = "2026-11-10-10-40";
+const APP_EDIT_COUNT = 2245;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1870";
+const FILE_VER = "1871";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30196,7 +30196,17 @@ function paintApp() {
     scKeep.classList.toggle("tenant-still", !pageChanged);
     const parked = pageChanged ? null : parkRoomVideo();
     const parkedRun = pageChanged ? null : parkFixRuns();
-    scKeep.innerHTML = `${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
+    const tx = typeof translateMarkup === "function" ? translateMarkup : (s => s);
+    let pageHtml = `${tenantPreviewBannerHtml()}<div class="zoom-page${pageChanged ? "" : " keep-still"}">${tenantView()}</div>`;
+    let navHtml = typeof nav === "function" ? nav() : "";
+    try { pageHtml = tx(pageHtml); } catch (err) { try { console.error(err); } catch {} }
+    try { if (navHtml) navHtml = tx(navHtml); } catch (err) { try { console.error(err); } catch {} }
+    scKeep.innerHTML = pageHtml;
+    if (navHtml) navKeep.outerHTML = navHtml;
+    if (typeof applyUiLang === "function") {
+      try { applyUiLang(scKeep); } catch (err) { try { console.error(err); } catch {} }
+      try { const barNow = document.querySelector(".nav"); if (barNow) applyUiLang(barNow); } catch (err) { try { console.error(err); } catch {} }
+    }
     restoreRoomVideo(parked);
     restoreFixRuns(parkedRun);
     refreshNavButtons(navKeep);
