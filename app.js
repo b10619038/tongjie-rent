@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1904";
+const FILE_VER = "1905";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30720,8 +30720,7 @@ function moveInView() {
         <button type="button" class="sign-slot${d.hasAgent ? " on" : ""}" data-move-agent="yes">是</button>
         <button type="button" class="sign-slot${d.hasAgent ? "" : " on"}" data-move-agent="no">否</button>
       </div>
-      <label class="field" style="margin-top:10px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
-      ${r ? `<div class="small" style="margin:8px 0">${escapeHtml(firstPayHintHtml(payBits))}</div>
+      ${r ? `<div class="small" style="margin:10px 0 8px">${escapeHtml(firstPayHintHtml(payBits))}</div>
       <div class="small" id="move-pay-label" style="margin:8px 0 6px">付款方式</div>
       <div class="sign-slot-grid" id="move-pay-grid">
         <button type="button" class="sign-slot${payWay === "cash" ? " on" : ""}" data-move-pay="cash">現金</button>
@@ -30734,7 +30733,8 @@ function moveInView() {
         <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
       </div>
       <p class="small" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>
-      </div>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
+      </div>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
+      <label class="field" style="margin-top:12px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
