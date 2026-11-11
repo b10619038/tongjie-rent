@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1900";
+const FILE_VER = "1901";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23173,7 +23173,7 @@ function firstPayHintHtml(bits) {
   }
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
-  if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
+  if (bits.elec) lines.push("房間電費儲值 " + money(bits.elec));
   return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。";
 }
 function firstPayWayOf(t) {
@@ -30715,13 +30715,17 @@ function moveInView() {
       ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
-      <div class="label">仲介與第一次付款</div>
-      <label class="field" style="flex-direction:row;align-items:center;gap:10px">
-        <input id="move-agent" type="checkbox" ${d.hasAgent ? "checked" : ""} />
-        <span>仲介帶看（建議全現金）</span>
-      </label>
-      ${r ? `<div class="small" style="margin:0 0 8px">${escapeHtml(firstPayHintHtml(payBits))}</div>
-      <div class="sign-slot-grid">
+      <div class="label">總結算</div>
+      <div class="small" style="margin:10px 0 6px">是否仲介帶看</div>
+      <div class="sign-slot-grid" id="move-agent-grid">
+        <button type="button" class="sign-slot${d.hasAgent ? " on" : ""}" data-move-agent="yes">是</button>
+        <button type="button" class="sign-slot${d.hasAgent ? "" : " on"}" data-move-agent="no">否</button>
+      </div>
+      <label class="field" style="margin-top:10px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
+      <p class="small" style="margin:4px 0 8px">預設 1,000，可改成這次要儲值的金額。合計會跟著變。</p>
+      ${r ? `<div class="small" style="margin:8px 0">${escapeHtml(firstPayHintHtml(payBits))}</div>
+      <div class="small" id="move-pay-label" style="margin:8px 0 6px">付款方式</div>
+      <div class="sign-slot-grid" id="move-pay-grid">
         <button type="button" class="sign-slot${payWay === "cash" ? " on" : ""}" data-move-pay="cash">現金</button>
         <button type="button" class="sign-slot${payWay === "xfer" ? " on" : ""}" data-move-pay="xfer">轉帳</button>
         <button type="button" class="sign-slot${payWay === "split" ? " on" : ""}" data-move-pay="split">自訂</button>
@@ -42361,7 +42365,7 @@ function captureMoveInDraft() {
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
   const agent = document.getElementById("move-agent");
-  if (agent) d.hasAgent = !!agent.checked;
+  if (agent && agent.type === "checkbox") d.hasAgent = !!agent.checked;
   if (document.getElementById("move-pay-cash")) d.payCash = Number(val("move-pay-cash") || 0) || 0;
   if (document.getElementById("move-pay-mega")) d.payMega = Number(val("move-pay-mega") || 0) || 0;
 }
@@ -42429,6 +42433,17 @@ function bindMoveInForm() {
       e.preventDefault();
       e.stopPropagation();
       openPickPlan(el);
+    };
+  });
+  document.querySelectorAll("[data-move-agent]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      captureMoveInDraft();
+      const d = ensureMoveIn();
+      d.hasAgent = btn.dataset.moveAgent === "yes";
+      if (d.payWay !== "split") d.payWay = d.hasAgent ? "cash" : "xfer";
+      ui.keepScroll = true;
+      render();
     };
   });
   const agentEl = document.getElementById("move-agent");
