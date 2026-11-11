@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1901";
+const FILE_VER = "1902";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30730,11 +30730,13 @@ function moveInView() {
         <button type="button" class="sign-slot${payWay === "xfer" ? " on" : ""}" data-move-pay="xfer">轉帳</button>
         <button type="button" class="sign-slot${payWay === "split" ? " on" : ""}" data-move-pay="split">自訂</button>
       </div>
-      ${payWay === "split" ? `<div class="row wrap" style="margin-top:10px;gap:8px">
+      ${payWay === "split" ? `<div class="move-split-pop${ui.moveSplitPop ? " play" : ""}">
+      <div class="row wrap" style="margin-top:10px;gap:8px">
         <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
         <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
       </div>
-      <p class="small" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
+      <p class="small" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>
+      </div>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small">請先選房號</p>`}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
@@ -42393,6 +42395,7 @@ function openPickPlan(el) {
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
+  ui.moveSplitPop = false;
   const openBtn = document.getElementById("move-room-open");
   if (openBtn) openBtn.onclick = e => {
     e.preventDefault();
@@ -42459,7 +42462,10 @@ function bindMoveInForm() {
     btn.onclick = e => {
       e.preventDefault();
       captureMoveInDraft();
-      ensureMoveIn().payWay = btn.dataset.movePay || "cash";
+      const d = ensureMoveIn();
+      const next = btn.dataset.movePay || "cash";
+      ui.moveSplitPop = next === "split" && d.payWay !== "split";
+      d.payWay = next;
       ui.keepScroll = true;
       render();
     };
