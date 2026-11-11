@@ -8289,7 +8289,11 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   text-align: left;
   cursor: pointer;
 }
-.move-pick-row.on { background: var(--ok-soft); }
+.move-pick-row.on {
+  background: var(--ok-soft);
+  border-radius: 14px;
+  border-bottom-color: transparent;
+}
 .move-pick-row .move-pick-no,
 .move-room-btn .move-pick-no {
   display: flex;
