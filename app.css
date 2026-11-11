@@ -811,7 +811,7 @@ input, textarea, select {
   left: 50%;
   top: 46%;
   z-index: 90;
-  width: min(220px, 62vw);
+  width: min(168px, 44vw);
   transform: translate(-50%, -46%) scale(.72);
   opacity: 0;
   pointer-events: none;
