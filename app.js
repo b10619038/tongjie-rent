@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-18-46";
-const APP_EDIT_COUNT = 2262;
+const APP_STAMP = "2026-11-11-18-48";
+const APP_EDIT_COUNT = 2263;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1888";
+const FILE_VER = "1889";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7599,7 +7599,9 @@ function playRoomHero() {
   });
 }
 function showCsBow() {
-  if (document.getElementById("cs-bow")) return;
+  const token = ++showCsBow.token;
+  const old = document.getElementById("cs-bow");
+  if (old) old.remove();
   const app = document.getElementById("app");
   if (app) {
     app.style.transition = "opacity .28s ease";
@@ -7625,7 +7627,7 @@ function showCsBow() {
   let stop = false;
   let raf = 0;
   const paint = () => {
-    if (stop || !video.videoWidth) return;
+    if (stop || token !== showCsBow.token || !video.videoWidth) return;
     if (canvas.width !== video.videoWidth) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -7648,7 +7650,7 @@ function showCsBow() {
     if (!video.paused && !video.ended) raf = requestAnimationFrame(paint);
   };
   const done = () => {
-    if (stop) return;
+    if (stop || token !== showCsBow.token) return;
     stop = true;
     if (raf) cancelAnimationFrame(raf);
     try { video.pause(); } catch {}
@@ -7675,23 +7677,24 @@ function showCsBow() {
   if (p && p.catch) p.catch(() => {});
   setTimeout(done, 2800);
 }
+showCsBow.token = 0;
 function armPayBow() {
   try {
     if (!ui || ui.role !== "tenant" || (ui.page && ui.page !== "home")) return;
     const t = typeof me === "function" ? me() : null;
     const r = typeof myRoom === "function" ? myRoom() : null;
     if (!t || !r || String(r.no) !== "7651") return;
-    const ym = typeof payYmNow === "function" ? payYmNow() : "";
-    const key = "tj-pay-bow4-7651-" + ym;
-    if (!paidThisMonth(t)) {
-      try { localStorage.removeItem(key); } catch {}
-      return;
+    if (!paidThisMonth(t)) return;
+    const fromMenu = !!(lastRenderPage && lastRenderPage !== "home");
+    if (!fromMenu) {
+      const ym = typeof payYmNow === "function" ? payYmNow() : "";
+      const key = "tj-pay-bow4-7651-" + ym;
+      let mark = "";
+      try { mark = localStorage.getItem(key) || ""; } catch {}
+      if (mark === "shown") return;
+      try { localStorage.setItem(key, "shown"); } catch {}
     }
-    let mark = "";
-    try { mark = localStorage.getItem(key) || ""; } catch {}
-    if (mark === "shown") return;
-    try { localStorage.setItem(key, "shown"); } catch {}
-    setTimeout(showCsBow, 520);
+    setTimeout(showCsBow, fromMenu ? 280 : 520);
   } catch {}
 }
 function playHomeSlides() {
