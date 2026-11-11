@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1899";
+const FILE_VER = "1900";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30720,7 +30720,6 @@ function moveInView() {
         <input id="move-agent" type="checkbox" ${d.hasAgent ? "checked" : ""} />
         <span>仲介帶看（建議全現金）</span>
       </label>
-      <p class="small" style="margin:8px 0 10px">有仲介建議全現金；沒仲介建議轉兆豐。客戶要付現金也可以。租客一樣要登入 App。</p>
       ${r ? `<div class="small" style="margin:0 0 8px">${escapeHtml(firstPayHintHtml(payBits))}</div>
       <div class="sign-slot-grid">
         <button type="button" class="sign-slot${payWay === "cash" ? " on" : ""}" data-move-pay="cash">現金</button>
