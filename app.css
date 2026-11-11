@@ -3294,13 +3294,11 @@ input[type="file"] {
   color: var(--ink);
   box-shadow: none;
 }
-.move-split-pop.play {
-  transform-origin: 86% 0;
-  animation: moveSplitPop .46s cubic-bezier(.16, .84, .28, 1) both;
+#move-pay-grid .sign-slot {
+  transition: transform .16s cubic-bezier(.22, .82, .22, 1);
 }
-@keyframes moveSplitPop {
-  0% { opacity: 0; transform: scale(.16); }
-  100% { opacity: 1; transform: scale(1); }
+#move-pay-grid .sign-slot:active {
+  transform: scale(.9);
 }
 .sign-cal { margin-top: 8px; }
 .sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; }

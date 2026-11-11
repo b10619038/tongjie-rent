@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1902";
+const FILE_VER = "1903";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42393,9 +42393,37 @@ function openPickPlan(el) {
     roomLabel: el.dataset.zoomAbove || "房間"
   }], 0, el);
 }
+function playMoveSplitFromButton() {
+  const box = document.querySelector(".move-split-pop.play");
+  if (!box) return;
+  box.classList.remove("play");
+  box.style.opacity = "0";
+  const btn = document.querySelector('#move-pay-grid [data-move-pay="split"]');
+  const run = () => {
+    const br = btn && btn.getBoundingClientRect();
+    const boxr = box.getBoundingClientRect();
+    if (br && boxr.width > 0 && boxr.height > 0) {
+      const x = (br.left + br.width / 2 - boxr.left) / boxr.width * 100;
+      const y = (br.top + br.height / 2 - boxr.top) / boxr.height * 100;
+      box.style.transformOrigin = x + "% " + y + "%";
+    } else {
+      box.style.transformOrigin = "78% -36%";
+    }
+    if (!box.animate) return;
+    box.animate(
+      [
+        { opacity: 0, transform: "scale(.05)" },
+        { opacity: 1, transform: "scale(1)" }
+      ],
+      { duration: 460, easing: "cubic-bezier(.16,.84,.22,1)", fill: "both" }
+    );
+  };
+  requestAnimationFrame(run);
+}
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
   ui.moveSplitPop = false;
+  playMoveSplitFromButton();
   const openBtn = document.getElementById("move-room-open");
   if (openBtn) openBtn.onclick = e => {
     e.preventDefault();
