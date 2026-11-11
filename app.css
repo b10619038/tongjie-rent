@@ -3301,7 +3301,7 @@ input[type="file"] {
 }
 .move-settle-bits {
   margin: 0;
-  color: var(--ink);
+  color: #1d4a34;
   font-size: 16px;
   font-weight: 650;
   line-height: 1.6;
@@ -3312,17 +3312,19 @@ input[type="file"] {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  color: var(--ink);
+  color: #1d4a34;
 }
 .move-settle-sum span {
   font-size: 16px;
   font-weight: 700;
+  color: #1d4a34;
 }
 .move-settle-sum b {
   font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
+  color: #1d4a34;
 }
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);
