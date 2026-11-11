@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1896";
+const FILE_VER = "1897";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -22644,6 +22644,12 @@ function leaseSheetIsRenewal(t, r, sheet) {
     return hit && ymdOf(x.start) === start;
   });
 }
+function lockedStubRent(t, stub) {
+  if (!stub || !t || !Array.isArray(t.leases)) return 0;
+  const hit = t.leases.find(p => p && p.kind === "stub" && ymdOf(p.start) === ymdOf(stub.start) && ymdOf(p.end) === ymdOf(stub.end));
+  const n = Math.round(Number(hit && hit.rent) || 0);
+  return n > 0 ? n : 0;
+}
 function leaseMoveInBits(t, r, start) {
   if (!start || (r && roomIsFactory(r))) return null;
   const monthly = studioContractRent(t, r) || Number(r && r.rent) || Number(t && t.rent) || 0;
@@ -22651,7 +22657,7 @@ function leaseMoveInBits(t, r, start) {
   const pack = studioLeasePack(start, monthly);
   const stub = (pack.parts || []).find(p => p && p.kind === "stub");
   const year = (pack.parts || []).find(p => p && p.kind === "year") || (pack.parts || [])[0];
-  const stubRent = stub ? (Number(stub.rent) || 0) : 0;
+  const stubRent = lockedStubRent(t, stub) || (stub ? (Number(stub.rent) || 0) : 0);
   const firstMonth = year ? (Number(year.rent) || monthly) : monthly;
   const water = studioWaterYearFee(t, r);
   const elec = studioElecStoreFee(t, r);
@@ -23127,7 +23133,7 @@ function firstStudioPayBits(t, r) {
   const pack = studioLeasePack(start, monthly);
   const stub = (pack.parts || []).find(p => p && p.kind === "stub");
   const year = (pack.parts || []).find(p => p && p.kind === "year") || (pack.parts || [])[0];
-  const stubRent = stub ? (Number(stub.rent) || 0) : 0;
+  const stubRent = lockedStubRent(t, stub) || (stub ? (Number(stub.rent) || 0) : 0);
   const firstMonth = year ? (Number(year.rent) || monthly) : monthly;
   const water = studioWaterYearFee(t, r);
   const elec = studioElecStoreFee(t, r);
@@ -24023,9 +24029,11 @@ function applyOneYearLease(t, room) {
   applyStudioLeasePack(t, r, roomSoonestStart(r, t));
 }
 function studioContractRent(t, r) {
+  const own = Number(t && t.rent) || 0;
+  if (own > 0) return own;
   const listed = studioRentOf(r && r.no);
   if (listed != null && listed > 0) return listed;
-  const n = Number((r && r.rent) || (t && t.rent) || 0) || 0;
+  const n = Number((r && r.rent) || 0) || 0;
   return n;
 }
 function signSlotKey(at) {
