@@ -29,18 +29,9 @@
     label.className = "field";
     label.style.marginTop = "8px";
     label.innerHTML = '<span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="' + elecAmount() + '" />';
-    const note = document.createElement("p");
-    note.className = "small";
-    note.style.margin = "4px 0 8px";
-    note.textContent = "預設 1,000，可改成這次要儲值的金額。合計會跟著變。";
     const grid = card.querySelector("#move-pay-label") || card.querySelector("#move-pay-grid") || card.querySelector(".sign-slot-grid");
-    if (grid) {
-      grid.parentNode.insertBefore(label, grid);
-      grid.parentNode.insertBefore(note, grid);
-    } else {
-      card.appendChild(label);
-      card.appendChild(note);
-    }
+    if (grid) grid.parentNode.insertBefore(label, grid);
+    else card.appendChild(label);
   }
   const origCap = captureMoveInDraft;
   captureMoveInDraft = function () {

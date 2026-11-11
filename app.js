@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1903";
+const FILE_VER = "1904";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30697,7 +30697,6 @@ function moveInView() {
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
       <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /></label>
-      <p class="small" style="margin:0 0 8px">生日不會印在合約上，只用來在生日當天顯示房間特效。</p>
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
@@ -30722,7 +30721,6 @@ function moveInView() {
         <button type="button" class="sign-slot${d.hasAgent ? "" : " on"}" data-move-agent="no">否</button>
       </div>
       <label class="field" style="margin-top:10px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
-      <p class="small" style="margin:4px 0 8px">預設 1,000，可改成這次要儲值的金額。合計會跟著變。</p>
       ${r ? `<div class="small" style="margin:8px 0">${escapeHtml(firstPayHintHtml(payBits))}</div>
       <div class="small" id="move-pay-label" style="margin:8px 0 6px">付款方式</div>
       <div class="sign-slot-grid" id="move-pay-grid">
