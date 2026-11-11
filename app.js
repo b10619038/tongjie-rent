@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-18-40";
-const APP_EDIT_COUNT = 2261;
+const APP_STAMP = "2026-11-11-18-46";
+const APP_EDIT_COUNT = 2262;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1887";
+const FILE_VER = "1888";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7600,24 +7600,80 @@ function playRoomHero() {
 }
 function showCsBow() {
   if (document.getElementById("cs-bow")) return;
+  const app = document.getElementById("app");
+  if (app) {
+    app.style.transition = "opacity .28s ease";
+    app.style.opacity = "0.5";
+  }
   const box = document.createElement("div");
   box.id = "cs-bow";
   box.className = "cs-bow";
-  box.innerHTML = `<video src="images/cs-bow.mp4?v=1887" autoplay muted playsinline webkit-playsinline poster="images/ai-avatar-dev.jpg?v=2132"></video>`;
+  const video = document.createElement("video");
+  video.src = "images/cs-bow.mp4?v=1888";
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.setAttribute("playsinline", "");
+  video.setAttribute("webkit-playsinline", "");
+  video.autoplay = true;
+  video.playbackRate = 2.6;
+  const canvas = document.createElement("canvas");
+  box.appendChild(video);
+  box.appendChild(canvas);
   document.body.appendChild(box);
-  const v = box.querySelector("video");
-  const done = () => {
-    if (!box.isConnected || box.classList.contains("out")) return;
-    box.classList.add("out");
-    setTimeout(() => { try { box.remove(); } catch {} }, 400);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  let stop = false;
+  let raf = 0;
+  const paint = () => {
+    if (stop || !video.videoWidth) return;
+    if (canvas.width !== video.videoWidth) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0);
+    try {
+      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = frame.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        if (min > 214 && max - min < 28) {
+          const t = Math.min(1, (min - 214) / 34);
+          d[i + 3] = Math.round(255 * (1 - t));
+        }
+      }
+      ctx.putImageData(frame, 0, 0);
+    } catch {}
+    if (!video.paused && !video.ended) raf = requestAnimationFrame(paint);
   };
-  if (v) {
-    const play = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); };
-    play();
-    v.addEventListener("ended", done);
-    v.addEventListener("loadeddata", play);
-  }
-  setTimeout(done, 6800);
+  const done = () => {
+    if (stop) return;
+    stop = true;
+    if (raf) cancelAnimationFrame(raf);
+    try { video.pause(); } catch {}
+    box.style.animation = "none";
+    box.style.transform = "translate(-50%, -50%) scale(1)";
+    box.style.opacity = "1";
+    if (app) app.style.opacity = "1";
+    requestAnimationFrame(() => {
+      box.style.transition = "opacity .25s ease";
+      box.style.opacity = "0";
+    });
+    setTimeout(() => {
+      try { box.remove(); } catch {}
+      if (app) {
+        app.style.opacity = "";
+        app.style.transition = "";
+      }
+    }, 280);
+  };
+  video.addEventListener("play", () => { video.playbackRate = 2.6; paint(); });
+  video.addEventListener("timeupdate", () => { if (video.currentTime >= 3.4) done(); });
+  video.addEventListener("ended", done);
+  const p = video.play();
+  if (p && p.catch) p.catch(() => {});
+  setTimeout(done, 2800);
 }
 function armPayBow() {
   try {
@@ -7626,7 +7682,7 @@ function armPayBow() {
     const r = typeof myRoom === "function" ? myRoom() : null;
     if (!t || !r || String(r.no) !== "7651") return;
     const ym = typeof payYmNow === "function" ? payYmNow() : "";
-    const key = "tj-pay-bow3-7651-" + ym;
+    const key = "tj-pay-bow4-7651-" + ym;
     if (!paidThisMonth(t)) {
       try { localStorage.removeItem(key); } catch {}
       return;
