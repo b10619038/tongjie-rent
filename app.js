@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-10-15-08";
-const APP_EDIT_COUNT = 2249;
+const APP_STAMP = "2026-11-11-15-14";
+const APP_EDIT_COUNT = 2250;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1875";
+const FILE_VER = "1876";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30880,6 +30880,36 @@ function nav() {
     return `<button type="button" data-page="${id}" class="${on ? "active" : ""}" aria-label="${label}">${art ? `<span class="nav-ic">${svg}</span>` : ""}${words ? label : ""}${unread ? `<em class="badge-dot badge-dot-only"></em>` : ""}</button>`;
   }).join("")}</nav>`;
 }
+function paintNavArt() {
+  const bar = document.querySelector("nav.nav");
+  if (!bar) return;
+  const mode = navArtMode();
+  const art = mode !== "text";
+  const words = mode !== "icon";
+  bar.classList.toggle("nav-text", mode === "text");
+  bar.classList.toggle("nav-icon", mode === "icon");
+  const tab = navKeyOf();
+  const items = { home: ["home", "首頁"], rooms: ["room", "房間"], lease: ["lease", "租約"], repair: ["fix", "報修"] };
+  bar.querySelectorAll("button[data-page]").forEach(btn => {
+    const id = btn.dataset.page;
+    const pair = items[id];
+    if (!pair) return;
+    let ic = btn.querySelector(".nav-ic");
+    if (art && !ic) {
+      const svg = id === "rooms" ? icon(tab === "rooms" ? "room-open" : "room-shut") : id === "repair" ? icon(tab === "repair" ? "fix" : "fix-box") : icon(pair[0]);
+      btn.insertAdjacentHTML("afterbegin", `<span class="nav-ic">${svg}</span>`);
+    } else if (!art && ic) ic.remove();
+    const texts = [...btn.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim());
+    if (words && !texts.length) {
+      const node = document.createTextNode(pair[1]);
+      const dot = btn.querySelector(".badge-dot");
+      if (dot) btn.insertBefore(node, dot);
+      else btn.appendChild(node);
+    } else if (!words) texts.forEach(n => n.remove());
+  });
+  try { if (typeof applyUiLang === "function") applyUiLang(bar); } catch {}
+  try { bindNavPill(); } catch {}
+}
 function refreshNavButtons(bar) {
   if (!bar) return;
   const tab = navKeyOf();
@@ -44759,9 +44789,14 @@ function bindLookSettings() {
       const mode = btn.dataset.navArt;
       if (!mode || mode === navArtMode()) return;
       setNavArtMode(mode);
+      const seg = document.getElementById("nav-art-seg");
+      if (seg) {
+        seg.classList.toggle("is-2", mode === "text");
+        seg.classList.toggle("is-3", mode === "icon");
+        seg.querySelectorAll("[data-nav-art]").forEach(b => b.classList.toggle("on", b.dataset.navArt === mode));
+      }
+      try { paintNavArt(); } catch {}
       toast(mode === "icon" ? "主選單只留圖示" : mode === "text" ? "主選單只留文字" : "主選單顯示圖示和文字");
-      ui.keepScroll = true;
-      render();
     };
   });
   document.querySelectorAll("#app [data-theme]").forEach(btn => {
