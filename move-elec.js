@@ -1,5 +1,5 @@
 (function () {
-  if (window.__moveElec || typeof moveInView !== "function" || typeof studioElecStoreFee !== "function") return;
+  if (window.__moveElec || typeof moveInView !== "function" || typeof studioElecStoreFee !== "function" || typeof render !== "function") return;
   window.__moveElec = true;
   function elecAmount() {
     const d = ensureMoveIn();
@@ -15,20 +15,39 @@
   const origView = moveInView;
   moveInView = function () {
     elecAmount();
-    let html = origView();
-    if (html.indexOf("move-elec") >= 0) return html;
-    const field = '<label class="field" style="margin-top:4px"><span>電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="' + elecAmount() + '" /></label><p class="small" style="margin:4px 0 8px">預設 1,000，可改成這次要儲值的金額。年水費仍依人數，一人 1,800。</p>';
-    const lead = "租客一樣要登入 App。</p>";
-    if (html.indexOf(lead) >= 0) html = html.replace(lead, lead + field);
-    return html;
+    return origView();
   };
+  function placeElec() {
+    if (!document.querySelector(".move-in-page") || document.getElementById("move-elec")) return;
+    const cards = document.querySelectorAll(".move-in-page .card, .move-in-page .move-card");
+    let card = null;
+    cards.forEach(c => {
+      if (!card && (c.textContent || "").indexOf("仲介與第一次付款") >= 0) card = c;
+    });
+    if (!card) return;
+    const label = document.createElement("label");
+    label.className = "field";
+    label.style.marginTop = "8px";
+    label.innerHTML = '<span>電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="' + elecAmount() + '" />';
+    const note = document.createElement("p");
+    note.className = "small";
+    note.style.margin = "4px 0 8px";
+    note.textContent = "預設 1,000，可改成這次要儲值的金額。合計會跟著變。";
+    const grid = card.querySelector(".sign-slot-grid");
+    if (grid) {
+      grid.parentNode.insertBefore(label, grid);
+      grid.parentNode.insertBefore(note, grid);
+    } else {
+      card.appendChild(label);
+      card.appendChild(note);
+    }
+  }
   const origCap = captureMoveInDraft;
   captureMoveInDraft = function () {
     origCap();
     const el = document.getElementById("move-elec");
     if (!el) return;
-    const d = ensureMoveIn();
-    d.elecStore = Math.max(0, Math.round(Number(el.value) || 0));
+    ensureMoveIn().elecStore = Math.max(0, Math.round(Number(el.value) || 0));
   };
   document.addEventListener("change", function (e) {
     if (!e.target || e.target.id !== "move-elec") return;
@@ -36,6 +55,12 @@
     ui.keepScroll = true;
     render();
   }, true);
+  const origRender = render;
+  render = function () {
+    const out = origRender.apply(this, arguments);
+    try { placeElec(); } catch (e) {}
+    return out;
+  };
   function stampElec() {
     const d = ensureMoveIn();
     const elec = elecAmount();
@@ -66,4 +91,5 @@
     try { return origSubmit(); }
     finally { stamping = false; }
   };
+  try { placeElec(); } catch (e) {}
 })();
