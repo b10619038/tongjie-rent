@@ -806,37 +806,6 @@ input, textarea, select {
 .hero-card .small { color: #7a8a85; }
 .room-head { position: relative; z-index: 2; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; overflow: visible; }
-.cs-bow-dim {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: rgba(255, 255, 255, .5);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .25s ease;
-}
-.cs-bow-dim.on { opacity: 1; }
-.cs-bow {
-  position: fixed;
-  left: 50%;
-  top: 46%;
-  z-index: 90;
-  width: min(180px, 48vw);
-  transform: translate(-50%, -46%) scale(.72);
-  opacity: 0;
-  pointer-events: none;
-  animation: csBowIn .28s cubic-bezier(.22,.82,.22,1) forwards;
-}
-.cs-bow img {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: transparent;
-  filter: saturate(1.28) contrast(1.08) drop-shadow(0 10px 16px rgba(23, 33, 31, .2));
-}
-@keyframes csBowIn {
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
 .stat {
   position: relative;
   display: flex;

@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-19-42";
-const APP_EDIT_COUNT = 2265;
+const APP_STAMP = "2026-11-11-20-24";
+const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1891";
+const FILE_VER = "1894";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7597,94 +7597,6 @@ function playRoomHero() {
     if (v.readyState >= 2) start();
     else v.addEventListener("loadeddata", start, { once: true });
   });
-}
-function showCsBow() {
-  const token = ++showCsBow.token;
-  const prev = document.getElementById("cs-bow");
-  const prevDim = document.getElementById("cs-bow-dim");
-  if (prev) prev.remove();
-  if (prevDim) prevDim.remove();
-  const dim = document.createElement("div");
-  dim.id = "cs-bow-dim";
-  dim.className = "cs-bow-dim";
-  const box = document.createElement("div");
-  box.id = "cs-bow";
-  box.className = "cs-bow";
-  const img = document.createElement("img");
-  img.alt = "";
-  box.appendChild(img);
-  document.body.appendChild(dim);
-  document.body.appendChild(box);
-  requestAnimationFrame(() => { if (token === showCsBow.token) dim.classList.add("on"); });
-  const n = 40;
-  const frames = [];
-  for (let i = 1; i <= n; i++) {
-    const im = new Image();
-    im.src = "images/bow/f" + String(i).padStart(2, "0") + ".webp?v=1891";
-    frames.push(im);
-  }
-  let timer = 0;
-  let step = 0;
-  const done = () => {
-    if (token !== showCsBow.token) return;
-    showCsBow.token++;
-    clearInterval(timer);
-    box.style.animation = "none";
-    box.style.transform = "translate(-50%, -50%) scale(1)";
-    box.style.opacity = "1";
-    requestAnimationFrame(() => {
-      box.style.transition = "opacity .22s ease";
-      dim.style.transition = "opacity .22s ease";
-      box.style.opacity = "0";
-      dim.style.opacity = "0";
-    });
-    setTimeout(() => {
-      try { box.remove(); } catch {}
-      try { dim.remove(); } catch {}
-    }, 240);
-  };
-  const play = () => {
-    if (timer || token !== showCsBow.token) return;
-    img.src = frames[0].src;
-    timer = setInterval(() => {
-      step++;
-      if (step >= frames.length) { done(); return; }
-      img.src = frames[step].src;
-    }, 30);
-  };
-  let left = frames.length;
-  const tick = () => {
-    left--;
-    if (left <= 0) play();
-  };
-  frames.forEach(im => {
-    if (im.complete) tick();
-    else {
-      im.onload = tick;
-      im.onerror = tick;
-    }
-  });
-  setTimeout(() => { if (token === showCsBow.token && !timer) play(); }, 700);
-}
-showCsBow.token = 0;
-function armPayBow() {
-  try {
-    if (!ui || ui.role !== "tenant" || (ui.page && ui.page !== "home")) return;
-    const t = typeof me === "function" ? me() : null;
-    const r = typeof myRoom === "function" ? myRoom() : null;
-    if (!t || !r || String(r.no) !== "7651") return;
-    if (!paidThisMonth(t)) return;
-    const fromMenu = !!(lastRenderPage && lastRenderPage !== "home");
-    if (!fromMenu) {
-      const ym = typeof payYmNow === "function" ? payYmNow() : "";
-      const key = "tj-pay-bow4-7651-" + ym;
-      let mark = "";
-      try { mark = localStorage.getItem(key) || ""; } catch {}
-      if (mark === "shown") return;
-      try { localStorage.setItem(key, "shown"); } catch {}
-    }
-    setTimeout(showCsBow, fromMenu ? 60 : 360);
-  } catch {}
 }
 function playHomeSlides() {
   if (ui.page !== "home") return;
@@ -30399,7 +30311,6 @@ function paintApp() {
       bindUpdateBar();
       bindThemePicker();
       playRoomHero();
-      armPayBow();
       if (pageChanged) {
         holdTenantSlide();
         requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
