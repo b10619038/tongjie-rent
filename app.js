@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1907";
+const FILE_VER = "1908";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27622,7 +27622,9 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function ensureMoveIn() {
-  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "" };
+  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "", hasAgent: true, payWay: "cash" };
+  if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
+  if (!ui.moveIn.payWay) ui.moveIn.payWay = "cash";
   return ui.moveIn;
 }
 function phonePassOf(phone) {
@@ -30633,7 +30635,7 @@ function moveInView() {
   const r = rooms.find(x => x.id === d.roomId) || null;
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
   const payBits = r ? firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || "", rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), hasAgent: !!d.hasAgent, payWay: d.payWay, payCash: d.payCash, payMega: d.payMega }, r) : null;
-  if (!d.payWay) d.payWay = d.hasAgent ? "cash" : "xfer";
+  if (!d.payWay) d.payWay = "cash";
   const payWay = firstPayWayOf(d);
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
   const minStart = r ? roomSoonestStart(r, dummy) : todayYmd();
