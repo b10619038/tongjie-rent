@@ -75,7 +75,7 @@ html[lang="ja"] body { font-family: "PingFang TC", "Noto Sans TC", "Hiragino San
   font-weight: 700;
   line-height: 1.2;
 }
-.lang-pick button.on { border-color: var(--teal); background: var(--soft, var(--gold-soft)); color: var(--ink); }
+.lang-pick button.on { border-color: var(--teal); background: var(--ok-soft, #e6ede3); color: var(--ink); }
 button, input, textarea, select { font: inherit; }
 button, .nav, .tab, .seg, .issue-opt, .ghost, .btn-navy, .theme-fab, .switch-tile {
   -webkit-user-select: none;
