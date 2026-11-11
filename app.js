@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-16-44";
-const APP_EDIT_COUNT = 2259;
+const APP_STAMP = "2026-11-11-18-36";
+const APP_EDIT_COUNT = 2260;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1885";
+const FILE_VER = "1886";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7597,6 +7597,46 @@ function playRoomHero() {
     if (v.readyState >= 2) start();
     else v.addEventListener("loadeddata", start, { once: true });
   });
+}
+function showCsBow() {
+  if (document.getElementById("cs-bow")) return;
+  const box = document.createElement("div");
+  box.id = "cs-bow";
+  box.className = "cs-bow";
+  box.innerHTML = `<video src="images/cs-bow.mp4?v=1886" autoplay muted playsinline webkit-playsinline poster="images/ai-avatar-dev.jpg?v=2132"></video>`;
+  document.body.appendChild(box);
+  const v = box.querySelector("video");
+  const done = () => {
+    if (!box.isConnected || box.classList.contains("out")) return;
+    box.classList.add("out");
+    setTimeout(() => { try { box.remove(); } catch {} }, 400);
+  };
+  if (v) {
+    const play = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+    play();
+    v.addEventListener("ended", done);
+    v.addEventListener("loadeddata", play);
+  }
+  setTimeout(done, 6800);
+}
+function armPayBow() {
+  try {
+    if (!ui || ui.role !== "tenant" || (ui.page && ui.page !== "home")) return;
+    const t = typeof me === "function" ? me() : null;
+    const r = typeof myRoom === "function" ? myRoom() : null;
+    if (!t || !r || String(r.no) !== "7651") return;
+    const ym = typeof payYmNow === "function" ? payYmNow() : "";
+    const key = "tj-pay-bow-7651-" + ym;
+    if (!paidThisMonth(t)) {
+      try { localStorage.removeItem(key); } catch {}
+      return;
+    }
+    let mark = "";
+    try { mark = localStorage.getItem(key) || ""; } catch {}
+    if (mark === "shown") return;
+    try { localStorage.setItem(key, "shown"); } catch {}
+    setTimeout(showCsBow, 520);
+  } catch {}
 }
 function playHomeSlides() {
   if (ui.page !== "home") return;
@@ -30311,6 +30351,7 @@ function paintApp() {
       bindUpdateBar();
       bindThemePicker();
       playRoomHero();
+      armPayBow();
       if (pageChanged) {
         holdTenantSlide();
         requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
@@ -30350,6 +30391,7 @@ function paintApp() {
     bindUpdateBar();
     bindThemePicker();
     playRoomHero();
+    armPayBow();
     if (pageChanged) {
       holdTenantSlide();
       requestAnimationFrame(() => requestAnimationFrame(playHomeSlides));
