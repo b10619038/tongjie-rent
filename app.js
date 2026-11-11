@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-16-04";
-const APP_EDIT_COUNT = 2257;
+const APP_STAMP = "2026-11-11-16-10";
+const APP_EDIT_COUNT = 2258;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1883";
+const FILE_VER = "1884";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7616,25 +7616,15 @@ function playHomeSlides() {
   try {
     const room = typeof myRoom === "function" ? myRoom() : null;
     const no = String((room && room.no) || ui.roomNo || "");
-    const head = hero && hero.querySelector(".room-head");
     const stats = hero && hero.querySelector(".hero-stats");
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (no === "7651" && head && stats && !reduce) {
-      const hs = stats.getBoundingClientRect().height || 110;
-      const drop = Math.round(Math.min(96, Math.max(64, hs * 0.72)));
-      const lift = Math.round(drop * 0.92);
+    if (no === "7651" && stats && !reduce) {
       stats.style.transformOrigin = "center center";
-      const motion = { duration: 1080, easing: ease, fill: "both" };
-      head.animate([
-        { transform: "translateY(" + lift + "px)", offset: 0 },
-        { transform: "translateY(" + lift + "px)", offset: 0.46 },
-        { transform: "translateY(0px)", offset: 1 }
-      ], motion);
       stats.animate([
-        { transform: "translateY(" + (-drop) + "px) scale(0.42)", offset: 0 },
-        { transform: "translateY(" + (-drop) + "px) scale(0.42)", offset: 0.46 },
-        { transform: "translateY(0px) scale(1)", offset: 1 }
-      ], motion);
+        { transform: "scale(0.72)", opacity: 0, offset: 0 },
+        { transform: "scale(0.72)", opacity: 0, offset: 0.68 },
+        { transform: "scale(1)", opacity: 1, offset: 1 }
+      ], { duration: 980, easing: ease, fill: "both" });
     }
   } catch {}
   const stamp = document.querySelector(".rent-stamp.chop-wait");
