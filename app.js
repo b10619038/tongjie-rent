@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1898";
+const FILE_VER = "1899";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12570,6 +12570,14 @@ function applyRenewNoMarks(data) {
       }
     });
   });
+  const room7023 = (data.rooms || []).find(r => r && String(r.no) === "7023");
+  const now7023 = room7023 && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room7023.id);
+  if (now7023 && !sameTenantName(now7023.name, "謝雯鶯") && now7023.renewChoice === "no" && !now7023.leaveApplied) {
+    now7023.renewChoice = "open";
+    now7023.edited = true;
+    now7023.editedAt = Date.now();
+    changed = true;
+  }
   if (changed) {
     try { markCloudDirty(); } catch {}
   }
@@ -38360,8 +38368,9 @@ function tenantLeaveApplied(t) {
 }
 function tenantRenewNo(t, r) {
   if (!t || tenantRenewDone(t, r)) return false;
-  if (t.renewChoice === "no") return true;
   r = r || ((state.rooms || []).find(x => x && x.id === t.roomId));
+  if (r && String(r.no) === "7023" && !sameTenantName(t.name, "謝雯鶯")) return false;
+  if (t.renewChoice === "no") return true;
   return !!(r && typeof renewDecisionOf === "function" && renewDecisionOf(r.no) === "no");
 }
 function tenantRenewApply(t, r) {
