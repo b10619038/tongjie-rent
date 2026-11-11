@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1895";
+const FILE_VER = "1896";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -32075,7 +32075,8 @@ function roomExtrasHtml(r) {
         <div class="row"><span class="k">密碼</span><span class="v">123456789</span></div>
       </div>
       ${ui.role === "tenant" && r.kind !== "factory" ? keyCardHtml(r) : ""}
-      ${floorPlanCardHtml(r)}`;
+      ${floorPlanCardHtml(r)}
+      ${shopCardHtml(r)}`;
 }
 function gateCodeYear() {
   return String(taipeiNow().getFullYear());
@@ -32116,6 +32117,15 @@ function keyCardHtml(r) {
           <p class="small">現在不是平日 09:00～18:00。請自行連絡鎖匠，費用自付。</p>
           ${shops.map(s => `<a href="tel:${s.phone}"><span>${escapeHtml(s.name)}<small>${escapeHtml(s.note)}</small></span><b>${escapeHtml(s.show)}</b></a>`).join("")}
         </div>` : ""}
+      </div>`;
+}
+function shopCardHtml(r) {
+  if (!r || String(r.no) !== "7651") return "";
+  const items = ["遠端冷氣", "免治馬桶", "電子門鎖", "電動窗簾", "電動垃圾桶", "全戶淨軟水", "遠端除濕機（夏普/LG）", "清潔服務（日/週/月）", "IKEA家具（原價半價）"];
+  return `
+      <div class="section-title"><h2 class="slide-right">線上商城</h2></div>
+      <div class="card card-body slide-left">
+        ${items.map(name => `<div class="row"><span class="k">${escapeHtml(name)}</span></div>`).join("")}
       </div>`;
 }
 function floorPlanOf(no) {
