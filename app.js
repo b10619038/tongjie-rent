@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-15-18";
-const APP_EDIT_COUNT = 2251;
+const APP_STAMP = "2026-11-11-15-22";
+const APP_EDIT_COUNT = 2252;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1877";
+const FILE_VER = "1878";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -17112,6 +17112,27 @@ function geoSettingsHtml() {
       ${on ? `<button type="button" class="ghost" id="geo-refresh" style="margin-top:10px">重新定位</button>` : ""}
     </div>`;
 }
+function slidePref(btn, on, text) {
+  if (!btn) return;
+  btn.classList.toggle("on", !!on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  const lab = btn.parentElement && btn.parentElement.querySelector("span");
+  if (lab && text != null) {
+    lab.textContent = text;
+    try { if (typeof applyUiLang === "function") applyUiLang(lab.parentElement); } catch {}
+  }
+}
+function bindGeoRefresh(go) {
+  if (!go || go.dataset.geoBound === "1") return;
+  go.dataset.geoBound = "1";
+  bindIosPress(go);
+  go.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    askPreciseLocation(true);
+    toast("正在重新定位");
+  };
+}
 function bindGeoSettings() {
   const tog = document.getElementById("geo-toggle");
   if (tog) tog.onclick = e => {
@@ -17119,6 +17140,18 @@ function bindGeoSettings() {
     e.stopPropagation();
     const next = !locPrefOn();
     setLocPref(next);
+    slidePref(tog, next);
+    const st = document.getElementById("geo-status");
+    if (st) st.textContent = geoStatusLine();
+    let refresh = document.getElementById("geo-refresh");
+    if (next && !refresh) {
+      const card = document.getElementById("geo-card");
+      const note = card && card.querySelector("p.small");
+      if (note) note.insertAdjacentHTML("afterend", `<button type="button" class="ghost" id="geo-refresh" style="margin-top:10px">重新定位</button>`);
+      refresh = document.getElementById("geo-refresh");
+      try { if (refresh && typeof applyUiLang === "function") applyUiLang(refresh); } catch {}
+    } else if (!next && refresh) refresh.remove();
+    if (refresh && next) bindGeoRefresh(refresh);
     if (next) {
       locFix.error = "";
       saveLocFix(locFix);
@@ -17127,19 +17160,8 @@ function bindGeoSettings() {
     } else {
       toast("已關閉精確位置");
     }
-    ui.keepScroll = true;
-    render();
   };
-  const go = document.getElementById("geo-refresh");
-  if (go) {
-    bindIosPress(go);
-    go.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      askPreciseLocation(true);
-      toast("正在重新定位");
-    };
-  }
+  bindGeoRefresh(document.getElementById("geo-refresh"));
   if (locPrefOn()) askPreciseLocation(false);
 }
 function bioEnrolled() {
@@ -44751,9 +44773,8 @@ function bindLookSettings() {
       e.stopPropagation();
       const next = !skyPrefOn();
       setSkyPref(next);
+      slidePref(skyBtn, next, next ? "顯示動態天氣" : "已關閉");
       toast(next ? "已打開首頁天氣圖" : "已關閉首頁天氣圖");
-      ui.keepScroll = true;
-      render();
       try { applySkyDom(); } catch {}
     };
   }
@@ -44765,9 +44786,8 @@ function bindLookSettings() {
       e.stopPropagation();
       const next = !festPrefOn();
       setFestPref(next);
+      slidePref(festBtn, next, next ? "節日會出現小布置" : "已關閉");
       toast(next ? "已打開節慶布置" : "已關閉節慶布置");
-      ui.keepScroll = true;
-      render();
     };
   }
   const countBtn = document.getElementById("count-fx-toggle");
@@ -44780,9 +44800,8 @@ function bindLookSettings() {
       setCountFx(next);
       ui.leaseCountKey = "";
       ui.leaseCountLive = null;
+      slidePref(countBtn, next, next ? "剩餘天數會倒數" : "剩餘天數直接顯示");
       toast(next ? "已打開剩餘天數倒數" : "剩餘天數改成直接顯示");
-      ui.keepScroll = true;
-      render();
     };
   }
   const stampBtn = document.getElementById("stamp-fx-toggle");
@@ -44793,9 +44812,8 @@ function bindLookSettings() {
       e.stopPropagation();
       const next = !stampFxOn();
       setStampFx(next);
+      slidePref(stampBtn, next, next ? "已繳印章會蓋下去" : "已繳印章直接出現");
       toast(next ? "已打開印章特效" : "印章改成直接出現");
-      ui.keepScroll = true;
-      render();
     };
   }
   document.querySelectorAll("#nav-art-seg [data-nav-art]").forEach(btn => {
@@ -44839,14 +44857,12 @@ function bindLookSettings() {
     e.stopPropagation();
     if (bioEnrolled()) {
       clearBio();
+      slidePref(bio, false);
       toast("已關閉快速登入");
-      ui.keepScroll = true;
-      render();
       return;
     }
     const ok = await enrollBiometric();
-    ui.keepScroll = true;
-    if (ok) render();
+    if (ok) slidePref(bio, true);
   };
   const auto = document.getElementById("font-auto");
   if (auto) {
