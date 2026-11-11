@@ -804,7 +804,26 @@ input, textarea, select {
 .hero-card .label { color: #7a8a85; font-size: 13px; display: block; margin-bottom: 10px; }
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
 .hero-card .small { color: #7a8a85; }
-.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; overflow: visible; }
+.room-head { position: relative; z-index: 2; }
+.room-hero.hero-arrive .room-head {
+  animation: roomHeadLift .9s cubic-bezier(.22,.82,.22,1) both;
+}
+.room-hero.hero-arrive .hero-stats {
+  transform-origin: center center;
+  animation: roomStatGrow .9s cubic-bezier(.22,.82,.22,1) both;
+}
+@keyframes roomHeadLift {
+  0%, 38% { transform: translateY(74px); }
+  100% { transform: none; }
+}
+@keyframes roomStatGrow {
+  0%, 38% { transform: scale(.16); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .room-hero.hero-arrive .room-head,
+  .room-hero.hero-arrive .hero-stats { animation: none; }
+}
 .stat {
   position: relative;
   display: flex;

@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-15-28";
-const APP_EDIT_COUNT = 2254;
+const APP_STAMP = "2026-11-11-15-58";
+const APP_EDIT_COUNT = 2255;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1880";
+const FILE_VER = "1881";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30044,6 +30044,12 @@ function paintApp() {
   }
   if (ui.role === "admin" && (ui.page === "tenants" || ui.page === "tenant-sheet") && typeof sheetLocked === "function" && sheetLocked() && lastRenderPage === ui.page && !ui.undoRenewId && !ui.restoreRenewId) return;
   const pageChanged = ui.role !== lastRenderRole || ui.page !== lastRenderPage;
+  ui.homeArrive = !!(pageChanged && ui.role === "tenant" && (!ui.page || ui.page === "home") && (function () {
+    try {
+      const room = typeof myRoom === "function" ? myRoom() : null;
+      return String((room && room.no) || ui.roomNo || "") === "7651";
+    } catch { return false; }
+  })());
   if (pageChanged) { ui.leaseCountKey = ""; ui.leaseCountLive = null; }
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
@@ -31560,12 +31566,14 @@ function homeView() {
       ${renewAskCardHtml(t, r)}
       ${homeWaitHtml(t)}
       ${handoverNote}
-      <div class="hero-card room-hero${festPrefOn() && tenantBirthdayOn(t, r) ? " is-bday" : ""}">
+      <div class="hero-card room-hero${festPrefOn() && tenantBirthdayOn(t, r) ? " is-bday" : ""}${ui.homeArrive && String(r.no) === "7651" ? " hero-arrive" : ""}">
         ${roomBirthdayHtml(t, r)}
         ${roomFestHtml()}
-        <div class="label">我的房間</div>
-        <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
-        <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
+        <div class="room-head">
+          <div class="label">我的房間</div>
+          <div class="room-name">${r.no}　${roomPublicTitle(r)}</div>
+          <div class="small" style="margin:-8px 0 14px">${escapeHtml(r.note || r.location || roomAddress(r.no))}</div>
+        </div>
         <div class="hero-stats">
           <div class="stat is-cal" id="lease-remain" role="button" tabindex="0"><div class="label">租約剩餘天數</div><b>${leaseRemainHtml(t, r)}</b></div>
           <div class="stat is-pay${paidThisMonth(t) && (dueNow || firstPay) ? " is-paid" : ""}" data-page="pay" data-scroll-pay="1" role="button" tabindex="0"><div class="label">${firstPay ? "首次應繳" : "本月租金"}${!firstPay && stubNow ? `<span class="rent-sub">（不足月日拆）</span>` : ""}</div><b>${thisMonthRentCardHtml(t, r)}</b>${paidThisMonth(t) && (dueNow || firstPay) ? rentPaidStampHtml(t) : ""}</div>
