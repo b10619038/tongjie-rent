@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-18-58";
-const APP_EDIT_COUNT = 2264;
+const APP_STAMP = "2026-11-11-19-42";
+const APP_EDIT_COUNT = 2265;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1890";
+const FILE_VER = "1891";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7620,7 +7620,7 @@ function showCsBow() {
   const frames = [];
   for (let i = 1; i <= n; i++) {
     const im = new Image();
-    im.src = "images/bow/f" + String(i).padStart(2, "0") + ".webp?v=1890";
+    im.src = "images/bow/f" + String(i).padStart(2, "0") + ".webp?v=1891";
     frames.push(im);
   }
   let timer = 0;
