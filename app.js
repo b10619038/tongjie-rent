@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1909";
+const FILE_VER = "1910";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -28262,12 +28262,13 @@ function studioElecStoreFee(t, r) {
 }
 function studioAgentFee(t, r) {
   if (t && t.hasAgent === false) return 0;
-  if (t && Number(t.agentFee) > 0) return Math.round(Number(t.agentFee));
   const note = String((t && t.note) || "") + " " + String((r && TENANT_INFO[r && r.no] || {}).note || "");
   if (/無仲介/.test(note)) return 0;
   const m = note.match(/仲介費?\s*([\d,]+)/);
   if (m) return Number(String(m[1]).replace(/,/g, "")) || 0;
-  if ((t && t.hasAgent) || /仲介/.test(note)) return studioContractRent(t, r) || Number(r && r.rent) || 0;
+  const rent = studioContractRent(t, r) || Number(r && r.rent) || 0;
+  if ((t && t.hasAgent) || /仲介/.test(note)) return rent || Math.round(Number(t && t.agentFee) || 0);
+  if (t && Number(t.agentFee) > 0) return Math.round(Number(t.agentFee));
   return 0;
 }
 function ensureAgentFeeWork(t, r, data) {
@@ -28275,7 +28276,12 @@ function ensureAgentFeeWork(t, r, data) {
   if (!st || !t || !(t.hasAgent || Number(t.agentFee) > 0)) return;
   const fee = studioAgentFee(t, r);
   if (!fee) return;
-  if (!t.agentFee) t.agentFee = fee;
+  if (Number(t.agentFee) !== fee) {
+    t.agentFee = fee;
+    t.edited = true;
+    t.editedAt = Date.now();
+    try { markCloudDirty(); } catch {}
+  }
   const date = ymdOf(t.signAppointAt) || ymdOf(t.signOn) || ymdOf(t.leaseStart) || todayYmd();
   const no = (r && r.no) || t.roomNo || "";
   const id = "agentfee-" + t.id;
