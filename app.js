@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1897";
+const FILE_VER = "1898";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -12554,6 +12554,7 @@ function applyRenewNoMarks(data) {
       (room && (x.roomId === room.id || x.id === room.tenantId)) || x.id === "t" + no
     ));
     if (no === "7631" && t && !sameTenantName(t.name, "蔡文銘")) return;
+    if (no === "7023" && t && !sameTenantName(t.name, "謝雯鶯")) return;
     if (t && (t.renewChoice === "open" || t.renewChoice === "yes")) return;
     if (t && t.renewChoice !== "no") {
       t.renewChoice = "no";
@@ -21047,7 +21048,8 @@ function renewDecisionOf(no) {
     if (t && t.renewChoice === "open") return "";
     if (t && (t.renewChoice === "no" || t.renewChoice === "yes")) return t.renewChoice;
   } catch {}
-  if (s === "6822" || s === "7023") return "no";
+  if (s === "6822") return "no";
+  if (s === "7023" && t && sameTenantName(t.name, "謝雯鶯")) return "no";
   if (s === "7631" && (!t || sameTenantName(t.name, "蔡文銘"))) return "no";
   if (s === "7021") return "yes";
   return "";
