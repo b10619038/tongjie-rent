@@ -805,6 +805,7 @@ input, textarea, select {
 .hero-card .room-name { font-size: 22px; font-weight: 700; margin: 0 0 16px; color: #17211f; }
 .hero-card .small { color: #7a8a85; }
 .room-head { position: relative; z-index: 2; }
+.hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; overflow: visible; }
 .stat {
   position: relative;
   display: flex;
