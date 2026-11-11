@@ -806,6 +806,16 @@ input, textarea, select {
 .hero-card .small { color: #7a8a85; }
 .room-head { position: relative; z-index: 2; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: stretch; overflow: visible; }
+.cs-bow-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(255, 255, 255, .5);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.cs-bow-dim.on { opacity: 1; }
 .cs-bow {
   position: fixed;
   left: 50%;
@@ -817,14 +827,7 @@ input, textarea, select {
   pointer-events: none;
   animation: csBowIn .28s cubic-bezier(.22,.82,.22,1) forwards;
 }
-.cs-bow video {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-.cs-bow canvas {
+.cs-bow img {
   display: block;
   width: 100%;
   height: auto;

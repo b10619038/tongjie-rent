@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-18-48";
-const APP_EDIT_COUNT = 2263;
+const APP_STAMP = "2026-11-11-18-58";
+const APP_EDIT_COUNT = 2264;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1889";
+const FILE_VER = "1890";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7600,82 +7600,71 @@ function playRoomHero() {
 }
 function showCsBow() {
   const token = ++showCsBow.token;
-  const old = document.getElementById("cs-bow");
-  if (old) old.remove();
-  const app = document.getElementById("app");
-  if (app) {
-    app.style.transition = "opacity .28s ease";
-    app.style.opacity = "0.5";
-  }
+  const prev = document.getElementById("cs-bow");
+  const prevDim = document.getElementById("cs-bow-dim");
+  if (prev) prev.remove();
+  if (prevDim) prevDim.remove();
+  const dim = document.createElement("div");
+  dim.id = "cs-bow-dim";
+  dim.className = "cs-bow-dim";
   const box = document.createElement("div");
   box.id = "cs-bow";
   box.className = "cs-bow";
-  const video = document.createElement("video");
-  video.src = "images/cs-bow.mp4?v=1888";
-  video.muted = true;
-  video.defaultMuted = true;
-  video.playsInline = true;
-  video.setAttribute("playsinline", "");
-  video.setAttribute("webkit-playsinline", "");
-  video.autoplay = true;
-  video.playbackRate = 2.6;
-  const canvas = document.createElement("canvas");
-  box.appendChild(video);
-  box.appendChild(canvas);
+  const img = document.createElement("img");
+  img.alt = "";
+  box.appendChild(img);
+  document.body.appendChild(dim);
   document.body.appendChild(box);
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  let stop = false;
-  let raf = 0;
-  const paint = () => {
-    if (stop || token !== showCsBow.token || !video.videoWidth) return;
-    if (canvas.width !== video.videoWidth) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0);
-    try {
-      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = frame.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const r = d[i], g = d[i + 1], b = d[i + 2];
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        if (min > 214 && max - min < 28) {
-          const t = Math.min(1, (min - 214) / 34);
-          d[i + 3] = Math.round(255 * (1 - t));
-        }
-      }
-      ctx.putImageData(frame, 0, 0);
-    } catch {}
-    if (!video.paused && !video.ended) raf = requestAnimationFrame(paint);
-  };
+  requestAnimationFrame(() => { if (token === showCsBow.token) dim.classList.add("on"); });
+  const n = 40;
+  const frames = [];
+  for (let i = 1; i <= n; i++) {
+    const im = new Image();
+    im.src = "images/bow/f" + String(i).padStart(2, "0") + ".webp?v=1890";
+    frames.push(im);
+  }
+  let timer = 0;
+  let step = 0;
   const done = () => {
-    if (stop || token !== showCsBow.token) return;
-    stop = true;
-    if (raf) cancelAnimationFrame(raf);
-    try { video.pause(); } catch {}
+    if (token !== showCsBow.token) return;
+    showCsBow.token++;
+    clearInterval(timer);
     box.style.animation = "none";
     box.style.transform = "translate(-50%, -50%) scale(1)";
     box.style.opacity = "1";
-    if (app) app.style.opacity = "1";
     requestAnimationFrame(() => {
-      box.style.transition = "opacity .25s ease";
+      box.style.transition = "opacity .22s ease";
+      dim.style.transition = "opacity .22s ease";
       box.style.opacity = "0";
+      dim.style.opacity = "0";
     });
     setTimeout(() => {
       try { box.remove(); } catch {}
-      if (app) {
-        app.style.opacity = "";
-        app.style.transition = "";
-      }
-    }, 280);
+      try { dim.remove(); } catch {}
+    }, 240);
   };
-  video.addEventListener("play", () => { video.playbackRate = 2.6; paint(); });
-  video.addEventListener("timeupdate", () => { if (video.currentTime >= 3.4) done(); });
-  video.addEventListener("ended", done);
-  const p = video.play();
-  if (p && p.catch) p.catch(() => {});
-  setTimeout(done, 2800);
+  const play = () => {
+    if (timer || token !== showCsBow.token) return;
+    img.src = frames[0].src;
+    timer = setInterval(() => {
+      step++;
+      if (step >= frames.length) { done(); return; }
+      img.src = frames[step].src;
+    }, 30);
+  };
+  let left = frames.length;
+  const tick = () => {
+    left--;
+    if (left <= 0) play();
+  };
+  frames.forEach(im => {
+    if (im.complete) tick();
+    else {
+      im.onload = tick;
+      im.onerror = tick;
+    }
+  });
+  setTimeout(() => { if (token === showCsBow.token && !timer) play(); }, 700);
 }
 showCsBow.token = 0;
 function armPayBow() {
@@ -7694,7 +7683,7 @@ function armPayBow() {
       if (mark === "shown") return;
       try { localStorage.setItem(key, "shown"); } catch {}
     }
-    setTimeout(showCsBow, fromMenu ? 280 : 520);
+    setTimeout(showCsBow, fromMenu ? 60 : 360);
   } catch {}
 }
 function playHomeSlides() {
