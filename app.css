@@ -955,9 +955,21 @@ html[data-theme="void"] .rent-stamp {
   background: rgba(159, 191, 150, 0.12);
 }
 .stat.is-cal,
-.stat.is-pay { cursor: pointer; }
+.stat.is-pay {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transform-origin: center center;
+  transition: scale 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .stat.is-cal:active,
-.stat.is-pay:active { transform: scale(0.98); }
+.stat.is-pay:active,
+.stat.is-cal.is-press,
+.stat.is-pay.is-press {
+  scale: 0.96;
+  transition-duration: 0.09s;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
 .lease-cal-mask {
   position: fixed;
   inset: 0;

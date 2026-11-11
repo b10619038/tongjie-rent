@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-15-22";
-const APP_EDIT_COUNT = 2253;
+const APP_STAMP = "2026-11-11-15-28";
+const APP_EDIT_COUNT = 2254;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1879";
+const FILE_VER = "1880";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43409,11 +43409,15 @@ function closeLeaseCal() {
 }
 function bindLeaseCal() {
   const leaseRemain = document.getElementById("lease-remain");
-  if (leaseRemain) leaseRemain.onclick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openLeaseCal();
-  };
+  if (leaseRemain) {
+    bindIosPress(leaseRemain);
+    leaseRemain.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openLeaseCal();
+    };
+  }
+  document.querySelectorAll(".hero-stats .stat.is-pay").forEach(bindIosPress);
   const mask = document.getElementById("lease-cal-mask");
   if (mask && ui.leaseCalOpen) {
     mountLeaseCalMask(mask);
