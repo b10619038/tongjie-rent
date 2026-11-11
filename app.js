@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-16-10";
-const APP_EDIT_COUNT = 2258;
+const APP_STAMP = "2026-11-11-16-44";
+const APP_EDIT_COUNT = 2259;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1884";
+const FILE_VER = "1885";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -7614,11 +7614,9 @@ function playHomeSlides() {
   const hero = document.querySelector(".hero-card.room-hero") || document.querySelector(".hero-card");
   const heroAnim = run(hero, "translateX(80%)");
   try {
-    const room = typeof myRoom === "function" ? myRoom() : null;
-    const no = String((room && room.no) || ui.roomNo || "");
     const stats = hero && hero.querySelector(".hero-stats");
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (no === "7651" && stats && !reduce) {
+    if (stats && !reduce) {
       stats.style.transformOrigin = "center center";
       stats.animate([
         { transform: "scale(0.72)", opacity: 0, offset: 0 },
