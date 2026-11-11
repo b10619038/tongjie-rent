@@ -7548,12 +7548,54 @@ html.embed-pane .home-upd { display: none !important; }
 }
 .font-scale span { font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
 .font-scale input[type="range"] {
+  --fill: 50%;
+  --track: #e6e6e6;
+  --range-fade: color-mix(in srgb, var(--teal) 42%, #fff);
   flex: 1;
   height: 28px;
   margin: 0;
+  background: transparent;
   pointer-events: auto !important;
-  accent-color: var(--teal);
+  -webkit-appearance: none;
+  appearance: none;
 }
+.font-scale input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track);
+  background: linear-gradient(90deg, var(--teal), var(--range-fade)) left center / var(--fill) 100% no-repeat, var(--track);
+}
+.font-scale input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.22);
+}
+.font-scale input[type="range"]::-moz-range-track {
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--track);
+}
+.font-scale input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--teal), var(--range-fade));
+}
+.font-scale input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.22);
+}
+html[data-theme="void"] .font-scale input[type="range"] { --track: #3c3c3c; }
 
 .intro-mask {
   position: fixed; inset: 0; z-index: 10000;

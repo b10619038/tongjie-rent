@@ -45,10 +45,10 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-11-15-14";
-const APP_EDIT_COUNT = 2250;
+const APP_STAMP = "2026-11-11-15-18";
+const APP_EDIT_COUNT = 2251;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1876";
+const FILE_VER = "1877";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1553,6 +1553,14 @@ function applyTheme(id) {
   if (apple) apple.setAttribute("content", dark ? "black" : (t.id === "snow" || t.id === "mist") ? "default" : "black-translucent");
   try { localStorage.setItem(themeStorageKey(), t.id); } catch {}
 }
+function paintRangeFill(el) {
+  if (!el) return;
+  const min = Number(el.min);
+  const max = Number(el.max);
+  const v = Number(el.value);
+  const p = max > min ? (v - min) / (max - min) : 0;
+  el.style.setProperty("--fill", (Math.max(0, Math.min(1, p)) * 100) + "%");
+}
 function currentFontScale() {
   try {
     const n = Number(localStorage.getItem(FONT_KEY) || 100);
@@ -1570,7 +1578,10 @@ function applyFont(n) {
   const lab = document.getElementById("font-val");
   if (lab) lab.textContent = v + "%";
   const slider = document.getElementById("font-scale");
-  if (slider && slider.value !== String(v)) slider.value = String(v);
+  if (slider) {
+    if (slider.value !== String(v)) slider.value = String(v);
+    paintRangeFill(slider);
+  }
   return v;
 }
 function syncAppHeight() {
@@ -1631,7 +1642,10 @@ function applyHaptic(n) {
   const lab = document.getElementById("haptic-val");
   if (lab) lab.textContent = v === 0 ? "關閉" : v + "%";
   const slider = document.getElementById("haptic-scale");
-  if (slider && slider.value !== String(v)) slider.value = String(v);
+  if (slider) {
+    if (slider.value !== String(v)) slider.value = String(v);
+    paintRangeFill(slider);
+  }
   return v;
 }
 function autoHaptic() {
@@ -1665,7 +1679,10 @@ function applyRing(n) {
   const lab = document.getElementById("ring-val");
   if (lab) lab.textContent = v === 0 ? "關閉" : v + "%";
   const slider = document.getElementById("ring-scale");
-  if (slider && slider.value !== String(v)) slider.value = String(v);
+  if (slider) {
+    if (slider.value !== String(v)) slider.value = String(v);
+    paintRangeFill(slider);
+  }
   return v;
 }
 function autoRing() {
@@ -44529,7 +44546,7 @@ function lookSettingsHtml() {
       <p class="small">左右滑動調整，整頁文字與圖塊會一起變大變小。</p>
       <div class="font-scale">
         <span>小</span>
-        <input id="font-scale" type="range" min="85" max="130" step="1" value="${currentFontScale()}" />
+        <input id="font-scale" type="range" min="85" max="130" step="1" value="${currentFontScale()}" style="--fill:${Math.max(0, Math.min(100, (currentFontScale() - 85) / 45 * 100))}%" />
         <span>大</span>
       </div>
       <div class="row"><span class="k">目前大小</span><span class="v" id="font-val">${currentFontScale()}%</span></div>
@@ -44542,7 +44559,7 @@ function lookSettingsHtml() {
       <p class="small">左右滑動調整輕重，最左邊是關閉。Android 會震，iPhone 多數不會。</p>
       <div class="font-scale">
         <span>關</span>
-        <input id="haptic-scale" type="range" min="0" max="100" step="1" value="${currentHaptic()}" />
+        <input id="haptic-scale" type="range" min="0" max="100" step="1" value="${currentHaptic()}" style="--fill:${currentHaptic()}%" />
         <span>強</span>
       </div>
       <div class="row"><span class="k">目前強度</span><span class="v" id="haptic-val">${currentHaptic() === 0 ? "關閉" : currentHaptic() + "%"}</span></div>
@@ -44555,7 +44572,7 @@ function lookSettingsHtml() {
       <p class="small">左右滑動調整音量，最左邊是關閉。通知與重要提醒會用這個音量。</p>
       <div class="font-scale">
         <span>關</span>
-        <input id="ring-scale" type="range" min="0" max="100" step="1" value="${currentRing()}" />
+        <input id="ring-scale" type="range" min="0" max="100" step="1" value="${currentRing()}" style="--fill:${currentRing()}%" />
         <span>強</span>
       </div>
       <div class="row"><span class="k">目前音量</span><span class="v" id="ring-val">${currentRing() === 0 ? "關閉" : currentRing() + "%"}</span></div>
