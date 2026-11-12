@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1967";
+const FILE_VER = "1968";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43603,12 +43603,14 @@ async function openIdScanner() {
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
   } catch {
-    toast("請允許使用相機，才能掃描身分證");
+    const file = document.getElementById("move-id-file");
+    if (file) file.click();
+    else toast("請允許使用相機，才能掃描身分證");
     return;
   }
   const el = document.createElement("div");
   el.className = "id-scan";
-  el.innerHTML = '<video autoplay playsinline muted></video><div class="id-scan-shade"><div class="id-scan-frame"></div></div><p class="id-scan-hint">請把身分證移進框內</p><button type="button" class="id-scan-x">關閉</button>';
+  el.innerHTML = '<video autoplay playsinline muted></video><div class="id-scan-shade"><div class="id-scan-frame"></div></div><p class="id-scan-hint">把身分證對滿這個框，再按拍照</p><button type="button" class="id-scan-shot" aria-label="拍照"><i></i></button><button type="button" class="id-scan-x">關閉</button>';
   document.body.appendChild(el);
   const video = el.querySelector("video");
   video.srcObject = stream;
@@ -43626,8 +43628,37 @@ async function openIdScanner() {
     timer: 0
   };
   el.querySelector(".id-scan-x").onclick = () => closeIdScanner();
+  el.querySelector(".id-scan-shot").onclick = () => shootIdCard();
   twIdWorker().catch(() => {});
-  tickIdScanner();
+}
+async function shootIdCard() {
+  const scan = idScan;
+  if (!scan || scan.dead || scan.busy) return;
+  const still = idScanStill(scan.video, scan.frame);
+  if (!still) {
+    if (scan.hint) scan.hint.textContent = "請等畫面出來再拍";
+    return;
+  }
+  scan.busy = true;
+  const shot = scan.el.querySelector(".id-scan-shot");
+  if (shot) shot.disabled = true;
+  if (scan.hint) scan.hint.textContent = "正在讀身分證";
+  try {
+    const blob = await new Promise(r => still.canvas.toBlob(r, "image/jpeg", 0.92));
+    const found = blob ? await recognizeIdBlob(blob) : null;
+    if (scan.dead) return;
+    if (found) {
+      closeIdScanner();
+      applyIdCardRead(found);
+      return;
+    }
+    if (scan.hint) scan.hint.textContent = "沒讀清楚，對滿框再拍一次";
+  } catch {
+    if (scan.hint) scan.hint.textContent = "沒讀到，請再拍一次";
+  }
+  if (!idScan || idScan.dead) return;
+  idScan.busy = false;
+  if (shot) shot.disabled = false;
 }
 async function readMoveIdCard(file) {
   if (!file) return;
@@ -43663,8 +43694,7 @@ function bindMoveInForm() {
     scan.onclick = e => {
       e.preventDefault();
       twIdWorker().catch(() => {});
-      scanFile.value = "";
-      scanFile.click();
+      openIdScanner();
     };
     scanFile.onchange = () => {
       const file = scanFile.files && scanFile.files[0];
