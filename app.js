@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1961";
+const FILE_VER = "1962";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42797,6 +42797,17 @@ function moveSharePack() {
   rents.push((mo ? mo + "月租金 " : "房租 ") + money(bits.firstMonth));
   return { d, t, room, bits, addr, rents };
 }
+function moveSharePeriodLines(bits) {
+  if (bits && bits.stub && bits.stubStart && bits.yearStart) {
+    return [
+      "不足月 " + rocSlash(bits.stubStart) + " → " + rocSlash(bits.stubEnd),
+      "一年合約 " + rocSlash(bits.yearStart) + " → " + rocSlash(bits.yearEnd)
+    ];
+  }
+  const start = bits && (bits.yearStart || "");
+  const end = bits && (bits.yearEnd || "");
+  return [(rocSlash(start) || "") + " → " + (rocSlash(end) || "")];
+}
 function moveTenantShareText() {
   const pack = moveSharePack();
   if (!pack) return "";
@@ -42813,7 +42824,7 @@ function moveTenantShareText() {
     addr || room.no || "",
     "",
     "合約期間：",
-    (rocSlash(t.leaseStart) || "") + " → " + (rocSlash(t.leaseEnd) || ""),
+    ...moveSharePeriodLines(bits),
     "",
     rule,
     "",
@@ -42854,7 +42865,7 @@ function moveOwnerShareText() {
     "地點：" + (addr || room.no || ""),
     "",
     "合約期間：",
-    (rocSlash(t.leaseStart) || "") + " → " + (rocSlash(t.leaseEnd) || ""),
+    ...moveSharePeriodLines(bits),
     "",
     rule,
     "",
