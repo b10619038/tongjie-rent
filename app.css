@@ -6816,8 +6816,8 @@ img.avatar { object-fit: cover; display: block; }
   white-space: nowrap;
 }
 #move-agent-grid { flex: 0 1 148px; width: 148px; }
-#move-pay-grid,
-#move-elec-step { flex: 1 1 auto; min-width: 0; max-width: 250px; }
+#move-pay-grid { flex: 1 1 auto; min-width: 0; max-width: 250px; }
+#move-elec-step { flex: 0 0 148px; width: 148px; max-width: 148px; }
 .move-line .seg button {
   padding: 7px 4px;
   font-size: 15px;
@@ -6829,7 +6829,7 @@ img.avatar { object-fit: cover; display: block; }
 }
 .move-elec-step {
   display: grid;
-  grid-template-columns: 46px 1fr 46px;
+  grid-template-columns: 32px 1fr 32px;
   align-items: center;
   background: var(--ok-soft);
   border-radius: 999px;
