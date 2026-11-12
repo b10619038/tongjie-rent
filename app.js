@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1966";
+const FILE_VER = "1967";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43174,17 +43174,31 @@ function idFromOcr(text) {
   return Object.keys(count).sort((a, b) => count[b] - count[a])[0];
 }
 function nameFromOcr(text) {
-  const bad = /身分|國民|中華|出生|性別|統一|住址|配偶|役別|縣|市|日期|編號|民國|照片/;
+  const bad = /身分|國民|中華|出生|性別|統一|住址|配偶|役別|縣|市|區|鄉|鎮|日期|編號|民國|照片|路|街|巷|弄|號|樓/;
   const ok = s => /^[\u4e00-\u9fff]{2,4}$/.test(s) && !bad.test(s);
-  const flat = String(text || "").replace(/[ \t]/g, "");
-  const inline = flat.match(/姓名[^\u4e00-\u9fff]{0,16}([\u4e00-\u9fff]{2,4})/);
-  if (inline && ok(inline[1])) return inline[1];
-  const lines = String(text || "").split(/\n/).map(s => s.trim()).filter(Boolean);
+  const grab = s => {
+    const cjk = String(s || "").replace(/[^\u4e00-\u9fff]/g, "");
+    return cjk.length >= 2 && cjk.length <= 4 && ok(cjk) ? cjk : "";
+  };
+  const raw = String(text || "");
+  const lines = raw.split(/\n/).map(s => s.trim()).filter(Boolean);
   for (let i = 0; i < lines.length; i++) {
-    if (/^姓名[:：]?$/.test(lines[i])) {
-      const next = String(lines[i + 1] || "").replace(/[^\u4e00-\u9fff]/g, "");
-      if (ok(next)) return next;
+    if (!/姓\s*名|性\s*名/.test(lines[i])) continue;
+    const same = grab(lines[i].replace(/^.*(?:姓\s*名|性\s*名)/, ""));
+    if (same) return same;
+    for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+      if (/出生|統一|住址|性別|發證/.test(lines[j])) break;
+      const next = grab(lines[j]);
+      if (next) return next;
     }
+  }
+  const inline = raw.replace(/[ \t]/g, "").match(/姓\s*名[^\u4e00-\u9fff]{0,40}([\u4e00-\u9fff]{2,4})/);
+  if (inline && ok(inline[1])) return inline[1];
+  for (let i = 0; i < lines.length; i++) {
+    if (/出生|統一|住址|發證/.test(lines[i])) break;
+    if (/姓名|性名|中華|國民|身分|民國|男|女/.test(lines[i])) continue;
+    const next = grab(lines[i]);
+    if (next) return next;
   }
   return "";
 }
@@ -43432,18 +43446,23 @@ async function recognizeTwId(blob) {
     birthday: birthR.confidence >= 25 ? (birthFromOcr(birthR.text) || parseOneBirthday(birthR.text)) : "",
     address: ""
   };
-  if (found.name || found.idNo || found.birthday) return found;
-  await worker.setParameters({ tessedit_char_whitelist: "", tessedit_pageseg_mode: "6" });
-  const whole = await worker.recognize(card);
-  const parsed = parseIdCardText(whole && whole.data && whole.data.text);
-  if (parsed.idNo && !twIdValid(parsed.idNo)) parsed.idNo = "";
-  if (!parsed.name && !parsed.idNo && !parsed.birthday && !parsed.address) return null;
-  return parsed;
+  if (!found.name || !found.idNo || !found.birthday) {
+    await worker.setParameters({ tessedit_char_whitelist: "", tessedit_pageseg_mode: "6" });
+    const whole = await worker.recognize(card);
+    const parsed = parseIdCardText(whole && whole.data && whole.data.text);
+    if (parsed.idNo && !twIdValid(parsed.idNo)) parsed.idNo = "";
+    if (!found.name) found.name = parsed.name;
+    if (!found.idNo) found.idNo = parsed.idNo;
+    if (!found.birthday) found.birthday = parsed.birthday;
+    if (!found.address) found.address = parsed.address;
+  }
+  if (!found.name && !found.idNo && !found.birthday && !found.address) return null;
+  return found;
 }
 async function recognizeIdBlob(blob) {
   let tw = null;
   try { tw = await recognizeTwId(blob); } catch {}
-  if (tw && tw.name && (tw.idNo || tw.birthday || tw.address)) return tw;
+  if (tw && tw.name && tw.idNo) return tw;
   const file = new File([blob], "id.jpg", { type: "image/jpeg" });
   const image = await fileToVisionJpeg(file, 1800);
   let vision = null;
@@ -43616,21 +43635,12 @@ async function readMoveIdCard(file) {
   if (btn) btn.disabled = true;
   toast("正在讀身分證");
   try {
-    const images = await idCardPayloads(file);
-    const gem = images[0] ? await geminiIdCard(images[0]) : null;
-    const text = (await Promise.all((images || []).map(visionIdText))).filter(Boolean).join("\n");
-    const ocr = parseIdCardText(text);
-    const found = {
-      name: (gem && gem.name) || ocr.name,
-      idNo: (gem && gem.idNo) || ocr.idNo,
-      birthday: (gem && gem.birthday) || ocr.birthday,
-      address: (gem && gem.address) || ocr.address
-    };
-    if (!found.name && !found.idNo && !found.birthday && !found.address) {
-      toast("沒讀清楚。請把身分證放平、避免反光，再拍一次");
+    twIdWorker().catch(() => {});
+    const found = await recognizeIdBlob(file);
+    if (!found) {
+      toast("沒讀清楚。請把身分證拍近一點、避免反光，再拍一次");
       return;
     }
-    if (found.idNo && !twIdValid(found.idNo)) found.idNo = "";
     applyIdCardRead(found);
   } catch {
     toast("讀不到身分證，請再拍一次");
@@ -43652,7 +43662,9 @@ function bindMoveInForm() {
   if (scan && scanFile) {
     scan.onclick = e => {
       e.preventDefault();
-      openIdScanner();
+      twIdWorker().catch(() => {});
+      scanFile.value = "";
+      scanFile.click();
     };
     scanFile.onchange = () => {
       const file = scanFile.files && scanFile.files[0];
