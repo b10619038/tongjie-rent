@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1958";
+const FILE_VER = "1959";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -26937,10 +26937,10 @@ async function ocrPassbookFile(file, worker) {
   }
   return texts.join("\n");
 }
-async function fileToVisionJpeg(file) {
+async function fileToVisionJpeg(file, maxSide) {
   try {
     const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-    const max = 1600;
+    const max = maxSide || 1600;
     const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
     const w = Math.max(1, Math.round(bmp.width * scale));
     const h = Math.max(1, Math.round(bmp.height * scale));
@@ -27822,7 +27822,7 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function blankMoveIn() {
-  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", name2: "", phone2: "", idNo2: "", birthday2: "", people: 1, hasAgent: true, payWay: "cash" };
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
 }
 function saveMoveDraft() {
   const d = ui && ui.moveIn;
@@ -27834,7 +27834,7 @@ function loadMoveDraft() {
     const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
     if (!raw || typeof raw !== "object") return null;
     const d = blankMoveIn();
-    ["roomId", "name", "phone", "idNo", "birthday", "name2", "phone2", "idNo2", "birthday2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
+    ["roomId", "name", "phone", "idNo", "birthday", "address", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
@@ -30953,16 +30953,23 @@ function moveInView() {
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
       <div class="move-card-head">
         <div class="label">基本資料</div>
-        <div class="seg move-seg${Number(d.people) === 2 ? " is-no" : ""}" id="move-people-grid">
+        <div class="move-head-tools">
+          <button type="button" class="move-scan" id="move-id-scan" aria-label="掃描身分證">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 8V5h3M20 8V5h-3M4 16v3h3M20 16v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <input id="move-id-file" type="file" accept="image/*" capture="environment" hidden>
+          <div class="seg move-seg${Number(d.people) === 2 ? " is-no" : ""}" id="move-people-grid">
           <i class="seg-bg"></i>
           <button type="button" data-move-people="1" class="${Number(d.people) === 2 ? "" : "on"}">1人</button>
           <button type="button" data-move-people="2" class="${Number(d.people) === 2 ? "on" : ""}">2人</button>
+        </div>
         </div>
       </div>
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-name2" type="text" value="${escapeHtml(d.name2 || "")}" placeholder="第二人姓名" autocomplete="name" inputmode="text" /></div></div></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
       <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-bday2" type="date" value="${escapeHtml(parseOneBirthday(d.birthday2) || "")}" /></div></div></label>
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-idno2" type="text" value="${escapeHtml(d.idNo2 || "")}" placeholder="第二人身分證" autocomplete="off" autocapitalize="characters" maxlength="21" /></div></div></label>
+      <label class="field"><span>戶籍地址</span><input id="move-addr" type="text" value="${escapeHtml(d.address || "")}" placeholder="掃身分證反面，或手動填" autocomplete="street-address" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-addr2" type="text" value="${escapeHtml(d.address2 || "")}" placeholder="第二人戶籍地址" autocomplete="street-address" /></div></div></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
@@ -42647,6 +42654,8 @@ function captureMoveInDraft() {
   if (document.getElementById("move-phone2")) d.phone2 = normalizeMobile(val("move-phone2"));
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
   if (document.getElementById("move-idno2")) d.idNo2 = normalizeIdNo(val("move-idno2"));
+  if (document.getElementById("move-addr")) d.address = val("move-addr");
+  if (document.getElementById("move-addr2")) d.address2 = val("move-addr2");
   if (document.getElementById("move-bday")) d.birthday = parseOneBirthday(val("move-bday"));
   if (document.getElementById("move-bday2")) d.birthday2 = parseOneBirthday(val("move-bday2"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
@@ -42826,7 +42835,7 @@ function moveOwnerShareText() {
   if (!pack) return "";
   const { d, t, room, bits, addr, rents } = pack;
   const service = Math.round(Number(bits.monthly) || 0);
-  const home = String(d.address || "").trim();
+  const home = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
   const rule = "------------------------------";
   return [
     (room.no || "") + " 仲介帶看",
@@ -43091,10 +43100,177 @@ function bindLiveCommit(el, fn) {
   el.addEventListener("focus", watch);
   el.addEventListener("click", watch);
 }
+function twIdValid(id) {
+  if (!/^[A-Z][1289]\d{8}$/.test(id)) return false;
+  const map = { A: 10, B: 11, C: 12, D: 13, E: 14, F: 15, G: 16, H: 17, I: 34, J: 18, K: 19, L: 20, M: 21, N: 22, O: 35, P: 23, Q: 24, R: 25, S: 26, T: 27, U: 28, V: 29, W: 32, X: 30, Y: 31, Z: 33 };
+  const n = map[id[0]];
+  if (!n) return false;
+  const ds = [Math.floor(n / 10), n % 10];
+  for (let i = 1; i < 10; i++) ds.push(Number(id[i]));
+  const w = [1, 9, 8, 7, 6, 5, 4, 3, 2, 1, 1];
+  let sum = 0;
+  for (let i = 0; i < 11; i++) sum += ds[i] * w[i];
+  return sum % 10 === 0;
+}
+function idFromOcr(text) {
+  const src = String(text || "").toUpperCase().replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 48)).replace(/[Ｏ]/g, "O");
+  const compact = src.replace(/[^A-Z0-9]/g, "");
+  const found = [];
+  for (let i = 0; i + 10 <= compact.length; i++) {
+    let letter = compact[i];
+    let rest = compact.slice(i + 1, i + 10).replace(/O/g, "0").replace(/[IL]/g, "1").replace(/S/g, "5").replace(/B/g, "8").replace(/Z/g, "2");
+    if (!/[A-Z]/.test(letter)) {
+      if (letter === "0") letter = "O";
+      else if (letter === "1") letter = "I";
+      else continue;
+    }
+    const id = letter + rest;
+    if (twIdValid(id)) found.push(id);
+  }
+  return found.length ? found[0] : "";
+}
+function nameFromOcr(text) {
+  const bad = /身分|國民|中華|出生|性別|統一|住址|配偶|役別|縣|市|日期|編號|民國|照片/;
+  const ok = s => /^[\u4e00-\u9fff]{2,4}$/.test(s) && !bad.test(s);
+  const flat = String(text || "").replace(/[ \t]/g, "");
+  const inline = flat.match(/姓名[:：]?([\u4e00-\u9fff]{2,4})/);
+  if (inline && ok(inline[1])) return inline[1];
+  const lines = String(text || "").split(/\n/).map(s => s.trim()).filter(Boolean);
+  for (let i = 0; i < lines.length; i++) {
+    if (/^姓名[:：]?$/.test(lines[i])) {
+      const next = String(lines[i + 1] || "").replace(/[^\u4e00-\u9fff]/g, "");
+      if (ok(next)) return next;
+    }
+  }
+  return "";
+}
+function birthFromOcr(text) {
+  const t = String(text || "").replace(/\s+/g, "");
+  const tries = [
+    t.match(/民國(\d{2,3})年(\d{1,2})月(\d{1,2})日/),
+    t.match(/出生(?:日期|年月日)?(\d{2,3})年(\d{1,2})月(\d{1,2})日/),
+    t.match(/出生(?:日期)?(\d{2,3})[./](\d{1,2})[./](\d{1,2})/),
+    t.match(/出生(?:日期|年月日)?(\d{2,3})(\d{2})(\d{2})/)
+  ];
+  for (const m of tries) {
+    if (!m) continue;
+    const iso = parseOneBirthday((Number(m[1]) + 1911) + "-" + m[2] + "-" + m[3]);
+    if (iso) return iso;
+  }
+  return "";
+}
+function addressFromOcr(text) {
+  const lines = String(text || "").split(/\n/).map(s => s.trim());
+  for (let i = 0; i < lines.length; i++) {
+    if (!/住址|戶籍地址/.test(lines[i])) continue;
+    let rest = lines[i].replace(/^.*(?:住址|戶籍地址)[:：]?/, "");
+    for (let j = i + 1; j < lines.length && j < i + 4; j++) {
+      if (/^(父|母|配偶|役別|出生地|姓名)/.test(lines[j])) break;
+      rest += lines[j];
+    }
+    rest = rest.replace(/\s+/g, "").replace(/[^\u4e00-\u9fff0-9０-９\-－之號樓]/g, "");
+    if (/[市縣]/.test(rest) && /[路街巷弄號]/.test(rest) && rest.length >= 8) return rest.slice(0, 80);
+  }
+  return "";
+}
+function parseIdCardText(text) {
+  return {
+    name: nameFromOcr(text),
+    idNo: idFromOcr(text),
+    birthday: birthFromOcr(text),
+    address: addressFromOcr(text)
+  };
+}
+async function ocrIdCardFile(file) {
+  const image = await fileToVisionJpeg(file, 2200);
+  if (!image) return "";
+  const pull = async (url, headers, body) => {
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => null);
+    if (!data) return "";
+    if (data.ok && data.text) return String(data.text);
+    const resp = data.responses && data.responses[0];
+    return String((resp && resp.fullTextAnnotation && resp.fullTextAnnotation.text) || (data.text) || "");
+  };
+  try {
+    const cloud = await pull(LINE_HOOK + "/api/vision", { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY }, { image });
+    if (cloud.trim()) return cloud;
+  } catch {}
+  try {
+    const local = await pull("/vision-ocr", { "Content-Type": "application/json" }, { image });
+    if (local.trim()) return local;
+  } catch {}
+  const key = String((state && state.visionKey) || "").trim();
+  if (!key) return "";
+  try {
+    return await pull("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), { "Content-Type": "application/json" }, {
+      requests: [{ image: { content: image }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], imageContext: { languageHints: ["zh-Hant", "zh-TW", "en"] } }]
+    });
+  } catch { return ""; }
+}
+function applyIdCardRead(found) {
+  const d = ensureMoveIn();
+  const front = !!(found.name || found.idNo || found.birthday);
+  const useSecond = front && !!(d.name || d.idNo) && !(d.name2 || d.idNo2);
+  if (useSecond) d.people = 2;
+  const put = (key, value) => { if (value) d[useSecond ? key + "2" : key] = value; };
+  if (front) {
+    put("name", found.name);
+    put("idNo", found.idNo);
+    put("birthday", found.birthday);
+    if (found.address) put("address", found.address);
+  } else if (found.address) {
+    if (!d.address) d.address = found.address;
+    else { d.people = 2; d.address2 = found.address; }
+  }
+  saveMoveDraft();
+  ui.keepScroll = true;
+  render();
+  const bits = [];
+  if (found.name) bits.push("姓名");
+  if (found.idNo) bits.push("身分證");
+  if (found.birthday) bits.push("生日");
+  if (found.address) bits.push("戶籍地址");
+  toast("已填" + bits.join("、") + (found.idNo ? "" : "。身分證沒讀到檢查碼，請再拍正面") + (found.address ? "" : "。反面可再掃戶籍地址") + "。電話請自己填");
+}
+async function readMoveIdCard(file) {
+  if (!file) return;
+  const btn = document.getElementById("move-id-scan");
+  if (btn) btn.disabled = true;
+  toast("正在讀身分證");
+  try {
+    const text = await ocrIdCardFile(file);
+    const found = parseIdCardText(text);
+    if (!found.name && !found.idNo && !found.birthday && !found.address) {
+      toast("沒讀清楚。請把身分證放平、避免反光，再拍一次");
+      return;
+    }
+    if (found.idNo && !twIdValid(found.idNo)) found.idNo = "";
+    applyIdCardRead(found);
+  } catch {
+    toast("讀不到身分證，請再拍一次");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
   ensureMoveLiveWatch();
   ui.moveSplitPop = false;
+  const scan = document.getElementById("move-id-scan");
+  const scanFile = document.getElementById("move-id-file");
+  if (scan && scanFile) {
+    scan.onclick = e => {
+      e.preventDefault();
+      scanFile.value = "";
+      scanFile.click();
+    };
+    scanFile.onchange = () => {
+      const file = scanFile.files && scanFile.files[0];
+      scanFile.value = "";
+      readMoveIdCard(file);
+    };
+  }
   const openBtn = document.getElementById("move-room-open");
   if (openBtn) openBtn.onclick = e => {
     e.preventDefault();

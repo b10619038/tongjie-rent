@@ -1993,6 +1993,21 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   margin: 0 0 12px;
 }
 .move-card-head .label { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
+.move-head-tools { display: flex; align-items: center; gap: 8px; }
+.move-scan {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: #e7f0e4;
+  color: #1d4a34;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  flex: 0 0 40px;
+}
+.move-scan:active { transform: scale(.92); }
+.move-scan:disabled { opacity: .45; }
 #move-people-grid { flex: 0 0 132px; width: 132px; height: 40px; margin: 0; }
 #move-people-grid button { padding: 7px 4px; font-size: 15px; }
 .move-person2 {
