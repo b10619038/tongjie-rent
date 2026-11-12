@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1983";
+const FILE_VER = "1984";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27864,6 +27864,7 @@ function loadMoveDraft() {
     if (raw.leaseStartTouched) d.leaseStartTouched = true;
     if (Array.isArray(raw.signStrokes)) d.signStrokes = raw.signStrokes;
     if (raw.signImg) d.signImg = String(raw.signImg);
+    if (raw.signArmed) d.signArmed = true;
     return d;
   } catch { return null; }
 }
@@ -31012,7 +31013,10 @@ function moveInView() {
       <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
       <div class="field">
         <span>電子簽名</span>
-        <div class="sign-pad-wrap"><canvas id="move-sign-pad" width="640" height="220"></canvas></div>
+        <div class="sign-pad-wrap move-sign${d.signArmed ? " armed" : ""}" id="move-sign-box">
+          <canvas id="move-sign-pad"></canvas>
+          <div class="move-sign-hint">點一下開始簽名</div>
+        </div>
         <button type="button" class="ghost" id="move-sign-clear" style="margin-top:8px">清除簽名</button>
       </div>
     </div>
@@ -44185,6 +44189,166 @@ function bindSignAgree() {
     };
   }
 }
+function bindMoveSignPad() {
+  const box = document.getElementById("move-sign-box");
+  const c = document.getElementById("move-sign-pad");
+  if (!box || !c || c.dataset.bound === "1") return;
+  c.dataset.bound = "1";
+  const ctx = c.getContext("2d");
+  const draft = ensureMoveIn();
+  if (!Array.isArray(ui.moveSignStrokes) || !ui.moveSignStrokes.length) ui.moveSignStrokes = Array.isArray(draft.signStrokes) ? draft.signStrokes : [];
+  let armed = !!(draft.signArmed || (ui.moveSignStrokes || []).length);
+  const syncArm = () => {
+    box.classList.toggle("armed", armed);
+    box.style.touchAction = armed ? "none" : "manipulation";
+    c.style.touchAction = "none";
+  };
+  const paint = () => {
+    const rect = box.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width || box.clientWidth || 280));
+    const h = Math.max(1, Math.round(rect.height || box.clientHeight || 160));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+    const bw = Math.round(w * dpr);
+    const bh = Math.round(h * dpr);
+    if (c.width !== bw || c.height !== bh) {
+      c.width = bw;
+      c.height = bh;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#1a57c5";
+    ctx.fillStyle = "#1a57c5";
+    (ui.moveSignStrokes || []).forEach(line => {
+      if (!line || !line.length) return;
+      if (line.length < 2) {
+        ctx.beginPath();
+        ctx.arc(line[0].x, line[0].y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+      ctx.beginPath();
+      ctx.moveTo(line[0].x, line[0].y);
+      for (let i = 1; i < line.length; i++) ctx.lineTo(line[i].x, line[i].y);
+      ctx.stroke();
+    });
+  };
+  const crop = () => {
+    try {
+      const w = c.width;
+      const h = c.height;
+      const g = c.getContext("2d");
+      const data = g.getImageData(0, 0, w, h).data;
+      let minX = w, minY = h, maxX = 0, maxY = 0, hit = false;
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          if (data[(y * w + x) * 4 + 3] > 16) {
+            hit = true;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (!hit) return "";
+      const pad = 8;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(w - 1, maxX + pad);
+      maxY = Math.min(h - 1, maxY + pad);
+      const out = document.createElement("canvas");
+      out.width = Math.max(1, maxX - minX + 1);
+      out.height = Math.max(1, maxY - minY + 1);
+      out.getContext("2d").drawImage(c, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+      return out.toDataURL("image/png");
+    } catch { return ""; }
+  };
+  const snap = () => {
+    const d = ensureMoveIn();
+    d.signStrokes = ui.moveSignStrokes || [];
+    d.signArmed = armed;
+    d.signImg = (d.signStrokes || []).length ? crop() : "";
+    saveMoveDraft();
+  };
+  syncArm();
+  paint();
+  let drawing = false;
+  let last = null;
+  let usedPointer = 0;
+  const touchDup = e => String(e.type || "").indexOf("touch") === 0 && Date.now() - usedPointer < 700;
+  const point = e => {
+    const rect = c.getBoundingClientRect();
+    const src = e.touches && e.touches[0] ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  };
+  const down = e => {
+    if (touchDup(e)) return;
+    if (String(e.type || "").indexOf("pointer") === 0) usedPointer = Date.now();
+    if (e.button != null && e.button > 0) return;
+    if (!armed) {
+      armed = true;
+      syncArm();
+      snap();
+      try { e.preventDefault(); e.stopPropagation(); } catch {}
+      return;
+    }
+    try { e.preventDefault(); e.stopPropagation(); } catch {}
+    try { if (e.pointerId != null) c.setPointerCapture(e.pointerId); } catch {}
+    drawing = true;
+    ui.signing = true;
+    last = point(e);
+    if (!Array.isArray(ui.moveSignStrokes)) ui.moveSignStrokes = [];
+    ui.moveSignStrokes.push([last]);
+    paint();
+  };
+  const move = e => {
+    if (touchDup(e)) return;
+    if (!drawing || !armed) return;
+    try { e.preventDefault(); e.stopPropagation(); } catch {}
+    const p = point(e);
+    const line = ui.moveSignStrokes[ui.moveSignStrokes.length - 1];
+    if (line) line.push(p);
+    last = p;
+    paint();
+  };
+  const up = e => {
+    if (touchDup(e)) return;
+    if (e) { try { e.preventDefault(); } catch {} }
+    if (!drawing) return;
+    drawing = false;
+    ui.signing = false;
+    snap();
+  };
+  const on = (el, type, fn) => el.addEventListener(type, fn, { passive: false });
+  on(box, "pointerdown", down);
+  on(box, "pointermove", move);
+  on(box, "pointerup", up);
+  on(box, "pointercancel", up);
+  on(box, "touchstart", down);
+  on(box, "touchmove", move);
+  on(box, "touchend", up);
+  on(box, "touchcancel", up);
+  const clr = document.getElementById("move-sign-clear");
+  if (clr) clr.onclick = e => {
+    e.preventDefault();
+    ui.moveSignStrokes = [];
+    armed = false;
+    drawing = false;
+    ui.signing = false;
+    const d = ensureMoveIn();
+    d.signStrokes = [];
+    d.signImg = "";
+    d.signArmed = false;
+    saveMoveDraft();
+    syncArm();
+    paint();
+  };
+}
 function bindSignPad() {
   bindFormatField(document.getElementById("sign-emname"), "name");
   bindFormatField(document.getElementById("sign-emphone"), "phone");
@@ -44364,34 +44528,7 @@ function bindSignPad() {
   };
   const a = bindOne(document.getElementById("sign-pad"), "signStrokes");
   const b = bindOne(document.getElementById("sign-pad-2"), "signStrokes2");
-  const movePad = document.getElementById("move-sign-pad");
-  if (movePad) {
-    const draft = ensureMoveIn();
-    if (!Array.isArray(ui.moveSignStrokes) || !ui.moveSignStrokes.length) ui.moveSignStrokes = Array.isArray(draft.signStrokes) ? draft.signStrokes : [];
-  }
-  const m = bindOne(movePad, "moveSignStrokes");
-  if (m && m.c) {
-    const snap = () => {
-      const d = ensureMoveIn();
-      const lines = ui.moveSignStrokes || [];
-      d.signStrokes = lines;
-      const ink = lines.some(line => line && line.length > 1);
-      d.signImg = ink ? liveInkUrl(m.c) : "";
-      saveMoveDraft();
-    };
-    m.c.addEventListener("pointerup", snap);
-    m.c.addEventListener("pointercancel", snap);
-  }
-  const moveClr = document.getElementById("move-sign-clear");
-  if (moveClr) moveClr.onclick = e => {
-    e.preventDefault();
-    ui.moveSignStrokes = [];
-    const d = ensureMoveIn();
-    d.signStrokes = [];
-    d.signImg = "";
-    saveMoveDraft();
-    if (m) { m.c.dataset.ink = ""; m.fit(); }
-  };
+  bindMoveSignPad();
   const clr = document.getElementById("sign-clear");
   if (clr) clr.onclick = () => {
     ui.signStrokes = [];
