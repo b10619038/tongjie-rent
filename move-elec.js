@@ -95,11 +95,11 @@
     return origSave.apply(this, arguments);
   };
   const origSubmit = submitMoveIn;
-  submitMoveIn = function () {
+  submitMoveIn = function (opts) {
     captureMoveInDraft();
     elecAmount();
     stamping = true;
-    try { return origSubmit(); }
+    try { return origSubmit(opts); }
     finally { stamping = false; }
   };
   try { placeElec(); } catch (e) {}
