@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1951";
+const FILE_VER = "1952";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23266,7 +23266,7 @@ function firstPaySettleHtml(bits) {
   const feeRow = moveSettleItem("agent", "仲介費 " + money(fee), "仲介費用為一個月租金的一半", "move-fee-line");
   const total = moveSettleTotal(bits);
   const two = Number(bits.people) === 2;
-  const avg = two ? `<span class="move-avg-slot" data-note="sum"><span class="move-avg-clip"><em class="move-avg">平均一人 ${escapeHtml(money(Math.round(total / 2)))}</em></span></span>` : "";
+  const avg = two ? `<span class="move-avg-slot open" data-note="sum"><span class="move-avg-clip"><em class="move-avg">平均一人 ${escapeHtml(money(Math.round(total / 2)))}</em></span></span>` : "";
   const sumLabel = two ? `<button type="button" class="move-sum-k" data-settle="sum">合計</button>` : `<span>合計</span>`;
   return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum">${sumLabel}<span class="move-sum-right">${avg}<b>${escapeHtml(money(total))}</b></span></p></div>`;
 }
@@ -42773,7 +42773,8 @@ function paintMoveLive(force) {
   const settle = document.querySelector(".move-settle");
   if (settle) {
     const openNotes = [...settle.querySelectorAll(".move-note.open")].map(el => el.dataset.note);
-    const avgOpen = !!settle.querySelector(".move-avg-slot.open");
+    const prevAvg = settle.querySelector(".move-avg-slot");
+    const avgOpen = prevAvg ? prevAvg.classList.contains("open") : true;
     const hold = document.createElement("div");
     hold.innerHTML = firstPaySettleHtml(bits);
     const next = hold.firstChild;
@@ -42782,10 +42783,11 @@ function paintMoveLive(force) {
         const n = next.querySelector('.move-note[data-note="' + k + '"]');
         if (n) n.classList.add("open");
       });
-      if (avgOpen) {
-        const slot = next.querySelector(".move-avg-slot");
-        if (slot) slot.classList.add("open");
-      }
+      const slot = next.querySelector(".move-avg-slot");
+      if (slot && !prevAvg) {
+        slot.classList.remove("open");
+        requestAnimationFrame(() => slot.classList.add("open"));
+      } else if (slot) slot.classList.toggle("open", avgOpen);
       settle.replaceWith(next);
     }
   }
