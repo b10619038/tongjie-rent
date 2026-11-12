@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1989";
+const FILE_VER = "1990";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42133,10 +42133,7 @@ function bindGate() {
   bindMoveInForm();
   bindMoveSignPad();
   bindMoveSignPad("move-sign-box-2", "move-sign-pad-2", "moveSignStrokes2", "signImg2", "signArmed2", "signStrokes2");
-  document.querySelectorAll(".sign-slot-scroll .sign-slot.on").forEach(btn => {
-    const row = btn.parentElement;
-    if (row) row.scrollLeft = Math.max(0, btn.offsetLeft - 16);
-  });
+  document.querySelectorAll(".sign-slot-scroll").forEach(row => { row.scrollLeft = 0; });
   const bioBtn = document.getElementById("bio-login");
   if (bioBtn) bioBtn.onclick = e => {
     e.preventDefault();
