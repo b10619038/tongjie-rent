@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1920";
+const FILE_VER = "1921";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42703,13 +42703,7 @@ function bindMoveInForm() {
       const yes = btn.dataset.moveAgent === "yes";
       if (d.hasAgent === yes) return;
       d.hasAgent = yes;
-      const prev = d.payWay;
-      if (d.payWay !== "split") d.payWay = yes ? "cash" : "xfer";
       slideMoveAgent(yes);
-      if (d.payWay !== prev) {
-        slideMovePay(d.payWay);
-        refreshMovePayExtra(false);
-      }
     };
   });
   const agentEl = document.getElementById("move-agent");
@@ -42717,7 +42711,6 @@ function bindMoveInForm() {
     captureMoveInDraft();
     const d = ensureMoveIn();
     d.hasAgent = !!agentEl.checked;
-    if (d.payWay !== "split") d.payWay = d.hasAgent ? "cash" : "xfer";
     ui.keepScroll = true;
     render();
   };
