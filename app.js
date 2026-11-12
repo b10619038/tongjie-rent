@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1927";
+const FILE_VER = "1928";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23304,12 +23304,41 @@ function thisMonthRentLineHtml(t, r) {
 }
 function leasePackSummaryHtml(pack, monthly) {
   if (!pack || !pack.parts || !pack.parts.length) return "";
-  return pack.parts.map(p => {
-    if (p.kind === "stub") {
-      return `<div class="row wrap"><span class="k">不足月合約</span><span class="v">${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}　日拆 ${money(p.rent)}（${p.days}/${p.daysInMonth} 天）</span></div>`;
-    }
-    return `<div class="row wrap"><span class="k">一年合約</span><span class="v lease-term-v"><span>${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}</span><span>每月 ${money(p.rent || monthly)}，每月 1 號</span></span></div>`;
-  }).join("");
+  return pack.parts.map(p => leasePackRowHtml(p, monthly)).join("");
+}
+function leasePackRowHtml(p, monthly) {
+  if (!p) return "";
+  if (p.kind === "stub") {
+    return `<div class="row wrap lease-pack-row"><span class="k">不足月合約</span><span class="v">${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}　日拆 ${money(p.rent)}（${p.days}/${p.daysInMonth} 天）</span></div>`;
+  }
+  return `<div class="row wrap lease-pack-year"><span class="k">一年合約</span><span class="v lease-term-v"><span>${escapeHtml(rocSlash(p.start))} ➜ ${escapeHtml(rocSlash(p.end))}</span><span>每月 ${money(p.rent || monthly)}，每月 1 號</span></span></div>`;
+}
+function moveLeasePackHtml(pack, monthly) {
+  const parts = (pack && pack.parts) || [];
+  const stub = parts.find(p => p.kind === "stub");
+  const year = parts.find(p => p.kind !== "stub");
+  return `<div class="lease-pack-slot${stub ? " open" : ""}"><div class="lease-pack-clip">${stub ? leasePackRowHtml(stub, monthly) : ""}</div></div>${year ? leasePackRowHtml(year, monthly) : ""}`;
+}
+function paintMoveLeaseSum(box, pack, monthly) {
+  if (!box) return;
+  const parts = (pack && pack.parts) || [];
+  const stub = parts.find(p => p.kind === "stub");
+  const year = parts.find(p => p.kind !== "stub");
+  if (!box.querySelector(".lease-pack-slot")) {
+    box.innerHTML = moveLeasePackHtml(pack, monthly);
+    return;
+  }
+  const slot = box.querySelector(".lease-pack-slot");
+  const clip = slot.querySelector(".lease-pack-clip");
+  const yearEl = box.querySelector(".lease-pack-year");
+  const yearHtml = year ? leasePackRowHtml(year, monthly) : "";
+  if (yearEl) {
+    if (yearHtml && yearEl.outerHTML !== yearHtml) yearEl.outerHTML = yearHtml;
+  } else if (yearHtml) box.insertAdjacentHTML("beforeend", yearHtml);
+  if (stub) {
+    if (clip) clip.innerHTML = leasePackRowHtml(stub, monthly);
+    if (!slot.classList.contains("open")) requestAnimationFrame(() => slot.classList.add("open"));
+  } else slot.classList.remove("open");
 }
 function fullYearLeaseRange(fromYmd) {
   const pack = studioLeasePack(ymdOf(fromYmd) || todayYmd(), 0);
@@ -30780,7 +30809,7 @@ function moveInView() {
       <div class="label">合約起迄</div>
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ ? ("（" + occupiedUntilPhrase(occ, r) + "，不可早於截止後）") : "（不可早於今天）") + "。新客最短一年，沒有半年。入住不是 1 號時，當月只開日拆，次月 1 號起仍是一年約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。新客最短一年，沒有半年。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
-      <div id="move-lease-sum">${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}</div>
+      <div id="move-lease-sum">${r ? moveLeasePackHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}</div>
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
@@ -42599,7 +42628,7 @@ function paintMoveLive() {
   if (!dirty) return;
   const monthly = studioContractRent(null, r);
   const leaseBox = document.getElementById("move-lease-sum");
-  if (leaseBox) leaseBox.innerHTML = leasePackSummaryHtml(studioLeasePack(d.leaseStart, monthly), monthly);
+  if (leaseBox) paintMoveLeaseSum(leaseBox, studioLeasePack(d.leaseStart, monthly), monthly);
   const bits = firstStudioPayBits({
     name: d.name || "新客",
     leaseStart: d.leaseStart || "",

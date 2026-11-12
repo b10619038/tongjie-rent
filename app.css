@@ -2281,6 +2281,23 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   line-height: 1.35;
   white-space: nowrap;
 }
+#move-lease-sum .lease-pack-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .48s cubic-bezier(.22,.82,.22,1);
+}
+#move-lease-sum .lease-pack-slot.open { grid-template-rows: 1fr; }
+#move-lease-sum .lease-pack-clip { overflow: hidden; min-height: 0; }
+#move-lease-sum .lease-pack-row {
+  margin-top: 10px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity .36s ease, transform .48s cubic-bezier(.22,.82,.22,1);
+}
+#move-lease-sum .lease-pack-slot.open .lease-pack-row {
+  opacity: 1;
+  transform: none;
+}
 .row-end { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .live-pill {
   display: inline-flex; align-items: center; gap: 5px;
