@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1968";
+const FILE_VER = "1969";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43460,22 +43460,24 @@ async function recognizeTwId(blob) {
   return found;
 }
 async function recognizeIdBlob(blob) {
-  let tw = null;
-  try { tw = await recognizeTwId(blob); } catch {}
-  if (tw && tw.name && tw.idNo) return tw;
-  const file = new File([blob], "id.jpg", { type: "image/jpeg" });
+  const file = new File([blob], "id.jpg", { type: (blob && blob.type) || "image/jpeg" });
   const image = await fileToVisionJpeg(file, 1800);
+  let gem = null;
   let vision = null;
   if (image) {
-    const text = await visionIdText(image);
-    vision = parseIdCardText(text);
-    if (vision.idNo && !twIdValid(vision.idNo)) vision.idNo = "";
+    try { gem = await geminiIdCard(image); } catch {}
+    if (!(gem && gem.name && gem.idNo)) {
+      try {
+        vision = parseIdCardText(await visionIdText(image));
+        if (vision.idNo && !twIdValid(vision.idNo)) vision.idNo = "";
+      } catch {}
+    }
   }
   const found = {
-    name: (tw && tw.name) || (vision && vision.name) || "",
-    idNo: (tw && tw.idNo) || (vision && vision.idNo) || "",
-    birthday: (tw && tw.birthday) || (vision && vision.birthday) || "",
-    address: (tw && tw.address) || (vision && vision.address) || ""
+    name: (gem && gem.name) || (vision && vision.name) || "",
+    idNo: (gem && gem.idNo) || (vision && vision.idNo) || "",
+    birthday: (gem && gem.birthday) || (vision && vision.birthday) || "",
+    address: (gem && gem.address) || (vision && vision.address) || ""
   };
   if (!found.name && !found.idNo && !found.birthday && !found.address) return null;
   return found;
