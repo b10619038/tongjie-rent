@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1955";
+const FILE_VER = "1956";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30965,9 +30965,12 @@ function moveInView() {
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
     <div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
       <div class="move-agent-actions-clip">
-        <div class="move-export-row">
+        <div class="move-export-stack">
           <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
-          <button type="button" class="ghost" id="move-lease-line">分享至LINE</button>
+          <div class="move-export-row">
+            <button type="button" class="ghost" id="move-share-tenant">分享至租客</button>
+            <button type="button" class="ghost" id="move-share-owner">分享至屋主</button>
+          </div>
         </div>
       </div>
     </div>
@@ -42711,9 +42714,9 @@ function moveDraftTenant() {
   applyStudioLeasePack(t, room, d.leaseStart);
   return { d, t, room };
 }
-function moveAgentShareText() {
+function moveSharePack() {
   const pack = moveDraftTenant();
-  if (!pack) return "";
+  if (!pack) return null;
   const { d, t, room } = pack;
   const bits = firstStudioPayBits({
     name: t.name || "新客",
@@ -42735,19 +42738,47 @@ function moveAgentShareText() {
   }
   const mo = bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") : "";
   rents.push((mo ? mo + "月租金 " : "房租 ") + money(bits.firstMonth));
+  return { d, t, room, bits, addr, rents };
+}
+function moveTenantShareText() {
+  const pack = moveSharePack();
+  if (!pack) return "";
+  const { d, t, room, bits, addr, rents } = pack;
+  const half = moveAgentHalf(bits.monthly);
   return [
     (room.no || "") + "新租客您好",
     "簽約時間：" + moveSignWhenLabel(d.signAppointAt),
-    "地點：" + (room.no || "") + (addr ? " " + addr : ""),
+    "地點：" + (addr || room.no || ""),
     "合約期間：" + (rocSlash(t.leaseStart) || "") + " ➜ " + (rocSlash(t.leaseEnd) || ""),
     "請攜帶：雙證件正本、身分證正反影本、個人印章。",
-    "仲介費 " + money(moveAgentHalf(bits.monthly)),
+    "當天請付仲介費 " + money(half) + "。",
     "押金 " + money(bits.deposit),
     rents.join("　"),
-    "水費 " + money(bits.water),
+    "年水費 " + money(bits.water),
     "電費 " + money(bits.elec),
-    "合計 " + money(moveSettleTotal(bits))
+    "押金、房租、水電請另外付給屋主，合計 " + money(bits.total) + "。"
   ].join("\n");
+}
+function moveOwnerShareText() {
+  const pack = moveSharePack();
+  if (!pack) return "";
+  const { d, t, room, bits, addr, rents } = pack;
+  const half = moveAgentHalf(bits.monthly);
+  const service = Math.round(Number(bits.monthly) || 0);
+  const who = [room.no || "", t.name || "新租客"].filter(Boolean).join(" ");
+  return [
+    who + " 仲介帶看",
+    t.phone ? "電話：" + t.phone : "",
+    "簽約時間：" + moveSignWhenLabel(d.signAppointAt),
+    "地點：" + (addr || room.no || ""),
+    "合約期間：" + (rocSlash(t.leaseStart) || "") + " ➜ " + (rocSlash(t.leaseEnd) || ""),
+    "租客當天付仲介 " + money(half) + "（半個月租金）。",
+    "押金 " + money(bits.deposit) + "　" + rents.join("　"),
+    "年水費 " + money(bits.water) + "　電費 " + money(bits.elec),
+    "押金、房租、水電付給屋主，合計 " + money(bits.total) + "。",
+    "請付仲介服務費 " + money(service) + "（一個月租金）。",
+    "入住資料會在統潔 App。"
+  ].filter(Boolean).join("\n");
 }
 function exportMoveLeasePdf() {
   const pack = moveDraftTenant();
@@ -42755,8 +42786,7 @@ function exportMoveLeasePdf() {
   if (!pack.t.name) { toast("請先填姓名"); return; }
   showLeasePrintPreview(pack.t, pack.room);
 }
-function shareMoveLeaseLine() {
-  const text = moveAgentShareText();
+function shareMoveText(text) {
   if (!text) { toast("請先選房號"); return; }
   const url = "https://line.me/R/share?text=" + encodeURIComponent(text);
   const phone = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent || "");
@@ -43182,10 +43212,15 @@ function bindMoveInForm() {
     e.preventDefault();
     exportMoveLeasePdf();
   };
-  const lineBtn = document.getElementById("move-lease-line");
-  if (lineBtn) lineBtn.onclick = e => {
+  const tenantBtn = document.getElementById("move-share-tenant");
+  if (tenantBtn) tenantBtn.onclick = e => {
     e.preventDefault();
-    shareMoveLeaseLine();
+    shareMoveText(moveTenantShareText());
+  };
+  const ownerBtn = document.getElementById("move-share-owner");
+  if (ownerBtn) ownerBtn.onclick = e => {
+    e.preventDefault();
+    shareMoveText(moveOwnerShareText());
   };
 }
 function popSignDay(btn, done) {

@@ -3493,12 +3493,13 @@ input[type="file"] {
 }
 .move-agent-actions.open { grid-template-rows: 1fr; }
 .move-agent-actions-clip { overflow: hidden; min-height: 0; }
+.move-export-stack { display: grid; gap: 8px; padding-top: 16px; }
 .move-export-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding-top: 16px;
 }
+.move-export-stack .ghost,
 .move-export-row .ghost { margin: 0; }
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);
