@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1910";
+const FILE_VER = "1911";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42434,6 +42434,36 @@ function playMoveSplitFromButton() {
   };
   requestAnimationFrame(run);
 }
+function bindLiveCommit(el, fn) {
+  if (!el || el.dataset.liveCommit === "1") return;
+  el.dataset.liveCommit = "1";
+  let committed = el.value;
+  let timer = 0;
+  const stop = () => { if (timer) { clearInterval(timer); timer = 0; } };
+  const run = () => {
+    if (!el.isConnected) { stop(); return; }
+    if (el.value === committed) return;
+    committed = el.value;
+    fn();
+  };
+  el.addEventListener("change", run);
+  el.addEventListener("blur", () => { stop(); run(); });
+  const picker = el.type === "date" || el.type === "time" || el.type === "datetime-local";
+  if (!picker) el.addEventListener("input", run);
+  el.addEventListener("focus", () => {
+    committed = el.value;
+    stop();
+    let seen = el.value;
+    let stable = 0;
+    timer = setInterval(() => {
+      if (!el.isConnected || document.activeElement !== el) { stop(); return; }
+      if (el.value !== seen) { seen = el.value; stable = 0; return; }
+      if (el.value === committed) return;
+      stable += 1;
+      if (stable >= 2) run();
+    }, 220);
+  });
+}
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
   ui.moveSplitPop = false;
@@ -42515,22 +42545,26 @@ function bindMoveInForm() {
   ["move-pay-cash", "move-pay-mega"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.onchange = captureMoveInDraft;
-    el.onblur = captureMoveInDraft;
+    bindLiveCommit(el, () => { captureMoveInDraft(); });
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
   ["move-name", "move-phone", "move-idno", "move-bday", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.onchange = captureMoveInDraft;
-    el.onblur = captureMoveInDraft;
+    bindLiveCommit(el, () => {
+      captureMoveInDraft();
+      if (id === "move-bday" || id === "move-end") {
+        ui.keepScroll = true;
+        render();
+      }
+    });
   });
   bindFormatField(document.getElementById("move-name"), "name");
   bindFormatField(document.getElementById("move-phone"), "phone");
   bindFormatField(document.getElementById("move-idno"), "id");
   const startEl = document.getElementById("move-start");
   if (startEl) {
-    startEl.onchange = () => {
+    bindLiveCommit(startEl, () => {
       captureMoveInDraft();
       const d = ensureMoveIn();
       const r = (state.rooms || []).find(x => x && x.id === d.roomId);
@@ -42541,8 +42575,9 @@ function bindMoveInForm() {
       }
       d.leaseStartTouched = d.leaseStart !== min;
       d.leaseEnd = studioLeasePack(d.leaseStart, r ? studioContractRent(null, r) : 0).occupancyEnd;
+      ui.keepScroll = true;
       render();
-    };
+    });
   }
   document.querySelectorAll("[data-sign-cal-nav]").forEach(btn => {
     btn.onclick = e => {

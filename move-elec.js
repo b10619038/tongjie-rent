@@ -46,6 +46,26 @@
     ui.keepScroll = true;
     render();
   }, true);
+  document.addEventListener("focusin", function (e) {
+    const el = e.target;
+    if (!el || el.id !== "move-elec" || el.dataset.liveCommit === "1") return;
+    el.dataset.liveCommit = "1";
+    let committed = el.value;
+    let seen = el.value;
+    let stable = 0;
+    const timer = setInterval(function () {
+      if (!el.isConnected || document.activeElement !== el) { clearInterval(timer); return; }
+      if (el.value !== seen) { seen = el.value; stable = 0; return; }
+      if (el.value === committed) return;
+      stable += 1;
+      if (stable < 2) return;
+      committed = el.value;
+      clearInterval(timer);
+      captureMoveInDraft();
+      ui.keepScroll = true;
+      render();
+    }, 220);
+  }, true);
   const origRender = render;
   render = function () {
     const out = origRender.apply(this, arguments);
