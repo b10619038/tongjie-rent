@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1976";
+const FILE_VER = "1977";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -2297,7 +2297,9 @@ function animateChatChip(toAway) {
 const PUBLIC_GO = {
   "move-in": "move-in",
   "申請入住": "move-in",
-  "入住": "move-in"
+  "入住": "move-in",
+  "login": "login",
+  "租客登入": "login"
 };
 const TENANT_GO = {
   repair: "repair",
@@ -2373,6 +2375,16 @@ function armTenantGoLaunch() {
 function applyTenantGo() {
   const go = ui.pendingGo || "";
   if (!go) return;
+  if (go === "login") {
+    ui.pendingGo = "";
+    try { sessionStorage.removeItem("tj-go"); } catch {}
+    try { sessionStorage.setItem("tj-public-go", "login"); } catch {}
+    if (!ui.role) {
+      ui.loginError = "";
+      ui.page = "tenant-login";
+    }
+    return;
+  }
   if (go === "move-in") {
     ui.pendingGo = "";
     try { sessionStorage.removeItem("tj-go"); } catch {}
@@ -16888,6 +16900,13 @@ function isGatePage(p) {
 function revivePublicGo(keepBack) {
   let go = "";
   try { go = sessionStorage.getItem("tj-public-go") || ""; } catch {}
+  if (go === "login") {
+    if (!ui.role) {
+      ui.page = "tenant-login";
+      ui.loginError = "";
+    }
+    return;
+  }
   if (go !== "move-in") return;
   if (ui.role) {
     ui.guestMoveIn = true;
@@ -41847,6 +41866,7 @@ function enterTenant(room, tenant) {
   ui.roomId = room.id;
   ui.roomNo = room.no;
   ui.page = "home";
+  try { sessionStorage.removeItem("tj-public-go"); } catch {}
   ui.renewPeople = null;
   ui.renewDraft = null;
   ui.renewAppoint = "";
@@ -42870,7 +42890,10 @@ function moveTenantShareText() {
     "年水費 " + money(bits.water),
     "電費 " + money(bits.elec),
     "",
-    "合計 " + money(bits.total)
+    "合計 " + money(bits.total),
+    "",
+    "租屋APP：",
+    "https://tongjie-app.pages.dev/?go=login"
   ].join("\n");
 }
 function moveOwnerShareText() {
