@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1987";
+const FILE_VER = "1988";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31035,7 +31035,7 @@ function moveInView() {
       <p class="small" id="move-sign-place" style="margin:0 0 8px">${escapeHtml(moveSignPlaceText())}</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
-        <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
+        <div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
         <p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>` : ""}
     </div>
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
@@ -33131,7 +33131,7 @@ function leaseSignView() {
         <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，電梯出來右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。灰色是已滿或未開放。</p>
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
-        <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
+        <div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
         <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
       </div>
       <div class="card card-body" style="margin-top:12px">
@@ -42133,6 +42133,10 @@ function bindGate() {
   bindMoveInForm();
   bindMoveSignPad();
   bindMoveSignPad("move-sign-box-2", "move-sign-pad-2", "moveSignStrokes2", "signImg2", "signArmed2", "signStrokes2");
+  document.querySelectorAll(".sign-slot-scroll .sign-slot.on").forEach(btn => {
+    const row = btn.parentElement;
+    if (row) row.scrollLeft = Math.max(0, btn.offsetLeft - 16);
+  });
   const bioBtn = document.getElementById("bio-login");
   if (bioBtn) bioBtn.onclick = e => {
     e.preventDefault();

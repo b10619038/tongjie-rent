@@ -3440,6 +3440,21 @@ input[type="file"] {
 .sign-term { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 4px; font-weight: 700; line-height: 1.4; }
 .sign-term input { margin-top: 3px; }
 .sign-slot-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.sign-slot-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.sign-slot-scroll::-webkit-scrollbar { display: none; }
+.sign-slot-scroll .sign-slot {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  scroll-snap-align: start;
+}
 .sign-slot {
   border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;

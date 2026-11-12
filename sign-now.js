@@ -29,8 +29,8 @@
       'const slots = r ? nextSignSlots(8, d.signNow ? "" : d.signAppointAt, win.min, d.signNow ? day : (ymdOf(d.signAppointAt) || day)) : [];'
     ],
     [
-      '<div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>',
-      '<div class="sign-slot-grid"><button type="button" class="sign-slot${d.signNow ? " on" : ""}" data-sign-now="1">現在時刻</button>${slots.map(s => `<button type="button" class="sign-slot${!d.signNow && d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("")}</div>'
+      '<div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>',
+      '<div class="sign-slot-grid sign-slot-scroll"><button type="button" class="sign-slot${d.signNow ? " on" : ""}" data-sign-now="1">現在時刻</button>${slots.map(s => `<button type="button" class="sign-slot${!d.signNow && d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("")}</div>'
     ],
     [
       '<p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>',
