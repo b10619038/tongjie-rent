@@ -1985,6 +1985,24 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   transition: opacity .2s ease;
 }
 .card-body > .label { margin: 0 0 12px; }
+.move-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.move-card-head .label { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
+#move-people-grid { flex: 0 0 132px; width: 132px; height: 40px; margin: 0; }
+#move-people-grid button { padding: 7px 4px; font-size: 15px; }
+.move-person2 {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .42s cubic-bezier(.22,.82,.22,1);
+}
+.move-person2.open { grid-template-rows: 1fr; }
+.move-person2-clip { overflow: hidden; min-height: 0; }
+.move-person2-clip input { margin-top: 8px; }
 .tenant-search {
   padding: 4px 8px 4px 12px;
   border-radius: 18px;

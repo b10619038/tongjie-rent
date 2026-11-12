@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1948";
+const FILE_VER = "1949";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23205,6 +23205,7 @@ function firstStudioPayBits(t, r) {
     monthly, deposit, stubRent, firstMonth, water, elec, rent,
     total: deposit + rent + water + elec,
     hasAgent: !!(t && t.hasAgent),
+    people: tenantHeadcount(t),
     stub: !!stub,
     stubDays: stub ? (Number(stub.days) || 0) : 0,
     stubDim: stub ? (Number(stub.daysInMonth) || 0) : 0,
@@ -23253,7 +23254,7 @@ function moveSettleLinesHtml(bits) {
     rows.push(moveSettleItem("stub", (stubMonth ? stubMonth + "月租金 " : "租金 ") + money(bits.stubRent), range + "日拆（" + (bits.stubDays || 0) + "/" + (bits.stubDim || 0) + " 天）"));
   }
   rows.push(moveSettleItem("month", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth), "每個月的租金"));
-  if (bits.water) rows.push(moveSettleItem("water", "年水費 " + money(bits.water), "1人1800元 使用無上限"));
+  if (bits.water) rows.push(moveSettleItem("water", "年水費 " + money(bits.water), (Number(bits.people) === 2 ? "2人3600元" : "1人1800元") + " 使用無上限"));
   if (bits.elec) rows.push(moveSettleItem("elec", "電費儲值 " + money(bits.elec), "電費可於5F自行於儲值機現金儲值 金額無上限"));
   return `<div class="move-settle-bits move-settle-lines">${rows.join("")}</div>`;
 }
@@ -23274,6 +23275,7 @@ function paintMoveAgentFee() {
     rent: studioContractRent(null, r),
     deposit: studioDepositOf(studioContractRent(null, r)),
     hasAgent: !!d.hasAgent,
+    people: Number(d.people) === 2 ? 2 : 1,
     payWay: d.payWay,
     payCash: d.payCash,
     payMega: d.payMega,
@@ -27796,8 +27798,9 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function ensureMoveIn() {
-  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "", hasAgent: true, payWay: "cash" };
+  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "", name2: "", phone2: "", idNo2: "", birthday2: "", people: 1, hasAgent: true, payWay: "cash" };
   if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
+  if (ui.moveIn.people !== 2) ui.moveIn.people = 1;
   if (!ui.moveIn.payWay) ui.moveIn.payWay = "cash";
   return ui.moveIn;
 }
@@ -28028,18 +28031,33 @@ function enterProspect(t, room) {
   beatPresence();
   render();
 }
+function moveJoinedDraft() {
+  const d = ensureMoveIn();
+  const two = Number(d.people) === 2;
+  const name = [normalizePersonName(d.name), two ? normalizePersonName(d.name2) : ""].filter(Boolean).join("、");
+  const phone = [normalizeMobile(d.phone), two ? normalizeMobile(d.phone2) : ""].filter(Boolean).join("／");
+  const idNo = [normalizeIdNo(d.idNo), two ? normalizeIdNo(d.idNo2) : ""].filter(Boolean).join("／");
+  const birthday = [parseOneBirthday(d.birthday), two ? parseOneBirthday(d.birthday2) : ""].filter(Boolean).join("／");
+  return { name, phone, idNo, birthday, two };
+}
+function movePeopleOk(joined) {
+  const d = ensureMoveIn();
+  if (!personNameOk(joined.name)) { toast("請填中文姓名"); return false; }
+  if (!mobileOk(joined.phone)) { toast("請填手機號碼"); return false; }
+  if (joined.idNo && !idNoOk(joined.idNo)) { toast("請填身分證"); return false; }
+  if (joined.two && !personNameOk(d.name2)) { toast("請填第二人姓名"); return false; }
+  if (joined.two && !mobileOk(d.phone2)) { toast("請填第二人手機"); return false; }
+  if (joined.two && d.idNo2 && !idNoOk(d.idNo2)) { toast("請填第二人身分證"); return false; }
+  return true;
+}
 function submitMoveIn() {
   const d = ensureMoveIn();
-  d.name = normalizePersonName(d.name);
-  d.phone = normalizeMobile(d.phone);
-  d.idNo = normalizeIdNo(d.idNo);
-  const name = d.name;
-  const phone = d.phone;
+  const joined = moveJoinedDraft();
+  const name = joined.name;
+  const phone = joined.phone;
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) { toast("請先選房號"); return; }
-  if (!personNameOk(name)) { toast("請填中文姓名"); return; }
-  if (!mobileOk(phone)) { toast("請填手機號碼"); return; }
-  if (d.idNo && !idNoOk(d.idNo)) { toast("請填身分證"); return; }
+  if (!movePeopleOk(joined)) return;
   const minStart = roomSoonestStart(room, { incoming: true });
   if (!d.leaseStart || d.leaseStart < minStart) {
     d.leaseStart = minStart;
@@ -28049,8 +28067,8 @@ function submitMoveIn() {
   const existSame = incomingsOf(room.id).find(x => nameMatch(x.name, name) || String(x.phone || "") === phone);
   if (existSame) {
     existSame.phone = phone || existSame.phone;
-    existSame.idNo = d.idNo || existSame.idNo;
-    if (parseOneBirthday(d.birthday)) { existSame.birthday = parseOneBirthday(d.birthday); existSame.birthdaySet = true; }
+    existSame.idNo = joined.idNo || existSame.idNo;
+    if (joined.birthday) { existSame.birthday = joined.birthday; existSame.birthdaySet = true; }
     existSame.signAppointAt = d.signAppointAt || existSame.signAppointAt;
     existSame.leaseStart = d.leaseStart || existSame.leaseStart;
     existSame.leaseEnd = d.leaseEnd || existSame.leaseEnd;
@@ -28082,7 +28100,7 @@ function submitMoveIn() {
     }
   }
   const t = addIncomingTenant(room.id, {
-    name, phone, idNo: d.idNo, leaseStart: d.leaseStart, leaseEnd: d.leaseEnd,
+    name, phone, idNo: joined.idNo, leaseStart: d.leaseStart, leaseEnd: d.leaseEnd,
     rent: studioContractRent(null, room)
   });
   if (!t) { toast("送出失敗，請再試一次"); return; }
@@ -28099,7 +28117,7 @@ function submitMoveIn() {
   t.agentFee = Number(d.agentFee) || (d.hasAgent ? studioContractRent(null, room) : 0);
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
-  if (parseOneBirthday(d.birthday)) { t.birthday = parseOneBirthday(d.birthday); t.birthdaySet = true; }
+  if (joined.birthday) { t.birthday = joined.birthday; t.birthdaySet = true; }
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -28123,16 +28141,10 @@ function submitMoveIn() {
 function askMoveSubmit() {
   captureMoveInDraft();
   const d = ensureMoveIn();
-  d.name = normalizePersonName(d.name);
-  d.phone = normalizeMobile(d.phone);
-  d.idNo = normalizeIdNo(d.idNo);
-  const name = d.name;
-  const phone = d.phone;
+  const joined = moveJoinedDraft();
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) { toast("請先選房號"); return; }
-  if (!personNameOk(name)) { toast("請填中文姓名"); return; }
-  if (!mobileOk(phone)) { toast("請填手機號碼"); return; }
-  if (d.idNo && !idNoOk(d.idNo)) { toast("請填身分證"); return; }
+  if (!movePeopleOk(joined)) return;
   ui.moveSubmitConfirm = true;
   render();
 }
@@ -28415,6 +28427,8 @@ function hasDepositBook(kind, t, r) {
   return (state.books || []).some(b => b && (b.id === id || b.importTag === tag));
 }
 function tenantHeadcount(t) {
+  const picked = Number(t && t.people);
+  if (picked === 1 || picked === 2) return picked;
   const n = String((t && t.name) || "");
   const parts = n.split(/[、,，與和\/]/).map(s => s.trim()).filter(Boolean);
   return Math.max(1, parts.length);
@@ -30814,7 +30828,7 @@ function moveInView() {
   const rooms = moveInRooms();
   const r = rooms.find(x => x.id === d.roomId) || null;
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
-  const payBits = r ? firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || "", rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), hasAgent: !!d.hasAgent, payWay: d.payWay, payCash: d.payCash, payMega: d.payMega }, r) : null;
+  const payBits = r ? firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || "", rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), hasAgent: !!d.hasAgent, people: Number(d.people) === 2 ? 2 : 1, payWay: d.payWay, payCash: d.payCash, payMega: d.payMega }, r) : null;
   if (!d.payWay) d.payWay = "cash";
   const payWay = firstPayWayOf(d);
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
@@ -30883,11 +30897,18 @@ function moveInView() {
       ${r ? `<p class="small" style="margin:6px 0 0">${escapeHtml((r.location || roomAddress(r.no) || "") + "　月租 " + money(studioContractRent(null, r)))}${roomNoSubsidy(r) ? "　不可租補" : ""}</p>` : ""}
     </div>
     <div class="card card-body move-card c2" style="margin-top:12px;text-align:left">
-      <div class="label">基本資料</div>
-      <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /></label>
-      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
-      <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /></label>
-      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /></label>
+      <div class="move-card-head">
+        <div class="label">基本資料</div>
+        <div class="seg move-seg${Number(d.people) === 2 ? " is-no" : ""}" id="move-people-grid">
+          <i class="seg-bg"></i>
+          <button type="button" data-move-people="1" class="${Number(d.people) === 2 ? "" : "on"}">1人</button>
+          <button type="button" data-move-people="2" class="${Number(d.people) === 2 ? "on" : ""}">2人</button>
+        </div>
+      </div>
+      <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-name2" type="text" value="${escapeHtml(d.name2 || "")}" placeholder="第二人姓名" autocomplete="name" inputmode="text" /></div></div></label>
+      <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
+      <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-bday2" type="date" value="${escapeHtml(parseOneBirthday(d.birthday2) || "")}" /></div></div></label>
+      <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-idno2" type="text" value="${escapeHtml(d.idNo2 || "")}" placeholder="第二人身分證" autocomplete="off" autocapitalize="characters" maxlength="21" /></div></div></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
@@ -42556,9 +42577,13 @@ function captureMoveInDraft() {
     return el ? String(el.value || "").trim() : "";
   };
   if (document.getElementById("move-name")) d.name = normalizePersonName(val("move-name"));
+  if (document.getElementById("move-name2")) d.name2 = normalizePersonName(val("move-name2"));
   if (document.getElementById("move-phone")) d.phone = normalizeMobile(val("move-phone"));
+  if (document.getElementById("move-phone2")) d.phone2 = normalizeMobile(val("move-phone2"));
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
+  if (document.getElementById("move-idno2")) d.idNo2 = normalizeIdNo(val("move-idno2"));
   if (document.getElementById("move-bday")) d.birthday = parseOneBirthday(val("move-bday"));
+  if (document.getElementById("move-bday2")) d.birthday2 = parseOneBirthday(val("move-bday2"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
   const agent = document.getElementById("move-agent");
@@ -42623,6 +42648,17 @@ function movePayExtraHtml(d, payBits, payWay) {
   const way = payWay || "cash";
   return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", due)}</p>`;
 }
+function slideMovePeople(two) {
+  const seg = document.getElementById("move-people-grid");
+  if (seg) {
+    seg.classList.toggle("is-no", !!two);
+    seg.querySelectorAll("[data-move-people]").forEach(b => b.classList.toggle("on", (b.dataset.movePeople === "2") === !!two));
+  }
+  document.querySelectorAll(".move-person2").forEach(slot => {
+    if (two) requestAnimationFrame(() => slot.classList.add("open"));
+    else slot.classList.remove("open");
+  });
+}
 function slideMoveAgent(yes) {
   const seg = document.getElementById("move-agent-grid");
   if (!seg) return;
@@ -42649,6 +42685,7 @@ function refreshMovePayExtra(play) {
     rent: monthly,
     deposit: studioDepositOf(monthly),
     hasAgent: !!d.hasAgent,
+    people: Number(d.people) === 2 ? 2 : 1,
     payWay: d.payWay,
     payCash: d.payCash,
     payMega: d.payMega,
@@ -42676,7 +42713,7 @@ function refreshMovePayExtra(play) {
   if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(total) + "。";
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(total); });
 }
-function paintMoveLive() {
+function paintMoveLive(force) {
   if (typeof ui === "undefined" || !ui || ui.page !== "move-in") return;
   document.querySelectorAll(".move-in-page input, .move-in-page textarea").forEach(el => {
     if (!el || el.type === "checkbox" || el.type === "radio" || el.type === "button") return;
@@ -42709,7 +42746,7 @@ function paintMoveLive() {
       dirty = true;
     }
   }
-  if (!dirty) return;
+  if (!dirty && !force) return;
   const monthly = studioContractRent(null, r);
   const leaseBox = document.getElementById("move-lease-sum");
   if (leaseBox) paintMoveLeaseSum(leaseBox, studioLeasePack(d.leaseStart, monthly), monthly);
@@ -42719,6 +42756,7 @@ function paintMoveLive() {
     rent: monthly,
     deposit: studioDepositOf(monthly),
     hasAgent: !!d.hasAgent,
+    people: Number(d.people) === 2 ? 2 : 1,
     payWay: d.payWay,
     payCash: d.payCash,
     payMega: d.payMega,
@@ -42880,6 +42918,18 @@ function bindMoveInForm() {
       paintMoveAgentFee();
     };
   });
+  document.querySelectorAll("[data-move-people]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      captureMoveInDraft();
+      const d = ensureMoveIn();
+      const two = btn.dataset.movePeople === "2";
+      if ((Number(d.people) === 2) === two) return;
+      d.people = two ? 2 : 1;
+      slideMovePeople(two);
+      paintMoveLive(true);
+    };
+  });
   const agentEl = document.getElementById("move-agent");
   if (agentEl) agentEl.onchange = () => {
     captureMoveInDraft();
@@ -42919,7 +42969,7 @@ function bindMoveInForm() {
     bindLiveCommit(el, () => { captureMoveInDraft(); });
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
-  ["move-name", "move-phone", "move-idno", "move-bday", "move-end"].forEach(id => {
+  ["move-name", "move-phone", "move-idno", "move-bday", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     bindLiveCommit(el, () => {
@@ -42931,8 +42981,11 @@ function bindMoveInForm() {
     });
   });
   bindFormatField(document.getElementById("move-name"), "name");
+  bindFormatField(document.getElementById("move-name2"), "name");
   bindFormatField(document.getElementById("move-phone"), "phone");
+  bindFormatField(document.getElementById("move-phone2"), "phone");
   bindFormatField(document.getElementById("move-idno"), "id");
+  bindFormatField(document.getElementById("move-idno2"), "id");
   const startEl = document.getElementById("move-start");
   if (startEl) {
     bindLiveCommit(startEl, () => {
