@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1995";
+const FILE_VER = "1996";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31080,8 +31080,8 @@ function moveInView() {
         <div class="move-export-stack">
           <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
           <div class="move-export-row">
-            <button type="button" class="ghost" id="move-share-tenant">分享至租客</button>
-            <button type="button" class="ghost" id="move-share-owner">分享至屋主</button>
+            <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
+            <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
           </div>
         </div>
       </div>

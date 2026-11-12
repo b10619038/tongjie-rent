@@ -3637,6 +3637,17 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
 }
 .move-export-stack .ghost,
 .move-export-row .ghost { margin: 0; }
+.move-export-row .ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.move-export-row .share-ico {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);
 }
