@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1963";
+const FILE_VER = "1964";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43359,6 +43359,165 @@ function applyIdCardRead(found) {
   if (found.address) bits.push("戶籍地址");
   toast("已填" + bits.join("、") + (found.idNo ? "" : "。身分證沒讀到檢查碼，請再拍正面") + (found.address ? "" : "。反面可再掃戶籍地址") + "。電話請自己填");
 }
+let idScan = null;
+async function recognizeIdBlob(blob) {
+  const file = new File([blob], "id.jpg", { type: "image/jpeg" });
+  const image = await fileToVisionJpeg(file, 1800);
+  if (!image) return null;
+  const text = await visionIdText(image);
+  const found = parseIdCardText(text);
+  if (found.idNo && !twIdValid(found.idNo)) found.idNo = "";
+  if (!found.name && !found.idNo && !found.birthday && !found.address) return null;
+  return found;
+}
+function closeIdScanner() {
+  const scan = idScan;
+  if (!scan) return;
+  scan.dead = true;
+  if (scan.timer) clearTimeout(scan.timer);
+  try { (scan.stream.getTracks() || []).forEach(t => t.stop()); } catch {}
+  if (scan.el && scan.el.parentNode) scan.el.remove();
+  if (idScan === scan) idScan = null;
+}
+function idScanFrame(video, frame) {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const vr = video.getBoundingClientRect();
+  const fr = frame.getBoundingClientRect();
+  const scale = Math.max(vr.width / vw, vr.height / vh);
+  const offX = (vw * scale - vr.width) / 2;
+  const offY = (vh * scale - vr.height) / 2;
+  const x = Math.max(0, (fr.left - vr.left + offX) / scale);
+  const y = Math.max(0, (fr.top - vr.top + offY) / scale);
+  const w = Math.min(vw - x, fr.width / scale);
+  const h = Math.min(vh - y, fr.height / scale);
+  if (w < 40 || h < 24) return null;
+  return { x, y, w, h };
+}
+function idScanStill(video, frame) {
+  const box = idScanFrame(video, frame);
+  if (!box) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 1400;
+  canvas.height = Math.max(1, Math.round(1400 * box.h / box.w));
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(video, box.x, box.y, box.w, box.h, 0, 0, canvas.width, canvas.height);
+  const tiny = document.createElement("canvas");
+  tiny.width = 24;
+  tiny.height = 16;
+  const tx = tiny.getContext("2d", { willReadFrequently: true });
+  tx.drawImage(canvas, 0, 0, 24, 16);
+  const data = tx.getImageData(0, 0, 24, 16).data;
+  let sum = 0;
+  let sum2 = 0;
+  const n = 24 * 16;
+  for (let i = 0; i < data.length; i += 4) {
+    const g = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+    sum += g;
+    sum2 += g * g;
+  }
+  const mean = sum / n;
+  const variance = sum2 / n - mean * mean;
+  return { canvas, data, variance };
+}
+async function tickIdScanner() {
+  const scan = idScan;
+  if (!scan || scan.dead) return;
+  const video = scan.video;
+  const hint = scan.hint;
+  if (video.readyState < 2) {
+    scan.timer = setTimeout(tickIdScanner, 300);
+    return;
+  }
+  const still = idScanStill(video, scan.frame);
+  if (!still) {
+    scan.timer = setTimeout(tickIdScanner, 400);
+    return;
+  }
+  let delta = 999;
+  if (scan.prev) {
+    delta = 0;
+    const step = 16;
+    let c = 0;
+    for (let i = 0; i < still.data.length; i += step) {
+      delta += Math.abs(still.data[i] - scan.prev[i]);
+      c++;
+    }
+    delta = c ? delta / c : 999;
+  }
+  scan.prev = still.data;
+  const steady = delta < 14;
+  const hasCard = still.variance > 180;
+  if (!hasCard) {
+    if (hint) hint.textContent = "請把身分證移進框內";
+    scan.hold = 0;
+  } else if (!steady) {
+    if (hint) hint.textContent = "請拿穩，正在對準";
+    scan.hold = 0;
+  } else {
+    scan.hold = (scan.hold || 0) + 1;
+    if (hint) hint.textContent = scan.busy ? "正在辨識" : "已對準，請不要移動";
+  }
+  if (scan.hold >= 2 && !scan.busy && hasCard && steady) {
+    scan.busy = true;
+    scan.hold = 0;
+    if (hint) hint.textContent = "正在辨識";
+    try {
+      const blob = await new Promise(r => still.canvas.toBlob(r, "image/jpeg", 0.92));
+      const found = blob ? await recognizeIdBlob(blob) : null;
+      if (scan.dead) return;
+      if (found) {
+        closeIdScanner();
+        applyIdCardRead(found);
+        return;
+      }
+      if (hint && idScan) hint.textContent = "還沒讀到，請再對準框內";
+    } catch {
+      if (hint && idScan) hint.textContent = "再對準一次";
+    }
+    if (idScan) idScan.busy = false;
+  }
+  if (idScan && !idScan.dead) scan.timer = setTimeout(tickIdScanner, scan.busy ? 700 : 450);
+}
+async function openIdScanner() {
+  if (idScan) closeIdScanner();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast("這個裝置不能開鏡頭");
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    });
+  } catch {
+    toast("請允許使用相機，才能掃描身分證");
+    return;
+  }
+  const el = document.createElement("div");
+  el.className = "id-scan";
+  el.innerHTML = '<video autoplay playsinline muted></video><div class="id-scan-shade"><div class="id-scan-frame"></div></div><p class="id-scan-hint">請把身分證移進框內</p><button type="button" class="id-scan-x">關閉</button>';
+  document.body.appendChild(el);
+  const video = el.querySelector("video");
+  video.srcObject = stream;
+  try { await video.play(); } catch {}
+  idScan = {
+    el,
+    video,
+    stream,
+    frame: el.querySelector(".id-scan-frame"),
+    hint: el.querySelector(".id-scan-hint"),
+    dead: false,
+    busy: false,
+    hold: 0,
+    prev: null,
+    timer: 0
+  };
+  el.querySelector(".id-scan-x").onclick = () => closeIdScanner();
+  tickIdScanner();
+}
 async function readMoveIdCard(file) {
   if (!file) return;
   const btn = document.getElementById("move-id-scan");
@@ -43401,8 +43560,7 @@ function bindMoveInForm() {
   if (scan && scanFile) {
     scan.onclick = e => {
       e.preventDefault();
-      scanFile.value = "";
-      scanFile.click();
+      openIdScanner();
     };
     scanFile.onchange = () => {
       const file = scanFile.files && scanFile.files[0];
