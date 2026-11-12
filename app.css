@@ -3354,6 +3354,24 @@ input[type="file"] {
   transform: none;
   padding-bottom: 2px;
 }
+.move-split-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .46s cubic-bezier(.22,.82,.22,1);
+}
+.move-split-slot.open { grid-template-rows: 1fr; }
+.move-split-clip { overflow: hidden; min-height: 0; }
+.move-split-body {
+  opacity: 0;
+  padding-top: 10px;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.move-split-slot.open .move-split-body {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: .16s;
+}
 .move-settle-sum {
   margin: 10px 0 0;
   display: flex;
