@@ -3337,6 +3337,36 @@ input[type="file"] {
   line-height: 1.6;
 }
 .move-settle-lines { display: grid; gap: 2px; }
+.move-settle-line {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1d4a34;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+.move-note {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .38s cubic-bezier(.22,.82,.22,1);
+}
+.move-note.open { grid-template-rows: 1fr; }
+.move-note-clip { overflow: hidden; min-height: 0; }
+.move-note p {
+  margin: 0;
+  padding: 0 0 4px;
+  color: #3d6b52;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+}
 .move-fee-slot {
   display: grid;
   grid-template-rows: 0fr;

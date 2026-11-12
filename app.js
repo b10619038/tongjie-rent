@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1946";
+const FILE_VER = "1947";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23207,6 +23207,7 @@ function firstStudioPayBits(t, r) {
     hasAgent: !!(t && t.hasAgent),
     stub: !!stub,
     stubDays: stub ? (Number(stub.days) || 0) : 0,
+    stubDim: stub ? (Number(stub.daysInMonth) || 0) : 0,
     stubStart: stub ? stub.start : "",
     stubEnd: stub ? stub.end : "",
     yearStart: year ? year.start : start,
@@ -23239,22 +23240,28 @@ function moveSettleTotal(bits) {
   if (!bits || !bits.hasAgent) return base;
   return base + moveAgentHalf(bits.monthly);
 }
+function moveSettleItem(key, label, note, extra) {
+  return `<div class="move-settle-item"><button type="button" class="move-settle-line${extra ? " " + extra : ""}" data-settle="${key}">${escapeHtml(label)}</button><div class="move-note" data-note="${key}"><div class="move-note-clip"><p>${escapeHtml(note)}</p></div></div></div>`;
+}
 function moveSettleLinesHtml(bits) {
   if (!bits) return "";
-  const lines = [`押金 ${money(bits.deposit)}`];
+  const rows = [];
+  rows.push(moveSettleItem("deposit", "押金 " + money(bits.deposit), "2個月的租金，將於退租後自動轉帳退還租客"));
   if (bits.stub && bits.stubRent) {
     const stubMonth = bits.stubStart ? String(bits.stubStart).slice(5, 7).replace(/^0/, "") : "";
-    lines.push((stubMonth ? stubMonth + "月租金 " : "租金 ") + money(bits.stubRent));
+    const range = bits.stubStart ? rocSlash(bits.stubStart) + " ➜ " + rocSlash(bits.stubEnd) + " " : "";
+    rows.push(moveSettleItem("stub", (stubMonth ? stubMonth + "月租金 " : "租金 ") + money(bits.stubRent), range + "日拆（" + (bits.stubDays || 0) + "/" + (bits.stubDim || 0) + " 天）"));
   }
-  lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
-  if (bits.water) lines.push("年水費 " + money(bits.water));
-  if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
-  return `<div class="move-settle-bits move-settle-lines">${lines.map(x => `<div>${escapeHtml(x)}</div>`).join("")}</div>`;
+  rows.push(moveSettleItem("month", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth), "每個月的租金"));
+  if (bits.water) rows.push(moveSettleItem("water", "年水費 " + money(bits.water), "1人1800元 使用無上限"));
+  if (bits.elec) rows.push(moveSettleItem("elec", "電費儲值 " + money(bits.elec), "電費可於5F自行於儲值機現金儲值 金額無上限"));
+  return `<div class="move-settle-bits move-settle-lines">${rows.join("")}</div>`;
 }
 function firstPaySettleHtml(bits) {
   if (!bits) return "";
   const fee = moveAgentHalf(bits.monthly);
-  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip"><p class="move-settle-bits move-fee-line">仲介費 ${money(fee)}</p></div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum"><span>合計</span><b>${escapeHtml(money(moveSettleTotal(bits)))}</b></p></div>`;
+  const feeRow = moveSettleItem("agent", "仲介費 " + money(fee), "仲介費用為一個月租金的一半", "move-fee-line");
+  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum"><span>合計</span><b>${escapeHtml(money(moveSettleTotal(bits)))}</b></p></div>`;
 }
 function paintMoveAgentFee() {
   const d = ensureMoveIn();
@@ -42719,9 +42726,17 @@ function paintMoveLive() {
   }, r);
   const settle = document.querySelector(".move-settle");
   if (settle) {
+    const openNotes = [...settle.querySelectorAll(".move-note.open")].map(el => el.dataset.note);
     const hold = document.createElement("div");
     hold.innerHTML = firstPaySettleHtml(bits);
-    if (hold.firstChild) settle.replaceWith(hold.firstChild);
+    const next = hold.firstChild;
+    if (next) {
+      openNotes.forEach(k => {
+        const n = next.querySelector('.move-note[data-note="' + k + '"]');
+        if (n) n.classList.add("open");
+      });
+      settle.replaceWith(next);
+    }
   }
   const hint = document.getElementById("move-pay-hint");
   if (hint) paintMovePayHint(moveSettleTotal(bits), d.payWay || "cash");
@@ -42768,6 +42783,14 @@ function ensureMoveLiveWatch() {
     const id = e.target && e.target.id;
     if (id === "move-start" || id === "move-elec") paintMoveLive();
   }, true);
+  document.addEventListener("click", e => {
+    const btn = e.target && e.target.closest && e.target.closest(".move-settle [data-settle]");
+    if (!btn) return;
+    e.preventDefault();
+    const item = btn.closest(".move-settle-item");
+    const note = item && item.querySelector(".move-note");
+    if (note) note.classList.toggle("open");
+  });
 }
 function bindLiveCommit(el, fn) {
   if (!el || el.dataset.liveCommit === "1") return;
