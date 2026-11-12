@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1977";
+const FILE_VER = "1978";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27841,7 +27841,7 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function blankMoveIn() {
-  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
 }
 function saveMoveDraft() {
   const d = ui && ui.moveIn;
@@ -27853,7 +27853,7 @@ function loadMoveDraft() {
     const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
     if (!raw || typeof raw !== "object") return null;
     const d = blankMoveIn();
-    ["roomId", "name", "phone", "idNo", "birthday", "address", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
+    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
@@ -28146,6 +28146,8 @@ function submitMoveIn() {
   if (existSame) {
     existSame.phone = phone || existSame.phone;
     existSame.idNo = joined.idNo || existSame.idNo;
+    if (d.emergencyName) existSame.emergencyName = d.emergencyName;
+    if (d.emergencyPhone) existSame.emergencyPhone = d.emergencyPhone;
     if (joined.birthday) { existSame.birthday = joined.birthday; existSame.birthdaySet = true; }
     existSame.signAppointAt = d.signAppointAt || existSame.signAppointAt;
     existSame.leaseStart = d.leaseStart || existSame.leaseStart;
@@ -28197,6 +28199,8 @@ function submitMoveIn() {
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   if (joined.birthday) { t.birthday = joined.birthday; t.birthdaySet = true; }
+  if (d.emergencyName) t.emergencyName = d.emergencyName;
+  if (d.emergencyPhone) t.emergencyPhone = d.emergencyPhone;
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -30995,6 +30999,8 @@ function moveInView() {
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-idno2" type="text" value="${escapeHtml(d.idNo2 || "")}" placeholder="第二人身分證" autocomplete="off" autocapitalize="characters" maxlength="21" /></div></div></label>
       <label class="field"><span>戶籍地址</span><input id="move-addr" type="text" value="${escapeHtml(d.address || "")}" placeholder="掃身分證反面，或手動填" autocomplete="street-address" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-addr2" type="text" value="${escapeHtml(d.address2 || "")}" placeholder="第二人戶籍地址" autocomplete="street-address" /></div></div></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
+      <label class="field"><span>緊急聯絡人</span><input id="move-emname" type="text" value="${escapeHtml(d.emergencyName || "")}" placeholder="緊急聯絡人姓名" autocomplete="name" inputmode="text" /></label>
+      <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
@@ -42678,6 +42684,8 @@ function captureMoveInDraft() {
   if (document.getElementById("move-name2")) d.name2 = normalizePersonName(val("move-name2"));
   if (document.getElementById("move-phone")) d.phone = normalizeMobile(val("move-phone"));
   if (document.getElementById("move-phone2")) d.phone2 = normalizeMobile(val("move-phone2"));
+  if (document.getElementById("move-emname")) d.emergencyName = normalizePersonName(val("move-emname"));
+  if (document.getElementById("move-emphone")) d.emergencyPhone = normalizeMobile(val("move-emphone"));
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
   if (document.getElementById("move-idno2")) d.idNo2 = normalizeIdNo(val("move-idno2"));
   if (document.getElementById("move-addr")) d.address = val("move-addr");
@@ -43854,7 +43862,7 @@ function bindMoveInForm() {
     bindLiveCommit(el, () => { captureMoveInDraft(); });
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
-  ["move-name", "move-phone", "move-idno", "move-bday", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
+  ["move-name", "move-phone", "move-idno", "move-bday", "move-emname", "move-emphone", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     bindLiveCommit(el, () => {
@@ -43869,6 +43877,8 @@ function bindMoveInForm() {
   bindFormatField(document.getElementById("move-name2"), "name");
   bindFormatField(document.getElementById("move-phone"), "phone");
   bindFormatField(document.getElementById("move-phone2"), "phone");
+  bindFormatField(document.getElementById("move-emname"), "name");
+  bindFormatField(document.getElementById("move-emphone"), "phone");
   bindFormatField(document.getElementById("move-idno"), "id");
   bindFormatField(document.getElementById("move-idno2"), "id");
   const startEl = document.getElementById("move-start");
