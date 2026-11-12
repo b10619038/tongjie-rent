@@ -3455,6 +3455,14 @@ input[type="file"] {
   white-space: nowrap;
   scroll-snap-align: start;
 }
+.sign-picked {
+  margin: 10px 0 0;
+  color: #17211f;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+html[data-theme="void"] .sign-picked { color: #f4f4f4; }
 .sign-slot {
   border: 1.5px solid var(--line); background: var(--card); border-radius: 999px;
   padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;

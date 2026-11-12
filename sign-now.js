@@ -33,8 +33,8 @@
       '<div class="sign-slot-grid sign-slot-scroll"><button type="button" class="sign-slot${d.signNow ? " on" : ""}" data-sign-now="1">現在時刻</button>${slots.map(s => `<button type="button" class="sign-slot${!d.signNow && d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("")}</div>'
     ],
     [
-      '<p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>',
-      '<p class="small" style="margin-top:8px">${d.signNow ? ("已選　現在時刻　" + formatDateTime12(String(d.signAppointAt).replace("T", " "))) : (d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段")}</p>'
+      '${d.signAppointAt ? `<p class="sign-picked">已選　${formatDateTime12(String(d.signAppointAt).replace("T", " "))}</p>` : `<p class="small" style="margin-top:8px">請選日期與時段</p>`}',
+      '${d.signNow ? `<p class="sign-picked">已選　現在時刻　${formatDateTime12(String(d.signAppointAt).replace("T", " "))}</p>` : (d.signAppointAt ? `<p class="sign-picked">已選　${formatDateTime12(String(d.signAppointAt).replace("T", " "))}</p>` : `<p class="small" style="margin-top:8px">請選日期與時段</p>`)}'
     ]
   ];
   let src = src0;

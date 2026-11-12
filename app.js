@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1988";
+const FILE_VER = "1989";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31036,7 +31036,7 @@ function moveInView() {
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
-        <p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>` : ""}
+        ${d.signAppointAt ? `<p class="sign-picked">已選　${formatDateTime12(String(d.signAppointAt).replace("T", " "))}</p>` : `<p class="small" style="margin-top:8px">請選日期與時段</p>`}` : ""}
     </div>
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
       <div class="label">合約期間</div>
@@ -33132,7 +33132,7 @@ function leaseSignView() {
         ${signCalHtml(win.min, ymdOf(t && t.signAppointAt) || day, t && t.signAppointAt, win.maxFast)}
         <p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${(t && t.signAppointAt) === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
-        <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
+        ${t && t.signAppointAt ? `<p class="sign-picked">已選　${formatDateTime12(String(t.signAppointAt).replace("T", " "))}</p>` : `<p class="small" style="margin-top:8px">請選日期與時段</p>`}
       </div>
       <div class="card card-body" style="margin-top:12px">
         <div class="label">合約期間</div>
