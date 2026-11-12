@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1998";
+const FILE_VER = "1999";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -2387,8 +2387,7 @@ function armTenantGoLaunch() {
       launchQueue.setConsumer(params => {
         const url = params && params.targetURL;
         if (!url) return;
-        try { restoreUi(); } catch {}
-        catchTenantGo(url);
+        try { catchTenantGo(url); } catch {}
       });
     }
   } catch {}
@@ -2400,9 +2399,15 @@ function applyTenantGo() {
     const id = String(ui.pendingPreviewId || "").trim();
     const t = id && (state.tenants || []).find(x => x && String(x.id) === id);
     const room = t && (state.rooms || []).find(r => r && r.id === t.roomId);
-    if (!t || !room) return;
+    if (!t || !room) {
+      ui.role = "";
+      ui.page = "preview-wait";
+      ui.loginError = "";
+      return;
+    }
     ui.pendingGo = "";
     ui.pendingPreviewId = "";
+    ui.previewEntered = true;
     try { sessionStorage.removeItem("tj-go"); sessionStorage.removeItem("tj-preview-tid"); } catch {}
     enterProspect(t, room);
     return;
@@ -16949,6 +16954,7 @@ function revivePublicGo(keepBack) {
   ui.moveEnter = true;
 }
 function restoreUi() {
+  if (ui && (ui.pendingGo === "preview" || ui.previewEntered)) return;
   const keepBack = ui.guestMoveBack || "";
   let backToMove = false;
   try { backToMove = localStorage.getItem("tj-gate-page") === "move-in"; } catch {}
@@ -31127,6 +31133,9 @@ function moveInView() {
   </div>`;
 }
 function gateView() {
+  if (ui.page === "preview-wait") {
+    return `<div class="gate"><div class="logo">TONG JIE</div><h1>正在開啟預覽</h1><p class="lead">請稍候，不用登入。</p></div>`;
+  }
   if (ui.page === "move-in") return moveInView();
   if (ui.page === "tenant-forgot") {
     return `<div class="gate">
@@ -48775,6 +48784,11 @@ async function boot() {
       persistLedger(state);
     } catch {}
     const got = await pullCloud();
+    if (ui.pendingGo === "preview") {
+      const id = String(ui.pendingPreviewId || "");
+      const has = id && (state.tenants || []).some(t => t && String(t.id) === id);
+      if (!has) { try { await pullCloud(); } catch {} }
+    }
     try { if (restoreMissingSignAppoint(state)) { markCloudDirty(); await pushCloud(); } } catch {}
     try {
       if (await repairStoredESigns(state)) {
