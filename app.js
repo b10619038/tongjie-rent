@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1954";
+const FILE_VER = "1955";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42758,7 +42758,7 @@ function exportMoveLeasePdf() {
 function shareMoveLeaseLine() {
   const text = moveAgentShareText();
   if (!text) { toast("請先選房號"); return; }
-  const url = "https://line.me/R/msg/text/" + encodeURIComponent(text);
+  const url = "https://line.me/R/share?text=" + encodeURIComponent(text);
   const phone = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent || "");
   if (phone) location.href = url;
   else window.open(url, "_blank", "noopener");
