@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1924";
+const FILE_VER = "1925";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30804,7 +30804,11 @@ function moveInView() {
       <div id="move-pay-extra">${movePayExtraHtml(d, payBits, payWay)}</div>` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
       <div class="move-line">
         <span class="move-line-k">房間電費儲值</span>
-        <input id="move-elec" class="move-elec-oval" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" />
+        <div class="move-elec-step" id="move-elec-step">
+          <button type="button" data-elec-step="-100" aria-label="減少">−</button>
+          <input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" />
+          <button type="button" data-elec-step="100" aria-label="增加">+</button>
+        </div>
       </div>
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
@@ -42733,6 +42737,18 @@ function bindMoveInForm() {
     ui.keepScroll = true;
     render();
   };
+  document.querySelectorAll("[data-elec-step]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const input = document.getElementById("move-elec");
+      if (!input) return;
+      const step = Number(btn.dataset.elecStep) || 0;
+      const next = Math.max(0, Math.round((Number(input.value) || 0) + step));
+      input.value = String(next);
+      captureMoveInDraft();
+      paintMoveLive();
+    };
+  });
   document.querySelectorAll("[data-move-pay]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
