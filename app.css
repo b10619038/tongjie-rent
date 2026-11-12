@@ -2751,6 +2751,19 @@ textarea, input[type="text"], input[type="password"], input[type="email"], input
   -webkit-user-select: text; user-select: text;
   box-sizing: border-box; min-height: 46px;
 }
+.move-in-page input.filled,
+.move-in-page textarea.filled,
+.move-in-page input.filled:focus,
+.move-in-page input:-webkit-autofill,
+.move-in-page input:-webkit-autofill:hover,
+.move-in-page input:-webkit-autofill:focus,
+.move-in-page textarea:-webkit-autofill {
+  background: var(--ok-soft) !important;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+  box-shadow: 0 0 0 1000px var(--ok-soft) inset;
+  transition: background-color 99999s ease-out 0s;
+}
 .renew-add-field input,
 .renew-add-field input:focus,
 .renew-add-field input:focus-visible {

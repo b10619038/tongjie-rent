@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1914";
+const FILE_VER = "1915";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42436,6 +42436,10 @@ function playMoveSplitFromButton() {
 }
 function paintMoveLive() {
   if (typeof ui === "undefined" || !ui || ui.page !== "move-in") return;
+  document.querySelectorAll(".move-in-page input, .move-in-page textarea").forEach(el => {
+    if (!el || el.type === "checkbox" || el.type === "radio" || el.type === "button") return;
+    el.classList.toggle("filled", String(el.value || "").trim() !== "");
+  });
   const d = ensureMoveIn();
   const start = document.getElementById("move-start");
   const elec = document.getElementById("move-elec");
