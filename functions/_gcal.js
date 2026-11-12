@@ -4,26 +4,36 @@ function roomAddress(no) {
   return "高雄市鳳山區文龍東路" + s.slice(0, 2) + "號" + s.charAt(2) + "樓-" + s.charAt(3) + "室";
 }
 
+function taipeiMs(year, month, day, hour, minute) {
+  return Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 8, Number(minute), 0);
+}
+
 export function gcalPage(room, year, month, day, hour, minute) {
-  const start = year + month + day + "T" + hour + minute + "00";
-  let next = Number(hour) + 1;
-  const end = next >= 24
-    ? year + month + day + "T235900"
-    : year + month + day + "T" + String(next).padStart(2, "0") + minute + "00";
-  const g = new URL("https://calendar.google.com/calendar/render");
-  g.searchParams.set("action", "TEMPLATE");
-  g.searchParams.set("text", room + " 簽約");
-  g.searchParams.set("dates", start + "/" + end);
-  g.searchParams.set("ctz", "Asia/Taipei");
-  g.searchParams.set("location", roomAddress(room));
-  g.searchParams.set("details", "統潔簽約");
-  const web = g.toString();
-  const intent = "intent://calendar.google.com/calendar/render?" + g.searchParams.toString()
-    + "#Intent;scheme=https;package=com.google.android.calendar;S.browser_fallback_url="
-    + encodeURIComponent(web) + ";end";
+  const begin = taipeiMs(year, month, day, hour, minute);
+  const end = begin + 3600000;
+  const title = room + " 簽約";
+  const place = roomAddress(room);
+  const web = new URL("https://calendar.google.com/calendar/render");
+  web.searchParams.set("action", "TEMPLATE");
+  web.searchParams.set("text", title);
+  web.searchParams.set("dates", year + month + day + "T" + hour + minute + "00/" + year + month + day + "T" + String(Math.min(Number(hour) + 1, 23)).padStart(2, "0") + minute + "00");
+  web.searchParams.set("ctz", "Asia/Taipei");
+  web.searchParams.set("location", place);
+  web.searchParams.set("details", "統潔簽約");
+  const intent = "intent:#Intent"
+    + ";action=android.intent.action.INSERT"
+    + ";type=vnd.android.cursor.item/event"
+    + ";package=com.google.android.calendar"
+    + ";S.title=" + encodeURIComponent(title)
+    + ";S.eventLocation=" + encodeURIComponent(place)
+    + ";S.description=" + encodeURIComponent("統潔簽約")
+    + ";l.beginTime=" + begin
+    + ";l.endTime=" + end
+    + ";end";
   const html = "<!doctype html><html><head><meta charset=\"utf-8\"><title>加入GOOGLE日歷</title><script>"
-    + "var web=" + JSON.stringify(web) + ";var intent=" + JSON.stringify(intent) + ";"
-    + "if(/Android/i.test(navigator.userAgent)) location.replace(intent);else location.replace(web);"
+    + "var go=" + JSON.stringify(intent) + ";var web=" + JSON.stringify(web.toString()) + ";"
+    + "if(/Android/i.test(navigator.userAgent)){location.replace(go);setTimeout(function(){location.href=go;},60);}"
+    + "else location.replace(web);"
     + "</script></head><body></body></html>";
   return new Response(html, {
     headers: {
