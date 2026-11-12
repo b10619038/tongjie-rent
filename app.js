@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1932";
+const FILE_VER = "1933";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23204,6 +23204,7 @@ function firstStudioPayBits(t, r) {
   return {
     monthly, deposit, stubRent, firstMonth, water, elec, rent,
     total: deposit + rent + water + elec,
+    hasAgent: !!(t && t.hasAgent),
     stub: !!stub,
     stubDays: stub ? (Number(stub.days) || 0) : 0,
     stubStart: stub ? stub.start : "",
@@ -23229,13 +23230,30 @@ function firstPayHintHtml(bits) {
   if (bits.elec) lines.push("房間電費儲值 " + money(bits.elec));
   return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。";
 }
+function moveAgentHalf(monthly) {
+  const n = Math.round(Number(monthly) || 0);
+  return n > 0 ? Math.round(n / 2) : 0;
+}
 function firstPaySettleHtml(bits) {
   const text = firstPayHintHtml(bits);
   if (!text) return "";
   const cut = text.split("。合計 ");
   const body = cut[0] || "";
   const sum = (cut[1] || "").replace(/。$/, "");
-  return `<div class="move-settle"><p class="move-settle-bits">${escapeHtml(body)}</p><p class="move-settle-sum"><span>合計</span><b>${escapeHtml(sum)}</b></p></div>`;
+  const fee = moveAgentHalf(bits && bits.monthly);
+  return `<div class="move-settle"><div class="move-fee-slot${bits && bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip"><p class="move-settle-bits move-fee-line">仲介費 ${money(fee)}</p></div></div><p class="move-settle-bits">${escapeHtml(body)}</p><p class="move-settle-sum"><span>合計</span><b>${escapeHtml(sum)}</b></p></div>`;
+}
+function paintMoveAgentFee() {
+  const d = ensureMoveIn();
+  const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const slot = document.querySelector(".move-settle .move-fee-slot");
+  if (!slot) return;
+  const line = slot.querySelector(".move-fee-line");
+  const fee = moveAgentHalf(r ? studioContractRent(null, r) : 0);
+  if (line) line.textContent = "仲介費 " + money(fee);
+  if (d.hasAgent && fee) {
+    if (!slot.classList.contains("open")) requestAnimationFrame(() => slot.classList.add("open"));
+  } else slot.classList.remove("open");
 }
 function firstPayWayOf(t) {
   const w = String((t && t.payWay) || "");
@@ -42783,6 +42801,7 @@ function bindMoveInForm() {
       d.hasAgent = yes;
       slideMoveAgent(yes);
       paintMoveSignPlace();
+      paintMoveAgentFee();
     };
   });
   const agentEl = document.getElementById("move-agent");

@@ -3336,6 +3336,23 @@ input[type="file"] {
   font-weight: 650;
   line-height: 1.6;
 }
+.move-fee-slot {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .42s cubic-bezier(.22,.82,.22,1);
+}
+.move-fee-slot.open { grid-template-rows: 1fr; }
+.move-fee-clip { overflow: hidden; min-height: 0; }
+.move-fee-line {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .32s ease, transform .42s cubic-bezier(.22,.82,.22,1);
+}
+.move-fee-slot.open .move-fee-line {
+  opacity: 1;
+  transform: none;
+  padding-bottom: 2px;
+}
 .move-settle-sum {
   margin: 10px 0 0;
   display: flex;
