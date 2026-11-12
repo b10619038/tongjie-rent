@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1973";
+const FILE_VER = "1974";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42835,13 +42835,10 @@ function moveSharePeople(d) {
 function moveCalShareLines(d, room, addr, names) {
   const m = String(d && d.signAppointAt || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
   if (!m) return [];
-  const q = new URLSearchParams({
-    r: (room && room.no) || "",
-    t: m[1] + m[2] + m[3] + "T" + m[4] + m[5],
-    a: addr || "",
-    n: (names || []).filter(Boolean).join("、")
-  });
-  return ["加入GOOGLE日歷：", "https://tongjie-app.pages.dev/cal?" + q.toString()];
+  const stamp = m[1] + m[2] + m[3] + "T" + m[4] + m[5];
+  const no = String((room && room.no) || "").replace(/\D/g, "");
+  if (no.length < 4) return [];
+  return ["加入GOOGLE日歷：", "https://tongjie-app.pages.dev/c/" + no + "-" + stamp];
 }
 function moveShareField(label, values) {
   const list = (values || []).map(v => String(v || "").trim()).filter(Boolean);
@@ -42935,10 +42932,18 @@ function shareMoveText(text) {
   if (!text) { toast("請先選房號"); return; }
   try { captureMoveInDraft(); } catch {}
   try { persistUi(); } catch {}
-  const url = "https://line.me/R/share?text=" + encodeURIComponent(text);
-  const phone = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent || "");
-  if (phone) location.href = url;
-  else window.open(url, "_blank", "noopener");
+  const encoded = encodeURIComponent(text);
+  const ua = navigator.userAgent || "";
+  const phone = /iPhone|iPad|Android|Mobile/i.test(ua);
+  if (!phone) {
+    window.open("https://line.me/R/share?text=" + encoded, "_blank", "noopener");
+    return;
+  }
+  if (/Android/i.test(ua)) {
+    location.href = "intent://msg/text/" + encoded + "#Intent;scheme=line;package=jp.naver.line.android;end";
+    return;
+  }
+  location.href = "line://msg/text/" + encoded;
 }
 function slideMoveAgent(yes) {
   const box = document.getElementById("move-agent-actions");
