@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1939";
+const FILE_VER = "1940";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30862,7 +30862,7 @@ function moveInView() {
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
       <div class="move-line">
-        <span class="move-line-k">是否仲介帶看</span>
+        <span class="move-line-k">仲介帶看</span>
         <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
           <i class="seg-bg"></i>
           <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
