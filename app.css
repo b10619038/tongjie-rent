@@ -1989,10 +1989,12 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
   gap: 12px;
   margin: 0 0 12px;
 }
-.move-card-head .label { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); }
+.move-card-head .label { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); flex: 1 1 auto; }
+.move-head-tools { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .move-title-row { display: flex; align-items: center; gap: 10px; }
 .move-title-row h1 { margin-right: 0; }
 .move-reset {
