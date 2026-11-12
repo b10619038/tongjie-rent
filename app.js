@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1919";
+const FILE_VER = "1920";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3977,16 +3977,68 @@ function applyRoomWaitBox(dest) {
   const after = JSON.stringify(target.roomWaits || []) + "|" + JSON.stringify(target.roomWaitGone || []);
   return before !== after;
 }
+function roomWaitTaken(w, data) {
+  if (!w) return false;
+  const src = data || (typeof state !== "undefined" ? state : null);
+  if (!src) return false;
+  const room = (src.rooms || []).find(r => r && ((w.roomId && r.id === w.roomId) || (w.roomNo && String(r.no) === String(w.roomNo))));
+  if (!room) return true;
+  const waited = ymdFromDate(new Date(Number(w.at) || 0));
+  const occ = roomCurrentTenant(room);
+  if (occ && occ.id !== w.tenantId) {
+    const start = ymdOf(occ.leaseStart || tenantOccupancyStart(occ, room));
+    if (start && waited && start >= waited) return true;
+    const mark = Number(occ.officialAt) || Number(occ.eSign && occ.eSign.ts) || 0;
+    if (mark && Number(w.at) && mark > Number(w.at)) return true;
+  }
+  const signed = (incomingsOf(room.id) || []).find(x => x && x.id !== w.tenantId && tenantContractStatus(x, room) === "signed");
+  if (signed) return true;
+  return false;
+}
+function sweepTakenRoomWaits(data) {
+  if (!data) return;
+  const shared = Array.isArray(data.roomWaits) ? data.roomWaits : [];
+  const drop = shared.filter(w => roomWaitTaken(w, data));
+  const now = Date.now();
+  if (drop.length) {
+    const ids = new Set(drop.map(w => String(w.id || "")));
+    data.roomWaits = shared.filter(w => w && !ids.has(String(w.id || "")));
+    if (!Array.isArray(data.roomWaitGone)) data.roomWaitGone = [];
+    drop.forEach(w => {
+      const id = String(w.id || "");
+      if (!id) return;
+      data.roomWaitGone = data.roomWaitGone.filter(x => roomWaitGoneId(x) !== id);
+      data.roomWaitGone.push({ id, at: Math.max(now, Number(w.at) || 0) });
+    });
+  }
+  let changed = drop.length > 0;
+  (data.tenants || []).forEach(t => {
+    if (!t || !Array.isArray(t.roomWaits) || !t.roomWaits.length) return;
+    const next = t.roomWaits.filter(w => !roomWaitTaken(Object.assign({ tenantId: t.id }, w), data));
+    if (next.length === t.roomWaits.length) return;
+    t.roomWaits = next;
+    t.edited = true;
+    t.editedAt = now;
+    changed = true;
+  });
+  if (drop.length) {
+    try { stampTenantWaits(data); } catch {}
+  }
+  if (changed) {
+    try { markCloudDirty(); } catch {}
+  }
+}
 function roomWaitList(t) {
   const tid = t && t.id;
   const gone = new Set(((state && state.roomWaitGone) || []).map(roomWaitGoneId).filter(Boolean));
   const shared = Array.isArray(state && state.roomWaits) ? state.roomWaits : [];
-  const fromShared = shared.filter(x => x && tid && x.tenantId === tid && !gone.has(String(x.id)));
+  const fromShared = shared.filter(x => x && tid && x.tenantId === tid && !gone.has(String(x.id)) && !roomWaitTaken(x));
   if (fromShared.length) return fromShared;
   return Array.isArray(t && t.roomWaits) ? t.roomWaits.filter(x => {
     if (!x || !(x.roomId || x.roomNo)) return false;
     const id = x.id || (tid ? tid + "|" + x.roomNo : "");
-    return !gone.has(String(id));
+    if (gone.has(String(id))) return false;
+    return !roomWaitTaken(Object.assign({ tenantId: tid }, x));
   }) : [];
 }
 function roomWaitOn(t, room) {
@@ -9124,6 +9176,7 @@ function applyBackfillRenewals(data) {
   try { apply7631Shen(data); } catch {}
   try { applyBirthdaySeed(data); } catch {}
   try { apply7023AskRent(data); } catch {}
+  try { sweepTakenRoomWaits(data); } catch {}
 }
 const ROOM_6841_SEP_VER = "6841-sep-0910-v1";
 function apply6841SepPay(data) {
