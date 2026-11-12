@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1979";
+const FILE_VER = "1980";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30997,7 +30997,7 @@ function moveInView() {
       <label class="field"><span>姓名</span><input id="move-name" type="text" value="${escapeHtml(d.name || "")}" placeholder="承租人姓名" autocomplete="name" inputmode="text" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-name2" type="text" value="${escapeHtml(d.name2 || "")}" placeholder="第二人姓名" autocomplete="name" inputmode="text" /></div></div></label>
       <label class="field"><span>生日</span><input id="move-bday" type="date" value="${escapeHtml(parseOneBirthday(d.birthday) || "")}" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-bday2" type="date" value="${escapeHtml(parseOneBirthday(d.birthday2) || "")}" /></div></div></label>
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-idno2" type="text" value="${escapeHtml(d.idNo2 || "")}" placeholder="第二人身分證" autocomplete="off" autocapitalize="characters" maxlength="21" /></div></div></label>
-      <label class="field"><span>戶籍地址</span><input id="move-addr" type="text" value="${escapeHtml(d.address || "")}" placeholder="掃身分證反面，或手動填" autocomplete="street-address" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-addr2" type="text" value="${escapeHtml(d.address2 || "")}" placeholder="第二人戶籍地址" autocomplete="street-address" /></div></div></label>
+      <label class="field"><span>地址</span><input id="move-addr" type="text" value="${escapeHtml(d.address || "")}" placeholder="原通訊住址" autocomplete="street-address" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-addr2" type="text" value="${escapeHtml(d.address2 || "")}" placeholder="第二人原通訊住址" autocomplete="street-address" /></div></div></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
       <label class="field"><span>緊急聯絡人</span><input id="move-emname" type="text" value="${escapeHtml(d.emergencyName || "")}" placeholder="緊急聯絡人姓名" autocomplete="name" inputmode="text" /></label>
       <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
