@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1986";
+const FILE_VER = "1987";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27841,7 +27841,7 @@ function moveInRooms() {
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
 function blankMoveIn() {
-  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
 }
 function saveMoveDraft() {
   const d = ui && ui.moveIn;
@@ -27853,7 +27853,7 @@ function loadMoveDraft() {
     const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
     if (!raw || typeof raw !== "object") return null;
     const d = blankMoveIn();
-    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
+    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "emergencyName2", "emergencyPhone2", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
@@ -28154,8 +28154,8 @@ function submitMoveIn() {
   if (existSame) {
     existSame.phone = phone || existSame.phone;
     existSame.idNo = joined.idNo || existSame.idNo;
-    if (d.emergencyName) existSame.emergencyName = d.emergencyName;
-    if (d.emergencyPhone) existSame.emergencyPhone = d.emergencyPhone;
+    if (d.emergencyName || (Number(d.people) === 2 && d.emergencyName2)) existSame.emergencyName = [d.emergencyName, Number(d.people) === 2 ? d.emergencyName2 : ""].filter(Boolean).join("／");
+    if (d.emergencyPhone || (Number(d.people) === 2 && d.emergencyPhone2)) existSame.emergencyPhone = [d.emergencyPhone, Number(d.people) === 2 ? d.emergencyPhone2 : ""].filter(Boolean).join("／");
     const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
     if (joinedAddr) existSame.address = joinedAddr;
     if (joined.birthday) { existSame.birthday = joined.birthday; existSame.birthdaySet = true; }
@@ -28209,8 +28209,8 @@ function submitMoveIn() {
   t.dueDay = 1;
   t.loginPass = phonePassOf(phone) || t.loginPass;
   if (joined.birthday) { t.birthday = joined.birthday; t.birthdaySet = true; }
-  if (d.emergencyName) t.emergencyName = d.emergencyName;
-  if (d.emergencyPhone) t.emergencyPhone = d.emergencyPhone;
+  if (d.emergencyName || (Number(d.people) === 2 && d.emergencyName2)) t.emergencyName = [d.emergencyName, Number(d.people) === 2 ? d.emergencyName2 : ""].filter(Boolean).join("／");
+  if (d.emergencyPhone || (Number(d.people) === 2 && d.emergencyPhone2)) t.emergencyPhone = [d.emergencyPhone, Number(d.people) === 2 ? d.emergencyPhone2 : ""].filter(Boolean).join("／");
   const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
   if (joinedAddr) t.address = joinedAddr;
   if (d.signImg || d.signImg2) t.eSign = { sig: d.signImg || "", sig2: Number(d.people) === 2 ? (d.signImg2 || "") : "", status: "draft" };
@@ -31013,8 +31013,8 @@ function moveInView() {
       <label class="field"><span>身分證</span><input id="move-idno" type="text" value="${escapeHtml(d.idNo || "")}" placeholder="蓋章簽約時須核對身分" autocomplete="off" autocapitalize="characters" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-idno2" type="text" value="${escapeHtml(d.idNo2 || "")}" placeholder="第二人身分證" autocomplete="off" autocapitalize="characters" maxlength="21" /></div></div></label>
       <label class="field"><span>地址</span><input id="move-addr" type="text" value="${escapeHtml(d.address || "")}" placeholder="原通訊住址" autocomplete="street-address" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-addr2" type="text" value="${escapeHtml(d.address2 || "")}" placeholder="第二人原通訊住址" autocomplete="street-address" /></div></div></label>
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
-      <label class="field"><span>緊急聯絡人</span><input id="move-emname" type="text" value="${escapeHtml(d.emergencyName || "")}" placeholder="緊急聯絡人姓名" autocomplete="name" inputmode="text" /></label>
-      <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
+      <label class="field"><span>緊急聯絡人</span><input id="move-emname" type="text" value="${escapeHtml(d.emergencyName || "")}" placeholder="緊急聯絡人姓名" autocomplete="name" inputmode="text" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-emname2" type="text" value="${escapeHtml(d.emergencyName2 || "")}" placeholder="第二人緊急聯絡人" autocomplete="name" inputmode="text" /></div></div></label>
+      <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-emphone2" type="tel" value="${escapeHtml(d.emergencyPhone2 || "")}" placeholder="第二人聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
       <div class="field">
         <span>電子簽名</span>
         <div class="sign-pad-wrap move-sign${d.signArmed ? " armed" : ""}" id="move-sign-box">
@@ -42715,7 +42715,9 @@ function captureMoveInDraft() {
   if (document.getElementById("move-phone")) d.phone = normalizeMobile(val("move-phone"));
   if (document.getElementById("move-phone2")) d.phone2 = normalizeMobile(val("move-phone2"));
   if (document.getElementById("move-emname")) d.emergencyName = normalizePersonName(val("move-emname"));
+  if (document.getElementById("move-emname2")) d.emergencyName2 = normalizePersonName(val("move-emname2"));
   if (document.getElementById("move-emphone")) d.emergencyPhone = normalizeMobile(val("move-emphone"));
+  if (document.getElementById("move-emphone2")) d.emergencyPhone2 = normalizeMobile(val("move-emphone2"));
   if (document.getElementById("move-idno")) d.idNo = normalizeIdNo(val("move-idno"));
   if (document.getElementById("move-idno2")) d.idNo2 = normalizeIdNo(val("move-idno2"));
   if (document.getElementById("move-addr")) d.address = val("move-addr");
@@ -42823,8 +42825,8 @@ function moveDraftTenant() {
     phone: joined.phone || "",
     idNo: joined.idNo || "",
     address: [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／"),
-    emergencyName: String(d.emergencyName || "").trim(),
-    emergencyPhone: String(d.emergencyPhone || "").trim(),
+    emergencyName: [String(d.emergencyName || "").trim(), Number(d.people) === 2 ? String(d.emergencyName2 || "").trim() : ""].filter(Boolean).join("／"),
+    emergencyPhone: [String(d.emergencyPhone || "").trim(), Number(d.people) === 2 ? String(d.emergencyPhone2 || "").trim() : ""].filter(Boolean).join("／"),
     leaseStart: d.leaseStart,
     rent: monthly,
     deposit: studioDepositOf(monthly),
@@ -43897,7 +43899,7 @@ function bindMoveInForm() {
     bindLiveCommit(el, () => { captureMoveInDraft(); });
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
-  ["move-name", "move-phone", "move-idno", "move-bday", "move-emname", "move-emphone", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
+  ["move-name", "move-phone", "move-idno", "move-bday", "move-emname", "move-emphone", "move-emname2", "move-emphone2", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     bindLiveCommit(el, () => {
@@ -43913,7 +43915,9 @@ function bindMoveInForm() {
   bindFormatField(document.getElementById("move-phone"), "phone");
   bindFormatField(document.getElementById("move-phone2"), "phone");
   bindFormatField(document.getElementById("move-emname"), "name");
+  bindFormatField(document.getElementById("move-emname2"), "name");
   bindFormatField(document.getElementById("move-emphone"), "phone");
+  bindFormatField(document.getElementById("move-emphone2"), "phone");
   bindFormatField(document.getElementById("move-idno"), "id");
   bindFormatField(document.getElementById("move-idno2"), "id");
   const startEl = document.getElementById("move-start");
