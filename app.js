@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1972";
+const FILE_VER = "1973";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42832,6 +42832,17 @@ function moveSharePeople(d) {
   }
   return rows.filter(p => p.name || p.phone || p.idNo || p.address);
 }
+function moveCalShareLines(d, room, addr, names) {
+  const m = String(d && d.signAppointAt || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return [];
+  const q = new URLSearchParams({
+    r: (room && room.no) || "",
+    t: m[1] + m[2] + m[3] + "T" + m[4] + m[5],
+    a: addr || "",
+    n: (names || []).filter(Boolean).join("、")
+  });
+  return ["加入GOOGLE日歷：", "https://tongjie-app.pages.dev/cal?" + q.toString()];
+}
 function moveShareField(label, values) {
   const list = (values || []).map(v => String(v || "").trim()).filter(Boolean);
   if (!list.length) return [label + "："];
@@ -42851,6 +42862,7 @@ function moveTenantShareText() {
     "",
     "簽約時間：",
     moveSignWhenLabel(d.signAppointAt),
+    ...moveCalShareLines(d, room, addr, names),
     "",
     "地點：",
     addr || room.no || "",
@@ -42894,6 +42906,7 @@ function moveOwnerShareText() {
     "",
     "簽約時間：",
     moveSignWhenLabel(d.signAppointAt),
+    ...moveCalShareLines(d, room, addr, names),
     "",
     "地點：" + (addr || room.no || ""),
     "",
