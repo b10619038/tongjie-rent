@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1953";
+const FILE_VER = "1954";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23268,7 +23268,7 @@ function firstPaySettleHtml(bits) {
   const two = Number(bits.people) === 2;
   const avg = two ? `<span class="move-avg-slot open" data-note="sum"><span class="move-avg-clip"><em class="move-avg">平均一人 ${escapeHtml(money(Math.round(total / 2)))}</em></span></span>` : "";
   const sumLabel = two ? `<button type="button" class="move-sum-k" data-settle="sum">合計</button>` : `<span>合計</span>`;
-  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum">${sumLabel}<span class="move-sum-right">${avg}<b>${escapeHtml(money(total))}</b></span></p></div>`;
+  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum">${sumLabel}<span class="move-sum-right"><b>${escapeHtml(money(total))}</b>${avg}</span></p></div>`;
 }
 function paintMoveAgentFee() {
   const d = ensureMoveIn();
@@ -30963,7 +30963,15 @@ function moveInView() {
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:16px;margin-bottom:48px">送出並進入預覽</button>
+    <div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
+      <div class="move-agent-actions-clip">
+        <div class="move-export-row">
+          <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
+          <button type="button" class="ghost" id="move-lease-line">分享至LINE</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px">送出並進入預覽</button>
     ${pickSheet}
   </div>`;
 }
@@ -42667,7 +42675,100 @@ function slideMovePeople(two) {
     else slot.classList.remove("open");
   });
 }
+function moveSignWhenLabel(at) {
+  const m = String(at || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return "待約";
+  const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const wk = "日一二三四五六"[dt.getDay()] || "";
+  const roc = (Number(m[1]) - 1911) + "/" + Number(m[2]) + "/" + Number(m[3]);
+  const h = Number(m[4]);
+  const h12 = h % 12 || 12;
+  return roc + "（" + wk + "）" + (h < 12 ? "上午" : "下午") + " " + h12 + ":" + m[5];
+}
+function moveDraftTenant() {
+  captureMoveInDraft();
+  const d = ensureMoveIn();
+  const joined = moveJoinedDraft();
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (!room) return null;
+  const monthly = studioContractRent(null, room);
+  if (!d.leaseStart) d.leaseStart = roomSoonestStart(room, { incoming: true });
+  const t = {
+    name: joined.name || "",
+    phone: joined.phone || "",
+    idNo: joined.idNo || "",
+    leaseStart: d.leaseStart,
+    rent: monthly,
+    deposit: studioDepositOf(monthly),
+    roomId: room.id,
+    hasAgent: !!d.hasAgent,
+    incoming: true,
+    prospect: true,
+    people: Number(d.people) === 2 ? 2 : 1,
+    elecStore: d.elecStore,
+    contractSignAt: ymdOf(d.signAppointAt) || todayYmd()
+  };
+  applyStudioLeasePack(t, room, d.leaseStart);
+  return { d, t, room };
+}
+function moveAgentShareText() {
+  const pack = moveDraftTenant();
+  if (!pack) return "";
+  const { d, t, room } = pack;
+  const bits = firstStudioPayBits({
+    name: t.name || "新客",
+    leaseStart: t.leaseStart,
+    rent: t.rent,
+    deposit: t.deposit,
+    hasAgent: true,
+    people: t.people,
+    payWay: d.payWay,
+    payCash: d.payCash,
+    payMega: d.payMega,
+    elecStore: d.elecStore
+  }, room);
+  const addr = room.location || roomAddress(room.no) || "";
+  const rents = [];
+  if (bits.stub && bits.stubRent) {
+    const mo = bits.stubStart ? String(bits.stubStart).slice(5, 7).replace(/^0/, "") : "";
+    rents.push((mo ? mo + "月租金 " : "租金 ") + money(bits.stubRent));
+  }
+  const mo = bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") : "";
+  rents.push((mo ? mo + "月租金 " : "房租 ") + money(bits.firstMonth));
+  return [
+    (room.no || "") + "新租客您好",
+    "簽約時間：" + moveSignWhenLabel(d.signAppointAt),
+    "地點：" + (room.no || "") + (addr ? " " + addr : ""),
+    "合約期間：" + (rocSlash(t.leaseStart) || "") + " ➜ " + (rocSlash(t.leaseEnd) || ""),
+    "請攜帶：雙證件正本、身分證正反影本、個人印章。",
+    "仲介費 " + money(moveAgentHalf(bits.monthly)),
+    "押金 " + money(bits.deposit),
+    rents.join("　"),
+    "水費 " + money(bits.water),
+    "電費 " + money(bits.elec),
+    "合計 " + money(moveSettleTotal(bits))
+  ].join("\n");
+}
+function exportMoveLeasePdf() {
+  const pack = moveDraftTenant();
+  if (!pack) { toast("請先選房號"); return; }
+  if (!pack.t.name) { toast("請先填姓名"); return; }
+  showLeasePrintPreview(pack.t, pack.room);
+}
+function shareMoveLeaseLine() {
+  const text = moveAgentShareText();
+  if (!text) { toast("請先選房號"); return; }
+  const url = "https://line.me/R/msg/text/" + encodeURIComponent(text);
+  const phone = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent || "");
+  if (phone) location.href = url;
+  else window.open(url, "_blank", "noopener");
+}
 function slideMoveAgent(yes) {
+  const box = document.getElementById("move-agent-actions");
+  if (box) {
+    if (yes) requestAnimationFrame(() => box.classList.add("open"));
+    else box.classList.remove("open");
+  }
   const seg = document.getElementById("move-agent-grid");
   if (!seg) return;
   seg.classList.toggle("is-no", !yes);
@@ -43075,6 +43176,16 @@ function bindMoveInForm() {
     e.preventDefault();
     captureMoveInDraft();
     askMoveSubmit();
+  };
+  const pdfBtn = document.getElementById("move-lease-pdf");
+  if (pdfBtn) pdfBtn.onclick = e => {
+    e.preventDefault();
+    exportMoveLeasePdf();
+  };
+  const lineBtn = document.getElementById("move-lease-line");
+  if (lineBtn) lineBtn.onclick = e => {
+    e.preventDefault();
+    shareMoveLeaseLine();
   };
 }
 function popSignDay(btn, done) {
