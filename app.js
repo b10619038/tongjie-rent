@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1921";
+const FILE_VER = "1922";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -5705,7 +5705,7 @@ function studioPickMarksHtml(r) {
 }
 const STUDIO_RENTS = {
   "6811": 0, "6821": 7000, "6822": 7000, "6823": 10000, "6831": 9000, "6832": 14000, "6841": 9000, "6842": 14000,
-  "7011": 0, "7021": 7000, "7022": 7000, "7023": 11000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 6000,
+  "7011": 0, "7021": 7000, "7022": 7000, "7023": 11000, "7031": 9000, "7032": 12000, "7041": 9000, "7042": 14000, "7051": 7000,
   "7211": 0, "7221": 7000, "7222": 7000, "7223": 10000, "7231": 9000, "7232": 14000, "7241": 8000, "7242": 14000, "7251": 5000,
   "7611": 42000, "7621": 7000, "7622": 7000, "7623": 10000, "7631": 9000, "7632": 14000, "7641": 9000, "7642": 14000, "7651": 5000
 };
@@ -5995,7 +5995,7 @@ const TENANT_INFO = {
   "7032": { name: "楊旻憲", phone: "0903-045-123", leaseStart: "2026-03-01", leaseEnd: "2026-10-31", deposit: 24000, payBank: "農會" },
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", idNo: "S225768985", address: "高雄市大寮區三隆里1鄰鳳林三路78號", emergencyName: "劉書妤（姊）", emergencyPhone: "0967-138-373", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", waterYear: 1800, residents: 1, note: "男友已不續住，現況1人。續約年水費 1,800。原約當時2人同住、水費3600。2押1租 27,000；電儲值 2,000；仲介 9,000；發票 RT35173361。身分證 S225768985。女。民國96年2月9日生。出生地臺灣省高雄縣。父劉育任、母余秀珍。戶籍高雄市大寮區三隆里1鄰鳳林三路78號。115年6月25日高市換發。緊急聯絡人姊姊劉書妤 0967-138-373。" },
   "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。發票本月先開 14,000、先不交付，10月連同10月發票一併給。" },
-  "7051": { rent: 6000, deposit: 12000, note: "空房。月租 NT$ 6,000。不可申請租屋補助。楊旻憲已換至 7032。" },
+  "7051": { rent: 7000, deposit: 14000, note: "空房。月租 NT$ 7,000。不可申請租屋補助。楊旻憲已換至 7032。" },
   "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
@@ -8522,7 +8522,7 @@ function reviveStudioMirrorGuests(data) {
     ensureStudioTenant(data, no);
   });
 }
-const ROOM_7051_VER = "7051-vacant-yang-v2";
+const ROOM_7051_VER = "7051-rent-7000-v1";
 const CLEAR_7042_ESIGN_VER = "7042-clear-test-sign-v1";
 function applyClear7042TestSign(data) {
   if (!data || data.clear7042EsignVer === CLEAR_7042_ESIGN_VER) return;
@@ -8729,10 +8729,10 @@ function applyRoom7051(data) {
   if (!data || !Array.isArray(data.rooms)) return;
   const room = data.rooms.find(r => r && String(r.no) === "7051");
   if (!room) return;
-  room.rent = 6000;
+  room.rent = 7000;
   room.noSubsidy = true;
-  if (!Number(room.deposit)) room.deposit = 12000;
-  room.note = "月租 NT$ 6,000。不可申請租屋補助。";
+  if (!Number(room.deposit) || Number(room.deposit) === 12000) room.deposit = 14000;
+  room.note = "月租 NT$ 7,000。不可申請租屋補助。";
   const room32 = (data.rooms || []).find(r => r && String(r.no) === "7032");
   let changed = data.room7051Ver !== ROOM_7051_VER;
   (data.tenants || []).forEach(t => {
