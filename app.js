@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1937";
+const FILE_VER = "1938";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30869,6 +30869,14 @@ function moveInView() {
           <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
         </div>
       </div>
+      <div class="move-line">
+        <span class="move-line-k">房間電費儲值</span>
+        <div class="move-elec-step" id="move-elec-step">
+          <button type="button" data-elec-step="-100" aria-label="減少">−</button>
+          <input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" />
+          <button type="button" data-elec-step="100" aria-label="增加">+</button>
+        </div>
+      </div>
       ${r ? `<div class="move-line">
         <span class="move-line-k" id="move-pay-label">付款方式</span>
         <div class="seg seg-3 move-seg${payWay === "xfer" ? " is-2" : payWay === "split" ? " is-3" : ""}" id="move-pay-grid">
@@ -30879,14 +30887,6 @@ function moveInView() {
         </div>
       </div>
       <div id="move-pay-extra">${movePayExtraHtml(d, payBits, payWay)}</div>` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
-      <div class="move-line">
-        <span class="move-line-k">房間電費儲值</span>
-        <div class="move-elec-step" id="move-elec-step">
-          <button type="button" data-elec-step="-100" aria-label="減少">−</button>
-          <input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" />
-          <button type="button" data-elec-step="100" aria-label="增加">+</button>
-        </div>
-      </div>
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
