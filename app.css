@@ -3445,7 +3445,6 @@ input[type="file"] {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
   scrollbar-width: none;
   padding-bottom: 2px;
 }
@@ -3453,7 +3452,12 @@ input[type="file"] {
 .sign-slot-scroll .sign-slot {
   flex: 0 0 auto;
   white-space: nowrap;
-  scroll-snap-align: start;
+  transform-origin: center;
+}
+.sign-slot-scroll .sign-slot.is-pop {
+  position: relative;
+  z-index: 1;
+  animation: signDayPop .32s cubic-bezier(.22,.82,.22,1);
 }
 .sign-picked {
   margin: 10px 0 0;

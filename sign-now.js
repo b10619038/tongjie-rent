@@ -60,6 +60,7 @@
       d.signNow = true;
       d.signAppointAt = nowSignStamp();
       if (typeof queueSignAnim === "function") queueSignAnim(prevAt, d.signAppointAt, true);
+      ui.signSlotCenter = true;
       const ymd = ymdOf(d.signAppointAt);
       ui.signCalYear = Number(ymd.slice(0, 4));
       ui.signCalMonth = Number(ymd.slice(5, 7));
