@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1994";
+const FILE_VER = "1995";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42133,8 +42133,9 @@ function bindGate() {
   bindMoveInForm();
   bindMoveSignPad();
   bindMoveSignPad("move-sign-box-2", "move-sign-pad-2", "moveSignStrokes2", "signImg2", "signArmed2", "signStrokes2");
-  document.querySelectorAll(".sign-slot-scroll").forEach(row => {
-    if (!ui.signSlotCenter && !ui.signSlotHeld) row.scrollLeft = 0;
+  document.querySelectorAll(".move-in-page .sign-slot-scroll").forEach(row => {
+    if ((ui.signSlotCenter || ui.signSlotHeld) && typeof ui.signSlotScroll === "number") row.scrollLeft = ui.signSlotScroll;
+    else if (!ui.signSlotCenter && !ui.signSlotHeld) row.scrollLeft = 0;
   });
   if (ui.signSlotCenter) {
     ui.signSlotCenter = false;
@@ -43185,6 +43186,10 @@ function animateSignPicked(el, fromAt, toAt, prefix) {
   };
   requestAnimationFrame(tick);
 }
+function rememberSignSlotScroll() {
+  const row = document.querySelector(".move-in-page .sign-slot-scroll");
+  if (row) ui.signSlotScroll = row.scrollLeft;
+}
 function centerPickedSignSlot(smooth) {
   document.querySelectorAll(".move-in-page .sign-slot-scroll").forEach(row => {
     const btn = row.querySelector(".sign-slot.on");
@@ -43221,11 +43226,13 @@ function centerPickedSignSlot(smooth) {
         else {
           const again = measure();
           if (again && Math.abs(again.delta) > 3) row.scrollLeft = again.dest;
+          ui.signSlotScroll = row.scrollLeft;
         }
       };
       requestAnimationFrame(tick);
     } else {
       row.scrollLeft = hit.dest;
+      ui.signSlotScroll = row.scrollLeft;
     }
   });
 }
@@ -44071,6 +44078,7 @@ function bindMoveInForm() {
       popSignDay(btn, () => {
         queueSignAnim(prevAt, hit, false);
         d.signAppointAt = hit;
+        rememberSignSlotScroll();
         ui.signSlotCenter = true;
         ui.keepScroll = true;
         render();
@@ -44086,6 +44094,7 @@ function bindMoveInForm() {
       const nextAt = btn.dataset.signSlot;
       queueSignAnim(prevAt, nextAt, false);
       d.signAppointAt = nextAt;
+      rememberSignSlotScroll();
       ui.signSlotCenter = true;
       ui.keepScroll = true;
       render();
