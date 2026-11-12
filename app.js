@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1922";
+const FILE_VER = "1923";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30770,7 +30770,7 @@ function moveInView() {
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
-      <p class="small" style="margin:0 0 8px">${r ? ("面交簽約：請到 " + escapeHtml(stampPlaceOf(r)) + "。第一次付款可選現金或轉帳。") : "請先選房號，簽約請到 5F，電梯出來右轉到底，7651簽約室。"}最快取現在以後、還沒被約走的時段。</p>
+      <p class="small" id="move-sign-place" style="margin:0 0 8px">${escapeHtml(moveSignPlaceText())}</p>
       ${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}
       ${r ? `<p class="small" style="margin:10px 0 6px">當天可約時段</p>
         <div class="sign-slot-grid">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>
@@ -42460,6 +42460,21 @@ function openPickPlan(el) {
     roomLabel: el.dataset.zoomAbove || "房間"
   }], 0, el);
 }
+function moveSignPlaceText() {
+  const d = ensureMoveIn();
+  const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const tail = "最快取現在以後、還沒被約走的時段。";
+  if (d.hasAgent) {
+    if (!r) return "請先選房號。仲介帶看會到所選房間簽約。" + tail;
+    const addr = r.location || roomAddress(r.no) || "";
+    return "仲介帶看，簽約地點：" + (r.no || "") + (addr ? "　" + addr : "") + "。" + tail;
+  }
+  return (r ? "" : "請先選房號，") + "簽約請到 " + STAMP_OFFICE + "。" + tail;
+}
+function paintMoveSignPlace() {
+  const el = document.getElementById("move-sign-place");
+  if (el) el.textContent = moveSignPlaceText();
+}
 function movePayExtraHtml(d, payBits, payWay) {
   const total = money((payBits && payBits.total) || 0);
   if (payWay === "split") {
@@ -42704,6 +42719,7 @@ function bindMoveInForm() {
       if (d.hasAgent === yes) return;
       d.hasAgent = yes;
       slideMoveAgent(yes);
+      paintMoveSignPlace();
     };
   });
   const agentEl = document.getElementById("move-agent");
