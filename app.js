@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1970";
+const FILE_VER = "1971";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30964,10 +30964,6 @@ function moveInView() {
       <div class="move-card-head">
         <div class="label">基本資料</div>
         <div class="move-head-tools">
-          <button type="button" class="move-scan" id="move-id-scan" aria-label="掃描身分證">
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 8V5h3M20 8V5h-3M4 16v3h3M20 16v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M7 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          </button>
-          <input id="move-id-file" type="file" accept="image/*" capture="environment" hidden>
           <div class="seg move-seg${Number(d.people) === 2 ? " is-no" : ""}" id="move-people-grid">
           <i class="seg-bg"></i>
           <button type="button" data-move-people="1" class="${Number(d.people) === 2 ? "" : "on"}">1人</button>
@@ -43689,25 +43685,11 @@ function bindMoveInForm() {
   if (ui.page !== "move-in") return;
   ensureMoveLiveWatch();
   ui.moveSplitPop = false;
-  const scan = document.getElementById("move-id-scan");
-  const scanFile = document.getElementById("move-id-file");
   const reset = document.getElementById("move-reset");
   if (reset) reset.onclick = e => {
     e.preventDefault();
     resetMoveInForm();
   };
-  if (scan && scanFile) {
-    scan.onclick = e => {
-      e.preventDefault();
-      twIdWorker().catch(() => {});
-      openIdScanner();
-    };
-    scanFile.onchange = () => {
-      const file = scanFile.files && scanFile.files[0];
-      scanFile.value = "";
-      readMoveIdCard(file);
-    };
-  }
   const openBtn = document.getElementById("move-room-open");
   if (openBtn) openBtn.onclick = e => {
     e.preventDefault();
