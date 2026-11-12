@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1943";
+const FILE_VER = "1944";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23279,11 +23279,47 @@ function paintMoveAgentFee() {
   } else slot.classList.remove("open");
   const sumEl = document.querySelector(".move-settle-sum b");
   const total = moveSettleTotal(bits);
-  if (sumEl) sumEl.textContent = money(total);
-  paintMovePayHint(total, d.payWay || "cash");
-  const note = document.getElementById("move-split-note");
-  if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(total) + "。";
+  const way = d.payWay || "cash";
+  animateSettleTotal(sumEl, total, val => {
+    paintMovePayHint(val, way);
+    const note = document.getElementById("move-split-note");
+    if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(val) + "。";
+  });
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(total); });
+}
+function animateSettleTotal(el, to, onFrame) {
+  if (!el) {
+    if (onFrame) onFrame(to);
+    return;
+  }
+  const from = el._settleTo != null ? el._settleTo : Math.round(Number(String(el.textContent || "").replace(/[^\d]/g, "")) || 0);
+  const token = (el._settleAnim || 0) + 1;
+  el._settleAnim = token;
+  el._settleTo = to;
+  el.classList.remove("elec-up", "elec-down");
+  void el.offsetWidth;
+  if (to !== from) el.classList.add(to > from ? "elec-up" : "elec-down");
+  const paint = val => {
+    const text = money(val);
+    if (el.textContent !== text) el.textContent = text;
+    if (onFrame) onFrame(val);
+  };
+  if (from === to) {
+    paint(to);
+    el._settleTo = null;
+    return;
+  }
+  const start = performance.now();
+  const dur = 380;
+  const tick = now => {
+    if (!el.isConnected || el._settleAnim !== token) return;
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    paint(t === 1 ? to : Math.round(from + (to - from) * eased));
+    if (t < 1) requestAnimationFrame(tick);
+    else el._settleTo = null;
+  };
+  requestAnimationFrame(tick);
 }
 function firstPayWayOf(t) {
   const w = String((t && t.payWay) || "");

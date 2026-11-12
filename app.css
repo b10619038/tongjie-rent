@@ -6643,8 +6643,10 @@ img.avatar { object-fit: cover; display: block; }
   -webkit-appearance: none;
   margin: 0;
 }
-.move-elec-step input.elec-up { animation: elecRise .36s cubic-bezier(.22,.82,.22,1); }
-.move-elec-step input.elec-down { animation: elecFall .36s cubic-bezier(.22,.82,.22,1); }
+.move-elec-step input.elec-up,
+.move-settle-sum b.elec-up { animation: elecRise .36s cubic-bezier(.22,.82,.22,1); }
+.move-elec-step input.elec-down,
+.move-settle-sum b.elec-down { animation: elecFall .36s cubic-bezier(.22,.82,.22,1); }
 @keyframes elecRise {
   0% { transform: translateY(10px); opacity: .25; }
   100% { transform: none; opacity: 1; }
