@@ -3362,49 +3362,16 @@ input[type="file"] {
 #move-pay-grid .sign-slot:active {
   transform: scale(.9);
 }
-.sign-cal { position: relative; isolation: isolate; margin-top: 8px; }
-.sign-cal .cal-cell {
-  min-height: 44px;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  z-index: auto;
-  background: transparent;
-  border-color: transparent;
-}
-.sign-cal .cal-plate {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  background: var(--card);
-  border: 1px solid var(--line);
-  pointer-events: none;
-}
-.sign-cal .cal-cell em,
-.sign-cal .cal-cell .mark { position: relative; z-index: 2; }
+.sign-cal { margin-top: 8px; }
+.sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; }
 .sign-cal .cal-cell.off { opacity: .32; pointer-events: none; }
-.sign-cal .cal-cell.fast .cal-plate { border-color: var(--teal); }
-.sign-cal .cal-cell.on .cal-plate,
-.sign-cal .cal-cell.on.fast .cal-plate { opacity: 0; }
+.sign-cal .cal-cell.fast { border-color: var(--teal); }
 .sign-cal .cal-cell.on,
 .sign-cal .cal-cell.on.fast {
-  background: transparent;
+  background: var(--ok-soft);
   border-color: transparent;
   outline: none;
   box-shadow: none;
-}
-.sign-cal-glide {
-  position: absolute;
-  z-index: 1;
-  left: 0;
-  top: 0;
-  width: 0;
-  height: 0;
-  border-radius: 10px;
-  background: var(--ok-soft);
-  pointer-events: none;
-  transition: left .26s cubic-bezier(.22,.82,.22,1), top .26s cubic-bezier(.22,.82,.22,1), width .26s cubic-bezier(.22,.82,.22,1), height .26s cubic-bezier(.22,.82,.22,1);
 }
 .sign-cal-nav {
   display: grid;

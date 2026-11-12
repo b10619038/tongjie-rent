@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1929";
+const FILE_VER = "1928";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -24216,7 +24216,6 @@ function signCalHtml(minYmd, selectedYmd, keepAt, maxFastYmd) {
       <button type="button" class="ghost" data-sign-cal-nav="1">下一月</button>
     </div>
     <div class="cal-grid sign-cal">
-      <i class="sign-cal-glide"></i>
       ${["日", "一", "二", "三", "四", "五", "六"].map(w => `<div class="cal-w">${w}</div>`).join("")}
       ${cells.map(d => {
         if (!d) return `<div class="cal-cell empty"></div>`;
@@ -24227,41 +24226,11 @@ function signCalHtml(minYmd, selectedYmd, keepAt, maxFastYmd) {
         const on = ymd === sel;
         const fast = ymd === fastDay;
         return `<button type="button" class="cal-cell${on ? " on" : ""}${off ? " off" : ""}${fast ? " fast" : ""}" data-sign-cal-day="${ymd}" ${off ? "disabled" : ""}>
-          <i class="cal-plate"></i>
           <em>${d}</em>
           ${fast && !off ? `<span class="mark">最快</span>` : ""}
         </button>`;
       }).join("")}
     </div>`;
-}
-function placeSignGlide(fromRect) {
-  document.querySelectorAll(".sign-cal").forEach(grid => {
-    const glide = grid.querySelector(".sign-cal-glide");
-    const cell = grid.querySelector(".cal-cell.on");
-    if (!glide) return;
-    if (!cell) { glide.style.opacity = "0"; return; }
-    const gridBox = grid.getBoundingClientRect();
-    const to = cell.getBoundingClientRect();
-    const fit = box => {
-      glide.style.left = (box.left - gridBox.left) + "px";
-      glide.style.top = (box.top - gridBox.top) + "px";
-      glide.style.width = box.width + "px";
-      glide.style.height = box.height + "px";
-      glide.style.opacity = "1";
-    };
-    const same = fromRect && Math.abs(fromRect.left - to.left) < 1 && Math.abs(fromRect.top - to.top) < 1;
-    if (!fromRect || same) {
-      glide.style.transition = "none";
-      fit(to);
-      requestAnimationFrame(() => { glide.style.transition = ""; });
-      return;
-    }
-    glide.style.transition = "none";
-    fit(fromRect);
-    void glide.offsetWidth;
-    glide.style.transition = "";
-    fit(to);
-  });
 }
 function ymdOf(value) {
   const m = String(value || "").match(/(\d{4}-\d{2}-\d{2})/);
@@ -42465,8 +42434,6 @@ function bindTenant() {
   bindSignPad();
   bindSignAgree();
   bindSignTermSlots();
-  placeSignGlide(ui.signGlideFrom || null);
-  ui.signGlideFrom = null;
   bindLookSettings();
   const notify = document.getElementById("set-notify");
   if (notify) {
@@ -42908,9 +42875,6 @@ function bindMoveInForm() {
     btn.onclick = e => {
       e.preventDefault();
       if (btn.disabled) return;
-      const onCell = btn.closest(".sign-cal") && btn.closest(".sign-cal").querySelector(".cal-cell.on");
-      const from = onCell ? onCell.getBoundingClientRect() : null;
-      ui.signGlideFrom = from ? { left: from.left, top: from.top, width: from.width, height: from.height } : null;
       captureMoveInDraft();
       const d = ensureMoveIn();
       const r = (state.rooms || []).find(x => x.id === d.roomId);
@@ -43060,7 +43024,6 @@ function bindSignTermSlots() {
     };
   });
   document.querySelectorAll("[data-sign-cal-nav]").forEach(btn => {
-    if (btn.closest(".move-in-page")) return;
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
@@ -43078,14 +43041,10 @@ function bindSignTermSlots() {
     };
   });
   document.querySelectorAll("[data-sign-cal-day]").forEach(btn => {
-    if (btn.closest(".move-in-page")) return;
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
       if (btn.disabled) return;
-      const onCell = btn.closest(".sign-cal") && btn.closest(".sign-cal").querySelector(".cal-cell.on");
-      const from = onCell ? onCell.getBoundingClientRect() : null;
-      ui.signGlideFrom = from ? { left: from.left, top: from.top, width: from.width, height: from.height } : null;
       captureSignDraft();
       const t = me();
       const r = signTargetRoom(t);
@@ -43103,7 +43062,6 @@ function bindSignTermSlots() {
     };
   });
   document.querySelectorAll("[data-sign-slot]").forEach(btn => {
-    if (btn.closest(".move-in-page")) return;
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
