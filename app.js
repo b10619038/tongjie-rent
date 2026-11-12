@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1933";
+const FILE_VER = "1934";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23234,26 +23234,62 @@ function moveAgentHalf(monthly) {
   const n = Math.round(Number(monthly) || 0);
   return n > 0 ? Math.round(n / 2) : 0;
 }
+function moveSettleTotal(bits) {
+  const base = Math.round((bits && bits.total) || 0);
+  if (!bits || !bits.hasAgent) return base;
+  return base + moveAgentHalf(bits.monthly);
+}
+function moveSettleLinesHtml(bits) {
+  if (!bits) return "";
+  const lines = [`押金 ${money(bits.deposit)}`];
+  if (bits.stub && bits.stubRent) {
+    lines.push((bits.stubStart ? rocSlash(bits.stubStart) + " ➜ " + rocSlash(bits.stubEnd) + " " : "") + "不足月 " + money(bits.stubRent));
+  }
+  lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
+  if (bits.water) lines.push("年水費 " + money(bits.water));
+  if (bits.elec) lines.push("房間電費儲值 " + money(bits.elec));
+  return `<div class="move-settle-bits move-settle-lines">${lines.map(x => `<div>${escapeHtml(x)}</div>`).join("")}</div>`;
+}
 function firstPaySettleHtml(bits) {
-  const text = firstPayHintHtml(bits);
-  if (!text) return "";
-  const cut = text.split("。合計 ");
-  const body = cut[0] || "";
-  const sum = (cut[1] || "").replace(/。$/, "");
-  const fee = moveAgentHalf(bits && bits.monthly);
-  return `<div class="move-settle"><div class="move-fee-slot${bits && bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip"><p class="move-settle-bits move-fee-line">仲介費 ${money(fee)}</p></div></div><p class="move-settle-bits">${escapeHtml(body)}</p><p class="move-settle-sum"><span>合計</span><b>${escapeHtml(sum)}</b></p></div>`;
+  if (!bits) return "";
+  const fee = moveAgentHalf(bits.monthly);
+  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip"><p class="move-settle-bits move-fee-line">仲介費 ${money(fee)}</p></div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum"><span>合計</span><b>${escapeHtml(money(moveSettleTotal(bits)))}</b></p></div>`;
 }
 function paintMoveAgentFee() {
   const d = ensureMoveIn();
   const r = (state.rooms || []).find(x => x && x.id === d.roomId);
   const slot = document.querySelector(".move-settle .move-fee-slot");
-  if (!slot) return;
+  if (!slot || !r) return;
+  const bits = firstStudioPayBits({
+    name: d.name || "新客",
+    leaseStart: d.leaseStart || "",
+    rent: studioContractRent(null, r),
+    deposit: studioDepositOf(studioContractRent(null, r)),
+    hasAgent: !!d.hasAgent,
+    payWay: d.payWay,
+    payCash: d.payCash,
+    payMega: d.payMega,
+    elecStore: d.elecStore
+  }, r);
+  const fee = moveAgentHalf(bits.monthly);
   const line = slot.querySelector(".move-fee-line");
-  const fee = moveAgentHalf(r ? studioContractRent(null, r) : 0);
   if (line) line.textContent = "仲介費 " + money(fee);
   if (d.hasAgent && fee) {
     if (!slot.classList.contains("open")) requestAnimationFrame(() => slot.classList.add("open"));
   } else slot.classList.remove("open");
+  const sumEl = document.querySelector(".move-settle-sum b");
+  const total = moveSettleTotal(bits);
+  if (sumEl) sumEl.textContent = money(total);
+  const hint = document.getElementById("move-pay-hint");
+  if (hint) {
+    const way = d.payWay || "cash";
+    hint.textContent = way === "xfer"
+      ? "第一次全額轉統潔兆豐 " + money(total) + "。"
+      : way === "split"
+        ? "填其中一格，另一格會自動算出剩餘。合計 " + money(total) + "。"
+        : "第一次全額現場收現金 " + money(total) + "。";
+  }
+  document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(total); });
 }
 function firstPayWayOf(t) {
   const w = String((t && t.payWay) || "");
@@ -42530,12 +42566,13 @@ function paintMoveSignPlace() {
   if (el) el.textContent = moveSignPlaceText();
 }
 function movePayExtraHtml(d, payBits, payWay) {
-  const total = money((payBits && payBits.total) || 0);
+  const due = moveSettleTotal(payBits);
+  const total = money(due);
   if (payWay === "split") {
     return `<div class="move-split-pop${ui.moveSplitPop ? " play" : ""}">
       <div class="row wrap" style="margin-top:10px;gap:8px">
-        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
-        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
+        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label>
+        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label>
       </div>
       <p class="small" id="move-pay-hint" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p>
     </div>`;
@@ -42668,12 +42705,12 @@ function paintMoveLive() {
   if (hint) {
     const way = d.payWay || "cash";
     hint.textContent = way === "xfer"
-      ? "第一次全額轉統潔兆豐 " + money(bits.total) + "。"
+      ? "第一次全額轉統潔兆豐 " + money(moveSettleTotal(bits)) + "。"
       : way === "split"
-        ? "填其中一格，另一格會自動算出剩餘。合計 " + money(bits.total) + "。"
-        : "第一次全額現場收現金 " + money(bits.total) + "。";
+        ? "填其中一格，另一格會自動算出剩餘。合計 " + money(moveSettleTotal(bits)) + "。"
+        : "第一次全額現場收現金 " + money(moveSettleTotal(bits)) + "。";
   }
-  document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(bits.total); });
+  document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(moveSettleTotal(bits)); });
 }
 function animateElec(input, to) {
   const from = Math.round(Number(input.value) || 0);

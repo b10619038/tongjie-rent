@@ -3336,6 +3336,7 @@ input[type="file"] {
   font-weight: 650;
   line-height: 1.6;
 }
+.move-settle-lines { display: grid; gap: 2px; }
 .move-fee-slot {
   display: grid;
   grid-template-rows: 0fr;
