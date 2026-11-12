@@ -6489,7 +6489,9 @@ img.avatar { object-fit: cover; display: block; }
 .seg.is-later .seg-bg,
 .seg.is-sheet .seg-bg,
 .seg.is-cal .seg-bg,
-.seg.is-report .seg-bg { transform: translate3d(100%,0,0); }
+.seg.is-report .seg-bg,
+.seg.is-no .seg-bg { transform: translate3d(100%,0,0); }
+.move-seg { margin-top: 4px; }
 .dash-switch { margin-top: 0; }
 #dash-view-body { display: contents; }
 #asset-list, #tenant-list { display: grid; gap: 12px; }

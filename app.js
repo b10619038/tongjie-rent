@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1915";
+const FILE_VER = "1916";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30732,23 +30732,19 @@ function moveInView() {
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
       <div class="small" style="margin:10px 0 6px">是否仲介帶看</div>
-      <div class="sign-slot-grid" id="move-agent-grid">
-        <button type="button" class="sign-slot${d.hasAgent ? " on" : ""}" data-move-agent="yes">是</button>
-        <button type="button" class="sign-slot${d.hasAgent ? "" : " on"}" data-move-agent="no">否</button>
+      <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
+        <i class="seg-bg"></i>
+        <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
+        <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
       </div>
       ${r ? `<div class="small" id="move-pay-label" style="margin:10px 0 6px">付款方式</div>
-      <div class="sign-slot-grid" id="move-pay-grid">
-        <button type="button" class="sign-slot${payWay === "cash" ? " on" : ""}" data-move-pay="cash">現金</button>
-        <button type="button" class="sign-slot${payWay === "xfer" ? " on" : ""}" data-move-pay="xfer">轉帳</button>
-        <button type="button" class="sign-slot${payWay === "split" ? " on" : ""}" data-move-pay="split">自訂</button>
+      <div class="seg seg-3 move-seg${payWay === "xfer" ? " is-2" : payWay === "split" ? " is-3" : ""}" id="move-pay-grid">
+        <i class="seg-bg"></i>
+        <button type="button" data-move-pay="cash" class="${payWay === "cash" ? "on" : ""}">現金</button>
+        <button type="button" data-move-pay="xfer" class="${payWay === "xfer" ? "on" : ""}">轉帳</button>
+        <button type="button" data-move-pay="split" class="${payWay === "split" ? "on" : ""}">自訂</button>
       </div>
-      ${payWay === "split" ? `<div class="move-split-pop${ui.moveSplitPop ? " play" : ""}">
-      <div class="row wrap" style="margin-top:10px;gap:8px">
-        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
-        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
-      </div>
-      <p class="small" id="move-pay-hint" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>
-      </div>` : (payWay === "xfer" ? `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
+      <div id="move-pay-extra">${movePayExtraHtml(d, payBits, payWay)}</div>` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
       <label class="field" style="margin-top:12px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
@@ -42407,6 +42403,60 @@ function openPickPlan(el) {
     roomLabel: el.dataset.zoomAbove || "房間"
   }], 0, el);
 }
+function movePayExtraHtml(d, payBits, payWay) {
+  const total = money((payBits && payBits.total) || 0);
+  if (payWay === "split") {
+    return `<div class="move-split-pop${ui.moveSplitPop ? " play" : ""}">
+      <div class="row wrap" style="margin-top:10px;gap:8px">
+        <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
+        <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
+      </div>
+      <p class="small" id="move-pay-hint" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p>
+    </div>`;
+  }
+  if (payWay === "xfer") return `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${total}。</p>`;
+  return `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額現場收現金 ${total}。</p>`;
+}
+function slideMoveAgent(yes) {
+  const seg = document.getElementById("move-agent-grid");
+  if (!seg) return;
+  seg.classList.toggle("is-no", !yes);
+  seg.querySelectorAll("[data-move-agent]").forEach(b => b.classList.toggle("on", (b.dataset.moveAgent === "yes") === !!yes));
+}
+function slideMovePay(way) {
+  const seg = document.getElementById("move-pay-grid");
+  if (!seg) return;
+  seg.classList.toggle("is-2", way === "xfer");
+  seg.classList.toggle("is-3", way === "split");
+  seg.querySelectorAll("[data-move-pay]").forEach(b => b.classList.toggle("on", b.dataset.movePay === way));
+}
+function refreshMovePayExtra(play) {
+  const box = document.getElementById("move-pay-extra");
+  if (!box) return;
+  const d = ensureMoveIn();
+  const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (!r) return;
+  const monthly = studioContractRent(null, r);
+  const bits = firstStudioPayBits({
+    name: d.name || "新客",
+    leaseStart: d.leaseStart || "",
+    rent: monthly,
+    deposit: studioDepositOf(monthly),
+    hasAgent: !!d.hasAgent,
+    payWay: d.payWay,
+    payCash: d.payCash,
+    payMega: d.payMega,
+    elecStore: d.elecStore
+  }, r);
+  box.innerHTML = movePayExtraHtml(d, bits, d.payWay || "cash");
+  ["move-pay-cash", "move-pay-mega"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    bindLiveCommit(el, () => { captureMoveInDraft(); });
+  });
+  bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
+  if (play) playMoveSplitFromButton();
+}
 function playMoveSplitFromButton() {
   const box = document.querySelector(".move-split-pop.play");
   if (!box) return;
@@ -42593,10 +42643,16 @@ function bindMoveInForm() {
       e.preventDefault();
       captureMoveInDraft();
       const d = ensureMoveIn();
-      d.hasAgent = btn.dataset.moveAgent === "yes";
-      if (d.payWay !== "split") d.payWay = d.hasAgent ? "cash" : "xfer";
-      ui.keepScroll = true;
-      render();
+      const yes = btn.dataset.moveAgent === "yes";
+      if (d.hasAgent === yes) return;
+      d.hasAgent = yes;
+      const prev = d.payWay;
+      if (d.payWay !== "split") d.payWay = yes ? "cash" : "xfer";
+      slideMoveAgent(yes);
+      if (d.payWay !== prev) {
+        slideMovePay(d.payWay);
+        refreshMovePayExtra(false);
+      }
     };
   });
   const agentEl = document.getElementById("move-agent");
@@ -42614,10 +42670,11 @@ function bindMoveInForm() {
       captureMoveInDraft();
       const d = ensureMoveIn();
       const next = btn.dataset.movePay || "cash";
-      ui.moveSplitPop = next === "split" && d.payWay !== "split";
+      if (next === d.payWay) return;
+      ui.moveSplitPop = next === "split";
       d.payWay = next;
-      ui.keepScroll = true;
-      render();
+      slideMovePay(next);
+      refreshMovePayExtra(next === "split");
     };
   });
   ["move-pay-cash", "move-pay-mega"].forEach(id => {
