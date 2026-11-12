@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1978";
+const FILE_VER = "1979";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30970,7 +30970,7 @@ function moveInView() {
         <h1>申請入住</h1>
         <button type="button" class="move-reset" id="move-reset">重置</button>
       </div>
-      <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽。租客一樣要登入 App。</p>
+      <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約期間。送出後進入看房預覽。租客一樣要登入 App。</p>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
@@ -31011,7 +31011,7 @@ function moveInView() {
         <p class="small" style="margin-top:8px">${d.signAppointAt ? "已選　" + formatDateTime12(String(d.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>` : ""}
     </div>
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
-      <div class="label">合約起迄</div>
+      <div class="label">合約期間</div>
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ ? ("（" + occupiedUntilPhrase(occ, r) + "，不可早於截止後）") : "（不可早於今天）") + "。新客最短一年，沒有半年。入住不是 1 號時，當月只開日拆，次月 1 號起仍是一年約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。新客最短一年，沒有半年。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
       <div id="move-lease-sum">${r ? moveLeasePackHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}</div>
@@ -33089,7 +33089,7 @@ function leaseSignView() {
       <div class="eyebrow">LEASE</div><h1>線上簽署</h1>
     </div></div>
     <div class="screen">
-      <p class="small" style="margin:0 2px 10px">${draft ? "請核對這份新約。五項資料填完並簽名後，才會送出續約申請。之後如果年、月、房號或金額有改，要重新簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : (renewItem ? "續約新約簽署前，每人的五項資料都要填完才能簽名。兩人各填一張、各簽一次。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約起迄分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。兩人各填一張、各簽一次。列印後我們只蓋章。")}</p>
+      <p class="small" style="margin:0 2px 10px">${draft ? "請核對這份新約。五項資料填完並簽名後，才會送出續約申請。之後如果年、月、房號或金額有改，要重新簽名。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : (renewItem ? "續約新約簽署前，每人的五項資料都要填完才能簽名。兩人各填一張、各簽一次。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。" : "請先選房號。簽約時間與合約期間分開選。現場蓋章請到 5F，電梯出來右轉到底，7651簽約室。身分證、電話、戶籍地址用藍字填，簽名用藍筆。兩人各填一張、各簽一次。列印後我們只蓋章。")}</p>
       ${paperNow}
       ${renewItem ? "" : `<div class="card card-body" style="margin-top:12px">
         <div class="label">簽約房號</div>
@@ -33107,7 +33107,7 @@ function leaseSignView() {
         <p class="small" style="margin-top:8px">${t && t.signAppointAt ? "已選　" + formatDateTime12(String(t.signAppointAt).replace("T", " ")) : "請選日期與時段"}</p>
       </div>
       <div class="card card-body" style="margin-top:12px">
-        <div class="label">合約起迄</div>
+        <div class="label">合約期間</div>
         <label class="sign-term" for="sign-term-1y"><input id="sign-term-1y" type="checkbox" ${ui.signTerm1y ? "checked" : ""} /> 一年期限（到期固定月底）</label>
         <p class="small" style="margin:8px 0 6px">最快可入住／延續　${rocSlash(cont.start)} ➜ ${rocSlash(cont.end)}${occ && (!t || occ.id !== t.id) ? ("（" + occupiedUntilPhrase(occ, r) + " 截止）") : ""}${confirmBy && !(t && t.incoming) ? "。現有租客請於 " + rocSlash(confirmBy) + " 前確定續約。" : ""}。入住不是 1 號會開不足月＋一年兩份，簽名一次套進兩份。</p>
         <label class="field"><span>起始日（入住）</span><input id="sign-lease-start" type="date" value="${escapeHtml((t && t.leaseStart) || cont.start)}" min="${escapeHtml(cont.start)}" /></label>
