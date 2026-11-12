@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1962";
+const FILE_VER = "1963";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27849,6 +27849,13 @@ function loadMoveDraft() {
 function clearMoveDraft() {
   try { localStorage.removeItem("tj-move-in-draft"); } catch {}
 }
+function resetMoveInForm() {
+  clearMoveDraft();
+  ui.moveIn = blankMoveIn();
+  ui.keepScroll = false;
+  render();
+  toast("已清空");
+}
 function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
   if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
@@ -30936,7 +30943,10 @@ function moveInView() {
     <button class="back move-head" id="back-gate" type="button">← 返回</button>
     <div class="move-head">
       <div class="logo">TONG JIE</div>
-      <h1>申請入住</h1>
+      <div class="move-title-row">
+        <h1>申請入住</h1>
+        <button type="button" class="move-reset" id="move-reset">重置</button>
+      </div>
       <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約起迄。送出後進入看房預覽。租客一樣要登入 App。</p>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
@@ -43383,6 +43393,11 @@ function bindMoveInForm() {
   ui.moveSplitPop = false;
   const scan = document.getElementById("move-id-scan");
   const scanFile = document.getElementById("move-id-file");
+  const reset = document.getElementById("move-reset");
+  if (reset) reset.onclick = e => {
+    e.preventDefault();
+    resetMoveInForm();
+  };
   if (scan && scanFile) {
     scan.onclick = e => {
       e.preventDefault();
