@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1917";
+const FILE_VER = "1918";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30700,7 +30700,7 @@ function moveInView() {
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
       <div class="field"><span>房號</span>
-        <button type="button" class="move-room-btn" id="move-room-open">
+        <button type="button" class="move-room-btn${selMeta ? " filled" : ""}" id="move-room-open">
           ${selMeta
             ? `<span class="move-pick-no"><span class="move-pick-line">${escapeHtml(selMeta.no)} 套房${studioPickMarksHtml(r)}</span>${selMeta.rentText ? `<span class="move-pick-rent">${escapeHtml(selMeta.rentText)}</span>` : ""}</span><span class="move-pick-dates"><span>${selMeta.taken ? "已被簽約至 " + escapeHtml(selMeta.end || "—") : (selMeta.vacant ? "空套房" : (moveUntilPrefix(selMeta) + escapeHtml(selMeta.end || "—")))}</span><span>${selMeta.taken ? "最快可排 " + escapeHtml(selMeta.start) : "最快可入住 " + escapeHtml(selMeta.start)}</span></span>`
             : `<span class="move-room-ph">請選房號</span>`}

@@ -8223,6 +8223,7 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   text-align: left;
   cursor: pointer;
 }
+.move-room-btn.filled { background: var(--ok-soft); }
 .move-room-ph { color: var(--muted); grid-column: 1 / -1; }
 .move-pick-no { font-weight: 700; letter-spacing: .04em; }
 .balc-dot {
