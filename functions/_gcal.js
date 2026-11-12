@@ -30,9 +30,11 @@ export function gcalPage(room, year, month, day, hour, minute) {
     + ";l.beginTime=" + begin
     + ";l.endTime=" + end
     + ";end";
+  const webUrl = web.toString();
+  const chrome = "intent://calendar.google.com" + web.pathname + web.search + "#Intent;scheme=https;package=com.android.chrome;end";
   const html = "<!doctype html><html><head><meta charset=\"utf-8\"><title>加入GOOGLE日歷</title><script>"
-    + "var go=" + JSON.stringify(intent) + ";var web=" + JSON.stringify(web.toString()) + ";"
-    + "if(/Android/i.test(navigator.userAgent)){location.replace(go);setTimeout(function(){location.href=go;},60);}"
+    + "var app=" + JSON.stringify(intent) + ";var chrome=" + JSON.stringify(chrome) + ";var web=" + JSON.stringify(webUrl) + ";"
+    + "if(/Android/i.test(navigator.userAgent)){location.href=app;setTimeout(function(){if(document.visibilityState!=='hidden')location.href=chrome;},350);}"
     + "else location.replace(web);"
     + "</script></head><body></body></html>";
   return new Response(html, {
