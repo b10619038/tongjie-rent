@@ -3372,6 +3372,18 @@ input[type="file"] {
   pointer-events: auto;
   transition-delay: .16s;
 }
+#move-pay-hint {
+  overflow: hidden;
+  max-height: 48px;
+  opacity: 1;
+  transition: max-height .36s cubic-bezier(.22,.82,.22,1), opacity .24s ease, margin .36s cubic-bezier(.22,.82,.22,1);
+}
+#move-pay-hint.is-off {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
 .move-settle-sum {
   margin: 10px 0 0;
   display: flex;

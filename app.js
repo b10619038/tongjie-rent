@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1942";
+const FILE_VER = "1943";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42566,19 +42566,18 @@ function movePayFullHint(way, total) {
 function paintMovePayHint(total, way) {
   const hint = document.getElementById("move-pay-hint");
   if (!hint) return;
-  const n = money(total);
   if (way === "split") {
-    if (!/\$\s?[\d,]+/.test(hint.textContent)) hint.textContent = movePayFullHint("cash", total);
-    else hint.textContent = hint.textContent.replace(/\$\s?[\d,]+/, n);
+    hint.classList.add("is-off");
     return;
   }
   hint.textContent = movePayFullHint(way, total);
+  hint.classList.remove("is-off");
 }
 function movePayExtraHtml(d, payBits, payWay) {
   const due = moveSettleTotal(payBits);
   const total = money(due);
   const way = payWay || "cash";
-  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", due)}</p>`;
+  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", due)}</p>`;
 }
 function slideMoveAgent(yes) {
   const seg = document.getElementById("move-agent-grid");
