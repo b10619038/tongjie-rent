@@ -2683,6 +2683,7 @@ button.subsidy-dot.on {
   border-radius: 16px;
   overflow: hidden;
   height: 160px;
+  touch-action: none;
 }
 #sign-pad,
 #sign-pad-2,

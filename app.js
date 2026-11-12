@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1982";
+const FILE_VER = "1983";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30375,6 +30375,7 @@ function paintApp() {
   if (pageChanged && ui.role === "tenant" && ui.page === "home") ui.sentEpoch = Date.now();
   ui.stampChop = ui.role === "tenant" && ui.page === "home" && pageChanged && stampFxOn();
   if ((ui.page === "lease-sign" || ui.page === "leave-sign") && !pageChanged && (ui.signing || (ui.signStrokes && ui.signStrokes.length) || (ui.signStrokes2 && ui.signStrokes2.length))) return;
+  if (ui.page === "move-in" && ui.signing && !pageChanged) return;
   const langPaint = !!(ui && ui.langPaint);
   if (ui && ui.langPaint) ui.langPaint = false;
   if (!langPaint && ui.role === "tenant" && !pageChanged && ui.slideLock && Date.now() < ui.slideLock) {
@@ -44231,10 +44232,12 @@ function bindSignPad() {
     const ctx = c.getContext("2d");
     if (!Array.isArray(ui[strokesKey])) ui[strokesKey] = [];
     const style = () => {
-      ctx.lineWidth = 2.4;
+      ctx.setTransform(Math.max(1, window.devicePixelRatio || 1), 0, 0, Math.max(1, window.devicePixelRatio || 1), 0, 0);
+      ctx.lineWidth = 3.2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.strokeStyle = INK;
+      ctx.fillStyle = INK;
     };
     const mirrorLive = () => {
       const which = strokesKey === "signStrokes2" ? "2" : "1";
@@ -44304,18 +44307,21 @@ function bindSignPad() {
       return { x: src.clientX - r.left, y: src.clientY - r.top };
     };
     const start = e => {
-      e.preventDefault();
-      e.stopPropagation();
+      try { e.preventDefault(); e.stopPropagation(); } catch {}
       ui.signing = true;
       drawing = true;
       last = pt(e);
       ui[strokesKey].push([last]);
+      style();
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
     };
     const move = e => {
       if (!drawing) return;
-      e.preventDefault();
-      e.stopPropagation();
+      try { e.preventDefault(); e.stopPropagation(); } catch {}
       const p = pt(e);
+      style();
       ctx.beginPath();
       ctx.moveTo(last.x, last.y);
       ctx.lineTo(p.x, p.y);
@@ -44327,18 +44333,31 @@ function bindSignPad() {
       queueMirror();
     };
     const end = e => {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
+      if (e) { try { e.preventDefault(); e.stopPropagation(); } catch {} }
       drawing = false;
       ui.signing = false;
       mirrorLive();
     };
-    c.addEventListener("pointerdown", e => {
+    const listen = (type, fn) => c.addEventListener(type, fn, { passive: false });
+    listen("pointerdown", e => {
       try { c.setPointerCapture(e.pointerId); } catch {}
       start(e);
     });
-    c.addEventListener("pointermove", move);
-    c.addEventListener("pointerup", end);
-    c.addEventListener("pointercancel", end);
+    listen("pointermove", move);
+    listen("pointerup", end);
+    listen("pointercancel", end);
+    if (wrap && wrap !== c && wrap.dataset.signWrap !== "1") {
+      wrap.dataset.signWrap = "1";
+      wrap.style.touchAction = "none";
+      const onWrap = (type, fn) => wrap.addEventListener(type, fn, { passive: false });
+      onWrap("pointerdown", e => {
+        if (e.target === c) return;
+        start(e);
+      });
+      onWrap("pointermove", move);
+      onWrap("pointerup", end);
+      onWrap("pointercancel", end);
+    }
     c.addEventListener("dragstart", e => e.preventDefault());
     c.addEventListener("selectstart", e => e.preventDefault());
     return { c, fit };
