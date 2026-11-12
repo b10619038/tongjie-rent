@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1930";
+const FILE_VER = "1931";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42874,16 +42874,19 @@ function bindMoveInForm() {
   document.querySelectorAll("[data-sign-cal-day]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
-      if (btn.disabled) return;
+      if (btn.disabled || btn.dataset.popping === "1") return;
       captureMoveInDraft();
       const d = ensureMoveIn();
       const r = (state.rooms || []).find(x => x.id === d.roomId);
       const min = signWindow(r, { incoming: true }).min;
       const hit = nextSignSlots(1, d.signAppointAt, min, btn.dataset.signCalDay)[0];
       if (!hit) { toast("這天已滿或尚未開放"); return; }
-      d.signAppointAt = hit;
-      ui.keepScroll = true;
-      render();
+      btn.dataset.popping = "1";
+      popSignDay(btn, () => {
+        d.signAppointAt = hit;
+        ui.keepScroll = true;
+        render();
+      });
     };
   });
   document.querySelectorAll("[data-sign-slot]").forEach(btn => {
@@ -42901,6 +42904,13 @@ function bindMoveInForm() {
     captureMoveInDraft();
     askMoveSubmit();
   };
+}
+function popSignDay(btn, done) {
+  if (!btn) { done(); return; }
+  btn.classList.remove("is-pop");
+  void btn.offsetWidth;
+  btn.classList.add("is-pop");
+  setTimeout(done, 300);
 }
 function captureSignDraft() {
   const t = me();

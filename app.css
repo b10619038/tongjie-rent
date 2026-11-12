@@ -3363,7 +3363,17 @@ input[type="file"] {
   transform: scale(.9);
 }
 .sign-cal { margin-top: 8px; }
-.sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; }
+.sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; transform-origin: center; }
+.sign-cal .cal-cell.is-pop {
+  position: relative;
+  z-index: 2;
+  animation: signDayPop .32s cubic-bezier(.22,.82,.22,1);
+}
+@keyframes signDayPop {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
 .sign-cal .cal-cell.off { opacity: .32; pointer-events: none; }
 .sign-cal .cal-cell.fast { border-color: var(--teal); }
 .sign-cal .cal-cell.on,
