@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1981";
+const FILE_VER = "1982";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27862,6 +27862,8 @@ function loadMoveDraft() {
     d.payMega = Number(raw.payMega) || 0;
     if (raw.elecStore != null && raw.elecStore !== "") d.elecStore = Math.max(0, Math.round(Number(raw.elecStore) || 0));
     if (raw.leaseStartTouched) d.leaseStartTouched = true;
+    if (Array.isArray(raw.signStrokes)) d.signStrokes = raw.signStrokes;
+    if (raw.signImg) d.signImg = String(raw.signImg);
     return d;
   } catch { return null; }
 }
@@ -27871,6 +27873,7 @@ function clearMoveDraft() {
 function resetMoveInForm() {
   clearMoveDraft();
   ui.moveIn = blankMoveIn();
+  ui.moveSignStrokes = [];
   ui.keepScroll = false;
   render();
   toast("已清空");
@@ -28205,6 +28208,7 @@ function submitMoveIn() {
   if (d.emergencyPhone) t.emergencyPhone = d.emergencyPhone;
   const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
   if (joinedAddr) t.address = joinedAddr;
+  if (d.signImg) t.eSign = { sig: d.signImg, status: "draft" };
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -31005,6 +31009,11 @@ function moveInView() {
       <label class="field"><span>電話</span><input id="move-phone" type="tel" value="${escapeHtml(d.phone || "")}" placeholder="手機號碼" autocomplete="tel" inputmode="numeric" maxlength="21" /><div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip"><input id="move-phone2" type="tel" value="${escapeHtml(d.phone2 || "")}" placeholder="第二人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></div></div></label>
       <label class="field"><span>緊急聯絡人</span><input id="move-emname" type="text" value="${escapeHtml(d.emergencyName || "")}" placeholder="緊急聯絡人姓名" autocomplete="name" inputmode="text" /></label>
       <label class="field"><span>聯絡人電話</span><input id="move-emphone" type="tel" value="${escapeHtml(d.emergencyPhone || "")}" placeholder="聯絡人手機" autocomplete="tel" inputmode="numeric" maxlength="21" /></label>
+      <div class="field">
+        <span>電子簽名</span>
+        <div class="sign-pad-wrap"><canvas id="move-sign-pad" width="640" height="220"></canvas></div>
+        <button type="button" class="ghost" id="move-sign-clear" style="margin-top:8px">清除簽名</button>
+      </div>
     </div>
     <div class="card card-body move-card c3" style="margin-top:12px;text-align:left">
       <div class="label">簽約日期時間</div>
@@ -42807,7 +42816,8 @@ function moveDraftTenant() {
     prospect: true,
     people: Number(d.people) === 2 ? 2 : 1,
     elecStore: d.elecStore,
-    contractSignAt: ymdOf(d.signAppointAt) || todayYmd()
+    contractSignAt: ymdOf(d.signAppointAt) || todayYmd(),
+    eSign: d.signImg ? { sig: d.signImg, status: "draft" } : null
   };
   applyStudioLeasePack(t, room, d.leaseStart);
   return { d, t, room };
@@ -44335,6 +44345,34 @@ function bindSignPad() {
   };
   const a = bindOne(document.getElementById("sign-pad"), "signStrokes");
   const b = bindOne(document.getElementById("sign-pad-2"), "signStrokes2");
+  const movePad = document.getElementById("move-sign-pad");
+  if (movePad) {
+    const draft = ensureMoveIn();
+    if (!Array.isArray(ui.moveSignStrokes) || !ui.moveSignStrokes.length) ui.moveSignStrokes = Array.isArray(draft.signStrokes) ? draft.signStrokes : [];
+  }
+  const m = bindOne(movePad, "moveSignStrokes");
+  if (m && m.c) {
+    const snap = () => {
+      const d = ensureMoveIn();
+      const lines = ui.moveSignStrokes || [];
+      d.signStrokes = lines;
+      const ink = lines.some(line => line && line.length > 1);
+      d.signImg = ink ? liveInkUrl(m.c) : "";
+      saveMoveDraft();
+    };
+    m.c.addEventListener("pointerup", snap);
+    m.c.addEventListener("pointercancel", snap);
+  }
+  const moveClr = document.getElementById("move-sign-clear");
+  if (moveClr) moveClr.onclick = e => {
+    e.preventDefault();
+    ui.moveSignStrokes = [];
+    const d = ensureMoveIn();
+    d.signStrokes = [];
+    d.signImg = "";
+    saveMoveDraft();
+    if (m) { m.c.dataset.ink = ""; m.fit(); }
+  };
   const clr = document.getElementById("sign-clear");
   if (clr) clr.onclick = () => {
     ui.signStrokes = [];
