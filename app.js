@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1990";
+const FILE_VER = "1991";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42134,6 +42134,7 @@ function bindGate() {
   bindMoveSignPad();
   bindMoveSignPad("move-sign-box-2", "move-sign-pad-2", "moveSignStrokes2", "signImg2", "signArmed2", "signStrokes2");
   document.querySelectorAll(".sign-slot-scroll").forEach(row => { row.scrollLeft = 0; });
+  playQueuedSignAnim();
   const bioBtn = document.getElementById("bio-login");
   if (bioBtn) bioBtn.onclick = e => {
     e.preventDefault();
@@ -43139,6 +43140,50 @@ function paintMoveLive(force) {
   if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(moveSettleTotal(bits)) + "。";
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(moveSettleTotal(bits)); });
 }
+function signAtMs(at) {
+  const m = String(at || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return NaN;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])).getTime();
+}
+function stampFromMs(ms) {
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function queueSignAnim(fromAt, toAt, nowLabel) {
+  const from = signAtMs(fromAt);
+  const to = signAtMs(toAt);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+  ui.signAnim = { from: fromAt, to: toAt, now: !!nowLabel };
+}
+function animateSignPicked(el, fromAt, toAt, prefix) {
+  const from = signAtMs(fromAt);
+  const to = signAtMs(toAt);
+  if (!el || !Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+  const token = (animateSignPicked.token || 0) + 1;
+  animateSignPicked.token = token;
+  const lead = prefix || "已選　";
+  const start = performance.now();
+  const dur = 460;
+  el.textContent = lead + formatDateTime12(stampFromMs(from));
+  const tick = now => {
+    if (animateSignPicked.token !== token || !el.isConnected) return;
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const ms = t === 1 ? to : Math.round(from + (to - from) * eased);
+    el.textContent = lead + formatDateTime12(stampFromMs(ms));
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function playQueuedSignAnim() {
+  const q = ui.signAnim;
+  if (!q) return;
+  ui.signAnim = null;
+  const el = document.querySelector(".move-in-page .sign-picked");
+  if (!el) return;
+  animateSignPicked(el, q.from, q.to, q.now ? "已選　現在時刻　" : "已選　");
+}
 function animateElec(input, to) {
   const from = Math.round(Number(input.value) || 0);
   const token = (input._elecAnim || 0) + 1;
@@ -43969,7 +44014,9 @@ function bindMoveInForm() {
       if (cal) cal.querySelectorAll(".cal-cell.on").forEach(el => el.classList.remove("on"));
       btn.classList.add("on");
       btn.dataset.popping = "1";
+      const prevAt = d.signAppointAt;
       popSignDay(btn, () => {
+        queueSignAnim(prevAt, hit, false);
         d.signAppointAt = hit;
         ui.keepScroll = true;
         render();
@@ -43980,7 +44027,11 @@ function bindMoveInForm() {
     btn.onclick = e => {
       e.preventDefault();
       captureMoveInDraft();
-      ensureMoveIn().signAppointAt = btn.dataset.signSlot;
+      const d = ensureMoveIn();
+      const prevAt = d.signAppointAt;
+      const nextAt = btn.dataset.signSlot;
+      queueSignAnim(prevAt, nextAt, false);
+      d.signAppointAt = nextAt;
       ui.keepScroll = true;
       render();
     };
