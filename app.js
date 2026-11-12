@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1925";
+const FILE_VER = "1926";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42628,6 +42628,33 @@ function paintMoveLive() {
   }
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(bits.total); });
 }
+function animateElec(input, to) {
+  const from = Math.round(Number(input.value) || 0);
+  const token = (input._elecAnim || 0) + 1;
+  input._elecAnim = token;
+  input._elecTo = to;
+  input.classList.remove("elec-up", "elec-down");
+  void input.offsetWidth;
+  if (to !== from) input.classList.add(to > from ? "elec-up" : "elec-down");
+  if (from === to) {
+    paintMoveLive();
+    input._elecTo = null;
+    return;
+  }
+  const start = performance.now();
+  const dur = 380;
+  const tick = now => {
+    if (!input.isConnected || input._elecAnim !== token) return;
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const val = t === 1 ? to : Math.round(from + (to - from) * eased);
+    if (input.value !== String(val)) input.value = String(val);
+    paintMoveLive();
+    if (t < 1) requestAnimationFrame(tick);
+    else input._elecTo = null;
+  };
+  requestAnimationFrame(tick);
+}
 function ensureMoveLiveWatch() {
   if (ensureMoveLiveWatch.on) return;
   ensureMoveLiveWatch.on = true;
@@ -42742,11 +42769,9 @@ function bindMoveInForm() {
       e.preventDefault();
       const input = document.getElementById("move-elec");
       if (!input) return;
-      const step = Number(btn.dataset.elecStep) || 0;
-      const next = Math.max(0, Math.round((Number(input.value) || 0) + step));
-      input.value = String(next);
-      captureMoveInDraft();
-      paintMoveLive();
+      const base = input._elecTo != null ? input._elecTo : Math.round(Number(input.value) || 0);
+      const next = Math.max(0, base + step);
+      animateElec(input, next);
     };
   });
   document.querySelectorAll("[data-move-pay]").forEach(btn => {

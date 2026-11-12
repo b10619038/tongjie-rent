@@ -6516,7 +6516,7 @@ img.avatar { object-fit: cover; display: block; }
 }
 .move-elec-step {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 48px 1fr 48px;
   align-items: center;
   background: var(--ok-soft);
   border-radius: 999px;
@@ -6527,10 +6527,10 @@ img.avatar { object-fit: cover; display: block; }
   border: 0;
   background: transparent;
   border-radius: 999px;
-  padding: 7px 0;
+  padding: 2px 0 4px;
   font: inherit;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 500;
   line-height: 1;
   color: var(--ink);
   cursor: pointer;
@@ -6560,6 +6560,16 @@ img.avatar { object-fit: cover; display: block; }
 .move-elec-step input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+.move-elec-step input.elec-up { animation: elecRise .36s cubic-bezier(.22,.82,.22,1); }
+.move-elec-step input.elec-down { animation: elecFall .36s cubic-bezier(.22,.82,.22,1); }
+@keyframes elecRise {
+  0% { transform: translateY(10px); opacity: .25; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes elecFall {
+  0% { transform: translateY(-10px); opacity: .25; }
+  100% { transform: none; opacity: 1; }
 }
 .dash-switch { margin-top: 0; }
 #dash-view-body { display: contents; }
