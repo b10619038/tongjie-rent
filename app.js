@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1913";
+const FILE_VER = "1914";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30727,7 +30727,7 @@ function moveInView() {
       <div class="label">合約起迄</div>
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ ? ("（" + occupiedUntilPhrase(occ, r) + "，不可早於截止後）") : "（不可早於今天）") + "。新客最短一年，沒有半年。入住不是 1 號時，當月只開日拆，次月 1 號起仍是一年約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。新客最短一年，沒有半年。"}</p>
       <label class="field"><span>起始日（入住）</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
-      ${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}
+      <div id="move-lease-sum">${r ? leasePackSummaryHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}</div>
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
@@ -30747,8 +30747,8 @@ function moveInView() {
         <label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
         <label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${payBits.total}" /></label>
       </div>
-      <p class="small" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>
-      </div>` : (payWay === "xfer" ? `<p class="small" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
+      <p class="small" id="move-pay-hint" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${money(payBits.total)}。</p>
+      </div>` : (payWay === "xfer" ? `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額轉統潔兆豐 ${money(payBits.total)}。</p>` : `<p class="small" id="move-pay-hint" style="margin:8px 0 0">第一次全額現場收現金 ${money(payBits.total)}。</p>`)}` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
       <label class="field" style="margin-top:12px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
@@ -42434,6 +42434,80 @@ function playMoveSplitFromButton() {
   };
   requestAnimationFrame(run);
 }
+function paintMoveLive() {
+  if (typeof ui === "undefined" || !ui || ui.page !== "move-in") return;
+  const d = ensureMoveIn();
+  const start = document.getElementById("move-start");
+  const elec = document.getElementById("move-elec");
+  const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (!r || !start) return;
+  let dirty = false;
+  if (start.value && start.value !== d.leaseStart) {
+    const min = roomSoonestStart(r, { incoming: true });
+    let next = start.value;
+    if (next < min) {
+      next = min;
+      if (start.value !== min) start.value = min;
+      if (!paintMoveLive.told) { paintMoveLive.told = true; toast("起始日不可早於 " + min); }
+    } else paintMoveLive.told = false;
+    d.leaseStart = next;
+    d.leaseStartTouched = next !== min;
+    d.leaseEnd = studioLeasePack(next, studioContractRent(null, r)).occupancyEnd;
+    dirty = true;
+  }
+  if (elec && elec.value !== "") {
+    const n = Math.max(0, Math.round(Number(elec.value) || 0));
+    const cur = d.elecStore == null || d.elecStore === "" ? null : Math.max(0, Math.round(Number(d.elecStore) || 0));
+    if (n !== cur) {
+      d.elecStore = n;
+      dirty = true;
+    }
+  }
+  if (!dirty) return;
+  const monthly = studioContractRent(null, r);
+  const leaseBox = document.getElementById("move-lease-sum");
+  if (leaseBox) leaseBox.innerHTML = leasePackSummaryHtml(studioLeasePack(d.leaseStart, monthly), monthly);
+  const bits = firstStudioPayBits({
+    name: d.name || "新客",
+    leaseStart: d.leaseStart || "",
+    rent: monthly,
+    deposit: studioDepositOf(monthly),
+    hasAgent: !!d.hasAgent,
+    payWay: d.payWay,
+    payCash: d.payCash,
+    payMega: d.payMega,
+    elecStore: d.elecStore
+  }, r);
+  const settle = document.querySelector(".move-settle");
+  if (settle) {
+    const hold = document.createElement("div");
+    hold.innerHTML = firstPaySettleHtml(bits);
+    if (hold.firstChild) settle.replaceWith(hold.firstChild);
+  }
+  const hint = document.getElementById("move-pay-hint");
+  if (hint) {
+    const way = d.payWay || "cash";
+    hint.textContent = way === "xfer"
+      ? "第一次全額轉統潔兆豐 " + money(bits.total) + "。"
+      : way === "split"
+        ? "填其中一格，另一格會自動算出剩餘。合計 " + money(bits.total) + "。"
+        : "第一次全額現場收現金 " + money(bits.total) + "。";
+  }
+  document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(bits.total); });
+}
+function ensureMoveLiveWatch() {
+  if (ensureMoveLiveWatch.on) return;
+  ensureMoveLiveWatch.on = true;
+  setInterval(paintMoveLive, 120);
+  document.addEventListener("input", e => {
+    const id = e.target && e.target.id;
+    if (id === "move-start" || id === "move-elec") paintMoveLive();
+  }, true);
+  document.addEventListener("change", e => {
+    const id = e.target && e.target.id;
+    if (id === "move-start" || id === "move-elec") paintMoveLive();
+  }, true);
+}
 function bindLiveCommit(el, fn) {
   if (!el || el.dataset.liveCommit === "1") return;
   el.dataset.liveCommit = "1";
@@ -42465,6 +42539,7 @@ function bindLiveCommit(el, fn) {
 }
 function bindMoveInForm() {
   if (ui.page !== "move-in") return;
+  ensureMoveLiveWatch();
   ui.moveSplitPop = false;
   playMoveSplitFromButton();
   const openBtn = document.getElementById("move-room-open");
