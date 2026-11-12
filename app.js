@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1957";
+const FILE_VER = "1958";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42734,7 +42734,7 @@ function moveSignWhenLabel(at) {
   const roc = (Number(m[1]) - 1911) + "/" + Number(m[2]) + "/" + Number(m[3]);
   const h = Number(m[4]);
   const h12 = h % 12 || 12;
-  return roc + "（" + wk + "）" + (h < 12 ? "上午" : "下午") + " " + h12 + ":" + m[5];
+  return roc + " ( " + wk + " ) " + (h < 12 ? "上午" : "下午") + " " + h12 + ":" + m[5];
 }
 function moveDraftTenant() {
   captureMoveInDraft();
@@ -42793,40 +42793,71 @@ function moveTenantShareText() {
   if (!pack) return "";
   const { d, t, room, bits, addr, rents } = pack;
   const half = moveAgentHalf(bits.monthly);
+  const rule = "------------------------------";
   return [
-    (room.no || "") + "新租客您好",
-    "簽約時間：" + moveSignWhenLabel(d.signAppointAt),
-    "地點：" + (addr || room.no || ""),
-    "合約期間：" + (rocSlash(t.leaseStart) || "") + " ➜ " + (rocSlash(t.leaseEnd) || ""),
-    "請攜帶：雙證件正本、身分證正反影本、個人印章。",
-    "當天請付仲介費 " + money(half) + "。",
+    (room.no || "") + " 新租客 您好👋",
+    "",
+    "簽約時間：",
+    moveSignWhenLabel(d.signAppointAt),
+    "",
+    "地點：",
+    addr || room.no || "",
+    "",
+    "合約期間：",
+    (rocSlash(t.leaseStart) || "") + " → " + (rocSlash(t.leaseEnd) || ""),
+    "",
+    rule,
+    "",
+    "請攜帶：",
+    "雙證件正本、身分證正反影本、個人印章。",
+    "",
+    "當天請付仲介費 " + money(half),
+    "",
     "押金 " + money(bits.deposit),
-    rents.join("　"),
+    ...rents,
     "年水費 " + money(bits.water),
     "電費 " + money(bits.elec),
-    "押金、房租、水電請另外付給屋主，合計 " + money(bits.total) + "。"
+    "",
+    "合計 " + money(bits.total)
   ].join("\n");
 }
 function moveOwnerShareText() {
   const pack = moveSharePack();
   if (!pack) return "";
   const { d, t, room, bits, addr, rents } = pack;
-  const half = moveAgentHalf(bits.monthly);
   const service = Math.round(Number(bits.monthly) || 0);
-  const who = [room.no || "", t.name || "新租客"].filter(Boolean).join(" ");
+  const home = String(d.address || "").trim();
+  const rule = "------------------------------";
   return [
-    who + " 仲介帶看",
-    t.phone ? "電話：" + t.phone : "",
-    "簽約時間：" + moveSignWhenLabel(d.signAppointAt),
+    (room.no || "") + " 仲介帶看",
+    "",
+    "新租客：" + (t.name || ""),
+    "",
+    "電話：" + (t.phone || ""),
+    "",
+    "身分證：" + (t.idNo || ""),
+    "",
+    "戶籍地址：" + home,
+    "",
+    "簽約時間：",
+    moveSignWhenLabel(d.signAppointAt),
+    "",
     "地點：" + (addr || room.no || ""),
-    "合約期間：" + (rocSlash(t.leaseStart) || "") + " ➜ " + (rocSlash(t.leaseEnd) || ""),
-    "租客當天付仲介 " + money(half) + "（半個月租金）。",
-    "押金 " + money(bits.deposit) + "　" + rents.join("　"),
-    "年水費 " + money(bits.water) + "　電費 " + money(bits.elec),
-    "押金、房租、水電付給屋主，合計 " + money(bits.total) + "。",
-    "請付仲介服務費 " + money(service) + "（一個月租金）。",
-    "入住資料會在統潔 App。"
-  ].filter(Boolean).join("\n");
+    "",
+    "合約期間：",
+    (rocSlash(t.leaseStart) || "") + " → " + (rocSlash(t.leaseEnd) || ""),
+    "",
+    rule,
+    "",
+    "押金 " + money(bits.deposit),
+    ...rents,
+    "年水費 " + money(bits.water),
+    "電費 " + money(bits.elec),
+    "",
+    "合計 " + money(bits.total),
+    "",
+    "請款仲介服務費 " + money(service)
+  ].join("\n");
 }
 function exportMoveLeasePdf() {
   const pack = moveDraftTenant();
