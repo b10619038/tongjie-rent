@@ -493,6 +493,38 @@ export default {
       }
     }
 
+    if (url.pathname === "/api/idcard" && request.method === "POST") {
+      if (!keyOk(request)) return cors({ error: "key" }, 403);
+      let body = {};
+      try { body = await request.json(); } catch (e) {}
+      const visKey = String((env && env.GOOGLE_VISION_KEY) || "").trim();
+      const image = String(body.image || "").replace(/^data:image\/[^;]+;base64,/, "");
+      if (!visKey) return cors({ ok: false, error: "nokey" }, 400);
+      if (!image) return cors({ ok: false, error: "noimage" }, 400);
+      const prompt = "這是台灣國民身分證正面或反面。只輸出 JSON，不要其他文字。看不清就留空，不要猜。{\"name\":\"\",\"idNo\":\"\",\"birthday\":\"YYYY-MM-DD\",\"address\":\"\"} name 只填中文姓名。idNo 是統一編號，一個大寫英文加 9 碼。birthday 是出生日期不是發證日期，民國年要加 1911。address 是住址。";
+      const models = ["gemini-2.5-flash", "gemini-2.0-flash"];
+      for (let i = 0; i < models.length; i++) {
+        try {
+          const g = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(models[i]) + ":generateContent?key=" + encodeURIComponent(visKey), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: prompt }] }],
+              generationConfig: { temperature: 0, responseMimeType: "application/json" }
+            })
+          });
+          const data = await g.json();
+          if (data && data.error) continue;
+          const text = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p && p.text).filter(Boolean).join("\n");
+          const m = String(text || "").match(/\{[\s\S]*\}/);
+          if (!m) continue;
+          const row = JSON.parse(m[0]);
+          if (row && (row.name || row.idNo || row.birthday || row.address)) return cors({ ok: true, name: row.name || "", idNo: row.idNo || "", birthday: row.birthday || "", address: row.address || "" });
+        } catch (e) {}
+      }
+      return cors({ ok: false, error: "unread" }, 422);
+    }
+
     if (url.pathname === "/api/vision" && request.method === "POST") {
       if (!keyOk(request)) return cors({ error: "key" }, 403);
       let body = {};

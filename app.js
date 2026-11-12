@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1960";
+const FILE_VER = "1961";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43115,25 +43115,48 @@ function twIdValid(id) {
 function idFromOcr(text) {
   const src = String(text || "").toUpperCase().replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 48)).replace(/[Ｏ]/g, "O");
   const compact = src.replace(/[^A-Z0-9]/g, "");
-  const found = [];
+  const digitAlt = {
+    "0": ["0"], "1": ["1"], "2": ["2"], "3": ["3"], "4": ["4"], "5": ["5"], "6": ["6"], "7": ["7"], "8": ["8"], "9": ["9"],
+    "O": ["0"], "Q": ["0"], "D": ["0"], "I": ["1"], "L": ["1"], "Z": ["2"], "S": ["5"], "G": ["6"], "B": ["8"]
+  };
+  const hits = [];
   for (let i = 0; i + 10 <= compact.length; i++) {
-    let letter = compact[i];
-    let rest = compact.slice(i + 1, i + 10).replace(/O/g, "0").replace(/[IL]/g, "1").replace(/S/g, "5").replace(/B/g, "8").replace(/Z/g, "2");
-    if (!/[A-Z]/.test(letter)) {
-      if (letter === "0") letter = "O";
-      else if (letter === "1") letter = "I";
-      else continue;
+    const chunk = compact.slice(i, i + 10);
+    const alts = [];
+    let amb = 0;
+    let bad = false;
+    for (let k = 0; k < 10; k++) {
+      const ch = chunk[k];
+      let opts;
+      if (k === 0) {
+        if (/[A-Z]/.test(ch)) opts = [ch];
+        else if (ch === "0") opts = ["O", "D"];
+        else if (ch === "1") opts = ["I"];
+        else { bad = true; break; }
+      } else opts = digitAlt[ch];
+      if (!opts) { bad = true; break; }
+      if (opts.length > 1 || (k > 0 && opts[0] !== ch)) amb++;
+      alts.push(opts);
     }
-    const id = letter + rest;
-    if (twIdValid(id)) found.push(id);
+    if (bad || amb > 2) continue;
+    let ids = [""];
+    alts.forEach(opts => {
+      const next = [];
+      ids.forEach(prefix => opts.forEach(ch => next.push(prefix + ch)));
+      ids = next;
+    });
+    ids.forEach(id => { if (twIdValid(id)) hits.push(id); });
   }
-  return found.length ? found[0] : "";
+  if (!hits.length) return "";
+  const count = {};
+  hits.forEach(id => { count[id] = (count[id] || 0) + 1; });
+  return Object.keys(count).sort((a, b) => count[b] - count[a])[0];
 }
 function nameFromOcr(text) {
   const bad = /身分|國民|中華|出生|性別|統一|住址|配偶|役別|縣|市|日期|編號|民國|照片/;
   const ok = s => /^[\u4e00-\u9fff]{2,4}$/.test(s) && !bad.test(s);
   const flat = String(text || "").replace(/[ \t]/g, "");
-  const inline = flat.match(/姓名[:：]?([\u4e00-\u9fff]{2,4})/);
+  const inline = flat.match(/姓名[^\u4e00-\u9fff]{0,16}([\u4e00-\u9fff]{2,4})/);
   if (inline && ok(inline[1])) return inline[1];
   const lines = String(text || "").split(/\n/).map(s => s.trim()).filter(Boolean);
   for (let i = 0; i < lines.length; i++) {
@@ -43145,7 +43168,8 @@ function nameFromOcr(text) {
   return "";
 }
 function birthFromOcr(text) {
-  const t = String(text || "").replace(/\s+/g, "");
+  const raw = String(text || "").replace(/發證日期[^\n]*/g, " ");
+  const t = raw.replace(/\s+/g, "");
   const tries = [
     t.match(/民國(\d{2,3})年(\d{1,2})月(\d{1,2})日/),
     t.match(/出生(?:日期|年月日)?(\d{2,3})年(\d{1,2})月(\d{1,2})日/),
@@ -43181,16 +43205,50 @@ function parseIdCardText(text) {
     address: addressFromOcr(text)
   };
 }
-async function ocrIdCardFile(file) {
-  const image = await fileToVisionJpeg(file, 2200);
-  if (!image) return "";
+async function idCardPayloads(file) {
+  const color = await fileToVisionJpeg(file, 2400);
+  const out = [];
+  if (color) out.push(color);
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const max = 2400;
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height, 1));
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(bmp, 0, 0, w, h);
+    try { bmp.close(); } catch {}
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const g = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+      const c = Math.max(0, Math.min(255, (g - 128) * 1.55 + 128));
+      d[i] = d[i + 1] = d[i + 2] = c;
+    }
+    ctx.putImageData(img, 0, 0);
+    const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.92));
+    if (blob) {
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      const sharp = btoa(bin);
+      if (sharp && sharp !== color) out.push(sharp);
+    }
+  } catch {}
+  return out;
+}
+async function visionIdText(image) {
   const pull = async (url, headers, body) => {
     const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
     const data = await res.json().catch(() => null);
     if (!data) return "";
     if (data.ok && data.text) return String(data.text);
     const resp = data.responses && data.responses[0];
-    return String((resp && resp.fullTextAnnotation && resp.fullTextAnnotation.text) || (data.text) || "");
+    return String((resp && resp.fullTextAnnotation && resp.fullTextAnnotation.text) || data.text || "");
   };
   try {
     const cloud = await pull(LINE_HOOK + "/api/vision", { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY }, { image });
@@ -43207,6 +43265,53 @@ async function ocrIdCardFile(file) {
       requests: [{ image: { content: image }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], imageContext: { languageHints: ["zh-Hant", "zh-TW", "en"] } }]
     });
   } catch { return ""; }
+}
+function cleanIdRead(raw) {
+  const src = raw || {};
+  const name = nameFromOcr("姓名\n" + String(src.name || "")) || nameFromOcr(String(src.name || ""));
+  let idNo = idFromOcr(String(src.idNo || ""));
+  if (!idNo) idNo = idFromOcr(String(src.text || ""));
+  let birthday = parseOneBirthday(String(src.birthday || ""));
+  if (!birthday) birthday = birthFromOcr(String(src.birthday || ""));
+  const address = addressFromOcr("住址\n" + String(src.address || "")) || addressFromOcr(String(src.address || ""));
+  return { name, idNo, birthday, address };
+}
+async function geminiIdCard(image) {
+  const key = String((state && state.visionKey) || "").trim();
+  const prompt = "這是台灣國民身分證正面或反面。只輸出 JSON，不要其他文字。看不清就留空，不要猜。{\"name\":\"\",\"idNo\":\"\",\"birthday\":\"YYYY-MM-DD\",\"address\":\"\"} name 只填中文姓名。idNo 是統一編號，一個大寫英文加 9 碼。birthday 是出生日期不是發證日期，民國年要加 1911。address 是住址。";
+  const ask = async (url, headers, body) => {
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => null);
+    if (!data) return null;
+    if (data.name || data.idNo || data.birthday || data.address) return cleanIdRead(data);
+    const text = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p && p.text).filter(Boolean).join("\n");
+    if (!text) return null;
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    try { return cleanIdRead(JSON.parse(m[0])); } catch { return null; }
+  };
+  try {
+    const hooked = await ask(LINE_HOOK + "/api/idcard", { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY }, { image });
+    if (hooked && (hooked.name || hooked.idNo || hooked.birthday || hooked.address)) return hooked;
+  } catch {}
+  if (!key) return null;
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+  for (let i = 0; i < models.length; i++) {
+    try {
+      const got = await ask("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(models[i]) + ":generateContent?key=" + encodeURIComponent(key), { "Content-Type": "application/json" }, {
+        contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: prompt }] }],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+      });
+      if (got && (got.name || got.idNo || got.birthday || got.address)) return got;
+    } catch {}
+  }
+  return null;
+}
+async function ocrIdCardFile(file) {
+  const images = await idCardPayloads(file);
+  if (!images.length) return "";
+  const texts = await Promise.all(images.map(visionIdText));
+  return texts.filter(Boolean).join("\n");
 }
 function applyIdCardRead(found) {
   const d = ensureMoveIn();
@@ -43239,8 +43344,16 @@ async function readMoveIdCard(file) {
   if (btn) btn.disabled = true;
   toast("正在讀身分證");
   try {
-    const text = await ocrIdCardFile(file);
-    const found = parseIdCardText(text);
+    const images = await idCardPayloads(file);
+    const gem = images[0] ? await geminiIdCard(images[0]) : null;
+    const text = (await Promise.all((images || []).map(visionIdText))).filter(Boolean).join("\n");
+    const ocr = parseIdCardText(text);
+    const found = {
+      name: (gem && gem.name) || ocr.name,
+      idNo: (gem && gem.idNo) || ocr.idNo,
+      birthday: (gem && gem.birthday) || ocr.birthday,
+      address: (gem && gem.address) || ocr.address
+    };
     if (!found.name && !found.idNo && !found.birthday && !found.address) {
       toast("沒讀清楚。請把身分證放平、避免反光，再拍一次");
       return;
