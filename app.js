@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1969";
+const FILE_VER = "1970";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43326,7 +43326,11 @@ async function geminiIdCard(image) {
     try { return cleanIdRead(JSON.parse(m[0])); } catch { return null; }
   };
   try {
-    const hooked = await ask(LINE_HOOK + "/api/idcard", { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY }, { image });
+    const local = await ask("/idcard", { "Content-Type": "application/json" }, { image, key });
+    if (local && (local.name || local.idNo || local.birthday || local.address)) return local;
+  } catch {}
+  try {
+    const hooked = await ask(LINE_HOOK + "/api/idcard", { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY }, { image, key });
     if (hooked && (hooked.name || hooked.idNo || hooked.birthday || hooked.address)) return hooked;
   } catch {}
   if (!key) return null;
@@ -43334,8 +43338,8 @@ async function geminiIdCard(image) {
   for (let i = 0; i < models.length; i++) {
     try {
       const got = await ask("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(models[i]) + ":generateContent?key=" + encodeURIComponent(key), { "Content-Type": "application/json" }, {
-        contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: prompt }] }],
-        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+        contents: [{ parts: [{ inlineData: { mimeType: "image/jpeg", data: image } }, { text: prompt }] }],
+        generationConfig: { temperature: 0 }
       });
       if (got && (got.name || got.idNo || got.birthday || got.address)) return got;
     } catch {}
@@ -43654,7 +43658,7 @@ async function shootIdCard() {
       applyIdCardRead(found);
       return;
     }
-    if (scan.hint) scan.hint.textContent = "沒讀清楚，對滿框再拍一次";
+    if (scan.hint) scan.hint.textContent = String((state && state.visionKey) || "").trim() ? "沒讀清楚，對滿框再拍一次" : "這支手機還沒接上認字金鑰";
   } catch {
     if (scan.hint) scan.hint.textContent = "沒讀到，請再拍一次";
   }
@@ -43671,7 +43675,7 @@ async function readMoveIdCard(file) {
     twIdWorker().catch(() => {});
     const found = await recognizeIdBlob(file);
     if (!found) {
-      toast("沒讀清楚。請把身分證拍近一點、避免反光，再拍一次");
+      toast(String((state && state.visionKey) || "").trim() ? "沒讀清楚。請把身分證拍近一點、避免反光，再拍一次" : "這支手機還沒接上認字金鑰");
       return;
     }
     applyIdCardRead(found);

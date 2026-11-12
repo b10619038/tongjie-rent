@@ -509,8 +509,8 @@ export default {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ inline_data: { mime_type: "image/jpeg", data: image } }, { text: prompt }] }],
-              generationConfig: { temperature: 0, responseMimeType: "application/json" }
+              contents: [{ parts: [{ inlineData: { mimeType: "image/jpeg", data: image } }, { text: prompt }] }],
+              generationConfig: { temperature: 0 }
             })
           });
           const data = await g.json();
