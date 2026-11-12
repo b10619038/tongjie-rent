@@ -3452,6 +3452,39 @@ input[type="file"] {
   line-height: 1;
   color: #1d4a34;
 }
+.move-sum-k {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d4a34;
+  cursor: pointer;
+}
+.move-sum-right {
+  margin-left: auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.move-avg-slot {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns .38s cubic-bezier(.22,.82,.22,1);
+}
+.move-avg-slot.open { grid-template-columns: 1fr; }
+.move-avg-clip { overflow: hidden; min-width: 0; }
+.move-avg {
+  display: block;
+  white-space: nowrap;
+  padding-right: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  font-style: normal;
+}
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);
 }

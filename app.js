@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1950";
+const FILE_VER = "1951";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23253,7 +23253,9 @@ function moveSettleLinesHtml(bits) {
     const range = bits.stubStart ? rocSlash(bits.stubStart) + " ➜ " + rocSlash(bits.stubEnd) + " " : "";
     rows.push(moveSettleItem("stub", (stubMonth ? stubMonth + "月租金 " : "租金 ") + money(bits.stubRent), range + "日拆（" + (bits.stubDays || 0) + "/" + (bits.stubDim || 0) + " 天）"));
   }
-  rows.push(moveSettleItem("month", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth), "每個月的租金"));
+  const two = Number(bits.people) === 2;
+  const monthNote = two ? "每個月租金，平均1人 " + money(Math.round((Number(bits.firstMonth) || 0) / 2)) : "每個月的租金";
+  rows.push(moveSettleItem("month", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth), monthNote));
   if (bits.water) rows.push(moveSettleItem("water", "年水費 " + money(bits.water), (Number(bits.people) === 2 ? "2人3600元" : "1人1800元") + " 使用無上限"));
   if (bits.elec) rows.push(moveSettleItem("elec", "電費儲值 " + money(bits.elec), "電費可於5F自行於儲值機現金儲值 金額無上限"));
   return `<div class="move-settle-bits move-settle-lines">${rows.join("")}</div>`;
@@ -23262,7 +23264,11 @@ function firstPaySettleHtml(bits) {
   if (!bits) return "";
   const fee = moveAgentHalf(bits.monthly);
   const feeRow = moveSettleItem("agent", "仲介費 " + money(fee), "仲介費用為一個月租金的一半", "move-fee-line");
-  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum"><span>合計</span><b>${escapeHtml(money(moveSettleTotal(bits)))}</b></p></div>`;
+  const total = moveSettleTotal(bits);
+  const two = Number(bits.people) === 2;
+  const avg = two ? `<span class="move-avg-slot" data-note="sum"><span class="move-avg-clip"><em class="move-avg">平均一人 ${escapeHtml(money(Math.round(total / 2)))}</em></span></span>` : "";
+  const sumLabel = two ? `<button type="button" class="move-sum-k" data-settle="sum">合計</button>` : `<span>合計</span>`;
+  return `<div class="move-settle"><div class="move-fee-slot${bits.hasAgent && fee ? " open" : ""}"><div class="move-fee-clip">${feeRow}</div></div>${moveSettleLinesHtml(bits)}<p class="move-settle-sum">${sumLabel}<span class="move-sum-right">${avg}<b>${escapeHtml(money(total))}</b></span></p></div>`;
 }
 function paintMoveAgentFee() {
   const d = ensureMoveIn();
@@ -23294,6 +23300,8 @@ function paintMoveAgentFee() {
     paintMovePayHint(val, way);
     const note = document.getElementById("move-split-note");
     if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(val) + "。";
+    const avg = document.querySelector(".move-avg");
+    if (avg && Number(d.people) === 2) avg.textContent = "平均一人 " + money(Math.round(val / 2));
   });
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(total); });
 }
@@ -42765,6 +42773,7 @@ function paintMoveLive(force) {
   const settle = document.querySelector(".move-settle");
   if (settle) {
     const openNotes = [...settle.querySelectorAll(".move-note.open")].map(el => el.dataset.note);
+    const avgOpen = !!settle.querySelector(".move-avg-slot.open");
     const hold = document.createElement("div");
     hold.innerHTML = firstPaySettleHtml(bits);
     const next = hold.firstChild;
@@ -42773,6 +42782,10 @@ function paintMoveLive(force) {
         const n = next.querySelector('.move-note[data-note="' + k + '"]');
         if (n) n.classList.add("open");
       });
+      if (avgOpen) {
+        const slot = next.querySelector(".move-avg-slot");
+        if (slot) slot.classList.add("open");
+      }
       settle.replaceWith(next);
     }
   }
@@ -42825,6 +42838,11 @@ function ensureMoveLiveWatch() {
     const btn = e.target && e.target.closest && e.target.closest(".move-settle [data-settle]");
     if (!btn) return;
     e.preventDefault();
+    if (btn.dataset.settle === "sum") {
+      const slot = document.querySelector(".move-settle .move-avg-slot");
+      if (slot) slot.classList.toggle("open");
+      return;
+    }
     const item = btn.closest(".move-settle-item");
     const note = item && item.querySelector(".move-note");
     if (note) note.classList.toggle("open");
