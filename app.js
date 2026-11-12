@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1980";
+const FILE_VER = "1981";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -28148,6 +28148,8 @@ function submitMoveIn() {
     existSame.idNo = joined.idNo || existSame.idNo;
     if (d.emergencyName) existSame.emergencyName = d.emergencyName;
     if (d.emergencyPhone) existSame.emergencyPhone = d.emergencyPhone;
+    const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
+    if (joinedAddr) existSame.address = joinedAddr;
     if (joined.birthday) { existSame.birthday = joined.birthday; existSame.birthdaySet = true; }
     existSame.signAppointAt = d.signAppointAt || existSame.signAppointAt;
     existSame.leaseStart = d.leaseStart || existSame.leaseStart;
@@ -28201,6 +28203,8 @@ function submitMoveIn() {
   if (joined.birthday) { t.birthday = joined.birthday; t.birthdaySet = true; }
   if (d.emergencyName) t.emergencyName = d.emergencyName;
   if (d.emergencyPhone) t.emergencyPhone = d.emergencyPhone;
+  const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
+  if (joinedAddr) t.address = joinedAddr;
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -42791,6 +42795,9 @@ function moveDraftTenant() {
     name: joined.name || "",
     phone: joined.phone || "",
     idNo: joined.idNo || "",
+    address: [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／"),
+    emergencyName: String(d.emergencyName || "").trim(),
+    emergencyPhone: String(d.emergencyPhone || "").trim(),
     leaseStart: d.leaseStart,
     rent: monthly,
     deposit: studioDepositOf(monthly),
