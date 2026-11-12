@@ -28,7 +28,7 @@
     const label = document.createElement("label");
     label.className = "field";
     label.style.marginTop = "8px";
-    label.innerHTML = '<span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="' + elecAmount() + '" />';
+    label.innerHTML = '<span>電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="' + elecAmount() + '" />';
     const grid = card.querySelector("#move-pay-label") || card.querySelector("#move-pay-grid") || card.querySelector(".sign-slot-grid");
     if (grid) grid.parentNode.insertBefore(label, grid);
     else card.appendChild(label);

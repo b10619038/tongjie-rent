@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1940";
+const FILE_VER = "1941";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23227,7 +23227,7 @@ function firstPayHintHtml(bits) {
   }
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
-  if (bits.elec) lines.push("房間電費儲值 " + money(bits.elec));
+  if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
   return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。";
 }
 function moveAgentHalf(monthly) {
@@ -23247,7 +23247,7 @@ function moveSettleLinesHtml(bits) {
   }
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
-  if (bits.elec) lines.push("房間電費儲值 " + money(bits.elec));
+  if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
   return `<div class="move-settle-bits move-settle-lines">${lines.map(x => `<div>${escapeHtml(x)}</div>`).join("")}</div>`;
 }
 function firstPaySettleHtml(bits) {
@@ -30870,7 +30870,7 @@ function moveInView() {
         </div>
       </div>
       <div class="move-line">
-        <span class="move-line-k">房間電費儲值</span>
+        <span class="move-line-k">電費儲值</span>
         <div class="move-elec-step" id="move-elec-step">
           <button type="button" data-elec-step="-100" aria-label="減少">−</button>
           <input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" />
