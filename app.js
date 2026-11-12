@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1944";
+const FILE_VER = "1945";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -23243,7 +23243,8 @@ function moveSettleLinesHtml(bits) {
   if (!bits) return "";
   const lines = [`押金 ${money(bits.deposit)}`];
   if (bits.stub && bits.stubRent) {
-    lines.push((bits.stubStart ? rocSlash(bits.stubStart) + " ➜ " + rocSlash(bits.stubEnd) + " " : "") + "租金 " + money(bits.stubRent));
+    const stubMonth = bits.stubStart ? String(bits.stubStart).slice(5, 7).replace(/^0/, "") : "";
+    lines.push((stubMonth ? stubMonth + "月" : "") + "不足月租金 " + money(bits.stubRent));
   }
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
   if (bits.water) lines.push("年水費 " + money(bits.water));
