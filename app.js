@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1965";
+const FILE_VER = "1966";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -43360,13 +43360,104 @@ function applyIdCardRead(found) {
   toast("已填" + bits.join("、") + (found.idNo ? "" : "。身分證沒讀到檢查碼，請再拍正面") + (found.address ? "" : "。反面可再掃戶籍地址") + "。電話請自己填");
 }
 let idScan = null;
+let twOcrWorker = null;
+let twOcrJob = null;
+const TW_ID_BOX = {
+  name: { x: 160, y: 295, w: 480, h: 100 },
+  id: { x: 640, y: 520, w: 320, h: 80 },
+  birth: { x: 160, y: 410, w: 480, h: 90 }
+};
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (loadTesseract.job) return loadTesseract.job;
+  loadTesseract.job = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("tesseract"));
+    s.onerror = () => reject(new Error("tesseract"));
+    document.head.appendChild(s);
+  });
+  return loadTesseract.job;
+}
+function twIdWorker() {
+  if (twOcrWorker) return Promise.resolve(twOcrWorker);
+  if (twOcrJob) return twOcrJob;
+  twOcrJob = loadTesseract().then(T => T.createWorker("chi_tra+eng")).then(worker => {
+    twOcrWorker = worker;
+    return worker;
+  }).catch(err => {
+    twOcrJob = null;
+    throw err;
+  });
+  return twOcrJob;
+}
+async function recognizeTwId(blob) {
+  const worker = await twIdWorker();
+  const bmp = await createImageBitmap(blob);
+  const card = document.createElement("canvas");
+  card.width = 1000;
+  card.height = 650;
+  card.getContext("2d").drawImage(bmp, 0, 0, 1000, 650);
+  try { bmp.close(); } catch {}
+  const readBox = async (field, mode) => {
+    const box = TW_ID_BOX[field];
+    const c = document.createElement("canvas");
+    c.width = box.w * 2;
+    c.height = box.h * 2;
+    const ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(card, box.x, box.y, box.w, box.h, 0, 0, c.width, c.height);
+    if (field === "id") {
+      await worker.setParameters({
+        tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        tessedit_pageseg_mode: "7"
+      });
+    } else {
+      await worker.setParameters({
+        tessedit_char_whitelist: "",
+        tessedit_pageseg_mode: mode,
+        preserve_interword_spaces: field === "name" ? "0" : "1"
+      });
+    }
+    const out = await worker.recognize(c);
+    const data = out && out.data;
+    return { text: String((data && data.text) || "").trim(), confidence: Number(data && data.confidence) || 0 };
+  };
+  const nameR = await readBox("name", "7");
+  const idR = await readBox("id", "7");
+  const birthR = await readBox("birth", "6");
+  const found = {
+    name: nameR.confidence >= 35 ? (nameFromOcr("姓名\n" + nameR.text) || nameFromOcr(nameR.text)) : "",
+    idNo: idR.confidence >= 25 ? idFromOcr(idR.text) : "",
+    birthday: birthR.confidence >= 25 ? (birthFromOcr(birthR.text) || parseOneBirthday(birthR.text)) : "",
+    address: ""
+  };
+  if (found.name || found.idNo || found.birthday) return found;
+  await worker.setParameters({ tessedit_char_whitelist: "", tessedit_pageseg_mode: "6" });
+  const whole = await worker.recognize(card);
+  const parsed = parseIdCardText(whole && whole.data && whole.data.text);
+  if (parsed.idNo && !twIdValid(parsed.idNo)) parsed.idNo = "";
+  if (!parsed.name && !parsed.idNo && !parsed.birthday && !parsed.address) return null;
+  return parsed;
+}
 async function recognizeIdBlob(blob) {
+  let tw = null;
+  try { tw = await recognizeTwId(blob); } catch {}
+  if (tw && tw.name && (tw.idNo || tw.birthday || tw.address)) return tw;
   const file = new File([blob], "id.jpg", { type: "image/jpeg" });
   const image = await fileToVisionJpeg(file, 1800);
-  if (!image) return null;
-  const text = await visionIdText(image);
-  const found = parseIdCardText(text);
-  if (found.idNo && !twIdValid(found.idNo)) found.idNo = "";
+  let vision = null;
+  if (image) {
+    const text = await visionIdText(image);
+    vision = parseIdCardText(text);
+    if (vision.idNo && !twIdValid(vision.idNo)) vision.idNo = "";
+  }
+  const found = {
+    name: (tw && tw.name) || (vision && vision.name) || "",
+    idNo: (tw && tw.idNo) || (vision && vision.idNo) || "",
+    birthday: (tw && tw.birthday) || (vision && vision.birthday) || "",
+    address: (tw && tw.address) || (vision && vision.address) || ""
+  };
   if (!found.name && !found.idNo && !found.birthday && !found.address) return null;
   return found;
 }
@@ -43462,7 +43553,7 @@ async function tickIdScanner() {
   if (scan.hold >= 2 && !scan.busy && hasCard && steady) {
     scan.busy = true;
     scan.hold = 0;
-    if (hint) hint.textContent = "正在辨識";
+    if (hint) hint.textContent = twOcrWorker ? "正在辨識" : "正在載入身分證辨識，請拿穩";
     try {
       const blob = await new Promise(r => still.canvas.toBlob(r, "image/jpeg", 0.92));
       const found = blob ? await recognizeIdBlob(blob) : null;
@@ -43516,6 +43607,7 @@ async function openIdScanner() {
     timer: 0
   };
   el.querySelector(".id-scan-x").onclick = () => closeIdScanner();
+  twIdWorker().catch(() => {});
   tickIdScanner();
 }
 async function readMoveIdCard(file) {
