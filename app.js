@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1996";
+const FILE_VER = "1997";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -2299,7 +2299,8 @@ const PUBLIC_GO = {
   "申請入住": "move-in",
   "入住": "move-in",
   "login": "login",
-  "租客登入": "login"
+  "租客登入": "login",
+  "preview": "preview"
 };
 const TENANT_GO = {
   repair: "repair",
@@ -2337,6 +2338,14 @@ function takeTenantGoQuery() {
       ui.pendingGo = go;
       try { sessionStorage.setItem("tj-go", go); } catch {}
       const q = new URLSearchParams(location.search);
+      if (go === "preview") {
+        const tid = String(q.get("tid") || "").trim();
+        if (tid) {
+          ui.pendingPreviewId = tid;
+          try { sessionStorage.setItem("tj-preview-tid", tid); } catch {}
+        }
+        q.delete("tid");
+      }
       q.delete("go");
       const left = q.toString();
       const hash = String(location.hash || "").replace(/^#go=[^&]*/, "").replace(/^#$/, "");
@@ -2346,12 +2355,24 @@ function takeTenantGoQuery() {
   if (!ui.pendingGo) {
     try { ui.pendingGo = sessionStorage.getItem("tj-go") || ""; } catch {}
   }
+  if (ui.pendingGo === "preview" && !ui.pendingPreviewId) {
+    try { ui.pendingPreviewId = sessionStorage.getItem("tj-preview-tid") || ""; } catch {}
+  }
 }
 function catchTenantGo(href) {
   const go = tenantGoFromHref(href || location.href);
   if (go) {
     ui.pendingGo = go;
     try { sessionStorage.setItem("tj-go", go); } catch {}
+    if (go === "preview") {
+      try {
+        const tid = String(new URL(href || location.href, location.origin).searchParams.get("tid") || "").trim();
+        if (tid) {
+          ui.pendingPreviewId = tid;
+          sessionStorage.setItem("tj-preview-tid", tid);
+        }
+      } catch {}
+    }
   }
   if (!ui.pendingGo) return false;
   applyTenantGo();
@@ -2375,6 +2396,17 @@ function armTenantGoLaunch() {
 function applyTenantGo() {
   const go = ui.pendingGo || "";
   if (!go) return;
+  if (go === "preview") {
+    const id = String(ui.pendingPreviewId || "").trim();
+    const t = id && (state.tenants || []).find(x => x && String(x.id) === id);
+    const room = t && (state.rooms || []).find(r => r && r.id === t.roomId);
+    if (!t || !room) return;
+    ui.pendingGo = "";
+    ui.pendingPreviewId = "";
+    try { sessionStorage.removeItem("tj-go"); sessionStorage.removeItem("tj-preview-tid"); } catch {}
+    enterProspect(t, room);
+    return;
+  }
   if (go === "login") {
     ui.pendingGo = "";
     try { sessionStorage.removeItem("tj-go"); } catch {}
@@ -28136,7 +28168,8 @@ function movePeopleOk(joined) {
   if (joined.two && d.idNo2 && !idNoOk(d.idNo2)) { toast("請填第二人身分證"); return false; }
   return true;
 }
-function submitMoveIn() {
+function submitMoveIn(opts) {
+  const stay = !!(opts && opts.stay);
   const d = ensureMoveIn();
   const joined = moveJoinedDraft();
   const name = joined.name;
@@ -28175,10 +28208,11 @@ function submitMoveIn() {
     existSame.editedAt = Date.now();
     save();
     try { pushCloud(); } catch {}
+    if (stay) return existSame;
     toast("已回到這筆入住申請");
     clearMoveDraft();
     enterProspect(existSame, room);
-    return;
+    return existSame;
   }
   const holder = roomSignedHolder(room);
   if (holder && holder.id) {
@@ -28231,9 +28265,11 @@ function submitMoveIn() {
   if (t.hasAgent) {
     try { pushPhoneNotify("仲介服務費", `${room.no} ${name}　請付 ${studioAgentFee(t, room).toLocaleString("zh-TW")} 現金`, "admin"); } catch {}
   }
+  if (stay) return t;
   toast("已送出，進入看房預覽");
   clearMoveDraft();
   enterProspect(t, room);
+  return t;
 }
 function askMoveSubmit() {
   captureMoveInDraft();
@@ -31086,7 +31122,7 @@ function moveInView() {
         </div>
       </div>
     </div>
-    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px">送出並進入預覽</button>
+    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px${d.hasAgent ? ";display:none" : ""}">送出並進入預覽</button>
     ${pickSheet}
   </div>`;
 }
@@ -42915,7 +42951,12 @@ function moveShareField(label, values) {
   if (list.length === 1) return [label + "：" + list[0]];
   return [label + "："].concat(list);
 }
-function moveTenantShareText() {
+function movePreviewUrl(tid) {
+  const id = String(tid || "").trim();
+  if (!id) return "https://tongjie-app.pages.dev/?go=login";
+  return "https://tongjie-app.pages.dev/?go=preview&tid=" + encodeURIComponent(id);
+}
+function moveTenantShareText(tid) {
   const pack = moveSharePack();
   if (!pack) return "";
   const { d, room, bits, addr, rents } = pack;
@@ -42950,7 +42991,7 @@ function moveTenantShareText() {
     "合計 " + money(bits.total),
     "",
     "租屋APP：",
-    "https://tongjie-app.pages.dev/?go=login"
+    movePreviewUrl(tid)
   ].join("\n");
 }
 function moveOwnerShareText() {
@@ -43021,6 +43062,8 @@ function slideMoveAgent(yes) {
     if (yes) requestAnimationFrame(() => box.classList.add("open"));
     else box.classList.remove("open");
   }
+  const go = document.getElementById("move-submit");
+  if (go) go.style.display = yes ? "none" : "";
   const seg = document.getElementById("move-agent-grid");
   if (!seg) return;
   seg.classList.toggle("is-no", !yes);
@@ -44114,7 +44157,25 @@ function bindMoveInForm() {
   const tenantBtn = document.getElementById("move-share-tenant");
   if (tenantBtn) tenantBtn.onclick = e => {
     e.preventDefault();
-    shareMoveText(moveTenantShareText());
+    captureMoveInDraft();
+    const t = submitMoveIn({ stay: true });
+    if (!t || !t.id) return;
+    const send = () => shareMoveText(moveTenantShareText(t.id));
+    const flush = async () => {
+      const prev = ui.adminNavAt;
+      ui.adminNavAt = 0;
+      try {
+        for (let i = 0; i < 8; i++) {
+          try { await pushCloud(); } catch {}
+          if (!cloudDirty && !pushBusy) break;
+          await new Promise(r => setTimeout(r, 300));
+        }
+      } finally {
+        if (prev) ui.adminNavAt = prev;
+      }
+      send();
+    };
+    flush();
   };
   const ownerBtn = document.getElementById("move-share-owner");
   if (ownerBtn) ownerBtn.onclick = e => {
