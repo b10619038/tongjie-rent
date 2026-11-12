@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1916";
+const FILE_VER = "1917";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -30731,18 +30731,22 @@ function moveInView() {
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
-      <div class="small" style="margin:10px 0 6px">是否仲介帶看</div>
-      <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
-        <i class="seg-bg"></i>
-        <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
-        <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
+      <div class="move-line">
+        <span class="move-line-k">是否仲介帶看</span>
+        <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
+          <i class="seg-bg"></i>
+          <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
+          <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
+        </div>
       </div>
-      ${r ? `<div class="small" id="move-pay-label" style="margin:10px 0 6px">付款方式</div>
-      <div class="seg seg-3 move-seg${payWay === "xfer" ? " is-2" : payWay === "split" ? " is-3" : ""}" id="move-pay-grid">
-        <i class="seg-bg"></i>
-        <button type="button" data-move-pay="cash" class="${payWay === "cash" ? "on" : ""}">現金</button>
-        <button type="button" data-move-pay="xfer" class="${payWay === "xfer" ? "on" : ""}">轉帳</button>
-        <button type="button" data-move-pay="split" class="${payWay === "split" ? "on" : ""}">自訂</button>
+      ${r ? `<div class="move-line">
+        <span class="move-line-k" id="move-pay-label">付款方式</span>
+        <div class="seg seg-3 move-seg${payWay === "xfer" ? " is-2" : payWay === "split" ? " is-3" : ""}" id="move-pay-grid">
+          <i class="seg-bg"></i>
+          <button type="button" data-move-pay="cash" class="${payWay === "cash" ? "on" : ""}">現金</button>
+          <button type="button" data-move-pay="xfer" class="${payWay === "xfer" ? "on" : ""}">轉帳</button>
+          <button type="button" data-move-pay="split" class="${payWay === "split" ? "on" : ""}">自訂</button>
+        </div>
       </div>
       <div id="move-pay-extra">${movePayExtraHtml(d, payBits, payWay)}</div>` : `<p class="small" style="margin:10px 0 0">請先選房號</p>`}
       <label class="field" style="margin-top:12px"><span>房間電費儲值</span><input id="move-elec" type="number" inputmode="numeric" min="0" step="100" value="${Math.max(0, Math.round(Number(d.elecStore == null || d.elecStore === "" ? 1000 : d.elecStore)))}" /></label>

@@ -6491,7 +6491,28 @@ img.avatar { object-fit: cover; display: block; }
 .seg.is-cal .seg-bg,
 .seg.is-report .seg-bg,
 .seg.is-no .seg-bg { transform: translate3d(100%,0,0); }
-.move-seg { margin-top: 4px; }
+.move-seg { margin-top: 0; }
+.move-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+.move-line-k {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#move-agent-grid { flex: 0 1 148px; width: 148px; }
+#move-pay-grid { flex: 1 1 auto; min-width: 0; max-width: 250px; }
+.move-line .seg button {
+  padding: 7px 4px;
+  font-size: 15px;
+}
 .dash-switch { margin-top: 0; }
 #dash-view-body { display: contents; }
 #asset-list, #tenant-list { display: grid; gap: 12px; }
