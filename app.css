@@ -3362,7 +3362,7 @@ input[type="file"] {
 .move-note p {
   margin: 0;
   padding: 0 0 4px;
-  color: #3d6b52;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.45;
