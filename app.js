@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1985";
+const FILE_VER = "1986";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -27865,6 +27865,9 @@ function loadMoveDraft() {
     if (Array.isArray(raw.signStrokes)) d.signStrokes = raw.signStrokes;
     if (raw.signImg) d.signImg = String(raw.signImg);
     if (raw.signArmed) d.signArmed = true;
+    if (Array.isArray(raw.signStrokes2)) d.signStrokes2 = raw.signStrokes2;
+    if (raw.signImg2) d.signImg2 = String(raw.signImg2);
+    if (raw.signArmed2) d.signArmed2 = true;
     return d;
   } catch { return null; }
 }
@@ -27875,6 +27878,7 @@ function resetMoveInForm() {
   clearMoveDraft();
   ui.moveIn = blankMoveIn();
   ui.moveSignStrokes = [];
+  ui.moveSignStrokes2 = [];
   ui.keepScroll = false;
   render();
   toast("已清空");
@@ -28209,7 +28213,7 @@ function submitMoveIn() {
   if (d.emergencyPhone) t.emergencyPhone = d.emergencyPhone;
   const joinedAddr = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
   if (joinedAddr) t.address = joinedAddr;
-  if (d.signImg) t.eSign = { sig: d.signImg, status: "draft" };
+  if (d.signImg || d.signImg2) t.eSign = { sig: d.signImg || "", sig2: Number(d.people) === 2 ? (d.signImg2 || "") : "", status: "draft" };
   t.editedAt = Date.now();
   applyStudioLeasePack(t, room, d.leaseStart);
   try { ensureAgentFeeWork(t, room); } catch {}
@@ -31017,6 +31021,12 @@ function moveInView() {
           <canvas id="move-sign-pad"></canvas>
           <div class="move-sign-hint">點一下開始簽名</div>
         </div>
+        <div class="move-person2${Number(d.people) === 2 ? " open" : ""}"><div class="move-person2-clip">
+          <div class="sign-pad-wrap move-sign${d.signArmed2 ? " armed" : ""}" id="move-sign-box-2">
+            <canvas id="move-sign-pad-2"></canvas>
+            <div class="move-sign-hint">點一下開始簽名</div>
+          </div>
+        </div></div>
         <button type="button" class="ghost" id="move-sign-clear" style="margin-top:8px">清除簽名</button>
       </div>
     </div>
@@ -42122,6 +42132,7 @@ function bindGate() {
   });
   bindMoveInForm();
   bindMoveSignPad();
+  bindMoveSignPad("move-sign-box-2", "move-sign-pad-2", "moveSignStrokes2", "signImg2", "signArmed2", "signStrokes2");
   const bioBtn = document.getElementById("bio-login");
   if (bioBtn) bioBtn.onclick = e => {
     e.preventDefault();
@@ -42787,6 +42798,7 @@ function slideMovePeople(two) {
     if (two) requestAnimationFrame(() => slot.classList.add("open"));
     else slot.classList.remove("open");
   });
+  if (two) setTimeout(() => { (window.__moveSignPaints || []).forEach(fn => { try { fn(); } catch {} }); }, 460);
 }
 function moveSignWhenLabel(at) {
   const m = String(at || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
@@ -42823,7 +42835,7 @@ function moveDraftTenant() {
     people: Number(d.people) === 2 ? 2 : 1,
     elecStore: d.elecStore,
     contractSignAt: ymdOf(d.signAppointAt) || todayYmd(),
-    eSign: d.signImg ? { sig: d.signImg, status: "draft" } : null
+    eSign: (d.signImg || d.signImg2) ? { sig: d.signImg || "", sig2: Number(d.people) === 2 ? (d.signImg2 || "") : "", status: "draft" } : null
   };
   applyStudioLeasePack(t, room, d.leaseStart);
   return { d, t, room };
@@ -44190,15 +44202,24 @@ function bindSignAgree() {
     };
   }
 }
-function bindMoveSignPad() {
-  const box = document.getElementById("move-sign-box");
-  const c = document.getElementById("move-sign-pad");
+function bindMoveSignPad(boxId, canvasId, strokeKey, imgKey, armedKey, draftStrokeKey) {
+  const box = document.getElementById(boxId || "move-sign-box");
+  const c = document.getElementById(canvasId || "move-sign-pad");
   if (!box || !c || c.dataset.bound === "1") return;
   c.dataset.bound = "1";
   const ctx = c.getContext("2d");
+  const key = strokeKey || "moveSignStrokes";
+  const imageKey = imgKey || "signImg";
+  const armKey = armedKey || "signArmed";
+  const linesKey = draftStrokeKey || "signStrokes";
+  const primary = key === "moveSignStrokes";
+  if (primary) {
+    window.__moveSignResets = [];
+    window.__moveSignPaints = [];
+  }
   const draft = ensureMoveIn();
-  if (!Array.isArray(ui.moveSignStrokes) || !ui.moveSignStrokes.length) ui.moveSignStrokes = Array.isArray(draft.signStrokes) ? draft.signStrokes : [];
-  let armed = !!(draft.signArmed || (ui.moveSignStrokes || []).length);
+  if (!Array.isArray(ui[key]) || !ui[key].length) ui[key] = Array.isArray(draft[linesKey]) ? draft[linesKey] : [];
+  let armed = !!(draft[armKey] || (ui[key] || []).length);
   const syncArm = () => {
     box.classList.toggle("armed", armed);
     box.style.touchAction = armed ? "none" : "manipulation";
@@ -44224,7 +44245,7 @@ function bindMoveSignPad() {
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#1a57c5";
     ctx.fillStyle = "#1a57c5";
-    (ui.moveSignStrokes || []).forEach(line => {
+    (ui[key] || []).forEach(line => {
       if (!line || !line.length) return;
       if (line.length < 2) {
         ctx.beginPath();
@@ -44271,9 +44292,9 @@ function bindMoveSignPad() {
   };
   const snap = () => {
     const d = ensureMoveIn();
-    d.signStrokes = ui.moveSignStrokes || [];
-    d.signArmed = armed;
-    d.signImg = (d.signStrokes || []).length ? crop() : "";
+    d[linesKey] = ui[key] || [];
+    d[armKey] = armed;
+    d[imageKey] = (d[linesKey] || []).length ? crop() : "";
     saveMoveDraft();
   };
   syncArm();
@@ -44303,8 +44324,8 @@ function bindMoveSignPad() {
     drawing = true;
     ui.signing = true;
     last = point(e);
-    if (!Array.isArray(ui.moveSignStrokes)) ui.moveSignStrokes = [];
-    ui.moveSignStrokes.push([last]);
+    if (!Array.isArray(ui[key])) ui[key] = [];
+    ui[key].push([last]);
     paint();
   };
   const move = e => {
@@ -44312,7 +44333,7 @@ function bindMoveSignPad() {
     if (!drawing || !armed) return;
     try { e.preventDefault(); e.stopPropagation(); } catch {}
     const p = point(e);
-    const line = ui.moveSignStrokes[ui.moveSignStrokes.length - 1];
+    const line = ui[key][ui[key].length - 1];
     if (line) line.push(p);
     last = p;
     paint();
@@ -44334,20 +44355,28 @@ function bindMoveSignPad() {
   on(box, "touchmove", move);
   on(box, "touchend", up);
   on(box, "touchcancel", up);
+  window.__moveSignResets.push(() => {
+    ui[key] = [];
+    armed = false;
+    drawing = false;
+    syncArm();
+    paint();
+  });
+  window.__moveSignPaints.push(paint);
+  if (!primary) return;
   const clr = document.getElementById("move-sign-clear");
   if (clr) clr.onclick = e => {
     e.preventDefault();
-    ui.moveSignStrokes = [];
-    armed = false;
-    drawing = false;
     ui.signing = false;
     const d = ensureMoveIn();
     d.signStrokes = [];
     d.signImg = "";
     d.signArmed = false;
+    d.signStrokes2 = [];
+    d.signImg2 = "";
+    d.signArmed2 = false;
     saveMoveDraft();
-    syncArm();
-    paint();
+    (window.__moveSignResets || []).forEach(fn => { try { fn(); } catch {} });
   };
 }
 function bindSignPad() {
