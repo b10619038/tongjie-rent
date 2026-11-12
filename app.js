@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1956";
+const FILE_VER = "1957";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -16866,14 +16866,21 @@ function readUiSnap() {
   } catch { return null; }
 }
 function persistGatePage() {
-  if (!ui || ui.role) {
+  const onMove = !!(ui && ui.page === "move-in");
+  if (!ui || (ui.role && !onMove)) {
     try { sessionStorage.removeItem("tj-gate-page"); } catch {}
+    if (!onMove) try { localStorage.removeItem("tj-gate-page"); } catch {}
     return;
   }
-  try { sessionStorage.setItem("tj-gate-page", ui.page || "home"); } catch {}
+  const page = ui.page || "home";
+  try { sessionStorage.setItem("tj-gate-page", page); } catch {}
+  try {
+    if (page === "move-in") localStorage.setItem("tj-gate-page", page);
+    else localStorage.removeItem("tj-gate-page");
+  } catch {}
 }
 function readGatePage() {
-  try { return String(sessionStorage.getItem("tj-gate-page") || ""); } catch { return ""; }
+  try { return String(sessionStorage.getItem("tj-gate-page") || localStorage.getItem("tj-gate-page") || ""); } catch { return ""; }
 }
 function isGatePage(p) {
   return /^(tenant-login|admin-login|move-in|tenant-forgot|tenant-setpass)$/.test(String(p || ""));
@@ -16892,6 +16899,8 @@ function revivePublicGo(keepBack) {
 }
 function restoreUi() {
   const keepBack = ui.guestMoveBack || "";
+  let backToMove = false;
+  try { backToMove = localStorage.getItem("tj-gate-page") === "move-in"; } catch {}
   try {
     const stayingGate = !ui.role && isGatePage(ui.page);
     const s = readUiSnap();
@@ -17029,7 +17038,14 @@ function restoreUi() {
     }
     persistUi();
   } catch {}
-  finally { revivePublicGo(keepBack); }
+  finally {
+    revivePublicGo(keepBack);
+    if (backToMove) {
+      ui.page = "move-in";
+      if (ui.role) ui.guestMoveIn = true;
+      try { localStorage.setItem("tj-gate-page", "move-in"); } catch {}
+    }
+  }
 }
 function snapIsBackend(s) {
   if (!s) return false;
@@ -27805,8 +27821,36 @@ function moveInRooms() {
   return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no) && !studioMirrorHostNo(r.no) && !isPracticeStudioNo(r.no))
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
+function blankMoveIn() {
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", name2: "", phone2: "", idNo2: "", birthday2: "", people: 1, hasAgent: true, payWay: "cash" };
+}
+function saveMoveDraft() {
+  const d = ui && ui.moveIn;
+  if (!d) return;
+  try { localStorage.setItem("tj-move-in-draft", JSON.stringify(d)); } catch {}
+}
+function loadMoveDraft() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
+    if (!raw || typeof raw !== "object") return null;
+    const d = blankMoveIn();
+    ["roomId", "name", "phone", "idNo", "birthday", "name2", "phone2", "idNo2", "birthday2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
+      if (raw[k] != null) d[k] = raw[k];
+    });
+    d.people = Number(raw.people) === 2 ? 2 : 1;
+    d.hasAgent = raw.hasAgent !== false;
+    d.payCash = Number(raw.payCash) || 0;
+    d.payMega = Number(raw.payMega) || 0;
+    if (raw.elecStore != null && raw.elecStore !== "") d.elecStore = Math.max(0, Math.round(Number(raw.elecStore) || 0));
+    if (raw.leaseStartTouched) d.leaseStartTouched = true;
+    return d;
+  } catch { return null; }
+}
+function clearMoveDraft() {
+  try { localStorage.removeItem("tj-move-in-draft"); } catch {}
+}
 function ensureMoveIn() {
-  if (!ui.moveIn) ui.moveIn = { roomId: "", name: "", phone: "", idNo: "", birthday: "", name2: "", phone2: "", idNo2: "", birthday2: "", people: 1, hasAgent: true, payWay: "cash" };
+  if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
   if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
   if (ui.moveIn.people !== 2) ui.moveIn.people = 1;
   if (!ui.moveIn.payWay) ui.moveIn.payWay = "cash";
@@ -28094,6 +28138,7 @@ function submitMoveIn() {
     save();
     try { pushCloud(); } catch {}
     toast("已回到這筆入住申請");
+    clearMoveDraft();
     enterProspect(existSame, room);
     return;
   }
@@ -28144,6 +28189,7 @@ function submitMoveIn() {
     try { pushPhoneNotify("仲介服務費", `${room.no} ${name}　請付 ${studioAgentFee(t, room).toLocaleString("zh-TW")} 現金`, "admin"); } catch {}
   }
   toast("已送出，進入看房預覽");
+  clearMoveDraft();
   enterProspect(t, room);
 }
 function askMoveSubmit() {
@@ -42609,6 +42655,8 @@ function captureMoveInDraft() {
   if (agent && agent.type === "checkbox") d.hasAgent = !!agent.checked;
   if (document.getElementById("move-pay-cash")) d.payCash = Number(val("move-pay-cash") || 0) || 0;
   if (document.getElementById("move-pay-mega")) d.payMega = Number(val("move-pay-mega") || 0) || 0;
+  saveMoveDraft();
+  try { persistGatePage(); } catch {}
 }
 function openPickPlan(el) {
   if (!el) return;
@@ -42788,6 +42836,8 @@ function exportMoveLeasePdf() {
 }
 function shareMoveText(text) {
   if (!text) { toast("請先選房號"); return; }
+  try { captureMoveInDraft(); } catch {}
+  try { persistUi(); } catch {}
   const url = "https://line.me/R/share?text=" + encodeURIComponent(text);
   const phone = /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent || "");
   if (phone) location.href = url;
@@ -47773,12 +47823,21 @@ if (window.visualViewport) visualViewport.addEventListener("resize", () => { try
     touchField = !!fieldFrom(e);
   }, { capture: true, passive: true });
 })();
+window.addEventListener("pagehide", () => {
+  if (!ui || ui.page !== "move-in") return;
+  try { captureMoveInDraft(); } catch {}
+});
 window.addEventListener("pageshow", () => {
   try { restoreUi(); } catch {}
   try { catchTenantGo(location.href); } catch {}
 });
 window.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") persistLogin();
+  if (document.visibilityState === "hidden") {
+    persistLogin();
+    if (ui && ui.page === "move-in") {
+      try { captureMoveInDraft(); } catch {}
+    }
+  }
   if (document.visibilityState === "visible") {
     try { restoreUi(); } catch {}
     try { catchTenantGo(location.href); } catch {}
