@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1992";
+const FILE_VER = "1994";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42139,9 +42139,9 @@ function bindGate() {
   if (ui.signSlotCenter) {
     ui.signSlotCenter = false;
     ui.signSlotHeld = true;
-    requestAnimationFrame(() => centerPickedSignSlot(true));
+    requestAnimationFrame(() => requestAnimationFrame(() => centerPickedSignSlot(true)));
   } else if (ui.signSlotHeld) {
-    centerPickedSignSlot(false);
+    requestAnimationFrame(() => requestAnimationFrame(() => centerPickedSignSlot(false)));
   }
   playQueuedSignAnim();
   const bioBtn = document.getElementById("bio-login");
@@ -43189,13 +43189,43 @@ function centerPickedSignSlot(smooth) {
   document.querySelectorAll(".move-in-page .sign-slot-scroll").forEach(row => {
     const btn = row.querySelector(".sign-slot.on");
     if (!btn) return;
-    const dest = Math.max(0, btn.offsetLeft - (row.clientWidth - btn.offsetWidth) / 2);
-    if (smooth && typeof row.scrollTo === "function") row.scrollTo({ left: dest, behavior: "smooth" });
-    else row.scrollLeft = dest;
+    const measure = () => {
+      const rowBox = row.getBoundingClientRect();
+      const btnBox = btn.getBoundingClientRect();
+      if (rowBox.width < 8 || btnBox.width < 8) return null;
+      const delta = (btnBox.left + btnBox.width / 2) - (rowBox.left + rowBox.width / 2);
+      const max = Math.max(0, row.scrollWidth - row.clientWidth);
+      return { delta, dest: Math.max(0, Math.min(max, row.scrollLeft + delta)) };
+    };
+    const hit = measure();
+    if (!hit) {
+      if (!row._centerWait) {
+        row._centerWait = 1;
+        requestAnimationFrame(() => { row._centerWait = 0; centerPickedSignSlot(smooth); });
+      }
+      return;
+    }
     if (smooth) {
       btn.classList.remove("is-pop");
       void btn.offsetWidth;
       btn.classList.add("is-pop");
+      const from = row.scrollLeft;
+      const to = hit.dest;
+      const start = performance.now();
+      const tick = now => {
+        if (!row.isConnected) return;
+        const t = Math.min(1, (now - start) / 380);
+        const eased = 1 - Math.pow(1 - t, 3);
+        row.scrollLeft = from + (to - from) * eased;
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+          const again = measure();
+          if (again && Math.abs(again.delta) > 3) row.scrollLeft = again.dest;
+        }
+      };
+      requestAnimationFrame(tick);
+    } else {
+      row.scrollLeft = hit.dest;
     }
   });
 }
