@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1971";
+const FILE_VER = "1972";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42814,14 +42814,40 @@ function moveSharePeriodLines(bits) {
   const end = bits && (bits.yearEnd || "");
   return [(rocSlash(start) || "") + " → " + (rocSlash(end) || "")];
 }
+function moveSharePeople(d) {
+  const two = Number(d && d.people) === 2;
+  const rows = [{
+    name: normalizePersonName(d && d.name),
+    phone: normalizeMobile(d && d.phone),
+    idNo: normalizeIdNo(d && d.idNo),
+    address: String((d && d.address) || "").trim()
+  }];
+  if (two) {
+    rows.push({
+      name: normalizePersonName(d.name2),
+      phone: normalizeMobile(d.phone2),
+      idNo: normalizeIdNo(d.idNo2),
+      address: String(d.address2 || "").trim()
+    });
+  }
+  return rows.filter(p => p.name || p.phone || p.idNo || p.address);
+}
+function moveShareField(label, values) {
+  const list = (values || []).map(v => String(v || "").trim()).filter(Boolean);
+  if (!list.length) return [label + "："];
+  if (list.length === 1) return [label + "：" + list[0]];
+  return [label + "："].concat(list);
+}
 function moveTenantShareText() {
   const pack = moveSharePack();
   if (!pack) return "";
-  const { d, t, room, bits, addr, rents } = pack;
+  const { d, room, bits, addr, rents } = pack;
+  const people = moveSharePeople(d);
+  const names = people.map(p => p.name).filter(Boolean);
   const half = moveAgentHalf(bits.monthly);
   const rule = "------------------------------";
   return [
-    (room.no || "") + " 新租客 您好👋",
+    (room.no || "") + " " + (names.length ? names.join("、") : "新租客") + " 您好👋",
     "",
     "簽約時間：",
     moveSignWhenLabel(d.signAppointAt),
@@ -42835,7 +42861,7 @@ function moveTenantShareText() {
     rule,
     "",
     "請攜帶：",
-    "雙證件正本、身分證正反影本、個人印章。",
+    (names.length > 1 ? "兩位的" : "") + "雙證件正本、身分證正反影本、個人印章。",
     "",
     "當天請付仲介費 " + money(half),
     "",
@@ -42850,20 +42876,21 @@ function moveTenantShareText() {
 function moveOwnerShareText() {
   const pack = moveSharePack();
   if (!pack) return "";
-  const { d, t, room, bits, addr, rents } = pack;
+  const { d, room, bits, addr, rents } = pack;
+  const people = moveSharePeople(d);
+  const names = people.map(p => p.name).filter(Boolean);
   const service = Math.round(Number(bits.monthly) || 0);
-  const home = [String(d.address || "").trim(), Number(d.people) === 2 ? String(d.address2 || "").trim() : ""].filter(Boolean).join("／");
   const rule = "------------------------------";
   return [
     (room.no || "") + " 仲介帶看",
     "",
-    "新租客：" + (t.name || ""),
+    ...moveShareField("租客", names),
     "",
-    "電話：" + (t.phone || ""),
+    ...moveShareField("電話", people.map(p => p.phone)),
     "",
-    "身分證：" + (t.idNo || ""),
+    ...moveShareField("身分證", people.map(p => p.idNo)),
     "",
-    "戶籍地址：" + home,
+    ...moveShareField("戶籍地址", people.map(p => p.address)),
     "",
     "簽約時間：",
     moveSignWhenLabel(d.signAppointAt),
