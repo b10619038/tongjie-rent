@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "1952";
+const FILE_VER = "1953";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -36656,7 +36656,7 @@ function adminAnnounce() {
       <div class="row"><span class="k">LINE ID</span><span class="v">${LINE_OA_ID}</span></div>
       <div class="row"><span class="k">Channel ID</span><span class="v">2011285350</span></div>
       <div class="row"><span class="k">Webhook</span><span class="v">已驗證成功</span></div>
-      <div class="small" style="margin-top:8px">租客加入 @773zynao 後傳送「房號 姓名」，例如 1234 許光漢，就會綁定。</div>
+      <div class="small" style="margin-top:8px">租客加入官方 LINE 後會自動收到：請傳送「房號+姓名」給我們，例如 7051 許光漢。</div>
       <a class="ghost" href="${LINE_CHAT_URL}" target="_blank" rel="noopener" style="margin-top:10px;display:block;text-align:center">開啟 LINE 聊天室後台</a>
     </div>
   </div>`;
