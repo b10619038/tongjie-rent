@@ -31691,7 +31691,7 @@ function annIgHeartHtml(a, locked) {
     <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
     ${heart}
     <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
-    ${locked ? "" : `<button type="button" class="ann-ig-comment" data-ann-comment="${a.id}" aria-label="留言"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L4 21l1.9-4.7A8.4 8.4 0 0 1 5 12.5 8.5 8.5 0 0 1 9.7 4.9 8.4 8.4 0 0 1 13.5 4a8.5 8.5 0 0 1 7.5 7.5z"/></svg></button>`}
+    ${locked ? "" : `<button type="button" class="ann-ig-comment" data-ann-comment="${a.id}" aria-label="留言"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.656 17.008a9.993 9.993 0 1 0-3.59 3.615L22 22Z"/></svg></button>`}
   </div>`;
 }
 function openAnnComment(annId) {
