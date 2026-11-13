@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2019";
+const FILE_VER = "2020";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -32092,7 +32092,7 @@ function homeView() {
   try {
     hasAnn = tenantAnnounceList().length > 0;
     announceBlock = `<div class="section-title ann-dock" id="ann-dock" role="button" tabindex="0">
-      <h2 class="slide-right">管理員公告</h2>
+      <h2 class="ann-title">管理員公告</h2>
       ${chatEntryCardHtml()}
     </div>${hasAnn ? `<div class="ann-list" id="ann-list">${announceCardsHtml()}</div>` : ""}`;
   } catch (err) { try { console.error(err); } catch {} }
@@ -42662,9 +42662,19 @@ function bindTenant() {
       dock.dataset.popping = "1";
       const title = dock.querySelector("h2");
       if (title) {
-        title.classList.remove("is-title-pop");
-        void title.offsetWidth;
-        title.classList.add("is-title-pop");
+        title.style.transformOrigin = "left center";
+        if (title.animate) {
+          title.animate(
+            [
+              { transform: "scale(1)" },
+              { transform: "scale(1.22)", offset: 0.42 },
+              { transform: "scale(1)" }
+            ],
+            { duration: 380, easing: "cubic-bezier(.22, 1.2, .36, 1)" }
+          );
+        } else {
+          title.classList.add("is-title-pop");
+        }
       }
       setTimeout(() => {
         ui.annOpen = !ui.annOpen;
@@ -42672,7 +42682,7 @@ function bindTenant() {
         ui.annBurst = !!ui.annOpen;
         ui.keepScroll = true;
         render();
-      }, 360);
+      }, 380);
     };
     dock.onclick = toggle;
     dock.onkeydown = e => {
