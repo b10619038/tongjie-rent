@@ -28099,13 +28099,28 @@ function clearMoveDraft() {
   try { localStorage.removeItem("tj-move-in-draft"); } catch {}
 }
 function resetMoveInForm() {
-  clearMoveDraft();
-  ui.moveIn = blankMoveIn();
+  const prev = ensureMoveIn();
+  const shareId = String(prev.shareId || "");
+  ui.moveFillEpoch = (ui.moveFillEpoch || 0) + 1;
+  clearTimeout(ui.moveFillPushT);
+  if (ui.moveFillPoll) { clearTimeout(ui.moveFillPoll); ui.moveFillPoll = 0; }
+  const fresh = blankMoveIn();
+  if (shareId) fresh.shareId = shareId;
+  ui.moveIn = fresh;
   ui.moveSignStrokes = [];
   ui.moveSignStrokes2 = [];
+  ui.moveFillBase = {};
+  ui.moveFillSeen = {};
+  ui.moveFillReplace = true;
+  ui.moveFillResetAt = Date.now();
+  clearMoveDraft();
+  saveMoveDraft();
   ui.keepScroll = false;
   render();
   toast("已清空");
+  if (!shareId) return;
+  const at = ui.moveFillResetAt;
+  writeMoveFillDoc({ id: shareId, by: "agent", at, reset: at, fields: {}, touch: {} }).catch(() => {});
 }
 function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
@@ -43623,6 +43638,7 @@ async function putMoveFill(by) {
   return ui.moveFillChain;
 }
 async function putMoveFillNow(by) {
+  const epoch = ui.moveFillEpoch || 0;
   const d = ensureMoveIn();
   const id = String(d.shareId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
   if (!id) return false;
@@ -43630,28 +43646,39 @@ async function putMoveFillNow(by) {
   try {
     captureMoveInDraft();
     const remote = await readMoveFill(id);
-    const fields = Object.assign({}, (remote && remote.fields) || {});
-    const touch = Object.assign({}, (remote && remote.touch) || {});
+    if (epoch !== (ui.moveFillEpoch || 0)) return false;
+    if (remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
+      applyMoveFillReset(remote);
+      return true;
+    }
+    const replace = !!ui.moveFillReplace;
+    const fields = replace ? {} : Object.assign({}, (remote && remote.fields) || {});
+    const touch = replace ? {} : Object.assign({}, (remote && remote.touch) || {});
     const local = moveFillSnapshot();
     const base = ui.moveFillBase || {};
     const now = Date.now();
-    let changed = false;
+    let changed = replace;
     MOVE_FILL_KEYS.forEach(k => {
-      if (!moveFillSame(local[k], base[k])) {
-        if (local[k] == null || local[k] === "" || (Array.isArray(local[k]) && !local[k].length)) {
-          delete fields[k];
-        } else fields[k] = local[k];
+      if (!replace && !moveFillSame(local[k], base[k])) {
+        if (local[k] == null || local[k] === "" || (Array.isArray(local[k]) && !local[k].length)) delete fields[k];
+        else fields[k] = local[k];
         touch[k] = now;
         changed = true;
+      } else if (replace && local[k] != null && local[k] !== "" && !(Array.isArray(local[k]) && !local[k].length)) {
+        fields[k] = local[k];
+        touch[k] = now;
       }
     });
     if (local.roomNo) fields.roomNo = local.roomNo;
-    if (!changed && remote) return true;
-    const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, fields, touch };
+    if (!changed && remote && !replace) return true;
+    const reset = replace ? (ui.moveFillResetAt || now) : (remote && remote.reset) || 0;
+    const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, reset, fields, touch };
     const ok = await writeMoveFillDoc(body);
     if (!ok) return false;
+    ui.moveFillReplace = false;
     ui.moveFillBase = JSON.parse(JSON.stringify(local));
     ui.moveFillSeen = Object.assign({}, touch);
+    if (reset) ui.moveFillResetAt = Math.max(Number(ui.moveFillResetAt) || 0, Number(reset) || 0);
     return true;
   } catch { return false; }
   finally { ui.moveFillSaving = false; }
@@ -43707,11 +43734,42 @@ function applyMoveFillFields(fields, touch) {
   }
   return true;
 }
+function applyMoveFillReset(remote) {
+  const id = ensureMoveIn().shareId || "";
+  const d = blankMoveIn();
+  Object.assign(d, remote.fields || {});
+  if (id) d.shareId = id;
+  if (d.hasAgent == null) d.hasAgent = true;
+  if (d.people !== 2) d.people = 1;
+  ui.moveIn = d;
+  ui.moveSignStrokes = Array.isArray(d.signStrokes) ? d.signStrokes : [];
+  ui.moveSignStrokes2 = Array.isArray(d.signStrokes2) ? d.signStrokes2 : [];
+  ui.moveFillResetAt = Number(remote.reset) || Date.now();
+  ui.moveFillSeen = Object.assign({}, remote.touch || {});
+  ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
+  ui.moveFillReplace = false;
+  clearTimeout(ui.moveFillPushT);
+  saveMoveDraft();
+  if (ui.page === "move-in" && !ui.signing) {
+    ui.keepScroll = true;
+    render();
+  }
+}
 async function pullMoveFill() {
+  const epoch = ui.moveFillEpoch || 0;
   const id = ensureMoveIn().shareId;
   if (!id || ui.moveFillLoading || ui.moveFillSaving) return;
   const remote = await readMoveFill(id);
+  if (epoch !== (ui.moveFillEpoch || 0)) return;
+  if (ensureMoveIn().shareId !== id) return;
   if (!remote) return;
+  const resetAt = Number(remote.reset) || 0;
+  const localReset = Number(ui.moveFillResetAt) || 0;
+  if (!resetAt && localReset && Number(remote.at || 0) < localReset) return;
+  if (resetAt && resetAt > localReset) {
+    applyMoveFillReset(remote);
+    return;
+  }
   const changed = applyMoveFillFields(remote.fields || {}, remote.touch || {});
   if (changed) {
     const now = Date.now();
@@ -43748,6 +43806,7 @@ async function openMoveFill(id) {
   ui.moveSignStrokes = Array.isArray(d.signStrokes) ? d.signStrokes : [];
   ui.moveSignStrokes2 = Array.isArray(d.signStrokes2) ? d.signStrokes2 : [];
   ui.moveFillSeen = Object.assign({}, remote.touch || {});
+  ui.moveFillResetAt = Number(remote.reset) || 0;
   ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
   saveMoveDraft();
   ui.keepScroll = false;
