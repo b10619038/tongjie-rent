@@ -43579,12 +43579,6 @@ function unpackStrokes(raw) {
     return { x: Number(bits[0]) || 0, y: Number(bits[1]) || 0 };
   }));
 }
-function moveFillB64(text) {
-  return btoa(unescape(encodeURIComponent(text)));
-}
-function moveFillUnb64(text) {
-  return decodeURIComponent(escape(atob(text)));
-}
 async function writeMoveFillDoc(doc) {
   const copy = JSON.parse(JSON.stringify(doc));
   if (copy.fields) {
@@ -43593,70 +43587,30 @@ async function writeMoveFillDoc(doc) {
     delete copy.fields.signImg;
     delete copy.fields.signImg2;
   }
-  const raw = moveFillB64(JSON.stringify(copy));
-  const size = 280;
-  const parts = [];
-  for (let i = 0; i < raw.length; i += size) parts.push(raw.slice(i, i + size));
-  if (parts.length > 70) return false;
-  const gen = String(doc.at || Date.now());
-  const tid = "mf" + String(doc.id || "");
-  for (let i = 0; i < parts.length; i++) {
-    const res = await fetch(CHAT_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
-      body: JSON.stringify({
-        tenantId: tid,
-        from: "dev",
-        id: tid + "-" + gen + "-" + i,
-        text: gen + "|" + i + "|" + parts.length + "|" + parts[i],
-        at: Number(gen) || Date.now()
-      })
-    });
-    if (!res.ok) return false;
-  }
-  return true;
+  const res = await fetch(moveFillApi(copy.id), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
+    body: JSON.stringify(copy)
+  });
+  if (!res.ok) return false;
+  let data = {};
+  try { data = await res.json(); } catch { return false; }
+  return !!(data && data.ok && data.saved);
 }
 async function readMoveFill(id) {
   const key = String(id || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
   if (!key) return null;
   try {
-    const res = await fetch(CHAT_API + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    const res = await fetch(moveFillApi(key) + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
     if (!res.ok) return null;
-    const data = await res.json();
-    const msgs = ((((data || {}).threads || {})["mf" + key] || {}).msgs) || [];
-    const groups = {};
-    msgs.forEach(m => {
-      const bits = String(m && m.text || "").split("|");
-      if (bits.length < 4) return;
-      const gen = bits[0];
-      const idx = Number(bits[1]);
-      const total = Number(bits[2]);
-      if (!groups[gen]) groups[gen] = { total, parts: {} };
-      groups[gen].parts[idx] = bits.slice(3).join("|");
-    });
-    const gens = Object.keys(groups).sort((a, b) => Number(b) - Number(a));
-    for (let g = 0; g < gens.length; g++) {
-      const group = groups[gens[g]];
-      let raw = "";
-      let ok = true;
-      for (let i = 0; i < group.total; i++) {
-        if (group.parts[i] == null) { ok = false; break; }
-        raw += group.parts[i];
-      }
-      if (!ok) continue;
-      try {
-        const doc = JSON.parse(moveFillUnb64(raw));
-        if (doc && doc.fields) {
-          if (typeof doc.fields.signStrokes === "string") doc.fields.signStrokes = unpackStrokes(doc.fields.signStrokes);
-          if (typeof doc.fields.signStrokes2 === "string") doc.fields.signStrokes2 = unpackStrokes(doc.fields.signStrokes2);
-          if ((doc.fields.signStrokes || []).length) doc.fields.signArmed = true;
-          if ((doc.fields.signStrokes2 || []).length) doc.fields.signArmed2 = true;
-          return doc;
-        }
-      } catch {}
-    }
-  } catch {}
-  return null;
+    const doc = await res.json();
+    if (!doc || !doc.fields) return null;
+    if (typeof doc.fields.signStrokes === "string") doc.fields.signStrokes = unpackStrokes(doc.fields.signStrokes);
+    if (typeof doc.fields.signStrokes2 === "string") doc.fields.signStrokes2 = unpackStrokes(doc.fields.signStrokes2);
+    if ((doc.fields.signStrokes || []).length) doc.fields.signArmed = true;
+    if ((doc.fields.signStrokes2 || []).length) doc.fields.signArmed2 = true;
+    return doc;
+  } catch { return null; }
 }
 async function putMoveFill(by) {
   const d = ensureMoveIn();
