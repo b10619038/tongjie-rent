@@ -7900,7 +7900,7 @@ span.ann-ig-heart { pointer-events: none; cursor: default; }
   display: block;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.15;
   stroke-linejoin: round;
   transform-origin: center;
   transition: transform .16s cubic-bezier(.22, 1.2, .36, 1);
