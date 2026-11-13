@@ -25,6 +25,72 @@ function roomFromPayText(text) {
   const m = s.match(/【繳費通知】\s*(\d{4})/) || s.match(/繳費通知[^\d]{0,12}(\d{4})/);
   return m && /^\d{4}$/.test(m[1]) ? m[1] : "";
 }
+function roomOk(no) {
+  return /^(68|70|72|76)\d{2}$/.test(String(no || ""));
+}
+function normBindName(s) {
+  return String(s || "").replace(/[\s\u3000]/g, "");
+}
+function parseRoomName(raw) {
+  const text = String(raw || "").trim();
+  let m = text.match(/^(\d{4})\s*(.+)$/);
+  if (m && roomOk(m[1]) && normBindName(m[2])) return { room: m[1], name: m[2].trim() };
+  m = text.match(/^(.+?)\s*(\d{4})$/);
+  if (m && roomOk(m[2]) && normBindName(m[1]) && !roomOk(normBindName(m[1]))) return { room: m[2], name: m[1].trim() };
+  return null;
+}
+function parseBindPhrase(text) {
+  const raw = String(text || "").trim().replace(/\u3000/g, " ").replace(/\s+/g, " ");
+  const direct = parseRoomName(raw);
+  if (direct) return direct;
+  const m = raw.match(/^我是\s*(.+?)\s*租客$/);
+  if (!m) return null;
+  const mid = m[1].trim();
+  const inner = parseRoomName(mid);
+  if (inner) return inner;
+  if (roomOk(mid)) return { room: mid, lookup: "room" };
+  if (normBindName(mid)) return { name: mid, lookup: "name" };
+  return null;
+}
+async function loadRentState() {
+  try {
+    const hit = await caches.default.match(STATE_URL);
+    return hit ? await hit.json() : null;
+  } catch (e) {
+    return null;
+  }
+}
+function currentTenant(state, no) {
+  const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room) return null;
+  return (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo) || null;
+}
+function tenantsByName(state, name) {
+  const want = normBindName(name);
+  const hits = [];
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || t.incoming || t.demo || normBindName(t.name) !== want) return;
+    const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+    if (!room || !roomOk(room.no)) return;
+    hits.push({ room: String(room.no), name: t.name });
+  });
+  return hits;
+}
+async function resolveBindPhrase(text) {
+  const hit = parseBindPhrase(text);
+  if (!hit) return { hit: null };
+  if (!hit.lookup) return { hit };
+  const state = await loadRentState();
+  if (hit.lookup === "room") {
+    const t = state && currentTenant(state, hit.room);
+    if (!t) return { hit: null, reply: "這間目前沒有租客。請改傳「房號 姓名」，例如 7051 許光漢。" };
+    return { hit: { room: hit.room, name: t.name } };
+  }
+  const found = state ? tenantsByName(state, hit.name) : [];
+  if (found.length === 1) return { hit: found[0] };
+  if (found.length > 1) return { hit: null, reply: "有兩位同名。請改傳「房號 姓名」，例如 7051 許光漢。" };
+  return { hit: null, reply: "還沒對到這位租客。請傳「房號 姓名」或「姓名 房號」，例如 7051 許光漢。" };
+}
 function roomHasBind(data, room) {
   const row = data && data.byRoom && data.byRoom[String(room || "")];
   if (!row) return false;
@@ -768,11 +834,10 @@ export default {
       if (ev.type !== "message") continue;
       const msg = ev.message || {};
       const text = msg.type === "text" ? String(msg.text || "").trim() : "";
-      const m = text.match(/^(\d{4})\s+(.+)$/);
-      const room = m ? m[1] : "";
-      const name = m ? m[2].trim() : "";
-      const okRoom = /^(68|70|72|76)\d{2}$/.test(room);
-      if (userId && okRoom && name && replyToken) {
+      const resolved = text ? await resolveBindPhrase(text) : { hit: null };
+      const room = resolved.hit ? resolved.hit.room : "";
+      const name = resolved.hit ? resolved.hit.name : "";
+      if (userId && room && name && replyToken) {
         data.byUser[userId] = { room: room, name: name };
         data.byRoom[room] = { userId: userId, name: name };
         dirty = true;
@@ -780,6 +845,10 @@ export default {
         const job = saveLineAvatar(env, userId, room);
         if (ctx && ctx.waitUntil) ctx.waitUntil(job);
         else await job;
+        continue;
+      }
+      if (resolved.reply && replyToken) {
+        await reply(replyToken, resolved.reply);
         continue;
       }
       const bound = boundRoomOf(data, userId);
