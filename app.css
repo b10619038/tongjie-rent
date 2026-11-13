@@ -3186,7 +3186,8 @@ textarea { min-height: 92px; resize: vertical; }
   margin: 0;
   overflow: visible;
 }
-.btn-row .btn-navy { grid-column: 1 / -1; }
+.btn-row .btn-navy,
+.btn-row .pay-rent { grid-column: 1 / -1; }
 .btn-row .btn-solid {
   background: var(--teal);
   color: var(--on-teal, #fff);
