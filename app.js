@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2003";
+const FILE_VER = "2004";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -28602,6 +28602,8 @@ function studioAgentFee(t, r) {
 function ensureAgentFeeWork(t, r, data) {
   const st = data || (typeof state !== "undefined" ? state : null);
   if (!st || !t || !(t.hasAgent || Number(t.agentFee) > 0)) return;
+  if (t.former || t.cancelledApply || t.clearedApply || t.sessionEnded || t.loginRevoked) return;
+  if ((st.goneTenants || []).map(String).indexOf(String(t.id)) >= 0) return;
   const fee = studioAgentFee(t, r);
   if (!fee) return;
   if (Number(t.agentFee) !== fee) {
@@ -28613,6 +28615,7 @@ function ensureAgentFeeWork(t, r, data) {
   const date = ymdOf(t.signAppointAt) || ymdOf(t.signOn) || ymdOf(t.leaseStart) || todayYmd();
   const no = (r && r.no) || t.roomNo || "";
   const id = "agentfee-" + t.id;
+  if ((st.memoGone || []).map(String).indexOf(String(id)) >= 0) return;
   const text = "付仲介服務費　" + no + " " + (t.name || "") + "　一個月租金含稅 " + fee.toLocaleString("zh-TW") + "　現場現金";
   if (!st.aiMemos) st.aiMemos = [];
   const hit = st.aiMemos.find(m => m && m.id === id);
