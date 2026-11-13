@@ -31674,6 +31674,7 @@ function annHeartRoomsHtml(a) {
 }
 function annIgHeartHtml(a, locked) {
   const n = (reactionCounts(a).heart || 0);
+  if (locked && !n) return "";
   const on = !!locked || reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
   const svg = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6c-.3 0-.6-.1-.8-.3-1.6-1.4-3.2-2.7-4.5-4-2.3-2.2-3.5-4.1-3.5-6.2C3.2 7.4 5.4 5.2 8 5.2c1.5 0 2.8.7 3.7 1.8l.3.4.3-.4c.9-1.1 2.2-1.8 3.7-1.8 2.6 0 4.8 2.2 4.8 4.9 0 2.1-1.2 4-3.5 6.2-1.3 1.3-2.9 2.6-4.5 4-.2.2-.5.3-.8.3z"/></svg>`;
   const heart = locked
