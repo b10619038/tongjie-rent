@@ -2890,7 +2890,10 @@ body:has(.move-in-page) {
 .room-row .price em { font-style: normal; color: var(--muted); font-weight: 600; font-size: 13px; }
 .room-row .badge { align-self: start; margin-top: 2px; }
 .shop-entry {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   width: 100%;
   margin-top: 14px;
   min-height: 72px;
@@ -2902,12 +2905,21 @@ body:has(.move-in-page) {
   font: inherit;
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  box-shadow: 0 10px 28px rgba(23, 33, 31, 0.06);
+  letter-spacing: 0.08em;
+  box-shadow: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transform-origin: center;
   transition: scale .22s cubic-bezier(.22, 1, .36, 1);
+}
+.shop-entry-ic {
+  position: absolute;
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
 }
 .shop-entry:active { scale: 0.97; transition-duration: .09s; }
 .shop-list { display: flex; flex-direction: column; gap: 12px; }

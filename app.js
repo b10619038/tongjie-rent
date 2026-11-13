@@ -31375,7 +31375,7 @@ function navKeyOf(page) {
   const p = page || (typeof ui !== "undefined" && ui && ui.page) || "home";
   if (p === "room-detail" || p === "parking" || p === "own-balcony" || p === "balcony" || p === "trash") return "rooms";
   if (p === "repair-done") return "repair";
-  if (p === "pay") return "home";
+  if (p === "pay" || p === "shop") return "home";
   if (p === "lease-sign") return "lease";
   if (p === "howto") return "settings";
   if (p === "home" || p === "rooms" || p === "lease" || p === "repair" || p === "settings") return p;
@@ -32774,13 +32774,13 @@ function keyCardHtml(r) {
 }
 function shopCardHtml(r) {
   if (!r || String(r.no) !== "7651") return "";
-  return `<button type="button" class="shop-entry slide-left" data-page="shop">商城</button>`;
+  return `<button type="button" class="shop-entry slide-left" data-page="shop"><span class="shop-entry-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.2 6.1 4.6h11.8L20 10.2"/><path d="M4 10.2h16V19.6H4z"/><path d="M9.4 19.6v-5h5.2v5"/><path d="M4 10.2c.3 1.5 1.5 2.3 2.7 2.3s2.2-.9 2.5-2.3c.3 1.4 1.5 2.3 2.8 2.3s2.5-.9 2.8-2.3c.3 1.4 1.5 2.3 2.7 2.3 1.2 0 2.4-.8 2.5-2.3"/></svg></span><span>線上商城</span></button>`;
 }
 function shopView() {
   const items = ["遠端冷氣", "免治馬桶", "電子門鎖", "電動窗簾", "電動垃圾桶", "全戶淨軟水", "遠端除濕機（夏普/LG）", "清潔服務（日/週/月）", "IKEA家具（原價半價）"];
   return `<div class="topbar slide-right"><div>
-      <button class="back" data-page="room-detail">← 返回</button>
-      <div class="eyebrow">SHOP</div><h1>商城</h1>
+      <button class="back" data-page="home">← 返回</button>
+      <div class="eyebrow">SHOP</div><h1>線上商城</h1>
     </div></div>
     <div class="screen shop-list">
       ${items.map((name, i) => `<button type="button" class="room-row shop-row room-seq" style="--i:${i}">
