@@ -31217,6 +31217,16 @@ function moveInView() {
       ${ui.moveFillAs === "tenant" ? "" : (d.shareId ? `<p class="small" style="margin:8px 0 0">已分享給租客。租客補上的資料和簽名會出現在這張表。</p>` : "")}
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
+      <div class="move-line" style="margin-top:0">
+        <span class="move-line-k">仲介帶看</span>
+        <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
+          <i class="seg-bg"></i>
+          <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
+          <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
+        </div>
+      </div>
+    </div>
+    <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn${selMeta ? " filled" : ""}" id="move-room-open">
@@ -31276,14 +31286,6 @@ function moveInView() {
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
       <div class="label">總結算</div>
-      <div class="move-line">
-        <span class="move-line-k">仲介帶看</span>
-        <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
-          <i class="seg-bg"></i>
-          <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
-          <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
-        </div>
-      </div>
       <div class="move-line">
         <span class="move-line-k">電費儲值</span>
         <div class="move-elec-step" id="move-elec-step">
