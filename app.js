@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2006";
+const FILE_VER = "2007";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -5763,6 +5763,35 @@ function studioRentOf(no, fallback) {
   if (Object.prototype.hasOwnProperty.call(STUDIO_RENTS, key)) return STUDIO_RENTS[key];
   if (key === "DEMO" || key === "0000") return 10000;
   return null;
+}
+function studioAskRent(amount) {
+  const n = Math.round(Number(amount) || 0);
+  if (n === 9000) return 9500;
+  if (n === 10000) return 11000;
+  return n;
+}
+function studioListedBase(room) {
+  const listed = studioRentOf(room && room.no);
+  if (listed != null && listed > 0) return listed;
+  return Math.round(Number(room && room.rent) || 0);
+}
+function applyVacantAskRent(room) {
+  if (!room || room.kind === "factory" || room.status !== "vacant") return false;
+  const base = studioListedBase(room);
+  const next = studioAskRent(base);
+  if (!next || next === base || Number(room.rent) === next) return false;
+  const dep = Math.round(Number(room.deposit) || 0);
+  room.rent = next;
+  if (!dep || dep === base * 2) room.deposit = next * 2;
+  room.edited = true;
+  room.editedAt = Date.now();
+  return true;
+}
+function sweepVacantAskRents(data) {
+  let changed = false;
+  (data && data.rooms || []).forEach(room => { if (applyVacantAskRent(room)) changed = true; });
+  if (changed) { try { markCloudDirty(); } catch {} }
+  return changed;
 }
 function studioDepositOf(rent) {
   const n = Number(rent) || 0;
@@ -12175,6 +12204,7 @@ function releaseEndedCheckouts(data) {
       room.tenantId = null;
       delete room.incomingTenantId;
       if (room.status !== "repair") room.status = "vacant";
+      applyVacantAskRent(room);
       room.edited = true;
       room.editedAt = Date.now();
       changed = true;
@@ -12316,6 +12346,7 @@ function applyTenantRoster(data) {
   foldStudioRoommateCards(data);
   applyFormerStudio(data);
   releaseEndedCheckouts(data);
+  sweepVacantAskRents(data);
 }
 function foldStudioRoommateCards(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
@@ -23894,13 +23925,13 @@ function applySignedRenewalLease(t, r, item) {
         old.edited = true;
         old.editedAt = Date.now();
         if (old.incomingTenantId === t.id) delete old.incomingTenantId;
+        applyVacantAskRent(old);
       }
       r = dest;
       item.roomId = dest.id;
       item.roomNo = dest.no;
-      const rent = Number(dest.rent) || studioContractRent(t, dest) || 0;
-      if (rent) t.rent = rent;
-      if (dest.deposit != null && dest.deposit !== "") t.deposit = Number(dest.deposit) || t.deposit;
+      const kept = Number(t.rent) || studioListedBase(old) || 0;
+      if (kept) t.rent = kept;
     }
   }
   if (!/已續約/.test(String(t.note || ""))) t.note = (t.note ? String(t.note).trim() + "　" : "") + "已續約";
@@ -24308,9 +24339,10 @@ function studioContractRent(t, r) {
   const own = Number(t && t.rent) || 0;
   if (own > 0) return own;
   const listed = studioRentOf(r && r.no);
-  if (listed != null && listed > 0) return listed;
-  const n = Number((r && r.rent) || 0) || 0;
-  return n;
+  const base = (listed != null && listed > 0) ? listed : (Number((r && r.rent) || 0) || 0);
+  const sitting = t && !t.incoming && !t.prospect && !t.placeholder;
+  if (!sitting) return studioAskRent(base);
+  return base;
 }
 function signSlotKey(at) {
   return String(at || "").replace(" ", "T").slice(0, 13);
@@ -28359,6 +28391,7 @@ function restoreLiveRoom(r) {
   }
   r.tenantId = null;
   if (r.status !== "repair" && r.status !== "office") r.status = "vacant";
+  applyVacantAskRent(r);
   r.edited = true;
   r.editedAt = Date.now();
   return null;
