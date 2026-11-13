@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2023";
+const FILE_VER = "2024";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31677,10 +31677,10 @@ function annIgHeartHtml(a) {
   const on = reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
   return `<div class="ann-ig" data-react-ann="${a.id}">
     <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
-    <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
     <button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6c-.3 0-.6-.1-.8-.3-1.6-1.4-3.2-2.7-4.5-4-2.3-2.2-3.5-4.1-3.5-6.2C3.2 7.4 5.4 5.2 8 5.2c1.5 0 2.8.7 3.7 1.8l.3.4.3-.4c.9-1.1 2.2-1.8 3.7-1.8 2.6 0 4.8 2.2 4.8 4.9 0 2.1-1.2 4-3.5 6.2-1.3 1.3-2.9 2.6-4.5 4-.2.2-.5.3-.8.3z"/></svg>
     </button>
+    <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
   </div>`;
 }
 function paintAnnHeart(a, beat) {
