@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2016";
+const FILE_VER = "2017";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -3714,6 +3714,23 @@ function lineBindForRoom(no) {
     if (!t || !nm || !sameTenantName(nm, t.name)) return "";
   }
   return uid;
+}
+function linePayLinked(no) {
+  const room = String(no || "");
+  if (!room || !ui.lineBinds) return false;
+  const p = ui.lineBinds.payProofs && ui.lineBinds.payProofs[room];
+  if (p && (p.hasText || p.hasImage)) return true;
+  const users = ui.lineBinds.payUsers || {};
+  return Object.keys(users).some(uid => {
+    const u = users[uid];
+    return u && String(u.room || u.roomNo || "") === room;
+  });
+}
+function lineButtonBound(no, t) {
+  if (no && lineBindForRoom(no)) return true;
+  if (linePayLinked(no)) return true;
+  if (!t) return false;
+  return !!(t.paidVia === "line" || t.lineNotified || t.lineProofYm || t.avatarFrom === "line");
 }
 function lineBindName(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
@@ -32138,7 +32155,7 @@ function homeView() {
       <div class="btn-row slide-left">
         <button class="${paidThisMonth(t) ? "ghost pay-rent" : "btn-navy"}" data-page="pay" data-scroll-pay="1">${paidThisMonth(t) ? "已繳費租金" : "繳費租金"}</button>
         <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
-        <button class="ghost${r && r.no && lineBindForRoom(r.no) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
+        <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
       </div>
@@ -42506,6 +42523,14 @@ function bindTenant() {
       openLineDraft(msg);
       toast("已帶好房號和姓名，請按傳送");
     };
+    if (ui.role === "tenant") {
+      refreshLineBinds().then(() => {
+        const btn = document.getElementById("bind-line");
+        if (!btn) return;
+        const on = lineButtonBound(myRoom() && myRoom().no, me());
+        btn.classList.toggle("btn-solid", !on);
+      }).catch(() => {});
+    }
   }
   const nearbyBtn = document.getElementById("nearby-spots");
   if (nearbyBtn) nearbyBtn.onclick = () => { ui.nearbyOpen = true; setTimeout(() => render(), 80); };
