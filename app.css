@@ -5161,7 +5161,19 @@ html[data-device="desktop"] .split-stage { flex-direction: row; }
   font-size: 13px;
   line-height: 1.45;
 }
-#work-card .work-memo-tools .ghost {
+#work-card .work-item > .work-memo-tools {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+#work-card .work-item > .work-memo-tools .ghost {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  padding: 8px 6px;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
   pointer-events: auto !important;
   position: relative;
   z-index: 8;
