@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2021";
+const FILE_VER = "2022";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31649,13 +31649,19 @@ function reactBarHtml(a) {
   const list = openKind ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人</span>`}</div>` : "";
   return `<div class="ann-react${openKind || ui.reactPick === a.id ? " open" : ""}" data-react-ann="${a.id}">${pick}${chips}${list}</div>`;
 }
+function annHeartRoomsHtml(a) {
+  const rows = reactionWho(a, "heart").filter(x => x && x.no);
+  if (!rows.length) return `<span class="ann-ig-room is-empty">還沒有</span>`;
+  return rows.map(x => `<span class="ann-ig-room">${escapeHtml(x.no)}</span>`).join("");
+}
 function annIgHeartHtml(a) {
   const n = (reactionCounts(a).heart || 0);
   const on = reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
   return `<div class="ann-ig" data-react-ann="${a.id}">
-    <b class="ann-ig-count" data-ann-count="${a.id}">${n}</b>
+    <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
+    <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
     <button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84.905 1.117 1.155 1.117 1.155s.277-.25 1.117-1.155a4.21 4.21 0 0 1 3.675-1.941z"/></svg>
     </button>
   </div>`;
 }
@@ -31677,6 +31683,9 @@ function paintAnnHeart(a, beat) {
     el.classList.remove("is-tick");
     void el.offsetWidth;
     el.classList.add("is-tick");
+  });
+  document.querySelectorAll(`[data-ann-rooms="${id}"]`).forEach(el => {
+    el.innerHTML = annHeartRoomsHtml(a);
   });
 }
 function refreshAnnouncementReaction(a, beat) {
@@ -45796,6 +45805,14 @@ function bindAnnounceReactions() {
       e.preventDefault();
       e.stopPropagation();
       toggleAnnouncementHeart(btn.dataset.annHeart);
+    };
+  });
+  document.querySelectorAll("[data-ann-rooms-toggle]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const wrap = btn.closest(".ann-ig");
+      if (wrap) wrap.classList.toggle("open");
     };
   });
   document.querySelectorAll("[data-react-who]").forEach(btn => {
