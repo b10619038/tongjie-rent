@@ -31608,6 +31608,7 @@ function tenantView() {
   if (ui.page === "own-balcony") return ownBalconyView();
   if (ui.page === "balcony") return balconyView();
   if (ui.page === "trash") return trashView();
+  if (ui.page === "shop") return shopView();
   if (ui.page === "lease") return leaseView();
   if (ui.page === "lease-sign") return leaseSignView();
   if (ui.page === "leave-sign") return leaveSignView();
@@ -32773,12 +32774,20 @@ function keyCardHtml(r) {
 }
 function shopCardHtml(r) {
   if (!r || String(r.no) !== "7651") return "";
+  return `<button type="button" class="shop-entry slide-left" data-page="shop">商城</button>`;
+}
+function shopView() {
   const items = ["遠端冷氣", "免治馬桶", "電子門鎖", "電動窗簾", "電動垃圾桶", "全戶淨軟水", "遠端除濕機（夏普/LG）", "清潔服務（日/週/月）", "IKEA家具（原價半價）"];
-  return `
-      <div class="section-title"><h2 class="slide-right">線上商城</h2></div>
-      <div class="card card-body slide-left">
-        ${items.map(name => `<div class="row"><span class="k">${escapeHtml(name)}</span></div>`).join("")}
-      </div>`;
+  return `<div class="topbar slide-right"><div>
+      <button class="back" data-page="room-detail">← 返回</button>
+      <div class="eyebrow">SHOP</div><h1>商城</h1>
+    </div></div>
+    <div class="screen shop-list">
+      ${items.map((name, i) => `<button type="button" class="room-row shop-row room-seq" style="--i:${i}">
+        <span class="shop-ph" aria-hidden="true"></span>
+        <span class="room-row-info"><strong>${escapeHtml(name)}</strong></span>
+      </button>`).join("")}
+    </div>`;
 }
 function floorPlanOf(no) {
   const n = String(no || "");
