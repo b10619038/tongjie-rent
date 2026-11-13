@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2005";
+const FILE_VER = "2006";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -35826,13 +35826,13 @@ function adminAi() {
                 <button type="submit" class="ghost">儲存</button>
                 <button type="button" class="ghost" data-work-edit-cancel="${m.id}">取消</button>
               </div>
-            </form>` : on && m.source === "appoint" ? `<div class="small" style="margin:6px 0 0">${m.struck ? "已完成簽約，所以用刪除線留在這一天。" : "這筆跟租客預約同步。改了預約時間，日曆會一起改。"}</div>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="unpaid-tools work-memo-tools">
+            </form>` : on && m.source === "appoint" ? `<div class="small" style="margin:6px 0 0">${m.struck ? "已完成簽約，所以用刪除線留在這一天。" : "這筆跟租客預約同步。改了預約時間，日曆會一起改。"}</div>` : on && locked ? `<div class="small" style="margin:6px 0 0">新租客預約簽約。強制退租後會從本月工作與日曆拿掉。</div>` : on ? `<div class="work-tools-slot${ui.workMemoSlide === m.id ? " open" : ""}"><div class="work-tools-clip"><div class="unpaid-tools work-memo-tools">
               <button type="button" class="ghost" data-gcal-memo="${m.id}">加到 Google 日曆</button>
               <button type="button" class="ghost" data-edit-memo="${m.id}">編輯</button>
               ${memoMeterUnits(m).length ? `<button type="button" class="ghost${ui.meterMemoId === m.id ? " on" : ""}" data-meter-open="${m.id}">${memoMeterUnits(m).every(u => u.kind === "water") ? "水度紀錄" : "電度紀錄"}</button>` : ""}
               <button type="button" class="ghost" data-del-memo="${m.id}">刪除</button>
               <button type="button" class="ghost" data-${m.struck ? "undone" : "done"}-memo="${m.id}">${m.struck ? "未完成" : "完成"}</button>
-            </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}` : ""}
+            </div>${ui.meterMemoId === m.id ? meterBoxHtml(m) : ""}</div></div>` : ""}
             </div>`;
       }).join("");
       const workOpen = ui.workOpen !== false;
@@ -47658,6 +47658,10 @@ function bindAdminAi() {
       render();
     };
   });
+  document.querySelectorAll("#work-card .work-tools-slot:not(.open)").forEach(el => {
+    requestAnimationFrame(() => el.classList.add("open"));
+  });
+  ui.workMemoSlide = ui.workMemoId || "";
   document.querySelectorAll("[data-work-go]").forEach(el => {
     el.addEventListener("pointerdown", e => e.stopPropagation());
     el.onclick = e => {
