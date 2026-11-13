@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2024";
+const FILE_VER = "2025";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31672,14 +31672,16 @@ function annHeartRoomsHtml(a) {
   if (!rows.length) return `<span class="ann-ig-room is-empty">還沒有</span>`;
   return rows.map(x => `<span class="ann-ig-room">${escapeHtml(x.no)}</span>`).join("");
 }
-function annIgHeartHtml(a) {
+function annIgHeartHtml(a, locked) {
   const n = (reactionCounts(a).heart || 0);
-  const on = reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
+  const on = !!locked || reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
+  const svg = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6c-.3 0-.6-.1-.8-.3-1.6-1.4-3.2-2.7-4.5-4-2.3-2.2-3.5-4.1-3.5-6.2C3.2 7.4 5.4 5.2 8 5.2c1.5 0 2.8.7 3.7 1.8l.3.4.3-.4c.9-1.1 2.2-1.8 3.7-1.8 2.6 0 4.8 2.2 4.8 4.9 0 2.1-1.2 4-3.5 6.2-1.3 1.3-2.9 2.6-4.5 4-.2.2-.5.3-.8.3z"/></svg>`;
+  const heart = locked
+    ? `<span class="ann-ig-heart on">${svg}</span>`
+    : `<button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">${svg}</button>`;
   return `<div class="ann-ig" data-react-ann="${a.id}">
     <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
-    <button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6c-.3 0-.6-.1-.8-.3-1.6-1.4-3.2-2.7-4.5-4-2.3-2.2-3.5-4.1-3.5-6.2C3.2 7.4 5.4 5.2 8 5.2c1.5 0 2.8.7 3.7 1.8l.3.4.3-.4c.9-1.1 2.2-1.8 3.7-1.8 2.6 0 4.8 2.2 4.8 4.9 0 2.1-1.2 4-3.5 6.2-1.3 1.3-2.9 2.6-4.5 4-.2.2-.5.3-.8.3z"/></svg>
-    </button>
+    ${heart}
     <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
   </div>`;
 }
@@ -31917,7 +31919,7 @@ function announceBodyHtml(a, actions) {
     <p data-keep-lang="1" style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(typeof trAnn === "function" ? trAnn(a.body || "") : (a.body || ""))}</p>
     ${announceMediaHtml(a)}
     ${actions || ""}
-    ${actions ? reactBarHtml(a) : annIgHeartHtml(a)}`;
+    ${annIgHeartHtml(a, !!actions)}`;
 }
 function tenantHiddenAnnSet() {
   if (isDevPreview()) return new Set(Object.keys(ui.devHiddenAnns || {}));
@@ -46013,6 +46015,7 @@ function bindAdmin() {
   bindRepairFold();
   bindRepairDelete();
   bindHowtoFold();
+  bindAnnounceReactions();
   document.querySelectorAll(".admin-scroll [data-page]").forEach(el => {
     if (el.classList.contains("admin-static")) return;
     el.onclick = e => {
