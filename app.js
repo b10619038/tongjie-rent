@@ -2312,7 +2312,9 @@ const PUBLIC_GO = {
   "入住": "move-in",
   "login": "login",
   "租客登入": "login",
-  "preview": "preview"
+  "preview": "preview",
+  "fill": "fill",
+  "填寫": "fill"
 };
 const TENANT_GO = {
   repair: "repair",
@@ -2358,6 +2360,14 @@ function takeTenantGoQuery() {
         }
         q.delete("tid");
       }
+      if (go === "fill") {
+        const sid = String(q.get("sid") || "").trim();
+        if (sid) {
+          ui.pendingFillId = sid;
+          try { sessionStorage.setItem("tj-fill-sid", sid); } catch {}
+        }
+        q.delete("sid");
+      }
       q.delete("go");
       const left = q.toString();
       const hash = String(location.hash || "").replace(/^#go=[^&]*/, "").replace(/^#$/, "");
@@ -2369,6 +2379,17 @@ function takeTenantGoQuery() {
   }
   if (ui.pendingGo === "preview" && !ui.pendingPreviewId) {
     try { ui.pendingPreviewId = sessionStorage.getItem("tj-preview-tid") || ""; } catch {}
+  }
+  if (!ui.pendingGo) {
+    try {
+      if (sessionStorage.getItem("tj-public-go") === "fill") {
+        ui.pendingGo = "fill";
+        ui.pendingFillId = sessionStorage.getItem("tj-fill-sid") || "";
+      }
+    } catch {}
+  }
+  if (ui.pendingGo === "fill" && !ui.pendingFillId) {
+    try { ui.pendingFillId = sessionStorage.getItem("tj-fill-sid") || ""; } catch {}
   }
 }
 function catchTenantGo(href) {
@@ -2446,6 +2467,19 @@ function applyTenantGo() {
     }
     ui.page = "move-in";
     if (!ui.role) { try { persistGatePage(); } catch {} }
+    return;
+  }
+  if (go === "fill") {
+    const id = String(ui.pendingFillId || "").trim();
+    ui.pendingGo = "";
+    try { sessionStorage.removeItem("tj-go"); } catch {}
+    try { sessionStorage.setItem("tj-public-go", "fill"); } catch {}
+    ui.loginError = "";
+    ui.role = "";
+    ui.moveEnter = true;
+    ui.moveFillAs = "tenant";
+    ui.page = "move-in";
+    if (id) { try { openMoveFill(id); } catch {} }
     return;
   }
   const looking = !!(ui.tenantLook && ui.tenantId);
@@ -17100,7 +17134,7 @@ function revivePublicGo(keepBack) {
   ui.moveEnter = true;
 }
 function restoreUi() {
-  if (ui && (ui.pendingGo === "preview" || ui.previewEntered)) return;
+  if (ui && (ui.pendingGo === "preview" || ui.pendingGo === "fill" || ui.moveFillAs === "tenant" || ui.previewEntered)) return;
   const keepBack = ui.guestMoveBack || "";
   let backToMove = false;
   try { backToMove = localStorage.getItem("tj-gate-page") === "move-in"; } catch {}
@@ -28039,7 +28073,7 @@ function loadMoveDraft() {
     const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
     if (!raw || typeof raw !== "object") return null;
     const d = blankMoveIn();
-    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "emergencyName2", "emergencyPhone2", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd"].forEach(k => {
+    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "emergencyName2", "emergencyPhone2", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd", "shareId"].forEach(k => {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
@@ -31177,9 +31211,10 @@ function moveInView() {
       <div class="logo">TONG JIE</div>
       <div class="move-title-row">
         <h1>申請入住</h1>
-        <button type="button" class="move-reset" id="move-reset">重置</button>
+        ${ui.moveFillAs === "tenant" ? "" : `<button type="button" class="move-reset" id="move-reset">重置</button>`}
       </div>
-      <p class="lead">選房號、填姓名電話，系統會帶最快簽約時間與合約期間。送出後進入看房預覽。租客一樣要登入 App。</p>
+      <p class="lead">${ui.moveFillAs === "tenant" ? "帶看先填了會填的部分。請補上你的資料並簽名，填完會同步回去。" : "選房號、填姓名電話，系統會帶最快簽約時間與合約期間。送出後進入看房預覽。租客一樣要登入 App。"}</p>
+      ${ui.moveFillAs === "tenant" ? "" : (d.shareId ? `<p class="small" style="margin:8px 0 0">已分享給租客。租客補上的資料和簽名會出現在這張表。</p>` : "")}
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
@@ -31270,9 +31305,10 @@ function moveInView() {
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-    <div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
+    ${ui.moveFillAs === "tenant" ? "" : `<div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
       <div class="move-agent-actions-clip">
         <div class="move-export-stack">
+          <button type="button" class="ghost" id="move-share-fill">請租客填寫</button>
           <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
           <div class="move-export-row">
             <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
@@ -31280,8 +31316,10 @@ function moveInView() {
           </div>
         </div>
       </div>
-    </div>
-    <button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px${d.hasAgent ? ";display:none" : ""}">送出並進入預覽</button>
+    </div>`}
+    ${ui.moveFillAs === "tenant"
+      ? `<button class="btn-navy move-card c5" id="move-fill-done" type="button" style="margin-top:12px;margin-bottom:48px">填好了，同步給帶看</button>`
+      : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px${d.hasAgent ? ";display:none" : ""}">送出並進入預覽</button>`}
     ${pickSheet}
   </div>`;
 }
@@ -43182,6 +43220,7 @@ function captureMoveInDraft() {
   if (document.getElementById("move-pay-mega")) d.payMega = Number(val("move-pay-mega") || 0) || 0;
   saveMoveDraft();
   try { persistGatePage(); } catch {}
+  try { scheduleMoveFillPush(); } catch {}
 }
 function openPickPlan(el) {
   if (!el) return;
@@ -43483,6 +43522,201 @@ function exportMoveLeasePdf() {
   if (!pack) { toast("請先選房號"); return; }
   if (!pack.t.name) { toast("請先填姓名"); return; }
   showLeasePrintPreview(pack.t, pack.room);
+}
+const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2"];
+const MOVE_FILL_INPUT = { name: "move-name", phone: "move-phone", idNo: "move-idno", birthday: "move-bday", address: "move-addr", emergencyName: "move-emname", emergencyPhone: "move-emphone", name2: "move-name2", phone2: "move-phone2", idNo2: "move-idno2", birthday2: "move-bday2", address2: "move-addr2", emergencyName2: "move-emname2", emergencyPhone2: "move-emphone2", leaseStart: "move-start", payCash: "move-pay-cash", payMega: "move-pay-mega", elecStore: "move-elec" };
+function moveFillSame(a, b) {
+  try { return JSON.stringify(a == null ? "" : a) === JSON.stringify(b == null ? "" : b); } catch { return a === b; }
+}
+function moveFillSnapshot() {
+  const d = ensureMoveIn();
+  const fields = {};
+  MOVE_FILL_KEYS.forEach(k => { if (d[k] != null && d[k] !== "") fields[k] = d[k]; });
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  if (room) fields.roomNo = room.no || "";
+  return fields;
+}
+function moveShareToken() {
+  const d = ensureMoveIn();
+  if (!d.shareId) d.shareId = "mf" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  return d.shareId;
+}
+function moveFillUrl(id) {
+  return "https://tongjie-app.pages.dev/?go=fill&sid=" + encodeURIComponent(id || "");
+}
+async function readMoveFill(id) {
+  const key = String(id || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
+  if (!key) return null;
+  try {
+    const res = await fetch(FILE_API + "mfill-" + key + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && data.fields ? data : null;
+  } catch { return null; }
+}
+async function putMoveFill(by) {
+  const d = ensureMoveIn();
+  if (!d.shareId || ui.moveFillLoading) return false;
+  ui.moveFillChain = (ui.moveFillChain || Promise.resolve()).catch(() => {}).then(() => putMoveFillNow(by));
+  return ui.moveFillChain;
+}
+async function putMoveFillNow(by) {
+  const d = ensureMoveIn();
+  const id = String(d.shareId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
+  if (!id) return false;
+  ui.moveFillSaving = true;
+  try {
+    captureMoveInDraft();
+    const remote = await readMoveFill(id);
+    const fields = Object.assign({}, (remote && remote.fields) || {});
+    const touch = Object.assign({}, (remote && remote.touch) || {});
+    const local = moveFillSnapshot();
+    const base = ui.moveFillBase || {};
+    const now = Date.now();
+    let changed = false;
+    MOVE_FILL_KEYS.forEach(k => {
+      if (!moveFillSame(local[k], base[k])) {
+        if (local[k] == null || local[k] === "" || (Array.isArray(local[k]) && !local[k].length)) {
+          delete fields[k];
+        } else fields[k] = local[k];
+        touch[k] = now;
+        changed = true;
+      }
+    });
+    if (local.roomNo) fields.roomNo = local.roomNo;
+    if (!changed && remote) return true;
+    const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, fields, touch };
+    const res = await fetch(FILE_API + "mfill-" + id, {
+      method: "PUT",
+      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json", "X-File-Name": encodeURIComponent(id + ".json") },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return false;
+    ui.moveFillBase = JSON.parse(JSON.stringify(local));
+    ui.moveFillSeen = Object.assign({}, touch);
+    return true;
+  } catch { return false; }
+  finally { ui.moveFillSaving = false; }
+}
+function scheduleMoveFillPush() {
+  const d = ui.moveIn;
+  if (!d || !d.shareId || ui.moveFillLoading || ui.moveFillSaving) return;
+  clearTimeout(ui.moveFillPushT);
+  ui.moveFillPushT = setTimeout(() => { try { putMoveFill(ui.moveFillAs === "tenant" ? "tenant" : "agent"); } catch {} }, 700);
+}
+function applyMoveFillFields(fields, touch) {
+  const d = ensureMoveIn();
+  const seen = ui.moveFillSeen || {};
+  const active = document.activeElement && document.activeElement.id;
+  let text = false;
+  let heavy = false;
+  MOVE_FILL_KEYS.forEach(k => {
+    const at = Number(touch && touch[k]) || 0;
+    if (!at || at <= (Number(seen[k]) || 0)) return;
+    if (MOVE_FILL_INPUT[k] && active === MOVE_FILL_INPUT[k]) return;
+    if (ui.signing && (k === "signStrokes" || k === "signStrokes2" || k === "signImg" || k === "signImg2")) return;
+    const next = fields[k];
+    if (moveFillSame(d[k], next)) { seen[k] = at; return; }
+    d[k] = next;
+    seen[k] = at;
+    if (MOVE_FILL_INPUT[k] && k !== "leaseStart" && k !== "elecStore" && k !== "payCash" && k !== "payMega") text = true;
+    else heavy = true;
+  });
+  ui.moveFillSeen = seen;
+  if (!text && !heavy) return false;
+  if (Array.isArray(d.signStrokes)) ui.moveSignStrokes = d.signStrokes;
+  if (Array.isArray(d.signStrokes2)) ui.moveSignStrokes2 = d.signStrokes2;
+  saveMoveDraft();
+  ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
+  if (heavy || ui.page !== "move-in") {
+    if (ui.page === "move-in" && !ui.signing) {
+      ui.keepScroll = true;
+      render();
+    }
+  } else {
+    Object.keys(MOVE_FILL_INPUT).forEach(k => {
+      const el = document.getElementById(MOVE_FILL_INPUT[k]);
+      if (!el || document.activeElement === el || d[k] == null) return;
+      if (el.type === "number") el.value = d[k] ? String(d[k]) : "";
+      else el.value = d[k] || "";
+    });
+    try { (window.__moveSignPaints || []).forEach(fn => fn()); } catch {}
+    const box = document.getElementById("move-sign-box");
+    if (box) box.classList.toggle("armed", !!(d.signArmed || (d.signStrokes || []).length));
+    const box2 = document.getElementById("move-sign-box-2");
+    if (box2) box2.classList.toggle("armed", !!(d.signArmed2 || (d.signStrokes2 || []).length));
+  }
+  return true;
+}
+async function pullMoveFill() {
+  const id = ensureMoveIn().shareId;
+  if (!id || ui.moveFillLoading || ui.moveFillSaving) return;
+  const remote = await readMoveFill(id);
+  if (!remote) return;
+  const changed = applyMoveFillFields(remote.fields || {}, remote.touch || {});
+  if (changed) {
+    const now = Date.now();
+    if (!ui.moveFillToastAt || now - ui.moveFillToastAt > 8000) {
+      ui.moveFillToastAt = now;
+      toast(ui.moveFillAs === "tenant" ? "帶看更新了這張表" : "租客已更新資料");
+    }
+  }
+}
+function startMoveFillPoll() {
+  if (ui.moveFillPoll) return;
+  const tick = async () => {
+    ui.moveFillPoll = setTimeout(tick, 4000);
+    if (ui.page !== "move-in") return;
+    try { await pullMoveFill(); } catch {}
+  };
+  ui.moveFillPoll = setTimeout(tick, 1200);
+}
+async function openMoveFill(id) {
+  const key = String(id || "").trim();
+  if (!key) return;
+  ui.moveFillLoading = true;
+  ui.moveFillAs = "tenant";
+  ui.page = "move-in";
+  const remote = await readMoveFill(key);
+  ui.moveFillLoading = false;
+  if (!remote) { toast("找不到這份入住資料"); return; }
+  const d = blankMoveIn();
+  Object.assign(d, remote.fields || {});
+  d.shareId = key;
+  if (d.hasAgent == null) d.hasAgent = true;
+  if (d.people !== 2) d.people = 1;
+  ui.moveIn = d;
+  ui.moveSignStrokes = Array.isArray(d.signStrokes) ? d.signStrokes : [];
+  ui.moveSignStrokes2 = Array.isArray(d.signStrokes2) ? d.signStrokes2 : [];
+  ui.moveFillSeen = Object.assign({}, remote.touch || {});
+  ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
+  saveMoveDraft();
+  ui.keepScroll = false;
+  render();
+  startMoveFillPoll();
+}
+async function shareMoveFillLink() {
+  captureMoveInDraft();
+  const d = ensureMoveIn();
+  if (!d.roomId) { toast("請先選房號"); return; }
+  const id = moveShareToken();
+  ui.moveFillAs = "agent";
+  ui.moveFillBase = {};
+  const ok = await putMoveFill("agent");
+  saveMoveDraft();
+  if (!ok) { toast("分享失敗，請再試一次"); return; }
+  startMoveFillPoll();
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const text = [
+    (room && room.no ? room.no + " " : "") + "入住資料",
+    "",
+    "請把還沒填的部分補上，並簽名。",
+    "已填的可以改。填完會同步回帶看這邊。",
+    "",
+    moveFillUrl(id)
+  ].join("\n");
+  shareMoveText(text);
+  toast("已打開 LINE，把這則傳給租客");
 }
 function shareMoveText(text) {
   if (!text) { toast("請先選房號"); return; }
@@ -44608,6 +44842,19 @@ function bindMoveInForm() {
     e.preventDefault();
     exportMoveLeasePdf();
   };
+  const fillBtn = document.getElementById("move-share-fill");
+  if (fillBtn) fillBtn.onclick = e => {
+    e.preventDefault();
+    shareMoveFillLink();
+  };
+  const doneBtn = document.getElementById("move-fill-done");
+  if (doneBtn) doneBtn.onclick = async e => {
+    e.preventDefault();
+    captureMoveInDraft();
+    const ok = await putMoveFill("tenant");
+    toast(ok ? "已同步給帶看" : "同步失敗，請再按一次");
+  };
+  if (ensureMoveIn().shareId) startMoveFillPoll();
   const tenantBtn = document.getElementById("move-share-tenant");
   if (tenantBtn) tenantBtn.onclick = e => {
     e.preventDefault();
@@ -44931,6 +45178,7 @@ function bindMoveSignPad(boxId, canvasId, strokeKey, imgKey, armedKey, draftStro
     d[armKey] = armed;
     d[imageKey] = (d[linesKey] || []).length ? crop() : "";
     saveMoveDraft();
+    try { scheduleMoveFillPush(); } catch {}
   };
   syncArm();
   paint();
@@ -45011,6 +45259,7 @@ function bindMoveSignPad(boxId, canvasId, strokeKey, imgKey, armedKey, draftStro
     d.signImg2 = "";
     d.signArmed2 = false;
     saveMoveDraft();
+    try { scheduleMoveFillPush(); } catch {}
     (window.__moveSignResets || []).forEach(fn => { try { fn(); } catch {} });
   };
 }
