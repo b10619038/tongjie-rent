@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2000";
+const FILE_VER = "2001";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42841,11 +42841,40 @@ function paintMovePayHint(total, way) {
   hint.textContent = movePayFullHint(way, total);
   hint.classList.remove("is-off");
 }
+function moveMegaBankHtml() {
+  const b = companyBankByKey("兆豐", "統潔");
+  const code = String(b.code || "017");
+  const account = String(b.account || "04009039686");
+  return `<div class="copy-row"><span class="k">銀行代碼</span><span class="v">${escapeHtml(code)}</span><button type="button" class="ghost" data-copy="${escapeHtml(code)}">複製</button></div><div class="copy-row"><span class="k">銀行帳戶</span><span class="v">${escapeHtml(account)}</span><button type="button" class="ghost" data-copy="${escapeHtml(account)}">複製</button></div>`;
+}
+function bindMoveCopy(root) {
+  (root || document).querySelectorAll("[data-copy]").forEach(btn => {
+    btn.onclick = async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = btn.dataset.copy || "";
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+        else {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        toast("已複製 " + text);
+      } catch {
+        toast("複製失敗，請長按手動複製");
+      }
+    };
+  });
+}
 function movePayExtraHtml(d, payBits, payWay) {
   const due = moveSettleTotal(payBits);
   const total = money(due);
   const way = payWay || "cash";
-  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", due)}</p>`;
+  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", due)}</p><div class="move-bank-slot${way === "xfer" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body">${moveMegaBankHtml()}</div></div></div>`;
 }
 function slideMovePeople(two) {
   const seg = document.getElementById("move-people-grid");
@@ -43106,22 +43135,30 @@ function refreshMovePayExtra(play) {
   }, r);
   const total = moveSettleTotal(bits);
   let slot = box.querySelector(".move-split-slot");
-  if (!slot) {
+  let bank = box.querySelector(".move-bank-slot");
+  if (!slot || !bank) {
     box.innerHTML = movePayExtraHtml(d, bits, "cash");
     slot = box.querySelector(".move-split-slot");
+    bank = box.querySelector(".move-bank-slot");
     ["move-pay-cash", "move-pay-mega"].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       bindLiveCommit(el, () => { captureMoveInDraft(); });
     });
     bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
+    bindMoveCopy(box);
   }
-  const open = (d.payWay || "cash") === "split";
+  const way = d.payWay || "cash";
+  const open = way === "split";
   if (open) requestAnimationFrame(() => {
     if ((ensureMoveIn().payWay || "cash") === "split") slot.classList.add("open");
   });
   else slot.classList.remove("open");
-  paintMovePayHint(total, d.payWay || "cash");
+  if (way === "xfer") requestAnimationFrame(() => {
+    if ((ensureMoveIn().payWay || "cash") === "xfer") bank.classList.add("open");
+  });
+  else bank.classList.remove("open");
+  paintMovePayHint(total, way);
   const note = document.getElementById("move-split-note");
   if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(total) + "。";
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(total); });
@@ -44057,6 +44094,7 @@ function bindMoveInForm() {
     bindLiveCommit(el, () => { captureMoveInDraft(); });
   });
   bindPayRemainPair(document.getElementById("move-pay-cash"), document.getElementById("move-pay-mega"));
+  bindMoveCopy(document.getElementById("move-pay-extra"));
   ["move-name", "move-phone", "move-idno", "move-bday", "move-emname", "move-emphone", "move-emname2", "move-emphone2", "move-name2", "move-phone2", "move-idno2", "move-bday2", "move-end"].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
