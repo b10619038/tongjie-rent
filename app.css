@@ -2465,6 +2465,24 @@ html[data-device="tablet"] .renew-brief > div + div::before {
 .badge.unpaid { background: var(--rose-soft); color: var(--rose); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips-row {
+  overflow: hidden;
+  margin: 0;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.chips-track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: max-content;
+  will-change: transform;
+}
+.chips-row .chip { flex: 0 0 auto; }
+.chips-row.is-spread { overflow: visible; }
+.chips-row.is-spread .chips-track { flex-wrap: wrap; width: auto; }
+.chips-row.is-spread .chip-clone { display: none; }
 .chip { background: var(--chip, #f7f0e8); color: var(--ink); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
 
 .nav {

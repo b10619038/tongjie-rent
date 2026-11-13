@@ -32707,7 +32707,7 @@ function roomExtrasHtml(r) {
   const wifi = r.no || "DEMO";
   return `
       <div class="section-title"><h2 class="slide-right">設備</h2></div>
-      <div class="chips slide-left">${am.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join("")}</div>
+      <div class="chips-row${ui.amenitySpread ? " is-spread" : ""} slide-left" data-amenity-row="1"><div class="chips-track">${am.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join("")}${am.map(a => `<span class="chip chip-clone">${escapeHtml(a)}</span>`).join("")}</div></div>
       <div class="section-title"><h2 class="slide-right">水電</h2></div>
       <div class="card card-body slide-left">
         <div class="row clickable" data-open-topup role="button">
@@ -42531,7 +42531,108 @@ function bindUpdateBar() {
   };
 }
 
+function bindAmenityRow() {
+  const box = document.querySelector("[data-amenity-row]");
+  if (!box || box.dataset.bound === "1") return;
+  box.dataset.bound = "1";
+  const track = box.querySelector(".chips-track");
+  if (!track) return;
+  if (ui.amenityRaf) cancelAnimationFrame(ui.amenityRaf);
+  let x = Number(ui.amenityX) || 0;
+  let pausedUntil = 0;
+  let drag = null;
+  const cycle = () => {
+    const kids = track.children;
+    const n = kids.length / 2;
+    if (n < 1 || !kids[n]) return 0;
+    return kids[n].offsetLeft - kids[0].offsetLeft;
+  };
+  const paint = () => {
+    if (box.classList.contains("is-spread")) {
+      track.style.transform = "none";
+      return;
+    }
+    const w = cycle();
+    if (w > 0) {
+      x = ((x % w) + w) % w;
+    }
+    track.style.transform = "translate3d(" + (-x) + "px,0,0)";
+    ui.amenityX = x;
+  };
+  const tick = () => {
+    if (!box.isConnected) return;
+    if (!box.classList.contains("is-spread") && !drag && Date.now() > pausedUntil) x += 0.42;
+    paint();
+    ui.amenityRaf = requestAnimationFrame(tick);
+  };
+  const flip = () => {
+    pausedUntil = Date.now() + 560;
+    const real = [...track.children].filter(el => !el.classList.contains("chip-clone"));
+    const first = real.map(el => el.getBoundingClientRect());
+    const spread = !box.classList.contains("is-spread");
+    ui.amenitySpread = spread;
+    box.classList.toggle("is-spread", spread);
+    if (!spread) track.querySelectorAll(".chip-clone").forEach(el => { el.style.visibility = "hidden"; });
+    track.style.transform = spread ? "none" : track.style.transform;
+    const last = real.map(el => el.getBoundingClientRect());
+    real.forEach((el, i) => {
+      const dx = first[i].left - last[i].left;
+      const dy = first[i].top - last[i].top;
+      el.style.transition = "none";
+      el.style.transform = "translate(" + dx + "px," + dy + "px)";
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      real.forEach(el => {
+        el.style.transition = "transform .5s cubic-bezier(.22,.82,.22,1)";
+        el.style.transform = "";
+      });
+    }));
+    if (!spread) {
+      setTimeout(() => {
+        if (!box.isConnected || box.classList.contains("is-spread")) return;
+        track.querySelectorAll(".chip-clone").forEach(el => { el.style.visibility = ""; });
+      }, 500);
+    }
+  };
+  box.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag = { x: e.clientX, y: e.clientY, t: Date.now(), ox: x, moved: false };
+    try { box.setPointerCapture(e.pointerId); } catch {}
+  });
+  box.addEventListener("pointermove", e => {
+    if (!drag || box.classList.contains("is-spread")) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.moved && Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (!drag.moved && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+      drag.skip = true;
+      return;
+    }
+    drag.moved = true;
+    x = drag.ox - dx;
+    paint();
+  });
+  const end = e => {
+    if (!drag) return;
+    const moved = drag.moved || drag.skip;
+    const quick = Date.now() - drag.t < 340;
+    drag = null;
+    pausedUntil = Date.now() + 900;
+    if (!moved && quick) {
+      const now = Date.now();
+      if (ui.amenityTap && now - ui.amenityTap < 380) {
+        ui.amenityTap = 0;
+        flip();
+      } else ui.amenityTap = now;
+    }
+  };
+  box.addEventListener("pointerup", end);
+  box.addEventListener("pointercancel", () => { drag = null; pausedUntil = Date.now() + 900; });
+  paint();
+  ui.amenityRaf = requestAnimationFrame(tick);
+}
 function bindTenant() {
+  try { bindAmenityRow(); } catch {}
   try { bindLeaveAppointInputs(document); } catch {}
   try { bindLeaveElecInputs(document); } catch {}
   mountLeaseFlips();
