@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2017";
+const FILE_VER = "2018";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -32155,7 +32155,7 @@ function homeView() {
       <div class="btn-row slide-left">
         <button class="${paidThisMonth(t) ? "ghost pay-rent" : "btn-navy"}" data-page="pay" data-scroll-pay="1">${paidThisMonth(t) ? "已繳費租金" : "繳費租金"}</button>
         <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
-        <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span>綁定LINE</button>
+        <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span><span class="bind-line-label">${r && lineButtonBound(r.no, t) ? "已綁LINE" : "綁定LINE"}</span></button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
         <button class="ghost" id="nearby-spots" type="button"><span class="btn-ic">${icon("pin")}</span>周邊景點</button>
       </div>
@@ -42529,6 +42529,8 @@ function bindTenant() {
         if (!btn) return;
         const on = lineButtonBound(myRoom() && myRoom().no, me());
         btn.classList.toggle("btn-solid", !on);
+        const label = btn.querySelector(".bind-line-label");
+        if (label) label.textContent = typeof tr === "function" ? tr(on ? "已綁LINE" : "綁定LINE") : (on ? "已綁LINE" : "綁定LINE");
       }).catch(() => {});
     }
   }
