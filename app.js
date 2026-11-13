@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2002";
+const FILE_VER = "2003";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42834,9 +42834,13 @@ function moveXferAgentCut() {
   const r = (state.rooms || []).find(x => x && x.id === d.roomId);
   return moveAgentHalf(r ? studioContractRent(null, r) : 0);
 }
-function movePayFullHint(way, total) {
+function movePayFullHint(way, total, agentFee) {
   const n = money(total);
-  return way === "xfer" ? "第一次全額轉統潔兆豐 " + n + "。" : "第一次全額現場收現金 " + n + "。";
+  if (way !== "xfer") return "第一次全額現場收現金 " + n + "。";
+  const rentLine = "租屋費用轉統潔兆豐 " + n;
+  const fee = Math.round(Number(agentFee) || 0);
+  if (fee > 0) return rentLine + "\n仲介費用請轉至仲介提供帳戶" + money(fee);
+  return rentLine;
 }
 function paintMovePayHint(total, way) {
   const hint = document.getElementById("move-pay-hint");
@@ -42845,8 +42849,9 @@ function paintMovePayHint(total, way) {
     hint.classList.add("is-off");
     return;
   }
-  const show = way === "xfer" ? Math.max(0, Math.round(Number(total) || 0) - moveXferAgentCut()) : Math.round(Number(total) || 0);
-  hint.textContent = movePayFullHint(way, show);
+  const cut = way === "xfer" ? moveXferAgentCut() : 0;
+  const show = way === "xfer" ? Math.max(0, Math.round(Number(total) || 0) - cut) : Math.round(Number(total) || 0);
+  hint.textContent = movePayFullHint(way, show, cut);
   hint.classList.remove("is-off");
 }
 function moveMegaBankHtml() {
@@ -42882,8 +42887,9 @@ function movePayExtraHtml(d, payBits, payWay) {
   const due = moveSettleTotal(payBits);
   const total = money(due);
   const way = payWay || "cash";
-  const hintDue = way === "xfer" && payBits.hasAgent ? Math.max(0, due - moveAgentHalf(payBits.monthly)) : due;
-  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", hintDue)}</p><div class="move-bank-slot${way === "xfer" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body">${moveMegaBankHtml()}</div></div></div>`;
+  const hintFee = way === "xfer" && payBits.hasAgent ? moveAgentHalf(payBits.monthly) : 0;
+  const hintDue = way === "xfer" ? Math.max(0, due - hintFee) : due;
+  return `<div class="move-split-slot${way === "split" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body"><div class="row wrap" style="gap:8px"><label class="field" style="flex:1"><span>現金</span><input id="move-pay-cash" type="number" inputmode="numeric" min="0" step="1" value="${d.payCash ? d.payCash : ""}" placeholder="填這格" data-pay-total="${due}" /></label><label class="field" style="flex:1"><span>兆豐轉帳</span><input id="move-pay-mega" type="number" inputmode="numeric" min="0" step="1" value="${d.payMega ? d.payMega : ""}" placeholder="填這格" data-pay-total="${due}" /></label></div><p class="small" id="move-split-note" style="margin:6px 0 0">填其中一格，另一格會自動算出剩餘。合計 ${total}。</p></div></div></div><p class="small${way === "split" ? " is-off" : ""}" id="move-pay-hint" style="margin:8px 0 0">${movePayFullHint(way === "xfer" ? "xfer" : "cash", hintDue, hintFee)}</p><div class="move-bank-slot${way === "xfer" ? " open" : ""}"><div class="move-split-clip"><div class="move-split-body">${moveMegaBankHtml()}</div></div></div>`;
 }
 function slideMovePeople(two) {
   const seg = document.getElementById("move-people-grid");

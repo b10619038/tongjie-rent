@@ -3562,7 +3562,8 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
 .move-bank-slot .copy-row { grid-template-columns: 88px 1fr auto; }
 #move-pay-hint {
   overflow: hidden;
-  max-height: 48px;
+  max-height: 72px;
+  white-space: pre-line;
   opacity: 1;
   transition: max-height .36s cubic-bezier(.22,.82,.22,1), opacity .24s ease, margin .36s cubic-bezier(.22,.82,.22,1);
 }
