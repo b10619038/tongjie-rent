@@ -43570,7 +43570,11 @@ function moveFillApi(id) {
 }
 function packStrokes(lines) {
   if (!Array.isArray(lines)) return "";
-  return lines.map(line => (line || []).map(p => Math.round(Number(p.x) || 0) + "," + Math.round(Number(p.y) || 0)).join(";")).join("|");
+  return lines.map(line => (line || []).map(p => {
+    const x = Math.round((Number(p.x) || 0) * 1000) / 1000;
+    const y = Math.round((Number(p.y) || 0) * 1000) / 1000;
+    return x + "," + y;
+  }).join(";")).join("|");
 }
 function unpackStrokes(raw) {
   if (Array.isArray(raw)) return raw;
@@ -45176,22 +45180,47 @@ function bindMoveSignPad(boxId, canvasId, strokeKey, imgKey, armedKey, draftStro
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
+    const lines = ui[key] || [];
+    let maxX = 0;
+    let maxY = 0;
+    let absolute = false;
+    lines.forEach(line => (line || []).forEach(p => {
+      const x = Number(p && p.x) || 0;
+      const y = Number(p && p.y) || 0;
+      if (x > 1.5 || y > 1.5) absolute = true;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }));
+    const pad = 14;
+    const fit = absolute ? Math.min((w - pad * 2) / (maxX || 1), (h - pad * 2) / (maxY || 1)) : 0;
+    const ox = absolute ? (w - maxX * fit) / 2 : 0;
+    const oy = absolute ? (h - maxY * fit) / 2 : 0;
+    const mapPt = p => {
+      const x = Number(p && p.x) || 0;
+      const y = Number(p && p.y) || 0;
+      if (absolute) return { x: ox + x * fit, y: oy + y * fit };
+      return { x: x * w, y: y * h };
+    };
     ctx.lineWidth = 3.2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#1a57c5";
     ctx.fillStyle = "#1a57c5";
-    (ui[key] || []).forEach(line => {
+    lines.forEach(line => {
       if (!line || !line.length) return;
+      const first = mapPt(line[0]);
       if (line.length < 2) {
         ctx.beginPath();
-        ctx.arc(line[0].x, line[0].y, 1.8, 0, Math.PI * 2);
+        ctx.arc(first.x, first.y, 1.8, 0, Math.PI * 2);
         ctx.fill();
         return;
       }
       ctx.beginPath();
-      ctx.moveTo(line[0].x, line[0].y);
-      for (let i = 1; i < line.length; i++) ctx.lineTo(line[i].x, line[i].y);
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < line.length; i++) {
+        const pt = mapPt(line[i]);
+        ctx.lineTo(pt.x, pt.y);
+      }
       ctx.stroke();
     });
   };
@@ -45243,7 +45272,12 @@ function bindMoveSignPad(boxId, canvasId, strokeKey, imgKey, armedKey, draftStro
   const point = e => {
     const rect = c.getBoundingClientRect();
     const src = e.touches && e.touches[0] ? e.touches[0] : e;
-    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+    const w = rect.width || c.clientWidth || 1;
+    const h = rect.height || c.clientHeight || 1;
+    return {
+      x: Math.max(0, Math.min(1, (src.clientX - rect.left) / w)),
+      y: Math.max(0, Math.min(1, (src.clientY - rect.top) / h))
+    };
   };
   const down = e => {
     if (touchDup(e)) return;
