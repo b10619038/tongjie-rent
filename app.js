@@ -32774,11 +32774,13 @@ function keyCardHtml(r) {
 }
 function shopCardHtml(r) {
   if (!r || String(r.no) !== "7651") return "";
-  return `<button type="button" class="shop-entry slide-left" data-page="shop"><span class="shop-entry-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.2 6.1 4.6h11.8L20 10.2"/><path d="M4 10.2h16V19.6H4z"/><path d="M9.4 19.6v-5h5.2v5"/><path d="M4 10.2c.3 1.5 1.5 2.3 2.7 2.3s2.2-.9 2.5-2.3c.3 1.4 1.5 2.3 2.8 2.3s2.5-.9 2.8-2.3c.3 1.4 1.5 2.3 2.7 2.3 1.2 0 2.4-.8 2.5-2.3"/></svg></span><span>線上商城</span></button>`;
+  return `<button type="button" class="shop-entry slide-left" data-page="shop">線上商城</button>`;
 }
 function shopView() {
+  const arrive = ui.shopEnter ? " shop-arrive" : "";
+  ui.shopEnter = false;
   const items = ["遠端冷氣", "免治馬桶", "電子門鎖", "電動窗簾", "電動垃圾桶", "全戶淨軟水", "遠端除濕機（夏普/LG）", "清潔服務（日/週/月）", "IKEA家具（原價半價）"];
-  return `<div class="topbar slide-right"><div>
+  return `<div class="shop-page${arrive}"><div class="topbar slide-right"><div>
       <button class="back" data-page="home">← 返回</button>
       <div class="eyebrow">SHOP</div><h1>線上商城</h1>
     </div></div>
@@ -32787,7 +32789,7 @@ function shopView() {
         <span class="shop-ph" aria-hidden="true"></span>
         <span class="room-row-info"><strong>${escapeHtml(name)}</strong></span>
       </button>`).join("")}
-    </div>`;
+    </div></div>`;
 }
 function floorPlanOf(no) {
   const n = String(no || "");
@@ -42574,6 +42576,17 @@ function bindTenant() {
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
+      if (el.classList.contains("shop-entry") && next === "shop") {
+        if (el.classList.contains("is-leaving")) return;
+        el.classList.add("is-leaving");
+        setTimeout(() => {
+          ui.page = "shop";
+          ui.shopEnter = true;
+          releasePickerForNav();
+          render();
+        }, 170);
+        return;
+      }
       if (next === ui.page) return;
       if (next !== "home") ui.leaseCalOpen = false;
       if (el.closest(".nav") && navKeyOf(next) === navKeyOf()) return;

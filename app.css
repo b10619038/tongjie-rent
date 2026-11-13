@@ -2912,14 +2912,19 @@ body:has(.move-in-page) {
   transform-origin: center;
   transition: scale .22s cubic-bezier(.22, 1, .36, 1);
 }
-.shop-entry-ic {
-  position: absolute;
-  left: 16px;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  color: var(--ink);
+.shop-entry.is-leaving {
+  animation: shopCardOut .18s cubic-bezier(.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+@keyframes shopCardOut {
+  to { transform: translateX(-115%); }
+}
+.shop-page.shop-arrive {
+  animation: shopArrive .28s cubic-bezier(.22, .9, .28, 1) both;
+}
+@keyframes shopArrive {
+  from { transform: translateX(100%); }
+  to { transform: none; }
 }
 .shop-entry:active { scale: 0.97; transition-duration: .09s; }
 .shop-list { display: flex; flex-direction: column; gap: 12px; }
