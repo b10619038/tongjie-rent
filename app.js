@@ -43546,11 +43546,14 @@ function moveShareToken() {
 function moveFillUrl(id) {
   return "https://tongjie-app.pages.dev/?go=fill&sid=" + encodeURIComponent(id || "");
 }
+function moveFillApi(id) {
+  return "https://tongjie-app.pages.dev/api/mfill/" + encodeURIComponent(String(id || ""));
+}
 async function readMoveFill(id) {
   const key = String(id || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
   if (!key) return null;
   try {
-    const res = await fetch(FILE_API + "mfill-" + key + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    const res = await fetch(moveFillApi(key) + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     return data && data.fields ? data : null;
@@ -43588,10 +43591,16 @@ async function putMoveFillNow(by) {
     if (local.roomNo) fields.roomNo = local.roomNo;
     if (!changed && remote) return true;
     const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, fields, touch };
-    const res = await fetch(FILE_API + "mfill-" + id, {
+    let packed = JSON.stringify(body);
+    if (packed.length > 1400000) {
+      delete body.fields.signImg;
+      delete body.fields.signImg2;
+      packed = JSON.stringify(body);
+    }
+    const res = await fetch(moveFillApi(id), {
       method: "PUT",
-      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json", "X-File-Name": encodeURIComponent(id + ".json") },
-      body: JSON.stringify(body)
+      headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
+      body: packed
     });
     if (!res.ok) return false;
     ui.moveFillBase = JSON.parse(JSON.stringify(local));
