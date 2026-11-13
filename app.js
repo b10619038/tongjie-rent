@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2008";
+const FILE_VER = "2009";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -14802,8 +14802,74 @@ function mergeEntities(a, b, keys) {
 }
 function mergeTenants(a, b) {
   const merged = mergeEntities(a, b, TENANT_SYNC_KEYS);
-  const gone = new Set([].concat((typeof state !== "undefined" && state.goneTenants) || [], arguments[2] || []));
-  return gone.size ? merged.filter(x => x && !gone.has(x.id)) : merged;
+  const gone = new Set([].concat((typeof state !== "undefined" && state.goneTenants) || [], arguments[2] || []).map(String));
+  return gone.size ? merged.filter(x => x && !gone.has(String(x.id))) : merged;
+}
+const TEST_7051_IDS = ["tin1794492749638", "tin1794549584287", "tin1794490502374", "tin1794491238043"];
+function is7051TestTenant(t, rooms) {
+  if (!t) return false;
+  if (TEST_7051_IDS.indexOf(String(t.id)) >= 0) return true;
+  const room = (rooms || []).find(r => r && r.id === t.roomId);
+  const no = String((room && room.no) || t.roomNo || "");
+  return no === "7051" && /趙文榮|歐玉珠/.test(String(t.name || ""));
+}
+function scrub7051Tests(data) {
+  if (!data || !Array.isArray(data.tenants)) return false;
+  const rooms = data.rooms || [];
+  const dropIds = data.tenants.filter(t => is7051TestTenant(t, rooms)).map(t => String(t.id)).concat(TEST_7051_IDS);
+  const drop = new Set(dropIds.map(String));
+  let changed = false;
+  const nextTenants = data.tenants.filter(t => t && !drop.has(String(t.id)));
+  if (nextTenants.length !== data.tenants.length) { data.tenants = nextTenants; changed = true; }
+  const gone = new Set((data.goneTenants || []).map(String));
+  drop.forEach(id => { if (!gone.has(id)) { gone.add(id); changed = true; } });
+  data.goneTenants = [...gone];
+  if (data.eSigns) drop.forEach(id => { if (data.eSigns[id]) { delete data.eSigns[id]; changed = true; } });
+  if (Array.isArray(data.notices)) {
+    const removed = [];
+    const next = data.notices.filter(n => {
+      if (!n) return false;
+      const bad = drop.has(String(n.id || "").replace(/^n-agent-/, "")) || (String(n.roomNo) === "7051" && /趙文榮|歐玉珠/.test(String(n.text || "")));
+      if (bad) removed.push(String(n.id));
+      return !bad;
+    });
+    if (next.length !== data.notices.length) {
+      data.notices = next;
+      data.noticeGone = [...new Set([].concat(data.noticeGone || [], removed).map(String))];
+      changed = true;
+    }
+  }
+  if (Array.isArray(data.aiMemos)) {
+    const removed = [];
+    const next = data.aiMemos.filter(m => {
+      const bad = m && (drop.has(String(m.linkedTenantId || "")) || drop.has(String(m.id || "").replace(/^agentfee-/, "")) || (/7051/.test(String(m.text || "")) && /趙文榮|歐玉珠/.test(String(m.text || ""))));
+      if (bad) removed.push(String(m.id));
+      return !bad;
+    });
+    if (next.length !== data.aiMemos.length) {
+      data.aiMemos = next;
+      data.memoGone = [...new Set([].concat(data.memoGone || [], removed).map(String))];
+      changed = true;
+    }
+  }
+  const room = rooms.find(r => r && String(r.no) === "7051");
+  if (room) {
+    const live = data.tenants.find(t => t && t.roomId === room.id && !t.former && !t.incoming && !t.placeholder && !t.cancelledApply && !t.clearedApply && !t.sessionEnded && String(t.name || "").trim());
+    if (!live && (room.status === "rented" || drop.has(String(room.tenantId || "")) || drop.has(String(room.incomingTenantId || "")))) {
+      room.tenantId = "";
+      room.status = "vacant";
+      delete room.incomingTenantId;
+      room.edited = true;
+      room.editedAt = Date.now();
+      room.statusAt = Date.now();
+      changed = true;
+    }
+  }
+  if (data.applyPing && String(data.applyPing.roomNo) === "7051" && /趙文榮|歐玉珠/.test(String(data.applyPing.name || ""))) {
+    data.applyPing = null;
+    changed = true;
+  }
+  return changed;
 }
 function mergeRooms(a, b) { return mergeEntities(a, b, ROOM_SYNC_KEYS); }
 function mergeBookVault(a, b, gone) {
@@ -15302,6 +15368,7 @@ async function pullCloudNow() {
     try { applyMemoDone(state); } catch {}
     mergeESignsInto(state, data);
     mergeSharedInto(state, data);
+    try { if (scrub7051Tests(state)) markCloudDirty(); } catch {}
     mergeDevChatsInto(state, data);
     state.chatImages = mergeChatImages(loadChatImageMap(), state.chatImages, data.chatImages);
     state.chatImageGone = unionChatImageGone(state.chatImageGone, data.chatImageGone);
@@ -16281,6 +16348,9 @@ async function pushCloud() {
       const cur = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
       if (cur.ok) remote = await cur.json();
     } catch {}
+    try { scrub7051Tests(state); } catch {}
+    const goneTenants = [...new Set([].concat((remote && remote.goneTenants) || [], state.goneTenants || []).map(String))];
+    state.goneTenants = goneTenants;
     const cut = Math.max(Number(state.adminLogoutAt) || 0, Number(remote && remote.adminLogoutAt) || 0);
     if (cut) state.adminLogoutAt = cut;
     const gone = unionGone(remote && remote.ledgerGone, state.ledgerGone).filter(id => !liveLeaveElecIds(mergeTenants(remote && remote.tenants, state.tenants)).has(String(id)));
@@ -16326,7 +16396,8 @@ async function pushCloud() {
         80
       ),
       eSigns: mergeESignMaps(collectESigns(remote), collectESigns(state)),
-      tenants: mergeTenants(remote && remote.tenants, state.tenants),
+      tenants: mergeTenants(remote && remote.tenants, state.tenants, goneTenants),
+      goneTenants,
       roomWaits: state.roomWaits || [],
       roomWaitGone: state.roomWaitGone || [],
       roomWaitPing: (Number(state.roomWaitPing && state.roomWaitPing.at) >= Number(remote && remote.roomWaitPing && remote.roomWaitPing.at) ? state.roomWaitPing : (remote && remote.roomWaitPing)) || null,
@@ -16364,6 +16435,7 @@ async function pushCloud() {
     applyRepairStatusBox(payload.repairs);
     payload.repairs = dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone));
     applyRepairStatusBox(payload.repairs);
+    try { scrub7051Tests(payload); } catch {}
     mergeLedgerInto(payload, loadLedgerBackup());
     try { dropEmptyLeaveElecBooks(payload); } catch {}
     persistLedger(payload);
@@ -30380,6 +30452,7 @@ function pickerBusy() {
   return a.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local";
 }
 function render() {
+  try { if (typeof scrub7051Tests === "function" && scrub7051Tests(state)) markCloudDirty(); } catch {}
   try { paintLeaveCashLine(); } catch {}
   const force = !!(ui && ui.forceRender);
   if (ui && ui.forceRender) ui.forceRender = false;
