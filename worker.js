@@ -31,12 +31,21 @@ function roomOk(no) {
 function normBindName(s) {
   return String(s || "").replace(/[\s\u3000]/g, "");
 }
+function cleanBindName(name) {
+  return String(name || "").trim().replace(/\s*租客$/, "").trim();
+}
 function parseRoomName(raw) {
-  const text = String(raw || "").trim();
+  const text = String(raw || "").trim().replace(/\u3000/g, " ").replace(/\s+/g, " ");
   let m = text.match(/^(\d{4})\s*(.+)$/);
-  if (m && roomOk(m[1]) && normBindName(m[2])) return { room: m[1], name: m[2].trim() };
+  if (m && roomOk(m[1])) {
+    const name = cleanBindName(m[2]);
+    if (normBindName(name)) return { room: m[1], name };
+  }
   m = text.match(/^(.+?)\s*(\d{4})$/);
-  if (m && roomOk(m[2]) && normBindName(m[1]) && !roomOk(normBindName(m[1]))) return { room: m[2], name: m[1].trim() };
+  if (m && roomOk(m[2])) {
+    const name = cleanBindName(m[1]);
+    if (normBindName(name) && !roomOk(normBindName(name))) return { room: m[2], name };
+  }
   return null;
 }
 function parseBindPhrase(text) {
