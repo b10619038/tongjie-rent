@@ -710,6 +710,16 @@ function applyUiLang(root) {
 function bindUiLang() {
   if (window.__uiLangBound) return;
   window.__uiLangBound = 1;
+  const pressOn = e => {
+    const btn = e.target && e.target.closest && e.target.closest(".lang-pick [data-ui-lang]");
+    if (btn) btn.classList.add("is-press");
+  };
+  const pressOff = () => {
+    document.querySelectorAll(".lang-pick [data-ui-lang].is-press").forEach(b => b.classList.remove("is-press"));
+  };
+  document.addEventListener("pointerdown", pressOn, true);
+  document.addEventListener("pointerup", pressOff, true);
+  document.addEventListener("pointercancel", pressOff, true);
   document.addEventListener("click", e => {
     const btn = e.target && e.target.closest && e.target.closest("[data-ui-lang]");
     if (!btn) return;
