@@ -9,6 +9,10 @@ const UI_LANGS = [
 var UI_DICT = {
   en: {
     "語言": "Language",
+    "選擇語言": "Language",
+    "整體風格": "Style",
+    "選擇色調": "Choose a color",
+    "確定": "Done",
     "選擇 App 介面語言。這台手機會記住。": "Choose the app language. This phone will remember.",
     "設定": "Settings",
     "← 返回": "← Back",
@@ -132,6 +136,10 @@ var UI_DICT = {
   },
   ja: {
     "語言": "言語",
+    "選擇語言": "言語",
+    "整體風格": "全体の雰囲気",
+    "選擇色調": "色を選ぶ",
+    "確定": "決定",
     "選擇 App 介面語言。這台手機會記住。": "アプリの表示言語を選べます。この端末に保存されます。",
     "設定": "設定",
     "← 返回": "← 戻る",
@@ -255,6 +263,10 @@ var UI_DICT = {
   },
   th: {
     "語言": "ภาษา",
+    "選擇語言": "ภาษา",
+    "整體風格": "สไตล์",
+    "選擇色調": "เลือกโทนสี",
+    "確定": "ตกลง",
     "選擇 App 介面語言。這台手機會記住。": "เลือกภาษาของแอป เครื่องนี้จะจำไว้",
     "設定": "ตั้งค่า",
     "← 返回": "← กลับ",
@@ -378,6 +390,10 @@ var UI_DICT = {
   },
   ko: {
     "語言": "언어",
+    "選擇語言": "언어",
+    "整體風格": "전체 스타일",
+    "選擇色調": "색 고르기",
+    "確定": "확인",
     "選擇 App 介面語言。這台手機會記住。": "앱 언어를 고릅니다. 이 기기가 기억합니다.",
     "設定": "설정",
     "← 返回": "← 뒤로",
@@ -705,6 +721,10 @@ function bindUiLang() {
     setUiLang(next);
     document.querySelectorAll("[data-ui-lang]").forEach(el => {
       el.classList.toggle("on", el.getAttribute("data-ui-lang") === next);
+    });
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (key) el.textContent = tr(key);
     });
     if (typeof ui !== "undefined" && ui) {
       ui.keepScroll = true;

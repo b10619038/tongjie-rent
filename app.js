@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2007";
+const FILE_VER = "2008";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1736,14 +1736,18 @@ function themePanelMarkup() {
   const cur = currentThemeId();
   return `<div class="theme-mask" id="theme-mask">
     <div class="theme-panel">
-      <div class="label">整體風格</div>
-      <h2>選擇色調</h2>
+      <div class="label" data-i18n="整體風格">${tr("整體風格")}</div>
+      <h2 data-i18n="選擇色調">${tr("選擇色調")}</h2>
       <div class="theme-grid">
         ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft};--swh:${t.id === "yuhan" ? t.paper : t.teal}">
           <i></i><span>${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
-      <button type="button" class="btn-navy" id="theme-close">確定</button>
+      <div class="theme-lang">
+        <div class="label" data-i18n="選擇語言">${tr("選擇語言")}</div>
+        <div class="lang-pick">${(typeof UI_LANGS !== "undefined" ? UI_LANGS : []).map(([id, name]) => `<button type="button" data-ui-lang="${id}" class="${(typeof uiLang === "function" ? uiLang() : "zh") === id ? "on" : ""}">${name}</button>`).join("")}</div>
+      </div>
+      <button type="button" class="btn-navy" id="theme-close" data-i18n="確定">${tr("確定")}</button>
     </div>
   </div>`;
 }
