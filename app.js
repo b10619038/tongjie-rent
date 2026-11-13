@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2020";
+const FILE_VER = "2021";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -31649,6 +31649,44 @@ function reactBarHtml(a) {
   const list = openKind ? `<div class="ann-who">${who.map(x => `<span>${escapeHtml(x.no || "—")}</span>`).join("") || `<span>還沒有人</span>`}</div>` : "";
   return `<div class="ann-react${openKind || ui.reactPick === a.id ? " open" : ""}" data-react-ann="${a.id}">${pick}${chips}${list}</div>`;
 }
+function annIgHeartHtml(a) {
+  const n = (reactionCounts(a).heart || 0);
+  const on = reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
+  return `<div class="ann-ig" data-react-ann="${a.id}">
+    <b class="ann-ig-count" data-ann-count="${a.id}">${n}</b>
+    <button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+    </button>
+  </div>`;
+}
+function paintAnnHeart(a, beat) {
+  if (!a) return;
+  const id = String(a.id);
+  const on = reactKindOf(reactionMap(a)[ui.tenantId]) === "heart";
+  const n = String(reactionCounts(a).heart || 0);
+  document.querySelectorAll(`[data-ann-heart="${id}"]`).forEach(btn => {
+    btn.classList.toggle("on", on);
+    const icon = btn.querySelector("svg");
+    if (!icon) return;
+    icon.classList.remove("is-beat", "is-off");
+    void icon.offsetWidth;
+    icon.classList.add(beat ? "is-beat" : "is-off");
+  });
+  document.querySelectorAll(`[data-ann-count="${id}"]`).forEach(el => {
+    el.textContent = n;
+    el.classList.remove("is-tick");
+    void el.offsetWidth;
+    el.classList.add("is-tick");
+  });
+}
+function refreshAnnouncementReaction(a, beat) {
+  if (!a) return;
+  if (document.querySelector(`[data-ann-heart="${a.id}"]`)) {
+    paintAnnHeart(a, !!beat);
+    return;
+  }
+  document.querySelectorAll(`[data-react-ann="${a.id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
+}
 function applyClear6832Heart(data) {
   if (!data || !Array.isArray(data.announcements)) return;
   let dirty = false;
@@ -31852,7 +31890,7 @@ function announceBodyHtml(a, actions) {
     <p data-keep-lang="1" style="margin:10px 0 0;white-space:pre-wrap">${escapeHtml(typeof trAnn === "function" ? trAnn(a.body || "") : (a.body || ""))}</p>
     ${announceMediaHtml(a)}
     ${actions || ""}
-    ${reactBarHtml(a)}`;
+    ${actions ? reactBarHtml(a) : annIgHeartHtml(a)}`;
 }
 function tenantHiddenAnnSet() {
   if (isDevPreview()) return new Set(Object.keys(ui.devHiddenAnns || {}));
@@ -42700,7 +42738,7 @@ function bindTenant() {
   ui.annBurst = false;
   document.querySelectorAll("[data-read-announce]").forEach(el => {
     el.onclick = e => {
-      if (e.target && e.target.closest && e.target.closest("[data-hide-announce]")) return;
+      if (e.target && e.target.closest && e.target.closest("[data-hide-announce], [data-ann-heart], .ann-ig")) return;
       e.preventDefault();
       const a = (state.announcements || []).find(x => x.id === el.dataset.readAnnounce);
       if (!a || !ui.tenantId) return;
@@ -45704,7 +45742,7 @@ function applyAnnouncementReaction(id, kind) {
   if (isDevPreview()) {
     if (!ui.devReactions) ui.devReactions = {};
     ui.devReactions[id] = kind;
-    document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
+    refreshAnnouncementReaction(a, kind === "heart");
     return;
   }
   if (!a.reactions) a.reactions = {};
@@ -45713,7 +45751,33 @@ function applyAnnouncementReaction(id, kind) {
   a.reactionAt[ui.tenantId] = Date.now();
   a.editedAt = Date.now();
   save();
-  document.querySelectorAll(`[data-react-ann="${id}"]`).forEach(bar => { bar.outerHTML = reactBarHtml(a); });
+  refreshAnnouncementReaction(a, kind === "heart");
+}
+function toggleAnnouncementHeart(id) {
+  if (!ui.tenantId) return;
+  const a = (state.announcements || []).find(x => x.id === id);
+  if (!a) return;
+  const cur = reactKindOf(reactionMap(a)[ui.tenantId]);
+  const on = cur !== "heart";
+  if (isDevPreview()) {
+    if (!ui.devReactions) ui.devReactions = {};
+    if (on) ui.devReactions[id] = "heart";
+    else delete ui.devReactions[id];
+  } else {
+    if (!a.reactions) a.reactions = {};
+    if (!a.reactionAt) a.reactionAt = {};
+    if (on) {
+      a.reactions[ui.tenantId] = "heart";
+      a.reactionAt[ui.tenantId] = Date.now();
+    } else {
+      delete a.reactions[ui.tenantId];
+      delete a.reactionAt[ui.tenantId];
+    }
+    a.editedAt = Date.now();
+    save();
+  }
+  paintAnnHeart(a, on);
+  if (on) { try { if (navigator.vibrate) navigator.vibrate(16); } catch {} }
 }
 function popAnnounceCard(card) {
   if (!card) return;
@@ -45727,6 +45791,13 @@ function popAnnounceCard(card) {
   setTimeout(() => burst.remove(), 650);
 }
 function bindAnnounceReactions() {
+  document.querySelectorAll("[data-ann-heart]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleAnnouncementHeart(btn.dataset.annHeart);
+    };
+  });
   document.querySelectorAll("[data-react-who]").forEach(btn => {
     let timer = 0;
     let held = false;
@@ -45773,8 +45844,10 @@ function bindAnnounceReactions() {
       if (e.target.closest("a,button,video,img")) return;
       const now = Date.now();
       if (now - lastTap < 340) {
-        applyAnnouncementReaction(card.dataset.readAnnounce);
-        popAnnounceCard(card);
+        const id = card.dataset.readAnnounce;
+        const a = (state.announcements || []).find(x => x.id === id);
+        if (a && reactKindOf(reactionMap(a)[ui.tenantId]) === "heart") paintAnnHeart(a, true);
+        else applyAnnouncementReaction(id, "heart");
         lastTap = 0;
       } else lastTap = now;
     });

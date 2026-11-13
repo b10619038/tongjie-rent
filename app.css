@@ -7793,6 +7793,72 @@ a.vendor-tel { color: inherit; font-weight: 800; text-decoration: none; }
   35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(-50%, -70%) scale(.8); }
 }
+.ann-ig {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.ann-card:has(.ann-ig) { padding-bottom: 46px; }
+.ann-ig-count {
+  min-width: 1ch;
+  font-size: 15px;
+  font-weight: 750;
+  font-style: normal;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  transform-origin: right center;
+}
+.ann-ig-count.is-tick { animation: igCount .32s cubic-bezier(.2, 1.4, .3, 1); }
+@keyframes igCount {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.ann-ig-heart {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ann-ig-heart svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  transform-origin: center;
+}
+.ann-ig-heart.on { color: #ed4956; }
+.ann-ig-heart.on svg { fill: currentColor; stroke: currentColor; }
+.ann-ig-heart svg.is-beat { animation: igHeartBeat .48s cubic-bezier(.2, 1.35, .3, 1); }
+.ann-ig-heart svg.is-off { animation: igHeartOff .28s ease; }
+@keyframes igHeartBeat {
+  0% { transform: scale(1) rotate(0); }
+  18% { transform: scale(1.48) rotate(-12deg); }
+  36% { transform: scale(1.08) rotate(10deg); }
+  54% { transform: scale(1.32) rotate(-6deg); }
+  72% { transform: scale(1.04) rotate(3deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes igHeartOff {
+  0% { transform: scale(1); }
+  45% { transform: scale(.72); }
+  100% { transform: scale(1); }
+}
 .ann-react {
   display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px;
 }
