@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2022";
+const FILE_VER = "2023";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -13402,20 +13402,34 @@ function is6832HeartTenant(id, data) {
 function mergeAnnouncementReactions(a, b) {
   const reactions = {};
   const reactionAt = {};
+  const ids = new Set();
   [a, b].forEach(src => {
     if (!src) return;
-    const rec = src.reactions || {};
-    const at = src.reactionAt || {};
-    Object.keys(rec).forEach(id => {
-      if (!rec[id]) return;
-      const stamp = Number(at[id]) || Number(src.editedAt) || 0;
-      if (stamp <= REACT_KEEP_AFTER) return;
-      if (is6832HeartTenant(id) && stamp < DROP_6832_HEART_UNTIL) return;
-      if (!reactions[id] || stamp >= (reactionAt[id] || 0)) {
-        reactions[id] = rec[id];
-        reactionAt[id] = stamp;
+    Object.keys(src.reactions || {}).forEach(id => ids.add(id));
+    Object.keys(src.reactionAt || {}).forEach(id => ids.add(id));
+  });
+  ids.forEach(id => {
+    let bestVal = "";
+    let bestAt = -1;
+    let seen = false;
+    [a, b].forEach(src => {
+      if (!src) return;
+      const rec = src.reactions || {};
+      const at = src.reactionAt || {};
+      const hasRec = Object.prototype.hasOwnProperty.call(rec, id);
+      const hasAt = Object.prototype.hasOwnProperty.call(at, id);
+      if (!hasRec && !hasAt) return;
+      const stamp = Number(at[id]) || (hasRec ? Number(src.editedAt) || 0 : 0);
+      if (!seen || stamp >= bestAt) {
+        seen = true;
+        bestAt = stamp;
+        bestVal = hasRec ? (rec[id] || "") : "";
       }
     });
+    if (!seen || bestAt <= REACT_KEEP_AFTER) return;
+    if (is6832HeartTenant(id) && bestAt < DROP_6832_HEART_UNTIL) return;
+    reactionAt[id] = bestAt;
+    if (bestVal) reactions[id] = bestVal;
   });
   return { reactions, reactionAt };
 }
@@ -31610,7 +31624,11 @@ function reactKindOf(v) {
 }
 function reactionMap(a) {
   const rec = Object.assign({}, (a && a.reactions) || {});
-  if (isDevPreview() && ui.devReactions && ui.devReactions[a.id] && ui.tenantId) rec[ui.tenantId] = ui.devReactions[a.id];
+  if (isDevPreview() && ui.devReactions && ui.tenantId && Object.prototype.hasOwnProperty.call(ui.devReactions, a.id)) {
+    const v = ui.devReactions[a.id];
+    if (v) rec[ui.tenantId] = v;
+    else delete rec[ui.tenantId];
+  }
   return rec;
 }
 function reactionCounts(a) {
@@ -31661,7 +31679,7 @@ function annIgHeartHtml(a) {
     <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
     <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
     <button type="button" class="ann-ig-heart${on ? " on" : ""}" data-ann-heart="${a.id}" aria-label="愛心">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.792 3.904A4.989 4.989 0 0 1 21.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-2.143-1.823-4.303-3.752C5.141 14.072 2.5 12.167 2.5 9.122a4.989 4.989 0 0 1 4.708-5.218 4.21 4.21 0 0 1 3.675 1.941c.84.905 1.117 1.155 1.117 1.155s.277-.25 1.117-1.155a4.21 4.21 0 0 1 3.675-1.941z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6c-.3 0-.6-.1-.8-.3-1.6-1.4-3.2-2.7-4.5-4-2.3-2.2-3.5-4.1-3.5-6.2C3.2 7.4 5.4 5.2 8 5.2c1.5 0 2.8.7 3.7 1.8l.3.4.3-.4c.9-1.1 2.2-1.8 3.7-1.8 2.6 0 4.8 2.2 4.8 4.9 0 2.1-1.2 4-3.5 6.2-1.3 1.3-2.9 2.6-4.5 4-.2.2-.5.3-.8.3z"/></svg>
     </button>
   </div>`;
 }
@@ -45764,27 +45782,23 @@ function applyAnnouncementReaction(id, kind) {
 }
 function toggleAnnouncementHeart(id) {
   if (!ui.tenantId) return;
+  const now = Date.now();
+  if (!ui.heartLock) ui.heartLock = {};
+  if (now - (ui.heartLock[id] || 0) < 320) return;
+  ui.heartLock[id] = now;
   const a = (state.announcements || []).find(x => x.id === id);
   if (!a) return;
   const cur = reactKindOf(reactionMap(a)[ui.tenantId]);
   const on = cur !== "heart";
-  if (isDevPreview()) {
-    if (!ui.devReactions) ui.devReactions = {};
-    if (on) ui.devReactions[id] = "heart";
-    else delete ui.devReactions[id];
-  } else {
-    if (!a.reactions) a.reactions = {};
-    if (!a.reactionAt) a.reactionAt = {};
-    if (on) {
-      a.reactions[ui.tenantId] = "heart";
-      a.reactionAt[ui.tenantId] = Date.now();
-    } else {
-      delete a.reactions[ui.tenantId];
-      delete a.reactionAt[ui.tenantId];
-    }
-    a.editedAt = Date.now();
-    save();
-  }
+  if (!ui.devReactions) ui.devReactions = {};
+  if (isDevPreview()) ui.devReactions[id] = on ? "heart" : "";
+  if (!a.reactions) a.reactions = {};
+  if (!a.reactionAt) a.reactionAt = {};
+  if (on) a.reactions[ui.tenantId] = "heart";
+  else a.reactions[ui.tenantId] = "";
+  a.reactionAt[ui.tenantId] = now;
+  a.editedAt = now;
+  save();
   paintAnnHeart(a, on);
   if (on) { try { if (navigator.vibrate) navigator.vibrate(16); } catch {} }
 }
