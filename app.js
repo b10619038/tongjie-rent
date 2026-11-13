@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2018";
+const FILE_VER = "2019";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42658,11 +42658,21 @@ function bindTenant() {
     const toggle = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.annOpen = !ui.annOpen;
-      ui.annDismissed = [];
-      ui.annBurst = !!ui.annOpen;
-      ui.keepScroll = true;
-      render();
+      if (dock.dataset.popping === "1") return;
+      dock.dataset.popping = "1";
+      const title = dock.querySelector("h2");
+      if (title) {
+        title.classList.remove("is-title-pop");
+        void title.offsetWidth;
+        title.classList.add("is-title-pop");
+      }
+      setTimeout(() => {
+        ui.annOpen = !ui.annOpen;
+        ui.annDismissed = [];
+        ui.annBurst = !!ui.annOpen;
+        ui.keepScroll = true;
+        render();
+      }, 360);
     };
     dock.onclick = toggle;
     dock.onkeydown = e => {
