@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2010";
+const FILE_VER = "2011";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -1416,7 +1416,8 @@ function canUseYuhanTheme() {
   } catch { return false; }
 }
 function themeLabel(t) {
-  return t ? t.name : "";
+  const name = t ? t.name : "";
+  return name && typeof tr === "function" ? tr(name) : name;
 }
 function visibleThemes() {
   return THEMES.filter(t => t.id !== "yuhan" || canUseYuhanTheme());
@@ -1740,7 +1741,7 @@ function themePanelMarkup() {
       <h2 data-i18n="選擇色調">${tr("選擇色調")}</h2>
       <div class="theme-grid">
         ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${cur === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft};--swh:${t.id === "yuhan" ? t.paper : t.teal}">
-          <i></i><span>${themeLabel(t)}</span>
+          <i></i><span data-i18n="${t.name}">${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
       <div class="theme-lang">
@@ -30561,7 +30562,7 @@ function paintApp() {
     const oldGate = gateSc ? gateSc.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
     const overlays = !!(ui.notifyGuide || ui.installSheet || toastHtml);
     const same = lastRenderRole === ui.role && lastRenderPage === page && !!root.querySelector(".gate");
-    if (same && !overlays && page === "home") return;
+    if (!langPaint && same && !overlays && page === "home") return;
     if (same && !overlays && composingNow() && document.activeElement && document.activeElement.closest && document.activeElement.closest(".gate")) return;
     const still = lastRenderRole === ui.role && lastRenderPage === page;
     root.innerHTML = (typeof translateMarkup === "function" ? translateMarkup : s => s)(`<div class="${still ? "keep-still" : ""}">${bar}${toastHtml}${gateView()}${sheet}${ver}${guide}${theme}</div>${introHtml()}`);
@@ -46636,7 +46637,7 @@ function lookSettingsHtml() {
       <p class="small">選擇整體色調。</p>
       <div class="theme-grid in-page">
         ${visibleThemes().map(t => `<button type="button" class="theme-swatch ${currentThemeId() === t.id ? "on" : ""}" data-theme="${t.id}" style="--sw:${t.teal};--sw2:${t.soft};--swh:${t.id === "yuhan" ? t.paper : t.teal}">
-          <i></i><span>${themeLabel(t)}</span>
+          <i></i><span data-i18n="${t.name}">${themeLabel(t)}</span>
         </button>`).join("")}
       </div>
     </div>
