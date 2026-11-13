@@ -15406,6 +15406,7 @@ async function pullCloudNow() {
     if (ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 1600) return false;
     const data = await res.json();
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
+    state.moveFills = mergeMoveFills(state.moveFills, data.moveFills);
     const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
     if (keepCut) state.adminLogoutAt = keepCut;
     const mineSeats = state.loginSeats;
@@ -16504,6 +16505,8 @@ async function pushCloud() {
       leaveWithdrawn: mergeLeaveWithdrawn(remote && remote.leaveWithdrawn, state.leaveWithdrawn),
       typhoonDays: saveTyphoonDays([].concat(readTyphoonDays(), (remote && remote.typhoonDays) || []))
     });
+    payload.moveFills = mergeMoveFills(remote && remote.moveFills, state.moveFills);
+    state.moveFills = payload.moveFills;
     applyRepairStatusBox(state.repairs);
     applyRepairStatusBox(payload.repairs);
     payload.repairs = dropGone(mergeEntities(remote && remote.repairs, state.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility", "statusAt"]), unionGone(remote && remote.repairGone, state.repairGone));
@@ -43546,18 +43549,35 @@ function moveShareToken() {
 function moveFillUrl(id) {
   return "https://tongjie-app.pages.dev/?go=fill&sid=" + encodeURIComponent(id || "");
 }
+function mergeMoveFills(a, b) {
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach(id => {
+    const next = b[id];
+    if (!next) return;
+    const prev = out[id];
+    if (!prev || Number(next.at) >= Number(prev.at || 0)) out[id] = next;
+  });
+  const now = Date.now();
+  Object.keys(out).forEach(id => {
+    const at = Number(out[id] && out[id].at) || 0;
+    if (at && now - at > 21 * 86400000) delete out[id];
+  });
+  return out;
+}
 function moveFillApi(id) {
   return "https://tongjie-app.pages.dev/api/mfill/" + encodeURIComponent(String(id || ""));
 }
 async function readMoveFill(id) {
   const key = String(id || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
   if (!key) return null;
+  const local = state.moveFills && state.moveFills[key];
   try {
-    const res = await fetch(moveFillApi(key) + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
-    if (!res.ok) return null;
+    const res = await fetch(DATA_API + "?t=" + Date.now(), { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (!res.ok) return local || null;
     const data = await res.json();
-    return data && data.fields ? data : null;
-  } catch { return null; }
+    state.moveFills = mergeMoveFills(state.moveFills, data && data.moveFills);
+    return (state.moveFills && state.moveFills[key]) || null;
+  } catch { return local || null; }
 }
 async function putMoveFill(by) {
   const d = ensureMoveIn();
@@ -43591,18 +43611,21 @@ async function putMoveFillNow(by) {
     if (local.roomNo) fields.roomNo = local.roomNo;
     if (!changed && remote) return true;
     const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, fields, touch };
-    let packed = JSON.stringify(body);
-    if (packed.length > 1400000) {
-      delete body.fields.signImg;
-      delete body.fields.signImg2;
-      packed = JSON.stringify(body);
-    }
-    const res = await fetch(moveFillApi(id), {
+    if (Array.isArray(fields.signStrokes) && fields.signStrokes.length) delete body.fields.signImg;
+    if (Array.isArray(fields.signStrokes2) && fields.signStrokes2.length) delete body.fields.signImg2;
+    const got = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
+    if (!got.ok) return false;
+    const cloud = await got.json();
+    if (!cloud || !Array.isArray(cloud.rooms) || !cloud.rooms.length) return false;
+    cloud.moveFills = mergeMoveFills(cloud.moveFills, { [id]: body });
+    cloud.updatedAt = Date.now();
+    const res = await fetch(DATA_API, {
       method: "PUT",
       headers: { "X-Tongjie-Key": SYNC_KEY, "Content-Type": "application/json" },
-      body: packed
+      body: JSON.stringify(cloud)
     });
     if (!res.ok) return false;
+    state.moveFills = cloud.moveFills;
     ui.moveFillBase = JSON.parse(JSON.stringify(local));
     ui.moveFillSeen = Object.assign({}, touch);
     return true;
