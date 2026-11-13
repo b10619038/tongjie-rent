@@ -43529,7 +43529,7 @@ function exportMoveLeasePdf() {
   if (!pack.t.name) { toast("請先填姓名"); return; }
   showLeasePrintPreview(pack.t, pack.room);
 }
-const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2"];
+const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2"];
 const MOVE_FILL_INPUT = { name: "move-name", phone: "move-phone", idNo: "move-idno", birthday: "move-bday", address: "move-addr", emergencyName: "move-emname", emergencyPhone: "move-emphone", name2: "move-name2", phone2: "move-phone2", idNo2: "move-idno2", birthday2: "move-bday2", address2: "move-addr2", emergencyName2: "move-emname2", emergencyPhone2: "move-emphone2", leaseStart: "move-start", payCash: "move-pay-cash", payMega: "move-pay-mega", elecStore: "move-elec" };
 function moveFillSame(a, b) {
   try { return JSON.stringify(a == null ? "" : a) === JSON.stringify(b == null ? "" : b); } catch { return a === b; }
@@ -43677,6 +43677,7 @@ function applyMoveFillFields(fields, touch) {
     if (moveFillSame(d[k], next)) { seen[k] = at; return; }
     d[k] = next;
     seen[k] = at;
+    if (k === "leaseStart" && next) d.leaseStartTouched = true;
     if (MOVE_FILL_INPUT[k] && k !== "leaseStart" && k !== "elecStore" && k !== "payCash" && k !== "payMega") text = true;
     else heavy = true;
   });
