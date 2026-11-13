@@ -48,7 +48,7 @@ const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
 const APP_STAMP = "2026-11-11-20-24";
 const APP_EDIT_COUNT = 2266;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
-const FILE_VER = "2013";
+const FILE_VER = "2014";
 window.__mapZoomNative = true;
 const ANN_FOLD_BEFORE = Date.parse("2026-10-15T22:20:00+08:00");
 const BOOK_UP_BLOBS = Object.create(null);
@@ -42474,7 +42474,10 @@ function bindTenant() {
         });
         if (changed) save();
       }
-      if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => { releasePickerForNav(); render(); }, 140);
+      if (el.classList.contains("avatar-open")) {
+        el.classList.add("is-press");
+        setTimeout(() => { releasePickerForNav(); render(); }, 160);
+      } else if (el.closest(".btn-row") || el.classList.contains("room-row")) setTimeout(() => { releasePickerForNav(); render(); }, 140);
       else { releasePickerForNav(); render(); }
     };
   });
@@ -42494,7 +42497,7 @@ function bindTenant() {
       }
     };
   });
-  document.querySelectorAll(".btn-row .ghost, .btn-row .btn-navy").forEach(btn => bindIosPress(btn));
+  document.querySelectorAll(".btn-row .ghost, .btn-row .btn-navy, .avatar-open").forEach(btn => bindIosPress(btn));
   const bindLine = document.getElementById("bind-line");
   if (bindLine) {
     bindLine.onclick = () => {
