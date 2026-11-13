@@ -31691,7 +31691,37 @@ function annIgHeartHtml(a, locked) {
     <div class="ann-ig-rooms" data-ann-rooms="${a.id}">${annHeartRoomsHtml(a)}</div>
     ${heart}
     <button type="button" class="ann-ig-count" data-ann-rooms-toggle="${a.id}" data-ann-count="${a.id}" aria-label="看哪些房號">${n}</button>
+    ${locked ? "" : `<button type="button" class="ann-ig-comment" data-ann-comment="${a.id}" aria-label="留言"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L4 21l1.9-4.7A8.4 8.4 0 0 1 5 12.5 8.5 8.5 0 0 1 9.7 4.9 8.4 8.4 0 0 1 13.5 4a8.5 8.5 0 0 1 7.5 7.5z"/></svg></button>`}
   </div>`;
+}
+function openAnnComment(annId) {
+  if (ui.role !== "tenant" || !ui.tenantId) return;
+  const a = (state.announcements || []).find(x => x && String(x.id) === String(annId));
+  if (!a) return;
+  const tid = String(ui.tenantId);
+  const title = String(a.title || "公告").replace(/\s+/g, " ").trim() || "公告";
+  const prefix = "【公告留言】" + title + "\n";
+  if (!ui.chatDrafts) {
+    try { ui.chatDrafts = JSON.parse(sessionStorage.getItem("tj-chat-drafts") || "{}"); } catch { ui.chatDrafts = {}; }
+  }
+  const cur = String(ui.chatDrafts[tid] || "");
+  if (!cur.trim() || cur.indexOf("【公告留言】") === 0) {
+    const rest = cur.replace(/^【公告留言】[^\n]*\n?/, "");
+    ui.chatDrafts[tid] = prefix + rest;
+    try { sessionStorage.setItem("tj-chat-drafts", JSON.stringify(ui.chatDrafts)); } catch {}
+  }
+  openDevChat(tid);
+  setTimeout(() => {
+    const inp = document.getElementById("chat-input");
+    if (!inp) return;
+    if (!String(inp.value || "").trim() || String(inp.value).indexOf("【公告留言】") === 0) {
+      const rest = String(inp.value || "").replace(/^【公告留言】[^\n]*\n?/, "");
+      inp.value = prefix + rest;
+      try { saveChatDraft(); } catch {}
+    }
+    inp.focus();
+    try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch {}
+  }, 80);
 }
 function paintAnnHeart(a, beat) {
   if (!a) return;
@@ -45837,6 +45867,13 @@ function bindAnnounceReactions() {
       e.stopPropagation();
       const wrap = btn.closest(".ann-ig");
       if (wrap) wrap.classList.toggle("open");
+    };
+  });
+  document.querySelectorAll("[data-ann-comment]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openAnnComment(btn.dataset.annComment);
     };
   });
   document.querySelectorAll("[data-react-who]").forEach(btn => {

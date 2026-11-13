@@ -7881,6 +7881,31 @@ span.ann-ig-heart { pointer-events: none; cursor: default; }
 .ann-ig-heart.on svg { fill: currentColor; stroke: none; }
 .ann-ig-heart svg.is-beat { animation: igHeartBeat .48s cubic-bezier(.2, 1.35, .3, 1); }
 .ann-ig-heart svg.is-off { animation: igHeartOff .28s ease; }
+.ann-ig-comment {
+  width: 36px;
+  height: 40px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ann-ig-comment svg {
+  width: 26px;
+  height: 26px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  transform-origin: center;
+  transition: transform .16s cubic-bezier(.22, 1.2, .36, 1);
+}
+.ann-ig-comment:active svg { transform: scale(.86); }
 @keyframes igHeartBeat {
   0% { transform: scale(1) rotate(0); }
   18% { transform: scale(1.48) rotate(-12deg); }
