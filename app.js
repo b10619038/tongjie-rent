@@ -2382,7 +2382,7 @@ function takeTenantGoQuery() {
   }
   if (!ui.pendingGo) {
     try {
-      if (sessionStorage.getItem("tj-public-go") === "fill") {
+      if (sessionStorage.getItem("tj-public-go") === "fill" && ui.role !== "admin") {
         ui.pendingGo = "fill";
         ui.pendingFillId = sessionStorage.getItem("tj-fill-sid") || "";
       }
@@ -28110,6 +28110,7 @@ function resetMoveInForm() {
   ui.moveFillEpoch = (ui.moveFillEpoch || 0) + 1;
   clearTimeout(ui.moveFillPushT);
   ui.moveFillPushT = 0;
+  ui.moveFillHold = true;
   if (ui.moveFillPoll) { clearTimeout(ui.moveFillPoll); ui.moveFillPoll = 0; }
   const fresh = blankMoveIn();
   if (shareId) fresh.shareId = shareId;
@@ -28125,9 +28126,12 @@ function resetMoveInForm() {
   ui.keepScroll = false;
   render();
   toast("已清空");
-  if (!shareId) return;
+  if (!shareId) { ui.moveFillHold = false; return; }
   const at = ui.moveFillResetAt;
-  writeMoveFillDoc({ id: shareId, by: "agent", at, reset: at, fields: {}, touch: {} }).catch(() => {});
+  writeMoveFillDoc({ id: shareId, by: "agent", at, reset: at, fields: {}, touch: {} }).then(ok => {
+    ui.moveFillHold = false;
+    if (ok === "reset") toast("清空沒送出，請再按一次重置");
+  }).catch(() => { ui.moveFillHold = false; });
 }
 function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
@@ -43824,7 +43828,7 @@ async function putMoveFillNow(by, opt) {
 }
 function scheduleMoveFillPush() {
   const d = ui.moveIn;
-  if (!d || !d.shareId || ui.moveFillLoading) return;
+  if (!d || !d.shareId || ui.moveFillLoading || ui.moveFillHold) return;
   if (ui.moveFillPushT) return;
   ui.moveFillPushT = setTimeout(() => {
     ui.moveFillPushT = 0;
@@ -43937,9 +43941,15 @@ async function openMoveFill(id) {
   ui.moveFillLoading = true;
   ui.moveFillAs = "tenant";
   ui.page = "move-in";
+  const fresh = blankMoveIn();
+  fresh.shareId = key;
+  ui.moveIn = fresh;
+  ui.moveSignStrokes = [];
+  ui.moveSignStrokes2 = [];
+  clearMoveDraft();
   const remote = await readMoveFill(key);
   ui.moveFillLoading = false;
-  if (!remote) { toast("找不到這份入住資料"); return; }
+  if (!remote) { toast("找不到這份入住資料"); render(); return; }
   const d = blankMoveIn();
   Object.assign(d, remote.fields || {});
   d.shareId = key;
@@ -50042,6 +50052,9 @@ window.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     try { restoreUi(); } catch {}
     try { catchTenantGo(location.href); } catch {}
+    if (ui && ui.page === "move-in" && ensureMoveIn().shareId) {
+      try { pullMoveFill(); } catch {}
+    }
   }
 });
 setInterval(() => { try { persistLogin(); } catch {} }, 4000);

@@ -2006,17 +2006,20 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 }
 .move-card-head .label { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); flex: 1 1 auto; }
 .move-head-tools { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.move-title-row { display: flex; align-items: center; gap: 10px; }
-.move-title-row h1 { margin-right: 0; }
+.move-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.move-title-row h1 { margin: 0; flex: 1 1 auto; min-width: 0; }
 .move-reset {
-  height: 28px;
-  padding: 0 12px;
+  height: 32px;
+  padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: #e7f0e4;
-  color: #1d4a34;
-  font-size: 13px;
-  line-height: 28px;
+  background: #1d4a34;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 32px;
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 .move-reset:active { transform: scale(.94); }
 .move-scan {

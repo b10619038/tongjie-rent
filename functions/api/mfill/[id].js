@@ -16,6 +16,14 @@ function slot(id) {
   return "https://tongjie-app.pages.dev/__mfill/" + id;
 }
 
+function newerDoc(a, b) {
+  if (!a || !a.fields) return b && b.fields ? b : null;
+  if (!b || !b.fields) return a;
+  const ar = Number(a.reset) || 0;
+  const br = Number(b.reset) || 0;
+  if (ar !== br) return ar > br ? a : b;
+  return (Number(a.at) || 0) >= (Number(b.at) || 0) ? a : b;
+}
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === "OPTIONS") return json("", 204);
@@ -26,15 +34,22 @@ export async function onRequest(context) {
   const cache = caches.default;
   const keyUrl = slot(id);
   if (request.method === "GET") {
+    let kvDoc = null;
+    let cacheDoc = null;
     if (env && env.DATA) {
       try {
         const raw = await env.DATA.get(kv);
-        if (raw) return json(JSON.parse(raw));
+        if (raw) kvDoc = JSON.parse(raw);
       } catch {}
     }
     const hit = await cache.match(keyUrl);
-    if (!hit) return json({ error: "missing" }, 404);
-    try { return json(await hit.json()); } catch { return json({ error: "bad" }, 500); }
+    if (hit) { try { cacheDoc = await hit.json(); } catch {} }
+    const doc = newerDoc(kvDoc, cacheDoc);
+    if (!doc) return json({ error: "missing" }, 404);
+    if (doc !== kvDoc && env && env.DATA) {
+      try { await env.DATA.put(kv, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 21 }); } catch {}
+    }
+    return json(doc);
   }
   if (request.method === "PUT") {
     const text = await request.text();
