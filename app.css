@@ -8891,6 +8891,62 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   from { transform: translateX(72px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+.move-fill-done-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 48px;
+}
+#move-fill-done.move-fill-done {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  transition: width .48s cubic-bezier(.4, 0, .15, 1);
+}
+#move-fill-done .move-fill-label {
+  white-space: nowrap;
+  transition: opacity .26s ease, transform .26s ease;
+}
+#move-fill-done .move-fill-check {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  opacity: 0;
+}
+#move-fill-done .move-fill-check path {
+  stroke-dasharray: 28;
+  stroke-dashoffset: 28;
+}
+#move-fill-done.is-fold {
+  width: 48px;
+  padding: 0;
+  border-radius: 50%;
+}
+#move-fill-done.is-fold .move-fill-label {
+  opacity: 0;
+  transform: scale(.82);
+}
+#move-fill-done.is-fold .move-fill-check {
+  opacity: 1;
+  transition: opacity .12s ease .34s;
+}
+#move-fill-done.is-fold .move-fill-check path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset .34s ease .36s;
+}
+#move-fill-done.is-fold.is-set,
+#move-fill-done.is-fold.is-set .move-fill-label,
+#move-fill-done.is-fold.is-set .move-fill-check,
+#move-fill-done.is-fold.is-set .move-fill-check path {
+  transition: none;
+}
+#move-fill-done.is-fold.is-set .move-fill-check path { stroke-dashoffset: 0; }
 .move-room-btn {
   width: 100%;
   min-height: 52px;

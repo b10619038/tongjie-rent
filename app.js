@@ -31339,7 +31339,7 @@ function moveInView() {
       </div>
     </div>`}
     ${ui.moveFillAs === "tenant"
-      ? `<button class="btn-navy move-card c5" id="move-fill-done" type="button" style="margin-top:12px;margin-bottom:48px">填好了，同步給帶看</button>`
+      ? `<div class="move-fill-done-wrap"><button class="btn-navy move-card c5 move-fill-done${ui.moveFillSent ? " is-fold is-set" : ""}" id="move-fill-done" type="button"${ui.moveFillSent ? " disabled" : ""}><span class="move-fill-label">已填好同步給仲介</span><svg class="move-fill-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px${d.hasAgent ? ";display:none" : ""}">送出並進入預覽</button>`}
     ${pickSheet}
   </div>`;
@@ -45027,18 +45027,38 @@ function bindMoveInForm() {
     shareMoveFillLink();
   };
   const doneBtn = document.getElementById("move-fill-done");
-  if (doneBtn) doneBtn.onclick = async e => {
-    e.preventDefault();
-    captureMoveInDraft();
-    const d = ensureMoveIn();
-    if (Array.isArray(ui.moveSignStrokes)) d.signStrokes = ui.moveSignStrokes;
-    if (Array.isArray(ui.moveSignStrokes2)) d.signStrokes2 = ui.moveSignStrokes2;
-    if ((d.signStrokes || []).length) d.signImg = strokesToPng(d.signStrokes);
-    if ((d.signStrokes2 || []).length) d.signImg2 = strokesToPng(d.signStrokes2);
-    saveMoveDraft();
-    const ok = await putMoveFill("tenant", { full: true });
-    toast(ok ? "已同步給帶看" : "同步失敗，請再按一次");
-  };
+  if (doneBtn && !doneBtn.dataset.bound) {
+    doneBtn.dataset.bound = "1";
+    doneBtn.onclick = async e => {
+      e.preventDefault();
+      if (doneBtn.classList.contains("is-fold") || doneBtn.disabled) return;
+      const w = doneBtn.offsetWidth;
+      doneBtn.style.width = w + "px";
+      doneBtn.disabled = true;
+      requestAnimationFrame(() => {
+        doneBtn.classList.add("is-fold");
+        doneBtn.style.width = "48px";
+      });
+      captureMoveInDraft();
+      const d = ensureMoveIn();
+      if (Array.isArray(ui.moveSignStrokes)) d.signStrokes = ui.moveSignStrokes;
+      if (Array.isArray(ui.moveSignStrokes2)) d.signStrokes2 = ui.moveSignStrokes2;
+      if ((d.signStrokes || []).length) d.signImg = strokesToPng(d.signStrokes);
+      if ((d.signStrokes2 || []).length) d.signImg2 = strokesToPng(d.signStrokes2);
+      saveMoveDraft();
+      const ok = await putMoveFill("tenant", { full: true });
+      if (ok) {
+        ui.moveFillSent = true;
+        toast("已同步給仲介");
+        return;
+      }
+      ui.moveFillSent = false;
+      doneBtn.classList.remove("is-fold");
+      doneBtn.style.width = "";
+      doneBtn.disabled = false;
+      toast("同步失敗，請再按一次");
+    };
+  }
   if (ensureMoveIn().shareId) startMoveFillPoll();
   const tenantBtn = document.getElementById("move-share-tenant");
   if (tenantBtn) tenantBtn.onclick = e => {
