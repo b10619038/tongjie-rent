@@ -43536,7 +43536,6 @@ function moveSharePayLines(d) {
   if (way === "xfer") {
     const b = companyBankByKey("兆豐", "統潔") || {};
     return [
-      "付款方式：",
       "轉帳付款：",
       "銀行代碼：" + (b.code || "017"),
       "銀行帳戶：" + (b.account || "04009039686")
@@ -43544,12 +43543,11 @@ function moveSharePayLines(d) {
   }
   if (way === "split") {
     return [
-      "付款方式：",
       "自訂付款：",
       "現金：" + money(d && d.payCash || 0) + " 轉帳" + money(d && d.payMega || 0)
     ];
   }
-  return ["付款方式：", "現金付款："];
+  return ["現金付款："];
 }
 function moveTenantShareText(tid) {
   const pack = moveSharePack();
