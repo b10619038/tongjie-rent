@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-13-33";
-const APP_EDIT_COUNT = 2447;
+const APP_STAMP = "2026-11-14-13-56";
+const APP_EDIT_COUNT = 2448;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -28070,6 +28070,14 @@ function moveInRooms() {
   return (state.rooms || []).filter(r => r && isStudioLeaseRoom(r) && !isDemoRoom(r) && r.status !== "office" && !isStoreNo(r.no) && !studioMirrorHostNo(r.no) && !isPracticeStudioNo(r.no))
     .sort((a, b) => String(a.no || "").localeCompare(String(b.no || ""), "zh-Hant", { numeric: true }));
 }
+function moveInSelectedRoom(d) {
+  if (!d) return null;
+  ensureStudioRoomsPresent();
+  const rooms = state.rooms || [];
+  const id = d.roomId || "";
+  const no = d.roomNo || "";
+  return rooms.find(x => x && id && x.id === id) || rooms.find(x => x && no && String(x.no) === String(no)) || null;
+}
 function blankMoveIn() {
   return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
 }
@@ -28083,7 +28091,7 @@ function loadMoveDraft() {
     const raw = JSON.parse(localStorage.getItem("tj-move-in-draft") || "null");
     if (!raw || typeof raw !== "object") return null;
     const d = blankMoveIn();
-    ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "emergencyName2", "emergencyPhone2", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd", "shareId"].forEach(k => {
+    ["roomId", "roomNo", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "emergencyName2", "emergencyPhone2", "name2", "phone2", "idNo2", "birthday2", "address2", "payWay", "signAppointAt", "leaseStart", "leaseEnd", "shareId"].forEach(k => {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
@@ -31136,8 +31144,10 @@ function applyMoveRoom(id) {
   captureMoveInDraft();
   const d = ensureMoveIn();
   d.roomId = id || "";
+  ui.moveRoomPickedAt = d.roomId ? Date.now() : 0;
   d.signAppointAt = "";
   const r = (state.rooms || []).find(x => x.id === d.roomId);
+  d.roomNo = r ? (r.no || "") : "";
   if (r) {
     const range = continueLeaseRange(r, { incoming: true });
     d.leaseStart = range.start;
@@ -31185,7 +31195,7 @@ function moveInView() {
   const sharePop = !!(d.shareReady && ui.moveSharePop);
   if (sharePop) ui.moveSharePop = false;
   const rooms = moveInRooms();
-  const r = rooms.find(x => x.id === d.roomId) || null;
+  const r = moveInSelectedRoom(d);
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
   const payBits = r ? firstStudioPayBits({ name: d.name || "新客", leaseStart: d.leaseStart || "", rent: studioContractRent(null, r), deposit: studioDepositOf(studioContractRent(null, r)), hasAgent: !!d.hasAgent, people: Number(d.people) === 2 ? 2 : 1, payWay: d.payWay, payCash: d.payCash, payMega: d.payMega }, r) : null;
   if (!d.payWay) d.payWay = "cash";
@@ -31218,7 +31228,7 @@ function moveInView() {
   const pickRows = rooms.map(x => {
     preloadPlanView();
     const m = moveRoomMeta(x, dummy);
-    const on = d.roomId === x.id ? " on" : "";
+    const on = r && r.id === x.id ? " on" : "";
     const plan = floorPlanOf(m.no);
     const planBtn = plan
       ? `<button type="button" class="move-pick-plan" data-move-plan="1" data-zoom-photo="${(plan.view || plan.hd || "images/plan-6821-view.webp")}?v=${FILE_VER}" data-zoom-above="${escapeHtml(plan.above || ("2F " + m.no))}" data-zoom-focus="${plan.focus}" data-zoom-pad="${plan.pad || plan.focus}" aria-label="看平面圖"><img src="images/plan-mark.png?v=${FILE_VER}" alt="" /></button>`
@@ -43674,7 +43684,7 @@ async function shareMoveLeasePdf() {
     if (btn) btn.disabled = false;
   }
 }
-const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2", "shareReady"];
+const MOVE_FILL_KEYS = ["roomId", "roomNo", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2", "shareReady"];
 const MOVE_FILL_INPUT = { name: "move-name", phone: "move-phone", idNo: "move-idno", birthday: "move-bday", address: "move-addr", emergencyName: "move-emname", emergencyPhone: "move-emphone", name2: "move-name2", phone2: "move-phone2", idNo2: "move-idno2", birthday2: "move-bday2", address2: "move-addr2", emergencyName2: "move-emname2", emergencyPhone2: "move-emphone2", leaseStart: "move-start", payCash: "move-pay-cash", payMega: "move-pay-mega", elecStore: "move-elec" };
 function moveFillSame(a, b) {
   try { return JSON.stringify(a == null ? "" : a) === JSON.stringify(b == null ? "" : b); } catch { return a === b; }
@@ -43683,8 +43693,9 @@ function moveFillSnapshot() {
   const d = ensureMoveIn();
   const fields = {};
   MOVE_FILL_KEYS.forEach(k => { if (d[k] != null && d[k] !== "") fields[k] = d[k]; });
-  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const room = (state.rooms || []).find(x => x && x.id === d.roomId) || (d.roomNo && (state.rooms || []).find(x => x && String(x.no) === String(d.roomNo))) || null;
   if (room) fields.roomNo = room.no || "";
+  else if (d.roomNo) fields.roomNo = d.roomNo;
   return fields;
 }
 function moveShareToken() {
@@ -43770,6 +43781,7 @@ async function putMoveFill(by, opt) {
 }
 async function putMoveFillNow(by, opt) {
   const full = !!(opt && opt.full);
+  const keep = !!(opt && opt.keep);
   const epoch = ui.moveFillEpoch || 0;
   const d = ensureMoveIn();
   const id = String(d.shareId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
@@ -43777,10 +43789,22 @@ async function putMoveFillNow(by, opt) {
   ui.moveFillSaving = true;
   try {
     captureMoveInDraft();
+    const pickedAt = Number(ui.moveRoomPickedAt) || 0;
+    const localBefore = moveFillSnapshot();
     const remote = await readMoveFill(id);
     if (epoch !== (ui.moveFillEpoch || 0)) return false;
-    if (remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
+    const remoteReset = Number(remote && remote.reset) || 0;
+    const localReset = Number(ui.moveFillResetAt) || 0;
+    if (!keep && remote && remoteReset > localReset) {
+      const keepRoom = !!(localBefore.roomId && pickedAt && pickedAt >= remoteReset);
+      if (keepRoom) {
+        remote.fields = Object.assign({}, remote.fields || {}, { roomId: localBefore.roomId, roomNo: localBefore.roomNo || (remote.fields && remote.fields.roomNo) || "" });
+      }
       applyMoveFillReset(remote);
+      if (keepRoom) {
+        ui.moveRoomPickedAt = pickedAt;
+        try { scheduleMoveFillPush(); } catch {}
+      }
       return true;
     }
     const replace = full || !!ui.moveFillReplace;
@@ -43790,25 +43814,45 @@ async function putMoveFillNow(by, opt) {
     const base = ui.moveFillBase || {};
     const now = Date.now();
     let changed = replace;
+    const roomKey = k => k === "roomId" || k === "roomNo";
     MOVE_FILL_KEYS.forEach(k => {
       if (!replace && !moveFillSame(local[k], base[k])) {
-        if (local[k] == null || local[k] === "" || (Array.isArray(local[k]) && !local[k].length)) delete fields[k];
-        else fields[k] = local[k];
-        touch[k] = now;
-        changed = true;
+        const empty = local[k] == null || local[k] === "" || (Array.isArray(local[k]) && !local[k].length);
+        if (empty) {
+          if (!roomKey(k)) delete fields[k];
+        } else fields[k] = local[k];
+        if (!(empty && roomKey(k))) {
+          touch[k] = now;
+          changed = true;
+        }
       } else if (replace && local[k] != null && local[k] !== "" && !(Array.isArray(local[k]) && !local[k].length)) {
         fields[k] = local[k];
         touch[k] = now;
       }
     });
-    if (local.roomNo) fields.roomNo = local.roomNo;
+    if (local.roomId && fields.roomId !== local.roomId) {
+      fields.roomId = local.roomId;
+      touch.roomId = now;
+      changed = true;
+    }
+    if (local.roomNo && fields.roomNo !== local.roomNo) {
+      fields.roomNo = local.roomNo;
+      touch.roomNo = now;
+      changed = true;
+    }
     if (!changed && remote && !replace) return true;
-    const reset = full ? now : (replace ? (ui.moveFillResetAt || now) : (remote && remote.reset) || 0);
+    let reset = full ? now : (replace ? (ui.moveFillResetAt || now) : remoteReset);
+    if (keep) reset = Math.max(Number(reset) || 0, remoteReset, localReset);
     const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, reset, fields, touch };
     const ok = await writeMoveFillDoc(body);
     if (ok === "reset") {
       const again = await readMoveFill(id);
-      if (again && Number(again.reset) > Number(ui.moveFillResetAt || 0)) applyMoveFillReset(again);
+      if (again && Number(again.reset) > Number(ui.moveFillResetAt || 0)) {
+        if (local.roomId && (keep || (pickedAt && pickedAt >= Number(again.reset)))) {
+          again.fields = Object.assign({}, again.fields || {}, { roomId: local.roomId, roomNo: local.roomNo || (again.fields && again.fields.roomNo) || "" });
+        }
+        applyMoveFillReset(again);
+      }
       return false;
     }
     if (!ok) return false;
@@ -43847,6 +43891,7 @@ function applyMoveFillFields(fields, touch) {
     if (MOVE_FILL_INPUT[k] && active === MOVE_FILL_INPUT[k]) return;
     if (ui.signing && (k === "signStrokes" || k === "signStrokes2" || k === "signImg" || k === "signImg2")) return;
     const next = fields[k];
+    if ((k === "roomId" || k === "roomNo") && (next == null || next === "")) return;
     if (moveFillSame(d[k], next)) { seen[k] = at; return; }
     if (k === "shareReady" && next && !d.shareReady) ui.moveSharePop = true;
     d[k] = next;
@@ -43920,7 +43965,19 @@ async function pullMoveFill() {
   const localReset = Number(ui.moveFillResetAt) || 0;
   if (!resetAt && localReset && Number(remote.at || 0) < localReset) return;
   if (resetAt && resetAt > localReset) {
+    const pickedAt = Number(ui.moveRoomPickedAt) || 0;
+    const dNow = ensureMoveIn();
+    const localRoom = dNow.roomId || "";
+    const localNo = dNow.roomNo || "";
+    const keepRoom = !!(localRoom && pickedAt && pickedAt >= resetAt);
+    if (keepRoom) {
+      remote.fields = Object.assign({}, remote.fields || {}, { roomId: localRoom, roomNo: localNo || (remote.fields && remote.fields.roomNo) || "" });
+    }
     applyMoveFillReset(remote);
+    if (keepRoom) {
+      ui.moveRoomPickedAt = pickedAt;
+      try { scheduleMoveFillPush(); } catch {}
+    }
     return;
   }
   const changed = applyMoveFillFields(remote.fields || {}, remote.touch || {});
@@ -43948,8 +44005,7 @@ async function openMoveFill(id) {
   ui.moveSignStrokes2 = [];
   clearMoveDraft();
   const remote = await readMoveFill(key);
-  ui.moveFillLoading = false;
-  if (!remote) { toast("找不到這份入住資料"); render(); return; }
+  if (!remote) { ui.moveFillLoading = false; toast("找不到這份入住資料"); render(); return; }
   const d = blankMoveIn();
   Object.assign(d, remote.fields || {});
   d.shareId = key;
@@ -43961,6 +44017,7 @@ async function openMoveFill(id) {
   ui.moveFillSeen = Object.assign({}, remote.touch || {});
   ui.moveFillResetAt = Number(remote.reset) || 0;
   ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
+  ui.moveFillLoading = false;
   saveMoveDraft();
   ui.keepScroll = false;
   render();
@@ -43969,17 +44026,22 @@ async function openMoveFill(id) {
 async function shareMoveFillLink() {
   captureMoveInDraft();
   const d = ensureMoveIn();
-  if (!d.roomId) { toast("請先選房號"); return; }
+  const picked = moveInSelectedRoom(d);
+  if (picked) {
+    d.roomId = picked.id;
+    d.roomNo = picked.no || d.roomNo || "";
+  }
+  if (!d.roomId && !d.roomNo) { toast("請先選房號"); return; }
   const id = moveShareToken();
   ui.moveFillAs = "agent";
   ui.moveFillBase = {};
-  const ok = await putMoveFill("agent");
+  const ok = await putMoveFill("agent", { keep: true });
   saveMoveDraft();
   if (!ok) { toast("分享失敗，請再試一次"); return; }
   startMoveFillPoll();
-  const room = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const room = moveInSelectedRoom(d);
   const text = [
-    "邀請您填寫：" + ((room && room.no) ? room.no + " " : "") + "入住資料",
+    "邀請您填寫：" + ((room && room.no) || d.roomNo ? ((room && room.no) || d.roomNo) + " " : "") + "入住資料",
     "",
     "請將還沒填的部分補上，並簽名。",
     "已填的內容可以更改，填寫完成請通知仲介。",
