@@ -3738,16 +3738,16 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   transform-origin: center center;
 }
 #move-share-fill {
-  background: #3f6b58;
-  color: #fff;
-  border-color: #3f6b58;
+  background: var(--teal);
+  color: var(--on-teal, #fff);
+  border-color: var(--teal);
 }
 #move-share-fill:hover,
 #move-share-fill:active,
 #move-share-fill.is-press {
-  background: #345c4b;
-  color: #fff;
-  border-color: #345c4b;
+  background: var(--teal-mid);
+  color: var(--on-teal, #fff);
+  border-color: var(--teal-mid);
 }
 .move-export-row .share-ico {
   width: 16px;
