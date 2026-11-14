@@ -43561,7 +43561,7 @@ function moveTenantShareText(tid) {
     "押金 " + money(bits.deposit),
     ...rents,
     "年水費 " + money(bits.water),
-    "電費 " + money(bits.elec),
+    "儲值電費 " + money(bits.elec),
     "",
     "合計 " + money(bits.total),
     "",
