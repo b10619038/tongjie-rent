@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-32";
-const APP_EDIT_COUNT = 2452;
+const APP_STAMP = "2026-11-14-15-35";
+const APP_EDIT_COUNT = 2453;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -24594,7 +24594,6 @@ function signCalHtml(minYmd, selectedYmd, keepAt, maxFastYmd) {
         const fast = ymd === fastDay;
         return `<button type="button" class="cal-cell${on ? " on" : ""}${off ? " off" : ""}${fast ? " fast" : ""}" data-sign-cal-day="${ymd}" ${off ? "disabled" : ""}>
           <em>${d}</em>
-          ${fast && !off ? `<span class="mark">最快</span>` : ""}
         </button>`;
       }).join("")}
     </div>`;
