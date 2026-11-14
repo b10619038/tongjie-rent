@@ -40,7 +40,22 @@ export async function onRequest(context) {
     const text = await request.text();
     if (!text) return json({ error: "empty" }, 400);
     if (text.length > 1500000) return json({ error: "too-big" }, 413);
-    try { JSON.parse(text); } catch { return json({ error: "json" }, 400); }
+    let incoming = null;
+    try { incoming = JSON.parse(text); } catch { return json({ error: "json" }, 400); }
+    let prev = null;
+    if (env && env.DATA) {
+      try {
+        const raw = await env.DATA.get(kv);
+        if (raw) prev = JSON.parse(raw);
+      } catch {}
+    }
+    if (!prev) {
+      const hit = await cache.match(keyUrl);
+      if (hit) { try { prev = await hit.json(); } catch {} }
+    }
+    const prevReset = Number(prev && prev.reset) || 0;
+    const nextReset = Number(incoming && incoming.reset) || 0;
+    if (prevReset && nextReset < prevReset) return json({ error: "reset", reset: prevReset }, 409);
     if (env && env.DATA) {
       try { await env.DATA.put(kv, text, { expirationTtl: 60 * 60 * 24 * 21 }); } catch {}
     }

@@ -43674,6 +43674,7 @@ async function writeMoveFillDoc(doc) {
     headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
     body: JSON.stringify(copy)
   });
+  if (res.status === 409) return "reset";
   if (!res.ok) return false;
   let data = {};
   try { data = await res.json(); } catch { return false; }
@@ -43711,7 +43712,7 @@ async function putMoveFillNow(by, opt) {
     captureMoveInDraft();
     const remote = await readMoveFill(id);
     if (epoch !== (ui.moveFillEpoch || 0)) return false;
-    if (!full && remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
+    if (remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
       applyMoveFillReset(remote);
       return true;
     }
@@ -43738,6 +43739,11 @@ async function putMoveFillNow(by, opt) {
     const reset = full ? now : (replace ? (ui.moveFillResetAt || now) : (remote && remote.reset) || 0);
     const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, reset, fields, touch };
     const ok = await writeMoveFillDoc(body);
+    if (ok === "reset") {
+      const again = await readMoveFill(id);
+      if (again && Number(again.reset) > Number(ui.moveFillResetAt || 0)) applyMoveFillReset(again);
+      return false;
+    }
     if (!ok) return false;
     ui.moveFillReplace = false;
     ui.moveFillBase = JSON.parse(JSON.stringify(local));
@@ -43812,11 +43818,14 @@ function applyMoveFillReset(remote) {
   ui.moveFillSeen = Object.assign({}, remote.touch || {});
   ui.moveFillBase = JSON.parse(JSON.stringify(moveFillSnapshot()));
   ui.moveFillReplace = false;
+  ui.moveFillEpoch = (ui.moveFillEpoch || 0) + 1;
   clearTimeout(ui.moveFillPushT);
+  ui.moveFillSent = false;
   saveMoveDraft();
   if (ui.page === "move-in" && !ui.signing) {
     ui.keepScroll = true;
     render();
+    if (ui.moveFillAs === "tenant") toast("仲介已重置，請重新填寫");
   }
 }
 async function pullMoveFill() {
@@ -43847,7 +43856,7 @@ async function pullMoveFill() {
 function startMoveFillPoll() {
   if (ui.moveFillPoll) return;
   const tick = async () => {
-    ui.moveFillPoll = setTimeout(tick, 4000);
+    ui.moveFillPoll = setTimeout(tick, 2000);
     if (ui.page !== "move-in") return;
     try { await pullMoveFill(); } catch {}
   };
