@@ -3552,6 +3552,7 @@ input[type="file"] {
   font-size: 16px;
   font-weight: 700;
   line-height: 1.45;
+  text-align: right;
 }
 html[data-theme="void"] .sign-picked { color: #f4f4f4; }
 .sign-slot {
