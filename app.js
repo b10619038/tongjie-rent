@@ -28107,6 +28107,7 @@ function resetMoveInForm() {
   const shareId = String(prev.shareId || "");
   ui.moveFillEpoch = (ui.moveFillEpoch || 0) + 1;
   clearTimeout(ui.moveFillPushT);
+  ui.moveFillPushT = 0;
   if (ui.moveFillPoll) { clearTimeout(ui.moveFillPoll); ui.moveFillPoll = 0; }
   const fresh = blankMoveIn();
   if (shareId) fresh.shareId = shareId;
@@ -43751,13 +43752,22 @@ async function putMoveFillNow(by, opt) {
     if (reset) ui.moveFillResetAt = Math.max(Number(ui.moveFillResetAt) || 0, Number(reset) || 0);
     return true;
   } catch { return false; }
-  finally { ui.moveFillSaving = false; }
+  finally {
+    ui.moveFillSaving = false;
+    if (ui.moveFillPullQueued) {
+      ui.moveFillPullQueued = false;
+      try { pullMoveFill(); } catch {}
+    }
+  }
 }
 function scheduleMoveFillPush() {
   const d = ui.moveIn;
   if (!d || !d.shareId || ui.moveFillLoading) return;
-  clearTimeout(ui.moveFillPushT);
-  ui.moveFillPushT = setTimeout(() => { try { putMoveFill(ui.moveFillAs === "tenant" ? "tenant" : "agent"); } catch {} }, 700);
+  if (ui.moveFillPushT) return;
+  ui.moveFillPushT = setTimeout(() => {
+    ui.moveFillPushT = 0;
+    try { putMoveFill(ui.moveFillAs === "tenant" ? "tenant" : "agent"); } catch {}
+  }, 60);
 }
 function applyMoveFillFields(fields, touch) {
   const d = ensureMoveIn();
@@ -43820,6 +43830,7 @@ function applyMoveFillReset(remote) {
   ui.moveFillReplace = false;
   ui.moveFillEpoch = (ui.moveFillEpoch || 0) + 1;
   clearTimeout(ui.moveFillPushT);
+  ui.moveFillPushT = 0;
   ui.moveFillSent = false;
   saveMoveDraft();
   if (ui.page === "move-in" && !ui.signing) {
@@ -43831,7 +43842,8 @@ function applyMoveFillReset(remote) {
 async function pullMoveFill() {
   const epoch = ui.moveFillEpoch || 0;
   const id = ensureMoveIn().shareId;
-  if (!id || ui.moveFillLoading || ui.moveFillSaving) return;
+  if (!id || ui.moveFillLoading) return;
+  if (ui.moveFillSaving) { ui.moveFillPullQueued = true; return; }
   const remote = await readMoveFill(id);
   if (epoch !== (ui.moveFillEpoch || 0)) return;
   if (ensureMoveIn().shareId !== id) return;
@@ -43845,22 +43857,16 @@ async function pullMoveFill() {
     return;
   }
   const changed = applyMoveFillFields(remote.fields || {}, remote.touch || {});
-  if (changed) {
-    const now = Date.now();
-    if (!ui.moveFillToastAt || now - ui.moveFillToastAt > 8000) {
-      ui.moveFillToastAt = now;
-      toast(ui.moveFillAs === "tenant" ? "帶看更新了這張表" : "租客已更新資料");
-    }
-  }
+  if (changed) ui.moveFillToastAt = Date.now();
 }
 function startMoveFillPoll() {
   if (ui.moveFillPoll) return;
   const tick = async () => {
-    ui.moveFillPoll = setTimeout(tick, 2000);
-    if (ui.page !== "move-in") return;
+    ui.moveFillPoll = setTimeout(tick, 280);
+    if (ui.page !== "move-in" || document.hidden) return;
     try { await pullMoveFill(); } catch {}
   };
-  ui.moveFillPoll = setTimeout(tick, 1200);
+  ui.moveFillPoll = setTimeout(tick, 200);
 }
 async function openMoveFill(id) {
   const key = String(id || "").trim();
