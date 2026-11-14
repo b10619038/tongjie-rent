@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-16-04";
-const APP_EDIT_COUNT = 2457;
+const APP_STAMP = "2026-11-14-16-07";
+const APP_EDIT_COUNT = 2458;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -24592,7 +24592,7 @@ function signCalHtml(minYmd, selectedYmd, keepAt, maxFastYmd) {
         const off = ymd < min || wd === 0 || !slots.length;
         const on = ymd === sel;
         const fast = ymd === fastDay;
-        return `<div role="button" class="cal-cell${on ? " on" : ""}${off ? " off" : ""}${fast ? " fast" : ""}" data-sign-cal-day="${ymd}" ${off ? "aria-disabled=\"true\"" : ""}>
+        return `<div class="cal-cell${on ? " on" : ""}${off ? " off" : ""}${fast ? " fast" : ""}" data-sign-cal-day="${ymd}" ${off ? "aria-disabled=\"true\"" : ""}>
           <em>${d}</em>
         </div>`;
       }).join("")}
@@ -45100,35 +45100,24 @@ function bindMoveInForm() {
   document.querySelectorAll("[data-sign-cal-day]").forEach(btn => {
     btn.onpointerdown = e => {
       if (e.button != null && e.button !== 0) return;
-      if (btn.classList.contains("off") || btn.disabled || btn.dataset.popping === "1") return;
+      if (btn.classList.contains("off") || btn.disabled) return;
       e.preventDefault();
-      const cal = btn.closest(".sign-cal");
-      const dropRing = el => {
-        if (!el) return;
-        el.style.setProperty("outline", "none", "important");
-        el.style.setProperty("box-shadow", "none", "important");
-        try { el.blur(); } catch {}
-      };
-      if (cal) cal.querySelectorAll(".cal-cell").forEach(dropRing);
-      try { if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } catch {}
       captureMoveInDraft();
       const d = ensureMoveIn();
       const r = (state.rooms || []).find(x => x.id === d.roomId);
       const min = signWindow(r, { incoming: true }).min;
       const hit = nextSignSlots(1, d.signAppointAt, min, btn.dataset.signCalDay)[0];
       if (!hit) { toast("這天已滿或尚未開放"); return; }
-      if (cal) cal.querySelectorAll(".cal-cell.on").forEach(el => el.classList.remove("on"));
-      btn.classList.add("on");
-      btn.dataset.popping = "1";
       const prevAt = d.signAppointAt;
-      popSignDay(btn, () => {
-        queueSignAnim(prevAt, hit, false);
-        d.signAppointAt = hit;
-        rememberSignSlotScroll();
-        ui.signSlotCenter = true;
-        ui.keepScroll = true;
-        render();
-      });
+      queueSignAnim(prevAt, hit, false);
+      d.signAppointAt = hit;
+      rememberSignSlotScroll();
+      ui.signSlotCenter = true;
+      ui.keepScroll = true;
+      ui.signDayPop = btn.dataset.signCalDay || "";
+      const ae = document.activeElement;
+      if (ae && ae.closest && ae.closest(".sign-cal")) { try { ae.blur(); } catch {} }
+      render();
     };
   });
   document.querySelectorAll("[data-sign-slot]").forEach(btn => {
@@ -45242,6 +45231,16 @@ function bindMoveInForm() {
     e.preventDefault();
     shareMoveText(moveOwnerShareText());
   };
+  if (ui.signDayPop) {
+    const ymd = ui.signDayPop;
+    ui.signDayPop = "";
+    const pop = document.querySelector('.move-in-page [data-sign-cal-day="' + ymd + '"]');
+    if (pop) {
+      pop.classList.remove("is-pop");
+      void pop.offsetWidth;
+      pop.classList.add("is-pop");
+    }
+  }
 }
 function popSignDay(btn, done) {
   if (!btn) { done(); return; }
