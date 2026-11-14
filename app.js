@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-13-56";
-const APP_EDIT_COUNT = 2448;
+const APP_STAMP = "2026-11-14-15-11";
+const APP_EDIT_COUNT = 2449;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31257,16 +31257,6 @@ function moveInView() {
       </div>
       <p class="lead">${ui.moveFillAs === "tenant" ? "帶看先填了會填的部分。請補上你的資料並簽名，填完會同步回去。" : "選房號、填姓名電話，系統會帶最快簽約時間與合約期間。送出後進入看房預覽。租客一樣要登入 App。"}</p>
       ${ui.moveFillAs === "tenant" ? "" : (d.shareId ? `<p class="small" style="margin:8px 0 0">已分享給租客。租客補上的資料和簽名會出現在這張表。</p>` : "")}
-    </div>
-    <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
-      <div class="move-line" style="margin-top:0">
-        <span class="move-line-k">仲介帶看</span>
-        <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
-          <i class="seg-bg"></i>
-          <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
-          <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
-        </div>
-      </div>
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
