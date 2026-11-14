@@ -3732,6 +3732,10 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   align-items: center;
   justify-content: center;
   gap: 6px;
+  margin: 0;
+  padding: 12px 8px;
+  min-height: 48px;
+  transform-origin: center center;
 }
 .move-export-row .share-ico {
   width: 16px;

@@ -31334,8 +31334,10 @@ function moveInView() {
     ${ui.moveFillAs === "tenant" ? "" : `<div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
       <div class="move-agent-actions-clip">
         <div class="move-export-stack">
-          <button type="button" class="ghost" id="move-share-fill">請租客填寫</button>
-          <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
+          <div class="move-export-row">
+            <button type="button" class="ghost" id="move-share-fill">請租客填寫</button>
+            <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
+          </div>
           <div class="move-export-row">
             <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
             <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
@@ -45041,6 +45043,10 @@ function bindMoveInForm() {
     e.preventDefault();
     exportMoveLeasePdf();
   };
+  ["move-share-fill", "move-lease-pdf", "move-share-tenant", "move-share-owner"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) bindIosPress(el);
+  });
   const fillBtn = document.getElementById("move-share-fill");
   if (fillBtn) fillBtn.onclick = e => {
     e.preventDefault();
