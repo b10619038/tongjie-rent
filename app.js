@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-21";
-const APP_EDIT_COUNT = 2451;
+const APP_STAMP = "2026-11-14-15-32";
+const APP_EDIT_COUNT = 2452;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -23487,7 +23487,7 @@ function firstPayHintHtml(bits) {
     lines.push((bits.stubStart ? rocSlash(bits.stubStart) + " ➜ " + rocSlash(bits.stubEnd) + " " : "") + "不足月 " + money(bits.stubRent));
   }
   lines.push((bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth));
-  if (bits.water) lines.push("年水費 " + money(bits.water));
+  if (bits.water) lines.push("一年水費 " + money(bits.water));
   if (bits.elec) lines.push("電費儲值 " + money(bits.elec));
   return lines.join(" ＋ ") + "。合計 " + money(bits.total) + "。";
 }
@@ -23515,7 +23515,7 @@ function moveSettleLinesHtml(bits) {
   const two = Number(bits.people) === 2;
   const monthNote = two ? "每個月租金，平均1人 " + money(Math.round((Number(bits.firstMonth) || 0) / 2)) : "每個月的租金";
   rows.push(moveSettleItem("month", (bits.yearStart ? String(bits.yearStart).slice(5, 7).replace(/^0/, "") + "月租金 " : "首月租金 ") + money(bits.firstMonth), monthNote));
-  if (bits.water) rows.push(moveSettleItem("water", "年水費 " + money(bits.water), (Number(bits.people) === 2 ? "2人3600元" : "1人1800元") + " 使用無上限"));
+  if (bits.water) rows.push(moveSettleItem("water", "一年水費 " + money(bits.water), (Number(bits.people) === 2 ? "2人3600元" : "1人1800元") + " 使用無上限"));
   if (bits.elec) rows.push(moveSettleItem("elec", "電費儲值 " + money(bits.elec), "電費可於5F自行於儲值機現金儲值 金額無上限"));
   return `<div class="move-settle-bits move-settle-lines">${rows.join("")}</div>`;
 }
@@ -43565,7 +43565,7 @@ function moveTenantShareText(tid) {
     "",
     "押金 " + money(bits.deposit),
     ...rents,
-    "年水費 " + money(bits.water),
+    "一年水費 " + money(bits.water),
     "儲值電費 " + money(bits.elec),
     "",
     ...moveSharePayLines(d),
@@ -43607,7 +43607,7 @@ function moveOwnerShareText() {
     "",
     "押金 " + money(bits.deposit),
     ...rents,
-    "年水費 " + money(bits.water),
+    "一年水費 " + money(bits.water),
     "電費 " + money(bits.elec),
     "",
     "合計 " + money(bits.total),
