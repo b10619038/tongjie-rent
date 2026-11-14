@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-51";
-const APP_EDIT_COUNT = 2456;
+const APP_STAMP = "2026-11-14-16-04";
+const APP_EDIT_COUNT = 2457;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -29572,10 +29572,11 @@ function studioLeasePapersHtml(t, r, preview, which) {
   });
   return out.join("");
 }
-function studioLeasePreviewHtml(t, r, which) {
+function studioLeasePreviewHtml(t, r, which, opts) {
   const html = studioLeasePapersHtml(t, r, true, which || "");
   if (!html) return "";
-  return `<div class="lease-flip" data-lease-flip="1">${html.replace('class="lease-pg', 'class="lease-pg on')}</div>`;
+  const ref = opts && opts.refChops ? " tenant-ref-chops" : "";
+  return `<div class="lease-flip${ref}" data-lease-flip="1">${html.replace('class="lease-pg', 'class="lease-pg on')}</div>`;
 }
 function leasePageNo(n) {
   const d = "零一二三四五六七八九";
@@ -33333,14 +33334,14 @@ function leaseView() {
       ${pending ? `<div class="section-title" id="renew-current-paper"><h2 class="slide-right">原合約</h2></div>
       <div class="card card-body slide-left">
         <p class="small" style="margin:0 0 8px">目前這份仍有效至 ${escapeHtml(rocSlash(oldEnd) || "")}。</p>
-        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old") : eContractDocHtml(t, r)}
+        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old", { refChops: true }) : eContractDocHtml(t, r)}
       </div>
       <div class="section-title" id="renew-new-paper"><h2 class="slide-right">新合約</h2></div>
       <div class="card card-body slide-left">
         <div class="row"><span class="k">新約期間</span><span class="v">${escapeHtml(rocSlash(pending.start) || "")} ➜ ${escapeHtml(rocSlash(pending.end) || "")}</span></div>
         <div class="row"><span class="k">合約狀態</span><span class="pay-pill paid">已簽署　待生效</span></div>
         <p class="small" style="margin-top:8px">這是已簽好的新約內容。等到 ${escapeHtml(rocSlash(pending.start) || "")}，首頁的「續約完成」會自動消失，租約也會改成這份新約。</p>
-        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, "new") : eContractDocHtml(paperT, r)}
+        ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(paperT, r, "new", { refChops: true }) : eContractDocHtml(paperT, r)}
       </div>` : ""}
       ${invoicePickupCardHtml(t, r)}
       <div class="section-title"><h2 class="slide-right">使用規範</h2></div>
@@ -33369,13 +33370,13 @@ function leaseView() {
               : "你已完成藍字簽名，兩份合約都已套入。管理員列印後只蓋公司章。"}</p>
             ${wait && canPickSignRoom(t) ? `<button type="button" class="btn-navy" data-page="lease-sign" style="margin-top:8px">改選其他房</button>` : ""}
             ${t.signAppointAt ? `<div class="row wrap"><span class="k">簽約日期</span><span class="v">${escapeHtml(formatDateTime12(String(t.signAppointAt).replace("T", " ")))}</span></div><div class="small" style="margin:-4px 0 8px">實體蓋章日期</div>` : ""}
-            ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old") : eContractDocHtml(t, r)}
+            ${isStudioLeaseRoom(r) ? studioLeasePreviewHtml(t, r, "old", { refChops: true }) : eContractDocHtml(t, r)}
           </div>`;
         }
         return (r.contractImages && r.contractImages.length)
           ? `<div class="contract-list">${r.contractImages.map((src, i) => `<img src="${src}" alt="合約書" data-contract="${i}">`).join("")}</div>`
           : (isStudioLeaseRoom(r)
-            ? `<div class="card card-body">${studioLeasePreviewHtml(t, r, "old")}</div>`
+            ? `<div class="card card-body">${studioLeasePreviewHtml(t, r, "old", { refChops: true })}</div>`
             : `<div class="card card-body"><p class="small">管理員尚未上傳此房間的合約書。</p></div>`);
       })()}`}
       ${pending || declinedLeave ? "" : (t.leaseEnd ? renewAskCardHtml(t, r, { full: true }) : "")}

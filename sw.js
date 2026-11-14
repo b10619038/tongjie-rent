@@ -1,6 +1,6 @@
-const CACHE = "tongjie-app-v2325";
+const CACHE = "tongjie-app-v2326";
 const BUILD = "20261003-1398";
-const FILES = ["/", "/index.html", "/app.css", "/app.js", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp"];
+const FILES = ["/", "/index.html", "/app.css", "/app.js", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));

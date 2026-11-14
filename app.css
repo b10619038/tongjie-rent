@@ -6259,6 +6259,16 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
 .chop-lg { width: 25mm; height: 25mm; }
 .chop-sm { width: 15mm; height: 15mm; }
 .chop-ps { width: 10mm; height: 10mm; }
+.tenant-ref-chops .chop-lg,
+.tenant-ref-chops .chop-sm {
+  border: 0;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+.tenant-ref-chops .chop-lg { background-image: url("images/chop-company.png"); }
+.tenant-ref-chops .chop-sm { background-image: url("images/chop-zhao.png"); }
 .duo-sign-line {
   position: relative;
   display: inline-block;
