@@ -22456,7 +22456,7 @@ function bindInvoiceOverviewBtn() {
     };
   }
 }
-async function downloadContractsPdf(images, filename) {
+async function downloadContractsPdf(images, filename, opts) {
   if (!images || !images.length) { toast("尚無合約書圖檔可下載"); return; }
   try {
     const pages = [];
@@ -22500,7 +22500,9 @@ async function downloadContractsPdf(images, filename) {
     emit(xref); emit(`trailer\n<< /Size ${maxObj + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`);
     const buf = new Uint8Array(out.reduce((n, a) => n + a.length, 0));
     let o = 0; out.forEach(a => { buf.set(a, o); o += a.length; });
-    triggerDownload(new Blob([buf], { type: "application/pdf" }), filename || "租屋合約書.pdf");
+    const blob = new Blob([buf], { type: "application/pdf" });
+    if (!(opts && opts.blobOnly)) triggerDownload(blob, filename || "租屋合約書.pdf");
+    return blob;
   } catch { toast("下載失敗，請再試一次"); }
 }
 function openContractViewer(images, index) {
@@ -31176,6 +31178,8 @@ function preloadPlanView() {
 }
 function moveInView() {
   const d = ensureMoveIn();
+  const sharePop = !!(d.shareReady && ui.moveSharePop);
+  if (sharePop) ui.moveSharePop = false;
   const rooms = moveInRooms();
   const r = rooms.find(x => x.id === d.roomId) || null;
   const dummy = { incoming: true, name: d.name, signAppointAt: d.signAppointAt };
@@ -31338,10 +31342,10 @@ function moveInView() {
             <button type="button" class="ghost" id="move-share-fill">請租客填寫</button>
             <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
           </div>
-          <div class="move-export-row">
+          ${d.shareReady ? `<div class="move-export-row move-share-reveal${sharePop ? " is-in" : ""}">
             <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
             <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
-          </div>
+          </div>` : ""}
         </div>
       </div>
     </div>`}
@@ -43605,12 +43609,48 @@ function moveOwnerShareText() {
   ].join("\n");
 }
 function exportMoveLeasePdf() {
+  shareMoveLeasePdf();
+}
+async function shareMoveLeasePdf() {
   const pack = moveDraftTenant();
   if (!pack) { toast("請先選房號"); return; }
   if (!pack.t.name) { toast("請先填姓名"); return; }
-  showLeasePrintPreview(pack.t, pack.room);
+  const html = studioLeasePapersHtml(pack.t, pack.room, true);
+  if (!html) { toast("合約無法產生"); return; }
+  const btn = document.getElementById("move-lease-pdf");
+  if (btn) btn.disabled = true;
+  const hold = document.createElement("div");
+  hold.className = "lease-pdf-hold";
+  hold.innerHTML = html;
+  document.body.appendChild(hold);
+  try {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await Promise.all([...hold.querySelectorAll("img")].map(img => img.complete ? null : new Promise(res => {
+      img.onload = img.onerror = res;
+      setTimeout(res, 700);
+    })));
+    try { fitLeasePages(hold); } catch {}
+    const shots = [...hold.querySelectorAll(".lease-pg")].map(paintDomPage).filter(s => s && s.dataUrl);
+    if (!shots.length) { toast("合約無法產生"); return; }
+    const blob = await downloadContractsPdf(shots.map(s => s.dataUrl), false, { blobOnly: true, pages: shots });
+    if (!blob) { toast("合約無法產生"); return; }
+    const name = (pack.room.no || "合約") + (pack.t.name ? "-" + pack.t.name : "") + "-租賃契約.pdf";
+    const file = new File([blob], name, { type: "application/pdf" });
+    const payload = { files: [file], title: name, text: name };
+    if (navigator.canShare && navigator.canShare(payload)) {
+      try { await navigator.share(payload); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    triggerDownload(blob, name);
+    toast("已下載 PDF，請傳到 LINE");
+  } catch {
+    toast("PDF 沒做成，請再按一次");
+  } finally {
+    if (hold.parentNode) hold.remove();
+    if (btn) btn.disabled = false;
+  }
 }
-const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2"];
+const MOVE_FILL_KEYS = ["roomId", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2", "shareReady"];
 const MOVE_FILL_INPUT = { name: "move-name", phone: "move-phone", idNo: "move-idno", birthday: "move-bday", address: "move-addr", emergencyName: "move-emname", emergencyPhone: "move-emphone", name2: "move-name2", phone2: "move-phone2", idNo2: "move-idno2", birthday2: "move-bday2", address2: "move-addr2", emergencyName2: "move-emname2", emergencyPhone2: "move-emphone2", leaseStart: "move-start", payCash: "move-pay-cash", payMega: "move-pay-mega", elecStore: "move-elec" };
 function moveFillSame(a, b) {
   try { return JSON.stringify(a == null ? "" : a) === JSON.stringify(b == null ? "" : b); } catch { return a === b; }
@@ -43784,6 +43824,7 @@ function applyMoveFillFields(fields, touch) {
     if (ui.signing && (k === "signStrokes" || k === "signStrokes2" || k === "signImg" || k === "signImg2")) return;
     const next = fields[k];
     if (moveFillSame(d[k], next)) { seen[k] = at; return; }
+    if (k === "shareReady" && next && !d.shareReady) ui.moveSharePop = true;
     d[k] = next;
     seen[k] = at;
     if (k === "leaseStart" && next) d.leaseStartTouched = true;
@@ -45082,6 +45123,7 @@ function bindMoveInForm() {
       if (Array.isArray(ui.moveSignStrokes2)) d.signStrokes2 = ui.moveSignStrokes2;
       if ((d.signStrokes || []).length) d.signImg = strokesToPng(d.signStrokes);
       if ((d.signStrokes2 || []).length) d.signImg2 = strokesToPng(d.signStrokes2);
+      d.shareReady = true;
       saveMoveDraft();
       const ok = await putMoveFill("tenant", { full: true });
       if (ok) {

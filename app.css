@@ -3742,6 +3742,34 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   height: 16px;
   flex: 0 0 auto;
 }
+.move-share-reveal.is-in {
+  transform-origin: center center;
+  animation: moveShareIn .46s cubic-bezier(.22, .9, .28, 1);
+}
+@keyframes moveShareIn {
+  from { opacity: 0; transform: scale(.72); }
+  to { opacity: 1; transform: none; }
+}
+.lease-pdf-hold {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 794px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: #fff;
+}
+.lease-pdf-hold .studio-lease-paper,
+.lease-pdf-hold .lease-pg {
+  width: 794px;
+  background: #fff;
+}
+.lease-pdf-hold .lease-pg {
+  min-height: 1123px;
+  box-sizing: border-box;
+  position: relative;
+}
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);
 }
