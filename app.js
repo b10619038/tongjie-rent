@@ -28128,7 +28128,7 @@ function resetMoveInForm() {
   toast("已清空");
   if (!shareId) { ui.moveFillHold = false; return; }
   const at = ui.moveFillResetAt;
-  writeMoveFillDoc({ id: shareId, by: "agent", at, reset: at, fields: {}, touch: {} }).then(ok => {
+  writeMoveFillDoc({ id: shareId, by: ui.moveFillAs === "tenant" ? "tenant" : "agent", at, reset: at, fields: {}, touch: {} }).then(ok => {
     ui.moveFillHold = false;
     if (ok === "reset") toast("清空沒送出，請再按一次重置");
   }).catch(() => { ui.moveFillHold = false; });
@@ -31243,7 +31243,7 @@ function moveInView() {
       <div class="logo">TONG JIE</div>
       <div class="move-title-row">
         <h1>申請入住</h1>
-        ${ui.moveFillAs === "tenant" ? "" : `<button type="button" class="move-reset" id="move-reset">重置</button>`}
+        <button type="button" class="move-reset" id="move-reset">重置</button>
       </div>
       <p class="lead">${ui.moveFillAs === "tenant" ? "帶看先填了會填的部分。請補上你的資料並簽名，填完會同步回去。" : "選房號、填姓名電話，系統會帶最快簽約時間與合約期間。送出後進入看房預覽。租客一樣要登入 App。"}</p>
       ${ui.moveFillAs === "tenant" ? "" : (d.shareId ? `<p class="small" style="margin:8px 0 0">已分享給租客。租客補上的資料和簽名會出現在這張表。</p>` : "")}

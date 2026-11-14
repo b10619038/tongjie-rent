@@ -2009,15 +2009,14 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 .move-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .move-title-row h1 { margin: 0; flex: 1 1 auto; min-width: 0; }
 .move-reset {
-  height: 32px;
-  padding: 0 14px;
+  height: 28px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
-  background: #1d4a34;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 32px;
+  background: #e7f0e4;
+  color: #1d4a34;
+  font-size: 13px;
+  line-height: 28px;
   flex: 0 0 auto;
   margin-left: auto;
 }
