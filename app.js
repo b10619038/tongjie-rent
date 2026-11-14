@@ -45033,12 +45033,19 @@ function bindMoveInForm() {
       e.preventDefault();
       if (doneBtn.classList.contains("is-fold") || doneBtn.disabled) return;
       const w = doneBtn.offsetWidth;
+      const h = doneBtn.offsetHeight || 48;
       doneBtn.style.width = w + "px";
+      doneBtn.style.height = h + "px";
+      doneBtn.style.minHeight = h + "px";
+      doneBtn.style.maxHeight = h + "px";
       doneBtn.disabled = true;
-      requestAnimationFrame(() => {
+      doneBtn.classList.add("is-press");
+      setTimeout(() => {
+        if (!doneBtn.isConnected) return;
+        doneBtn.classList.remove("is-press");
         doneBtn.classList.add("is-fold");
-        doneBtn.style.width = "48px";
-      });
+        doneBtn.style.width = h + "px";
+      }, 130);
       captureMoveInDraft();
       const d = ensureMoveIn();
       if (Array.isArray(ui.moveSignStrokes)) d.signStrokes = ui.moveSignStrokes;
@@ -45053,8 +45060,11 @@ function bindMoveInForm() {
         return;
       }
       ui.moveFillSent = false;
-      doneBtn.classList.remove("is-fold");
+      doneBtn.classList.remove("is-fold", "is-press");
       doneBtn.style.width = "";
+      doneBtn.style.height = "";
+      doneBtn.style.minHeight = "";
+      doneBtn.style.maxHeight = "";
       doneBtn.disabled = false;
       toast("同步失敗，請再按一次");
     };
