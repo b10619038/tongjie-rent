@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-11";
-const APP_EDIT_COUNT = 2449;
+const APP_STAMP = "2026-11-14-15-16";
+const APP_EDIT_COUNT = 2450;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31339,23 +31339,9 @@ function moveInView() {
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
-    ${ui.moveFillAs === "tenant" ? "" : `<div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
-      <div class="move-agent-actions-clip">
-        <div class="move-export-stack">
-          <div class="move-export-row">
-            <button type="button" class="ghost" id="move-share-fill">請租客填寫</button>
-            <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
-          </div>
-          ${d.shareReady ? `<div class="move-export-row move-share-reveal${sharePop ? " is-in" : ""}">
-            <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
-            <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
-          </div>` : ""}
-        </div>
-      </div>
-    </div>`}
     ${ui.moveFillAs === "tenant"
       ? `<div class="move-fill-done-wrap"><button class="btn-navy move-card c5 move-fill-done${ui.moveFillSent ? " is-fold is-set" : ""}" id="move-fill-done" type="button"${ui.moveFillSent ? " disabled" : ""}><span class="move-fill-label">已填好同步給仲介</span><svg class="move-fill-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
-      : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px${d.hasAgent ? ";display:none" : ""}">送出並進入預覽</button>`}
+      : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px">送出並進入預覽</button>`}
     ${pickSheet}
   </div>`;
 }
