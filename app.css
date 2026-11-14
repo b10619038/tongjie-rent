@@ -3737,6 +3737,18 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   min-height: 48px;
   transform-origin: center center;
 }
+#move-share-fill {
+  background: #1a6b38;
+  color: #fff;
+  border-color: #1a6b38;
+}
+#move-share-fill:hover,
+#move-share-fill:active,
+#move-share-fill.is-press {
+  background: #155c30;
+  color: #fff;
+  border-color: #155c30;
+}
 .move-export-row .share-ico {
   width: 16px;
   height: 16px;
