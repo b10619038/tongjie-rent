@@ -43235,6 +43235,8 @@ function captureMoveInDraft() {
   if (document.getElementById("move-bday2")) d.birthday2 = parseOneBirthday(val("move-bday2"));
   if (document.getElementById("move-start") && val("move-start")) d.leaseStart = val("move-start");
   if (document.getElementById("move-end") && val("move-end")) d.leaseEnd = val("move-end");
+  const elecEl = document.getElementById("move-elec");
+  if (elecEl && String(elecEl.value || "").trim() !== "") d.elecStore = Math.max(0, Math.round(Number(elecEl._elecTo != null ? elecEl._elecTo : elecEl.value) || 0));
   const agent = document.getElementById("move-agent");
   if (agent && agent.type === "checkbox") d.hasAgent = !!agent.checked;
   if (document.getElementById("move-pay-cash")) d.payCash = Number(val("move-pay-cash") || 0) || 0;
@@ -43365,9 +43367,66 @@ function moveSignWhenLabel(at) {
   const h12 = h % 12 || 12;
   return roc + " ( " + wk + " ) " + (h < 12 ? "上午" : "下午") + " " + h12 + ":" + m[5];
 }
+function strokesToPng(lines) {
+  if (!Array.isArray(lines) || !lines.length) return "";
+  const w = 640;
+  const h = 280;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (!ctx) return "";
+  let maxX = 0;
+  let maxY = 0;
+  let absolute = false;
+  lines.forEach(line => (line || []).forEach(p => {
+    const x = Number(p && p.x) || 0;
+    const y = Number(p && p.y) || 0;
+    if (x > 1.5 || y > 1.5) absolute = true;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  }));
+  const pad = 18;
+  const fit = absolute ? Math.min((w - pad * 2) / (maxX || 1), (h - pad * 2) / (maxY || 1)) : 0;
+  const ox = absolute ? (w - maxX * fit) / 2 : 0;
+  const oy = absolute ? (h - maxY * fit) / 2 : 0;
+  const mapPt = p => {
+    const x = Number(p && p.x) || 0;
+    const y = Number(p && p.y) || 0;
+    if (absolute) return { x: ox + x * fit, y: oy + y * fit };
+    return { x: x * w, y: y * h };
+  };
+  ctx.lineWidth = 4.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#1a57c5";
+  ctx.fillStyle = "#1a57c5";
+  lines.forEach(line => {
+    if (!line || !line.length) return;
+    const first = mapPt(line[0]);
+    if (line.length < 2) {
+      ctx.beginPath();
+      ctx.arc(first.x, first.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(first.x, first.y);
+    for (let i = 1; i < line.length; i++) {
+      const pt = mapPt(line[i]);
+      ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+  });
+  try { return c.toDataURL("image/png"); } catch { return ""; }
+}
 function moveDraftTenant() {
   captureMoveInDraft();
   const d = ensureMoveIn();
+  if ((!d.signStrokes || !d.signStrokes.length) && ui && Array.isArray(ui.moveSignStrokes) && ui.moveSignStrokes.length) d.signStrokes = ui.moveSignStrokes;
+  if ((!d.signStrokes2 || !d.signStrokes2.length) && ui && Array.isArray(ui.moveSignStrokes2) && ui.moveSignStrokes2.length) d.signStrokes2 = ui.moveSignStrokes2;
+  if (!(d.signImg && String(d.signImg).indexOf("data:") === 0) && (d.signStrokes || []).length) d.signImg = strokesToPng(d.signStrokes);
+  if (!(d.signImg2 && String(d.signImg2).indexOf("data:") === 0) && (d.signStrokes2 || []).length) d.signImg2 = strokesToPng(d.signStrokes2);
   const joined = moveJoinedDraft();
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) return null;
@@ -43631,13 +43690,14 @@ async function readMoveFill(id) {
     return doc;
   } catch { return null; }
 }
-async function putMoveFill(by) {
+async function putMoveFill(by, opt) {
   const d = ensureMoveIn();
   if (!d.shareId || ui.moveFillLoading) return false;
-  ui.moveFillChain = (ui.moveFillChain || Promise.resolve()).catch(() => {}).then(() => putMoveFillNow(by));
+  ui.moveFillChain = (ui.moveFillChain || Promise.resolve()).catch(() => {}).then(() => putMoveFillNow(by, opt));
   return ui.moveFillChain;
 }
-async function putMoveFillNow(by) {
+async function putMoveFillNow(by, opt) {
+  const full = !!(opt && opt.full);
   const epoch = ui.moveFillEpoch || 0;
   const d = ensureMoveIn();
   const id = String(d.shareId || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
@@ -43647,11 +43707,11 @@ async function putMoveFillNow(by) {
     captureMoveInDraft();
     const remote = await readMoveFill(id);
     if (epoch !== (ui.moveFillEpoch || 0)) return false;
-    if (remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
+    if (!full && remote && remote.reset && Number(remote.reset) > Number(ui.moveFillResetAt || 0)) {
       applyMoveFillReset(remote);
       return true;
     }
-    const replace = !!ui.moveFillReplace;
+    const replace = full || !!ui.moveFillReplace;
     const fields = replace ? {} : Object.assign({}, (remote && remote.fields) || {});
     const touch = replace ? {} : Object.assign({}, (remote && remote.touch) || {});
     const local = moveFillSnapshot();
@@ -43671,7 +43731,7 @@ async function putMoveFillNow(by) {
     });
     if (local.roomNo) fields.roomNo = local.roomNo;
     if (!changed && remote && !replace) return true;
-    const reset = replace ? (ui.moveFillResetAt || now) : (remote && remote.reset) || 0;
+    const reset = full ? now : (replace ? (ui.moveFillResetAt || now) : (remote && remote.reset) || 0);
     const body = { id, by: by || (ui.moveFillAs === "tenant" ? "tenant" : "agent"), at: now, reset, fields, touch };
     const ok = await writeMoveFillDoc(body);
     if (!ok) return false;
@@ -43685,7 +43745,7 @@ async function putMoveFillNow(by) {
 }
 function scheduleMoveFillPush() {
   const d = ui.moveIn;
-  if (!d || !d.shareId || ui.moveFillLoading || ui.moveFillSaving) return;
+  if (!d || !d.shareId || ui.moveFillLoading) return;
   clearTimeout(ui.moveFillPushT);
   ui.moveFillPushT = setTimeout(() => { try { putMoveFill(ui.moveFillAs === "tenant" ? "tenant" : "agent"); } catch {} }, 700);
 }
@@ -43947,12 +44007,13 @@ function paintMoveLive(force) {
     d.leaseEnd = studioLeasePack(next, studioContractRent(null, r)).occupancyEnd;
     dirty = true;
   }
-  if (elec && elec.value !== "") {
-    const n = Math.max(0, Math.round(Number(elec.value) || 0));
+  if (elec && elec.value !== "" && (document.activeElement === elec || elec._elecTo != null)) {
+    const n = Math.max(0, Math.round(Number(elec._elecTo != null ? elec._elecTo : elec.value) || 0));
     const cur = d.elecStore == null || d.elecStore === "" ? null : Math.max(0, Math.round(Number(d.elecStore) || 0));
     if (n !== cur) {
       d.elecStore = n;
       dirty = true;
+      try { scheduleMoveFillPush(); } catch {}
     }
   }
   if (!dirty && !force) return;
@@ -44969,7 +45030,13 @@ function bindMoveInForm() {
   if (doneBtn) doneBtn.onclick = async e => {
     e.preventDefault();
     captureMoveInDraft();
-    const ok = await putMoveFill("tenant");
+    const d = ensureMoveIn();
+    if (Array.isArray(ui.moveSignStrokes)) d.signStrokes = ui.moveSignStrokes;
+    if (Array.isArray(ui.moveSignStrokes2)) d.signStrokes2 = ui.moveSignStrokes2;
+    if ((d.signStrokes || []).length) d.signImg = strokesToPng(d.signStrokes);
+    if ((d.signStrokes2 || []).length) d.signImg2 = strokesToPng(d.signStrokes2);
+    saveMoveDraft();
+    const ok = await putMoveFill("tenant", { full: true });
     toast(ok ? "已同步給帶看" : "同步失敗，請再按一次");
   };
   if (ensureMoveIn().shareId) startMoveFillPoll();
