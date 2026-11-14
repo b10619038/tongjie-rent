@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-35";
-const APP_EDIT_COUNT = 2453;
+const APP_STAMP = "2026-11-14-15-38";
+const APP_EDIT_COUNT = 2454;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -45108,7 +45108,11 @@ function bindMoveInForm() {
       const hit = nextSignSlots(1, d.signAppointAt, min, btn.dataset.signCalDay)[0];
       if (!hit) { toast("這天已滿或尚未開放"); return; }
       const cal = btn.closest(".sign-cal");
-      if (cal) cal.querySelectorAll(".cal-cell.on").forEach(el => el.classList.remove("on"));
+      if (cal) cal.querySelectorAll(".cal-cell.on").forEach(el => {
+        el.classList.remove("on");
+        if (el !== btn) { try { el.blur(); } catch {} }
+      });
+      try { btn.blur(); } catch {}
       btn.classList.add("on");
       btn.dataset.popping = "1";
       const prevAt = d.signAppointAt;

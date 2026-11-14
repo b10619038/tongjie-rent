@@ -3791,7 +3791,10 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   transform: scale(.9);
 }
 .sign-cal { margin-top: 8px; }
-.sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; transform-origin: center; }
+.sign-cal .cal-cell { min-height: 44px; align-items: center; text-align: center; transform-origin: center; appearance: none; -webkit-appearance: none; outline: none; -webkit-tap-highlight-color: transparent; }
+.sign-cal .cal-cell:focus,
+.sign-cal .cal-cell:focus-visible,
+.sign-cal .cal-cell:active { outline: none; box-shadow: none; }
 .sign-cal .cal-cell.is-pop {
   position: relative;
   z-index: 2;
