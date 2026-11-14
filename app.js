@@ -43531,6 +43531,26 @@ function movePreviewUrl(tid) {
   if (!id) return "https://tongjie-app.pages.dev/?go=login";
   return "https://tongjie-app.pages.dev/?go=preview&tid=" + encodeURIComponent(id);
 }
+function moveSharePayLines(d) {
+  const way = (d && d.payWay) || "cash";
+  if (way === "xfer") {
+    const b = companyBankByKey("兆豐", "統潔") || {};
+    return [
+      "付款方式：",
+      "轉帳付款：",
+      "銀行代碼：" + (b.code || "017"),
+      "銀行帳戶：" + (b.account || "04009039686")
+    ];
+  }
+  if (way === "split") {
+    return [
+      "付款方式：",
+      "自訂付款：",
+      "現金：" + money(d && d.payCash || 0) + " 轉帳" + money(d && d.payMega || 0)
+    ];
+  }
+  return ["付款方式：", "現金付款："];
+}
 function moveTenantShareText(tid) {
   const pack = moveSharePack();
   if (!pack) return "";
@@ -43562,6 +43582,8 @@ function moveTenantShareText(tid) {
     ...rents,
     "年水費 " + money(bits.water),
     "儲值電費 " + money(bits.elec),
+    "",
+    ...moveSharePayLines(d),
     "",
     "合計 " + money(bits.total),
     "",
