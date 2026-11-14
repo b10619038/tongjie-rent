@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-14-15-16";
-const APP_EDIT_COUNT = 2450;
+const APP_STAMP = "2026-11-14-15-21";
+const APP_EDIT_COUNT = 2451;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -28079,7 +28079,7 @@ function moveInSelectedRoom(d) {
   return rooms.find(x => x && id && x.id === id) || rooms.find(x => x && no && String(x.no) === String(no)) || null;
 }
 function blankMoveIn() {
-  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: false, payWay: "cash" };
 }
 function saveMoveDraft() {
   const d = ui && ui.moveIn;
@@ -28095,7 +28095,7 @@ function loadMoveDraft() {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
-    d.hasAgent = raw.hasAgent !== false;
+    d.hasAgent = false;
     d.payCash = Number(raw.payCash) || 0;
     d.payMega = Number(raw.payMega) || 0;
     if (raw.elecStore != null && raw.elecStore !== "") d.elecStore = Math.max(0, Math.round(Number(raw.elecStore) || 0));
@@ -28143,7 +28143,7 @@ function resetMoveInForm() {
 }
 function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
-  if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
+  ui.moveIn.hasAgent = false;
   if (ui.moveIn.people !== 2) ui.moveIn.people = 1;
   if (!ui.moveIn.payWay) ui.moveIn.payWay = "cash";
   return ui.moveIn;
@@ -43270,14 +43270,11 @@ function openPickPlan(el) {
 }
 function moveSignPlaceText() {
   const d = ensureMoveIn();
-  const r = (state.rooms || []).find(x => x && x.id === d.roomId);
+  const r = moveInSelectedRoom(d);
   const tail = "最快取現在以後、還沒被約走的時段。";
-  if (d.hasAgent) {
-    if (!r) return "請先選房號。仲介帶看會到所選房間簽約。" + tail;
-    const addr = r.location || roomAddress(r.no) || "";
-    return "仲介帶看，簽約地點：" + (r.no || "") + (addr ? "　" + addr : "") + "。" + tail;
-  }
-  return (r ? "" : "請先選房號，") + "簽約請到 " + STAMP_OFFICE + "。" + tail;
+  if (!r) return "請先選房號。" + tail;
+  const addr = r.location || roomAddress(r.no) || "";
+  return "簽約地點：" + (r.no || "") + (addr ? "　" + addr : "") + "。" + tail;
 }
 function paintMoveSignPlace() {
   const el = document.getElementById("move-sign-place");
