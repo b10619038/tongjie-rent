@@ -23681,6 +23681,10 @@ function moveLeasePackHtml(pack, monthly) {
 }
 function paintMoveLeaseSum(box, pack, monthly) {
   if (!box) return;
+  const next = moveLeasePackHtml(pack, monthly);
+  if (!box.hasAttribute("data-lease")) box.setAttribute("data-lease", box.innerHTML);
+  if (box.getAttribute("data-lease") === next) return;
+  box.setAttribute("data-lease", next);
   const parts = (pack && pack.parts) || [];
   const stub = parts.find(p => p.kind === "stub");
   const year = parts.find(p => p.kind !== "stub");
@@ -43823,6 +43827,7 @@ async function pullMoveFill() {
   if (epoch !== (ui.moveFillEpoch || 0)) return;
   if (ensureMoveIn().shareId !== id) return;
   if (!remote) return;
+  if (ui.moveFillAs === "tenant" && remote.by === "tenant") return;
   const resetAt = Number(remote.reset) || 0;
   const localReset = Number(ui.moveFillResetAt) || 0;
   if (!resetAt && localReset && Number(remote.at || 0) < localReset) return;
@@ -45046,6 +45051,10 @@ function bindMoveInForm() {
         doneBtn.classList.add("is-fold");
         doneBtn.style.width = h + "px";
       }, 130);
+      setTimeout(() => {
+        if (!doneBtn.isConnected || !doneBtn.classList.contains("is-fold")) return;
+        doneBtn.classList.add("is-pop");
+      }, 780);
       captureMoveInDraft();
       const d = ensureMoveIn();
       if (Array.isArray(ui.moveSignStrokes)) d.signStrokes = ui.moveSignStrokes;
@@ -45056,7 +45065,6 @@ function bindMoveInForm() {
       const ok = await putMoveFill("tenant", { full: true });
       if (ok) {
         ui.moveFillSent = true;
-        toast("已同步給仲介");
         return;
       }
       ui.moveFillSent = false;

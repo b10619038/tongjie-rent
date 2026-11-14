@@ -8933,18 +8933,29 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
 #move-fill-done.is-fold {
   padding: 0;
   border-radius: 999px;
-  transform: none;
 }
 #move-fill-done.is-fold .move-fill-label {
   opacity: 0;
 }
 #move-fill-done.is-fold .move-fill-check {
-  opacity: 1;
-  transition: opacity .16s ease .42s;
+  opacity: 0;
 }
-#move-fill-done.is-fold .move-fill-check path {
+#move-fill-done.is-pop {
+  animation: moveFillPop .46s cubic-bezier(.22, .9, .28, 1);
+  transition: width .62s cubic-bezier(.22, .82, .2, 1);
+}
+@keyframes moveFillPop {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+#move-fill-done.is-pop .move-fill-check {
+  opacity: 1;
+  transition: opacity .12s ease;
+}
+#move-fill-done.is-pop .move-fill-check path {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset .36s ease .46s;
+  transition: stroke-dashoffset .32s ease .06s;
 }
 #move-fill-done.is-fold.is-set,
 #move-fill-done.is-fold.is-set .move-fill-label,
@@ -8953,6 +8964,7 @@ a.btn-navy { display: inline-block; text-decoration: none; box-sizing: border-bo
   transition: none;
 }
 #move-fill-done.is-fold.is-set { width: 48px; }
+#move-fill-done.is-fold.is-set .move-fill-check { opacity: 1; }
 #move-fill-done.is-fold.is-set .move-fill-check path { stroke-dashoffset: 0; }
 .move-room-btn {
   width: 100%;
