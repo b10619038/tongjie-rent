@@ -37,7 +37,28 @@ function normBindName(s) {
   return String(s || "").replace(/[\s\u3000]/g, "");
 }
 function cleanBindName(name) {
-  return String(name || "").trim().replace(/\s*租客$/, "").trim();
+  let s = String(name || "").replace(/[\s\u3000]/g, "");
+  let prev = "";
+  while (s && s !== prev) {
+    prev = s;
+    s = s.replace(/^租客/, "").replace(/租客$/, "");
+  }
+  return s;
+}
+function scrubBindNames(data) {
+  if (!data) return false;
+  let changed = false;
+  const fix = row => {
+    if (!row || typeof row !== "object" || !row.name) return;
+    const next = cleanBindName(row.name);
+    if (next && next !== row.name) {
+      row.name = next;
+      changed = true;
+    }
+  };
+  Object.keys(data.byRoom || {}).forEach(k => fix(data.byRoom[k]));
+  Object.keys(data.byUser || {}).forEach(k => fix(data.byUser[k]));
+  return changed;
 }
 function parseRoomName(raw) {
   const text = String(raw || "").trim().replace(/\u3000/g, " ").replace(/\s+/g, " ");
@@ -155,18 +176,23 @@ function payProofReply(p) {
 }
 
 export async function getBinds() {
+  let data = null;
   const hit = await caches.default.match(BIND_URL);
   if (hit) {
-    try { return await hit.json(); } catch {}
+    try { data = await hit.json(); } catch {}
   }
-  try {
-    const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
-    if (res.ok) {
-      const state = await res.json();
-      if (state && state.lineBinds && state.lineBinds.byRoom) return state.lineBinds;
-    }
-  } catch {}
-  return { byRoom: {}, byUser: {}, payProofs: {} };
+  if (!data) {
+    try {
+      const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
+      if (res.ok) {
+        const state = await res.json();
+        if (state && state.lineBinds && state.lineBinds.byRoom) data = state.lineBinds;
+      }
+    } catch {}
+  }
+  if (!data) return { byRoom: {}, byUser: {}, payProofs: {} };
+  if (scrubBindNames(data)) await saveBinds(data);
+  return data;
 }
 export async function saveBinds(data) {
   const body = JSON.stringify(data || {});

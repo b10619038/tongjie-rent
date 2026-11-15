@@ -5,5 +5,5 @@ export async function onRequest(context) {
   if (request.method === "OPTIONS") return cors("", 204);
   if (request.method !== "GET") return cors({ ok: true });
   const data = await getBinds();
-  return cors(Object.assign({}, data, { workerVer: "0236" }));
+  return cors(Object.assign({}, data, { workerVer: "0238" }));
 }
