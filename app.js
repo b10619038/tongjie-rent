@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-45";
-const APP_EDIT_COUNT = 2475;
+const APP_STAMP = "2026-11-16-22-50";
+const APP_EDIT_COUNT = 2476;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -44272,13 +44272,20 @@ function paintMoveLive(force) {
     d.leaseEnd = studioLeasePack(next, studioContractRent(null, r)).occupancyEnd;
     dirty = true;
   }
-  if (elec && elec.value !== "" && (document.activeElement === elec || elec._elecTo != null)) {
-    const n = Math.max(0, Math.round(Number(elec._elecTo != null ? elec._elecTo : elec.value) || 0));
+  let displayElec = d.elecStore;
+  if (elec && elec.value !== "") {
+    const live = Math.max(0, Math.round(Number(elec.value) || 0));
+    const target = elec._elecTo != null ? Math.max(0, Math.round(Number(elec._elecTo) || 0)) : live;
     const cur = d.elecStore == null || d.elecStore === "" ? null : Math.max(0, Math.round(Number(d.elecStore) || 0));
-    if (n !== cur) {
-      d.elecStore = n;
+    displayElec = live;
+    if (target !== cur) {
+      d.elecStore = target;
       dirty = true;
       try { scheduleMoveFillPush(); } catch {}
+    }
+    if (live !== paintMoveLive.shownElec) {
+      paintMoveLive.shownElec = live;
+      dirty = true;
     }
   }
   if (!dirty && !force) return;
@@ -44295,13 +44302,37 @@ function paintMoveLive(force) {
     payWay: d.payWay,
     payCash: d.payCash,
     payMega: d.payMega,
-    elecStore: d.elecStore
+    elecStore: displayElec
   }, r);
+  const ticking = !!(elec && elec._elecTo != null);
   const settle = document.querySelector(".move-settle");
-  let prevTotal = null;
+  const totalNow = moveSettleTotal(bits);
+  const wayNow = d.payWay || "cash";
+  if (ticking && settle) {
+    const elecBtn = settle.querySelector('[data-settle="elec"]');
+    const elecLabel = "電費儲值 " + money(displayElec);
+    if (elecBtn && elecBtn.textContent !== elecLabel) elecBtn.textContent = elecLabel;
+    const sumEl = settle.querySelector(".move-settle-sum b");
+    if (sumEl) {
+      if (sumEl._tickAnim !== elec._elecAnim) {
+        sumEl._tickAnim = elec._elecAnim;
+        const from = Math.round(Number(String(sumEl.textContent || "").replace(/[^\d]/g, "")) || 0);
+        sumEl.classList.remove("elec-up", "elec-down");
+        void sumEl.offsetWidth;
+        if (totalNow !== from) sumEl.classList.add(totalNow > from ? "elec-up" : "elec-down");
+      }
+      const text = money(totalNow);
+      if (sumEl.textContent !== text) sumEl.textContent = text;
+    }
+    const avg = settle.querySelector(".move-avg");
+    if (avg && Number(d.people) === 2) avg.textContent = "平均一人 " + money(Math.round(totalNow / 2));
+    if (wayNow !== "xfer") paintMovePayHint(totalNow, wayNow);
+    const note = document.getElementById("move-split-note");
+    if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(totalNow) + "。";
+    document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(totalNow); });
+    return;
+  }
   if (settle) {
-    const prevB = settle.querySelector(".move-settle-sum b");
-    if (prevB) prevTotal = prevB._settleTo != null ? prevB._settleTo : Math.round(Number(String(prevB.textContent || "").replace(/[^\d]/g, "")) || 0);
     const openNotes = [...settle.querySelectorAll(".move-note.open")].map(el => el.dataset.note);
     const prevAvg = settle.querySelector(".move-avg-slot");
     const avgOpen = prevAvg ? prevAvg.classList.contains("open") : true;
@@ -44321,25 +44352,10 @@ function paintMoveLive(force) {
       settle.replaceWith(next);
     }
   }
-  const totalNow = moveSettleTotal(bits);
-  const wayNow = d.payWay || "cash";
-  const sumEl = document.querySelector(".move-settle-sum b");
-  const syncSum = val => {
-    if (wayNow !== "xfer") paintMovePayHint(val, wayNow);
-    const note = document.getElementById("move-split-note");
-    if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(val) + "。";
-    const avg = document.querySelector(".move-avg");
-    if (avg && Number(d.people) === 2) avg.textContent = "平均一人 " + money(Math.round(val / 2));
-  };
-  if (sumEl && prevTotal != null && prevTotal !== totalNow) {
-    sumEl.textContent = money(prevTotal);
-    animateSettleTotal(sumEl, totalNow, syncSum);
-  } else {
-    const hint = document.getElementById("move-pay-hint");
-    if (hint) paintMovePayHint(totalNow, wayNow);
-    const note = document.getElementById("move-split-note");
-    if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(totalNow) + "。";
-  }
+  const hint = document.getElementById("move-pay-hint");
+  if (hint) paintMovePayHint(totalNow, wayNow);
+  const note = document.getElementById("move-split-note");
+  if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(totalNow) + "。";
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(totalNow); });
 }
 function signAtMs(at) {
