@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-20";
-const APP_EDIT_COUNT = 2472;
+const APP_STAMP = "2026-11-16-22-28";
+const APP_EDIT_COUNT = 2473;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -43727,21 +43727,29 @@ async function rasterLeaseBoard(html, onProgress) {
   }
 }
 function leasePdfProgress(btn) {
-  if (!btn) return { set() {}, stop() {} };
+  if (!btn) return { set() {}, finish() { return Promise.resolve(); } };
   btn.classList.add("is-run");
-  let target = 3;
-  let shown = 0;
-  let timer = 0;
-  const frame = () => {
-    shown += Math.max(0.35, (target - shown) * 0.12);
-    if (shown > target) shown = target;
-    btn.style.setProperty("--pdf-p", shown.toFixed(1) + "%");
-    timer = requestAnimationFrame(frame);
-  };
-  timer = requestAnimationFrame(frame);
+  btn.style.setProperty("--pdf-p", "0%");
+  let pct = 0;
+  requestAnimationFrame(() => {
+    if (pct < 8) btn.style.setProperty("--pdf-p", "8%");
+  });
   return {
-    set(n) { target = Math.max(target, Math.min(100, n)); },
-    stop() { cancelAnimationFrame(timer); }
+    set(n) {
+      pct = Math.max(pct, Math.min(100, n));
+      btn.style.setProperty("--pdf-p", pct + "%");
+    },
+    finish() {
+      pct = 100;
+      btn.style.setProperty("--pdf-p", "100%");
+      return new Promise(resolve => {
+        setTimeout(() => {
+          btn.classList.remove("is-run");
+          btn.style.removeProperty("--pdf-p");
+          resolve();
+        }, 760);
+      });
+    }
   };
 }
 let leasePdfCache = null;
@@ -43769,13 +43777,31 @@ function warmLeasePdf() {
   if (!spec) return;
   if (leasePdfCache && leasePdfCache.key === spec.key) return;
   if (leasePdfJob && leasePdfJob.key === spec.key) return;
-  const job = buildLeasePdfFile(spec.html, spec.name).then(file => {
+  const job = buildLeasePdfFile(spec.html, spec.name, n => {
+    if (leasePdfJob && leasePdfJob.key === spec.key && leasePdfJob.onProgress) leasePdfJob.onProgress(n);
+  }).then(file => {
     if (file) leasePdfCache = { key: spec.key, file, name: spec.name, caption: spec.caption };
     return file;
   }).catch(() => null).finally(() => {
     if (leasePdfJob && leasePdfJob.key === spec.key) leasePdfJob = null;
   });
-  leasePdfJob = { key: spec.key, job };
+  leasePdfJob = { key: spec.key, job, onProgress: null };
+}
+function shareReadyLeaseFile(file, name) {
+  const btn = document.getElementById("move-lease-pdf");
+  const bar = leasePdfProgress(btn);
+  requestAnimationFrame(() => requestAnimationFrame(() => bar.set(100)));
+  const clear = () => bar.finish();
+  if (!navigator.share) {
+    triggerDownload(file, name);
+    clear();
+    return;
+  }
+  try {
+    navigator.share({ files: [file], title: name }).then(clear, () => clear());
+  } catch {
+    clear();
+  }
 }
 async function shareMoveLeasePdf() {
   const pack = moveDraftTenant();
@@ -43785,36 +43811,33 @@ async function shareMoveLeasePdf() {
   if (!spec) { toast("合約無法產生"); return; }
   const btn = document.getElementById("move-lease-pdf");
   if (btn && btn.classList.contains("is-run")) return;
+  const ready = leasePdfCache && leasePdfCache.key === spec.key ? leasePdfCache.file : null;
+  if (ready) {
+    shareReadyLeaseFile(ready, spec.name);
+    return;
+  }
   const bar = leasePdfProgress(btn);
-  const ready = leasePdfCache && leasePdfCache.key === spec.key ? leasePdfCache : null;
   try {
-    let file = ready && ready.file;
-    if (file) {
-      bar.set(100);
-      await new Promise(r => setTimeout(r, 480));
-    } else {
-      if (leasePdfJob && leasePdfJob.key === spec.key) file = await leasePdfJob.job;
-      if (!file) file = await buildLeasePdfFile(spec.html, spec.name, n => bar.set(n));
-      if (file) leasePdfCache = { key: spec.key, file, name: spec.name, caption: spec.caption };
-      bar.set(100);
-      await new Promise(r => setTimeout(r, 160));
+    let file = null;
+    if (leasePdfJob && leasePdfJob.key === spec.key) {
+      leasePdfJob.onProgress = n => bar.set(n);
+      file = await leasePdfJob.job;
     }
+    if (!file) file = await buildLeasePdfFile(spec.html, spec.name, n => bar.set(n));
     if (!file) { toast("合約無法產生"); return; }
-    if (navigator.share) {
-      try { await navigator.share({ files: [file], title: spec.name, text: spec.caption }); return; }
-      catch (e) { if (e && e.name === "AbortError") return; }
-      try { await navigator.share({ files: [file], title: spec.name }); return; }
-      catch (e) { if (e && e.name === "AbortError") return; }
+    leasePdfCache = { key: spec.key, file, name: spec.name, caption: spec.caption };
+    bar.set(100);
+    if (!navigator.share) {
+      await bar.finish();
+      triggerDownload(file, spec.name);
+      return;
     }
-    triggerDownload(file, spec.name);
+    try { await navigator.share({ files: [file], title: spec.name }); }
+    catch (e) { if (e && e.name === "AbortError") return; }
   } catch {
     toast("PDF 沒做成，請再按一次");
   } finally {
-    bar.stop();
-    if (btn) {
-      btn.classList.remove("is-run");
-      btn.style.removeProperty("--pdf-p");
-    }
+    if (btn && btn.classList.contains("is-run")) await bar.finish();
   }
 }
 const MOVE_FILL_KEYS = ["roomId", "roomNo", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2", "shareReady"];
