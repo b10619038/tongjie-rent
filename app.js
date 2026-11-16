@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-21-18";
-const APP_EDIT_COUNT = 2462;
+const APP_STAMP = "2026-11-16-21-22";
+const APP_EDIT_COUNT = 2463;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -28104,7 +28104,7 @@ function loadMoveDraft() {
     d.payCash = Number(raw.payCash) || 0;
     d.payMega = Number(raw.payMega) || 0;
     if (raw.elecStore != null && raw.elecStore !== "") d.elecStore = Math.max(0, Math.round(Number(raw.elecStore) || 0));
-    if (raw.leaseStartTouched) d.leaseStartTouched = true;
+    if (raw.leaseStartPicked) d.leaseStartPicked = true;
     if (Array.isArray(raw.signStrokes)) d.signStrokes = raw.signStrokes;
     if (raw.signImg) d.signImg = String(raw.signImg);
     if (raw.signArmed) d.signArmed = true;
@@ -31154,12 +31154,6 @@ function applyMoveRoom(id) {
   d.signAppointAt = "";
   const r = (state.rooms || []).find(x => x.id === d.roomId);
   d.roomNo = r ? (r.no || "") : "";
-  if (r) {
-    const range = continueLeaseRange(r, { incoming: true });
-    d.leaseStart = range.start;
-    d.leaseEnd = range.end;
-    d.leaseStartTouched = false;
-  }
   ui.signCalYear = 0;
   ui.signCalMonth = 0;
   closeMoveRoomPick();
@@ -31208,14 +31202,10 @@ function moveInView() {
   const payWay = firstPayWayOf(d);
   const win = r ? signWindow(r, dummy) : { min: todayYmd(), maxFast: addDaysYmd(todayYmd(), 15) };
   const minStart = r ? roomSoonestStart(r, dummy) : todayYmd();
-  const cont = r ? fullYearLeaseRange(minStart) : fullYearLeaseRange(todayYmd());
-  if (r && (!d.leaseStartTouched || !d.leaseStart || d.leaseStart < minStart)) {
-    d.leaseStart = minStart;
-    d.leaseEnd = cont.end;
-  }
-  if (!r && !d.leaseStartTouched) {
+  if (!d.leaseStartPicked) {
     d.leaseStart = "";
     d.leaseEnd = "";
+    d.leaseStartTouched = false;
   }
   if (d.signAppointAt && !slotIsOpen(d.signAppointAt)) d.signAppointAt = "";
   let day = ymdOf(d.signAppointAt);
@@ -43895,7 +43885,10 @@ function applyMoveFillFields(fields, touch) {
     if (k === "shareReady" && next && !d.shareReady) ui.moveSharePop = true;
     d[k] = next;
     seen[k] = at;
-    if (k === "leaseStart" && next) d.leaseStartTouched = true;
+    if (k === "leaseStart" && next) {
+      d.leaseStartTouched = true;
+      d.leaseStartPicked = true;
+    }
     if (MOVE_FILL_INPUT[k] && k !== "leaseStart" && k !== "elecStore" && k !== "payCash" && k !== "payMega") text = true;
     else heavy = true;
   });
@@ -45091,11 +45084,21 @@ function bindMoveInForm() {
       const d = ensureMoveIn();
       const r = (state.rooms || []).find(x => x && x.id === d.roomId);
       const min = r ? roomSoonestStart(r, { incoming: true }) : todayYmd();
-      if (!d.leaseStart || d.leaseStart < min) {
-        d.leaseStart = min;
-        toast("起始日不可早於 " + min);
+      if (!startEl.value) {
+        d.leaseStart = "";
+        d.leaseEnd = "";
+        d.leaseStartTouched = false;
+        d.leaseStartPicked = false;
+        ui.keepScroll = true;
+        render();
+        return;
       }
-      d.leaseStartTouched = d.leaseStart !== min;
+      if (d.leaseStart < min) {
+        d.leaseStart = min;
+        toast("起租日不可早於 " + min);
+      }
+      d.leaseStartPicked = true;
+      d.leaseStartTouched = true;
       d.leaseEnd = studioLeasePack(d.leaseStart, r ? studioContractRent(null, r) : 0).occupancyEnd;
       ui.keepScroll = true;
       render();
