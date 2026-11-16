@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-21-14";
-const APP_EDIT_COUNT = 2461;
+const APP_STAMP = "2026-11-16-21-18";
+const APP_EDIT_COUNT = 2462;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31213,6 +31213,10 @@ function moveInView() {
     d.leaseStart = minStart;
     d.leaseEnd = cont.end;
   }
+  if (!r && !d.leaseStartTouched) {
+    d.leaseStart = "";
+    d.leaseEnd = "";
+  }
   if (d.signAppointAt && !slotIsOpen(d.signAppointAt)) d.signAppointAt = "";
   let day = ymdOf(d.signAppointAt);
   if (!day || day < win.min) day = win.min;
@@ -31329,7 +31333,7 @@ function moveInView() {
     <div class="card card-body move-card c4" style="margin-top:12px;text-align:left">
       <div class="label">合約期間</div>
       <p class="small" style="margin:0 0 8px">${r ? ("最早起始日　" + minStart + (occ ? ("（" + occupiedUntilPhrase(occ, r) + "，不可早於截止後）") : "（不可早於今天）") + "。新客最短一年，沒有半年。入住不是 1 號時，當月只開日拆，次月 1 號起仍是一年約。") : "請先選房號。起始日不可早於今天，有現任則從該約截止後起算。新客最短一年，沒有半年。"}</p>
-      <label class="field"><span>起租日</span><input id="move-start" type="date" min="${escapeHtml(minStart)}" value="${escapeHtml(d.leaseStart || minStart)}" /></label>
+      <label class="field"><span>起租日</span><input id="move-start" type="date" min="${escapeHtml(r ? minStart : "")}" value="${escapeHtml(d.leaseStart || "")}" /></label>
       <div id="move-lease-sum">${r ? moveLeasePackHtml(studioLeasePack(d.leaseStart || minStart, studioContractRent(null, r)), studioContractRent(null, r)) : ""}</div>
     </div>
     <div class="card card-body move-card" style="margin-top:12px;text-align:left">
