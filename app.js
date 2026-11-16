@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-15-13-23";
-const APP_EDIT_COUNT = 2459;
+const APP_STAMP = "2026-11-16-21-08";
+const APP_EDIT_COUNT = 2460;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -28084,7 +28084,7 @@ function moveInSelectedRoom(d) {
   return rooms.find(x => x && id && x.id === id) || rooms.find(x => x && no && String(x.no) === String(no)) || null;
 }
 function blankMoveIn() {
-  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: false, payWay: "cash" };
+  return { roomId: "", name: "", phone: "", idNo: "", birthday: "", address: "", emergencyName: "", emergencyPhone: "", emergencyName2: "", emergencyPhone2: "", name2: "", phone2: "", idNo2: "", birthday2: "", address2: "", people: 1, hasAgent: true, payWay: "cash" };
 }
 function saveMoveDraft() {
   const d = ui && ui.moveIn;
@@ -28100,7 +28100,7 @@ function loadMoveDraft() {
       if (raw[k] != null) d[k] = raw[k];
     });
     d.people = Number(raw.people) === 2 ? 2 : 1;
-    d.hasAgent = false;
+    d.hasAgent = raw.hasAgent !== false;
     d.payCash = Number(raw.payCash) || 0;
     d.payMega = Number(raw.payMega) || 0;
     if (raw.elecStore != null && raw.elecStore !== "") d.elecStore = Math.max(0, Math.round(Number(raw.elecStore) || 0));
@@ -28148,7 +28148,7 @@ function resetMoveInForm() {
 }
 function ensureMoveIn() {
   if (!ui.moveIn) ui.moveIn = loadMoveDraft() || blankMoveIn();
-  ui.moveIn.hasAgent = false;
+  if (ui.moveIn.hasAgent == null) ui.moveIn.hasAgent = true;
   if (ui.moveIn.people !== 2) ui.moveIn.people = 1;
   if (!ui.moveIn.payWay) ui.moveIn.payWay = "cash";
   return ui.moveIn;
@@ -31265,6 +31265,16 @@ function moveInView() {
       ${ui.moveFillAs === "tenant" ? "" : (d.shareId ? `<p class="small" style="margin:8px 0 0">已分享給租客。租客補上的資料和簽名會出現在這張表。</p>` : "")}
     </div>
     <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
+      <div class="move-line" style="margin-top:0">
+        <span class="move-line-k">仲介帶看</span>
+        <div class="seg move-seg${d.hasAgent ? "" : " is-no"}" id="move-agent-grid">
+          <i class="seg-bg"></i>
+          <button type="button" data-move-agent="yes" class="${d.hasAgent ? "on" : ""}">是</button>
+          <button type="button" data-move-agent="no" class="${d.hasAgent ? "" : "on"}">否</button>
+        </div>
+      </div>
+    </div>
+    <div class="card card-body move-card c1" style="margin-top:12px;text-align:left">
       <div class="label">選擇房號</div>
       <div class="field"><span>房號</span>
         <button type="button" class="move-room-btn${selMeta ? " filled" : ""}" id="move-room-open">
@@ -31345,6 +31355,13 @@ function moveInView() {
       ${r ? firstPaySettleHtml(payBits) : ""}
     </div>
     ${ui.loginError ? `<div class="err">${escapeHtml(ui.loginError)}</div>` : ""}
+    ${ui.moveFillAs === "tenant" ? "" : `<div class="move-export-stack">
+      <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF</button>
+      <div class="move-export-row">
+        <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
+        <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
+      </div>
+    </div>`}
     ${ui.moveFillAs === "tenant"
       ? `<div class="move-fill-done-wrap"><button class="btn-navy move-card c5 move-fill-done${ui.moveFillSent ? " is-fold is-set" : ""}" id="move-fill-done" type="button"${ui.moveFillSent ? " disabled" : ""}><span class="move-fill-label">已填好同步給仲介</span><svg class="move-fill-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px">送出並進入預覽</button>`}
@@ -43280,6 +43297,7 @@ function moveSignPlaceText() {
   const tail = "最快取現在以後、還沒被約走的時段。";
   if (!r) return "請先選房號。" + tail;
   const addr = r.location || roomAddress(r.no) || "";
+  if (d.hasAgent) return "仲介帶看，簽約地點：" + (r.no || "") + (addr ? "　" + addr : "") + "。" + tail;
   return "簽約地點：" + (r.no || "") + (addr ? "　" + addr : "") + "。" + tail;
 }
 function paintMoveSignPlace() {
@@ -43467,7 +43485,7 @@ function moveSharePack() {
     leaseStart: t.leaseStart,
     rent: t.rent,
     deposit: t.deposit,
-    hasAgent: true,
+    hasAgent: !!d.hasAgent,
     people: t.people,
     payWay: d.payWay,
     payCash: d.payCash,
@@ -43567,8 +43585,7 @@ function moveTenantShareText(tid) {
     "請攜帶：",
     (names.length > 1 ? "兩位的" : "") + "雙證件正本、身分證正反影本、個人印章。",
     "",
-    "當天請付仲介費 " + money(half),
-    "",
+    ...(d.hasAgent ? ["當天請付仲介費 " + money(half), ""] : []),
     "押金 " + money(bits.deposit),
     ...rents,
     "一年水費 " + money(bits.water),
@@ -43591,7 +43608,7 @@ function moveOwnerShareText() {
   const service = Math.round(Number(bits.monthly) || 0);
   const rule = "------------------------------";
   return [
-    (room.no || "") + " 仲介帶看",
+    (room.no || "") + (d.hasAgent ? " 仲介帶看" : ""),
     "",
     ...moveShareField("租客", names),
     "",
@@ -43617,8 +43634,7 @@ function moveOwnerShareText() {
     "電費 " + money(bits.elec),
     "",
     "合計 " + money(bits.total),
-    "",
-    "請款仲介服務費 " + money(service)
+    ...(d.hasAgent ? ["", "請款仲介服務費 " + money(service)] : [])
   ].join("\n");
 }
 function exportMoveLeasePdf() {
@@ -44048,13 +44064,6 @@ function shareMoveText(text) {
   location.href = "line://msg/text/" + encoded;
 }
 function slideMoveAgent(yes) {
-  const box = document.getElementById("move-agent-actions");
-  if (box) {
-    if (yes) requestAnimationFrame(() => box.classList.add("open"));
-    else box.classList.remove("open");
-  }
-  const go = document.getElementById("move-submit");
-  if (go) go.style.display = yes ? "none" : "";
   const seg = document.getElementById("move-agent-grid");
   if (!seg) return;
   seg.classList.toggle("is-no", !yes);
@@ -44992,6 +45001,7 @@ function bindMoveInForm() {
       const yes = btn.dataset.moveAgent === "yes";
       if (d.hasAgent === yes) return;
       d.hasAgent = yes;
+      saveMoveDraft();
       slideMoveAgent(yes);
       paintMoveSignPlace();
       paintMoveAgentFee();
