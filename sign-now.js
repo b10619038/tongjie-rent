@@ -17,16 +17,16 @@
       "let day = d.signNow ? todayYmd() : ymdOf(d.signAppointAt);"
     ],
     [
-      "if (r && !daySlots.length) {",
-      "if (r && !d.signNow && !daySlots.length) {"
-    ],
-    [
       'if (r && (!d.signAppointAt || ymdOf(d.signAppointAt) !== day) && daySlots[0]) d.signAppointAt = daySlots[0];',
       'if (r && !d.signNow && (!d.signAppointAt || ymdOf(d.signAppointAt) !== day) && daySlots[0]) d.signAppointAt = daySlots[0];'
     ],
     [
       "const slots = r ? nextSignSlots(8, d.signAppointAt, win.min, ymdOf(d.signAppointAt) || day) : [];",
       'const slots = r ? nextSignSlots(8, d.signNow ? "" : d.signAppointAt, win.min, d.signNow ? day : (ymdOf(d.signAppointAt) || day)) : [];'
+    ],
+    [
+      '${r ? signCalHtml(win.min, ymdOf(d.signAppointAt) || day, d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}',
+      '${r ? signCalHtml(win.min, d.signNow ? day : (ymdOf(d.signAppointAt) || day), d.signNow ? "" : d.signAppointAt, win.maxFast) : `<p class="small">請先選房號</p>`}'
     ],
     [
       '<div class="sign-slot-grid sign-slot-scroll">${slots.map(s => `<button type="button" class="sign-slot${d.signAppointAt === s ? " on" : ""}" data-sign-slot="${escapeHtml(s)}">${escapeHtml(signSlotLabel(s, fastSlot === s))}</button>`).join("") || `<span class="small">這天已滿，請換一天</span>`}</div>',
