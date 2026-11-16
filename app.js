@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-21-38";
-const APP_EDIT_COUNT = 2466;
+const APP_STAMP = "2026-11-16-21-51";
+const APP_EDIT_COUNT = 2467;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -29726,24 +29726,82 @@ function paintDomPage(el) {
   g.fillRect(0, 0, c.width, c.height);
   g.scale(scale, scale);
   const ox = box.left, oy = box.top;
+  const ink = (color, style) => {
+    const m = String(color || "").match(/rgba?\(([^)]+)\)/);
+    if (!m || style !== "dashed") return color || "#111";
+    const bits = m[1].split(",").map(s => s.trim());
+    const a = bits.length > 3 ? parseFloat(bits[3]) : 1;
+    if (!(a < 0.4)) return color;
+    return "rgba(" + bits[0] + "," + bits[1] + "," + bits[2] + ",0.55)";
+  };
+  const dashOf = (style, bw) => {
+    if (style === "dashed") return [Math.max(5, bw * 1.6), Math.max(3, bw * 1.15)];
+    if (style === "dotted") return [Math.max(1, bw * 0.6), Math.max(2, bw)];
+    return [];
+  };
+  const strokeBox = (cs, x, y, rw, rh) => {
+    const bw = parseFloat(cs.borderTopWidth) || 0;
+    const style = cs.borderTopStyle;
+    if (bw > 0 && style && style !== "none") {
+      g.save();
+      g.strokeStyle = ink(cs.borderTopColor, style);
+      g.lineWidth = bw;
+      g.setLineDash(dashOf(style, bw));
+      g.strokeRect(x + bw / 2, y + bw / 2, Math.max(0, rw - bw), Math.max(0, rh - bw));
+      g.restore();
+      return;
+    }
+    const bb = parseFloat(cs.borderBottomWidth) || 0;
+    if (bb > 0 && cs.borderBottomStyle && cs.borderBottomStyle !== "none") {
+      g.save();
+      g.strokeStyle = ink(cs.borderBottomColor, cs.borderBottomStyle);
+      g.lineWidth = bb;
+      g.setLineDash(dashOf(cs.borderBottomStyle, bb));
+      g.beginPath();
+      g.moveTo(x, y + rh - bb / 2);
+      g.lineTo(x + rw, y + rh - bb / 2);
+      g.stroke();
+      g.restore();
+    }
+  };
+  const paintPseudo = (node, which) => {
+    let cs;
+    try { cs = getComputedStyle(node, which); } catch { return; }
+    if (!cs || cs.content === "none" || cs.content === "normal" || cs.display === "none") return;
+    const host = node.getBoundingClientRect();
+    const top = parseFloat(cs.top);
+    const right = parseFloat(cs.right);
+    const bottom = parseFloat(cs.bottom);
+    const left = parseFloat(cs.left);
+    if (![top, right, bottom, left].every(Number.isFinite)) return;
+    const x = host.left - ox + left;
+    const y = host.top - oy + top;
+    strokeBox(cs, x, y, Math.max(0, host.width - left - right), Math.max(0, host.height - top - bottom));
+  };
   const draw = node => {
     if (!node) return;
     if (node.nodeType === 3) {
       const raw = String(node.textContent || "");
-      if (!raw.replace(/\s/g, "")) return;
+      if (!raw.replace(/[\s\u3000]/g, "")) return;
       const parent = node.parentElement;
       if (!parent) return;
       const cs = getComputedStyle(parent);
       if (cs.display === "none" || cs.visibility === "hidden") return;
-      const range = document.createRange();
-      try { range.selectNodeContents(node); } catch { return; }
-      const rects = [...range.getClientRects()];
-      if (!rects.length) return;
       g.fillStyle = cs.color || "#111";
-      g.font = cs.font || "13px serif";
-      g.textBaseline = "alphabetic";
-      const r0 = rects[0];
-      g.fillText(raw.replace(/\s+/g, " "), r0.left - ox, r0.top - oy + r0.height * 0.8, Math.max(12, r0.width + 24));
+      g.font = cs.font || "16px serif";
+      g.textBaseline = "middle";
+      const range = document.createRange();
+      for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (!ch.replace(/[\s\u3000]/g, "")) continue;
+        try {
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+        } catch { continue; }
+        const r = range.getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        g.fillText(ch, r.left - ox, r.top - oy + r.height / 2);
+      }
       return;
     }
     if (node.nodeType !== 1) return;
@@ -29756,27 +29814,14 @@ function paintDomPage(el) {
       g.fillStyle = bg;
       g.fillRect(x, y, r.width, r.height);
     }
-    const bw = parseFloat(cs.borderTopWidth) || 0;
-    if (bw > 0 && cs.borderTopStyle !== "none") {
-      g.strokeStyle = cs.borderTopColor || "#111";
-      g.lineWidth = bw;
-      g.strokeRect(x + bw / 2, y + bw / 2, Math.max(0, r.width - bw), Math.max(0, r.height - bw));
-    } else {
-      const bb = parseFloat(cs.borderBottomWidth) || 0;
-      if (bb > 0 && cs.borderBottomStyle !== "none") {
-        g.strokeStyle = cs.borderBottomColor || "#111";
-        g.lineWidth = bb;
-        g.beginPath();
-        g.moveTo(x, y + r.height - bb / 2);
-        g.lineTo(x + r.width, y + r.height - bb / 2);
-        g.stroke();
-      }
-    }
     if (node.tagName === "IMG" && node.naturalWidth) {
       try { g.drawImage(node, x, y, r.width, r.height); } catch {}
       return;
     }
+    strokeBox(cs, x, y, r.width, r.height);
     [...node.childNodes].forEach(draw);
+    paintPseudo(node, "::before");
+    paintPseudo(node, "::after");
   };
   draw(el);
   return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
