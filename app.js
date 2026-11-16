@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-50";
-const APP_EDIT_COUNT = 2476;
+const APP_STAMP = "2026-11-16-22-56";
+const APP_EDIT_COUNT = 2477;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -28505,6 +28505,7 @@ function submitMoveIn(opts) {
 function askMoveSubmit() {
   captureMoveInDraft();
   const d = ensureMoveIn();
+  if (!movePdfExported()) { toast("請先匯出合約PDF給仲介"); return; }
   const joined = moveJoinedDraft();
   const room = (state.rooms || []).find(x => x && x.id === d.roomId);
   if (!room) { toast("請先選房號"); return; }
@@ -31410,7 +31411,7 @@ function moveInView() {
     </div>`}
     ${ui.moveFillAs === "tenant"
       ? `<div class="move-fill-done-wrap"><button class="btn-navy move-card c5 move-fill-done${ui.moveFillSent ? " is-fold is-set" : ""}" id="move-fill-done" type="button"${ui.moveFillSent ? " disabled" : ""}><span class="move-fill-label">已填好同步給仲介</span><svg class="move-fill-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
-      : `<button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px">送出並進入預覽</button>`}
+      : `<p class="small" id="move-pdf-need" style="margin:12px 0 0"${movePdfExported() ? " hidden" : ""}>請先按「匯出合約PDF給仲介」，才能送出</p><button class="btn-navy move-card c5" id="move-submit" type="button" style="margin-top:12px;margin-bottom:48px"${movePdfExported() ? "" : " disabled"}>送出並進入預覽</button>`}
     ${pickSheet}
   </div>`;
 }
@@ -43314,6 +43315,7 @@ function captureMoveInDraft() {
   saveMoveDraft();
   try { persistGatePage(); } catch {}
   try { scheduleMoveFillPush(); } catch {}
+  try { paintMoveSubmitGate(); } catch {}
 }
 function openPickPlan(el) {
   if (!el) return;
@@ -43763,11 +43765,32 @@ function warmLeasePdf() {
   leasePdfJob = { key: spec.key, job };
 }
 function shareReadyLeaseFile(file, name) {
+  markMovePdfExported();
   if (!navigator.share) {
     triggerDownload(file, name);
     return;
   }
   try { navigator.share({ files: [file], title: name }); } catch {}
+}
+function movePdfGateKey() {
+  const d = ensureMoveIn();
+  return [d.roomId || "", d.name || "", d.name2 || "", d.phone || "", d.idNo || "", d.leaseStart || "", d.leaseEnd || "", d.people || 1, d.hasAgent ? 1 : 0, d.elecStore == null ? "" : d.elecStore, d.payWay || "", d.signAppointAt || "", d.address || ""].join("|");
+}
+function movePdfExported() {
+  const d = ensureMoveIn();
+  if (!d.hasAgent || ui.moveFillAs === "tenant") return true;
+  return ui.movePdfGate === movePdfGateKey();
+}
+function markMovePdfExported() {
+  ui.movePdfGate = movePdfGateKey();
+  paintMoveSubmitGate();
+}
+function paintMoveSubmitGate() {
+  const go = document.getElementById("move-submit");
+  const note = document.getElementById("move-pdf-need");
+  const ok = movePdfExported();
+  if (go) go.disabled = !ok;
+  if (note) note.hidden = ok;
 }
 async function shareMoveLeasePdf() {
   const pack = moveDraftTenant();
@@ -44330,6 +44353,7 @@ function paintMoveLive(force) {
     const note = document.getElementById("move-split-note");
     if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(totalNow) + "。";
     document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(totalNow); });
+    try { paintMoveSubmitGate(); } catch {}
     return;
   }
   if (settle) {
@@ -44357,6 +44381,7 @@ function paintMoveLive(force) {
   const note = document.getElementById("move-split-note");
   if (note) note.textContent = "填其中一格，另一格會自動算出剩餘。合計 " + money(totalNow) + "。";
   document.querySelectorAll("[data-pay-total]").forEach(el => { el.dataset.payTotal = String(totalNow); });
+  try { paintMoveSubmitGate(); } catch {}
 }
 function signAtMs(at) {
   const m = String(at || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
@@ -45322,6 +45347,7 @@ function bindMoveInForm() {
   if (go) go.onclick = e => {
     e.preventDefault();
     captureMoveInDraft();
+    if (!movePdfExported()) { toast("請先匯出合約PDF給仲介"); return; }
     askMoveSubmit();
   };
   const pdfBtn = document.getElementById("move-lease-pdf");
