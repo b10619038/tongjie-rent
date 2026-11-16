@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-04";
-const APP_EDIT_COUNT = 2469;
+const APP_STAMP = "2026-11-16-22-08";
+const APP_EDIT_COUNT = 2470;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -43717,6 +43717,43 @@ async function rasterLeaseBoard(html) {
     if (hold.parentNode) hold.remove();
   }
 }
+function openLeasePdfShare(file, blob, name) {
+  const old = document.getElementById("lease-pdf-share-box");
+  if (old) old.remove();
+  const wrap = document.createElement("div");
+  wrap.className = "lightbox";
+  wrap.id = "lease-pdf-share-box";
+  wrap.innerHTML = `<div class="card card-body" style="margin:auto;width:min(100%,360px)">
+      <p style="margin:0 0 12px;font-weight:700">合約已做好，按一下傳到 LINE</p>
+      <button type="button" class="btn-navy" id="lease-pdf-line">傳到 LINE</button>
+      <button type="button" class="ghost" id="lease-pdf-dl" style="margin-top:8px">改下載</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  const close = () => { if (wrap.parentNode) wrap.remove(); };
+  wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
+  const line = wrap.querySelector("#lease-pdf-line");
+  line.onclick = async e => {
+    e.preventDefault();
+    const payload = { files: [file], title: name, text: name };
+    try {
+      if (navigator.share) {
+        await navigator.share(payload);
+        close();
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") { close(); return; }
+    }
+    triggerDownload(blob, name);
+    toast("這支手機沒打開分享，已改下載");
+    close();
+  };
+  wrap.querySelector("#lease-pdf-dl").onclick = e => {
+    e.preventDefault();
+    triggerDownload(blob, name);
+    close();
+  };
+}
 async function shareMoveLeasePdf() {
   const pack = moveDraftTenant();
   if (!pack) { toast("請先選房號"); return; }
@@ -43737,6 +43774,10 @@ async function shareMoveLeasePdf() {
     if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
       try { await navigator.share(payload); return; }
       catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    if (navigator.share) {
+      openLeasePdfShare(file, blob, name);
+      return;
     }
     triggerDownload(blob, name);
     toast("已下載 PDF，請用分享傳到 LINE 給仲介");
