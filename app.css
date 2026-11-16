@@ -3746,6 +3746,33 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
 }
 .move-export-stack .ghost,
 .move-export-row .ghost { margin: 0; }
+#move-lease-pdf {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+#move-lease-pdf .pdf-lab { position: relative; z-index: 1; }
+#move-lease-pdf .pdf-lab-on {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  color: var(--on-teal, #fff);
+  clip-path: inset(0 calc(100% - var(--pdf-p, 0%)) 0 0);
+  pointer-events: none;
+}
+#move-lease-pdf.is-run::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--pdf-p, 0%);
+  background: var(--teal);
+  z-index: 0;
+}
+#move-lease-pdf.is-run { pointer-events: none; }
 .move-export-row .ghost {
   display: inline-flex;
   align-items: center;

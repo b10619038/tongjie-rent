@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-16";
-const APP_EDIT_COUNT = 2471;
+const APP_STAMP = "2026-11-16-22-20";
+const APP_EDIT_COUNT = 2472;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31400,7 +31400,7 @@ function moveInView() {
     ${ui.moveFillAs === "tenant" ? "" : `<div class="move-agent-actions${d.hasAgent ? " open" : ""}" id="move-agent-actions">
       <div class="move-agent-actions-clip">
         <div class="move-export-stack">
-          <button type="button" class="ghost" id="move-lease-pdf">匯出合約PDF給仲介</button>
+          <button type="button" class="ghost" id="move-lease-pdf"><span class="pdf-lab">匯出合約PDF給仲介</span><span class="pdf-lab pdf-lab-on" aria-hidden="true">匯出合約PDF給仲介</span></button>
           <div class="move-export-row">
             <button type="button" class="ghost" id="move-share-tenant"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至租客</button>
             <button type="button" class="ghost" id="move-share-owner"><svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="6" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2.35" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.2 11.1 15.6 7.1M8.2 12.9 15.6 16.9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>分享至屋主</button>
@@ -43686,12 +43686,14 @@ function moveOwnerShareText() {
 function exportMoveLeasePdf() {
   shareMoveLeasePdf();
 }
-async function rasterLeaseBoard(html) {
+async function rasterLeaseBoard(html, onProgress) {
+  const tick = n => { try { if (onProgress) onProgress(n); } catch {} };
   const hold = document.createElement("div");
   hold.className = "lease-pdf-board";
   hold.innerHTML = html;
   document.body.appendChild(hold);
   try {
+    tick(8);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     await Promise.all([...hold.querySelectorAll("img")].map(img => img.complete ? null : new Promise(res => {
       img.onload = img.onerror = res;
@@ -43702,93 +43704,117 @@ async function rasterLeaseBoard(html) {
       try { await document.fonts.load('42px Iansui', '房屋租賃契約書'); } catch {}
     }
     if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch {} }
+    tick(16);
     const pages = [...hold.querySelectorAll(".lease-pg")];
     if (!pages.length || typeof html2canvas !== "function") return pages.map(paintDomPage).filter(s => s && s.dataUrl);
     const shots = [];
-    for (const page of pages) {
-      const canvas = await html2canvas(page, {
+    for (let i = 0; i < pages.length; i++) {
+      tick(16 + ((i + 0.15) / pages.length) * 74);
+      const canvas = await html2canvas(pages[i], {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
-        width: page.offsetWidth,
-        height: page.offsetHeight
+        width: pages[i].offsetWidth,
+        height: pages[i].offsetHeight
       });
       shots.push({ dataUrl: canvas.toDataURL("image/jpeg", 0.92), w: canvas.width, h: canvas.height });
+      tick(16 + ((i + 1) / pages.length) * 74);
     }
     return shots.filter(s => s && s.dataUrl);
   } finally {
     if (hold.parentNode) hold.remove();
   }
 }
-function openLeasePdfShare(file, blob, name) {
-  const old = document.getElementById("lease-pdf-share-box");
-  if (old) old.remove();
-  const wrap = document.createElement("div");
-  wrap.className = "lightbox";
-  wrap.id = "lease-pdf-share-box";
-  wrap.innerHTML = `<div class="card card-body" style="margin:auto;width:min(100%,360px)">
-      <p style="margin:0 0 12px;font-weight:700">合約已做好，按一下傳到 LINE</p>
-      <button type="button" class="btn-navy" id="lease-pdf-line">傳到 LINE</button>
-      <button type="button" class="ghost" id="lease-pdf-dl" style="margin-top:8px">改下載</button>
-    </div>`;
-  document.body.appendChild(wrap);
-  const close = () => { if (wrap.parentNode) wrap.remove(); };
-  wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
-  const line = wrap.querySelector("#lease-pdf-line");
-  line.onclick = async e => {
-    e.preventDefault();
-    const payload = { files: [file], title: name, text: name };
-    try {
-      if (navigator.share) {
-        await navigator.share(payload);
-        close();
-        return;
-      }
-    } catch (err) {
-      if (err && err.name === "AbortError") { close(); return; }
-    }
-    triggerDownload(blob, name);
-    toast("這支手機沒打開分享，已改下載");
-    close();
+function leasePdfProgress(btn) {
+  if (!btn) return { set() {}, stop() {} };
+  btn.classList.add("is-run");
+  let target = 3;
+  let shown = 0;
+  let timer = 0;
+  const frame = () => {
+    shown += Math.max(0.35, (target - shown) * 0.12);
+    if (shown > target) shown = target;
+    btn.style.setProperty("--pdf-p", shown.toFixed(1) + "%");
+    timer = requestAnimationFrame(frame);
   };
-  wrap.querySelector("#lease-pdf-dl").onclick = e => {
-    e.preventDefault();
-    triggerDownload(blob, name);
-    close();
+  timer = requestAnimationFrame(frame);
+  return {
+    set(n) { target = Math.max(target, Math.min(100, n)); },
+    stop() { cancelAnimationFrame(timer); }
   };
+}
+let leasePdfCache = null;
+let leasePdfJob = null;
+function leasePdfSpec() {
+  const pack = moveDraftTenant();
+  if (!pack || !pack.t || !pack.t.name) return null;
+  const html = studioLeasePapersHtml(pack.t, pack.room, true);
+  if (!html) return null;
+  const name = (pack.room.no || "合約") + "-" + pack.t.name + "-租賃契約.pdf";
+  const caption = [pack.room.no || "", pack.t.name || ""].filter(Boolean).join(" ") + " 合約PDF給仲介";
+  return { html, name, caption, key: name + "\n" + html };
+}
+async function buildLeasePdfFile(html, name, onProgress) {
+  const shots = await rasterLeaseBoard(html, onProgress);
+  if (!shots.length) return null;
+  if (onProgress) onProgress(94);
+  const blob = await downloadContractsPdf(shots.map(s => s.dataUrl), false, { blobOnly: true, pages: shots });
+  if (!blob) return null;
+  if (onProgress) onProgress(100);
+  return new File([blob], name, { type: "application/pdf" });
+}
+function warmLeasePdf() {
+  const spec = leasePdfSpec();
+  if (!spec) return;
+  if (leasePdfCache && leasePdfCache.key === spec.key) return;
+  if (leasePdfJob && leasePdfJob.key === spec.key) return;
+  const job = buildLeasePdfFile(spec.html, spec.name).then(file => {
+    if (file) leasePdfCache = { key: spec.key, file, name: spec.name, caption: spec.caption };
+    return file;
+  }).catch(() => null).finally(() => {
+    if (leasePdfJob && leasePdfJob.key === spec.key) leasePdfJob = null;
+  });
+  leasePdfJob = { key: spec.key, job };
 }
 async function shareMoveLeasePdf() {
   const pack = moveDraftTenant();
   if (!pack) { toast("請先選房號"); return; }
   if (!pack.t.name) { toast("請先填姓名"); return; }
-  const html = studioLeasePapersHtml(pack.t, pack.room, true);
-  if (!html) { toast("合約無法產生"); return; }
+  const spec = leasePdfSpec();
+  if (!spec) { toast("合約無法產生"); return; }
   const btn = document.getElementById("move-lease-pdf");
-  if (btn) btn.disabled = true;
+  if (btn && btn.classList.contains("is-run")) return;
+  const bar = leasePdfProgress(btn);
+  const ready = leasePdfCache && leasePdfCache.key === spec.key ? leasePdfCache : null;
   try {
-    const shots = await rasterLeaseBoard(html);
-    if (!shots.length) { toast("合約無法產生"); return; }
-    const blob = await downloadContractsPdf(shots.map(s => s.dataUrl), false, { blobOnly: true, pages: shots });
-    if (!blob) { toast("合約無法產生"); return; }
-    const name = (pack.room.no || "合約") + (pack.t.name ? "-" + pack.t.name : "") + "-租賃契約.pdf";
-    const file = new File([blob], name, { type: "application/pdf" });
-    const caption = [pack.room.no || "", pack.t.name || ""].filter(Boolean).join(" ") + " 合約PDF給仲介";
-    const payload = { files: [file], title: name, text: caption };
-    if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
-      try { await navigator.share(payload); return; }
+    let file = ready && ready.file;
+    if (file) {
+      bar.set(100);
+      await new Promise(r => setTimeout(r, 480));
+    } else {
+      if (leasePdfJob && leasePdfJob.key === spec.key) file = await leasePdfJob.job;
+      if (!file) file = await buildLeasePdfFile(spec.html, spec.name, n => bar.set(n));
+      if (file) leasePdfCache = { key: spec.key, file, name: spec.name, caption: spec.caption };
+      bar.set(100);
+      await new Promise(r => setTimeout(r, 160));
+    }
+    if (!file) { toast("合約無法產生"); return; }
+    if (navigator.share) {
+      try { await navigator.share({ files: [file], title: spec.name, text: spec.caption }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+      try { await navigator.share({ files: [file], title: spec.name }); return; }
       catch (e) { if (e && e.name === "AbortError") return; }
     }
-    if (navigator.share) {
-      openLeasePdfShare(file, blob, name);
-      return;
-    }
-    triggerDownload(blob, name);
-    toast("已下載 PDF，請用分享傳到 LINE 給仲介");
+    triggerDownload(file, spec.name);
   } catch {
     toast("PDF 沒做成，請再按一次");
   } finally {
-    if (btn) btn.disabled = false;
+    bar.stop();
+    if (btn) {
+      btn.classList.remove("is-run");
+      btn.style.removeProperty("--pdf-p");
+    }
   }
 }
 const MOVE_FILL_KEYS = ["roomId", "roomNo", "name", "phone", "idNo", "birthday", "address", "emergencyName", "emergencyPhone", "name2", "phone2", "idNo2", "birthday2", "address2", "emergencyName2", "emergencyPhone2", "people", "hasAgent", "payWay", "payCash", "payMega", "elecStore", "signAppointAt", "leaseStart", "leaseEnd", "leaseStartTouched", "signImg", "signImg2", "signStrokes", "signStrokes2", "signArmed", "signArmed2", "shareReady"];
@@ -45288,10 +45314,13 @@ function bindMoveInForm() {
     askMoveSubmit();
   };
   const pdfBtn = document.getElementById("move-lease-pdf");
-  if (pdfBtn) pdfBtn.onclick = e => {
-    e.preventDefault();
-    exportMoveLeasePdf();
-  };
+  if (pdfBtn) {
+    pdfBtn.onclick = e => {
+      e.preventDefault();
+      exportMoveLeasePdf();
+    };
+    setTimeout(warmLeasePdf, 600);
+  }
   ["move-share-fill", "move-lease-pdf", "move-share-tenant", "move-share-owner"].forEach(id => {
     const el = document.getElementById(id);
     if (el) bindIosPress(el);
