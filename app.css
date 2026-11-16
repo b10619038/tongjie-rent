@@ -3765,25 +3765,33 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   from { opacity: 0; transform: scale(.72); }
   to { opacity: 1; transform: none; }
 }
-.lease-pdf-hold {
+.lease-pdf-board {
   position: fixed;
   left: 0;
   top: 0;
-  width: 794px;
-  opacity: 0;
-  pointer-events: none;
+  width: 210mm;
+  background: #fff;
   z-index: -1;
-  background: #fff;
+  pointer-events: none;
 }
-.lease-pdf-hold .studio-lease-paper,
-.lease-pdf-hold .lease-pg {
-  width: 794px;
-  background: #fff;
+.lease-pdf-board .studio-lease-paper,
+.lease-pdf-board .lease-preview {
+  display: block !important;
+  width: 210mm !important;
+  max-width: none !important;
+  margin: 0 !important;
+  zoom: 1 !important;
+  container-type: normal;
 }
-.lease-pdf-hold .lease-pg {
-  min-height: 1123px;
-  box-sizing: border-box;
-  position: relative;
+.lease-pdf-board .lease-pg {
+  zoom: 1 !important;
+  width: 210mm !important;
+  height: 297mm !important;
+  min-height: 297mm !important;
+  max-height: 297mm !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden;
 }
 #move-pay-grid .sign-slot {
   transition: transform .16s cubic-bezier(.22, .82, .22, 1);

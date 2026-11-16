@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-21-51";
-const APP_EDIT_COUNT = 2467;
+const APP_STAMP = "2026-11-16-22-02";
+const APP_EDIT_COUNT = 2468;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -29826,7 +29826,7 @@ function paintDomPage(el) {
   draw(el);
   return { dataUrl: c.toDataURL("image/jpeg", 0.92), w: c.width, h: c.height };
 }
-function printLeaseIframe(html) {
+function leasePrintDocument(html) {
   const links = [...document.querySelectorAll("link[rel=stylesheet]")].map(l => l.href).filter(Boolean)
     .map(h => "<link rel=\"stylesheet\" href=\"" + String(h).replace(/"/g, "") + "\">").join("");
   const extra = "@page{size:A4 portrait;margin:0}"
@@ -29841,8 +29841,11 @@ function printLeaseIframe(html) {
     + ".lease-u.rev{background:#111!important;color:#fff!important;border-bottom:0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}"
     + ".hand-a4-fit{width:210mm;margin:0;padding:0}"
     + ".hand-a4-fit .term-handover-paper,.hand-a4-fit .term-lease-paper{box-sizing:border-box;width:210mm!important;height:297mm!important;min-height:297mm!important;max-height:297mm!important;margin:0!important;zoom:1!important;transform:none!important;box-shadow:none!important;border:0!important;page-break-after:always;break-after:page;background:#fff}";
-  const doc = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + links
+  return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title> </title>" + links
     + "<style>" + extra + "</style></head><body class=\"print-lease\">" + html + "</body></html>";
+}
+function printLeaseIframe(html) {
+  const doc = leasePrintDocument(html);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("title", " ");
   iframe.style.cssText = "position:fixed;left:0;top:0;width:210mm;height:297mm;opacity:0;pointer-events:none;border:0;z-index:-1";
@@ -43683,16 +43686,9 @@ function moveOwnerShareText() {
 function exportMoveLeasePdf() {
   shareMoveLeasePdf();
 }
-async function shareMoveLeasePdf() {
-  const pack = moveDraftTenant();
-  if (!pack) { toast("請先選房號"); return; }
-  if (!pack.t.name) { toast("請先填姓名"); return; }
-  const html = studioLeasePapersHtml(pack.t, pack.room, true);
-  if (!html) { toast("合約無法產生"); return; }
-  const btn = document.getElementById("move-lease-pdf");
-  if (btn) btn.disabled = true;
+async function rasterLeaseBoard(html) {
   const hold = document.createElement("div");
-  hold.className = "lease-pdf-hold";
+  hold.className = "lease-pdf-board";
   hold.innerHTML = html;
   document.body.appendChild(hold);
   try {
@@ -43701,8 +43697,36 @@ async function shareMoveLeasePdf() {
       img.onload = img.onerror = res;
       setTimeout(res, 700);
     })));
-    try { fitLeasePages(hold); } catch {}
-    const shots = [...hold.querySelectorAll(".lease-pg")].map(paintDomPage).filter(s => s && s.dataUrl);
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch {} }
+    const pages = [...hold.querySelectorAll(".lease-pg")];
+    if (!pages.length || typeof html2canvas !== "function") return pages.map(paintDomPage).filter(s => s && s.dataUrl);
+    const shots = [];
+    for (const page of pages) {
+      const canvas = await html2canvas(page, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        width: page.offsetWidth,
+        height: page.offsetHeight
+      });
+      shots.push({ dataUrl: canvas.toDataURL("image/jpeg", 0.92), w: canvas.width, h: canvas.height });
+    }
+    return shots.filter(s => s && s.dataUrl);
+  } finally {
+    if (hold.parentNode) hold.remove();
+  }
+}
+async function shareMoveLeasePdf() {
+  const pack = moveDraftTenant();
+  if (!pack) { toast("請先選房號"); return; }
+  if (!pack.t.name) { toast("請先填姓名"); return; }
+  const html = studioLeasePapersHtml(pack.t, pack.room, true);
+  if (!html) { toast("合約無法產生"); return; }
+  const btn = document.getElementById("move-lease-pdf");
+  if (btn) btn.disabled = true;
+  try {
+    const shots = await rasterLeaseBoard(html);
     if (!shots.length) { toast("合約無法產生"); return; }
     const blob = await downloadContractsPdf(shots.map(s => s.dataUrl), false, { blobOnly: true, pages: shots });
     if (!blob) { toast("合約無法產生"); return; }
@@ -43719,7 +43743,6 @@ async function shareMoveLeasePdf() {
   } catch {
     toast("PDF 沒做成，請再按一次");
   } finally {
-    if (hold.parentNode) hold.remove();
     if (btn) btn.disabled = false;
   }
 }
