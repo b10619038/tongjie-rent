@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-22-08";
-const APP_EDIT_COUNT = 2470;
+const APP_STAMP = "2026-11-16-22-16";
+const APP_EDIT_COUNT = 2471;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -43697,6 +43697,10 @@ async function rasterLeaseBoard(html) {
       img.onload = img.onerror = res;
       setTimeout(res, 700);
     })));
+    if (document.fonts && document.fonts.load) {
+      try { await document.fonts.load('16px Iansui', '房屋租賃契約書高雄市鳳山區統潔開發有限公司承租人押金'); } catch {}
+      try { await document.fonts.load('42px Iansui', '房屋租賃契約書'); } catch {}
+    }
     if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch {} }
     const pages = [...hold.querySelectorAll(".lease-pg")];
     if (!pages.length || typeof html2canvas !== "function") return pages.map(paintDomPage).filter(s => s && s.dataUrl);

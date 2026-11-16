@@ -58,6 +58,22 @@ html:has(.gate), body:has(.gate) {
   overflow: hidden;
 }
 body { font-family: "PingFang TC", "Noto Sans TC", sans-serif; color: var(--ink); }
+@font-face {
+  font-family: "Iansui";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("fonts/iansui-tc.woff2") format("woff2");
+  unicode-range: U+2E80-2FDF, U+3000-303F, U+3100-312F, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: "Iansui";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("fonts/iansui-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 html[lang="th"] body { font-family: "PingFang TC", "Noto Sans TC", "Noto Sans Thai", sans-serif; }
 html[lang="ko"] body { font-family: "PingFang TC", "Noto Sans TC", "Noto Sans KR", sans-serif; }
 html[lang="ja"] body { font-family: "PingFang TC", "Noto Sans TC", "Hiragino Sans", "Noto Sans JP", sans-serif; }
@@ -6194,7 +6210,7 @@ body.print-lease .studio-lease-paper { display: block; }
 }
 .lease-ink {
   color: #1a57c5;
-  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "BiauKai", serif;
+  font-family: "Iansui", "DFKai-SB", "BiauKai", "Kaiti TC", "KaiTi", "BiauKai", serif;
   font-weight: 700;
   border-bottom: 1px solid #111;
   padding: 0 6px 1px;
@@ -6330,7 +6346,7 @@ body.print-lease .lease-esig { height: 40px; max-width: 200px; }
   border: 0;
   background: #fff;
   color: #111;
-  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", serif;
+  font-family: "Iansui", "DFKai-SB", "BiauKai", "Kaiti TC", "KaiTi", "Noto Serif TC", serif;
   font-size: 16.5px;
   line-height: 1.58;
   margin: 0 auto 12px;
@@ -8522,7 +8538,7 @@ html[data-theme="void"] .font-scale input[type="range"] { --track: #3c3c3c; }
   border-radius: 16px;
   background: #fff;
   color: #111;
-  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", "PMingLiU", serif;
+  font-family: "Iansui", "DFKai-SB", "BiauKai", "Kaiti TC", "KaiTi", "Noto Serif TC", "PMingLiU", serif;
   font-size: 16px;
   line-height: 2;
 }
@@ -8586,7 +8602,7 @@ html[data-theme="void"] .font-scale input[type="range"] { --track: #3c3c3c; }
   border-radius: 16px;
   background: #fff;
   color: #111;
-  font-family: "DFKai-SB", "Kaiti TC", "KaiTi", "TW-Kai", "Noto Serif TC", "PMingLiU", serif;
+  font-family: "Iansui", "DFKai-SB", "BiauKai", "Kaiti TC", "KaiTi", "Noto Serif TC", "PMingLiU", serif;
   font-size: 16px;
   line-height: 2;
 }
