@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-17-12-08";
-const APP_EDIT_COUNT = 2482;
+const APP_STAMP = "2026-11-17-12-20";
+const APP_EDIT_COUNT = 2483;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -4480,7 +4480,7 @@ function renewAskCardHtml(t, r, opts) {
   }
   const cur = liveRenewalOf(t);
   const left = daysLeft(ymdOf(t.leaseEnd));
-  const windowOn = inRenewAskWindow(t) || renewReapplyOpen(t);
+  const windowOn = inRenewAskWindow(t);
   if (!full && !windowOn && !cur) return "";
   if (full && !cur && !inRenewFormWindow(t) && !renewReapplyOpen(t)) return "";
   if (cur) {
@@ -8408,6 +8408,7 @@ function normalize(data) {
   try { applyClearForgottenHearts(data); } catch {}
   try { applyClearRecentHearts(data); } catch {}
   try { applyClearStarPair(data); } catch {}
+  try { applyRestoreNightHearts(data); } catch {}
   try { applyClear6832Heart(data); } catch {}
   pruneDeadApplyNotices(data);
   applyHiddenAnns(data);
@@ -15693,6 +15694,7 @@ async function pullCloudNow() {
       try { applyClearForgottenHearts(state); } catch {}
       try { applyClearRecentHearts(state); } catch {}
       try { applyClearStarPair(state); } catch {}
+      try { applyRestoreNightHearts(state); } catch {}
       try { applyClear6832Heart(state); } catch {}
       applyDueRenewals(state);
       try { applyRenewWater7221(state); } catch {}
@@ -15848,6 +15850,7 @@ async function pullCloudNow() {
     try { applyClearForgottenHearts(state); } catch {}
     try { applyClearRecentHearts(state); } catch {}
     try { applyClearStarPair(state); } catch {}
+    try { applyRestoreNightHearts(state); } catch {}
     try { applyClear6832Heart(state); } catch {}
     applyDueRenewals(state);
     try { applyRenewWater7221(state); } catch {}
@@ -16773,6 +16776,7 @@ async function pushCloud() {
     try { applyClearForgottenHearts(payload); } catch {}
     try { applyClearRecentHearts(payload); } catch {}
     try { applyClearStarPair(payload); } catch {}
+    try { applyRestoreNightHearts(payload); } catch {}
     try { applyClear6832Heart(payload); } catch {}
     try {
       const again = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
@@ -24130,10 +24134,19 @@ function renewReapplyOpen(t) {
   if (typeof liveRenewalOf === "function" && liveRenewalOf(t)) return false;
   if (currentLeaseRenewed(t)) return false;
   const room = (typeof state !== "undefined" && state && state.rooms || []).find(x => x && x.id === t.roomId);
+  const end = ymdOf(t.leaseEnd);
+  const start = ymdOf(t.leaseStart);
   const list = ((typeof state !== "undefined" && state && state.renewals) || []).filter(x => {
     if (!x || x.status !== "cancelled" || !(Number(x.cancelledTs) > 0)) return false;
-    if (x.tenantId && x.tenantId === t.id) return true;
-    return !!(room && (x.roomId === room.id || String(x.roomNo) === String(room.no)));
+    const mine = x.tenantId && x.tenantId === t.id;
+    const roomHit = !!(room && (x.roomId === room.id || String(x.roomNo) === String(room.no)));
+    if (!mine && !roomHit) return false;
+    const oldEnd = ymdOf(x.oldEnd);
+    const rEnd = ymdOf(x.end);
+    const rStart = ymdOf(x.start);
+    if (end && (oldEnd === end || rEnd === end)) return true;
+    if (start && rStart && rStart === start) return true;
+    return false;
   });
   if (!list.length) return false;
   const latest = list.slice().sort((a, b) => (Number(b.cancelledTs) || 0) - (Number(a.cancelledTs) || 0))[0];
@@ -32102,14 +32115,18 @@ function applyClearRecentHearts(data) {
     if (data.annHeartClear2 === ANN_HEART_CLEAR2) {
       const at = a.reactionAt || {};
       ids.forEach(id => {
-        const stamp = Number(at[id]) || Number(a.editedAt) || 0;
-        if (stamp <= cutoff) delete a.reactions[id];
+        const stamp = Number(at[id]) || 0;
+        if (stamp && stamp <= cutoff) delete a.reactions[id];
       });
       return;
     }
-    a.reactions = {};
+    const at = a.reactionAt || {};
+    ids.forEach(id => {
+      const stamp = Number(at[id]) || 0;
+      if (!stamp || stamp <= cutoff) delete a.reactions[id];
+    });
     a.edited = true;
-    a.editedAt = Date.now();
+    a.editedAt = a.editedAt || Date.now();
     dirty = true;
   });
   if (data.annHeartClear2 !== ANN_HEART_CLEAR2) {
@@ -32131,17 +32148,19 @@ function applyClearStarPair(data) {
     if (!ids.length) return;
     if (data.annHeartClear3 === ANN_HEART_CLEAR3) {
       const at = a.reactionAt || {};
-      let kept = false;
       ids.forEach(id => {
-        const stamp = Number(at[id]) || Number(a.editedAt) || 0;
-        if (stamp > cutoff) kept = true;
-        else delete a.reactions[id];
+        const stamp = Number(at[id]) || 0;
+        if (stamp && stamp <= cutoff) delete a.reactions[id];
       });
-      if (kept || !Object.keys(a.reactions).some(k => a.reactions[k])) return;
+      return;
     }
-    a.reactions = {};
+    const at = a.reactionAt || {};
+    ids.forEach(id => {
+      const stamp = Number(at[id]) || 0;
+      if (!stamp || stamp <= cutoff) delete a.reactions[id];
+    });
     a.edited = true;
-    a.editedAt = Date.now();
+    a.editedAt = a.editedAt || Date.now();
     dirty = true;
   });
   if (data.annHeartClear3 !== ANN_HEART_CLEAR3) {
@@ -32151,6 +32170,21 @@ function applyClearStarPair(data) {
   if (dirty) {
     try { markCloudDirty(); } catch {}
   }
+}
+function applyRestoreNightHearts(data) {
+  if (!data || data.nightHeartRestore === "v1") return;
+  const a = (data.announcements || []).find(x => x && x.id === "a1794188694467");
+  data.nightHeartRestore = "v1";
+  if (!a) {
+    try { markCloudDirty(); } catch {}
+    return;
+  }
+  if (!a.reactions || typeof a.reactions !== "object") a.reactions = {};
+  ["t7", "t7641"].forEach(id => {
+    if (a.reactionAt && a.reactionAt[id]) a.reactions[id] = "heart";
+  });
+  a.edited = true;
+  try { markCloudDirty(); } catch {}
 }
 function startAnnounceEdit(id) {
   const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
