@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-17-12-00";
-const APP_EDIT_COUNT = 2481;
+const APP_STAMP = "2026-11-17-12-08";
+const APP_EDIT_COUNT = 2482;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -11858,6 +11858,28 @@ function applyZhong7221(data) {
   });
   if (JSON.stringify(t.leases || []) !== JSON.stringify(leases)) { t.leases = leases; changed = true; }
   if (t.loginPass !== "0901007118") { t.loginPass = "0901007118"; changed = true; }
+  if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  if (t.prepaidYm.indexOf("2026-11") < 0) { t.prepaidYm.push("2026-11"); changed = true; }
+  if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+  if (t.prepaidOn["2026-11"] !== "2026-11-14") { t.prepaidOn["2026-11"] = "2026-11-14"; changed = true; }
+  if (payYmNow() === "2026-11" && !(t.paid && t.paidYm === "2026-11")) {
+    t.paid = true;
+    t.paidTouched = true;
+    t.paidYm = "2026-11";
+    t.paidAt = "2026-11-14 12:00";
+    t.paidVia = "xfer";
+    t.remitOn = "2026-11-14";
+    changed = true;
+  }
+  if (!data.paidMarks) data.paidMarks = {};
+  if (payYmNow() === "2026-11") {
+    const mark = data.paidMarks[t.id] || {};
+    if (!mark.paid || mark.paidYm !== "2026-11" || mark.name !== "鍾敏甄") {
+      data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-14 12:00", paidVia: "xfer", paidYm: "2026-11", editedAt: Date.now(), name: "鍾敏甄" };
+      try { persistPaidMarks(data); } catch {}
+      changed = true;
+    }
+  }
   if (data.leaveInk && data.leaveInk[t.id]) { delete data.leaveInk[t.id]; changed = true; }
   if (data.leaveCash && data.leaveCash[t.id]) { delete data.leaveCash[t.id]; changed = true; }
   if (room.tenantId !== t.id || room.status !== "rented" || Number(room.rent) !== 7000 || Number(room.deposit) !== 14000) {
