@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-17-11-12";
-const APP_EDIT_COUNT = 2479;
+const APP_STAMP = "2026-11-17-11-55";
+const APP_EDIT_COUNT = 2480;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -11737,37 +11737,60 @@ function applyLinanan7231(data) {
 }
 function applyZhong7221(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
-  const room = data.rooms.find(r => r && String(r.no) === "7221");
+  const room = data.rooms.find(r => r && String(r.no) === "7221" && r.kind !== "factory");
   if (!room) return false;
-  let changed = false;
-  data.tenants.forEach(x => {
-    if (!x || x.demo || sameTenantName(x.name, "鍾敏甄")) return;
-    if (x.roomId !== room.id && x.id !== room.tenantId && x.id !== "t7221") return;
-    if (x.former && x.leaveDone && x.loginRevoked) return;
+  if (!Array.isArray(data.goneTenants)) data.goneTenants = [];
+  const beforeGone = data.goneTenants.length;
+  data.goneTenants = data.goneTenants.filter(id => String(id) !== "t7221" && String(id) !== "t7221-mz");
+  let changed = beforeGone !== data.goneTenants.length;
+  const liveOthers = data.tenants.filter(x => x && !x.demo && !x.former && !sameTenantName(x.name, "鍾敏甄") && (x.roomId === room.id || x.id === room.tenantId || x.id === "t7221"));
+  const keep = liveOthers.find(x => x.id === "t7221") || liveOthers[0] || null;
+  liveOthers.forEach(x => {
+    if (x === keep) return;
     x.former = true;
     x.incoming = false;
-    x.prospect = false;
     x.leftOn = x.leftOn || "2026-10-31";
     x.leaveDone = true;
     x.leaveDoneAt = x.leaveDoneAt || "2026-10-31";
     x.sessionEnded = true;
     x.loginRevoked = true;
-    x.edited = true;
-    x.editedAt = Date.now();
     changed = true;
   });
+  if (keep && !data.tenants.some(y => y && y !== keep && y.former && y.roomId === room.id && sameTenantName(y.name, keep.name))) {
+    data.tenants.push(Object.assign({}, keep, {
+      id: "tfmr-7221-" + String(keep.id || "old").replace(/^t/, ""),
+      former: true,
+      incoming: false,
+      prospect: false,
+      leftOn: "2026-10-31",
+      leaveDone: true,
+      leaveDoneAt: "2026-10-31",
+      sessionEnded: true,
+      loginRevoked: true,
+      roomId: room.id
+    }));
+    changed = true;
+  }
   (data.renewals || []).forEach(row => {
     if (!row || row.status === "done" || row.status === "applied" || row.status === "cancelled") return;
     if (String(row.roomNo) !== "7221" && row.roomId !== room.id) return;
-    if (sameTenantName(row.name, "鍾敏甄")) return;
     row.status = "cancelled";
-    row.editedAt = Date.now();
     changed = true;
   });
-  let t = data.tenants.find(x => x && sameTenantName(x.name, "鍾敏甄") && (x.roomId === room.id || x.id === "t7221-mz"));
+  let t = data.tenants.find(x => x && sameTenantName(x.name, "鍾敏甄") && !x.former && (x.roomId === room.id || x.id === "t7221" || x.id === "t7221-mz")) || keep;
   if (!t) {
-    t = { id: "t7221-mz", roomId: room.id };
+    t = { id: "t7221", roomId: room.id };
     data.tenants.push(t);
+    changed = true;
+  }
+  if (keep && keep !== t && !keep.former) {
+    keep.former = true;
+    keep.incoming = false;
+    keep.leftOn = keep.leftOn || "2026-10-31";
+    keep.leaveDone = true;
+    keep.leaveDoneAt = keep.leaveDoneAt || "2026-10-31";
+    keep.sessionEnded = true;
+    keep.loginRevoked = true;
     changed = true;
   }
   const note = "仲介代印合約，115/11/14 現場簽約，租客未登入 App。起租 115/11/20。不足月 11/20–11/30 日拆 2,563。一年約 115/12/1–116/11/30，月租 7,000，押金 14,000。轉帳兆豐。水費年 1,800。身分證 F230987938。女。民國93年7月17日生。出生地臺灣省臺北縣。父鍾明利、母王雅鈴。戶籍新北市蘆洲區仁復里4鄰三民路77號7樓。105年8月8日新北市初發。緊急聯絡人王雅鈴 0913-170-899。";
@@ -11776,6 +11799,7 @@ function applyZhong7221(data) {
     { kind: "year", start: "2026-12-01", end: "2027-11-30", rent: 7000 }
   ];
   const next = {
+    id: t.id || "t7221",
     name: "鍾敏甄",
     roomId: room.id,
     phone: "0901-007-118",
@@ -11798,19 +11822,24 @@ function applyZhong7221(data) {
     agentPrints: true,
     waterYear: 1800,
     signAppointAt: "2026-11-14T12:00",
-    officialAt: t.officialAt || "2026-11-14 12:00",
+    officialAt: "2026-11-14 12:00",
     incoming: false,
     former: false,
     prospect: false,
     placeholder: false,
+    applyPending: false,
+    sessionEnded: false,
+    loginRevoked: false,
+    leaveDone: false,
+    clearedApply: false,
+    cancelledApply: false,
     note
   };
   Object.keys(next).forEach(k => {
-    const same = k === "leases" ? false : JSON.stringify(t[k] == null ? "" : t[k]) === JSON.stringify(next[k]);
-    if (!same) { t[k] = next[k]; changed = true; }
+    if (JSON.stringify(t[k] == null ? "" : t[k]) !== JSON.stringify(next[k])) { t[k] = next[k]; changed = true; }
   });
   if (JSON.stringify(t.leases || []) !== JSON.stringify(leases)) { t.leases = leases; changed = true; }
-  if (!t.loginPass) { t.loginPass = "0901007118"; changed = true; }
+  if (t.loginPass !== "0901007118") { t.loginPass = "0901007118"; changed = true; }
   if (room.tenantId !== t.id || room.status !== "rented" || Number(room.rent) !== 7000 || Number(room.deposit) !== 14000) {
     room.tenantId = t.id;
     room.status = "rented";
@@ -11818,12 +11847,14 @@ function applyZhong7221(data) {
     room.deposit = 14000;
     room.kind = room.kind || "studio";
     room.edited = true;
+    room.editedAt = Date.now();
     changed = true;
   }
   if (!changed) return false;
   t.edited = true;
   t.editedAt = Date.now();
   try { markCloudDirty(); } catch {}
+  try { pushCloud(); } catch {}
   return true;
 }
 function ensureDashu18Term(data) {
@@ -16498,6 +16529,7 @@ let pushBusy = false;
 let pushAgain = false;
 function markCloudDirty() { cloudDirty = true; }
 async function pushCloud() {
+  try { applyZhong7221(state); } catch {}
   if (!pushBusy && ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 2500 && (cloudDirty || pushAgain)) {
     clearTimeout(pushCloud.navWait);
     pushCloud.navWait = setTimeout(() => { try { pushCloud(); } catch {} }, 2600);
@@ -39388,6 +39420,7 @@ function tenantApplyRank(t) {
   return 1;
 }
 function tenantListOfKind(kind, opts) {
+  if (kind !== "factory") { try { applyZhong7221(state); } catch {} }
   try { ensureDemoTenant(state); } catch {}
   const factory = kind === "factory";
   const all = !!(opts && opts.all);
