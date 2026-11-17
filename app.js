@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-16-23-06";
-const APP_EDIT_COUNT = 2478;
+const APP_STAMP = "2026-11-17-11-12";
+const APP_EDIT_COUNT = 2479;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -6144,7 +6144,7 @@ const TENANT_INFO = {
   "7041": { name: "劉恩彤", phone: "0901-106-209／0902-091-118", idNo: "S225768985", address: "高雄市大寮區三隆里1鄰鳳林三路78號", emergencyName: "劉書妤（姊）", emergencyPhone: "0967-138-373", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 18000, payBank: "農會", waterYear: 1800, residents: 1, note: "男友已不續住，現況1人。續約年水費 1,800。原約當時2人同住、水費3600。2押1租 27,000；電儲值 2,000；仲介 9,000；發票 RT35173361。身分證 S225768985。女。民國96年2月9日生。出生地臺灣省高雄縣。父劉育任、母余秀珍。戶籍高雄市大寮區三隆里1鄰鳳林三路78號。115年6月25日高市換發。緊急聯絡人姊姊劉書妤 0967-138-373。" },
   "7042": { name: "周佳瑩", phone: "0968-634-876", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 14000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。1押1租。115/9 先繳 10,000，餘 4,000 併入 115/10。發票本月先開 14,000、先不交付，10月連同10月發票一併給。" },
   "7051": { rent: 7000, deposit: 14000, note: "空房。月租 NT$ 7,000。不可申請租屋補助。楊旻憲已換至 7032。" },
-  "7221": { name: "張智傑", phone: "0988-631-820", leaseStart: "2025-11-01", leaseEnd: "2026-10-31", deposit: 14000, payBank: "農會", note: "仲介新邦城；2押1租 21,000；水費年 1,800；電儲值 1,000；仲介費 7,000；發票 RT00055080" },
+  "7221": { name: "鍾敏甄", phone: "0901-007-118", idNo: "F230987938", address: "新北市蘆洲區仁復里4鄰三民路77號7樓", emergencyName: "王雅鈴", emergencyPhone: "0913-170-899", leaseStart: "2026-11-20", leaseEnd: "2027-11-30", deposit: 14000, rent: 7000, payBank: "兆豐", waterYear: 1800, residents: 1, hasAgent: true, note: "仲介代印合約，115/11/14 現場簽約，租客未登入 App。起租 115/11/20。不足月 11/20–11/30 日拆 2,563。一年約 115/12/1–116/11/30，月租 7,000，押金 14,000。轉帳兆豐。水費年 1,800。身分證 F230987938。女。民國93年7月17日生。出生地臺灣省臺北縣。父鍾明利、母王雅鈴。戶籍新北市蘆洲區仁復里4鄰三民路77號7樓。105年8月8日新北市初發。緊急聯絡人王雅鈴 0913-170-899。" },
   "7222": { name: "林呈澔、廖晉億", phone: "0911-800-717／0983-656-181", leaseStart: "2025-12-01", leaseEnd: "2026-11-30", deposit: 14000, payBank: "農會", note: "2押1租 21,000；水費年 3,600（2人）；電儲值 1,000；仲介 7,000" },
   "7223": { name: "許芸慈", phone: "0983-874-467", leaseStart: "2026-07-01", leaseEnd: "2027-06-30", deposit: 20000, payBank: "兆豐", note: "新客。每月1日繳租，匯兆豐。" },
   "7231": { name: "林安安", leaseStart: "2026-09-13", leaseEnd: "2027-09-30", deposit: 18000, rent: 9000, payBank: "兆豐", hasAgent: true, agentFee: 9000, payCash: 30000, payMega: 5200, note: "仲介。115/9/8 房間現場簽約。2押1租 27,000＋不足月 9/13–9/30 5,400＋水費年 1,800＋電儲值 1,000＝35,200（現金 30,000＋兆豐 5,200）。仲介費 9,000 現金含稅。仲介代印合約蓋章，租客未登入 App。" },
@@ -8361,6 +8361,7 @@ function normalize(data) {
   try { persistPaidMarks(data); } catch {}
   applyYushengElec(data);
   applyLinanan7231(data);
+  try { applyZhong7221(data); } catch {}
   applyDueDayPolicy(data);
   applyOldTenantPayBank(data);
   applyTenantRoster(data);
@@ -10668,6 +10669,7 @@ function applyRenewal7221(data) {
   if (!Array.isArray(data.tenants)) data.tenants = [];
   try { ensureStudioTenant(data, "7221"); } catch {}
   let { room, tenant: t } = studioOccupantOfNo(data, "7221");
+  if (t && sameTenantName(t.name, "鍾敏甄")) return;
   if (!room) {
     room = { id: "r7221", no: "7221", title: "套房", kind: "studio", status: "rented", rent: 7000, deposit: 14000, tenantId: "t7221" };
     data.rooms.push(room);
@@ -11732,6 +11734,97 @@ function applyLinanan7231(data) {
     });
   });
   data.linananVer = LINANAN_VER;
+}
+function applyZhong7221(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  const room = data.rooms.find(r => r && String(r.no) === "7221");
+  if (!room) return false;
+  let changed = false;
+  data.tenants.forEach(x => {
+    if (!x || x.demo || sameTenantName(x.name, "鍾敏甄")) return;
+    if (x.roomId !== room.id && x.id !== room.tenantId && x.id !== "t7221") return;
+    if (x.former && x.leaveDone && x.loginRevoked) return;
+    x.former = true;
+    x.incoming = false;
+    x.prospect = false;
+    x.leftOn = x.leftOn || "2026-10-31";
+    x.leaveDone = true;
+    x.leaveDoneAt = x.leaveDoneAt || "2026-10-31";
+    x.sessionEnded = true;
+    x.loginRevoked = true;
+    x.edited = true;
+    x.editedAt = Date.now();
+    changed = true;
+  });
+  (data.renewals || []).forEach(row => {
+    if (!row || row.status === "done" || row.status === "applied" || row.status === "cancelled") return;
+    if (String(row.roomNo) !== "7221" && row.roomId !== room.id) return;
+    if (sameTenantName(row.name, "鍾敏甄")) return;
+    row.status = "cancelled";
+    row.editedAt = Date.now();
+    changed = true;
+  });
+  let t = data.tenants.find(x => x && sameTenantName(x.name, "鍾敏甄") && (x.roomId === room.id || x.id === "t7221-mz"));
+  if (!t) {
+    t = { id: "t7221-mz", roomId: room.id };
+    data.tenants.push(t);
+    changed = true;
+  }
+  const note = "仲介代印合約，115/11/14 現場簽約，租客未登入 App。起租 115/11/20。不足月 11/20–11/30 日拆 2,563。一年約 115/12/1–116/11/30，月租 7,000，押金 14,000。轉帳兆豐。水費年 1,800。身分證 F230987938。女。民國93年7月17日生。出生地臺灣省臺北縣。父鍾明利、母王雅鈴。戶籍新北市蘆洲區仁復里4鄰三民路77號7樓。105年8月8日新北市初發。緊急聯絡人王雅鈴 0913-170-899。";
+  const leases = [
+    { kind: "stub", start: "2026-11-20", end: "2026-11-30", rent: 2563, days: 11, daysInMonth: 30, monthly: 7000 },
+    { kind: "year", start: "2026-12-01", end: "2027-11-30", rent: 7000 }
+  ];
+  const next = {
+    name: "鍾敏甄",
+    roomId: room.id,
+    phone: "0901-007-118",
+    idNo: "F230987938",
+    birthday: "2004-07-17",
+    birthdaySet: true,
+    address: "新北市蘆洲區仁復里4鄰三民路77號7樓",
+    emergencyName: "王雅鈴",
+    emergencyPhone: "0913-170-899",
+    people: 1,
+    leaseStart: "2026-11-20",
+    leaseEnd: "2027-11-30",
+    rent: 7000,
+    deposit: 14000,
+    stubRent: 2563,
+    dueDay: 1,
+    payBank: "兆豐",
+    payWay: "xfer",
+    hasAgent: true,
+    agentPrints: true,
+    waterYear: 1800,
+    signAppointAt: "2026-11-14T12:00",
+    officialAt: t.officialAt || "2026-11-14 12:00",
+    incoming: false,
+    former: false,
+    prospect: false,
+    placeholder: false,
+    note
+  };
+  Object.keys(next).forEach(k => {
+    const same = k === "leases" ? false : JSON.stringify(t[k] == null ? "" : t[k]) === JSON.stringify(next[k]);
+    if (!same) { t[k] = next[k]; changed = true; }
+  });
+  if (JSON.stringify(t.leases || []) !== JSON.stringify(leases)) { t.leases = leases; changed = true; }
+  if (!t.loginPass) { t.loginPass = "0901007118"; changed = true; }
+  if (room.tenantId !== t.id || room.status !== "rented" || Number(room.rent) !== 7000 || Number(room.deposit) !== 14000) {
+    room.tenantId = t.id;
+    room.status = "rented";
+    room.rent = 7000;
+    room.deposit = 14000;
+    room.kind = room.kind || "studio";
+    room.edited = true;
+    changed = true;
+  }
+  if (!changed) return false;
+  t.edited = true;
+  t.editedAt = Date.now();
+  try { markCloudDirty(); } catch {}
+  return true;
 }
 function ensureDashu18Term(data) {
   if (!data) return;
@@ -15535,6 +15628,7 @@ async function pullCloudNow() {
       applyFactorySepPaidFromBooks(state);
       applyYushengElec(state);
       applyLinanan7231(state);
+      try { applyZhong7221(state); } catch {}
       ensureStudioTenant(state, "7221");
       ensureStudioTenant(state, "7032");
       ensureStudioTenant(state, "6832");
@@ -15712,6 +15806,7 @@ async function pullCloudNow() {
     ensureStudioTenant(state, "7032");
     ensureStudioTenant(state, "6832");
     applyLinanan7231(state);
+    try { applyZhong7221(state); } catch {}
     ensureDemoTenant(state);
     applyFactoryRoster(state);
     state.factoryRosterVer = FACTORY_ROSTER_VER;
