@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-17-12-20";
-const APP_EDIT_COUNT = 2483;
+const APP_STAMP = "2026-11-17-23-40";
+const APP_EDIT_COUNT = 2484;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -13635,10 +13635,15 @@ function mergeAnnouncementReactions(a, b) {
       const hasAt = Object.prototype.hasOwnProperty.call(at, id);
       if (!hasRec && !hasAt) return;
       const stamp = Number(at[id]) || (hasRec ? Number(src.editedAt) || 0 : 0);
-      if (!seen || stamp >= bestAt) {
+      if (!seen || stamp > bestAt || (stamp === bestAt && hasRec)) {
+        if (!hasRec && bestVal) {
+          if (stamp > bestAt) bestAt = stamp;
+          seen = true;
+          return;
+        }
         seen = true;
         bestAt = stamp;
-        bestVal = hasRec ? (rec[id] || "") : "";
+        bestVal = hasRec ? (rec[id] || "") : bestVal;
       }
     });
     if (!seen || bestAt <= REACT_KEEP_AFTER) return;
@@ -32172,19 +32177,23 @@ function applyClearStarPair(data) {
   }
 }
 function applyRestoreNightHearts(data) {
-  if (!data || data.nightHeartRestore === "v1") return;
-  const a = (data.announcements || []).find(x => x && x.id === "a1794188694467");
-  data.nightHeartRestore = "v1";
-  if (!a) {
-    try { markCloudDirty(); } catch {}
-    return;
-  }
+  if (!data) return;
+  const a = (data.announcements || []).find(x => x && String(x.id) === "a1794188694467");
+  if (!a) return;
   if (!a.reactions || typeof a.reactions !== "object") a.reactions = {};
+  let changed = false;
   ["t7", "t7641"].forEach(id => {
-    if (a.reactionAt && a.reactionAt[id]) a.reactions[id] = "heart";
+    if (!(a.reactionAt && a.reactionAt[id])) return;
+    if (a.reactions[id] === "heart") return;
+    a.reactions[id] = "heart";
+    changed = true;
   });
+  if (!changed) return;
   a.edited = true;
+  a.editedAt = Date.now();
+  data.nightHeartRestore = "v2";
   try { markCloudDirty(); } catch {}
+  try { pushCloud(); } catch {}
 }
 function startAnnounceEdit(id) {
   const a = (state.announcements || []).find(x => String(x.id) === String(id || ""));
