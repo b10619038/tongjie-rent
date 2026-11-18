@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-17-23-40";
-const APP_EDIT_COUNT = 2484;
+const APP_STAMP = "2026-11-18-11-35";
+const APP_EDIT_COUNT = 2485;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -7016,6 +7016,7 @@ const CYCLE_JOBS = [
   { id: "cycle-rent-2f-chen", monthDay: 15, text: "收租金　93-63 2F 陳慧玲（存現）", cycle: true, owner: "7651" },
   { id: "cycle-rent-2b-yu", monthDay: 15, text: "收租金　93-2B 禹旺（存現 39,900）", cycle: true, owner: "7651" },
   { id: "cycle-check-lexin-meat", monthDay: 13, intervalMonths: 3, anchor: "2026-10-13", text: "收支票　樂芯 97-68＋第一肉品 97-70（每3個月）", cycle: true, owner: "7651" },
+  { id: "cycle-check-chengyi-n1", monthDay: 17, time: "14:00", intervalMonths: 12, anchor: "2026-11-17", text: "收支票　牛1　2號、6號　承億科技公司　一年一次共14張", cycle: true, owner: "7651" },
   { id: "cycle-tax-vat", monthDay: 15, intervalMonths: 2, anchor: "2026-01-15", text: "繳營業稅（單月15日前，報前兩個月）", cycle: true, owner: "7651" },
   { id: "cycle-tax-cit", monthDay: 1, onlyMonth: 5, text: "營所稅結算申報（5/31 前，報上一年度）", cycle: true, owner: "7651" },
   { id: "cycle-tax-house", monthDay: 15, onlyMonth: 5, text: "繳房屋稅（5/31 前）", cycle: true, owner: "7651" },
@@ -7370,12 +7371,30 @@ function ensureCycleJobs(data) {
     data.aiMemos.push(Object.assign({ createdAt: nowStamp(), doneMonths: [] }, job));
   });
   dropDupYuWangElecMemo(data);
+  stampChengyiCheck2026(data);
   (data.tenants || []).forEach(t => {
     if (!t || t.former || t.demo || t.placeholder) return;
     if (!t.hasAgent && !Number(t.agentFee)) return;
     const r = (data.rooms || []).find(x => x && x.id === t.roomId);
     try { ensureAgentFeeWork(t, r, data); } catch {}
   });
+}
+function stampChengyiCheck2026(data) {
+  if (!data || !Array.isArray(data.aiMemos)) return;
+  const m = data.aiMemos.find(x => x && x.id === "cycle-check-chengyi-n1");
+  if (!m) return;
+  const key = "2026-11";
+  m.doneMonths = m.doneMonths || [];
+  const had = m.doneMonths.indexOf(key) >= 0 && (m.doneAtMonths || {})[key] === "2026-11-17";
+  if (m.doneMonths.indexOf(key) < 0) m.doneMonths.push(key);
+  m.doneAtMonths = Object.assign({}, m.doneAtMonths || {});
+  m.doneAtMonths[key] = "2026-11-17";
+  m.doneAt = m.doneAt || "2026-11-17";
+  try { persistMemoDone(data); } catch {}
+  if (had && data.chengyiCheckVer === "v1") return;
+  data.chengyiCheckVer = "v1";
+  try { markCloudDirty(); } catch {}
+  try { pushCloud(); } catch {}
 }
 function ensureDevCycleJobs(data) {
   if (!data) data = typeof state !== "undefined" ? state : null;
