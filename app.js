@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-18-11-35";
-const APP_EDIT_COUNT = 2485;
+const APP_STAMP = "2026-11-23-12-15";
+const APP_EDIT_COUNT = 2486;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -43962,7 +43962,8 @@ let leasePdfWarmTimer = 0;
 function leasePdfSpec() {
   const pack = moveDraftTenant();
   if (!pack || !pack.t || !pack.t.name) return null;
-  const html = studioLeasePapersHtml(pack.t, pack.room, true);
+  const t = pack.d && pack.d.hasAgent ? Object.assign({}, pack.t, { eSign: null }) : pack.t;
+  const html = studioLeasePapersHtml(t, pack.room, true);
   if (!html) return null;
   const name = (pack.room.no || "合約") + "-" + pack.t.name + "-租賃契約.pdf";
   const caption = [pack.room.no || "", pack.t.name || ""].filter(Boolean).join(" ") + " 合約PDF給仲介";
