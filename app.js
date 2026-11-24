@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-24-17-50";
-const APP_EDIT_COUNT = 2489;
+const APP_STAMP = "2026-11-24-17-55";
+const APP_EDIT_COUNT = 2490;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -32696,7 +32696,7 @@ function homeView() {
       </div>
       <div class="section-title"><h2 class="slide-right">內容</h2></div>
       <div class="btn-row slide-left">
-        <button class="${paidThisMonth(t) ? "ghost pay-rent" : "btn-navy"}" data-page="pay" data-scroll-pay="1">${paidThisMonth(t) ? "已繳費租金" : "繳費租金"}</button>
+        <button class="${(paidThisMonth(t) || signingRentCovered(t, r) || (!dueNow && !firstPay)) ? "ghost pay-rent" : "btn-navy"}" data-page="pay" data-scroll-pay="1">${(paidThisMonth(t) || signingRentCovered(t, r)) ? "已繳費租金" : "繳費租金"}</button>
         <button class="ghost" data-page="repair"><span class="btn-ic">${icon("fix")}</span>我要報修</button>
         <button class="ghost${r && lineButtonBound(r.no, t) ? "" : " btn-solid"}" id="bind-line" type="button"><span class="btn-ic">${icon("line")}</span><span class="bind-line-label">${r && lineButtonBound(r.no, t) ? "已綁LINE" : "綁定LINE"}</span></button>
         <button class="ghost" data-page="rooms"><span class="btn-ic">${icon("room-shut")}</span>房間資訊</button>
