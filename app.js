@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-24-17-45";
-const APP_EDIT_COUNT = 2488;
+const APP_STAMP = "2026-11-24-17-50";
+const APP_EDIT_COUNT = 2489;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -12983,6 +12983,45 @@ function applyRenewNoMarks(data) {
       now6822.edited = true;
       now6822.editedAt = Date.now();
       changed = true;
+    }
+  }
+  if (now6822 && /心怡/.test(String(now6822.name || ""))) {
+    const fixName = s => String(s || "").replace(/黃?心怡/g, "黃心怡");
+    if (now6822.name !== "黃心怡") {
+      now6822.name = "黃心怡";
+      changed = true;
+    }
+    if (now6822.invoiceBuyer && now6822.invoiceBuyer !== "黃心怡") {
+      now6822.invoiceBuyer = "黃心怡";
+      changed = true;
+    }
+    if (now6822.eSign && now6822.eSign.name && now6822.eSign.name !== "黃心怡") {
+      now6822.eSign.name = "黃心怡";
+      changed = true;
+    }
+    const es = data.eSigns && data.eSigns[now6822.id];
+    if (es && es.name && es.name !== "黃心怡") { es.name = "黃心怡"; changed = true; }
+    (data.notices || []).forEach(n => {
+      if (!n || !/心怡/.test(String(n.text || "")) || /黃心怡/.test(String(n.text || ""))) return;
+      n.text = fixName(n.text);
+      changed = true;
+    });
+    (data.aiMemos || []).forEach(m => {
+      if (!m || !/6822/.test(String(m.text || "")) || !/心怡/.test(String(m.text || "")) || /黃心怡/.test(String(m.text || ""))) return;
+      m.text = fixName(m.text);
+      changed = true;
+    });
+    const p = data.presence && data.presence[now6822.id];
+    if (p && p.name && p.name !== "黃心怡") { p.name = "黃心怡"; changed = true; }
+    if (data.applyPing && data.applyPing.name === "心怡") { data.applyPing.name = "黃心怡"; changed = true; }
+    (data.auditLogs || []).forEach(x => {
+      if (!x || x.who !== "租客 6822　心怡") return;
+      x.who = "租客 6822　黃心怡";
+      changed = true;
+    });
+    if (changed) {
+      now6822.edited = true;
+      now6822.editedAt = Date.now();
     }
   }
   if (changed) {
@@ -28449,7 +28488,7 @@ function normalizePersonName(s) {
 function personNameOk(s) {
   const n = normalizePersonName(s);
   const parts = n.split("、").filter(Boolean);
-  return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[\u4e00-\u9fff]{2,4}$/.test(p));
+  return parts.length >= 1 && parts.length <= 2 && parts.every(p => /^[\u4e00-\u9fff]{3,4}$/.test(p));
 }
 function oneMobile(s) {
   let d = String(s || "").replace(/\D/g, "");
@@ -28638,10 +28677,10 @@ function moveJoinedDraft() {
 }
 function movePeopleOk(joined) {
   const d = ensureMoveIn();
-  if (!personNameOk(joined.name)) { toast("請填中文姓名"); return false; }
+  if (!personNameOk(joined.name)) { toast("請填完整中文姓名，至少三個字"); return false; }
   if (!mobileOk(joined.phone)) { toast("請填手機號碼"); return false; }
   if (joined.idNo && !idNoOk(joined.idNo)) { toast("請填身分證"); return false; }
-  if (joined.two && !personNameOk(d.name2)) { toast("請填第二人姓名"); return false; }
+  if (joined.two && !personNameOk(d.name2)) { toast("請填第二人完整中文姓名，至少三個字"); return false; }
   if (joined.two && !mobileOk(d.phone2)) { toast("請填第二人手機"); return false; }
   if (joined.two && d.idNo2 && !idNoOk(d.idNo2)) { toast("請填第二人身分證"); return false; }
   return true;
