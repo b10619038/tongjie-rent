@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-23-12-15";
-const APP_EDIT_COUNT = 2486;
+const APP_STAMP = "2026-11-24-17-40";
+const APP_EDIT_COUNT = 2487;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -12944,6 +12944,7 @@ function applyRenewNoMarks(data) {
     ));
     if (no === "7631" && t && !sameTenantName(t.name, "蔡文銘")) return;
     if (no === "7023" && t && !sameTenantName(t.name, "謝雯鶯")) return;
+    if (no === "6822" && t && !/吳孟書|黃莉晏/.test(String(t.name || ""))) return;
     if (t && (t.renewChoice === "open" || t.renewChoice === "yes")) return;
     if (t && t.renewChoice !== "no") {
       t.renewChoice = "no";
@@ -12966,6 +12967,23 @@ function applyRenewNoMarks(data) {
     now7023.edited = true;
     now7023.editedAt = Date.now();
     changed = true;
+  }
+  const room6822 = (data.rooms || []).find(r => r && String(r.no) === "6822");
+  const now6822 = room6822 && (data.tenants || []).find(x => x && !x.former && !x.demo && x.roomId === room6822.id);
+  if (now6822 && !/吳孟書|黃莉晏/.test(String(now6822.name || "")) && now6822.renewChoice === "no" && !now6822.leaveApplied) {
+    now6822.renewChoice = "open";
+    now6822.edited = true;
+    now6822.editedAt = Date.now();
+    changed = true;
+  }
+  if (now6822 && /心怡/.test(String(now6822.name || ""))) {
+    if (!Array.isArray(now6822.prepaidYm)) now6822.prepaidYm = [];
+    if (now6822.prepaidYm.indexOf("2026-12") < 0) {
+      now6822.prepaidYm.push("2026-12");
+      now6822.edited = true;
+      now6822.editedAt = Date.now();
+      changed = true;
+    }
   }
   if (changed) {
     try { markCloudDirty(); } catch {}
@@ -19363,7 +19381,20 @@ function payLabel(tenant, room, opts) {
   if (paid) return { text: stub ? "不足月已繳" : (admin ? "已繳" : "本月已繳"), cls: "paid" };
   return { text: stub ? "不足月未繳" : (admin ? "未繳" : "本月未繳"), cls: "unpaid" };
 }
+function signingRentCovered(t, r) {
+  if (!t || t.former || t.demo || !isNewStudioTenant(t, r)) return false;
+  const bits = firstStudioPayBits(t, r);
+  const paidSet = tenantPaidYmSet(t);
+  const startYm = String(bits.yearStart || t.leaseStart || "").slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(startYm) || !paidSet.has(startYm)) return false;
+  if (bits.stub) {
+    const stubYm = String(bits.stubStart || "").slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(stubYm) && !paidSet.has(stubYm)) return false;
+  }
+  return payYmNow() <= startYm;
+}
 function payChip(t, r, unpaid) {
+  if (signingRentCovered(t, r)) return { text: "已繳", cls: "paid" };
   if (unpaid) return { text: isStubMonthNow(t, r) ? "不足月未繳" : "未繳", cls: "unpaid" };
   return payLabel(t, r, { admin: true });
 }
@@ -21567,9 +21598,18 @@ function renewDecisionOf(no) {
     const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === s);
     const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
     if (t && t.renewChoice === "open") return "";
-    if (t && (t.renewChoice === "no" || t.renewChoice === "yes")) return t.renewChoice;
+    if (t && t.renewChoice === "yes") return "yes";
+    if (t && t.renewChoice === "no" && !(s === "6822" && !/吳孟書|黃莉晏/.test(String(t.name || "")))) return "no";
   } catch {}
-  if (s === "6822") return "no";
+  if (s === "6822") {
+    let old = true;
+    try {
+      const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === "6822");
+      const occ = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo);
+      if (occ && !/吳孟書|黃莉晏/.test(String(occ.name || ""))) old = false;
+    } catch {}
+    if (old) return "no";
+  }
   if (s === "7023" && t && sameTenantName(t.name, "謝雯鶯")) return "no";
   if (s === "7631" && (!t || sameTenantName(t.name, "蔡文銘"))) return "no";
   if (s === "7021") return "yes";
@@ -39397,9 +39437,9 @@ function tenantCountRank(t) {
 function tenantPayChipMatch(t, r, chip) {
   if (!chip || chip === "vacant" || chip === "count") return true;
   if (!t || t.former || t.incoming) return false;
-  if (chip === "paid") return paidThisMonth(t);
+  if (chip === "paid") return paidThisMonth(t) || signingRentCovered(t, r);
   if (chip === "unpaid") {
-    if (paidThisMonth(t)) return false;
+    if (paidThisMonth(t) || signingRentCovered(t, r)) return false;
     if (firstStudioPayDue(t, r)) return true;
     return leaseCoversYm(t, r, payYmNow());
   }
