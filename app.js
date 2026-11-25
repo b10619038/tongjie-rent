@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-42";
-const APP_EDIT_COUNT = 2509;
+const APP_STAMP = "2026-11-25-16-48";
+const APP_EDIT_COUNT = 2510;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3318,6 +3318,67 @@ async function wipeClientCache() {
     await Promise.all(keys.map(k => caches.delete(k)));
   } catch {}
 }
+function beginUpdateCover() {
+  try {
+    if (!sessionStorage.getItem("tj-updating")) sessionStorage.setItem("tj-updating", String(Date.now()));
+  } catch {}
+  document.documentElement.classList.add("tj-updating");
+  let s = document.getElementById("splash");
+  if (!s) {
+    s = document.createElement("div");
+    s.id = "splash";
+    document.body.appendChild(s);
+  }
+  if (!s.querySelector(".upd-panel")) {
+    const panel = document.createElement("div");
+    panel.className = "upd-panel";
+    panel.innerHTML = '<div class="upd-kicker">統潔＆信潔開發</div><div class="upd-title">正在更新</div><div class="g-track"><div class="g-bar" id="g-bar"></div></div>';
+    s.appendChild(panel);
+  }
+  s.classList.remove("out");
+  s.dataset.done = "";
+  s.style.display = "grid";
+  s.style.opacity = "1";
+  if (typeof window.__tickUpdateBar !== "function") {
+    window.__tickUpdateBar = function tick() {
+      if (!document.documentElement.classList.contains("tj-updating")) return;
+      const bar = document.getElementById("g-bar");
+      if (bar && !window.__updDone) {
+        let t0 = Date.now();
+        try { t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
+        const elapsed = Date.now() - t0;
+        const pct = Math.min(90, 14 + 76 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
+        bar.style.width = pct.toFixed(1) + "%";
+      }
+      requestAnimationFrame(tick);
+    };
+  }
+  requestAnimationFrame(window.__tickUpdateBar);
+}
+function finishUpdateCover() {
+  if (!document.documentElement.classList.contains("tj-updating")) {
+    hideSplash();
+    return;
+  }
+  window.__updDone = true;
+  const bar = document.getElementById("g-bar");
+  if (bar) bar.style.width = "100%";
+  let started = Date.now();
+  try { started = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
+  const hold = Math.max(420, 1100 - (Date.now() - started));
+  setTimeout(() => {
+    window.__updReveal = true;
+    try { sessionStorage.removeItem("tj-updating"); } catch {}
+    document.documentElement.classList.remove("tj-updating");
+    const el = document.getElementById("splash");
+    if (el) {
+      el.style.transition = "opacity .32s ease";
+      el.style.opacity = "0";
+      el.style.pointerEvents = "none";
+    }
+    setTimeout(() => hideSplash(), 340);
+  }, hold);
+}
 function applyAppUpdate() {
   persistLogin();
   persistUi();
@@ -3326,6 +3387,7 @@ function applyAppUpdate() {
     try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
     hideUpdateUi();
     try { __reloading = true; } catch {}
+    beginUpdateCover();
     wipeClientCache().finally(() => {
       const bust = "v=" + Date.now();
       try { location.replace(location.pathname.replace(/\/?$/, "/") + "?" + bust); }
@@ -50767,6 +50829,7 @@ function bindPullRefresh() {
   });
 }
 function hideSplash() {
+  if (document.documentElement.classList.contains("tj-updating") && !window.__updReveal) return;
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
   el.dataset.done = "1";
@@ -50793,7 +50856,7 @@ function captureLookHold() {
 async function boot() {
   captureLookHold();
   try { takeTenantGoQuery(); takeChatOpenQuery(); armChatOpen(); } catch {}
-  const splashAt = setTimeout(hideSplash, 20000);
+  const splashAt = setTimeout(() => { window.__updReveal = true; finishUpdateCover(); }, 20000);
   try {
     armCompanySave();
     try { if (typeof armAiSend === "function") armAiSend(); } catch {}
@@ -50875,7 +50938,7 @@ async function boot() {
     try { render(); } catch {}
   }
   clearTimeout(splashAt);
-  hideSplash();
+  finishUpdateCover();
   const syncTick = async () => {
     if (syncTick.busy) return;
     if (ui.adminNavAt && Date.now() - ui.adminNavAt < 4000) return;
