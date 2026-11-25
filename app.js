@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-13-45";
-const APP_EDIT_COUNT = 2494;
+const APP_STAMP = "2026-11-25-13-50";
+const APP_EDIT_COUNT = 2495;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -19405,6 +19405,7 @@ function factoryAddress(r) {
   return formatFactoryAddr(r.location || r.no || "");
 }
 function invoiceIsTriple(r, t) {
+  if (r && String(r.no) === "7611") return true;
   if (!r || r.kind !== "factory") return false;
   const name = String((t && t.name) || r.company || "");
   const note = String((t && t.note) || "");
@@ -19491,9 +19492,10 @@ function invoiceCopyHtml(r, t, copyName) {
   const liveAmt = factory
     ? (triple ? br.total : (Number(r.rent) || Number(t && t.rent) || 0))
     : tenantRentForYm(t, r, billedYm);
+  const shopTriple = String(r.no) === "7611";
   const total = editedAmt ? Number(ui.invoiceAmt) : liveAmt;
-  const sales = triple ? br.sales : total;
-  const taxAmt = triple ? br.tax : 0;
+  const sales = shopTriple ? Math.round(Number(total) / 1.05) : (triple ? br.sales : total);
+  const taxAmt = shopTriple ? Math.max(0, Math.round(Number(total) || 0) - sales) : (triple ? br.tax : 0);
   const price = ui.invoicePrice != null && String(ui.invoicePrice) !== "" ? ui.invoicePrice : String(sales || "");
   const taxId = (ui.invoiceTaxId != null && ui.invoiceTaxId !== "" ? ui.invoiceTaxId : ((t && t.taxId) || "")).replace(/\D/g, "").slice(0, 8);
   const y = ui.invoiceY || p.y;
@@ -19511,7 +19513,7 @@ function invoiceCopyHtml(r, t, copyName) {
     }).join("");
     const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
     const cn = hans.map((ch, i) => mk(W, H, cnX[i] - 77, 951, 38, 44, ch, "inv-han")).join("");
-    const door = factoryInvoiceNote(r, t);
+    const door = String(r.no) === "7611" ? "7611" : factoryInvoiceNote(r, t);
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
       ${at(W, H, 301, 164, 1360, 42, "invoiceBuyer", buyer, "inv-left inv-buyer")}
