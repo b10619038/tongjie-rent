@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-38";
-const APP_EDIT_COUNT = 2507;
+const APP_STAMP = "2026-11-25-16-40";
+const APP_EDIT_COUNT = 2508;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31721,16 +31721,16 @@ function openGateQr() {
   wrap.className = "install-mask";
   wrap.id = "gate-qr-mask";
   wrap.innerHTML = `<div class="install-sheet invite-sheet">
-      <div class="label">分享網址</div>
-      <h2>最一開始的入口</h2>
       <img class="invite-qr" src="${gateQrSrc()}" alt="入口 QR" width="280" height="280">
-      <p class="invite-url">${APP_HOME_URL}</p>
+      <button type="button" class="invite-url gate-url-copy" id="gate-url-copy">${APP_HOME_URL}</button>
       <p class="small">掃碼會打開申請入住、租客登入、後台登入那個畫面。</p>
       <button class="ghost" id="gate-qr-close" type="button">關閉</button>
     </div>`;
   const close = () => { if (wrap.parentNode) wrap.remove(); };
   wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
   document.body.appendChild(wrap);
+  const url = wrap.querySelector("#gate-url-copy");
+  if (url) url.onclick = e => { e.preventDefault(); e.stopPropagation(); copyTextSafe(APP_HOME_URL, "網址已複製"); };
   const btn = wrap.querySelector("#gate-qr-close");
   if (btn) btn.onclick = e => { e.preventDefault(); e.stopPropagation(); close(); };
 }
@@ -36420,7 +36420,7 @@ function adminSettings() {
       <div class="label">帳號</div>
       <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
-      ${isDeveloper() ? `<button type="button" class="row gate-qr-open" id="open-gate-qr"><span class="k">分享網址</span><span class="v">點開</span></button>` : ""}
+      ${isDeveloper() ? `<button type="button" class="row gate-qr-open" id="open-gate-qr"><span class="k">分享網址</span><span class="v">QRcode</span></button>` : ""}
     </div>
     ${isDeveloper() ? visionSettingsHtml() : ""}
     ${bioSettingsHtml()}
