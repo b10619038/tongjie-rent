@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-15-35";
-const APP_EDIT_COUNT = 2499;
+const APP_STAMP = "2026-11-25-15-40";
+const APP_EDIT_COUNT = 2500;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -19474,9 +19474,9 @@ function invHLine(W, H, x1, x2, y) {
   if (!(x2 > x1 + 4)) return "";
   return invSlash(W, H, x1, y, x2, y);
 }
-function cnAmountHtml(W, H, cnX, top, hans, mk) {
+function cnAmountHtml(W, H, cnX, top, hans, mk, lineDy) {
   let html = "";
-  const yLine = top + 22;
+  const yLine = top + 22 + (lineDy || 0);
   let i = 0;
   while (i < hans.length) {
     if (hans[i] !== "零") {
@@ -19537,7 +19537,7 @@ function invoiceCopyHtml(r, t, copyName) {
       return at(W, H, x + 74, 236, rgt - x - 16, 30, "invoiceTax" + i, taxId[i] || "", "inv-tid");
     }).join("");
     const cnX = [362, 462, 567, 670, 775, 883, 980, 1086, 1197];
-    const cn = cnAmountHtml(W, H, cnX, 951, hans, mk);
+    const cn = cnAmountHtml(W, H, cnX, 951, hans, mk, 8);
     const door = String(r.no) === "7611" ? "7611" : factoryInvoiceNote(r, t);
     return `<section class="inv-photo triple">
       ${at(W, H, 200, 58, 280, 48, "invoiceNum", num, "inv-big")}
