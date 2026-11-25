@@ -8168,7 +8168,7 @@ span.ann-ig-heart { pointer-events: none; cursor: default; }
   right: 16px;
   width: auto;
   bottom: calc(32px + var(--safe-b));
-  z-index: 96;
+  z-index: 400;
   transform: none;
   background: var(--teal);
   color: var(--on-teal, #fff);

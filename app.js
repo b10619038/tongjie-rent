@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-15-50";
-const APP_EDIT_COUNT = 2501;
+const APP_STAMP = "2026-11-25-16-05";
+const APP_EDIT_COUNT = 2502;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3105,8 +3105,9 @@ function dismissedBuild() {
 function isDismissed(ver) {
   const d = dismissedBuild();
   const v = String(ver || "");
-  if (!d || !v) return false;
-  return d === v;
+  if (!d || !v || d !== v) return false;
+  if (/^\d+$/.test(v) && /^\d+$/.test(FILE_VER) && Number(FILE_VER) < Number(v)) return false;
+  return true;
 }
 function rememberDismiss(ver) {
   const v = String(ver || "");
@@ -3326,7 +3327,8 @@ function applyAppUpdate() {
     hideUpdateUi();
     try { __reloading = true; } catch {}
     wipeClientCache().finally(() => {
-      try { location.replace(location.pathname.replace(/\/?$/, "/") + "index.html?v=" + Date.now()); }
+      const bust = "v=" + Date.now();
+      try { location.replace(location.pathname.replace(/\/?$/, "/") + "?" + bust); }
       catch { location.reload(); }
     });
   };
@@ -3342,7 +3344,7 @@ async function pollRemoteBuild() {
   if (EMBED_PAGE) return;
   if (typeof __reloading !== "undefined" && __reloading) return;
   try {
-    const txt = await fetch("index.html?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
+    const txt = await fetch("/?nocache=1&t=" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "");
     const m = String(txt || "").match(/app\.js\?v=(\d+)/);
     if (!m || !m[1] || m[1] === FILE_VER) return;
     if (isDismissed(m[1])) return;

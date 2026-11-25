@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v2370";
+const CACHE = "tongjie-app-v2371";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/html2canvas.min.js", "/fonts/iansui-tc.woff2", "/fonts/iansui-latin.woff2", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png"];
 self.addEventListener("install", e => {
@@ -78,7 +78,7 @@ function pingClients(fileVer) {
 }
 async function pingBuild() {
   try {
-    const res = await fetch("/index.html?nocache=1&t=" + Date.now(), { cache: "no-store" });
+    const res = await fetch("/?nocache=1&t=" + Date.now(), { cache: "no-store" });
     if (!res || !res.ok) return;
     const txt = await res.text();
     const m = String(txt).match(/app\.js\?v=(\d+)/);
