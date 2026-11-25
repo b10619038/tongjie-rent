@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-09-55";
-const APP_EDIT_COUNT = 2493;
+const APP_STAMP = "2026-11-25-13-45";
+const APP_EDIT_COUNT = 2494;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -181,6 +181,36 @@ const STUDIO_OCT_SHEET = {
   "7631": { on: "2026-10-16", amount: 9000, bank: "農會", name: "蔡文銘" },
   "7632": { on: "2026-10-27", amount: 14000, bank: "兆豐", name: "謝佩君" },
   "7022": { on: "2026-10-27", amount: 7000, bank: "農會", name: "郭雅萱" }
+};
+const STUDIO_NOV_SHEET = {
+  "7242": { on: "2026-10-28", amount: 14000, bank: "兆豐", name: "張育慈、周聖傑" },
+  "7223": { on: "2026-10-29", amount: 10000, bank: "兆豐", name: "許芸慈" },
+  "7232": { on: "2026-10-29", amount: 14000, bank: "兆豐", name: "林紘亦" },
+  "7222": { on: "2026-10-31", amount: 7000, bank: "農會", name: "林呈澔、廖晉億" },
+  "6831": { on: "2026-11-01", amount: 9000, bank: "農會", name: "吳昱瑾" },
+  "6832": { on: "2026-11-01", amount: 14000, bank: "兆豐", name: "周婕妤、許軒偉" },
+  "7021": { on: "2026-11-01", amount: 7000, bank: "兆豐", name: "陳信安" },
+  "7031": { on: "2026-11-01", amount: 9000, bank: "兆豐", name: "朱甫晟" },
+  "7041": { on: "2026-11-01", amount: 9000, bank: "兆豐", name: "劉恩彤" },
+  "6823": { on: "2026-11-02", amount: 10000, bank: "兆豐", name: "顏家蓁" },
+  "7611": { on: "2026-11-03", amount: 42000, bank: "農會", name: "波波奇" },
+  "7631": { on: "2026-11-03", amount: 9000, bank: "兆豐", name: "沈妮采" },
+  "7642": { on: "2026-11-03", amount: 14000, bank: "兆豐", name: "陳智泓" },
+  "7621": { on: "2026-11-05", amount: 7000, bank: "農會", name: "王俊典、曾郁庭" },
+  "7623": { on: "2026-11-05", amount: 10000, bank: "兆豐", name: "陳財源" },
+  "7032": { on: "2026-11-06", amount: 12000, bank: "兆豐", name: "楊旻憲" },
+  "6841": { on: "2026-11-07", amount: 9000, bank: "兆豐", name: "賴欣怡" },
+  "7651": { on: "2026-11-09", amount: 5000, bank: "農會", name: "吳慧青" },
+  "6842": { on: "2026-11-10", amount: 14000, bank: "兆豐", name: "蘇冠達、吳汶修" },
+  "7641": { on: "2026-11-10", amount: 9000, bank: "兆豐", name: "洪子軒" },
+  "7023": { on: "2026-11-11", amount: 6954, bank: "兆豐", name: "蔡承叡" },
+  "6821": { on: "2026-11-12", amount: 7000, bank: "兆豐", name: "黃宥宇" },
+  "7622": { on: "2026-11-12", amount: 7000, bank: "農會", name: "邱育琳" },
+  "7231": { on: "2026-11-13", amount: 9000, bank: "兆豐", name: "林安安" },
+  "7632": { on: "2026-11-13", amount: 14000, bank: "兆豐", name: "謝佩君" },
+  "7221": { on: "2026-11-16", amount: 2563, bank: "兆豐", name: "鍾敏甄" },
+  "7241": { on: "2026-11-16", amount: 8000, bank: "兆豐", name: "陳逸仁" },
+  "7022": { on: "2026-11-23", amount: 7000, bank: "兆豐", name: "郭雅萱" }
 };
 const XINJIE_0909_VER = "xinjie-0909-v3";
 const XINJIE_0909_BOOKS = [
@@ -8420,6 +8450,8 @@ function normalize(data) {
   try { apply7042RentShort(data); } catch {}
   try { apply7042SepPaid(data); } catch {}
   try { apply7042OctUnpaid(data); } catch {}
+  try { apply7042NovUnpaid(data); } catch {}
+  try { applyStudioNovSheet(data); } catch {}
   try { applyRenewal7632(data); } catch {}
   try { applyRenewal6823(data); } catch {}
   try { applyRenewedPayBanks(data); } catch {}
@@ -9677,46 +9709,63 @@ function apply7223NovDecPay(data) {
   if (!room) return;
   const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
   if (!t) return;
-  const on = "2026-11-08";
-  const at = on + " 19:44";
+  const novOn = "2026-10-29";
+  const decOn = "2026-11-08";
+  const at = decOn + " 19:44";
   const dec = "2026-12";
+  const nov = "2026-11";
   const count = "2026-12-01";
   if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+  if (t.prepaidYm.indexOf(nov) < 0) t.prepaidYm.push(nov);
   if (t.prepaidYm.indexOf(dec) < 0) t.prepaidYm.push(dec);
   if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
-  if (t.prepaidOn[dec] !== on) t.prepaidOn[dec] = on;
+  if (t.prepaidOn[nov] !== novOn) t.prepaidOn[nov] = novOn;
+  if (t.prepaidOn[dec] !== decOn) t.prepaidOn[dec] = decOn;
   if (!t.prepaidCountOn || typeof t.prepaidCountOn !== "object") t.prepaidCountOn = {};
   if (t.prepaidCountOn[dec] !== count) t.prepaidCountOn[dec] = count;
-  let changed = t.nov26Pay7223 !== at;
-  if (payYmNow() === "2026-11") {
-    t.paid = true;
-    t.paidYm = "2026-11";
-    t.paidTouched = true;
-    t.remitOn = on;
-    if (!t.paidAt || String(t.paidAt).indexOf("10:00") >= 0) t.paidAt = at;
-    if (!t.paidVia || t.paidVia === "app") t.paidVia = "remit";
+  let changed = t.nov26Pay7223 !== "2026-10-29+2026-11-08";
+  if (payYmNow() === nov) {
+    const paidAt = novOn + " 12:00";
+    if (!t.paid || t.paidYm !== nov || ymdOf(t.paidAt) !== novOn || ymdOf(t.remitOn) !== novOn) {
+      t.paid = true;
+      t.paidYm = nov;
+      t.paidTouched = true;
+      t.remitOn = novOn;
+      t.paidAt = paidAt;
+      if (!t.paidVia || t.paidVia === "app") t.paidVia = "remit";
+      changed = true;
+    }
     if (!data.paidMarks) data.paidMarks = {};
     const mark = data.paidMarks[t.id] || {};
-    if (!mark.paid || mark.paidAt !== t.paidAt || mark.paidVia !== t.paidVia || String(mark.paidYm || "") !== "2026-11") {
-      data.paidMarks[t.id] = { paid: true, paidAt: t.paidAt, paidVia: t.paidVia, paidYm: "2026-11", editedAt: Date.now(), name: t.name || "許芸慈" };
+    if (!mark.paid || ymdOf(mark.paidAt) !== novOn || mark.paidVia !== t.paidVia || String(mark.paidYm || "") !== nov) {
+      data.paidMarks[t.id] = { paid: true, paidAt: t.paidAt, paidVia: t.paidVia, paidYm: nov, editedAt: Date.now(), name: t.name || "許芸慈" };
       changed = true;
     }
   }
   if (!Array.isArray(data.books)) data.books = [];
+  (data.books || []).forEach(b => {
+    if (!b) return;
+    if (b.id === "bk-7223-202611-rent" || b.importTag === "rent-line-2026-11") {
+      if (ymdOf(b.date) !== novOn) { b.date = novOn; changed = true; }
+    }
+    if (b.id === "bk-7223-202612-prepaid" || b.importTag === "rent-prepaid-2026-12") {
+      if (ymdOf(b.date) !== decOn) { b.date = decOn; changed = true; }
+    }
+  });
   const gone = data.ledgerGone || [];
   [
-    ["bk-7223-202611-rent", "牛10　7223 許芸慈　11月租金", "rent-line-2026-11"],
-    ["bk-7223-202612-prepaid", "牛10　7223 許芸慈　12月租金（11/08預繳，12/01入帳）", "rent-prepaid-2026-12"]
-  ].forEach(([id, note, tag]) => {
+    ["bk-7223-202611-rent", novOn, "牛10　7223 許芸慈　11月租金", "rent-line-2026-11"],
+    ["bk-7223-202612-prepaid", decOn, "牛10　7223 許芸慈　12月租金（11/08預繳，12/01入帳）", "rent-prepaid-2026-12"]
+  ].forEach(([id, date, note, tag]) => {
     const exists = (data.books || []).some(b => b && (b.id === id || (b.type === "in" && String(b.importTag || "") === tag && (String(b.roomNo || "") === "7223" || String(b.note || "").indexOf("7223") >= 0))));
     if (exists || gone.indexOf(id) >= 0) return;
     data.books.push({
-      id, type: "in", date: on, amount: 10000, company: "統潔", note, bank: "兆豐",
+      id, type: "in", date, amount: 10000, company: "統潔", note, bank: "兆豐",
       roomNo: "7223", importTag: tag, linkedTenantId: t.id, createdAt: at
     });
     changed = true;
   });
-  t.nov26Pay7223 = at;
+  t.nov26Pay7223 = "2026-10-29+2026-11-08";
   if (!changed) return;
   t.editedAt = Date.now();
   try { persistLedger(data); } catch {}
@@ -9780,6 +9829,81 @@ function applyStudioOctSheet(data) {
     });
   });
   data.studioOctSheetVer = "20261106-oct-sheet";
+  try { persistLedger(data); } catch {}
+  try { markCloudDirty(); } catch {}
+}
+function novSheetRentBook(b, no) {
+  if (!b || b.type === "out") return false;
+  const roomHit = String(b.roomNo || "") === String(no) || String(b.note || "").indexOf(String(no)) >= 0;
+  if (!roomHit) return false;
+  const tag = String(b.importTag || "");
+  const note = String(b.note || "");
+  if (b.id === "bk-nov115-" + no) return true;
+  if (/12月/.test(note) || tag.indexOf("2026-12") >= 0) return false;
+  if (/10月租金/.test(note) || tag.indexOf("2026-10") >= 0) return false;
+  if (tag === "rent-line-2026-11" || tag === "rent-auto-2026-11" || tag === "rent-prepaid-2026-11" || tag === "nov-sheet-2026-11") return true;
+  if (/11月租金|不足月租金/.test(note)) return true;
+  return false;
+}
+function applyStudioNovSheet(data) {
+  if (!data) return;
+  const ym = "2026-11";
+  if (!Array.isArray(data.books)) data.books = [];
+  let changed = false;
+  Object.keys(STUDIO_NOV_SHEET).forEach(no => {
+    const row = STUDIO_NOV_SHEET[no];
+    const room = (data.rooms || []).find(r => r && String(r.no) === no && r.kind !== "factory");
+    if (!room) return;
+    const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo && String(x.name || "").trim());
+    if (!t) return;
+    if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+    if (t.prepaidYm.indexOf(ym) < 0) { t.prepaidYm.push(ym); changed = true; }
+    if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+    if (t.prepaidOn[ym] !== row.on) { t.prepaidOn[ym] = row.on; changed = true; }
+    if (payYmNow() === ym) {
+      const at = row.on + (ymdOf(t.paidAt) === row.on && t.paidAt ? String(t.paidAt).slice(10) : " 12:00");
+      if (!t.paid || String(t.paidYm || "").slice(0, 7) !== ym || ymdOf(t.paidAt) !== row.on || ymdOf(t.remitOn) !== row.on) {
+        t.paid = true;
+        t.paidTouched = true;
+        t.paidYm = ym;
+        t.paidAt = ymdOf(t.paidAt) === row.on ? t.paidAt : at;
+        t.remitOn = row.on;
+        if (!t.paidVia) t.paidVia = "sheet";
+        t.editedAt = Date.now();
+        changed = true;
+      }
+      if (!data.paidMarks) data.paidMarks = {};
+      const mark = data.paidMarks[t.id] || {};
+      if (!mark.paid || String(mark.paidYm || "") !== ym || ymdOf(mark.paidAt) !== row.on) {
+        data.paidMarks[t.id] = { paid: true, paidAt: t.paidAt || at, paidVia: t.paidVia || "sheet", paidYm: ym, editedAt: Date.now(), name: t.name || row.name };
+        changed = true;
+      }
+    }
+    const hit = (data.books || []).find(b => novSheetRentBook(b, no));
+    if (hit) {
+      if (ymdOf(hit.date) !== row.on) { hit.date = row.on; changed = true; }
+    } else if ((data.ledgerGone || []).indexOf("bk-nov115-" + no) < 0) {
+      const dup = (data.books || []).some(b => b && b.type !== "out" && String(b.roomNo || "") === no && ymdOf(b.date) === row.on && Number(b.amount) === row.amount);
+      if (!dup) {
+        data.books.push({
+          id: "bk-nov115-" + no,
+          type: "in",
+          date: row.on,
+          amount: row.amount,
+          company: "統潔",
+          bank: row.bank,
+          roomNo: no,
+          note: "牛10　" + no + " " + (t.name || row.name) + "　11月租金",
+          importTag: row.on < ym + "-01" ? "rent-prepaid-2026-11" : "nov-sheet-2026-11",
+          linkedTenantId: t.id,
+          createdAt: "2026-11-25 13:40"
+        });
+        changed = true;
+      }
+    }
+  });
+  if (!changed) return;
+  try { persistPaidMarks(data); } catch {}
   try { persistLedger(data); } catch {}
   try { markCloudDirty(); } catch {}
 }
@@ -11881,21 +12005,21 @@ function applyZhong7221(data) {
   if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
   if (t.prepaidYm.indexOf("2026-11") < 0) { t.prepaidYm.push("2026-11"); changed = true; }
   if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
-  if (t.prepaidOn["2026-11"] !== "2026-11-14") { t.prepaidOn["2026-11"] = "2026-11-14"; changed = true; }
-  if (payYmNow() === "2026-11" && !(t.paid && t.paidYm === "2026-11")) {
+  if (t.prepaidOn["2026-11"] !== "2026-11-16") { t.prepaidOn["2026-11"] = "2026-11-16"; changed = true; }
+  if (payYmNow() === "2026-11" && !(t.paid && t.paidYm === "2026-11" && ymdOf(t.paidAt) === "2026-11-16" && ymdOf(t.remitOn) === "2026-11-16")) {
     t.paid = true;
     t.paidTouched = true;
     t.paidYm = "2026-11";
-    t.paidAt = "2026-11-14 12:00";
+    t.paidAt = "2026-11-16 12:00";
     t.paidVia = "xfer";
-    t.remitOn = "2026-11-14";
+    t.remitOn = "2026-11-16";
     changed = true;
   }
   if (!data.paidMarks) data.paidMarks = {};
   if (payYmNow() === "2026-11") {
     const mark = data.paidMarks[t.id] || {};
-    if (!mark.paid || mark.paidYm !== "2026-11" || mark.name !== "鍾敏甄") {
-      data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-14 12:00", paidVia: "xfer", paidYm: "2026-11", editedAt: Date.now(), name: "鍾敏甄" };
+    if (!mark.paid || mark.paidYm !== "2026-11" || mark.name !== "鍾敏甄" || ymdOf(mark.paidAt) !== "2026-11-16") {
+      data.paidMarks[t.id] = { paid: true, paidAt: "2026-11-16 12:00", paidVia: "xfer", paidYm: "2026-11", editedAt: Date.now(), name: "鍾敏甄" };
       try { persistPaidMarks(data); } catch {}
       changed = true;
     }
@@ -13124,6 +13248,41 @@ function apply7042OctUnpaid(data) {
     data.books = (data.books || []).filter(b => b && gone.indexOf(b.id) < 0);
   }
   data.pay7042OctClear = "unpaid-v1";
+  try { markCloudDirty(); } catch {}
+}
+function apply7042NovUnpaid(data) {
+  if (!data || data.pay7042NovClear === "unpaid-v1") return;
+  const room = (data.rooms || []).find(r => r && String(r.no) === "7042");
+  if (!room) return;
+  const t = (data.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return;
+  const real = (data.books || []).some(b => novSheetRentBook(b, "7042") && !isRentAutoBook(b) && Number(b.amount) >= 14000);
+  data.pay7042NovClear = "unpaid-v1";
+  if (real) return;
+  if (payYmNow() === "2026-11") {
+    t.paid = false;
+    t.paidYm = "2026-11";
+    t.paidTouched = true;
+    t.paidAt = "";
+    t.paidVia = "";
+    if (!ymdOf(t.remitOn) || ymdOf(t.remitOn) < "2026-11-01") t.remitOn = "2026-09-23";
+    if (Array.isArray(t.prepaidYm)) t.prepaidYm = t.prepaidYm.filter(y => String(y).slice(0, 7) !== "2026-11");
+    if (t.prepaidOn && t.prepaidOn["2026-11"]) delete t.prepaidOn["2026-11"];
+  }
+  if (!data.paidMarks) data.paidMarks = {};
+  data.paidMarks[t.id] = { paid: false, paidAt: "", paidVia: "", paidYm: "2026-11", editedAt: Date.now(), name: t.name || "周佳瑩" };
+  const gone = [];
+  (data.books || []).forEach(b => {
+    if (!b || !isRentAutoBook(b)) return;
+    if (String(b.roomNo || "") !== "7042" && String(b.note || "").indexOf("7042") < 0) return;
+    if (String(b.importTag || "") === "rent-auto-2026-11") gone.push(b.id);
+  });
+  if (gone.length) {
+    data.ledgerGone = unionGone(data.ledgerGone, gone);
+    data.books = (data.books || []).filter(b => b && gone.indexOf(b.id) < 0);
+  }
+  t.editedAt = Date.now();
+  try { persistPaidMarks(data); } catch {}
   try { markCloudDirty(); } catch {}
 }
 function applyFormerStudio(data) {
@@ -15766,6 +15925,8 @@ async function pullCloudNow() {
       try { apply7042RentShort(state); } catch {}
       try { apply7042SepPaid(state); } catch {}
       try { apply7042OctUnpaid(state); } catch {}
+      try { apply7042NovUnpaid(state); } catch {}
+      try { applyStudioNovSheet(state); } catch {}
       try { applyFixLeaseSegments(state); } catch {}
       try { applyRoom7641(state); } catch {}
       try { applyHuaSheng6162(state); } catch {}
@@ -15992,6 +16153,8 @@ async function pullCloudNow() {
     try { apply7042RentShort(state); } catch {}
     try { apply7042SepPaid(state); } catch {}
     try { apply7042OctUnpaid(state); } catch {}
+    try { apply7042NovUnpaid(state); } catch {}
+    try { applyStudioNovSheet(state); } catch {}
     try { releaseEndedCheckouts(state); } catch {}
     try { restoreStartedRenewalLeases(state); } catch {}
     localStorage.setItem(KEY, JSON.stringify(state));
@@ -16837,6 +17000,8 @@ async function pushCloud() {
     try { apply7042RentShort(payload); } catch {}
     try { apply7042SepPaid(payload); } catch {}
     try { apply7042OctUnpaid(payload); } catch {}
+    try { apply7042NovUnpaid(payload); } catch {}
+    try { applyStudioNovSheet(payload); } catch {}
     try { applyFixLeaseSegments(payload); } catch {}
     try { applyRoom7641(payload); } catch {}
     try { applyHuaSheng6162(payload); } catch {}
