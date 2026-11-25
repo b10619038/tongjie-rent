@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-48";
-const APP_EDIT_COUNT = 2510;
+const APP_STAMP = "2026-11-25-16-52";
+const APP_EDIT_COUNT = 2511;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3323,40 +3323,32 @@ function beginUpdateCover() {
     if (!sessionStorage.getItem("tj-updating")) sessionStorage.setItem("tj-updating", String(Date.now()));
   } catch {}
   document.documentElement.classList.add("tj-updating");
-  let s = document.getElementById("splash");
-  if (!s) {
-    s = document.createElement("div");
-    s.id = "splash";
-    document.body.appendChild(s);
+  let el = document.getElementById("upd-cover");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "upd-cover";
+    el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;");
+    el.innerHTML = '<div style="font-size:13px;letter-spacing:.18em;color:#808680;">統潔＆信潔開發</div><div style="margin-top:10px;font-size:22px;font-weight:700;color:#1d2420;">正在更新</div><div style="margin-top:22px;width:min(280px,74vw);height:6px;border-radius:99px;background:#e6e8ea;overflow:hidden;"><div id="g-bar" style="height:100%;width:12%;border-radius:99px;background:linear-gradient(90deg,#4285F4,#EA4335 38%,#FBBC05 68%,#34A853);"></div></div>';
+    document.body.appendChild(el);
   }
-  if (!s.querySelector(".upd-panel")) {
-    const panel = document.createElement("div");
-    panel.className = "upd-panel";
-    panel.innerHTML = '<div class="upd-kicker">統潔＆信潔開發</div><div class="upd-title">正在更新</div><div class="g-track"><div class="g-bar" id="g-bar"></div></div>';
-    s.appendChild(panel);
-  }
-  s.classList.remove("out");
-  s.dataset.done = "";
-  s.style.display = "grid";
-  s.style.opacity = "1";
   if (typeof window.__tickUpdateBar !== "function") {
     window.__tickUpdateBar = function tick() {
-      if (!document.documentElement.classList.contains("tj-updating")) return;
+      if (window.__updDone) return;
       const bar = document.getElementById("g-bar");
-      if (bar && !window.__updDone) {
-        let t0 = Date.now();
-        try { t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
-        const elapsed = Date.now() - t0;
-        const pct = Math.min(90, 14 + 76 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
-        bar.style.width = pct.toFixed(1) + "%";
-      }
+      if (!bar) return;
+      let t0 = Date.now();
+      try { t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
+      const elapsed = Date.now() - t0;
+      const pct = Math.min(90, 12 + 78 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
+      bar.style.width = pct.toFixed(1) + "%";
       requestAnimationFrame(tick);
     };
   }
   requestAnimationFrame(window.__tickUpdateBar);
 }
 function finishUpdateCover() {
-  if (!document.documentElement.classList.contains("tj-updating")) {
+  const on = document.documentElement.classList.contains("tj-updating") || !!document.getElementById("upd-cover");
+  if (!on) {
     hideSplash();
     return;
   }
@@ -3365,18 +3357,18 @@ function finishUpdateCover() {
   if (bar) bar.style.width = "100%";
   let started = Date.now();
   try { started = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
-  const hold = Math.max(420, 1100 - (Date.now() - started));
+  const hold = Math.max(380, 1000 - (Date.now() - started));
   setTimeout(() => {
     window.__updReveal = true;
     try { sessionStorage.removeItem("tj-updating"); } catch {}
     document.documentElement.classList.remove("tj-updating");
-    const el = document.getElementById("splash");
+    const el = document.getElementById("upd-cover");
     if (el) {
-      el.style.transition = "opacity .32s ease";
+      el.style.transition = "opacity .28s ease";
       el.style.opacity = "0";
-      el.style.pointerEvents = "none";
+      setTimeout(() => { if (el.parentNode) el.remove(); }, 300);
     }
-    setTimeout(() => hideSplash(), 340);
+    hideSplash();
   }, hold);
 }
 function applyAppUpdate() {
@@ -3388,11 +3380,14 @@ function applyAppUpdate() {
     hideUpdateUi();
     try { __reloading = true; } catch {}
     beginUpdateCover();
-    wipeClientCache().finally(() => {
+    const go = () => {
+      if (go.did) return;
+      go.did = true;
       const bust = "v=" + Date.now();
       try { location.replace(location.pathname.replace(/\/?$/, "/") + "?" + bust); }
       catch { location.reload(); }
-    });
+    };
+    setTimeout(go, 400);
   };
   if (!ui.pendingFileVer || !isNewerBuild(ui.pendingFileVer)) {
     if (unseenAppVersion()) { reloadNow(); return; }

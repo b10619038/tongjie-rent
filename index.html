@@ -26,49 +26,16 @@
   <link rel="stylesheet" href="work-scroll.css?v=1536" />
   <style>
     html, body { margin: 0; background: #ffffff; }
-    html.tj-updating #app { visibility: hidden; }
     #splash {
       position: fixed; inset: 0; background: #ffffff; z-index: 9999;
       display: grid; place-items: center;
     }
-    html.tj-updating #splash { display: grid !important; opacity: 1 !important; }
     #splash svg {
       width: 72px; height: 72px; opacity: 0;
       animation: splashHouse 1.8s ease forwards;
     }
-    html.tj-updating #splash .splash-house { display: none !important; }
     #splash.out { animation: splashFade .45s ease forwards; pointer-events: none; display: none; }
     #splash.out svg { animation: none; opacity: 0; }
-    .upd-panel { display: none; flex-direction: column; align-items: center; width: min(320px, 84vw); }
-    html.tj-updating #splash .upd-panel { display: flex; }
-    .upd-kicker { font-size: 12px; letter-spacing: .14em; color: #8a9186; margin-bottom: 10px; }
-    .upd-title { font-size: 22px; font-weight: 700; color: #243028; letter-spacing: .04em; }
-    .g-track {
-      position: relative;
-      width: 100%;
-      height: 4px;
-      margin-top: 22px;
-      border-radius: 99px;
-      background: #e8eaed;
-      overflow: hidden;
-    }
-    .g-bar {
-      height: 100%;
-      width: 0%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, #4285F4 0%, #EA4335 34%, #FBBC05 67%, #34A853 100%);
-      transition: width .28s cubic-bezier(.4,0,.2,1);
-    }
-    .g-track::after {
-      content: "";
-      position: absolute;
-      top: 0; bottom: 0;
-      width: 38%;
-      left: -40%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
-      animation: gSheen 1.15s ease-in-out infinite;
-    }
-    @keyframes gSheen { to { left: 120%; } }
     @keyframes splashHouse {
       0% { opacity: 0; transform: translateY(18px) scale(.86); }
       28% { opacity: 1; transform: translateY(0) scale(1); }
@@ -81,23 +48,46 @@
   </style>
   <script>
     (function () {
-      try {
-        if (sessionStorage.getItem("tj-updating")) document.documentElement.classList.add("tj-updating");
-      } catch (e) {}
+      var raw = "";
+      try { raw = sessionStorage.getItem("tj-updating") || ""; } catch (e) {}
+      var t0 = Number(raw) || 0;
+      if (!t0) return;
+      if (Date.now() - t0 > 20000) {
+        try { sessionStorage.removeItem("tj-updating"); } catch (e) {}
+        return;
+      }
+      document.documentElement.classList.add("tj-updating");
+      function paint() {
+        if (document.getElementById("upd-cover")) return;
+        var el = document.createElement("div");
+        el.id = "upd-cover";
+        el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;");
+        el.innerHTML = '<div style="font-size:13px;letter-spacing:.18em;color:#808680;">統潔＆信潔開發</div><div style="margin-top:10px;font-size:22px;font-weight:700;color:#1d2420;">正在更新</div><div style="margin-top:22px;width:min(280px,74vw);height:6px;border-radius:99px;background:#e6e8ea;overflow:hidden;"><div id="g-bar" style="height:100%;width:12%;border-radius:99px;background:linear-gradient(90deg,#4285F4,#EA4335 38%,#FBBC05 68%,#34A853);"></div></div>';
+        (document.body || document.documentElement).appendChild(el);
+      }
+      if (document.body) paint();
+      else document.addEventListener("DOMContentLoaded", paint);
       function tick() {
-        if (!document.documentElement.classList.contains("tj-updating")) return;
+        if (window.__updDone) return;
         var bar = document.getElementById("g-bar");
-        if (bar && !window.__updDone) {
-          var t0 = Date.now();
-          try { t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch (e) {}
+        if (bar) {
           var elapsed = Date.now() - t0;
-          var pct = Math.min(90, 14 + 76 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
+          var pct = Math.min(90, 12 + 78 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
           bar.style.width = pct.toFixed(1) + "%";
         }
         requestAnimationFrame(tick);
       }
       window.__tickUpdateBar = tick;
-      if (document.documentElement.classList.contains("tj-updating")) requestAnimationFrame(tick);
+      requestAnimationFrame(tick);
+      setTimeout(function () {
+        if (window.__updReveal) return;
+        window.__updReveal = true;
+        window.__updDone = true;
+        try { sessionStorage.removeItem("tj-updating"); } catch (e) {}
+        document.documentElement.classList.remove("tj-updating");
+        var c = document.getElementById("upd-cover");
+        if (c) c.remove();
+      }, 12000);
     })();
   </script>
 </head>
@@ -106,11 +96,6 @@
     <svg class="splash-house" viewBox="0 0 24 24" fill="none" stroke="#62765b" stroke-width="1.8" stroke-linejoin="round">
       <path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
     </svg>
-    <div class="upd-panel">
-      <div class="upd-kicker">統潔＆信潔開發</div>
-      <div class="upd-title">正在更新</div>
-      <div class="g-track"><div class="g-bar" id="g-bar"></div></div>
-    </div>
   </div>
   <div id="app"></div>
   <script>
@@ -122,7 +107,7 @@
   <script src="i18n.js?v=10"></script>
   <script src="i18n-pack.js?v=7"></script>
   <script src="html2canvas.min.js?v=1"></script>
-  <script src="app.js?v=2127"></script>
+  <script src="app.js?v=2128"></script>
   <script src="sign-now.js?v=1996"></script>
   <script src="move-elec.js?v=1998"></script>
   <script src="boss-login.js?v=5"></script>
