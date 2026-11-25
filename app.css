@@ -5986,6 +5986,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   pointer-events: none;
 }
 .inv-abs.inv-mark { pointer-events: none; display: flex; align-items: center; justify-content: center; }
+.inv-abs.inv-copy { color: #1a1a1a; background: #fff; font-weight: 600; font-size: 1.7cqi; letter-spacing: 0.08em; }
 .inv-abs:focus { outline: 1px dashed #c2410c; background: rgba(255,255,255,.35); }
 @media print {
   @page { size: A4; margin: 12mm; }
@@ -5993,6 +5994,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   .admin-bar, .tabs, .no-print, .nav, .ver, .home-upd, .theme-fab, .toast, .notify-chip { display: none !important; }
   .inv-photo { break-inside: avoid; page-break-inside: avoid; margin-bottom: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .inv-abs { color: #c2410c !important; }
+  .inv-abs.inv-copy { color: #1a1a1a !important; background: #fff !important; }
   body.print-report .dash > *:not(#overall-report) { display: none !important; }
   body.print-report #overall-report { box-shadow: none; border: 0; }
   body.print-cal .dash > *:not(#month-cash) { display: none !important; }
