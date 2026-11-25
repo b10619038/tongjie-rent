@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-17-02";
-const APP_EDIT_COUNT = 2512;
+const APP_STAMP = "2026-11-25-17-08";
+const APP_EDIT_COUNT = 2513;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3330,27 +3330,29 @@ function beginUpdateCover() {
     sessionStorage.setItem("tj-upd-teal", teal);
     sessionStorage.setItem("tj-upd-paper", paper);
   } catch {}
+  document.documentElement.style.setProperty("--upd-teal", teal);
+  document.documentElement.style.setProperty("--upd-paper", paper);
   document.documentElement.classList.add("tj-updating");
   let el = document.getElementById("upd-cover");
-  if (!el) {
+  if (!el || !el.querySelector("#upd-house")) {
+    if (el) el.remove();
     el = document.createElement("div");
     el.id = "upd-cover";
-    el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:" + paper + ";display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;");
-    el.innerHTML = '<svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="' + teal + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" style="width:76px;height:76px;transform-origin:center;"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><svg id="upd-wave" viewBox="0 0 260 48" width="240" height="48" style="margin-top:18px;overflow:visible"><path id="g-ghost" fill="none" stroke="' + teal + '" stroke-opacity="0.22" stroke-width="3" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="' + teal + '" stroke-width="3.2" stroke-linecap="round"/></svg>';
+    el.innerHTML = '<svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><svg id="upd-wave" viewBox="0 0 260 64" width="240" height="64"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="4.2" stroke-linecap="round"/></svg>';
     document.body.appendChild(el);
   }
   if (typeof window.__tickUpdateBar !== "function") {
     const t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now();
     const waveD = (w, h, phase, pct) => {
-      const amp = 10, mid = h / 2, len = Math.max(1, w * pct);
+      const amp = 16, mid = h / 2, len = Math.max(1, w * pct);
       let d = "";
       for (let x = 0; x <= len; x += 1.4) {
-        const y = mid + Math.sin(x * 0.05 + phase) * amp;
+        const y = mid + Math.sin(x * 0.045 + phase) * amp;
         d += (x ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
       }
       return d;
     };
-    window.__updPct = 0.08;
+    window.__updPct = window.__updPct || 0.08;
     window.__tickUpdateBar = function tick() {
       if (window.__updReveal) return;
       const path = document.getElementById("g-bar");
@@ -3363,8 +3365,8 @@ function beginUpdateCover() {
       cur += (target - cur) * (window.__updDone ? 0.16 : 0.22);
       if (Math.abs(target - cur) < 0.004) cur = target;
       window.__updPct = cur;
-      if (ghost) ghost.setAttribute("d", waveD(260, 48, phase, 1));
-      path.setAttribute("d", waveD(260, 48, phase, cur));
+      if (ghost) ghost.setAttribute("d", waveD(260, 64, phase, 1));
+      path.setAttribute("d", waveD(260, 64, phase, cur));
       requestAnimationFrame(tick);
     };
   }
