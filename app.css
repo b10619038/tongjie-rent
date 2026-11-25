@@ -6891,6 +6891,16 @@ body.rev-zooming { overflow: hidden; }
 }
 .hello-card h1.name-stack span { display: block; }
 .who-mini { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.logout-ico-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: var(--teal);
+}
+.logout-ico-btn .logout-ico { width: 22px; height: 22px; display: block; }
+#logout-set.logout-ico-btn { width: auto; padding: 10px 16px; }
+#logout-tenant.logout-ico-btn { margin: 0; padding: 4px; }
 button.is-press, .clickable.is-press, .tab.is-press { filter: brightness(.95); }
 .admin-scroll .admin-grid.list > .card {
   content-visibility: auto;

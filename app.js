@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-21-22";
-const APP_EDIT_COUNT = 2533;
+const APP_STAMP = "2026-11-25-21-26";
+const APP_EDIT_COUNT = 2534;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -33112,6 +33112,10 @@ function announceCardsHtml() {
   }).join("");
 }
 
+function logoutBtnInner(label) {
+  if (label !== "登出") return escapeHtml(label);
+  return `<svg class="logout-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 4.7H7.1A2.4 2.4 0 0 0 4.7 7.1v9.8a2.4 2.4 0 0 0 2.4 2.4h2.1" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round"/><path d="M10.4 12h8.2" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round"/><path d="M15.3 8 19.4 12l-4.1 4" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 function tenantNameHeadingHtml(name) {
   const parts = String(name || "").split(/[、，,]/).map(s => s.trim()).filter(Boolean);
   if (parts.length >= 2) {
@@ -33125,7 +33129,7 @@ function homeView() {
   if (!t.id) {
     return `<div class="topbar">
       <div><div class="eyebrow">HOME</div><h1>租客</h1></div>
-      <button class="back" id="logout-tenant" type="button">登出</button>
+      <button class="back logout-ico-btn" id="logout-tenant" type="button" aria-label="登出">${logoutBtnInner("登出")}</button>
     </div>
     <div class="screen"><p class="lead">找不到這位租客，請返回後台再進一次。</p></div>`;
   }
@@ -33156,7 +33160,7 @@ function homeView() {
           </div>
         </div>
       </div>
-      <button class="back" id="logout-tenant" type="button">${isProspectPreview() ? "離開預覽" : "登出"}</button>
+      <button class="back${isProspectPreview() ? "" : " logout-ico-btn"}" id="logout-tenant" type="button" aria-label="${isProspectPreview() ? "離開預覽" : "登出"}">${logoutBtnInner(isProspectPreview() ? "離開預覽" : "登出")}</button>
     </div>
     <div class="screen">
       ${prospectNote}
@@ -35006,7 +35010,7 @@ function adminView() {
       </div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${canOpenExtraWindow() ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
-        <button class="ghost" id="logout" style="width:auto">${isStaffLook() ? "返回" : "登出"}</button>
+        <button class="ghost${isStaffLook() ? "" : " logout-ico-btn"}" id="logout" type="button" style="width:auto" aria-label="${isStaffLook() ? "返回" : "登出"}">${logoutBtnInner(isStaffLook() ? "返回" : "登出")}</button>
       </div>
     </div>
     ${isStaffLook() ? `<div class="preview-banner">正在看 ${escapeHtml(normAdminName(ui.adminName) || "")} 的後台<button type="button" class="ghost" id="exit-staff-look" style="width:auto">返回</button></div>` : ""}
@@ -48851,7 +48855,7 @@ function tenantSettings() {
         <button type="button" class="btn-navy" id="idea-send" style="margin-top:10px">送出意見</button>
       </div>
       <div class="card card-body">
-        <button type="button" class="ghost" id="logout-set">${isProspectPreview() ? "離開預覽" : "登出"}</button>
+        <button type="button" class="ghost${isProspectPreview() ? "" : " logout-ico-btn"}" id="logout-set" aria-label="${isProspectPreview() ? "離開預覽" : "登出"}">${logoutBtnInner(isProspectPreview() ? "離開預覽" : "登出")}</button>
       </div>
     </div>`;
 }
