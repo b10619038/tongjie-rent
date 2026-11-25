@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-17-20";
-const APP_EDIT_COUNT = 2516;
+const APP_STAMP = "2026-11-25-17-22";
+const APP_EDIT_COUNT = 2517;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -50796,9 +50796,12 @@ function hideSplash() {
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
   el.dataset.done = "1";
-  el.classList.add("out");
-  el.style.display = "none";
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.style.display = "none";
+      if (el.parentNode) el.remove();
+    });
+  });
 }
 let appBootReady = false;
 let lookHold = null;
