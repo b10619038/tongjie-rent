@@ -3963,8 +3963,9 @@ html[data-theme="void"] .sign-picked { color: #f4f4f4; }
   z-index: 12;
 }
 .admin-id { position: relative; flex: 1; min-width: 0; }
-.admin-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.admin-who { flex: 0 0 auto; margin-top: 8px; font-size: 16px; font-weight: 700; letter-spacing: .04em; }
+.admin-title-row { display: flex; align-items: baseline; justify-content: flex-start; gap: 8px; }
+.admin-title-row .dev-bday-name { width: auto; flex: 0 0 auto; }
+.admin-who { flex: 0 0 auto; margin: 8px 0 0; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: 0; }
 .admin-id.is-bday { overflow: hidden; min-height: 72px; }
 .admin-id.is-bday .bday-mark { width: 168px; left: 58%; top: 62%; }
 .admin-id.is-bday .bday-mark img { opacity: 0.5; }
