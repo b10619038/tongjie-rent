@@ -1,4 +1,5 @@
-const CACHE = "tongjie-app-v2413";
+const CACHE = "tongjie-app-v2414";
+const MEDIA = "tongjie-media-v1";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/html2canvas.min.js", "/fonts/iansui-tc.woff2", "/fonts/iansui-latin.woff2", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png", "/images/splash-house.png"];
 self.addEventListener("install", e => {
@@ -8,7 +9,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await Promise.all(keys.filter(k => k !== CACHE && k !== MEDIA).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -21,6 +22,10 @@ self.addEventListener("fetch", e => {
   if (url.origin !== self.location.origin) return;
   const path = url.pathname;
   if (path.endsWith("/sw.js") || path.endsWith("sw.js")) return;
+  if (isMediaPath(path)) {
+    e.respondWith(mediaResponse(e.request, path));
+    return;
+  }
   if (path.endsWith("/images/asset-map.webp")) {
     e.respondWith((async () => {
       const cache = await caches.open(CACHE);
@@ -66,6 +71,53 @@ self.addEventListener("fetch", e => {
     }
   })());
 });
+function isMediaPath(path) {
+  return /\.(png|jpe?g|gif|webp|svg|ico|mp4|webm|mov|m4v|mp3|m4a|woff2?)$/i.test(path);
+}
+async function slicedRange(full, range) {
+  const m = /bytes=(\d+)-(\d*)/.exec(range || "");
+  if (!m) return full;
+  const buf = await full.arrayBuffer();
+  const size = buf.byteLength;
+  let start = Number(m[1]) || 0;
+  let end = m[2] ? Number(m[2]) : size - 1;
+  if (start >= size) return new Response(null, { status: 416, headers: { "Content-Range": "bytes */" + size } });
+  if (end >= size) end = size - 1;
+  const slice = buf.slice(start, end + 1);
+  const type = full.headers.get("Content-Type") || "application/octet-stream";
+  return new Response(slice, {
+    status: 206,
+    headers: {
+      "Content-Type": type,
+      "Content-Range": "bytes " + start + "-" + end + "/" + size,
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(slice.byteLength)
+    }
+  });
+}
+function mediaResponse(request, path) {
+  const range = request.headers.get("range");
+  return (async () => {
+    const cache = await caches.open(MEDIA);
+    const cached = await cache.match(request) || await cache.match(path);
+    const fill = fetch(new Request(request.url, { method: "GET" })).then(res => {
+      if (!res || !res.ok) return null;
+      const a = res.clone();
+      const b = res.clone();
+      cache.put(request.url, a).catch(() => {});
+      cache.put(path, b).catch(() => {});
+      return res;
+    }).catch(() => null);
+    if (range) {
+      if (cached) return slicedRange(cached, range);
+      const res = await fill;
+      if (res) return slicedRange(res, range);
+      return new Response("", { status: 504 });
+    }
+    if (cached) return cached;
+    return (await fill) || new Response("", { status: 504 });
+  })();
+}
 function pingClients(fileVer) {
   const ver = String(fileVer || "");
   if (!ver || pingClients.last === ver) return;
