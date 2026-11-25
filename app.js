@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-22-25";
-const APP_EDIT_COUNT = 2546;
+const APP_STAMP = "2026-11-25-23-26";
+const APP_EDIT_COUNT = 2547;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -13000,6 +13000,10 @@ function applyLoginEverBackfill(data) {
   let changed = false;
   data.tenants.forEach(t => {
     if (!t || !t.id) return;
+    if (presence[t.id] && presenceIsDevLook(t.id, presence[t.id])) {
+      delete presence[t.id];
+      changed = true;
+    }
     const list = Array.isArray(seats[t.id]) ? seats[t.id] : [];
     if (!t.loginEverAt && list.length) {
       const times = list.map(s => Number(s.since) || Number(s.at) || 0).filter(Boolean);
@@ -16599,7 +16603,10 @@ function mergePresenceInto(target, other) {
   Object.keys(src).forEach(id => {
     const a = target.presence[id];
     const b = src[id];
-    if (!b || !b.at) return;
+    if (!b || !b.at || presenceIsDevLook(id, b)) {
+      if (presenceIsDevLook(id, a) || presenceIsDevLook(id, b)) delete target.presence[id];
+      return;
+    }
     const installed = !!((a && a.installed) || b.installed || /已安裝 App/.test(String((a && a.device) || "")) || /已安裝 App/.test(String(b.device || "")));
     if (!a || b.at > a.at) target.presence[id] = Object.assign({}, b, installed ? { installed: true } : {});
     else if (installed) a.installed = true;
@@ -16666,17 +16673,28 @@ function presencePayload() {
   }
   return { at: Date.now(), kind, role: ui.role, code: ui.adminCode || "", roomNo, name, page: typeof pageLabel === "function" ? pageLabel() : (ui.page || ""), device: deviceInfo(), installed: typeof isStandalone === "function" && isStandalone() };
 }
+function presenceIsDevLook(id, p) {
+  if (!p || String(id || "").startsWith("admin-")) return false;
+  return String(p.code || "") === "1240" || p.kind === "dev";
+}
+function devIsWearingTenant() {
+  return isDevPreview() || isTenantLook() || isStaffLook() || (ui && ui.role === "tenant" && String(ui.adminCode || "") === "1240");
+}
 function isOnline(id) {
   const p = (state.presence || {})[id];
   return !!(p && p.at && (Date.now() - p.at) < ONLINE_MS);
 }
-function isTenantOnline(id) { return isOnline(id) || lampPreviewOn(id); }
+function isTenantOnline(id) {
+  const p = (state.presence || {})[id];
+  if (presenceIsDevLook(id, p)) return false;
+  return isOnline(id) || lampPreviewOn(id);
+}
 function lampPreviewOn(id) {
   if (String(id || "") !== "t7651") return false;
   return Date.now() < Date.parse("2026-11-09T10:40:00+08:00");
 }
 function beatPresence() {
-  if (isDevPreview() || isTenantLook() || isStaffLook()) return;
+  if (devIsWearingTenant()) return;
   const id = presenceKey();
   const beat = presencePayload();
   if (!id || !beat) return;
@@ -16705,6 +16723,7 @@ function beatPresence() {
   presenceTimer = setTimeout(pushPresence, 700);
 }
 async function pushPresence() {
+  if (devIsWearingTenant()) return;
   const id = presenceKey();
   const beat = presencePayload();
   if (!id || !beat) return;
@@ -16845,7 +16864,7 @@ function onlineTenantLinesHtml() {
   const now = Date.now();
   const rows = Object.keys(state.presence || {}).map(id => {
     const p = state.presence[id];
-    if (!p || !p.at || now - p.at >= ONLINE_MS) return null;
+    if (!p || !p.at || now - p.at >= ONLINE_MS || presenceIsDevLook(id, p)) return null;
     if (presenceKindOf(id, p) !== "tenant") return null;
     const t = state.tenants.find(x => x.id === id);
     const room = t ? state.rooms.find(r => r.id === t.roomId) : null;
