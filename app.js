@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-20-42";
-const APP_EDIT_COUNT = 2532;
+const APP_STAMP = "2026-11-25-21-22";
+const APP_EDIT_COUNT = 2533;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -17243,6 +17243,16 @@ function save(force) {
     saveTimer = setTimeout(pushCloud, 200);
     return;
   }
+  clearTimeout(saveDiskTimer);
+  clearTimeout(saveTimer);
+  if (force) flushSaveDisk();
+  else saveDiskTimer = setTimeout(flushSaveDisk, 320);
+  saveTimer = setTimeout(pushCloud, 480);
+}
+let saveDiskTimer = 0;
+function flushSaveDisk() {
+  saveDiskTimer = 0;
+  if (!state) return;
   try {
     persistAnnMedia(state);
     persistRepairMedia(state); persistRepairStat(state);
@@ -17256,9 +17266,19 @@ function save(force) {
   } catch {
     try { persistLedger(state); persistMemoDone(state); persistAnnMedia(state); persistRepairMedia(state); persistRepairStat(state); persistAvatars(state); } catch {}
   }
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(pushCloud, 120);
 }
+function flushPendingWrites() {
+  if (saveDiskTimer) flushSaveDisk();
+  if (persistUi.t) {
+    clearTimeout(persistUi.t);
+    persistUi.t = 0;
+    try { persistLogin(); persistGatePage(); } catch {}
+  }
+}
+window.addEventListener("pagehide", flushPendingWrites);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushPendingWrites();
+});
 window.addEventListener("storage", e => {
   if (!e || e.key !== KEY || !EMBED_PAGE) return;
   try {
@@ -17359,8 +17379,11 @@ async function pullKeepSession() {
   finally { if (timer) clearTimeout(timer); }
 }
 function persistUi() {
-  persistLogin();
-  persistGatePage();
+  clearTimeout(persistUi.t);
+  persistUi.t = setTimeout(() => {
+    persistUi.t = 0;
+    try { persistLogin(); persistGatePage(); } catch {}
+  }, 240);
 }
 function captureComposeDraft() {
   const map = [
@@ -17790,6 +17813,7 @@ function kickStaleAdmin() {
   return true;
 }
 function clearSession() {
+  if (persistUi.t) { clearTimeout(persistUi.t); persistUi.t = 0; }
   ui.role = null; ui.page = "home"; ui.tenantId = null; ui.roomId = null; ui.roomNo = ""; ui.loginError = ""; ui.adminCode = ""; ui.adminName = "";
   ui.devPreview = false; ui.devTenant = null; ui.devRoom = null; ui.devRepairs = []; ui.devRenewals = []; ui.devReactions = {}; ui.devReadAnns = {};
   ui.prospectPreview = false; ui.moveIn = null;
@@ -24689,6 +24713,9 @@ function applyRenewedPayBanks(data) {
   }
 }
 function tickDueRenewals() {
+  const now = Date.now();
+  if (tickDueRenewals.at && now - tickDueRenewals.at < 5000) return;
+  tickDueRenewals.at = now;
   if (!state || !Array.isArray(state.renewals) || !state.renewals.length) return;
   const before = (state.renewals || []).map(x => x && (x.status + ":" + (x.appliedAt || ""))).join("|");
   try { applyDueRenewals(state); } catch {}
@@ -31357,6 +31384,37 @@ function renderNow() {
   try { syncBirthdayHello(); } catch {}
   try { syncBirthdayConfetti(); } catch {}
 }
+function scheduleAdminBind(full) {
+  render.bindGen = (render.bindGen || 0) + 1;
+  const gen = render.bindGen;
+  requestAnimationFrame(() => {
+    if (gen !== render.bindGen) return;
+    safeBind(() => {
+      bindAdmin();
+      bindInstallSheet();
+      bindNotifyGuide();
+      bindUpdateBar();
+      bindThemePicker();
+      if (full) bindPullRefresh();
+    });
+  });
+}
+function armPressFeel() {
+  if (armPressFeel.done) return;
+  armPressFeel.done = true;
+  const hit = e => {
+    const t = e.target && e.target.closest && e.target.closest("button, .clickable, .tab");
+    if (!t || t.disabled) return;
+    t.classList.add("is-press");
+  };
+  const off = e => {
+    const t = e.target && e.target.closest && e.target.closest("button, .clickable, .tab");
+    if (t) t.classList.remove("is-press");
+  };
+  document.addEventListener("pointerdown", hit, { passive: true, capture: true });
+  document.addEventListener("pointerup", off, { passive: true, capture: true });
+  document.addEventListener("pointercancel", off, { passive: true, capture: true });
+}
 function safeBind(fn) {
   try { fn(); } catch (err) { try { console.error(err); } catch {} }
 }
@@ -31542,13 +31600,7 @@ function paintApp() {
           slot.dataset.bound = "1";
           slot.hidden = false;
           slot.innerHTML = html;
-          safeBind(() => {
-            bindAdmin();
-            bindInstallSheet();
-            bindNotifyGuide();
-            bindUpdateBar();
-            bindThemePicker();
-          });
+          scheduleAdminBind();
           restoreComposeDraft();
         }
       }
@@ -31572,14 +31624,7 @@ function paintApp() {
     root.innerHTML = (typeof translateMarkup === "function" ? translateMarkup : s => s)(`${bar}<div class="shell admin-wide" data-staff-look="${isStaffLook() ? escapeHtml(normAdminName(ui.adminName) || "1") : ""}">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`);
     if (typeof applyUiLang === "function") applyUiLang(root);
     ui.keepScroll = false;
-    safeBind(() => {
-      bindAdmin();
-      bindInstallSheet();
-      bindNotifyGuide();
-      bindUpdateBar();
-      bindThemePicker();
-      bindPullRefresh();
-    });
+    scheduleAdminBind(true);
     restoreComposeDraft();
     const sc2 = document.querySelector(".admin-scroll");
     if (sc2) {
@@ -50959,6 +51004,7 @@ async function boot() {
     applyTheme(currentThemeId());
     applyFont(currentFontScale());
     appBootReady = true;
+    try { armPressFeel(); } catch {}
     render();
     seedSeenVersion();
     markVersionSeen();

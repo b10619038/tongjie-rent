@@ -6891,6 +6891,11 @@ body.rev-zooming { overflow: hidden; }
 }
 .hello-card h1.name-stack span { display: block; }
 .who-mini { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+button.is-press, .clickable.is-press, .tab.is-press { filter: brightness(.95); }
+.admin-scroll .admin-grid.list > .card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
+}
 #announce-form .who-mini { gap: 16px; }
 .ann-aud-row { display: flex; gap: 8px; width: auto; }
 .ann-aud {
