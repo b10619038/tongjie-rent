@@ -5939,15 +5939,6 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
 .inv-abs.inv-left { text-align: left; padding-left: 0.3cqi; }
 .inv-abs.inv-big { font-size: 2.2cqi; letter-spacing: .12em; }
 .inv-abs.inv-han { font-size: 2.4cqi; font-weight: 800; }
-.inv-abs.inv-hline {
-  height: 0.62cqi;
-  min-height: 2px;
-  background: #c2410c;
-  border-radius: 1cqi;
-  overflow: visible;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
 .inv-abs.inv-note { font-size: 3.6cqi; font-weight: 800; letter-spacing: 0.12em; }
 .inv-abs.inv-note.inv-note-multi { font-size: 2.15cqi; letter-spacing: 0.02em; white-space: nowrap; }
 .inv-abs.inv-buyer { font-size: 2.2cqi; font-weight: 700; }
