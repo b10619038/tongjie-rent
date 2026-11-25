@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-17-16";
-const APP_EDIT_COUNT = 2515;
+const APP_STAMP = "2026-11-25-17-20";
+const APP_EDIT_COUNT = 2516;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -34864,6 +34864,7 @@ function adminView() {
     ? splitStageHtml()
     : `<div class="admin-scroll"><div class="admin-static">${adminBody()}</div></div>`;
   const title = ui.adminCode === "1240" ? "開發者後台" : (isBossAdmin() ? "負責人後台" : "管理員後台");
+  const whoName = ui.adminCode === "1240" ? "趙文榮" : (normAdminName(ui.adminName) || (ui.adminCode === "1976" ? "趙正賢" : ""));
   const titleTap = isBossAdmin() || ui.adminCode === "1240";
   const devBday = devBirthdayOn();
   const titleHtml = titleTap
@@ -34871,7 +34872,7 @@ function adminView() {
     : `<h1 class="dev-bday-name" style="font-size:24px">${title}</h1>`;
   return `
     <div class="admin-bar">
-      <div class="admin-id${devBday ? " is-bday" : ""}">${devBirthdayMarkHtml()}<div><div class="eyebrow">統潔＆信潔開發有限公司</div>${titleHtml}
+      <div class="admin-id${devBday ? " is-bday" : ""}">${devBirthdayMarkHtml()}<div><div class="eyebrow">統潔＆信潔開發有限公司</div><div class="admin-title-row">${titleHtml}${whoName ? `<span class="admin-who">${escapeHtml(whoName)}</span>` : ""}</div>
       </div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${canOpenExtraWindow() ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
