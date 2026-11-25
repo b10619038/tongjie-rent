@@ -8266,6 +8266,14 @@ html.embed-pane .home-upd { display: none !important; }
   box-shadow: 0 16px 40px rgba(0,0,0,.14);
 }
 .invite-sheet { text-align: center; }
+.gate-qr-svg {
+  display: block;
+  width: 220px;
+  height: 220px;
+  margin: 4px auto 10px;
+  border-radius: 16px;
+  background: #fff;
+}
 .invite-qr {
   display: block;
   width: 220px;

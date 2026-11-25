@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-40";
-const APP_EDIT_COUNT = 2508;
+const APP_STAMP = "2026-11-25-16-42";
+const APP_EDIT_COUNT = 2509;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31711,9 +31711,7 @@ const APP_JOIN_URL = APP_HOME_URL + "/?openExternalBrowser=1&install=1";
 function inviteCopy() {
   return "【統潔＆信潔開發】租客 App\n\n請用手機打開：\n" + APP_JOIN_URL + "\n\n加到主畫面後，輸入「房號＋姓名」就能登入。\n繳租金、報修、續約、跟管理員說話，都在這裡完成。\n\niPhone：Safari 開啟 → 分享 → 加入主畫面\nAndroid：Chrome 開啟 → 安裝應用程式";
 }
-function gateQrSrc() {
-  return "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&ecc=M&data=" + encodeURIComponent(APP_HOME_URL);
-}
+const GATE_QR_SVG = `<svg class="gate-qr-svg" viewBox="0 0 33 33" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="入口 QR"><rect width="33" height="33" fill="#fff"/><path fill="#111" d="M2,2h7v1h-7zM10,2h8v1h-8zM19,2h2v1h-2zM24,2h7v1h-7zM2,3h1v1h-1zM8,3h1v1h-1zM10,3h1v1h-1zM12,3h1v1h-1zM14,3h4v1h-4zM19,3h1v1h-1zM21,3h1v1h-1zM24,3h1v1h-1zM30,3h1v1h-1zM2,4h1v1h-1zM4,4h3v1h-3zM8,4h1v1h-1zM10,4h4v1h-4zM15,4h2v1h-2zM21,4h1v1h-1zM24,4h1v1h-1zM26,4h3v1h-3zM30,4h1v1h-1zM2,5h1v1h-1zM4,5h3v1h-3zM8,5h1v1h-1zM11,5h2v1h-2zM14,5h1v1h-1zM16,5h2v1h-2zM19,5h1v1h-1zM22,5h1v1h-1zM24,5h1v1h-1zM26,5h3v1h-3zM30,5h1v1h-1zM2,6h1v1h-1zM4,6h3v1h-3zM8,6h1v1h-1zM10,6h2v1h-2zM14,6h2v1h-2zM17,6h1v1h-1zM19,6h3v1h-3zM24,6h1v1h-1zM26,6h3v1h-3zM30,6h1v1h-1zM2,7h1v1h-1zM8,7h1v1h-1zM12,7h2v1h-2zM15,7h2v1h-2zM19,7h1v1h-1zM24,7h1v1h-1zM30,7h1v1h-1zM2,8h7v1h-7zM10,8h1v1h-1zM12,8h1v1h-1zM14,8h1v1h-1zM16,8h1v1h-1zM18,8h1v1h-1zM20,8h1v1h-1zM22,8h1v1h-1zM24,8h7v1h-7zM11,9h1v1h-1zM14,9h1v1h-1zM16,9h1v1h-1zM21,9h2v1h-2zM2,10h1v1h-1zM5,10h7v1h-7zM13,10h7v1h-7zM21,10h3v1h-3zM26,10h1v1h-1zM28,10h3v1h-3zM2,11h5v1h-5zM9,11h1v1h-1zM11,11h4v1h-4zM16,11h1v1h-1zM21,11h1v1h-1zM25,11h2v1h-2zM28,11h2v1h-2zM2,12h1v1h-1zM4,12h1v1h-1zM7,12h2v1h-2zM11,12h3v1h-3zM16,12h1v1h-1zM20,12h1v1h-1zM22,12h3v1h-3zM28,12h1v1h-1zM2,13h1v1h-1zM5,13h2v1h-2zM9,13h1v1h-1zM11,13h2v1h-2zM14,13h1v1h-1zM16,13h2v1h-2zM19,13h1v1h-1zM21,13h2v1h-2zM26,13h2v1h-2zM30,13h1v1h-1zM2,14h1v1h-1zM8,14h2v1h-2zM15,14h2v1h-2zM20,14h1v1h-1zM22,14h1v1h-1zM24,14h2v1h-2zM30,14h1v1h-1zM3,15h5v1h-5zM10,15h1v1h-1zM13,15h2v1h-2zM19,15h2v1h-2zM22,15h1v1h-1zM24,15h7v1h-7zM3,16h2v1h-2zM8,16h1v1h-1zM10,16h1v1h-1zM13,16h1v1h-1zM16,16h2v1h-2zM19,16h1v1h-1zM21,16h1v1h-1zM23,16h1v1h-1zM28,16h1v1h-1zM30,16h1v1h-1zM4,17h1v1h-1zM6,17h2v1h-2zM11,17h6v1h-6zM18,17h1v1h-1zM20,17h1v1h-1zM22,17h4v1h-4zM28,17h1v1h-1zM30,17h1v1h-1zM3,18h3v1h-3zM7,18h2v1h-2zM10,18h1v1h-1zM12,18h1v1h-1zM17,18h1v1h-1zM25,18h1v1h-1zM27,18h1v1h-1zM2,19h2v1h-2zM11,19h2v1h-2zM19,19h4v1h-4zM26,19h1v1h-1zM28,19h2v1h-2zM2,20h2v1h-2zM6,20h1v1h-1zM8,20h1v1h-1zM10,20h2v1h-2zM13,20h1v1h-1zM15,20h2v1h-2zM18,20h2v1h-2zM21,20h2v1h-2zM24,20h1v1h-1zM27,20h1v1h-1zM30,20h1v1h-1zM2,21h2v1h-2zM6,21h2v1h-2zM15,21h1v1h-1zM17,21h2v1h-2zM20,21h4v1h-4zM25,21h1v1h-1zM27,21h2v1h-2zM2,22h2v1h-2zM6,22h4v1h-4zM11,22h5v1h-5zM19,22h1v1h-1zM21,22h9v1h-9zM10,23h3v1h-3zM14,23h2v1h-2zM18,23h1v1h-1zM20,23h3v1h-3zM26,23h2v1h-2zM2,24h7v1h-7zM10,24h1v1h-1zM12,24h2v1h-2zM15,24h1v1h-1zM17,24h3v1h-3zM21,24h2v1h-2zM24,24h1v1h-1zM26,24h2v1h-2zM2,25h1v1h-1zM8,25h1v1h-1zM10,25h1v1h-1zM12,25h1v1h-1zM15,25h1v1h-1zM18,25h2v1h-2zM21,25h2v1h-2zM26,25h1v1h-1zM29,25h2v1h-2zM2,26h1v1h-1zM4,26h3v1h-3zM8,26h1v1h-1zM10,26h1v1h-1zM12,26h4v1h-4zM17,26h2v1h-2zM21,26h7v1h-7zM2,27h1v1h-1zM4,27h3v1h-3zM8,27h1v1h-1zM10,27h1v1h-1zM12,27h1v1h-1zM14,27h1v1h-1zM16,27h1v1h-1zM18,27h1v1h-1zM22,27h1v1h-1zM29,27h1v1h-1zM2,28h1v1h-1zM4,28h3v1h-3zM8,28h1v1h-1zM11,28h1v1h-1zM13,28h1v1h-1zM15,28h2v1h-2zM18,28h2v1h-2zM21,28h1v1h-1zM23,28h1v1h-1zM25,28h2v1h-2zM28,28h3v1h-3zM2,29h1v1h-1zM8,29h1v1h-1zM11,29h1v1h-1zM13,29h5v1h-5zM20,29h1v1h-1zM23,29h1v1h-1zM26,29h3v1h-3zM30,29h1v1h-1zM2,30h7v1h-7zM10,30h1v1h-1zM12,30h1v1h-1zM14,30h1v1h-1zM16,30h1v1h-1zM19,30h4v1h-4zM26,30h2v1h-2z"/></svg>`;
 function openGateQr() {
   const old = document.getElementById("gate-qr-mask");
   if (old) old.remove();
@@ -31721,7 +31719,7 @@ function openGateQr() {
   wrap.className = "install-mask";
   wrap.id = "gate-qr-mask";
   wrap.innerHTML = `<div class="install-sheet invite-sheet">
-      <img class="invite-qr" src="${gateQrSrc()}" alt="入口 QR" width="280" height="280">
+      ${GATE_QR_SVG}
       <button type="button" class="invite-url gate-url-copy" id="gate-url-copy">${APP_HOME_URL}</button>
       <p class="small">掃碼會打開申請入住、租客登入、後台登入那個畫面。</p>
       <button class="ghost" id="gate-qr-close" type="button">關閉</button>
