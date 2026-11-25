@@ -2372,7 +2372,11 @@ button.gate-qr-open {
   font: inherit;
   cursor: pointer;
   text-align: inherit;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
+#gate-qr-mask { z-index: 9500; place-items: center; }
 .te-row { align-items: center; }
 .v-edit {
   flex: 1;
