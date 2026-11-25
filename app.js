@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-21-44";
-const APP_EDIT_COUNT = 2541;
+const APP_STAMP = "2026-11-25-21-50";
+const APP_EDIT_COUNT = 2542;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3786,20 +3786,54 @@ const NOTIFY_PREF_ITEMS = [
   { id: "repair", label: "租客報修" },
   { id: "memo", label: "工作提醒" }
 ];
+function notifyPrefWho() {
+  if (!ui || ui.role !== "admin") return "guest";
+  const code = String(ui.adminCode || "");
+  const name = String(ui.adminName || "").trim();
+  if (code === "1240") return "1240";
+  return code + ":" + name;
+}
+function notifyPrefStore() {
+  try { return JSON.parse(localStorage.getItem(NOTIFY_PREF_KEY) || "{}") || {}; } catch { return {}; }
+}
+function notifyPrefFlat(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  return NOTIFY_PREF_ITEMS.some(x => raw[x.id] === true || raw[x.id] === false);
+}
 function loadNotifyPrefs() {
   const out = {};
   NOTIFY_PREF_ITEMS.forEach(x => { out[x.id] = true; });
   try {
-    const raw = JSON.parse(localStorage.getItem(NOTIFY_PREF_KEY) || "{}");
-    NOTIFY_PREF_ITEMS.forEach(x => { if (raw[x.id] === false) out[x.id] = false; });
+    let all = notifyPrefStore();
+    if (notifyPrefFlat(all)) {
+      const who = notifyPrefWho();
+      const next = {};
+      if (who && who !== "1240" && who !== "guest") next[who] = all;
+      try { localStorage.setItem(NOTIFY_PREF_KEY, JSON.stringify(next)); } catch {}
+      all = next;
+    }
+    const raw = all[notifyPrefWho()] || {};
+    NOTIFY_PREF_ITEMS.forEach(x => {
+      if (raw[x.id] === false) out[x.id] = false;
+      else if (raw[x.id] === true) out[x.id] = true;
+    });
   } catch {}
   return out;
 }
+function saveNotifyPrefs(p) {
+  const all = notifyPrefStore();
+  const next = {};
+  if (!notifyPrefFlat(all)) {
+    Object.keys(all).forEach(k => {
+      if (k === "unpaid" || k === "water" || k === "repair" || k === "memo") return;
+      next[k] = all[k];
+    });
+  }
+  next[notifyPrefWho()] = p;
+  try { localStorage.setItem(NOTIFY_PREF_KEY, JSON.stringify(next)); } catch {}
+}
 function notifyPrefOn(id) {
   return loadNotifyPrefs()[id] !== false;
-}
-function saveNotifyPrefs(p) {
-  try { localStorage.setItem(NOTIFY_PREF_KEY, JSON.stringify(p)); } catch {}
 }
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
@@ -31383,19 +31417,24 @@ function renderNow() {
   try { ensureErrandBall(); } catch {}
   try { syncBirthdayHello(); } catch {}
   try { syncBirthdayConfetti(); } catch {}
+  try { playAdminTitleSlide(); } catch {}
 }
 function playAdminTitleSlide() {
+  if (playAdminTitleSlide.done) return;
+  if (document.getElementById("splash")) return;
   const row = document.querySelector(".admin-title-row");
-  if (!row || row.dataset.slid === "1") return;
-  row.dataset.slid = "1";
+  if (!row || !row.animate) return;
+  playAdminTitleSlide.done = true;
+  row.style.transform = "translate3d(-108%, 0, 0)";
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const el = document.querySelector(".admin-title-row");
     if (!el || !el.animate) return;
     if (el !== row) {
-      el.dataset.slid = "";
+      playAdminTitleSlide.done = false;
       playAdminTitleSlide();
       return;
     }
+    el.style.transform = "";
     el.animate(
       [
         { transform: "translate3d(-108%, 0, 0)" },
@@ -31417,7 +31456,6 @@ function scheduleAdminBind(full) {
       bindUpdateBar();
       bindThemePicker();
       if (full) bindPullRefresh();
-      playAdminTitleSlide();
     });
   });
 }
@@ -51011,7 +51049,10 @@ function hideSplash() {
       const p = Math.min(1, (now - t0) / 360);
       el.style.opacity = String(1 - p);
       if (p < 1) requestAnimationFrame(frame);
-      else if (el.parentNode) el.remove();
+      else {
+        if (el.parentNode) el.remove();
+        try { playAdminTitleSlide(); } catch {}
+      }
     };
     requestAnimationFrame(frame);
   };
