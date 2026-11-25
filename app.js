@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-12";
-const APP_EDIT_COUNT = 2503;
+const APP_STAMP = "2026-11-25-16-20";
+const APP_EDIT_COUNT = 2504;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -17694,7 +17694,26 @@ function restoreUi() {
         persistUi();
         return;
       }
-      if (!t && room) t = (state.tenants || []).find(x => x.id === room.tenantId && !x.former && !x.incoming);
+      if (!t && room && !lookOk) t = (state.tenants || []).find(x => x.id === room.tenantId && !x.former && !x.incoming);
+      if (lookOk) {
+        ui.tenantLook = true;
+        ui.role = "tenant";
+        ui.adminCode = "1240";
+        const wantId = (lookHold && lookHold.tenantId) || s.tenantId;
+        const want = (state.tenants || []).find(x => x && String(x.id) === String(wantId)) || null;
+        if (want && !want.former) {
+          ui.tenantId = want.id;
+          const rm = (state.rooms || []).find(r => r && r.id === want.roomId) || room;
+          if (rm) { ui.roomId = rm.id; ui.roomNo = rm.no; }
+        } else if (wantId) {
+          ui.tenantId = wantId;
+          if (s.roomId) ui.roomId = s.roomId;
+          if (s.roomNo) ui.roomNo = s.roomNo;
+        }
+        if (!ui.page || ui.page === "dash" || ui.page === "tenant-login" || ui.page === "admin-login") ui.page = "home";
+        persistUi();
+        return;
+      }
       if (!room && t) room = (state.rooms || []).find(r => r.id === t.roomId);
       if (t) ui.tenantId = t.id;
       if (room) {
@@ -31209,6 +31228,7 @@ function pickerBusy() {
   return a.tagName === "SELECT" || type === "date" || type === "time" || type === "datetime-local";
 }
 function render() {
+  if (!appBootReady) return;
   try { if (typeof scrub7051Tests === "function" && scrub7051Tests(state)) markCloudDirty(); } catch {}
   try { paintLeaveCashLine(); } catch {}
   const force = !!(ui && ui.forceRender);
@@ -50724,7 +50744,24 @@ function hideSplash() {
   el.style.display = "none";
   setTimeout(() => { if (el.parentNode) el.remove(); }, 450);
 }
+let appBootReady = false;
+let lookHold = null;
+function captureLookHold() {
+  if (lookHold) return;
+  try {
+    const s = typeof readUiSnap === "function" ? readUiSnap() : null;
+    if (s && s.tenantLook && s.tenantId) {
+      lookHold = {
+        tenantId: String(s.tenantId),
+        roomId: String(s.roomId || ""),
+        roomNo: String(s.roomNo || ""),
+        page: s.page || "home"
+      };
+    }
+  } catch {}
+}
 async function boot() {
+  captureLookHold();
   try { takeTenantGoQuery(); takeChatOpenQuery(); armChatOpen(); } catch {}
   const splashAt = setTimeout(hideSplash, 20000);
   try {
@@ -50771,6 +50808,7 @@ async function boot() {
     persistLedger(state);
     try { connectPaidCloud(); } catch {}
     if (got === "local-newer" || cloudDirty) await pushCloud();
+    appBootReady = true;
     restoreUi();
     applyTenantGo();
     beatPresence();
@@ -50803,6 +50841,7 @@ async function boot() {
     } else ui.notifyChecked = true;
   } catch (err) {
     try { console.error(err); } catch {}
+    appBootReady = true;
     try { render(); } catch {}
   }
   clearTimeout(splashAt);
