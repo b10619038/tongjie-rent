@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-17-12";
-const APP_EDIT_COUNT = 2514;
+const APP_STAMP = "2026-11-25-17-16";
+const APP_EDIT_COUNT = 2515;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3319,76 +3319,25 @@ async function wipeClientCache() {
   } catch {}
 }
 function beginUpdateCover() {
-  try {
-    if (!sessionStorage.getItem("tj-updating")) sessionStorage.setItem("tj-updating", String(Date.now()));
-  } catch {}
-  let teal = "#62765b", paper = "#ffffff";
-  try {
-    const cs = getComputedStyle(document.documentElement);
-    teal = (cs.getPropertyValue("--teal") || teal).trim() || teal;
-    paper = (cs.getPropertyValue("--paper") || paper).trim() || paper;
-    sessionStorage.setItem("tj-upd-teal", teal);
-    sessionStorage.setItem("tj-upd-paper", paper);
-  } catch {}
-  document.documentElement.style.setProperty("--upd-teal", teal);
-  document.documentElement.style.setProperty("--upd-paper", paper);
-  document.documentElement.classList.add("tj-updating");
-  let el = document.getElementById("upd-cover");
-  if (!el || !el.querySelector("#upd-house")) {
-    if (el) el.remove();
-    el = document.createElement("div");
-    el.id = "upd-cover";
-    el.innerHTML = '<img id="upd-house" src="icon-512.png" alt=""><svg id="upd-wave" viewBox="0 0 260 36" width="240" height="36"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="3.2" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="3.4" stroke-linecap="round"/></svg>';
-    document.body.appendChild(el);
+  try { sessionStorage.removeItem("tj-updating"); } catch {}
+  document.documentElement.classList.remove("tj-updating");
+  const old = document.getElementById("upd-cover");
+  if (old) old.remove();
+  const splash = document.getElementById("splash");
+  if (splash) {
+    splash.classList.remove("out");
+    splash.dataset.done = "";
+    splash.style.display = "grid";
+    splash.style.opacity = "1";
   }
-  if (typeof window.__tickUpdateBar !== "function") {
-    const t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now();
-    const waveD = (w, h, phase, pct) => {
-      const amp = 8, mid = h / 2, len = Math.max(1, w * pct);
-      let d = "";
-      for (let x = 0; x <= len; x += 1.4) {
-        const y = mid + Math.sin(x * 0.045 + phase) * amp;
-        d += (x ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
-      }
-      return d;
-    };
-    window.__updPct = window.__updPct || 0.08;
-    window.__tickUpdateBar = function tick() {
-      if (window.__updReveal) return;
-      const path = document.getElementById("g-bar");
-      const ghost = document.getElementById("g-ghost");
-      if (!path) { requestAnimationFrame(tick); return; }
-      const elapsed = Date.now() - t0;
-      const phase = elapsed / 150;
-      const target = window.__updDone ? 1 : Math.min(0.9, 0.1 + 0.8 * (1 - Math.exp(-(elapsed / 1000) / 0.85)));
-      let cur = window.__updPct || 0;
-      cur += (target - cur) * (window.__updDone ? 0.16 : 0.22);
-      if (Math.abs(target - cur) < 0.004) cur = target;
-      window.__updPct = cur;
-      if (ghost) ghost.setAttribute("d", waveD(260, 36, phase, 1));
-      path.setAttribute("d", waveD(260, 36, phase, cur));
-      requestAnimationFrame(tick);
-    };
-  }
-  requestAnimationFrame(window.__tickUpdateBar);
 }
 function finishUpdateCover() {
-  const on = document.documentElement.classList.contains("tj-updating") || !!document.getElementById("upd-cover");
-  if (!on) {
-    hideSplash();
-    return;
-  }
-  window.__updDone = true;
-  if (typeof window.__tickUpdateBar === "function") requestAnimationFrame(window.__tickUpdateBar);
-  setTimeout(() => {
-    if (window.__updReveal) { hideSplash(); return; }
-    window.__updReveal = true;
-    try { sessionStorage.removeItem("tj-updating"); } catch {}
-    document.documentElement.classList.remove("tj-updating");
-    const el = document.getElementById("upd-cover");
-    if (el) el.remove();
-    hideSplash();
-  }, 8000);
+  try { sessionStorage.removeItem("tj-updating"); } catch {}
+  document.documentElement.classList.remove("tj-updating");
+  window.__updReveal = true;
+  const old = document.getElementById("upd-cover");
+  if (old) old.remove();
+  hideSplash();
 }
 function applyAppUpdate() {
   persistLogin();
@@ -3406,7 +3355,7 @@ function applyAppUpdate() {
       try { location.replace(location.pathname.replace(/\/?$/, "/") + "?" + bust); }
       catch { location.reload(); }
     };
-    setTimeout(go, 400);
+    setTimeout(go, 80);
   };
   if (!ui.pendingFileVer || !isNewerBuild(ui.pendingFileVer)) {
     if (unseenAppVersion()) { reloadNow(); return; }
@@ -50843,7 +50792,6 @@ function bindPullRefresh() {
   });
 }
 function hideSplash() {
-  if (document.documentElement.classList.contains("tj-updating") && !window.__updReveal) return;
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
   el.dataset.done = "1";
