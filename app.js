@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-20-10";
-const APP_EDIT_COUNT = 2528;
+const APP_STAMP = "2026-11-25-20-26";
+const APP_EDIT_COUNT = 2529;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -15457,7 +15457,7 @@ function mergeSharedInto(target, other) {
   target.repairs = dropGone(mergeEntities(target.repairs, other.repairs, ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"]), target.repairGone);
   target.repairPins = applyRepairPins(target.repairs, mergeRepairPinMaps(target.repairPins, other.repairPins));
   target.annGone = unionGone(target.annGone, other.annGone);
-  target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media"]);
+  target.announcements = mergeEntities(target.announcements, other.announcements, ["title", "body", "text", "pinned", "media", "audience"]);
   applyAnnGone(target);
   target.notices = mergeEntities(target.notices, other.notices, ["title", "body", "text"]);
   target.renewals = mergeRenewalList(target.renewals, other.renewals);
@@ -15771,7 +15771,8 @@ function annLiveItem(a) {
     publishAt: a.publishAt || "",
     annSent: a.annSent !== false,
     postedBy: a.postedBy || "",
-    pinned: !!a.pinned
+    pinned: !!a.pinned,
+    audience: Array.isArray(a.audience) ? a.audience.slice() : []
   };
 }
 function pushAnnLive() {
@@ -15799,7 +15800,7 @@ function applyAnnLive(pack) {
     }
     const curAt = Number(cur.editedAt) || 0;
     if (nextAt < curAt && cur.title === item.title && cur.body === item.body) return;
-    if (cur.title !== item.title || cur.body !== item.body || String(cur.publishAt || "") !== String(item.publishAt || "") || curAt !== nextAt) {
+    if (cur.title !== item.title || cur.body !== item.body || String(cur.publishAt || "") !== String(item.publishAt || "") || JSON.stringify(cur.audience || []) !== JSON.stringify(item.audience || []) || curAt !== nextAt) {
       cur.title = item.title || "";
       cur.body = item.body || "";
       cur.text = item.text || cur.text || "";
@@ -15808,6 +15809,7 @@ function applyAnnLive(pack) {
       cur.publishAt = item.publishAt || "";
       cur.annSent = item.annSent !== false;
       cur.postedBy = item.postedBy || cur.postedBy || "";
+      if (Array.isArray(item.audience)) cur.audience = item.audience.slice();
       cur.editedAt = nextAt || cur.editedAt;
       changed = true;
     }
@@ -32756,10 +32758,13 @@ function saveAnnounceEdit() {
   const title = String((document.getElementById("ann-edit-title") || {}).value || "").trim();
   const body = String((document.getElementById("ann-edit-body") || {}).value || "").trim();
   if (!title || !body) { toast("請填寫標題與內容"); return; }
+  const audience = readAnnAudience(document.getElementById("ann-edit-form"));
+  if (!audience.length) { toast("請選擇發布受眾"); return; }
   const a = (state.announcements || []).find(x => String(x.id) === String(ui.announceEditId));
   if (!a) { toast("找不到這則公告"); cancelAnnounceEdit(); return; }
   a.title = title;
   a.body = body;
+  a.audience = audience;
   a.media = (ui.editAnnounceMedia || []).slice();
   const atEl = document.getElementById("ann-edit-at");
   if (atEl) {
@@ -32901,6 +32906,37 @@ function annIsLive(a) {
   const t = annPublishMs(a);
   return !t || t <= Date.now();
 }
+function annAudienceList(a) {
+  const raw = a && a.audience;
+  if (!Array.isArray(raw) || !raw.length) return ["studio", "store", "factory"];
+  return raw.filter(x => x === "studio" || x === "store" || x === "factory");
+}
+function roomAudienceKey(r) {
+  if (!r) return "";
+  if (r.kind === "factory") return "factory";
+  if ((typeof isStoreNo === "function" && isStoreNo(r.no)) || r.kind === "store" || r.title === "店面") return "store";
+  return "studio";
+}
+function annForRoom(a, room) {
+  const key = roomAudienceKey(room);
+  if (!key) return true;
+  return annAudienceList(a).indexOf(key) >= 0;
+}
+function annAudienceName(list) {
+  const name = { studio: "套房", store: "店面", factory: "廠房" };
+  const ids = (list || []).filter(x => name[x]);
+  if (!ids.length || ids.length >= 3) return "全部";
+  return ids.map(x => name[x]).join("、");
+}
+function annAudienceHtml(selected) {
+  const on = new Set((selected && selected.length) ? selected : ["studio", "store", "factory"]);
+  const bits = [["studio", "套房"], ["store", "店面"], ["factory", "廠房"]];
+  return `<div class="field ann-audience"><span>發布受眾</span><div class="ann-aud-row">${bits.map(([id, label]) => `<button type="button" class="ann-aud${on.has(id) ? " on" : ""}" data-ann-aud="${id}">${label}</button>`).join("")}</div></div>`;
+}
+function readAnnAudience(root) {
+  const box = root || document;
+  return [...box.querySelectorAll("[data-ann-aud].on")].map(b => b.dataset.annAud);
+}
 function releaseDueAnnouncements() {
   if (!state || !Array.isArray(state.announcements)) return;
   const due = state.announcements.filter(a => a && a.publishAt && !a.annSent && annIsLive(a));
@@ -32916,7 +32952,8 @@ function releaseDueAnnouncements() {
   try { if (ui.role === "tenant" || ui.page === "announce") render(); } catch {}
 }
 function tenantAnnounceList() {
-  return (state.announcements || []).filter(a => a && annIsLive(a));
+  const room = (ui && ui.role === "tenant" && typeof myRoom === "function") ? myRoom() : null;
+  return (state.announcements || []).filter(a => a && annIsLive(a) && (!room || annForRoom(a, room)));
 }
 function annCreatedMs(a) {
   if (!a) return 0;
@@ -37883,6 +37920,7 @@ function adminAnnounce() {
       </div>
       <div class="tenant-slim-body"${open ? "" : " inert"}>
         <div class="tenant-slim-inner">
+          ${annAudienceHtml(ui.annAudience)}
           <label class="field"><span>標題</span><input id="ann-title" name="title" type="text" placeholder="例如：停水通知" value="${escapeHtml(ui.annTitle || "")}" /></label>
           <label class="field"><span>內容</span><textarea id="ann-body" name="body" placeholder="公告內容">${escapeHtml(ui.annBody || "")}</textarea></label>
           <label class="upload">上傳照片/影片<input id="ann-media" type="file" accept="image/*,video/*" multiple hidden /></label>
@@ -37902,6 +37940,7 @@ function adminAnnounce() {
             <div class="k">編輯這則公告</div>
           </div></div>
           <form id="ann-edit-form" autocomplete="off">
+            ${annAudienceHtml(a.audience)}
             <label class="field"><span>標題</span><input id="ann-edit-title" name="title" type="text" value="${escapeHtml(a.title)}" /></label>
             <label class="field"><span>內容</span><textarea id="ann-edit-body" name="body">${escapeHtml(a.body)}</textarea></label>
             ${a.publishAt && !annIsLive(a) ? `<label class="field"><span>公告時間</span><input id="ann-edit-at" type="datetime-local" value="${escapeHtml(a.publishAt || "")}" /></label><p class="small">還沒發布。改到現在以前會立刻公告。</p>` : ""}
@@ -37916,6 +37955,7 @@ function adminAnnounce() {
       }
       return `<div class="card card-body ann-admin-card">
         ${a.publishAt && !annIsLive(a) ? `<div class="small" style="margin-bottom:8px">預約公告　${escapeHtml(formatDateTime12(String(a.publishAt).replace("T", " ")))}　到時間自動發布</div>` : ""}
+        ${Array.isArray(a.audience) && a.audience.length ? `<div class="small" style="margin-bottom:8px">發布給　${escapeHtml(annAudienceName(a.audience))}</div>` : ""}
         ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
             <button type="button" class="ghost" data-del-announce="${a.id}">刪除</button></div>`)}
       </div>`;
@@ -48429,6 +48469,15 @@ function bindAdmin() {
       };
     });
     bindSegSwipe(document.getElementById("ann-when"), () => applyAnnWhen(false), () => applyAnnWhen(true));
+    document.querySelectorAll("#announce-form [data-ann-aud]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.toggle("on");
+        ui.annAudience = readAnnAudience(document.getElementById("announce-form"));
+        ui.announceOpen = true;
+      };
+    });
     const annAt = document.getElementById("ann-at");
     if (annAt) {
       annAt.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => annAt.focus(), 0); });
@@ -48440,6 +48489,8 @@ function bindAdmin() {
       const title = String((titleEl && titleEl.value) || ui.annTitle || formVal(af, "title") || "").trim();
       const body = String((bodyEl && bodyEl.value) || ui.annBody || formVal(af, "body") || "").trim();
       if (!title || !body) { toast("請填寫標題與內容"); return; }
+      const audience = readAnnAudience(document.getElementById("announce-form"));
+      if (!audience.length) { toast("請選擇發布受眾"); return; }
       const later = ui.annWhen === "later";
       let publishAt = "";
       if (later) {
@@ -48450,13 +48501,14 @@ function bindAdmin() {
       }
       if (!Array.isArray(state.announcements)) state.announcements = [];
       const media = (ui.announceMedia || []).slice();
-      state.announcements.push({ id: "a" + Date.now(), title, body, media, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "", editedAt: Date.now(), publishAt, annSent: !later });
+      state.announcements.push({ id: "a" + Date.now(), title, body, media, audience, createdAt: nowStamp(), readBy: [], reactions: {}, postedBy: ui.adminCode || "", editedAt: Date.now(), publishAt, annSent: !later });
       ui.announceMedia = [];
       ui.announceOpen = false;
       ui.annTitle = "";
       ui.annBody = "";
       ui.annWhen = "now";
       ui.annAt = "";
+      ui.annAudience = ["studio", "store", "factory"];
       try { persistAnnMedia(state); } catch {}
       try { save(); } catch {}
       try { pushAnnLive(); } catch {}
@@ -48506,6 +48558,13 @@ function bindAdmin() {
     document.querySelectorAll("#ann-edit-form input, #ann-edit-form textarea").forEach(el => {
       el.addEventListener("pointerdown", e => { e.stopPropagation(); setTimeout(() => el.focus(), 0); });
       el.addEventListener("click", e => { e.stopPropagation(); el.focus(); });
+    });
+    document.querySelectorAll("#ann-edit-form [data-ann-aud]").forEach(btn => {
+      btn.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.toggle("on");
+      };
     });
     editForm.onsubmit = e => { e.preventDefault(); saveAnnounceEdit(); };
     const saveBtn = document.getElementById("ann-edit-save");
