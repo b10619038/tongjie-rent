@@ -2362,6 +2362,17 @@ html[data-theme="void"] a.addr-nav { color: #e8e8e8; }
 .bank-acc + .bank-acc { border-top: 1px solid var(--line); }
 .bank-acc .small { margin-top: 4px; letter-spacing: 0.02em; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
+button.gate-qr-open {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
 .te-row { align-items: center; }
 .v-edit {
   flex: 1;

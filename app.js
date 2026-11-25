@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-25";
-const APP_EDIT_COUNT = 2505;
+const APP_STAMP = "2026-11-25-16-32";
+const APP_EDIT_COUNT = 2506;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31333,7 +31333,7 @@ function paintApp() {
   const bar = updateBarHtml();
   const theme = themePickerHtml();
   const toastHtml = ui.toast ? `<div class="toast">${escapeHtml(ui.toast)}</div>` : "";
-  const sheet = installSheetHtml() + inviteSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + restoreRenewConfirmHtml() + moveSubmitConfirmHtml();
+  const sheet = installSheetHtml() + inviteSheetHtml() + gateQrSheetHtml() + changelogSheetHtml() + personPickSheetHtml() + nearbySheetHtml() + aiPersonaSheetHtml() + checkoutOverlayHtml() + earlyConfirmHtml() + earlyApplyOverlayHtml() + vacateConfirmHtml() + renewDeclineConfirmHtml() + undoRenewConfirmHtml() + restoreRenewConfirmHtml() + moveSubmitConfirmHtml();
   if (!ui.role || ui.guestMoveIn) {
     const page = ui.page || "home";
     const gateSc = document.querySelector(".move-in-page");
@@ -31710,6 +31710,22 @@ const APP_HOME_URL = "https://tongjie-app.pages.dev";
 const APP_JOIN_URL = APP_HOME_URL + "/?openExternalBrowser=1&install=1";
 function inviteCopy() {
   return "【統潔＆信潔開發】租客 App\n\n請用手機打開：\n" + APP_JOIN_URL + "\n\n加到主畫面後，輸入「房號＋姓名」就能登入。\n繳租金、報修、續約、跟管理員說話，都在這裡完成。\n\niPhone：Safari 開啟 → 分享 → 加入主畫面\nAndroid：Chrome 開啟 → 安裝應用程式";
+}
+function gateQrSrc() {
+  return "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&ecc=M&data=" + encodeURIComponent(APP_HOME_URL);
+}
+function gateQrSheetHtml() {
+  if (!ui.gateQr || !isDeveloper()) return "";
+  return `<div class="install-mask" id="gate-qr-mask">
+    <div class="install-sheet invite-sheet">
+      <div class="label">分享網址</div>
+      <h2>最一開始的入口</h2>
+      <img class="invite-qr" src="${gateQrSrc()}" alt="入口 QR">
+      <p class="invite-url">${APP_HOME_URL}</p>
+      <p class="small">掃碼會打開申請入住、租客登入、後台登入那個畫面。</p>
+      <button class="ghost" id="gate-qr-close" type="button">關閉</button>
+    </div>
+  </div>`;
 }
 function inviteQrSrc() {
   return "https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=8&ecc=M&data=" + encodeURIComponent(APP_JOIN_URL);
@@ -36397,6 +36413,7 @@ function adminSettings() {
       <div class="label">帳號</div>
       <div class="row"><span class="k">身分</span><span class="v">${who}</span></div>
       <div class="row"><span class="k">登入密碼</span><span class="v">${escapeHtml(ui.adminCode || "")}</span></div>
+      ${isDeveloper() ? `<button type="button" class="row gate-qr-open" id="open-gate-qr"><span class="k">分享網址</span><span class="v">QR</span></button>` : ""}
     </div>
     ${isDeveloper() ? visionSettingsHtml() : ""}
     ${bioSettingsHtml()}
@@ -48896,6 +48913,19 @@ function bindTenantSettings() {
 }
 function bindAdminSettings() {
   bindLookSettings();
+  const gateQr = document.getElementById("open-gate-qr");
+  if (gateQr) gateQr.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.gateQr = true;
+    ui.keepScroll = true;
+    render();
+  };
+  const gateClose = () => { ui.gateQr = false; ui.keepScroll = true; render(); };
+  const gateMask = document.getElementById("gate-qr-mask");
+  if (gateMask) gateMask.onclick = e => { if (e.target.id === "gate-qr-mask") gateClose(); };
+  const gateX = document.getElementById("gate-qr-close");
+  if (gateX) gateX.onclick = e => { e.preventDefault(); gateClose(); };
   const visSave = document.getElementById("vision-key-save");
   if (visSave) visSave.onclick = e => {
     e.preventDefault();
