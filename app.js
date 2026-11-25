@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-17-32";
-const APP_EDIT_COUNT = 2521;
+const APP_STAMP = "2026-11-25-17-36";
+const APP_EDIT_COUNT = 2522;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31256,6 +31256,51 @@ function pickerBusy() {
 }
 function render() {
   if (!appBootReady) return;
+  render.need = true;
+  if (render.frame || render.busy) return;
+  render.frame = requestAnimationFrame(() => {
+    render.frame = 0;
+    if (!render.need || render.busy) return;
+    render.need = false;
+    render.busy = true;
+    try { renderNow(); }
+    catch (err) { try { console.error(err); } catch {} }
+    finally { render.busy = false; }
+    if (render.need) render();
+  });
+}
+function tryAdminFastSwap() {
+  if (!ui || ui.role !== "admin" || window.__splitDragging) return false;
+  const pageId = ui.page === "home" || !ui.page ? "dash" : ui.page;
+  const prev = lastRenderPage === "home" || !lastRenderPage ? "dash" : lastRenderPage;
+  if (lastRenderRole !== "admin" || prev === pageId) return false;
+  if (ui.toast || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || ui.aiAvatarSheet || ui.checkoutTenantId || ui.vacateConfirmId || ui.undoRenewId || ui.restoreRenewId || ui.adminJump) return false;
+  if (Array.isArray(ui.splitPages) && ui.splitPages.length >= 2) return false;
+  if (document.getElementById("vacate-mask") || document.getElementById("update-mask") || document.querySelector(".install-mask") || document.getElementById("nearby-mask")) return false;
+  const sc = document.querySelector(".admin-scroll");
+  if (!sc || !document.querySelector(".shell.admin-wide") || !document.querySelector(".tabs-track")) return false;
+  const sitting = sc.querySelector(":scope > .admin-static");
+  if (!sitting || !sitting.dataset.page || sitting.dataset.page === pageId) return false;
+  const saved = adminPaneStore.get(pageId);
+  if (!saved || saved.dataset.view !== adminPaneKey() || saved.dataset.bound !== "1") return false;
+  sitting.dataset.scroll = String(sc.scrollTop || 0);
+  parkAdminPane(sitting);
+  saved.hidden = false;
+  sc.appendChild(saved);
+  adminPaneStore.delete(pageId);
+  sc.scrollTop = Number(saved.dataset.scroll || 0);
+  lastRenderRole = ui.role;
+  lastRenderPage = ui.page;
+  ui.keepScroll = false;
+  ui.adminJump = "";
+  return true;
+}
+function renderNow() {
+  if (tryAdminFastSwap()) {
+    hideSplash();
+    return;
+  }
+  if (!appBootReady) return;
   try { if (typeof scrub7051Tests === "function" && scrub7051Tests(state)) markCloudDirty(); } catch {}
   try { paintLeaveCashLine(); } catch {}
   const force = !!(ui && ui.forceRender);
@@ -35247,7 +35292,7 @@ function parkAdminPane(node) {
   if (!node || !node.dataset || !node.dataset.page) return;
   adminPaneStore.set(node.dataset.page, node);
   if (node.parentNode) node.remove();
-  while (adminPaneStore.size > 5) {
+  while (adminPaneStore.size > 12) {
     const first = adminPaneStore.keys().next().value;
     if (!first || first === node.dataset.page) break;
     adminPaneStore.delete(first);
@@ -47880,18 +47925,13 @@ function bindAdmin() {
         t.style.transform = "";
       });
       try { bindTabPill(); } catch {}
-      clearTimeout(render.tabWait);
-      render.tabWait = setTimeout(() => {
-        render.tabWait = 0;
-        render();
-        if (id === "ai") {
+      render();
+      if (id === "ai") {
+        requestAnimationFrame(() => {
           const scAi = document.querySelector(".admin-scroll");
-          if (scAi) {
-            scAi.scrollTop = 0;
-            requestAnimationFrame(() => { scAi.scrollTop = 0; });
-          }
-        }
-      }, 0);
+          if (scAi) scAi.scrollTop = 0;
+        });
+      }
     };
   });
   bindTabReorder();
