@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-09-05";
-const APP_EDIT_COUNT = 2492;
+const APP_STAMP = "2026-11-25-09-55";
+const APP_EDIT_COUNT = 2493;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -21634,21 +21634,17 @@ function dateFromYmd(ymd) {
 }
 function renewDecisionOf(no) {
   const s = String(no || "");
+  let t = null;
   try {
     const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === s);
-    const t = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    t = (room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo)) || null;
     if (t && t.renewChoice === "open") return "";
     if (t && t.renewChoice === "yes") return "yes";
     if (t && t.renewChoice === "no" && !(s === "6822" && !/吳孟書|黃莉晏/.test(String(t.name || "")))) return "no";
   } catch {}
   if (s === "6822") {
-    let old = true;
-    try {
-      const room = ((typeof state !== "undefined" && state && state.rooms) || []).find(r => r && String(r.no) === "6822");
-      const occ = room && (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.demo);
-      if (occ && !/吳孟書|黃莉晏/.test(String(occ.name || ""))) old = false;
-    } catch {}
-    if (old) return "no";
+    if (t && !/吳孟書|黃莉晏/.test(String(t.name || ""))) return "";
+    return "no";
   }
   if (s === "7023" && t && sameTenantName(t.name, "謝雯鶯")) return "no";
   if (s === "7631" && (!t || sameTenantName(t.name, "蔡文銘"))) return "no";
@@ -50419,7 +50415,7 @@ function hideSplash() {
 }
 async function boot() {
   try { takeTenantGoQuery(); takeChatOpenQuery(); armChatOpen(); } catch {}
-  const splashAt = setTimeout(hideSplash, 9000);
+  const splashAt = setTimeout(hideSplash, 20000);
   try {
     armCompanySave();
     try { if (typeof armAiSend === "function") armAiSend(); } catch {}
@@ -50433,10 +50429,8 @@ async function boot() {
     markVersionSeen();
     try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
     try { connectPaidCloud(); } catch {}
-    let cloudDone = false;
-    const cloudReady = pullCloud().then(v => { cloudDone = true; return v; }).catch(() => false);
+    const cloudReady = pullCloud().catch(() => false);
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
-    if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     if (locPrefOn()) askPreciseLocation(false);
     try {
       const idb = await loadLedgerIdb();
@@ -50445,10 +50439,8 @@ async function boot() {
       dropFactoryRentAutos(state);
       persistLedger(state);
     } catch {}
-    const got = await Promise.race([
-      cloudReady,
-      new Promise(resolve => setTimeout(() => resolve(false), 6500))
-    ]);
+    const got = await cloudReady;
+    if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
     if (ui.pendingGo === "preview") {
       const id = String(ui.pendingPreviewId || "");
       const has = id && (state.tenants || []).some(t => t && String(t.id) === id);
@@ -50472,7 +50464,6 @@ async function boot() {
     applyTenantGo();
     beatPresence();
     render();
-    if (!cloudDone) cloudReady.then(v => { if (!v) return; ui.keepScroll = true; try { render(); } catch {} });
     try { armChatOpen(); } catch {}
     let offered = false;
     if (ui.role === "tenant" || (!ui.role && ui.page === "tenant-login")) offered = remindInstallBeforeTenantLogin();
