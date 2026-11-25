@@ -24,7 +24,7 @@ const UI_KEY = "tongjie_ui_v2";
 const LOGIN_KEY = "tongjie_login_v1";
 const TAB_KEY = "tongjie_tab_order";
 const ADMIN_CODES = ["1976", "7651", "1240", "7736"];
-const ADMIN_STAFF_NAMES = ["趙文榮", "許喻涵", "趙洪漳"];
+const ADMIN_STAFF_NAMES = ["趙文榮", "許喻涵", "趙洪漳", "趙淑芬"];
 const ADMIN_DEV_NAMES = ["趙文榮"];
 function normAdminName(s) {
   return String(s || "").replace(/\s+/g, "").trim();
@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-20";
-const APP_EDIT_COUNT = 2504;
+const APP_STAMP = "2026-11-25-16-25";
+const APP_EDIT_COUNT = 2505;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -16574,7 +16574,7 @@ function presenceKey() {
     const name = normAdminName(ui.adminName);
     if (name === "趙正賢") return "admin-1976";
     if (ui.adminCode === "7651" && name === "趙海城") return "admin-7651-趙海城";
-    if (ui.adminCode === "7651" && (name === "許喻涵" || name === "趙洪漳")) return "admin-7651-" + name;
+    if (ui.adminCode === "7651" && (name === "許喻涵" || name === "趙洪漳" || name === "趙淑芬")) return "admin-7651-" + name;
     return "admin-" + ui.adminCode;
   }
   return "";
@@ -16688,7 +16688,7 @@ function isBossAdmin() {
 }
 function staffHidesDash() {
   const n = normAdminName(ui.adminName);
-  return ui.role === "admin" && ui.adminCode === "7651" && (n === "趙洪漳" || n === "許喻涵");
+  return ui.role === "admin" && ui.adminCode === "7651" && (n === "趙洪漳" || n === "許喻涵" || n === "趙淑芬");
 }
 function adminLandingPage() {
   return staffHidesDash() ? "rooms" : "dash";
@@ -16697,6 +16697,7 @@ function staffOpsName(who) {
   const s = String(who || "");
   if (s.indexOf("趙洪漳") >= 0) return "趙洪漳";
   if (s.indexOf("許喻涵") >= 0) return "許喻涵";
+  if (s.indexOf("趙淑芬") >= 0) return "趙淑芬";
   return "";
 }
 function staffPresenceOn(name) {
@@ -16711,7 +16712,8 @@ function onlineStaffHtml() {
     ["admin-1976", "趙正賢（1976）（7651）", ""],
     ["admin-7651-趙海城", "趙海城（7651）", ""],
     ["admin-7651-趙洪漳", "趙洪漳（7651）", "趙洪漳"],
-    ["admin-7651-許喻涵", "許喻涵（7651）", "許喻涵"]
+    ["admin-7651-許喻涵", "許喻涵（7651）", "許喻涵"],
+    ["admin-7651-趙淑芬", "趙淑芬（7651）", "趙淑芬"]
   ];
   return slots.map(([id, label, staffName]) => {
     const on = staffName ? staffPresenceOn(staffName) : isOnline(id);
@@ -37505,7 +37507,7 @@ function workMemoFace(m) {
   }
   if (isDeveloper() && m && m.byName && !/^管理員/.test(text)) {
     const n = normAdminName(m.byName);
-    const short = n === "趙洪漳" ? "洪漳" : n === "許喻涵" ? "喻涵" : "";
+    const short = n === "趙洪漳" ? "洪漳" : n === "許喻涵" ? "喻涵" : n === "趙淑芬" ? "淑芬" : "";
     if (short) text = "管理員 " + short + "　" + text;
   }
   return text;
@@ -49508,7 +49510,7 @@ function bindAdminAi() {
         edited: true
       };
       const who = normAdminName(ui.adminName);
-      if (who === "趙洪漳" || who === "許喻涵") rec.byName = who;
+      if (who === "趙洪漳" || who === "許喻涵" || who === "趙淑芬") rec.byName = who;
       if (cycle === "1") {
         rec.monthDay = day;
         rec.cycle = true;
