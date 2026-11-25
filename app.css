@@ -6904,9 +6904,10 @@ body.rev-zooming { overflow: hidden; }
   border: 0;
   box-shadow: none;
   border-radius: 0;
-  padding: 4px;
+  padding: 0;
   min-height: 0;
 }
+#logout.logout-ico-btn .logout-ico { width: 40px; height: 40px; }
 #logout-tenant.logout-ico-btn { margin: 0 0 2px; padding: 4px; align-self: center; }
 #logout-tenant.logout-ico-btn .logout-ico { width: 36px; height: 36px; }
 button.is-press, .clickable.is-press, .tab.is-press { filter: brightness(.95); }
