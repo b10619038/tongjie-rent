@@ -48,8 +48,8 @@
       overflow: hidden;
     }
     html.tj-updating #upd-cover { display: flex !important; }
-    #upd-house { width: 88px; height: 88px; transform-origin: center; }
-    #upd-wave { margin-top: 18px; overflow: visible; }
+    #upd-house { width: 88px; height: 88px; border-radius: 22px; transform-origin: center; object-fit: cover; }
+    #upd-wave { margin-top: 14px; overflow: visible; }
     @keyframes splashHouse {
       0% { opacity: 0; transform: translateY(18px) scale(.86); }
       28% { opacity: 1; transform: translateY(0) scale(1); }
@@ -79,7 +79,7 @@
       document.documentElement.style.setProperty("--upd-teal", teal);
       document.documentElement.style.setProperty("--upd-paper", paper);
       function waveD(w, h, phase, pct) {
-        var amp = 16, mid = h / 2, len = Math.max(1, w * pct), d = "", x;
+        var amp = 8, mid = h / 2, len = Math.max(1, w * pct), d = "", x;
         for (x = 0; x <= len; x += 1.4) {
           var y = mid + Math.sin(x * 0.045 + phase) * amp;
           d += (x ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
@@ -92,7 +92,7 @@
         if (old) old.remove();
         var el = document.createElement("div");
         el.id = "upd-cover";
-        el.innerHTML = '<svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><svg id="upd-wave" viewBox="0 0 260 64" width="240" height="64"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="4.2" stroke-linecap="round"/></svg>';
+        el.innerHTML = '<img id="upd-house" src="icon-512.png" alt=""><svg id="upd-wave" viewBox="0 0 260 36" width="240" height="36"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="3.2" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="3.4" stroke-linecap="round"/></svg>';
         (document.body || document.documentElement).appendChild(el);
       }
       if (document.body) paint();
@@ -110,9 +110,9 @@
         cur += (target - cur) * (window.__updDone ? 0.16 : 0.22);
         if (Math.abs(target - cur) < 0.004) cur = target;
         window.__updPct = cur;
-        var dFull = waveD(260, 64, phase, 1);
+        var dFull = waveD(260, 36, phase, 1);
         if (ghost) ghost.setAttribute("d", dFull);
-        path.setAttribute("d", waveD(260, 64, phase, cur));
+        path.setAttribute("d", waveD(260, 36, phase, cur));
         if (window.__updDone && cur > 0.992 && !window.__updGrown) {
           window.__updGrown = true;
           var wave = document.getElementById("upd-wave");
@@ -160,8 +160,8 @@
     </svg>
   </div>
   <div id="upd-cover">
-    <svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
-    <svg id="upd-wave" viewBox="0 0 260 64" width="240" height="64"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="4.2" stroke-linecap="round"/></svg>
+    <img id="upd-house" src="icon-512.png" alt="">
+    <svg id="upd-wave" viewBox="0 0 260 36" width="240" height="36"><path id="g-ghost" fill="none" stroke="var(--upd-teal,#62765b)" stroke-opacity="0.28" stroke-width="3.2" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="var(--upd-teal,#62765b)" stroke-width="3.4" stroke-linecap="round"/></svg>
   </div>
   <div id="app"></div>
   <script>
@@ -173,7 +173,7 @@
   <script src="i18n.js?v=10"></script>
   <script src="i18n-pack.js?v=7"></script>
   <script src="html2canvas.min.js?v=1"></script>
-  <script src="app.js?v=2130"></script>
+  <script src="app.js?v=2131"></script>
   <script src="sign-now.js?v=1996"></script>
   <script src="move-elec.js?v=1998"></script>
   <script src="boss-login.js?v=5"></script>
