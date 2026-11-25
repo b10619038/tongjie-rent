@@ -50837,7 +50837,7 @@ function hideSplash() {
   if (!el || el.dataset.done === "1") return;
   el.dataset.done = "1";
   const start = window.__splashAt || Date.now();
-  const wait = Math.max(0, start + 1000 + 1500 - Date.now());
+  const wait = Math.max(0, start + 1000 + 1000 - Date.now());
   setTimeout(() => {
     if (!el.parentNode) return;
     el.classList.add("leave");
