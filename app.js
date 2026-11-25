@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-24-18-00";
-const APP_EDIT_COUNT = 2491;
+const APP_STAMP = "2026-11-25-09-05";
+const APP_EDIT_COUNT = 2492;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -50419,7 +50419,7 @@ function hideSplash() {
 }
 async function boot() {
   try { takeTenantGoQuery(); takeChatOpenQuery(); armChatOpen(); } catch {}
-  const splashAt = setTimeout(hideSplash, 2200);
+  const splashAt = setTimeout(hideSplash, 9000);
   try {
     armCompanySave();
     try { if (typeof armAiSend === "function") armAiSend(); } catch {}
@@ -50433,9 +50433,10 @@ async function boot() {
     markVersionSeen();
     try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
     try { connectPaidCloud(); } catch {}
+    let cloudDone = false;
+    const cloudReady = pullCloud().then(v => { cloudDone = true; return v; }).catch(() => false);
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (ui.role) audit("再次進入", "關閉後重新打開，維持登入");
-    render();
     if (locPrefOn()) askPreciseLocation(false);
     try {
       const idb = await loadLedgerIdb();
@@ -50444,7 +50445,10 @@ async function boot() {
       dropFactoryRentAutos(state);
       persistLedger(state);
     } catch {}
-    const got = await pullCloud();
+    const got = await Promise.race([
+      cloudReady,
+      new Promise(resolve => setTimeout(() => resolve(false), 6500))
+    ]);
     if (ui.pendingGo === "preview") {
       const id = String(ui.pendingPreviewId || "");
       const has = id && (state.tenants || []).some(t => t && String(t.id) === id);
@@ -50468,6 +50472,7 @@ async function boot() {
     applyTenantGo();
     beatPresence();
     render();
+    if (!cloudDone) cloudReady.then(v => { if (!v) return; ui.keepScroll = true; try { render(); } catch {} });
     try { armChatOpen(); } catch {}
     let offered = false;
     if (ui.role === "tenant" || (!ui.role && ui.page === "tenant-login")) offered = remindInstallBeforeTenantLogin();
