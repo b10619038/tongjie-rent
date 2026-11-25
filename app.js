@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-20-26";
-const APP_EDIT_COUNT = 2529;
+const APP_STAMP = "2026-11-25-20-32";
+const APP_EDIT_COUNT = 2530;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -50897,13 +50897,21 @@ function bindPullRefresh() {
 function hideSplash() {
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
+  try { if (typeof window.__armSplash === "function") window.__armSplash(); } catch {}
+  if (!window.__splashAt) window.__splashAt = Date.now();
   el.dataset.done = "1";
-  const start = window.__splashAt || Date.now();
-  const wait = Math.max(0, start + 1000 + 1000 - Date.now());
+  const wait = Math.max(0, window.__splashAt + 2000 - Date.now());
   setTimeout(() => {
     if (!el.parentNode) return;
+    const done = () => { if (el.parentNode) el.remove(); };
+    try {
+      const anim = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 360, easing: "ease", fill: "forwards" });
+      anim.onfinish = done;
+      setTimeout(done, 480);
+      return;
+    } catch {}
     el.classList.add("leave");
-    setTimeout(() => { if (el.parentNode) el.remove(); }, 380);
+    setTimeout(done, 380);
   }, wait);
 }
 let appBootReady = false;
