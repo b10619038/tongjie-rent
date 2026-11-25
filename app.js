@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-19-50";
-const APP_EDIT_COUNT = 2525;
+const APP_STAMP = "2026-11-25-20-02";
+const APP_EDIT_COUNT = 2526;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -13166,7 +13166,10 @@ function applyRenewNoMarks(data) {
     });
     const p = data.presence && data.presence[now6822.id];
     if (p && p.name && p.name !== "黃心怡") { p.name = "黃心怡"; changed = true; }
-    if (data.applyPing && data.applyPing.name === "心怡") { data.applyPing.name = "黃心怡"; changed = true; }
+    if (now6822.signAppointAt !== "2026-11-24T16:00") {
+      now6822.signAppointAt = "2026-11-24T16:00";
+      changed = true;
+    }
     (data.auditLogs || []).forEach(x => {
       if (!x || x.who !== "租客 6822　心怡") return;
       x.who = "租客 6822　黃心怡";
