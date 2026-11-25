@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-52";
-const APP_EDIT_COUNT = 2511;
+const APP_STAMP = "2026-11-25-17-02";
+const APP_EDIT_COUNT = 2512;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3322,25 +3322,49 @@ function beginUpdateCover() {
   try {
     if (!sessionStorage.getItem("tj-updating")) sessionStorage.setItem("tj-updating", String(Date.now()));
   } catch {}
+  let teal = "#62765b", paper = "#ffffff";
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    teal = (cs.getPropertyValue("--teal") || teal).trim() || teal;
+    paper = (cs.getPropertyValue("--paper") || paper).trim() || paper;
+    sessionStorage.setItem("tj-upd-teal", teal);
+    sessionStorage.setItem("tj-upd-paper", paper);
+  } catch {}
   document.documentElement.classList.add("tj-updating");
   let el = document.getElementById("upd-cover");
   if (!el) {
     el = document.createElement("div");
     el.id = "upd-cover";
-    el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;");
-    el.innerHTML = '<div style="font-size:13px;letter-spacing:.18em;color:#808680;">統潔＆信潔開發</div><div style="margin-top:10px;font-size:22px;font-weight:700;color:#1d2420;">正在更新</div><div style="margin-top:22px;width:min(280px,74vw);height:6px;border-radius:99px;background:#e6e8ea;overflow:hidden;"><div id="g-bar" style="height:100%;width:12%;border-radius:99px;background:linear-gradient(90deg,#4285F4,#EA4335 38%,#FBBC05 68%,#34A853);"></div></div>';
+    el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:" + paper + ";display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;");
+    el.innerHTML = '<svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="' + teal + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" style="width:76px;height:76px;transform-origin:center;"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><svg id="upd-wave" viewBox="0 0 260 48" width="240" height="48" style="margin-top:18px;overflow:visible"><path id="g-ghost" fill="none" stroke="' + teal + '" stroke-opacity="0.22" stroke-width="3" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="' + teal + '" stroke-width="3.2" stroke-linecap="round"/></svg>';
     document.body.appendChild(el);
   }
   if (typeof window.__tickUpdateBar !== "function") {
+    const t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now();
+    const waveD = (w, h, phase, pct) => {
+      const amp = 10, mid = h / 2, len = Math.max(1, w * pct);
+      let d = "";
+      for (let x = 0; x <= len; x += 1.4) {
+        const y = mid + Math.sin(x * 0.05 + phase) * amp;
+        d += (x ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+      }
+      return d;
+    };
+    window.__updPct = 0.08;
     window.__tickUpdateBar = function tick() {
-      if (window.__updDone) return;
-      const bar = document.getElementById("g-bar");
-      if (!bar) return;
-      let t0 = Date.now();
-      try { t0 = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
+      if (window.__updReveal) return;
+      const path = document.getElementById("g-bar");
+      const ghost = document.getElementById("g-ghost");
+      if (!path) { requestAnimationFrame(tick); return; }
       const elapsed = Date.now() - t0;
-      const pct = Math.min(90, 12 + 78 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
-      bar.style.width = pct.toFixed(1) + "%";
+      const phase = elapsed / 150;
+      const target = window.__updDone ? 1 : Math.min(0.9, 0.1 + 0.8 * (1 - Math.exp(-(elapsed / 1000) / 0.85)));
+      let cur = window.__updPct || 0;
+      cur += (target - cur) * (window.__updDone ? 0.16 : 0.22);
+      if (Math.abs(target - cur) < 0.004) cur = target;
+      window.__updPct = cur;
+      if (ghost) ghost.setAttribute("d", waveD(260, 48, phase, 1));
+      path.setAttribute("d", waveD(260, 48, phase, cur));
       requestAnimationFrame(tick);
     };
   }
@@ -3353,23 +3377,16 @@ function finishUpdateCover() {
     return;
   }
   window.__updDone = true;
-  const bar = document.getElementById("g-bar");
-  if (bar) bar.style.width = "100%";
-  let started = Date.now();
-  try { started = Number(sessionStorage.getItem("tj-updating")) || Date.now(); } catch {}
-  const hold = Math.max(380, 1000 - (Date.now() - started));
+  if (typeof window.__tickUpdateBar === "function") requestAnimationFrame(window.__tickUpdateBar);
   setTimeout(() => {
+    if (window.__updReveal) { hideSplash(); return; }
     window.__updReveal = true;
     try { sessionStorage.removeItem("tj-updating"); } catch {}
     document.documentElement.classList.remove("tj-updating");
     const el = document.getElementById("upd-cover");
-    if (el) {
-      el.style.transition = "opacity .28s ease";
-      el.style.opacity = "0";
-      setTimeout(() => { if (el.parentNode) el.remove(); }, 300);
-    }
+    if (el) el.remove();
     hideSplash();
-  }, hold);
+  }, 8000);
 }
 function applyAppUpdate() {
   persistLogin();

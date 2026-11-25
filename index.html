@@ -57,23 +57,68 @@
         return;
       }
       document.documentElement.classList.add("tj-updating");
+      var teal = "#62765b", paper = "#ffffff";
+      try {
+        teal = sessionStorage.getItem("tj-upd-teal") || teal;
+        paper = sessionStorage.getItem("tj-upd-paper") || paper;
+      } catch (e) {}
+      function waveD(w, h, phase, pct) {
+        var amp = 10, mid = h / 2, len = Math.max(1, w * pct), d = "", x;
+        for (x = 0; x <= len; x += 1.4) {
+          var y = mid + Math.sin(x * 0.05 + phase) * amp;
+          d += (x ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+        }
+        return d;
+      }
       function paint() {
         if (document.getElementById("upd-cover")) return;
         var el = document.createElement("div");
         el.id = "upd-cover";
-        el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;");
-        el.innerHTML = '<div style="font-size:13px;letter-spacing:.18em;color:#808680;">統潔＆信潔開發</div><div style="margin-top:10px;font-size:22px;font-weight:700;color:#1d2420;">正在更新</div><div style="margin-top:22px;width:min(280px,74vw);height:6px;border-radius:99px;background:#e6e8ea;overflow:hidden;"><div id="g-bar" style="height:100%;width:12%;border-radius:99px;background:linear-gradient(90deg,#4285F4,#EA4335 38%,#FBBC05 68%,#34A853);"></div></div>';
+        el.setAttribute("style", "position:fixed;inset:0;z-index:2147483646;background:" + paper + ";display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;");
+        el.innerHTML = '<svg id="upd-house" viewBox="0 0 24 24" fill="none" stroke="' + teal + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" style="width:76px;height:76px;transform-origin:center;"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg><svg id="upd-wave" viewBox="0 0 260 48" width="240" height="48" style="margin-top:18px;overflow:visible"><path id="g-ghost" fill="none" stroke="' + teal + '" stroke-opacity="0.22" stroke-width="3" stroke-linecap="round"/><path id="g-bar" fill="none" stroke="' + teal + '" stroke-width="3.2" stroke-linecap="round"/></svg>';
         (document.body || document.documentElement).appendChild(el);
       }
       if (document.body) paint();
       else document.addEventListener("DOMContentLoaded", paint);
+      window.__updPct = 0.08;
       function tick() {
-        if (window.__updDone) return;
-        var bar = document.getElementById("g-bar");
-        if (bar) {
-          var elapsed = Date.now() - t0;
-          var pct = Math.min(90, 12 + 78 * (1 - Math.exp(-(elapsed / 1000) / 0.8)));
-          bar.style.width = pct.toFixed(1) + "%";
+        if (window.__updReveal) return;
+        var path = document.getElementById("g-bar");
+        var ghost = document.getElementById("g-ghost");
+        if (!path) { requestAnimationFrame(tick); return; }
+        var elapsed = Date.now() - t0;
+        var phase = elapsed / 150;
+        var target = window.__updDone ? 1 : Math.min(0.9, 0.1 + 0.8 * (1 - Math.exp(-(elapsed / 1000) / 0.85)));
+        var cur = window.__updPct || 0;
+        cur += (target - cur) * (window.__updDone ? 0.16 : 0.22);
+        if (Math.abs(target - cur) < 0.004) cur = target;
+        window.__updPct = cur;
+        var dFull = waveD(260, 48, phase, 1);
+        if (ghost) ghost.setAttribute("d", dFull);
+        path.setAttribute("d", waveD(260, 48, phase, cur));
+        if (window.__updDone && cur > 0.992 && !window.__updGrown) {
+          window.__updGrown = true;
+          var wave = document.getElementById("upd-wave");
+          var house = document.getElementById("upd-house");
+          if (wave) { wave.style.transition = "opacity .22s ease"; wave.style.opacity = "0"; }
+          if (house) {
+            house.style.transition = "transform .8s cubic-bezier(.22,.78,.28,1)";
+            house.style.transform = "scale(18)";
+          }
+          setTimeout(function () {
+            if (window.__updReveal) return;
+            window.__updReveal = true;
+            try { sessionStorage.removeItem("tj-updating"); } catch (e) {}
+            document.documentElement.classList.remove("tj-updating");
+            var c = document.getElementById("upd-cover");
+            if (c) {
+              c.style.transition = "opacity .34s ease";
+              c.style.opacity = "0";
+              setTimeout(function () { if (c.parentNode) c.remove(); }, 360);
+            }
+            if (typeof hideSplash === "function") hideSplash();
+          }, 780);
+          return;
         }
         requestAnimationFrame(tick);
       }
@@ -107,7 +152,7 @@
   <script src="i18n.js?v=10"></script>
   <script src="i18n-pack.js?v=7"></script>
   <script src="html2canvas.min.js?v=1"></script>
-  <script src="app.js?v=2128"></script>
+  <script src="app.js?v=2129"></script>
   <script src="sign-now.js?v=1996"></script>
   <script src="move-elec.js?v=1998"></script>
   <script src="boss-login.js?v=5"></script>
