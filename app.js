@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-16-05";
-const APP_EDIT_COUNT = 2502;
+const APP_STAMP = "2026-11-25-16-12";
+const APP_EDIT_COUNT = 2503;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -22813,9 +22813,37 @@ function bindInvoicePreviewZoom(sc) {
     paint();
   });
 }
+function bindInvoiceZoom() {
+  document.querySelectorAll(".inv-photo").forEach(photo => {
+    if (photo.closest("#invoice-preview-box")) return;
+    if (photo.closest(".inv-sample")) {
+      let hit = photo.querySelector(":scope > .inv-zoom-hit");
+      if (!hit) {
+        hit = document.createElement("button");
+        hit.type = "button";
+        hit.className = "inv-zoom-hit";
+        hit.setAttribute("aria-label", "放大發票");
+        photo.appendChild(hit);
+      }
+      hit.onclick = e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openInvoiceFormZoom(photo);
+      };
+      return;
+    }
+    photo.onclick = e => {
+      if (e.target.closest("input, textarea, button, a, select")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openInvoiceFormZoom(photo);
+    };
+  });
+}
 function openInvoiceFormZoom(photo) {
   if (!photo) return;
   const clone = photo.cloneNode(true);
+  clone.querySelectorAll(".inv-zoom-hit").forEach(el => el.remove());
   clone.querySelectorAll("input, textarea, button").forEach(el => {
     el.setAttribute("readonly", "readonly");
     el.setAttribute("tabindex", "-1");
@@ -43389,6 +43417,7 @@ function bindTenant() {
   if (avSet) avSet.onchange = () => onAvatar(avSet);
   bindTenantSettings();
   bindInvoicePickup();
+  bindInvoiceZoom();
   document.querySelectorAll("[data-page]").forEach(el => {
     el.onclick = () => {
       const next = el.dataset.page;
@@ -47859,14 +47888,7 @@ function bindAdmin() {
   bindTenantEdits();
   bindHandover();
   bindAssetSearch();
-  document.querySelectorAll(".inv-photo").forEach(photo => {
-    photo.onclick = e => {
-      if (e.target.closest("input, textarea, button, a, select")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openInvoiceFormZoom(photo);
-    };
-  });
+  bindInvoiceZoom();
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
