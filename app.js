@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-22-03";
-const APP_EDIT_COUNT = 2545;
+const APP_STAMP = "2026-11-25-22-25";
+const APP_EDIT_COUNT = 2546;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -19611,7 +19611,7 @@ function invMark(txt, l, t, w, h, cls) {
 function invoiceCopyHtml(r, t, copyName) {
   const factory = r.kind === "factory";
   const triple = invoiceIsTriple(r, t);
-  const p = invoicePeriod(dateFromYmd(invoicePrintYmd(t)));
+  const p = invoicePeriod(dateFromYmd(invoicePrintYmd(t, r)));
   const addr = invoiceAddr(r, t);
   const buyer = (ui.invoiceBuyerFor === (r && r.id) && ui.invoiceBuyer != null && ui.invoiceBuyer !== "")
     ? ui.invoiceBuyer
@@ -19623,7 +19623,8 @@ function invoiceCopyHtml(r, t, copyName) {
   const item = (ui.invoiceItem && !/^\d+月(份)?(廠房)?租金(收入)?$/.test(ui.invoiceItem)) ? ui.invoiceItem : itemDefault;
   const qty = (ui.invoiceQty && ui.invoiceQty !== "1") ? ui.invoiceQty : "一式";
   const editedAmt = ui.invoiceAmt != null && String(ui.invoiceAmt) !== "";
-  const billedYm = (invoiceRentYmd() || todayYmd()).slice(0, 7);
+  const printYmd = invoicePrintYmd(t, r);
+  const billedYm = (ui.invoiceY && ui.invoiceMo) ? (invoiceRentYmd() || printYmd).slice(0, 7) : String(printYmd || todayYmd()).slice(0, 7);
   const br = invoiceTaxBreakdown(r, t, editedAmt ? ui.invoiceAmt : null);
   const liveAmt = factory
     ? (triple ? br.total : (Number(r.rent) || Number(t && t.rent) || 0))
@@ -21896,9 +21897,11 @@ function openInvoiceForRoom(roomId, from) {
   const r = (state.rooms || []).find(x => x && x.id === roomId);
   const t = r ? invoiceTenantOf(r) : null;
   if (r && t && !roomIsFactory(r) && !leaseCoversYm(t, r, payYmNow()) && !paidThisMonth(t)) {
-    const start = tenantOccupancyStart(t, r) || t.leaseStart || "";
-    toast("合約 " + (start || "") + " 才開始，本月不開立發票");
-    return;
+    const start = tenantOccupancyStart(t, r) || ymdOf(t.leaseStart) || "";
+    if (!(start && start.slice(0, 7) > payYmNow())) {
+      toast("合約 " + (start || "") + " 才開始，本月不開立發票");
+      return;
+    }
   }
   ui.invoiceRoomId = roomId;
   ui.invoiceFrom = from || "tenants";
@@ -21924,11 +21927,14 @@ function invoiceYmdFromRemit(remitYmd, billYm, invoiceOn) {
   if (!remit) return start;
   return remit > start ? remit : start;
 }
-function invoicePrintYmd(t) {
+function invoicePrintYmd(t, r) {
   const paid = paidThisMonth(t);
   const remit = paid ? (ymdOf(t && t.remitOn) || ymdOf(t && t.paidAt) || "") : "";
   const billYm = (paid && t && t.paidYm) || payYmNow();
-  return invoiceYmdFromRemit(remit, billYm, t && t.invoiceOn) || (String(billYm || payYmNow()).slice(0, 7) + "-01");
+  const raw = invoiceYmdFromRemit(remit, billYm, t && t.invoiceOn) || (String(billYm || payYmNow()).slice(0, 7) + "-01");
+  const start = ymdOf(t && t.leaseStart) || (typeof tenantOccupancyStart === "function" ? tenantOccupancyStart(t, r) : "") || "";
+  if (start && raw && start > raw) return start;
+  return raw;
 }
 function dateFromYmd(ymd) {
   const m = String(ymd || "").match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -22042,7 +22048,9 @@ function studioInvoiceRow(no, room, t, info) {
   const invNo = onNew ? String((invRoom && invRoom.no) || item.moveRoomNo || no) : String(no);
   const invT = onNew && t ? tenantForRenewPrint(t, invRoom || room, item) : t;
   const remitYmd = paid ? (rentPayDateFor(t, room, billYm) || (viewingNow ? (billYm + "-01") : "")) : "";
-  const invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
+  let invoiceYmd = paid ? invoiceYmdFromRemit(remitYmd, billYm) : "";
+  const leaseFloor = ymdOf((invT && invT.leaseStart) || (t && t.leaseStart) || "");
+  if (invoiceYmd && leaseFloor && leaseFloor > invoiceYmd) invoiceYmd = leaseFloor;
   const aunt = cashAuntRent(t, room) || String(no) === "7241";
   const bankKey = invoiceBankKey(invT || t || info, invRoom || room, billYm, onNew);
   const bank = bankKey === "兆豐" ? "兆" : bankKey === "農會" ? "農" : (bankKey === "聯邦" ? "聯" : (bankKey === "現金" ? "現" : (bankKey || "")));
