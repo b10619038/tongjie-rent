@@ -8020,7 +8020,8 @@ span.ann-ig-heart { pointer-events: none; cursor: default; }
   cursor: pointer;
   z-index: 2;
 }
-.ann-card > .ann-hide {
+.ann-card > .ann-hide,
+.ann-admin-card > .ann-hide {
   display: grid;
   place-items: center;
   font-size: 28px;

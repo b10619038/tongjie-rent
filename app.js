@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-21-32";
-const APP_EDIT_COUNT = 2537;
+const APP_STAMP = "2026-11-25-21-36";
+const APP_EDIT_COUNT = 2538;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -32920,6 +32920,28 @@ function applyHiddenAnns(data) {
   });
   if (dirty) try { markCloudDirty(); } catch {}
 }
+function foldAnnounceForAllTenants(id) {
+  const key = String(id || "");
+  if (!key) return 0;
+  const map = hiddenAnnStore();
+  let n = 0;
+  (state.tenants || []).forEach(t => {
+    if (!t || t.demo) return;
+    const cur = new Set((t.hiddenAnns || []).map(String));
+    if (!cur.has(key)) n++;
+    cur.add(key);
+    t.hiddenAnns = [...cur];
+    t.edited = true;
+    t.editedAt = Date.now();
+    hiddenAnnLoginKeys(t).forEach(k => {
+      map[k] = [...new Set([].concat(map[k] || [], t.hiddenAnns))];
+    });
+  });
+  try { localStorage.setItem(HIDDEN_ANN_KEY, JSON.stringify(map)); } catch {}
+  try { save(true); } catch {}
+  try { pushCloud(); } catch {}
+  return n;
+}
 function hideAnnounceForMe(id) {
   persistHideAnnounce(id);
   ui.keepScroll = true;
@@ -38003,6 +38025,7 @@ function adminAnnounce() {
         </div>`;
       }
       return `<div class="card card-body ann-admin-card">
+        ${ui.adminCode === "1240" && annIsLive(a) ? `<button type="button" class="ann-hide" data-fold-announce="${a.id}" aria-label="幫租客收起這則公告">−</button>` : ""}
         ${a.publishAt && !annIsLive(a) ? `<div class="small" style="margin-bottom:8px">預約公告　${escapeHtml(formatDateTime12(String(a.publishAt).replace("T", " ")))}　到時間自動發布</div>` : ""}
         ${Array.isArray(a.audience) && a.audience.length ? `<div class="small" style="margin-bottom:8px">發布給　${escapeHtml(annAudienceName(a.audience))}</div>` : ""}
         ${announceBodyHtml(a, `<div class="ann-actions"><button type="button" class="ghost" data-edit-announce="${a.id}">編輯</button>
@@ -48624,6 +48647,16 @@ function bindAdmin() {
       e.preventDefault();
       e.stopPropagation();
       startAnnounceEdit(btn.dataset.editAnnounce);
+    };
+  });
+  document.querySelectorAll("[data-fold-announce]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      foldAnnounceForAllTenants(btn.dataset.foldAnnounce);
+      ui.keepScroll = true;
+      toast("已幫租客收起這則公告");
+      render();
     };
   });
   document.querySelectorAll("[data-del-announce]").forEach(btn => {
