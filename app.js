@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-15-40";
-const APP_EDIT_COUNT = 2500;
+const APP_STAMP = "2026-11-25-15-50";
+const APP_EDIT_COUNT = 2501;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -22810,6 +22810,93 @@ function bindInvoicePreviewZoom(sc) {
     else { scale = 2.2; }
     paint();
   });
+}
+function openInvoiceFormZoom(photo) {
+  if (!photo) return;
+  const clone = photo.cloneNode(true);
+  clone.querySelectorAll("input, textarea, button").forEach(el => {
+    el.setAttribute("readonly", "readonly");
+    el.setAttribute("tabindex", "-1");
+  });
+  openInvoicePreviewBox(`
+    <div class="lightbox-bar">
+      <button type="button" id="inv-prev-close">關閉</button>
+      <span>發票</span>
+      <span></span>
+    </div>
+    <div class="invoice-preview-scroll inv-form-zoom"><div class="inv-form-zoom-inner"></div></div>`);
+  const inner = document.querySelector("#invoice-preview-box .inv-form-zoom-inner");
+  if (inner) inner.appendChild(clone);
+  bindInvoiceFormZoom(document.querySelector("#invoice-preview-box .inv-form-zoom"));
+}
+function bindInvoiceFormZoom(sc) {
+  const box = sc && sc.querySelector(".inv-form-zoom-inner");
+  if (!sc || !box || sc.dataset.zoomBound === "1") return;
+  sc.dataset.zoomBound = "1";
+  let scale = 1, tx = 0, ty = 0;
+  const pts = new Map();
+  let pinch0 = 0, scale0 = 1, mid0 = null, tx0 = 0, ty0 = 0, pan0 = null;
+  const paint = (animate) => {
+    scale = Math.min(4, Math.max(1, scale));
+    const maxX = Math.max(0, (box.clientWidth * scale - sc.clientWidth) / 2 + 8);
+    const maxY = Math.max(0, (box.clientHeight * scale - sc.clientHeight) / 2 + 8);
+    tx = Math.min(maxX, Math.max(-maxX, tx));
+    ty = Math.min(maxY, Math.max(-maxY, ty));
+    box.style.transition = animate ? "transform .32s cubic-bezier(.22,.82,.22,1)" : "none";
+    box.style.transform = "translate3d(" + tx + "px," + ty + "px,0) scale(" + scale + ")";
+  };
+  box.style.transformOrigin = "center center";
+  box.style.willChange = "transform";
+  sc.style.touchAction = "none";
+  sc.addEventListener("pointerdown", e => {
+    try { sc.setPointerCapture(e.pointerId); } catch {}
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) {
+      const a = [...pts.values()];
+      pinch0 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      scale0 = scale;
+      mid0 = { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
+      tx0 = tx; ty0 = ty;
+    } else if (pts.size === 1) {
+      pan0 = { x: e.clientX - tx, y: e.clientY - ty };
+    }
+  });
+  sc.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2) {
+      const a = [...pts.values()];
+      const d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      scale = scale0 * (d / pinch0);
+      const mid = { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
+      if (mid0) { tx = tx0 + (mid.x - mid0.x); ty = ty0 + (mid.y - mid0.y); }
+      paint(false);
+    } else if (pts.size === 1 && scale > 1.02 && pan0) {
+      tx = e.clientX - pan0.x;
+      ty = e.clientY - pan0.y;
+      paint(false);
+    }
+  });
+  const up = e => {
+    pts.delete(e.pointerId);
+    if (pts.size < 2) mid0 = null;
+    if (pts.size === 1) {
+      const p = [...pts.values()][0];
+      pan0 = { x: p.x - tx, y: p.y - ty };
+    } else pan0 = null;
+  };
+  sc.addEventListener("pointerup", up);
+  sc.addEventListener("pointercancel", up);
+  sc.addEventListener("dblclick", e => {
+    e.preventDefault();
+    if (scale > 1.05) { scale = 1; tx = 0; ty = 0; }
+    else scale = 2;
+    paint(true);
+  });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    scale = 2;
+    paint(true);
+  }));
 }
 function closeInvoicePreview() {
   bindPreviewGestureLock(false);
@@ -47770,6 +47857,14 @@ function bindAdmin() {
   bindTenantEdits();
   bindHandover();
   bindAssetSearch();
+  document.querySelectorAll(".inv-photo").forEach(photo => {
+    photo.onclick = e => {
+      if (e.target.closest("input, textarea, button, a, select")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openInvoiceFormZoom(photo);
+    };
+  });
   document.querySelectorAll("[data-invoice]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();

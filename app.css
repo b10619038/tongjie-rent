@@ -5901,7 +5901,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
-.inv-sample { margin-top: 8px; pointer-events: none; }
+.inv-sample { margin-top: 8px; cursor: zoom-in; }
 .inv-sample .inv-photo { max-width: 100%; margin: 0; }
 .inv-sample .inv-abs { pointer-events: none; }
 #inv-pick-card select {
@@ -5917,6 +5917,7 @@ html[data-theme="void"] .ai-empty { color: #9a9a9a; }
   aspect-ratio: 1776 / 1120;
   container-type: inline-size;
   container-name: inv;
+  cursor: zoom-in;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -7326,6 +7327,17 @@ img.avatar { object-fit: cover; display: block; }
   align-items: center;
   padding: 4px 0 8px;
   touch-action: none;
+}
+.invoice-preview .inv-form-zoom-inner {
+  width: 100%;
+  max-width: 980px;
+  transform-origin: center center;
+}
+.invoice-preview .inv-form-zoom-inner .inv-photo {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  cursor: grab;
 }
 .invoice-preview img {
   background: #fff;
