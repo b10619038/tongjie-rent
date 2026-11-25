@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-21-50";
-const APP_EDIT_COUNT = 2542;
+const APP_STAMP = "2026-11-25-21-57";
+const APP_EDIT_COUNT = 2543;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31420,29 +31420,24 @@ function renderNow() {
   try { playAdminTitleSlide(); } catch {}
 }
 function playAdminTitleSlide() {
-  if (playAdminTitleSlide.done) return;
+  if (document.documentElement.dataset.titleIn === "1") return;
   if (document.getElementById("splash")) return;
   const row = document.querySelector(".admin-title-row");
-  if (!row || !row.animate) return;
-  playAdminTitleSlide.done = true;
-  row.style.transform = "translate3d(-108%, 0, 0)";
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    const el = document.querySelector(".admin-title-row");
-    if (!el || !el.animate) return;
-    if (el !== row) {
-      playAdminTitleSlide.done = false;
-      playAdminTitleSlide();
-      return;
-    }
-    el.style.transform = "";
-    el.animate(
-      [
-        { transform: "translate3d(-108%, 0, 0)" },
-        { transform: "translate3d(0, 0, 0)" }
-      ],
-      { duration: 900, easing: "cubic-bezier(.22, 1, .3, 1)", fill: "both" }
-    );
-  }));
+  if (!row || !row.animate || row.dataset.sliding === "1") return;
+  row.dataset.sliding = "1";
+  const anim = row.animate(
+    [
+      { transform: "translate3d(-108%, 0, 0)" },
+      { transform: "translate3d(0, 0, 0)" }
+    ],
+    { duration: 900, easing: "cubic-bezier(.22, 1, .3, 1)", fill: "both" }
+  );
+  const done = () => {
+    document.documentElement.dataset.titleIn = "1";
+    try { anim.cancel(); } catch {}
+  };
+  anim.onfinish = done;
+  setTimeout(done, 1000);
 }
 function scheduleAdminBind(full) {
   render.bindGen = (render.bindGen || 0) + 1;
