@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-21-41";
-const APP_EDIT_COUNT = 2540;
+const APP_STAMP = "2026-11-25-21-44";
+const APP_EDIT_COUNT = 2541;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -31384,6 +31384,27 @@ function renderNow() {
   try { syncBirthdayHello(); } catch {}
   try { syncBirthdayConfetti(); } catch {}
 }
+function playAdminTitleSlide() {
+  const row = document.querySelector(".admin-title-row");
+  if (!row || row.dataset.slid === "1") return;
+  row.dataset.slid = "1";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const el = document.querySelector(".admin-title-row");
+    if (!el || !el.animate) return;
+    if (el !== row) {
+      el.dataset.slid = "";
+      playAdminTitleSlide();
+      return;
+    }
+    el.animate(
+      [
+        { transform: "translate3d(-108%, 0, 0)" },
+        { transform: "translate3d(0, 0, 0)" }
+      ],
+      { duration: 900, easing: "cubic-bezier(.22, 1, .3, 1)", fill: "both" }
+    );
+  }));
+}
 function scheduleAdminBind(full) {
   render.bindGen = (render.bindGen || 0) + 1;
   const gen = render.bindGen;
@@ -31396,6 +31417,7 @@ function scheduleAdminBind(full) {
       bindUpdateBar();
       bindThemePicker();
       if (full) bindPullRefresh();
+      playAdminTitleSlide();
     });
   });
 }
@@ -35029,7 +35051,7 @@ function adminView() {
     : `<h1 class="dev-bday-name" style="font-size:24px">${title}</h1>`;
   return `
     <div class="admin-bar">
-      <div class="admin-id${devBday ? " is-bday" : ""}">${devBirthdayMarkHtml()}<div><div class="admin-title-row">${titleHtml}${whoName ? `<span class="admin-who">${escapeHtml(whoName)}</span>` : ""}</div>
+      <div class="admin-id${devBday ? " is-bday" : ""}">${devBirthdayMarkHtml()}<div class="admin-title-clip"><div class="admin-title-row">${titleHtml}${whoName ? `<span class="admin-who">${escapeHtml(whoName)}</span>` : ""}</div>
       </div></div>
       <div style="display:flex;gap:8px;align-items:center">
         ${canOpenExtraWindow() ? `<button class="ghost" id="open-window" type="button" style="width:auto">另開視窗</button>` : ""}
