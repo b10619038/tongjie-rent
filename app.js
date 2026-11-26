@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-23-52";
-const APP_EDIT_COUNT = 2570;
+const APP_STAMP = "2026-11-27-00-12";
+const APP_EDIT_COUNT = 2571;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "LINE 綁定名單改為需要金鑰才能讀取，且不再把使用者編號傳到瀏覽器", head: "LINE名單加密", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-26-23-52-2570", items: [
     { text: "指定房號的公告或通知，現在會送到該房已綁定的官方 LINE", head: "房號LINE通知", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-26-23-00-2569", items: [
@@ -4783,21 +4786,23 @@ function notifyPrefOn(id) {
 function lineBindForRoom(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
   if (!v) return "";
-  const uid = typeof v === "string" ? v : (v.userId || "");
-  if (!uid) return "";
+  const uid = typeof v === "string" ? v : String((v && v.userId) || "");
+  const flagged = v === true || (v && typeof v === "object" && (v.bound || v.name || uid));
+  if (!uid && !flagged) return "";
   const room = (state.rooms || []).find(r => String(r.no) === String(no));
   if (room && room.lineCleared) {
     const t = (state.tenants || []).find(x => x.id === room.tenantId && !x.former && !x.incoming);
     const nm = lineBindName(no);
     if (!t || !nm || !sameTenantName(nm, t.name)) return "";
   }
-  return uid;
+  return uid || "1";
 }
 function linePayLinked(no) {
   const room = String(no || "");
   if (!room || !ui.lineBinds) return false;
   const p = ui.lineBinds.payProofs && ui.lineBinds.payProofs[room];
   if (p && (p.hasText || p.hasImage)) return true;
+  if (ui.lineBinds.payRooms && ui.lineBinds.payRooms[room]) return true;
   const users = ui.lineBinds.payUsers || {};
   return Object.keys(users).some(uid => {
     const u = users[uid];
@@ -4821,18 +4826,43 @@ function lineBindName(no) {
   }
   return s;
 }
+function publicLineBinds(data) {
+  const byRoom = {};
+  const payRooms = {};
+  const src = (data && data.byRoom) || {};
+  Object.keys(src).forEach(no => {
+    const v = src[no];
+    if (!v) return;
+    const name = (typeof v === "object") ? String(v.name || "") : "";
+    byRoom[no] = { bound: true, name };
+  });
+  const users = (data && data.payUsers) || {};
+  Object.keys(users).forEach(uid => {
+    const room = users[uid] && (users[uid].room || users[uid].roomNo);
+    if (room) payRooms[String(room)] = true;
+  });
+  if (data && data.payRooms && typeof data.payRooms === "object") {
+    Object.keys(data.payRooms).forEach(no => { if (data.payRooms[no]) payRooms[no] = true; });
+  }
+  const payProofs = {};
+  Object.keys((data && data.payProofs) || {}).forEach(no => {
+    const p = data.payProofs[no];
+    if (!p || typeof p !== "object") return;
+    payProofs[no] = { ym: p.ym || "", hasText: !!p.hasText, hasImage: !!p.hasImage, at: Number(p.at) || 0 };
+  });
+  return { byRoom, payProofs, payRooms, workerVer: (data && data.workerVer) || "" };
+}
 async function refreshLineBinds() {
   const merge = (a, b) => {
-    a = a || {}; b = b || {};
+    a = publicLineBinds(a); b = publicLineBinds(b);
     return {
       byRoom: Object.assign({}, a.byRoom, b.byRoom),
-      byUser: Object.assign({}, a.byUser, b.byUser),
       payProofs: Object.assign({}, a.payProofs, b.payProofs),
-      payUsers: Object.assign({}, a.payUsers, b.payUsers),
+      payRooms: Object.assign({}, a.payRooms, b.payRooms),
       workerVer: b.workerVer || a.workerVer || ""
     };
   };
-  let out = ui.lineBinds || { byRoom: {}, byUser: {}, payProofs: {} };
+  let out = publicLineBinds(ui.lineBinds || {});
   const urls = [LINE_HOOK + "/binds"];
   try {
     if (typeof location !== "undefined" && location.origin && /^https?:$/.test(location.protocol)) {
@@ -4841,7 +4871,7 @@ async function refreshLineBinds() {
   } catch {}
   for (const u of urls) {
     try {
-      const res = await fetch(u, { cache: "no-store" });
+      const res = await fetch(u, { cache: "no-store", headers: { "X-Tongjie-Key": SYNC_KEY } });
       if (!res.ok) continue;
       out = merge(out, await res.json());
     } catch {}
@@ -4885,10 +4915,9 @@ async function pullLineFaces() {
       guard += 1;
       const res = await fetch("/line-faces", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Tongjie-Key": SYNC_KEY },
         body: JSON.stringify({
-          byRoom: (ui.lineBinds && ui.lineBinds.byRoom) || {},
-          payUsers: (ui.lineBinds && ui.lineBinds.payUsers) || {}
+          rooms: Object.keys((ui.lineBinds && ui.lineBinds.byRoom) || {})
         })
       });
       if (!res.ok) break;
