@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-22-30";
-const APP_EDIT_COUNT = 2566;
+const APP_STAMP = "2026-11-26-22-45";
+const APP_EDIT_COUNT = 2567;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3229,16 +3229,15 @@ function isNewerBuild(ver) {
 let bootPrevVer = "";
 let whatsNewTimer = 0;
 function maybeShowWhatsNew() {
-  const prev = String(bootPrevVer || "");
-  if (!prev || prev === APP_VERSION || EMBED_PAGE) return true;
-  let shown = "";
-  try { shown = localStorage.getItem("tj-whatsnew-ver") || ""; } catch {}
-  if (shown === APP_VERSION) return true;
+  if (EMBED_PAGE) return true;
+  let shown = "", pend = "";
+  try { shown = localStorage.getItem("tj-whatsnew-ver") || ""; pend = localStorage.getItem("tj-whatsnew-pending") || ""; } catch {}
+  if (pend !== APP_VERSION || shown === APP_VERSION) return true;
   if (!ui.role) return false;
   if (document.hidden) return false;
   if (document.getElementById("today-upd-mask") || document.getElementById("update-mask") || document.getElementById("cl-mask")) return false;
   if (document.getElementById("splash") || document.getElementById("intro-mask")) return false;
-  try { localStorage.setItem("tj-whatsnew-ver", APP_VERSION); } catch {}
+  try { localStorage.setItem("tj-whatsnew-ver", APP_VERSION); localStorage.removeItem("tj-whatsnew-pending"); } catch {}
   let rows = [];
   try { rows = notesTodayRows(); } catch {}
   if (!rows.length) return true;
@@ -3247,7 +3246,12 @@ function maybeShowWhatsNew() {
 }
 function armWhatsNew() {
   bootPrevVer = lastSeenVersion();
-  if (!bootPrevVer || bootPrevVer === APP_VERSION) return;
+  let pend = "";
+  try {
+    if (bootPrevVer && bootPrevVer !== APP_VERSION) localStorage.setItem("tj-whatsnew-pending", APP_VERSION);
+    pend = localStorage.getItem("tj-whatsnew-pending") || "";
+  } catch {}
+  if (pend !== APP_VERSION) return;
   let tries = 0;
   const tick = () => {
     tries++;
