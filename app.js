@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-02-00";
-const APP_EDIT_COUNT = 2578;
+const APP_STAMP = "2026-11-27-02-04";
+const APP_EDIT_COUNT = 2579;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "操作日誌的裝置改成清楚分出 Android／iPhone／iPad／Windows／Mac 與系統版本，Android 會顯示手機型號，iPhone 依螢幕尺寸推測機型；瀏覽器分得出 LINE、Safari、Chrome、Samsung Internet，並分清楚已安裝 App 或網頁；位置改標「網路位置，約略」只到縣市並顯示電信業者，手機有開定位才顯示區和誤差；操作改成繳費、上傳、送出訊息、設定變更等類別，同一筆不會重複記兩次；開發者預覽租客畫面會標成開發者預覽，不再算成租客", head: "日誌更精準", before: "changelog/2026-11-27-oplog-before.svg", after: "changelog/2026-11-27-oplog-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-02-00-2578", items: [
     { text: "後台第一次切換分頁、從房間編輯返回資產頁，都改成直接換上已準備好的頁面，不再整頁重畫，切換更快", head: "分頁更順", before: "changelog/2026-11-27-tabs-staff-before.svg", after: "changelog/2026-11-27-tabs-staff-after.svg", aud: ["管理員後台"] },
     { text: "整體報表點選帳戶、銀行篩選，或在月曆圈選日期，只更新報表卡片和月曆，不再整頁重畫；切換分頁、返回資產頁也更快", head: "篩選更順", before: "changelog/2026-11-27-filter-boss-before.svg", after: "changelog/2026-11-27-filter-boss-after.svg", aud: ["負責人後台"] },
     { text: "後台閒置時先在背景準備其他分頁（只在用分頁列或左右滑切換、或按返回時使用，資料一變就重建）；房間編輯按返回改為只換頁面內容；帳戶篩選、月曆圈選改為局部更新。4 倍降速實測：租客分頁第一次切換 244→90ms、行程 150→121ms，房間編輯返回 113→62ms（長任務），帳戶篩選 229→123ms、取消 188→77ms，月曆圈選 191→45ms", head: "分頁篩選更順", before: "changelog/2026-11-27-roomback-dev-before.svg", after: "changelog/2026-11-27-roomback-dev-after.svg", aud: ["開發者後台"] }
@@ -2385,6 +2388,10 @@ async function sendDevChat(tid, text, image) {
   th.name = (t && t.name) || th.name || "";
   if (from === "tenant") th.unreadDev = (th.unreadDev || 0) + 1;
   else th.unreadTenant = (th.unreadTenant || 0) + 1;
+  try {
+    const kind = /^【意見分享】/.test(msg.text) ? "意見分享" : (msg.image ? "照片" : "文字");
+    audit("送出訊息", (from === "dev" ? "傳給 租客 " + (th.roomNo || "") : "傳給開發者") + "（" + kind + "）");
+  } catch {}
   persistChatsToState();
   persistChatImages(state);
   drawChatBox();
@@ -19108,6 +19115,7 @@ function applyPreciseFix(pos) {
     lng: pos.coords.longitude,
     acc: pos.coords.accuracy,
     at: nowStamp(),
+    ts: Date.now(),
     addr: locFix.addr || "",
     error: ""
   };
@@ -19600,50 +19608,145 @@ function fromDatetimeLocal(value) {
   if (!value) return "";
   return formatDateTime12(String(value).replace("T", " "));
 }
-function deviceModel() {
+let devHintsMem = null;
+function devHints() {
+  if (devHintsMem) return devHintsMem;
+  try { devHintsMem = JSON.parse(localStorage.getItem("tj-dev-hints") || "null"); } catch {}
+  return devHintsMem || {};
+}
+function loadDevHints() {
+  try {
+    const uad = navigator.userAgentData;
+    if (!uad || typeof uad.getHighEntropyValues !== "function") return;
+    uad.getHighEntropyValues(["model", "platformVersion", "fullVersionList"]).then(v => {
+      const h = { model: String((v && v.model) || "").trim(), platformVersion: String((v && v.platformVersion) || ""), platform: String((v && v.platform) || uad.platform || "") };
+      devHintsMem = h;
+      try { localStorage.setItem("tj-dev-hints", JSON.stringify(h)); } catch {}
+    }).catch(() => {});
+  } catch {}
+}
+try { loadDevHints(); } catch {}
+function androidBrand(m) {
+  const s = String(m || "").replace(/^SAMSUNG[\s-]+(?=SM-)/i, "").trim();
+  if (!s) return "";
+  if (/^SM-/i.test(s)) return "Samsung " + s;
+  if (/^(CPH|PH[A-Z]\d)/i.test(s)) return "OPPO " + s;
+  if (/^RMX/i.test(s)) return "realme " + s;
+  if (/^V\d{4}/i.test(s)) return "vivo " + s;
+  if (/^(XQ-|SO-|SOG)/i.test(s)) return "Sony " + s;
+  if (/^(ASUS|ZenFone|ROG)/i.test(s)) return s.replace(/_/g, " ");
+  if (/^\d{4,5}[A-Z0-9]{3,}$/i.test(s) || /^(M2\d|Redmi|POCO|Mi )/i.test(s)) return (/^(Redmi|POCO)/i.test(s) ? "" : "小米 ") + s;
+  if (/^(Pixel|Nokia|motorola|moto|HTC|Sharp|SH-|Xperia|Galaxy|OnePlus|Nothing)/i.test(s)) return s;
+  return s;
+}
+// Apple does not let web pages read the iPhone model; screen size narrows it to a family
+function iphoneGuess() {
+  try {
+    const w = Math.min(screen.width, screen.height), h = Math.max(screen.width, screen.height), r = Math.round(window.devicePixelRatio || 1);
+    const k = w + "x" + h + "@" + r;
+    const map = {
+      "375x667@2": "iPhone 6–8／SE", "414x736@3": "iPhone 6–8 Plus", "375x812@3": "iPhone X／XS／11 Pro／12–13 mini",
+      "414x896@2": "iPhone XR／11", "414x896@3": "iPhone XS Max／11 Pro Max", "390x844@3": "iPhone 12–14／16e",
+      "428x926@3": "iPhone 12–13 Pro Max／14 Plus", "393x852@3": "iPhone 14 Pro／15／15 Pro／16",
+      "430x932@3": "iPhone 14 Pro Max／15 Plus／15 Pro Max／16 Plus", "402x874@3": "iPhone 16 Pro／17／17 Pro",
+      "440x956@3": "iPhone 16 Pro Max／17 Pro Max", "420x912@3": "iPhone Air"
+    };
+    return map[k] || "";
+  } catch { return ""; }
+}
+function deviceParts() {
   const ua = navigator.userAgent || "";
-  const android = ua.match(/;\s*([^;)]+?)\s+Build\//i);
-  if (/Android/i.test(ua) && android) {
-    const name = android[1].replace(/_/g, " ").trim();
-    if (name && !/^wv$/i.test(name) && !/Linux/i.test(name)) return name;
+  const h = devHints();
+  const plat = String((navigator.userAgentData && navigator.userAgentData.platform) || h.platform || "");
+  const ipadDesk = !/iPhone|iPod/i.test(ua) && /Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1;
+  let os = "", ver = "", model = "", guess = "";
+  if (/iPad/i.test(ua) || ipadDesk) os = "iPad";
+  else if (/iPhone|iPod/i.test(ua)) os = "iPhone";
+  else if (/Android/i.test(ua) || plat === "Android") os = "Android";
+  else if (/Windows/i.test(ua) || plat === "Windows") os = "Windows";
+  else if (/CrOS/i.test(ua) || plat === "Chrome OS") os = "ChromeOS";
+  else if (/Mac OS X|Macintosh/i.test(ua) || plat === "macOS") os = "Mac";
+  else if (/Linux/i.test(ua) || plat === "Linux") os = "Linux";
+  if (os === "iPhone" || os === "iPad") {
+    const m = ua.match(/OS (\d+)[._](\d+)/);
+    const sv = ua.match(/Version\/(\d+)(?:\.(\d+))?/);
+    if (m && !ipadDesk) ver = m[1] + "." + m[2];
+    // iOS 26+ Safari freezes the OS token at 18_x; Version/ carries the real number
+    if (sv && (Number(sv[1]) >= 26 || ipadDesk || !ver)) ver = sv[1] + (sv[2] && sv[2] !== "0" ? "." + sv[2] : "");
+    if (os === "iPhone") guess = iphoneGuess();
+  } else if (os === "Android") {
+    const pv = String(h.platformVersion || "").split(".");
+    const m = ua.match(/Android (\d+)(?:\.(\d+))?/);
+    const uaModel = (ua.match(/Android [\d.]+;\s*(?:[a-z]{2}[-_][a-z]{2};\s*)?([^;)]+?)(?:\s+Build\/[^;)]*)?(?:;\s*wv)?\)/i) || [])[1] || "";
+    const reduced = /^K$/i.test(uaModel.trim());
+    if (pv[0] && Number(pv[0]) > 0) ver = pv[0] + (pv[1] && pv[1] !== "0" ? "." + pv[1] : "");
+    else if (m && !reduced) ver = m[1] + (m[2] && m[2] !== "0" ? "." + m[2] : "");
+    const raw = String(h.model || (!reduced ? uaModel : "") || "").replace(/_/g, " ").trim();
+    if (raw && !/^(wv|Linux|K)$/i.test(raw)) model = androidBrand(raw);
+  } else if (os === "Windows") {
+    const pv = Number(String(h.platformVersion || "").split(".")[0]);
+    if (pv >= 13) ver = "11";
+    else if (pv > 0) ver = "10";
+    else {
+      const nt = (ua.match(/Windows NT (\d+\.\d+)/) || [])[1];
+      ver = ({ "6.3": "8.1", "6.2": "8", "6.1": "7" })[nt] || "";
+    }
+  } else if (os === "Mac") {
+    const pv = String(h.platformVersion || "").split(".");
+    if (pv[0] && Number(pv[0]) > 0) ver = pv[0] + (pv[1] && pv[1] !== "0" ? "." + pv[1] : "");
   }
-  if (/Android/i.test(ua)) return "Android 手機";
-  if (/iPhone/i.test(ua)) {
-    const ios = ua.match(/OS (\d+)[._](\d+)/);
-    return "iPhone" + (ios ? " iOS " + ios[1] + "." + ios[2] : "");
-  }
-  if (/iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
-    const ios = ua.match(/OS (\d+)[._](\d+)/);
-    return "iPad" + (ios ? " iPadOS " + ios[1] + "." + ios[2] : "");
-  }
-  if (/Windows NT/i.test(ua)) return "Windows 電腦";
-  if (/Mac OS X/i.test(ua)) return "Mac 電腦";
-  if (/Linux/i.test(ua)) return "電腦";
-  return "未知型號";
+  let browser = "", inApp = "";
+  const bv = re => { const m = ua.match(re); return m ? " " + m[1] : ""; };
+  if (/\bLine\//i.test(ua)) { browser = "LINE 內建瀏覽器"; inApp = "LINE"; }
+  else if (/FBAN|FBAV|FB_IAB/i.test(ua)) { browser = "Facebook 內建瀏覽器"; inApp = "Facebook"; }
+  else if (/Instagram/i.test(ua)) { browser = "Instagram 內建瀏覽器"; inApp = "Instagram"; }
+  else if (/SamsungBrowser\//i.test(ua)) browser = "Samsung Internet" + bv(/SamsungBrowser\/(\d+)/);
+  else if (/EdgA\/|EdgiOS\/|Edg\//i.test(ua)) browser = "Edge" + bv(/Edg(?:A|iOS)?\/(\d+)/);
+  else if (/OPR\/|OPiOS\//i.test(ua)) browser = "Opera" + bv(/(?:OPR|OPiOS)\/(\d+)/);
+  else if (/CriOS\//i.test(ua)) browser = "Chrome" + bv(/CriOS\/(\d+)/);
+  else if (/FxiOS\//i.test(ua)) browser = "Firefox" + bv(/FxiOS\/(\d+)/);
+  else if (/Firefox\//i.test(ua)) browser = "Firefox" + bv(/Firefox\/(\d+)/);
+  else if (/MiuiBrowser\//i.test(ua)) browser = "小米瀏覽器";
+  else if (/HeyTapBrowser|OppoBrowser/i.test(ua)) browser = "OPPO 瀏覽器";
+  else if (os === "Android" && /;\s*wv\)/.test(ua)) { browser = "App 內建網頁"; inApp = "App"; }
+  else if (/Chrome\//i.test(ua)) browser = "Chrome" + bv(/Chrome\/(\d+)/);
+  else if ((os === "iPhone" || os === "iPad") && (/Version\//.test(ua) || window.navigator.standalone === true)) browser = "Safari";
+  else if (os === "iPhone" || os === "iPad") { browser = "App 內建網頁"; inApp = "App"; }
+  else if (/Safari\//i.test(ua)) browser = "Safari" + bv(/Version\/(\d+)/);
+  else browser = "瀏覽器";
+  let mode = "網頁";
+  let standalone = false;
+  try { standalone = isStandalone() || /^android-app:\/\//.test(document.referrer || ""); } catch {}
+  if (standalone) mode = "已安裝 App";
+  else if (inApp === "App") mode = "其他 App 內開啟";
+  return { os: os || "未知裝置", ver, model, guess, browser, mode };
+}
+function deviceOsText(d) {
+  if (!d) return "";
+  const name = d.os === "iPhone" ? "iPhone" : d.os === "iPad" ? "iPad" : d.os;
+  const vName = d.os === "iPhone" ? "iOS" : d.os === "iPad" ? "iPadOS" : d.os === "Mac" ? "macOS" : "";
+  if (!d.ver) return name;
+  return vName ? name + "（" + vName + " " + d.ver + "）" : name + " " + d.ver;
+}
+function deviceModel() {
+  const d = deviceParts();
+  if (d.model) return d.model;
+  if (d.os === "iPhone") return d.guess ? "約 " + d.guess + "（依螢幕尺寸推測）" : "Apple 不提供型號";
+  if (d.os === "Android") return "瀏覽器未提供型號";
+  return "";
 }
 function deviceInfo() {
-  const ua = navigator.userAgent || "";
-  let os = "未知裝置";
-  if (/iPad/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) os = "iPad";
-  else if (/iPhone|iPod/i.test(ua)) os = "iPhone";
-  else if (/Android/i.test(ua)) os = "Android";
-  else if (/Windows/i.test(ua)) os = "Windows 電腦";
-  else if (/Mac OS X/i.test(ua)) os = "Mac 電腦";
-  else if (/Linux/i.test(ua)) os = "電腦";
-  let browser = "瀏覽器";
-  if (/Edg\//i.test(ua)) browser = "Edge";
-  else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
-  else if (/Firefox\//i.test(ua)) browser = "Firefox";
-  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
-  const mode = isStandalone() ? "已安裝 App" : "網頁";
-  return os + " · " + browser + " · " + mode;
+  const d = deviceParts();
+  return deviceOsText(d) + " · " + d.browser + " · " + d.mode;
 }
 async function refreshGeo() {
   if (ui.geoAddr) return ui.geoAddr;
   if (ui.geoTried) return ui.geoAddr || "";
   ui.geoTried = true;
+  try { refreshNetLoc(); } catch {}
   const ip = await lookupIpFix();
   if (ip && ip.ip) ui.geoIp = ip.ip;
+  if (ip && !ui.netLoc) ui.netLoc = { src: "ip", region: pickZh(ip.region || ip.city || ""), country: ip.country_code || ip.country || "", isp: ip.isp || "" };
   let addr = "";
   if (ip && isFinite(ip.lat) && isFinite(ip.lon)) addr = await reverseTwAddr(ip.lat, ip.lon);
   if (!addr && ip) addr = fmtTwAddr({
@@ -20310,11 +20413,11 @@ async function fetchJson(url) {
 }
 async function lookupIpFix() {
   const list = [
-    ["https://ipwho.is/", d => d && d.success !== false ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country, country_code: d.country_code, region: d.region, city: d.city, ip: d.ip } : null],
-    ["https://ipapi.co/json/", d => d && !d.error ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country_name, country_code: d.country, region: d.region, city: d.city, ip: d.ip } : null],
+    ["https://ipwho.is/", d => d && d.success !== false ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country, country_code: d.country_code, region: d.region, city: d.city, ip: d.ip, isp: (d.connection && (d.connection.isp || d.connection.org)) || "" } : null],
+    ["https://ipapi.co/json/", d => d && !d.error ? { lat: Number(d.latitude), lon: Number(d.longitude), country: d.country_name, country_code: d.country, region: d.region, city: d.city, ip: d.ip, isp: d.org || "" } : null],
     ["https://ipinfo.io/json", d => {
       const loc = String((d && d.loc) || "").split(",");
-      return { lat: Number(loc[0]), lon: Number(loc[1]), country: d.country, country_code: d.country, region: d.region, city: d.city, ip: d.ip };
+      return { lat: Number(loc[0]), lon: Number(loc[1]), country: d.country, country_code: d.country, region: d.region, city: d.city, ip: d.ip, isp: String(d.org || "").replace(/^AS\d+\s+/, "") };
     }]
   ];
   for (const [url, parse] of list) {
@@ -20364,13 +20467,85 @@ function fmtTwAddr(a) {
   return parts.join(" ");
 }
 function backfillAuditAddress(addr) {
-  if (!addr || !state.auditLogs) return;
+  if (!state.auditLogs) return;
+  const did = liveDeviceId();
+  const now = Date.now();
   let n = 0;
-  const mine = deviceInfo();
   state.auditLogs.forEach(x => {
-    if (x && x.device === mine && (!x.address || x.address !== addr)) { x.address = addr; n++; }
+    if (!x || x.did !== did || !x.ts || now - x.ts > 15 * 60 * 1000) return;
+    const loc = auditLoc();
+    if (x.addrSrc === loc.src && x.address === loc.address) return;
+    if (x.addrSrc === "gps" && loc.src !== "gps") return;
+    Object.assign(x, { address: loc.address, addrSrc: loc.src, addrAcc: loc.acc || 0, isp: loc.isp || x.isp || "" });
+    n++;
   });
   if (n) try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+}
+function ispZh(s) {
+  const t = String(s || "").trim();
+  if (!t) return "";
+  const list = [
+    [/Chunghwa|HiNet|Data Communication Business Group/i, "中華電信"], [/Far ?EasTone|FETnet|\bFET\b/i, "遠傳電信"],
+    [/Taiwan Mobile|\bTWM\b|Taiwan Fixed Network|\bTFN\b/i, "台灣大哥大"], [/Asia Pacific Telecom|APTG/i, "亞太電信"],
+    [/Taiwan Star|T Star/i, "台灣之星"], [/So-?net/i, "So-net"], [/Kbro|Kbtelecom/i, "凱擘大寬頻"],
+    [/Taiwan Broadband|\bTBC\b/i, "台灣寬頻"], [/Seednet|New Century InfoComm/i, "Seednet 新世紀資通"],
+    [/Chief Telecom/i, "是方電訊"], [/Taiwan Academic Network|TANet/i, "台灣學術網路"]
+  ];
+  const hit = list.find(([re]) => re.test(t));
+  return hit ? hit[1] : t;
+}
+function ispRelay(s) {
+  return /Cloudflare|Akamai|Fastly|Apple|Google|Amazon|Microsoft|DigitalOcean|OVH|Hetzner|Linode|Vultr|M247|Datacamp|NordVPN|Proton/i.test(String(s || ""));
+}
+async function refreshNetLoc() {
+  if (refreshNetLoc.busy || (ui.netLoc && ui.netLoc.src === "cf")) return ui.netLoc;
+  refreshNetLoc.busy = true;
+  try {
+    const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 3000) : 0;
+    const res = await fetch("/api/netloc", { cache: "no-store", signal: ctrl ? ctrl.signal : undefined });
+    if (timer) clearTimeout(timer);
+    if (res.ok && /json/.test(res.headers.get("content-type") || "")) {
+      const d = await res.json();
+      if (d && d.country) {
+        ui.netLoc = { src: "cf", region: pickZh(d.region || d.city || ""), country: d.country, isp: d.isp || "" };
+        try { backfillAuditAddress(); } catch {}
+      }
+    }
+  } catch {}
+  refreshNetLoc.busy = false;
+  return ui.netLoc;
+}
+// where this device is, honestly labelled: device location only when the phone's own
+// location permission was already granted (never asked from here), otherwise network/IP level
+function auditLoc() {
+  const fresh = locFix && locFix.addr && locFix.lat != null && locFix.ts && Date.now() - locFix.ts < 2 * 60 * 60 * 1000;
+  const nl = ui.netLoc || null;
+  const isp = nl ? ispZh(nl.isp) : "";
+  if (fresh) return { src: "gps", address: locFix.addr, acc: Math.round(Number(locFix.acc) || 0), isp, relay: nl ? ispRelay(nl.isp) : false };
+  if (nl) {
+    const tw = /^(TW|台灣|臺灣|Taiwan)$/i.test(String(nl.country || ""));
+    const country = tw ? "台灣" : pickZh(nl.country || "");
+    const region = nl.region && nl.region !== country ? nl.region : "";
+    return { src: "ip", address: [country, region].filter(Boolean).join(" "), isp, relay: ispRelay(nl.isp) };
+  }
+  return { src: "", address: "", isp: "" };
+}
+function logLocText(x) {
+  if (!x) return "—";
+  if (!x.addrSrc) return x.address || "—";
+  if (x.addrSrc === "gps") {
+    const acc = Number(x.addrAcc) || 0;
+    const tail = acc ? (acc >= 1000 ? "誤差約 " + (acc / 1000).toFixed(1) + " 公里" : "誤差約 " + acc + " 公尺") : "";
+    return (x.address || "—") + "（裝置定位" + (tail ? "，" + tail : "") + "）";
+  }
+  if (x.addrSrc === "ip") return (x.address ? "約在 " + x.address : "—") + "（網路位置，約略，不是實際地址）";
+  return x.address || "—";
+}
+function logNetText(x) {
+  if (!x || !x.isp) return "";
+  if (!x.relay) return x.isp;
+  return x.isp + (x.addrSrc === "gps" ? "（經過 VPN 或 iCloud 私密轉送）" : "（可能經過 VPN 或 iCloud 私密轉送，位置不準）");
 }
 function pageLabel() {
   const p = ui.role === "admin" && (ui.page === "home" || !ui.page) ? "dash" : (ui.page || "home");
@@ -20381,9 +20556,16 @@ function pageLabel() {
     dash: "總覽", "room-edit": "編輯房間／租客資料", invoice: "發票",
     tenants: "租客", announce: "公告", repairs: "報修", ai: "行程", logs: "日誌", settings: "設定", firm: "資料", howto: "操作教學",
     "tenant-login": "租客登入", "admin-login": "管理員登入",
-    "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼"
+    "tenant-setpass": "設定登入密碼", "tenant-forgot": "忘記密碼",
+    history: "紀錄", food: "飲食", "move-in": "入住申請", "tenant-sheet": "租客資料卡", solar: "太陽能",
+    "leave-sign": "退租簽名", "lease-sign": "線上簽約", shop: "線上商城", "preview-wait": "看房預覽"
   };
-  return map[p] || p;
+  let label = map[p] || p;
+  try {
+    if (p === "logs" && ui.staffOps) label += "・管理員操作畫面";
+    if (ui.chatOpen) label += "・私訊";
+  } catch {}
+  return label;
 }
 function actorLabel() {
   if (ui.role === "admin") {
@@ -20413,39 +20595,80 @@ function auditAddress() {
 function logActionText(x) {
   const act = String((x && x.action) || "");
   const d = String((x && x.detail) || "").trim();
+  if (act === "瀏覽") return x && x.page ? "開啟「" + x.page + "」頁" : "開啟頁面";
   if (!d || d === x.page) return act || "—";
-  if (act === "瀏覽") return act;
   return act + "　" + d;
 }
 function logModelText(x) {
   const m = String((x && x.model) || "").trim();
   const d = String((x && x.device) || "");
   if (!m) return "";
+  if (x.dv) return m;
   if (d.indexOf(m) >= 0) return "";
   if (/^(Windows 電腦|Mac 電腦|電腦|Android 手機)$/.test(m)) return "";
   return m;
 }
+function opCategory(msg, page) {
+  const s = String(msg || "");
+  if (/繳費|匯款|付款|轉帳|已繳/.test(s)) return "繳費";
+  if (/公告/.test(s)) return "公告";
+  if (/簽名|簽約/.test(s)) return "簽約";
+  if (/刪除|拿掉|移除|清空/.test(s)) return "刪除";
+  if (/上傳|照片|圖片|大頭貼|頭貼|影片/.test(s)) return "上傳";
+  if (/下載|匯出|列印|打包/.test(s)) return "下載／列印";
+  if (/送出|申請|報修|回報/.test(s)) return "送出";
+  if (/開啟|關閉|設定|快速登入|定位|位置|鈴聲|調整為|語言|主題|字體/.test(s) || page === "設定") return "設定變更";
+  if (/儲存|更新|改為|改回|套用|記入|加入|標為|確認|登記|恢復|取消|收回|催繳/.test(s)) return "資料變更";
+  return "操作";
+}
+function auditActor() {
+  if (isDevPreview()) return { kind: "dev", who: "開發者（預覽示範租客）", preview: true };
+  if (ui.tenantLook && ui.role === "tenant") {
+    const room = typeof myRoom === "function" ? myRoom() : null;
+    const no = (room && room.no) || ui.roomNo || "";
+    return { kind: "dev", who: "開發者（預覽 " + no + "）", preview: true };
+  }
+  if (isStaffLook()) return { kind: "dev", who: "開發者（預覽管理員）", preview: true };
+  return { kind: ui.role === "admin" && ui.adminCode === "1240" ? "dev" : (ui.role || "guest"), who: actorLabel(), preview: false };
+}
 let lastAuditBrowse = "";
 function audit(action, detail) {
   try {
-    if (isDevPreview() || isStaffLook()) return;
     if (!state.auditLogs) state.auditLogs = [];
+    const actor = auditActor();
     const page = pageLabel();
-    const det = action === "瀏覽" ? "" : (detail || "");
-    const key = [ui.role, ui.tenantId || ui.adminCode || "", action, det, page].join("|");
+    let act = action;
+    let det = action === "瀏覽" ? "" : String(detail || "");
+    if (action === "操作") act = opCategory(det, page);
+    const key = [actor.who, act, det, page].join("|");
     if (action === "瀏覽" && key === lastAuditBrowse) return;
+    const now = Date.now();
+    const stamp = nowStamp();
+    const win = action === "瀏覽" ? 3 * 60 * 1000 : 20 * 1000;
+    const dup = state.auditLogs.slice(-12).some(x => x && [x.who, x.action, x.detail || "", x.page].join("|") === key && (x.ts ? now - x.ts < win : x.at === stamp));
     if (action === "瀏覽") lastAuditBrowse = key;
+    if (dup) return;
+    const d = deviceParts();
+    const loc = auditLoc();
     state.auditLogs.push({
-      id: "log" + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
-      at: nowStamp(),
-      kind: ui.role === "admin" && ui.adminCode === "1240" ? "dev" : (ui.role || "guest"),
-      who: actorLabel(),
-      action,
+      id: "log" + now.toString(36) + Math.random().toString(16).slice(2, 6),
+      at: stamp,
+      ts: now,
+      kind: actor.kind,
+      who: actor.who,
+      preview: actor.preview || undefined,
+      action: act,
       detail: det,
       page,
       device: deviceInfo(),
       model: deviceModel(),
-      address: auditAddress()
+      dv: { os: d.os, ver: d.ver, model: d.model, browser: d.browser, mode: d.mode },
+      did: liveDeviceId(),
+      address: loc.address,
+      addrSrc: loc.src,
+      addrAcc: loc.acc || 0,
+      isp: loc.isp || "",
+      relay: loc.relay || undefined
     });
     if (state.auditLogs.length > 500) state.auditLogs = state.auditLogs.slice(-500);
     if (action !== "瀏覽") save();
@@ -37277,7 +37500,7 @@ function adminLogs() {
     </div>
     <div class="card card-body">
       <h2 class="dash-h">操作日誌</h2>
-      <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見。</p>
+      <p class="small">誰進來、操作了什麼、看了哪一頁、用哪台裝置。僅開發者可見。位置依網路推算時只到縣市，不是實際地址。</p>
       <div class="log-filters">
         ${chips.map(([id, label]) => `<button type="button" class="ghost ${filter === id ? "on" : ""}" data-log-filter="${id}">${label}</button>`).join("")}
       </div>
@@ -37302,8 +37525,9 @@ function adminLogs() {
         <div class="log-line"><span class="log-k">操作</span><span class="log-v">${escapeHtml(logActionText(x))}</span></div>
         <div class="log-line"><span class="log-k">瀏覽</span><span class="log-v">${escapeHtml(x.page || "—")}</span></div>
         <div class="log-line"><span class="log-k">裝置</span><span class="log-v">${escapeHtml(x.device || "—")}</span></div>
-        ${logKind(x) !== "tenant" && logModelText(x) ? `<div class="log-line"><span class="log-k">型號</span><span class="log-v">${escapeHtml(logModelText(x))}</span></div>` : ""}
-        ${logKind(x) !== "tenant" ? `<div class="log-line"><span class="log-k">地址</span><span class="log-v">${escapeHtml(x.address || auditAddress() || "—")}</span></div>` : ""}
+        ${(x.dv || logKind(x) !== "tenant") && logModelText(x) ? `<div class="log-line"><span class="log-k">型號</span><span class="log-v">${escapeHtml(logModelText(x))}</span></div>` : ""}
+        ${logKind(x) !== "tenant" ? (x.addrSrc != null ? `<div class="log-line"><span class="log-k">位置</span><span class="log-v">${escapeHtml(logLocText(x))}</span></div>` : `<div class="log-line"><span class="log-k">地址</span><span class="log-v">${escapeHtml(x.address || "—")}</span></div>`) : ""}
+        ${logKind(x) !== "tenant" && logNetText(x) ? `<div class="log-line"><span class="log-k">網路</span><span class="log-v">${escapeHtml(logNetText(x))}</span></div>` : ""}
         <button type="button" class="ghost" data-del-log="${x.id}" style="margin-top:10px">刪除</button>
       </div>`;
     }).join("") : `<div class="empty">尚無日誌</div>`}
@@ -45502,6 +45726,7 @@ function bindTenant() {
         return;
       }
       try { publishPaidCloud(); } catch {}
+      try { audit("送出報修", kind + (media.length ? "（附 " + media.length + " 個照片／影片）" : "")); } catch {}
       pushPhoneNotify("新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, "admin");
       if (isDevPreview() && room && !isDemoRoom(room) && !room.demo) {
         sendRemoteNotify("admin", "新報修", `${room.no} ${me().name || ""}：${kind}　${note}`, notifyExtra("新報修", "admin"));
