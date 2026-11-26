@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-02-07";
-const APP_EDIT_COUNT = 2580;
+const APP_STAMP = "2026-11-27-02-32";
+const APP_EDIT_COUNT = 2581;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "操作日誌改成各台裝置的紀錄合併在一起，不再被最後存檔的那台蓋掉；刪除單筆、刪除已選、全部刪除會同步到每台裝置，刪掉的不會再跑回來；最多保留最新 500 筆", head: "日誌不再遺失", before: "changelog/2026-11-27-oplog-sync-before.svg", after: "changelog/2026-11-27-oplog-sync-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-02-07-2580", items: [
     { text: "操作日誌的裝置改成清楚分出 Android／iPhone／iPad／Windows／Mac 與系統版本，Android 會顯示手機型號，iPhone 依螢幕尺寸推測機型；瀏覽器分得出 LINE、Safari、Chrome、Samsung Internet，並分清楚已安裝 App 或網頁；位置改標「網路位置，約略」只到縣市並顯示電信業者，手機有開定位才顯示區和誤差；操作改成繳費、上傳、送出訊息、設定變更等類別，同一筆不會重複記兩次；開發者預覽租客畫面會標成開發者預覽，不再算成租客", head: "日誌更精準", before: "changelog/2026-11-27-oplog-before.svg", after: "changelog/2026-11-27-oplog-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-02-00-2578", items: [
@@ -9503,6 +9506,7 @@ function normalize(data) {
   if (data.visionKey) data.visionKey = "";
   stripHeavyMedia(data);
   if (!Array.isArray(data.auditLogs)) data.auditLogs = [];
+  if (!Array.isArray(data.auditGone)) data.auditGone = [];
   if (!data.presence || typeof data.presence !== "object") data.presence = {};
   if (!data.accountOpenings || typeof data.accountOpenings !== "object") data.accountOpenings = {};
   data.rooms.forEach(r => {
@@ -16671,6 +16675,69 @@ function dropGone(list, gone) {
   const g = new Set((gone || []).map(String));
   return (list || []).filter(x => x && x.id && !g.has(String(x.id)));
 }
+// operation log: entries from every device are union-merged by id (never last-writer-wins);
+// deletions are tombstones (auditGone ids) plus a clear-all cut (auditClearAt), newest 500 kept
+function auditTime(x) {
+  if (!x) return 0;
+  const t = Number(x.ts);
+  if (t > 0) return t;
+  const m = String(x.at || "").match(/^(\d{4})-(\d{2})-(\d{2})\s*(上午|下午)?\s*(\d{1,2}):(\d{2})/);
+  if (!m) return 0;
+  let h = Number(m[5]);
+  if (m[4] === "下午" && h < 12) h += 12;
+  if (m[4] === "上午" && h === 12) h = 0;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), h, Number(m[6]));
+  const n = d.getTime();
+  if (!isFinite(n)) return 0;
+  const idt = parseInt(String(x.id || "").slice(3, 11), 36);
+  return idt > 0 && Math.abs(idt - n) < 120000 ? idt : n;
+}
+function mergeAuditLogs(a, b, gone, clearAt) {
+  const g = new Set((gone || []).map(String));
+  const cut = Number(clearAt) || 0;
+  const map = new Map();
+  [].concat(a || [], b || []).forEach(x => {
+    if (!x || !x.id || g.has(String(x.id))) return;
+    if (cut && auditTime(x) <= cut) return;
+    const cur = map.get(x.id);
+    map.set(x.id, cur ? Object.assign({}, cur, x) : x);
+  });
+  return [...map.values()]
+    .map((x, i) => [x, auditTime(x), i])
+    .sort((p, q) => (p[1] - q[1]) || (p[2] - q[2]))
+    .map(r => r[0])
+    .slice(-500);
+}
+function mergeAuditGone(a, b) {
+  return unionGone(a, b).slice(-2000);
+}
+function applyAuditMerge(target, other) {
+  if (!target) return;
+  const o = other || {};
+  target.auditGone = mergeAuditGone(target.auditGone, o.auditGone);
+  target.auditClearAt = Math.max(Number(target.auditClearAt) || 0, Number(o.auditClearAt) || 0) || 0;
+  target.auditLogs = mergeAuditLogs(o.auditLogs, target.auditLogs, target.auditGone, target.auditClearAt);
+}
+// first cloud pull after this update adopts the cloud copy once (old behaviour), so logs that
+// were deleted before tombstones existed do not come back from stale local copies
+const AUDIT_MERGE_KEY = "tj-audit-merge-v1";
+function auditMergeReady() {
+  try { return localStorage.getItem(AUDIT_MERGE_KEY) === "1"; } catch { return false; }
+}
+function auditMergeOnPull(target, other, otherIsCloud) {
+  if (auditMergeReady()) { applyAuditMerge(target, other); return; }
+  if (otherIsCloud) {
+    const o = other || {};
+    target.auditLogs = Array.isArray(o.auditLogs) ? o.auditLogs.slice(-500) : [];
+    target.auditGone = mergeAuditGone(o.auditGone, []);
+    target.auditClearAt = Number(o.auditClearAt) || 0;
+  }
+  try { localStorage.setItem(AUDIT_MERGE_KEY, "1"); } catch {}
+}
+function markAuditGone(ids) {
+  state.auditGone = mergeAuditGone(state.auditGone, ids);
+  state.auditLogs = dropGone(state.auditLogs, state.auditGone);
+}
 function markLedgerGone(ids) {
   state.ledgerGone = unionGone(state.ledgerGone, ids);
   state.books = dropGone(state.books, state.ledgerGone);
@@ -17031,7 +17098,9 @@ async function pullCloudNow() {
     state.moveFills = mergeMoveFills(state.moveFills, data.moveFills);
     const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
     if (keepCut) state.adminLogoutAt = keepCut;
+    try { auditMergeOnPull(state, data, true); } catch {}
     const mineSeats = state.loginSeats;
+    const mineAudit = { auditLogs: state.auditLogs, auditGone: state.auditGone, auditClearAt: state.auditClearAt };
     const mineSeatGone = state.seatGone;
     const mineTabOrder = {
       tabOrder: state.tabOrder,
@@ -17231,6 +17300,7 @@ async function pullCloudNow() {
     } catch {}
     state.seatGone = mergeSeatGone(mineSeatGone, data.seatGone);
     state.loginSeats = mergeLoginSeats(mineSeats, data.loginSeats);
+    try { applyAuditMerge(state, mineAudit); } catch {}
     mergeSharedInto(state, mineSnap);
     if (applyRepairStatusBox(state.repairs)) { try { markCloudDirty(); pushCloud(); } catch {} }
     try { applyRoom7623(state); } catch {}
@@ -18115,6 +18185,12 @@ async function pushCloud() {
       devMemos: memoOwner() === "1240"
         ? unionMemos(remote && remote.devMemos, state.devMemos)
         : ((remote && remote.devMemos && remote.devMemos.length) ? remote.devMemos : (state.devMemos || [])),
+      auditLogs: (() => {
+        try { if (auditMergeReady()) applyAuditMerge(state, remote); } catch {}
+        return Array.isArray(state.auditLogs) ? state.auditLogs : ((remote && remote.auditLogs) || []);
+      })(),
+      auditGone: mergeAuditGone(remote && remote.auditGone, state.auditGone),
+      auditClearAt: Math.max(Number(remote && remote.auditClearAt) || 0, Number(state.auditClearAt) || 0),
       devLogs: memoOwner() === "1240"
         ? unionLogs(remote && remote.devLogs, state.devLogs, 80)
         : ((remote && remote.devLogs && remote.devLogs.length) ? remote.devLogs : (state.devLogs || [])),
@@ -18268,6 +18344,12 @@ async function pushCloud() {
         const repairKeys = ["type", "note", "status", "appointAt", "appointPaused", "roomId", "photo", "media", "vendor", "vendorPhone", "cost", "facility"];
         payload.repairs = dropGone(mergeEntities(latest && latest.repairs, payload.repairs, repairKeys), unionGone(latest && latest.repairGone, payload.repairGone));
         payload.repairPins = mergeRepairPinMaps(latest && latest.repairPins, payload.repairPins);
+        if (auditMergeReady()) try {
+          applyAuditMerge(state, latest);
+          payload.auditLogs = state.auditLogs;
+          payload.auditGone = state.auditGone;
+          payload.auditClearAt = Number(state.auditClearAt) || 0;
+        } catch {}
       }
     } catch {}
     try { applyRepairStatusBox(payload.repairs); } catch {}
@@ -18329,7 +18411,10 @@ async function pushCloud() {
         presence: payload.presence,
         renewals: payload.renewals,
         renewPing: payload.renewPing,
-        earlyPing: payload.earlyPing
+        earlyPing: payload.earlyPing,
+        auditLogs: payload.auditLogs,
+        auditGone: payload.auditGone,
+        auditClearAt: payload.auditClearAt
       });
       stripCloudMedia(slim);
       let slimBody;
@@ -49473,7 +49558,7 @@ function bindAdminLogs() {
       const picked = ui.logPicked || {};
       const ids = Object.keys(picked);
       if (!ids.length) { toast("請先勾選要刪的紀錄"); return; }
-      state.auditLogs = (state.auditLogs || []).filter(x => !picked[x.id]);
+      markAuditGone(ids);
       ui.logPicked = {};
       save();
       ui.keepScroll = true;
@@ -49486,6 +49571,8 @@ function bindAdminLogs() {
     logDelAll.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      markAuditGone((state.auditLogs || []).map(x => x && x.id).filter(Boolean));
+      state.auditClearAt = Math.max(Number(state.auditClearAt) || 0, Date.now());
       state.auditLogs = [];
       ui.logPicked = {};
       save();
@@ -49499,7 +49586,7 @@ function bindAdminLogs() {
       e.preventDefault();
       e.stopPropagation();
       const id = btn.dataset.delLog;
-      state.auditLogs = (state.auditLogs || []).filter(x => x.id !== id);
+      markAuditGone([id]);
       if (ui.logPicked) delete ui.logPicked[id];
       save();
       ui.keepScroll = true;
