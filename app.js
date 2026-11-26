@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-22-00";
-const APP_EDIT_COUNT = 2562;
+const APP_STAMP = "2026-11-26-22-15";
+const APP_EDIT_COUNT = 2563;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -619,14 +619,17 @@ const STUDIO_FEE_VER = "20260831-2120";
 //   "管理員後台" = staff admin backend (all admin tabs: 行程/公告/資料/飲食/設定 + the shared ones)
 //   "負責人後台" = boss backend (only 總覽 / 資產 / 租客 / 報修 tabs, see adminPages())
 //   "套房租客"   = studio-room tenant app
-// An entry may list several audiences. Each role sees only its own category; the developer
-// sees everything. An entry with no `aud` is shown to the developer only.
+// An entry may list several audiences. Visibility follows the current view, not the
+// logged-in identity: 套房租客 / 管理員後台 / 負責人後台 each show only their own items
+// (including when a developer is piloting or previewing that view). The developer sees
+// everything only in the 開發者後台. An entry with no `aud` is shown only there.
 // Never write real names, phones, IDs, account numbers or client company names in the text:
 // mask them (陳○○, 某房客, 某公司).
 // Item form: "text"  or  { text, aud: [...], before: "changelog/x.svg", after: "changelog/y.svg" }
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "進入租客、管理員或負責人畫面時，更新內容只顯示該畫面的項目，不再混入其他對象的更新", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "設定裡可以依日期查看更新內容，每項附上更新前、更新後的畫面", before: "changelog/2026-11-26-update-notes-before.svg", after: "changelog/2026-11-26-update-notes-after.svg", aud: ["管理員後台", "套房租客"] },
     { text: "管理員設定也能開啟更新內容", aud: ["管理員後台"] },
     { text: "補上 10 月下旬到 11 月的更新紀錄，多項附上實際畫面，並修正日期與重複的紀錄", aud: ["管理員後台", "套房租客"] },
@@ -3254,10 +3257,12 @@ function closeUpdateNotes() {
   hideUpdateUi();
 }
 const NOTE_AUD = { dev: "開發者後台", staff: "管理員後台", boss: "負責人後台", tenant: "套房租客" };
-// Which changelog category the current user belongs to: dev | staff | boss | tenant.
+// Which changelog category the current VIEW belongs to: dev | staff | boss | tenant.
+// Follows the screen being looked at, not the logged-in identity.
 function notesRole() {
+  if (ui && (ui.role === "tenant" || ui.tenantLook || ui.devPreview || ui.prospectPreview)) return "tenant";
+  if (typeof isStaffLook === "function" && isStaffLook()) return "staff";
   if (typeof isDeveloper === "function" && isDeveloper()) return "dev";
-  if (typeof canPilotTenant === "function" && canPilotTenant()) return "dev";
   if (ui && ui.role === "admin") return typeof isBossAdmin === "function" && isBossAdmin() ? "boss" : "staff";
   return "tenant";
 }
@@ -3265,14 +3270,17 @@ function notesAudOf(n, item) {
   if (item && typeof item === "object" && Array.isArray(item.aud)) return item.aud;
   return n && Array.isArray(n.aud) ? n.aud : [];
 }
-// Strict: a role sees only entries tagged for its own category. The developer sees all.
+// Strict: the current view shows only entries tagged for that view.
+// The developer sees all, but only while in the 開發者後台.
 function notesCanSee(aud) {
   const role = notesRole();
   if (role === "dev") return true;
   return (aud || []).indexOf(NOTE_AUD[role]) >= 0;
 }
 function notesAudTagsHtml(aud) {
-  const list = (aud && aud.length ? aud : []).filter(x => typeof x === "string");
+  let list = (aud && aud.length ? aud : []).filter(x => typeof x === "string");
+  const role = notesRole();
+  if (role !== "dev" && NOTE_AUD[role]) list = list.filter(x => x === NOTE_AUD[role]);
   return list.length ? `<span class="note-auds">${list.map(x => `<span class="note-aud" data-aud="${escapeHtml(x)}">${escapeHtml(x)}</span>`).join("")}</span>` : "";
 }
 function notesDayKey(ver) {
