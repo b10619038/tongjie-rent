@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-20";
-const APP_EDIT_COUNT = 2584;
+const APP_STAMP = "2026-11-27-03-40";
+const APP_EDIT_COUNT = 2585;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "設定 → 通知新增「已繳租金、續約申請、入住申請、中途退租、正式退租」五個開關（預設開啟），關掉的那一類，這台手機就不再跳出通知（App 沒開時的推播也一樣）；原本的「租客報修」開關現在也會擋掉推播。點開關左邊的文字，會展開這類通知收到時的樣子和什麼時候會收到，再點一次收合", head: "通知新增五種", before: "changelog/2026-11-27-notify-cats-before.svg", after: "changelog/2026-11-27-notify-cats-after.svg", aud: ["管理員後台", "開發者後台"] }
+  ] },
+  { ver: "2026-11-27-03-20-2584", items: [
     { text: "新簽約套房房客第一次付款已含「下個月整月租金」時（金額要真的收足才算），到了下個月 1 號會自動算已繳：房客首頁顯示本月已繳、不會再收到繳租提醒，後台未繳名單也不會列入，帳上也不會重複入帳一筆；只繳不足月租金的不受影響", head: "首次付款含下月租金不再誤判未繳", before: "changelog/2026-11-27-firstpay-next-before.svg", after: "changelog/2026-11-27-firstpay-next-after.svg", aud: ["套房租客", "開發者後台"] }
   ] },
   { ver: "2026-11-27-03-15-2583", items: [
@@ -4876,8 +4879,44 @@ const NOTIFY_PREF_KEY = "tongjie_notify_prefs";
 const NOTIFY_PREF_ITEMS = [
   { id: "unpaid", label: "未繳租金" },
   { id: "repair", label: "租客報修" },
-  { id: "memo", label: "工作提醒" }
+  { id: "memo", label: "工作提醒" },
+  { id: "paid", label: "已繳租金" },
+  { id: "renew", label: "續約申請" },
+  { id: "apply", label: "入住申請" },
+  { id: "early", label: "中途退租" },
+  { id: "leave", label: "正式退租" }
 ];
+const NOTIFY_PREF_TITLES = {
+  "繳費回報": "paid", "已轉帳": "paid",
+  "續約申請": "renew", "續約簽約時間": "renew",
+  "入住申請": "apply",
+  "中退申請": "early", "中途退租申請": "early", "中途退租簽約時間": "early",
+  "正退申請": "leave", "退租點交": "leave", "退租簽名": "leave",
+  "新報修": "repair", "報修已更新": "repair"
+};
+function notifyPrefCatOf(title) {
+  return NOTIFY_PREF_TITLES[String(title || "")] || "";
+}
+const NOTIFY_PREF_PREVIEW = {
+  unpaid: { t: "本月未繳租金", b: "3 戶尚未繳費", c: "開 App 時，若還有房間沒繳，每天提醒一次" },
+  repair: { t: "新報修", b: "0000 王○○：冷氣　不會冷", c: "租客送出報修時" },
+  memo: { t: "工作提醒", b: "2026-12-01 10:00　帶看 0000 套房", c: "工作提醒到了設定的日期和時間" },
+  paid: { t: "已轉帳", b: "0000 王○○ 已用 App 完成轉帳", c: "租客用 App 轉帳，或在官方 LINE 回報繳費時（標題為「繳費回報」）" },
+  renew: { t: "續約申請", b: "0000 王○○　申請續約　水費 $1,800 現場現金", c: "租客送出續約申請，或改了續約簽約時間時" },
+  apply: { t: "入住申請", b: "0000 王○○ 想要入住", c: "有人送出入住申請時" },
+  early: { t: "中退申請", b: "0000 王○○　終止日 115/12/31　總退還 $12,000　預約 12/20 上午 10:00", c: "租客申請中途退租，或改了中退簽約時間時" },
+  leave: { t: "正退申請", b: "0000 王○○ 申請正常退租，點交 12/31 上午 10:00，合約至 115/12/31", c: "租客申請正常退租、預約點交、簽署退租時" }
+};
+function notifyPrefPreviewHtml(id) {
+  const v = NOTIFY_PREF_PREVIEW[id];
+  if (!v) return "";
+  const open = ui && ui.notifyPreviewOpen === id;
+  return `<div class="pref-preview${open ? " open" : ""}" data-preview-for="${id}"><div class="pref-preview-in"><div class="pv-note"><img class="pv-icon" src="/icon-192.png" alt=""><div class="pv-text"><div class="pv-head"><b>統潔開發</b><span>現在</span></div><div class="pv-title">${escapeHtml(v.t)}</div><div class="pv-body">${escapeHtml(v.b)}</div></div></div><div class="pv-cap">${escapeHtml(v.c)}</div></div></div>`;
+}
+function notifyPrefOffList() {
+  const p = loadNotifyPrefs();
+  return NOTIFY_PREF_ITEMS.filter(x => p[x.id] === false).map(x => x.id);
+}
 function notifyPrefWho() {
   if (!ui || ui.role !== "admin") return "guest";
   const code = String(ui.adminCode || "");
@@ -22372,7 +22411,8 @@ function subscribePushOnly() {
           role: ui.role || "",
           roomNo: room ? room.no : (ui.adminCode === "1240" ? "1240" : (ui.role === "admin" ? "7651" : "")),
           tenantId: ui.tenantId || "",
-          code: ui.adminCode || ""
+          code: ui.adminCode || "",
+          off: ui.role === "admin" ? notifyPrefOffList() : []
         })
       });
     } catch {}
@@ -22454,6 +22494,10 @@ function canOsNotify() {
 }
 function showOsBanner(title, body, tag, extra) {
   if (!canOsNotify()) return;
+  try {
+    const cat = ui && ui.role === "admin" ? notifyPrefCatOf(title) : "";
+    if (cat && !notifyPrefOn(cat)) return;
+  } catch {}
   const fp = osBannerFp(title, body, tag);
   if (!osBannerRepeatable(tag, title)) {
     if (osBannerSeen(fp)) return;
@@ -38377,7 +38421,7 @@ function adminSettings() {
       <div class="row"><span class="k">系統通知</span><span class="v">${escapeHtml(notifyLine)}</span></div>
       <button type="button" class="ghost" id="set-notify" style="margin-top:10px">${st === "granted" ? "測試通知" : "開啟通知"}</button>
       <div class="notify-prefs">
-        ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><span>${escapeHtml(x.label)}</span><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>`).join("")}
+        ${NOTIFY_PREF_ITEMS.map(x => `<div class="pref-switch"><button type="button" class="pref-name${ui.notifyPreviewOpen === x.id ? " open" : ""}" data-notify-preview="${x.id}" aria-expanded="${ui.notifyPreviewOpen === x.id ? "true" : "false"}"><span>${escapeHtml(x.label)}</span><i class="pref-chev" aria-hidden="true"></i></button><button type="button" class="pref-knob${prefs[x.id] ? " on" : ""}" data-notify-pref="${x.id}" aria-pressed="${prefs[x.id] ? "true" : "false"}"></button></div>${notifyPrefPreviewHtml(x.id)}`).join("")}
       </div>
     </div>
     ${geoSettingsHtml()}
@@ -51007,6 +51051,21 @@ function bindAdminSettings() {
     ui.keepScroll = true;
     render();
   };
+  document.querySelectorAll("[data-notify-preview]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.notifyPreview;
+      const next = ui.notifyPreviewOpen === id ? "" : id;
+      ui.notifyPreviewOpen = next;
+      document.querySelectorAll("[data-notify-preview]").forEach(b => {
+        const on = b.dataset.notifyPreview === next;
+        b.classList.toggle("open", on);
+        b.setAttribute("aria-expanded", on ? "true" : "false");
+      });
+      document.querySelectorAll("[data-preview-for]").forEach(p => p.classList.toggle("open", p.dataset.previewFor === next));
+    };
+  });
   document.querySelectorAll("[data-notify-pref]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -51017,6 +51076,7 @@ function bindAdminSettings() {
       const prefs = loadNotifyPrefs();
       prefs[btn.dataset.notifyPref] = on;
       saveNotifyPrefs(prefs);
+      try { if (typeof Notification !== "undefined" && Notification.permission === "granted") subscribePushOnly(); } catch {}
       toast(on ? "已開啟此類通知" : "已關閉此類通知");
     };
   });
