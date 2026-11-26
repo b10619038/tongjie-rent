@@ -10174,3 +10174,11 @@ button.note-entry.card {
 
 
 
+
+.note-auds { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.note-detail > .note-auds { margin: 0 0 10px; }
+.note-aud { display: inline-block; font-size: 10.5px; line-height: 1; font-weight: 700; padding: 3px 7px; border-radius: 999px; background: var(--soft, #e6ebe2); color: var(--teal, #3d5a47); letter-spacing: 0.02em; white-space: nowrap; }
+.note-aud[data-aud="開發者後台"] { background: #e8e4f2; color: #4b3f78; }
+.note-aud[data-aud="負責人後台"] { background: #f6e8da; color: #8a5420; }
+.note-aud[data-aud="套房租客"] { background: #e2eee6; color: #2f6a47; }
+.log-ver li .note-auds { display: inline-flex; margin: 0 0 0 6px; vertical-align: middle; }
