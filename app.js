@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-00-30";
-const APP_EDIT_COUNT = 2572;
+const APP_STAMP = "2026-11-27-00-50";
+const APP_EDIT_COUNT = 2573;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "開發者在租客卡片向左滑會直接打開 App 內對話；已綁定 LINE 的租客，送出的文字和照片會同時傳到 App 和租客的 LINE，官方帳號其他管理員看不到；租客在 LINE 的回覆也會出現在這個對話裡", head: "私密LINE私訊", before: "changelog/2026-11-27-line-chat-before.svg", after: "changelog/2026-11-27-line-chat-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-00-30-2572", items: [
     { text: "官方 LINE 私訊改為顯示綁定狀態與開啟聊天室按鈕，不再嵌入無法顯示的聊天視窗", head: "LINE私訊修復", before: "changelog/2026-11-27-line-dock-before.svg", after: "changelog/2026-11-27-line-dock-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-00-12-2571", items: [
@@ -2113,6 +2116,7 @@ function rememberChatImage(id, src) {
 }
 function chatPicOf(m) {
   if (!m || m.recalled) return "";
+  if (m.lineImg && /^https:\/\/tongjie-line\.b10619038\.workers\.dev\/api\/linechat\/img\//.test(String(m.lineImg))) return m.lineImg;
   if (m.image && String(m.image).indexOf("data:image") === 0) return m.image;
   const id = String(m.imageId || m.id || "");
   if (!id) return "";
@@ -2391,6 +2395,67 @@ async function sendDevChat(tid, text, image) {
   try { await pushCloud(); } catch {}
   if (msg.image) putChatImageFile(msg.id, msg.image).catch(() => {});
   try { pingChatNotify(from, tid, th.roomNo, th.name, msg.text || "傳了一張照片", msg.id); } catch {}
+  if (from === "dev" && r && lineBindForRoom(r.no)) lineChatPush(r.no, msg);
+}
+// ---- Developer chat also goes to the tenant's LINE (Messaging API push, owner only).
+// Pushed messages do not appear in LINE Official Account Manager chat, so other OA admins can't see them.
+const LINE_CHAT_API = LINE_HOOK + "/api/linechat";
+function lineChatHeaders() {
+  return { "X-Tongjie-Key": SYNC_KEY, "X-Tongjie-Owner": encodeURIComponent((ui.adminCode || "") + "|" + normAdminName(ui.adminName)), "Content-Type": "application/json" };
+}
+function lineChatBarHtml(r) {
+  const bound = !!(r && lineBindForRoom(r.no));
+  const tip = bound
+    ? "LINE 已綁定：訊息同時送到 App 和租客 LINE，其他官方帳號管理員看不到（租客回覆仍會出現在官方 LINE 後台）"
+    : "LINE 未綁定：訊息只送到 App";
+  return `<div class="chat-line-tip${bound ? " on" : ""}">${escapeHtml(tip)}<a href="${LINE_CHAT_URL}" target="_blank" rel="noopener">開啟 LINE 聊天室</a></div>`;
+}
+async function lineChatPush(roomNo, msg) {
+  try {
+    const res = await fetch(LINE_CHAT_API + "/send", {
+      method: "POST",
+      headers: lineChatHeaders(),
+      body: JSON.stringify({ room: roomNo, text: msg.text || "", image: msg.image || "", id: msg.id })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast(j.error === "unbound" ? "租客尚未綁定 LINE，只送到 App" : "LINE 傳送失敗（App 內已送出）");
+    }
+  } catch { toast("LINE 傳送失敗（App 內已送出）"); }
+}
+async function lineChatPull(tid) {
+  if (!isDeveloper() || ui.role !== "admin" || !tid) return;
+  const t = (state.tenants || []).find(x => x && x.id === tid);
+  const r = t && (state.rooms || []).find(x => x && x.id === t.roomId);
+  if (!r || !lineBindForRoom(r.no)) return;
+  try {
+    const res = await fetch(LINE_CHAT_API + "?room=" + encodeURIComponent(r.no), { headers: lineChatHeaders(), cache: "no-store" });
+    if (!res.ok) return;
+    const j = await res.json();
+    const th = chatThreadOf(tid);
+    const have = new Set((th.msgs || []).map(m => m && m.id));
+    const add = (j.msgs || []).filter(m => m && m.d === "in" && m.id && !have.has(m.id)).map(m => {
+      const x = { id: m.id, from: "tenant", text: String(m.t || ""), image: "", imageId: "", at: Number(m.ts) || Date.now(), via: "line" };
+      if (m.img) x.lineImg = m.img;
+      return x;
+    });
+    if (!add.length) return;
+    ui.chats = mergeChatStores(chatStore(), { threads: { [tid]: Object.assign({}, th, { msgs: (th.msgs || []).concat(add) }) } });
+    persistChatsToState();
+    if (ui.chatOpen && ui.chatTid === tid) { drawChatBox(); markChatRead(tid); }
+    try { save(true); } catch {}
+    pushCloud().catch(() => {});
+  } catch {}
+}
+function lineChatWatch(tid) {
+  if (ui.lineChatTimer) clearInterval(ui.lineChatTimer);
+  ui.lineChatTimer = 0;
+  if (!isDeveloper() || ui.role !== "admin") return;
+  lineChatPull(tid);
+  ui.lineChatTimer = setInterval(() => {
+    if (!ui.chatOpen || ui.chatTid !== tid) { clearInterval(ui.lineChatTimer); ui.lineChatTimer = 0; return; }
+    if (!document.hidden) lineChatPull(tid);
+  }, 6000);
 }
 async function markChatRead(tid) {
   const th = chatThreadOf(tid);
@@ -2780,6 +2845,7 @@ function openDevChat(tid) {
     if (ui.chatOpen && String(ui.chatTid) === String(tid)) drawChatBox();
   }).catch(() => {});
   startChatPoll();
+  try { lineChatWatch(ui.chatTid); } catch {}
 }
 function saveChatDraft() {
   const inp = document.getElementById("chat-input");
@@ -2885,7 +2951,7 @@ function canRecallMsg(mine) {
 }
 function chatBubbleHtml(m, mine, t, seen) {
   if (!m || m.recalled) return "";
-  const when = m.at ? chatWhen(m.at) : "";
+  const when = (m.at ? chatWhen(m.at) : "") + (m.via === "line" ? " · LINE" : "");
   const face = !mine && m.from === "tenant" && t && t.avatar && String(t.avatar).length > 40
     ? `<img class="chat-face" src="${t.avatar}" alt="">`
     : (!mine && m.from === "dev" ? `<img class="chat-face" src="images/ai-avatar-dev.jpg?v=2132" alt="">` : "");
@@ -2894,7 +2960,7 @@ function chatBubbleHtml(m, mine, t, seen) {
   const body = pic + (m.text && m.text !== "照片" && m.text !== "傳了一張照片" ? (pic ? `<span class="chat-cap">${escapeHtml(m.text)}</span>` : escapeHtml(m.text)) : (pic ? "" : escapeHtml(m.text || "")));
   if (!body) return "";
   const read = mine && seen ? `<i class="chat-read">已讀</i>` : "";
-  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${canRecallMsg(mine) ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
+  return `<div class="chat-row${mine ? " mine" : ""}${face ? " has-face" : ""}">${face}<div class="chat-col"><div class="chat-main">${read}<div class="chat-bubble${canRecallMsg(mine) && m.via !== "line" ? " can-recall" : ""}${pic ? " pic" : ""}" data-msg-id="${escapeHtml(m.id || "")}">${body}</div></div>${when ? `<em>${escapeHtml(when)}</em>` : ""}</div></div>`;
 }
 function hideChatAct() {
   const el = document.getElementById("chat-act");
@@ -3061,6 +3127,7 @@ function drawChatBox() {
     <div class="chat-bar">
       <i class="chat-handle" aria-hidden="true"></i>
       ${who ? `<strong>${escapeHtml(who)}</strong>` : ""}
+      ${isDeveloper() && ui.role === "admin" ? lineChatBarHtml(r) : ""}
     </div>
     <div class="chat-log" id="chat-log">${msgs}</div>
     <form class="chat-compose" id="chat-form">
@@ -48226,6 +48293,14 @@ function bindAdminRoomItems() {
 }
 
 function openLineChatFor(tenantId) {
+  if (isDeveloper() && canUseDevChat()) {
+    document.querySelectorAll(".swipe-front").forEach(el => { el.style.transform = ""; });
+    document.querySelectorAll("[data-swipe-tenant]").forEach(el => { el.dataset.swiping = "0"; });
+    const d = document.getElementById("line-dock");
+    if (d) { d.classList.remove("open"); d.style.transform = ""; }
+    openDevChat(tenantId);
+    return;
+  }
   const t = state.tenants.find(x => x.id === tenantId);
   const r = t ? state.rooms.find(x => x.id === t.roomId) : null;
   const dock = document.getElementById("line-dock");

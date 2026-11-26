@@ -10312,3 +10312,7 @@ body > #note-screen.note-screen {
   background: var(--card, #fff);
   margin: 0 0 6px;
 }
+
+.chat-line-tip { font-size: 11.5px; line-height: 1.45; color: var(--muted); text-align: center; padding: 4px 14px 0; }
+.chat-line-tip.on { color: #0a8f3d; }
+.chat-line-tip a { margin-left: 6px; color: inherit; text-decoration: underline; white-space: nowrap; }
