@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-01-15";
-const APP_EDIT_COUNT = 2574;
+const APP_STAMP = "2026-11-27-01-41";
+const APP_EDIT_COUNT = 2575;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "「租客登入」名單改成標示「首次登入」時間，並多一行「最近使用」；租客用已登入的手機直接打開、或從 Android 瀏覽器安裝後，也會正確記成已登入、已安裝；開發者自己預覽租客畫面留下的紀錄不再算進去", head: "租客登入更準", before: "changelog/2026-11-27-tenant-login-before.svg", after: "changelog/2026-11-27-tenant-login-after.svg", aud: ["開發者後台"] },
+  ] },
+  { ver: "2026-11-27-01-15-2574", items: [
     { text: "點「周邊景點」打開和關閉視窗，不再重畫整個頁面，開關更順", head: "景點視窗更順", note: "無畫面變更", aud: ["套房租客"] },
     { text: "辦理退租、強制退租確認、收回與恢復續約、個人戶選擇成員、發票預覽，這幾個視窗開關時不再重畫整個頁面，點下去立刻有反應", head: "彈窗更順", note: "無畫面變更", aud: ["管理員後台", "負責人後台"] },
     { text: "共用的確認視窗改成只開關視窗本身（softSheetOpen/Close），不再整頁重建；發票預覽先開視窗再畫圖。4 倍降速實測（開／關，毫秒）：辦理退租 235→27／205→12，強制退租確認 215→24／190→16，收回續約 285→27／295→15，恢復續約 280→24／320→13，個人戶選擇 217→32／295→17，周邊景點關閉 124→24；發票預覽先出現視窗，再畫圖", head: "彈窗更順", note: "無畫面變更", aud: ["開發者後台"] }
@@ -15418,8 +15421,14 @@ function rememberTenantLogin(tid) {
   const t = (state.tenants || []).find(x => x && x.id === tid);
   if (!t) return;
   const now = Date.now();
-  if (!t.loginEverAt) t.loginEverAt = now;
-  if (typeof isStandalone === "function" && isStandalone()) t.installEver = true;
+  let changed = false;
+  if (!t.loginEverAt) { t.loginEverAt = now; changed = true; }
+  let inst = typeof isStandalone === "function" && isStandalone();
+  if (!inst && typeof isIOS === "function" && !isIOS()) {
+    try { inst = localStorage.getItem("tongjie_installed") === "1"; } catch {}
+  }
+  if (inst && !t.installEver) { t.installEver = true; changed = true; }
+  return changed;
 }
 function claimTenantSeat(tid) {
   if (!tid || seatExempt()) return true;
@@ -17803,6 +17812,9 @@ function beatPresence() {
   const beat = presencePayload();
   if (!id || !beat) return;
   if (ui.role === "tenant" && /Windows|電腦/.test(String(beat.device || ""))) return;
+  if (ui.role === "tenant" && ui.tenantId) {
+    try { if (rememberTenantLogin(ui.tenantId)) markCloudDirty(); } catch {}
+  }
   if (!state.presence || typeof state.presence !== "object") state.presence = {};
   const prev = state.presence[id];
   if (prev && prev.installed && !/Windows|電腦/.test(String(prev.device || ""))) beat.installed = true;
@@ -17919,7 +17931,8 @@ function tenantAccountRows() {
     const room = (state.rooms || []).find(r => r && (r.id === t.roomId || r.tenantId === t.id));
     if (!room || room.demo || room.status === "office" || isPracticeStudioNo(room.no)) return;
     if (room.kind === "factory" || room.kind === "store" || (typeof isStoreNo === "function" && isStoreNo(room.no))) return;
-    const p = (state.presence || {})[t.id] || {};
+    const rawP = (state.presence || {})[t.id] || {};
+    const p = presenceIsDevLook(t.id, rawP) ? {} : rawP;
     const seats = liveSeats(t.id);
     const on = isOnline(t.id);
     const phoneDev = p.device && !/Windows|電腦/.test(String(p.device));
@@ -17933,6 +17946,7 @@ function tenantAccountRows() {
       ever,
       installed,
       at: Number(t.loginEverAt) || (ever ? Number(p.at) || 0 : 0),
+      last: ever && /Windows|電腦/.test(String(p.device || "")) ? 0 : (ever ? Number(p.at) || 0 : 0),
       device: p.device || "",
       seats: seats.length
     });
@@ -17959,9 +17973,10 @@ function tenantAccountHtml() {
   return `<div class="small" style="margin-bottom:8px">已登入 ${nIn}　未登入 ${rows.length - nIn}　已安裝 ${nApp}　未安裝 ${rows.length - nApp}</div>` + rows.map(x => {
     const pill = x.ever ? "已登入" : "未登入";
     const cls = x.ever ? " been" : "";
-    const when = x.ever && x.at ? tenantAccountStamp(x.at) : "";
+    const when = x.ever && x.at ? "首次登入 " + tenantAccountStamp(x.at) : "";
     const extra = [when, x.seats ? x.seats + " 台" : ""].filter(Boolean).join(" · ");
-    return `<div class="acct-card"><div class="acct-line"><b class="acct-no">${escapeHtml(x.no)}</b>${extra ? `<span class="small acct-when">${escapeHtml(extra)}</span>` : ""}</div><div class="acct-line"><span class="acct-name">${escapeHtml(x.name)}</span><span class="acct-pills"><span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}">${pill}</span></span></div></div>`;
+    const lastLine = x.ever && x.last && x.last - x.at > 3600000 ? `<div class="acct-line"><span class="small acct-when">最近使用 ${escapeHtml(tenantAccountStamp(x.last))}</span></div>` : "";
+    return `<div class="acct-card"><div class="acct-line"><b class="acct-no">${escapeHtml(x.no)}</b>${extra ? `<span class="small acct-when">${escapeHtml(extra)}</span>` : ""}</div><div class="acct-line"><span class="acct-name">${escapeHtml(x.name)}</span><span class="acct-pills"><span class="live-pill${x.installed ? " been" : ""}">${x.installed ? "已安裝" : "未安裝"}</span><span class="live-pill${cls}">${pill}</span></span></div>${lastLine}</div>`;
   }).join("");
 }
 function onlineTenantLinesHtml() {
