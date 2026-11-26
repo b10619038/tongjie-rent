@@ -4012,20 +4012,11 @@ button.avatar-look { overflow: visible; }
 .face-live { position: relative; display: block; width: 40px; height: 40px; overflow: visible; }
 .face-live > .avatar,
 .face-live > img.avatar { width: 40px; height: 40px; }
-.live-lamp {
-  display: none;
-  position: absolute;
-  top: -0.3cm;
-  left: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 2px var(--card, #fff);
-  z-index: 6;
-  pointer-events: none;
+.live-lamp { display: none; }
+.face-live:has(.live-lamp.on) > .avatar,
+.face-live:has(.live-lamp.on) > img.avatar {
+  box-shadow: 0 0 0 2.5px #22c55e;
 }
-.live-lamp.on { display: block; }
 .tabs {
   display: block; padding: 10px 16px 16px;
   overflow-x: auto; overflow-y: hidden;
