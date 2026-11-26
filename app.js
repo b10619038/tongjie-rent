@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-22-25";
-const APP_EDIT_COUNT = 2565;
+const APP_STAMP = "2026-11-26-22-30";
+const APP_EDIT_COUNT = 2566;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,12 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉", before: "changelog/2026-11-26-whatsnew-before.svg", after: "changelog/2026-11-26-whatsnew-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "開著 App 時有新版本，下方提示改為「有新版本，點此查看並更新」，不再顯示舊的版本號", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "更新內容裡點更新前、更新後的圖片可以正常放大查看，不再被清單擋住", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "更新偵測不再只依賴背景服務，電腦與手機開著時都會定時檢查新版本", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-26-22-25", items: [
     { text: "點下方「有新版本」會從底部滑出今天的更新清單，圖卡改小，可先查看再立即更新", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "從設定打開更新內容時，畫面會直接停在最上方，不必再往上滑", aud: ["開發者後台", "管理員後台", "套房租客"] },
     { text: "進入租客、管理員或負責人畫面時，更新內容只顯示該畫面的項目，不再混入其他對象的更新", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
@@ -3220,6 +3226,38 @@ function isNewerBuild(ver) {
   if (/^\d+$/.test(v) && /^\d+$/.test(FILE_VER)) return Number(v) > Number(FILE_VER);
   return true;
 }
+let bootPrevVer = "";
+let whatsNewTimer = 0;
+function maybeShowWhatsNew() {
+  const prev = String(bootPrevVer || "");
+  if (!prev || prev === APP_VERSION || EMBED_PAGE) return true;
+  let shown = "";
+  try { shown = localStorage.getItem("tj-whatsnew-ver") || ""; } catch {}
+  if (shown === APP_VERSION) return true;
+  if (!ui.role) return false;
+  if (document.hidden) return false;
+  if (document.getElementById("today-upd-mask") || document.getElementById("update-mask") || document.getElementById("cl-mask")) return false;
+  if (document.getElementById("splash") || document.getElementById("intro-mask")) return false;
+  try { localStorage.setItem("tj-whatsnew-ver", APP_VERSION); } catch {}
+  let rows = [];
+  try { rows = notesTodayRows(); } catch {}
+  if (!rows.length) return true;
+  openTodayUpdateSheet(true);
+  return true;
+}
+function armWhatsNew() {
+  bootPrevVer = lastSeenVersion();
+  if (!bootPrevVer || bootPrevVer === APP_VERSION) return;
+  let tries = 0;
+  const tick = () => {
+    tries++;
+    let done = false;
+    try { done = maybeShowWhatsNew(); } catch { done = true; }
+    if (done || tries > 300) { clearInterval(whatsNewTimer); whatsNewTimer = 0; }
+  };
+  setTimeout(tick, 1800);
+  whatsNewTimer = setInterval(tick, 2000);
+}
 function seedSeenVersion() {
   const last = lastSeenVersion();
   if (last === "pending-reload") {
@@ -3676,7 +3714,7 @@ function ensureUpdateBar() {
     return;
   }
   const lift = ui.role === "tenant" || ui.role === "admin";
-  const text = "有新版本 " + APP_VERSION + "，點此更新";
+  const text = "有新版本，點此查看並更新";
   if (el) {
     el.classList.add("shown");
     el.classList.toggle("lift", lift);
@@ -3702,7 +3740,7 @@ function notesTodayRows() {
     return row ? { idx: i, day: row.day, text: row.text, aud: row.aud } : null;
   }).filter(Boolean);
 }
-function todayUpdateSheetHtml() {
+function todayUpdateSheetHtml(after) {
   const rows = notesTodayRows();
   const day = rows[0] ? notesDayLabel(rows[0].day) : "";
   const items = rows.map(r => `<button type="button" class="note-link" data-today-note="${r.idx}">
@@ -3712,11 +3750,11 @@ function todayUpdateSheetHtml() {
   return `<div class="today-upd-mask" id="today-upd-mask">
     <div class="today-upd-sheet" id="today-upd-sheet" role="dialog" aria-label="今日更新">
       <button type="button" class="today-upd-handle" id="today-upd-handle" aria-label="往下滑關閉"><i></i></button>
-      <div class="label">今日更新</div>
+      <div class="label">${after ? "已更新到最新版本" : "今日更新"}</div>
       <h2>${escapeHtml(day || "更新內容")}</h2>
       <div class="today-upd-list" id="today-upd-list">${items}</div>
-      <button class="btn-navy" id="today-upd-apply" type="button">立即更新</button>
-      <button class="ghost" id="today-upd-close" type="button">關閉</button>
+      ${after ? `<button class="btn-navy" id="today-upd-close" type="button">知道了</button>` : `<button class="btn-navy" id="today-upd-apply" type="button">立即更新</button>
+      <button class="ghost" id="today-upd-close" type="button">關閉</button>`}
     </div>
   </div>`;
 }
@@ -3771,11 +3809,11 @@ function bindTodayUpdateSheet(mask) {
     handle.addEventListener("pointercancel", up);
   }
 }
-function openTodayUpdateSheet() {
+function openTodayUpdateSheet(after) {
   if (document.getElementById("today-upd-mask")) return;
   const bar = document.getElementById("apply-update");
   if (bar) bar.classList.add("is-away");
-  document.body.insertAdjacentHTML("beforeend", todayUpdateSheetHtml());
+  document.body.insertAdjacentHTML("beforeend", todayUpdateSheetHtml(after === true));
   const mask = document.getElementById("today-upd-mask");
   const list = document.getElementById("today-upd-list");
   const sheet = document.getElementById("today-upd-sheet");
@@ -3936,8 +3974,20 @@ function promptAppUpdate(reg) {
     n.onclick = () => { window.focus(); ui.updateReady = true; try { ensureUpdateBar(); } catch {} n.close(); };
   } catch {}
 }
+let buildWatchOn = false;
+function startBuildPollFallback() {
+  if (buildWatchOn || EMBED_PAGE) return;
+  buildWatchOn = true;
+  const tick = () => { try { pollRemoteBuild(); } catch {} };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") tick(); });
+  window.addEventListener("focus", tick);
+  window.addEventListener("online", tick);
+  tick();
+  setInterval(() => { if (document.visibilityState !== "hidden") tick(); }, 4000);
+}
 function watchAppUpdate(reg) {
   if (!reg) return;
+  buildWatchOn = true;
   const take = () => {
     if (!reg.waiting) return;
     try { persistUi(); persistLogin(); } catch {}
@@ -51634,6 +51684,8 @@ async function boot() {
     appBootReady = true;
     try { armPressFeel(); } catch {}
     render();
+    try { armWhatsNew(); } catch {}
+    setTimeout(() => { try { startBuildPollFallback(); } catch {} }, 8000);
     seedSeenVersion();
     markVersionSeen();
     try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
