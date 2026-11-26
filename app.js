@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-10-33";
-const APP_EDIT_COUNT = 2550;
+const APP_STAMP = "2026-11-26-10-38";
+const APP_EDIT_COUNT = 2551;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -37909,6 +37909,47 @@ function workCalHtml(memoRows) {
     ${workAddHtml(sel)}
   </div>`;
 }
+function revealWorkAddForm() {
+  const form = document.getElementById("work-add-form");
+  const sc = document.querySelector(".admin-scroll");
+  if (!form || !sc) return;
+  const dock = document.querySelector(".tabs");
+  const pad = (dock ? dock.offsetHeight : 92) + 20;
+  const extra = form.getBoundingClientRect().bottom - (sc.getBoundingClientRect().bottom - pad);
+  if (extra > 0) sc.scrollTop += extra + 8;
+}
+function closeWorkAddForm(form) {
+  const ae = document.activeElement;
+  if (ae && form.contains(ae) && ae.blur) ae.blur();
+  const bar = form.closest(".work-add-bar");
+  if (bar) {
+    bar.style.height = bar.offsetHeight + "px";
+    if (!bar.querySelector(".work-add")) {
+      const plus = document.createElement("button");
+      plus.type = "button";
+      plus.className = "work-add";
+      plus.setAttribute("aria-label", "新增行程");
+      plus.textContent = "+";
+      bar.appendChild(plus);
+    }
+    bar.classList.add("is-closing");
+    requestAnimationFrame(() => { bar.style.height = "36px"; });
+  }
+  form.classList.add("is-closing");
+  let closed = false;
+  const finish = () => {
+    if (closed) return;
+    closed = true;
+    ui.workAddOpen = false;
+    ui.keepScroll = true;
+    render();
+  };
+  if (bar) bar.addEventListener("transitionend", ev => {
+    if (ev.target !== bar || ev.propertyName !== "height") return;
+    finish();
+  });
+  setTimeout(finish, 420);
+}
 function workAddHtml(sel) {
   const open = !!ui.workAddOpen;
   return `<div class="work-add-bar${open ? " is-open" : ""}">
@@ -49747,6 +49788,7 @@ function bindAdminAi() {
       ui.workOpen = true;
       ui.keepScroll = true;
       render();
+      if (ui.workAddOpen) requestAnimationFrame(() => revealWorkAddForm());
     };
   }
   if (!window.__workAddBlank) {
@@ -49755,51 +49797,26 @@ function bindAdminAi() {
       if (!ui.workAddOpen) return;
       const form = document.getElementById("work-add-form");
       if (!form || form.classList.contains("is-closing")) return;
-      const inside = form.contains(e.target);
-      if (inside) return;
+      if (form.contains(e.target)) return;
       const hit = e.target && e.target.closest ? e.target.closest("button, a, input, select, textarea, label, .work-memo, .work-cal-d, .work-cal-nav") : null;
       if (hit) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const sc = document.querySelector(".admin-scroll");
-      const lockTop = sc ? sc.scrollTop : 0;
-      const ae = document.activeElement;
-      if (ae && form.contains(ae) && ae.blur) ae.blur();
-      if (sc) sc.scrollTop = lockTop;
-      const hold = () => { if (sc) sc.scrollTop = lockTop; };
-      if (sc) sc.addEventListener("scroll", hold, { passive: true });
-      const bar = form.closest(".work-add-bar");
-      if (bar) {
-        bar.style.height = bar.offsetHeight + "px";
-        if (!bar.querySelector(".work-add")) {
-          const plus = document.createElement("button");
-          plus.type = "button";
-          plus.className = "work-add";
-          plus.setAttribute("aria-label", "新增行程");
-          plus.textContent = "+";
-          bar.appendChild(plus);
-        }
-        bar.classList.add("is-closing");
-        requestAnimationFrame(() => {
-          if (sc) sc.scrollTop = lockTop;
-          bar.style.height = "36px";
-        });
-      }
-      form.classList.add("is-closing");
-      let closed = false;
-      const finish = () => {
-        if (closed) return;
-        closed = true;
-        if (sc) sc.removeEventListener("scroll", hold);
-        ui.workAddOpen = false;
-        ui.keepScroll = true;
-        render();
+      const sx = e.clientX, sy = e.clientY;
+      let moved = false;
+      const move = ev => {
+        if (Math.abs(ev.clientX - sx) > 8 || Math.abs(ev.clientY - sy) > 8) moved = true;
       };
-      if (bar) bar.addEventListener("transitionend", e => {
-        if (e.target !== bar || e.propertyName !== "height") return;
-        finish();
-      });
-      setTimeout(finish, 420);
+      const up = () => {
+        document.removeEventListener("pointermove", move, true);
+        document.removeEventListener("pointerup", up, true);
+        document.removeEventListener("pointercancel", up, true);
+        if (moved || !ui.workAddOpen) return;
+        const live = document.getElementById("work-add-form");
+        if (!live || live.classList.contains("is-closing")) return;
+        closeWorkAddForm(live);
+      };
+      document.addEventListener("pointermove", move, true);
+      document.addEventListener("pointerup", up, true);
+      document.addEventListener("pointercancel", up, true);
     }, true);
   }
   const workAddForm = document.getElementById("work-add-form");
