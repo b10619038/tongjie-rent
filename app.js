@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-23-00";
-const APP_EDIT_COUNT = 2569;
+const APP_STAMP = "2026-11-26-23-52";
+const APP_EDIT_COUNT = 2570;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -625,10 +625,13 @@ const STUDIO_FEE_VER = "20260831-2120";
 // everything only in the 開發者後台. An entry with no `aud` is shown only there.
 // Never write real names, phones, IDs, account numbers or client company names in the text:
 // mask them (陳○○, 某房客, 某公司).
-// Item form: "text"  or  { text, aud: [...], before: "changelog/x.svg", after: "changelog/y.svg" }
+// Item form: "text"  or  { text, aud: [...], head, before, after, note: "無畫面變更" }
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "指定房號的公告或通知，現在會送到該房已綁定的官方 LINE", head: "房號LINE通知", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-26-23-00-2569", items: [
     { text: "更新列表改為只顯示短標題，完整內容點進去才看得到", head: "短標題", before: "changelog/2026-11-26-notes-head-before.svg", after: "changelog/2026-11-26-notes-head-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "從更新內容返回時改為立刻回到上一層，不再卡住", head: "返回順暢", before: "changelog/2026-11-26-notes-back-before.svg", after: "changelog/2026-11-26-notes-back-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失", head: "未讀紅點", before: "changelog/2026-11-26-notes-dot-before.svg", after: "changelog/2026-11-26-notes-dot-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
@@ -3368,7 +3371,8 @@ function notesRows() {
       const before = item && typeof item === "object" ? String(item.before || "").trim() : "";
       const after = item && typeof item === "object" ? String(item.after || "").trim() : "";
       const head = item && typeof item === "object" ? String(item.head || "").trim() : "";
-      rows.push({ day, ver: n.ver || "", text: line, before, after, aud, head });
+      const note = item && typeof item === "object" ? String(item.note || "").trim() : "";
+      rows.push({ day, ver: n.ver || "", text: line, before, after, aud, head, note });
     });
   });
   notesRows._key = key;
@@ -3784,7 +3788,8 @@ function notesCardHtml() {
 function notesShotHtml(row) {
   const before = row && row.before ? String(row.before) : "";
   const after = row && row.after ? String(row.after) : "";
-  if (!before && !after) return "";
+  const note = row && row.note ? String(row.note) : "";
+  if (!before && !after) return note ? `<p class="note-shot-empty">${escapeHtml(note)}</p>` : "";
   function cell(src, label, empty) {
     const cap = `<div class="label">${label}</div>`;
     if (src) {
