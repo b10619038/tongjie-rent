@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-22-50";
-const APP_EDIT_COUNT = 2568;
+const APP_STAMP = "2026-11-26-23-00";
+const APP_EDIT_COUNT = 2569;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,10 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "更新列表改為只顯示短標題，完整內容點進去才看得到", head: "短標題", before: "changelog/2026-11-26-notes-head-before.svg", after: "changelog/2026-11-26-notes-head-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "從更新內容返回時改為立刻回到上一層，不再卡住", head: "返回順暢", before: "changelog/2026-11-26-notes-back-before.svg", after: "changelog/2026-11-26-notes-back-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失", head: "未讀紅點", before: "changelog/2026-11-26-notes-dot-before.svg", after: "changelog/2026-11-26-notes-dot-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "水電卡片的水費改為只顯示一年金額", head: "水費年額", before: "changelog/2026-11-26-water-fee-before.svg", after: "changelog/2026-11-26-water-fee-after.svg", aud: ["套房租客"] },
     { text: "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」", before: "changelog/2026-11-26-avatar-hint-before.svg", after: "changelog/2026-11-26-avatar-hint-after.svg", aud: ["套房租客"] },
     { text: "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉", before: "changelog/2026-11-26-whatsnew-before.svg", after: "changelog/2026-11-26-whatsnew-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "開著 App 時有新版本，下方提示改為「有新版本，點此查看並更新」，不再顯示舊的版本號", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
@@ -3241,7 +3245,10 @@ function maybeShowWhatsNew() {
   try { localStorage.setItem("tj-whatsnew-ver", APP_VERSION); localStorage.removeItem("tj-whatsnew-pending"); } catch {}
   let rows = [];
   try { rows = notesTodayRows(); } catch {}
-  if (!rows.length) return true;
+  if (!rows.length) {
+    try { markNotesVersionSeen(APP_VERSION); } catch {}
+    return true;
+  }
   openTodayUpdateSheet(true);
   return true;
 }
@@ -3346,6 +3353,8 @@ function notesDayLabel(day) {
   return m[1] + "年" + Number(m[2]) + "月" + Number(m[3]) + "日";
 }
 function notesRows() {
+  const key = (typeof notesRole === "function" ? notesRole() : "") + "";
+  if (notesRows._cache && notesRows._key === key) return notesRows._cache;
   const rows = [];
   (CHANGELOG || []).forEach(n => {
     if (!n) return;
@@ -3358,9 +3367,12 @@ function notesRows() {
       if (!notesCanSee(aud)) return;
       const before = item && typeof item === "object" ? String(item.before || "").trim() : "";
       const after = item && typeof item === "object" ? String(item.after || "").trim() : "";
-      rows.push({ day, text: line, before, after, aud });
+      const head = item && typeof item === "object" ? String(item.head || "").trim() : "";
+      rows.push({ day, ver: n.ver || "", text: line, before, after, aud, head });
     });
   });
+  notesRows._key = key;
+  notesRows._cache = rows;
   return rows;
 }
 function notesDays() {
@@ -3370,6 +3382,376 @@ function notesDays() {
     map.get(row.day).push(idx);
   });
   return Array.from(map.keys()).map(day => ({ day, ids: map.get(day) }));
+}
+
+function notesItemId(row) {
+  return encodeURIComponent(String((row && row.day) || "")) + ":" + encodeURIComponent(String((row && row.text) || ""));
+}
+function notesSeenPack() {
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem("tj-note-item-seen") || "{}") || {}; } catch { all = {}; }
+  const view = notesRole() || "tenant";
+  if (!all[view] || typeof all[view] !== "object") all[view] = { ids: {}, doneVers: [] };
+  const pack = all[view];
+  if (!pack.ids || typeof pack.ids !== "object") pack.ids = {};
+  if (!Array.isArray(pack.doneVers)) pack.doneVers = [];
+  return { all, view, pack };
+}
+function notesSaveSeenPack(state) {
+  try { localStorage.setItem("tj-note-item-seen", JSON.stringify(state.all)); } catch {}
+}
+function notesVerOf(row) {
+  return String((row && row.ver) || "");
+}
+function notesVerIsCurrent(ver) {
+  const v = String(ver || "");
+  return v === APP_VERSION || v === APP_STAMP || (typeof changelogStamp === "function" && changelogStamp(v) === APP_STAMP);
+}
+function notesItemUnseen(row) {
+  if (!row) return false;
+  const { pack } = notesSeenPack();
+  const id = notesItemId(row);
+  if (pack.ids[id]) return false;
+  const ver = notesVerOf(row);
+  if (pack.doneVers.indexOf(ver) >= 0) return false;
+  if (pack.doneVers.indexOf(APP_VERSION) >= 0 && notesVerIsCurrent(ver)) return false;
+  return notesVerIsCurrent(ver);
+}
+function notesDayHasUnseen(dayOrObj) {
+  const day = typeof dayOrObj === "string" ? dayOrObj : (dayOrObj && dayOrObj.day) || "";
+  const rows = notesRows();
+  if (dayOrObj && dayOrObj.ids) return dayOrObj.ids.some(i => notesItemUnseen(rows[i]));
+  return rows.some(r => r.day === day && notesItemUnseen(r));
+}
+function notesDotHtml(on) {
+  return on ? `<i class="note-dot" data-note-live="1" aria-hidden="true"></i>` : "";
+}
+function notesClearItemDot(id) {
+  document.querySelectorAll("[data-note-id]").forEach(el => {
+    if (el.getAttribute("data-note-id") === id) el.querySelectorAll(".note-dot").forEach(d => d.remove());
+  });
+}
+function notesRefreshDayDots() {
+  document.querySelectorAll("[data-note-day]").forEach(el => {
+    const day = el.getAttribute("data-note-day") || "";
+    const has = notesDayHasUnseen(day);
+    const dot = el.querySelector(".note-dot");
+    if (!has && dot) dot.remove();
+  });
+  const open = document.getElementById("note-open");
+  if (open) {
+    const any = notesRows().some(notesItemUnseen);
+    const dot = open.querySelector(".note-dot");
+    if (!any && dot) dot.remove();
+  }
+}
+function markNotesItemSeen(row) {
+  if (!row) return;
+  const state = notesSeenPack();
+  const id = notesItemId(row);
+  state.pack.ids[id] = 1;
+  notesSaveSeenPack(state);
+  notesClearItemDot(id);
+  notesRefreshDayDots();
+}
+function markNotesVersionSeen(ver) {
+  const v = String(ver || APP_VERSION);
+  const state = notesSeenPack();
+  [v, APP_VERSION, APP_STAMP].forEach(x => {
+    if (x && state.pack.doneVers.indexOf(x) < 0) state.pack.doneVers.push(x);
+  });
+  notesSaveSeenPack(state);
+  document.querySelectorAll(".note-dot[data-note-live]").forEach(d => d.remove());
+}
+
+const NOTES_TRANS_MS = 220;
+function notesStackRoot() {
+  let el = document.getElementById("note-stack");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "note-stack";
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function notesStackOpen() {
+  return !!(document.querySelector("#note-stack > .note-screen") || (typeof ui !== "undefined" && ui && ui.noteLevel));
+}
+
+function notesNeedShort(row) {
+  const day = String((row && row.day) || "");
+  const aud = (row && row.aud) || [];
+  return day === "2026-11-26" || aud.indexOf("套房租客") >= 0;
+}
+function notesAutoHead(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  const exact = {
+    "從更新內容返回時改為立刻回到上一層，不再卡住": "返回順暢",
+    "還沒看過的更新會在左上角顯示紅點，點進去或更新完成後就消失": "未讀紅點",
+    "水電卡片的水費改為只顯示一年金額": "水費年額",
+    "設定裡頭像下方的說明改為「點頭像可更換大頭貼。生日當日登入有驚喜」": "頭像說明",
+    "更新完成後第一次打開 App，會自動從下方滑出今天的更新內容，只列出目前畫面相關的項目，按「知道了」關閉": "更新說明",
+    "開著 App 時有新版本，下方提示改為「有新版本，點此查看並更新」，不再顯示舊的版本號": "更新提示",
+    "更新內容裡點更新前、更新後的圖片可以正常放大查看，不再被清單擋住": "圖片放大",
+    "更新偵測不再只依賴背景服務，電腦與手機開著時都會定時檢查新版本": "更新偵測",
+    "點下方「有新版本」會從底部滑出今天的更新清單，圖卡改小，可先查看再立即更新": "今日更新",
+    "從設定打開更新內容時，畫面會直接停在最上方，不必再往上滑": "開啟置頂",
+    "進入租客、管理員或負責人畫面時，更新內容只顯示該畫面的項目，不再混入其他對象的更新": "分類顯示",
+    "設定裡可以依日期查看更新內容，每項附上更新前、更新後的畫面": "前後畫面",
+    "管理員設定也能開啟更新內容": "更新入口",
+    "補上 10 月下旬到 11 月的更新紀錄，多項附上實際畫面，並修正日期與重複的紀錄": "補上紀錄",
+    "更新紀錄依對象分類並標示：開發者後台、管理員後台、負責人後台、套房租客，各角色只看到自己的更新": "更新分類",
+    "更新時的房子標誌改用柔和淡入": "柔和淡入",
+    "iPhone 開啟畫面的房子改為置中": "房子置中",
+    "租客在線上時，大頭貼外圍會出現綠色圈圈": "在線圈圈",
+    "管理員新增行程時，頁面捲動也不會把表單收起來": "表單固定",
+    "手機通知不再顯示信封數字標記": "通知標記",
+    "管理員不再收到已過期的工作提醒和年度水費通知": "過期提醒",
+    "更新列表改為只顯示短標題，完整內容點進去才看得到": "短標題",
+    "新租客的第一張發票改以租約起始日開立，不再算到前一個月": "發票日期",
+    "返回鍵改成主題色箭頭": "返回箭頭",
+    "公告可以私下留言，會直接開啟與管理端的對話": "公告留言",
+    "公告愛心改成 Instagram 風格並顯示按讚數，旁邊會列出按讚的房號": "公告愛心",
+    "官方 LINE 綁定可以用「姓名＋房號」或「我是租客」等說法": "LINE綁定",
+    "簽約時間改成橫向滑動選擇": "簽約時間",
+    "入住申請加上緊急聯絡人與手寫電子簽名": "入住簽名",
+    "入住申請可選 1 人或 2 人，2 人時會顯示每人平均": "入住人數",
+    "新增公開連結，新租客可直接線上填寫入住申請": "入住申請",
+    "設定裡的開關改成滑動切換，滑桿顏色由深到淺": "滑動開關",
+    "租客設定新增語言切換：繁體中文、English、日本語、ไทย、한국어，整個畫面會跟著改": "語言切換",
+    "公告改走快速通道，租客約 1 秒內就會看到": "公告加速",
+    "租客房間圖卡的顏色會跟著所選主題變化": "房間配色",
+    "租客可在設定填寫生日，生日當天登入首頁會有彩帶特效": "生日彩帶",
+    "調色盤新增焦糖，奶油風格改為奶油": "焦糖奶油",
+    "租客可在設定的「意見分享」寫下意見，直接傳給開發者": "意見分享",
+    "租客新增「鑰匙」卡片：公設密碼、忘記帶鑰匙時的鎖匠電話，也能申請電子門鎖": "鑰匙卡片",
+    "租客可用身分證字號登入，也能用姓名或手機號碼": "證件登入",
+    "租客可以排隊等候已出租的房間，也能自行取消": "排隊等候"
+  };
+  if (exact[raw]) return exact[raw];
+  let t = raw.replace(/[「『][^」』]*[」』]/g, "").replace(/（[^）]*）/g, "").replace(/\([^)]*\)/g, "");
+  t = t.split(/[，。；：]/)[0].trim();
+  t = t.replace(/^(租客可在設定的?|租客可在|租客可以|租客可用|租客設定|租客新增|租客|設定裡的|設定裡|從設定|進入|開著 App 時|更新完成後|點下方|為了|將|把|從|新增|補上)/, "");
+  t = t.replace(/(時|了)$/, "");
+  if (t.length > 8) t = t.slice(0, 8);
+  return t || raw.slice(0, 6);
+}
+function notesHeadline(row) {
+  if (!row) return "";
+  const head = String(row.head || "").trim();
+  if (head) return head;
+  const text = String(row.text || "").trim();
+  if (notesNeedShort(row)) return notesAutoHead(text);
+  return text;
+}
+function notesLayerHtml(level) {
+  const rows = notesRows();
+  const days = notesDays();
+  const seen = ui.noteSeenBefore || "";
+  let body = "";
+  if (level === "dates") {
+    body = days.map(d => `<button type="button" class="note-link" data-note-day="${escapeHtml(d.day)}">
+      ${notesDotHtml(notesDayHasUnseen(d) || d.day > seen)}
+      <span class="note-entry-main"><b>${escapeHtml(notesDayLabel(d.day))}</b><span class="small">${d.ids.length} 項更新</span></span>
+      <span class="note-chev" aria-hidden="true">›</span>
+    </button>`).join("");
+  } else if (level === "day") {
+    const hit = days.find(d => d.day === ui.noteDay);
+    const ids = hit ? hit.ids : [];
+    body = ids.map(idx => {
+      const row = rows[idx];
+      if (!row) return "";
+      return `<button type="button" class="note-link" data-note-item="${idx}" data-note-id="${notesItemId(row)}">
+      ${notesDotHtml(notesItemUnseen(row))}
+      <span class="note-entry-main"><b>${escapeHtml(notesHeadline(row))}</b>${notesAudTagsHtml(row.aud)}</span>
+      <span class="note-chev" aria-hidden="true">›</span>
+    </button>`;
+    }).join("") || `<p class="small">這天沒有更新說明</p>`;
+  } else if (level === "item") {
+    const row = rows[ui.noteIdx] || null;
+    if (!row) body = `<p class="small">找不到這則說明</p>`;
+    else {
+      body = `<article class="note-detail">
+        <h2>${escapeHtml(row.text)}</h2>
+        <p class="small">${escapeHtml(notesDayLabel(row.day))}</p>
+        ${notesAudTagsHtml(row.aud)}
+        <p>${escapeHtml(row.text)}</p>
+        ${notesShotHtml(row)}
+      </article>`;
+    }
+  }
+  return `<div class="note-screen" data-level="${escapeHtml(level || "")}">
+    <button type="button" class="back note-back">← 返回</button>
+    <div class="note-list">${body}</div>
+  </div>`;
+}
+function ensureNotesLightbox() {
+  if (document.getElementById("note-lightbox")) return;
+  document.body.insertAdjacentHTML("beforeend", notesLightboxHtml());
+  const lb = document.getElementById("note-lightbox");
+  if (!lb || lb.dataset.bound === "1") return;
+  lb.dataset.bound = "1";
+  const closeLb = () => { lb.hidden = true; };
+  lb.addEventListener("click", e => { if (e.target === lb) closeLb(); });
+  const closeBtn = document.getElementById("note-lightbox-close");
+  if (closeBtn) closeBtn.onclick = closeLb;
+}
+function notesBindShots(root) {
+  (root || document).querySelectorAll("[data-note-full]").forEach(btn => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const src = btn.getAttribute("data-note-full") || "";
+      const label = btn.getAttribute("data-note-full-label") || "";
+      const lb = document.getElementById("note-lightbox");
+      const img = document.getElementById("note-lightbox-img");
+      const cap = document.getElementById("note-lightbox-label");
+      if (!lb || !img || !src) return;
+      img.src = src;
+      img.alt = label;
+      if (cap) cap.textContent = label;
+      lb.hidden = false;
+    };
+  });
+}
+function notesPushHistory() {
+  if (!ui || ui.navPop) return;
+  try {
+    history.pushState({ tj: (typeof navSnap === "function" ? navSnap() : null), tjNotes: ui.noteLevel || "1" }, "", location.pathname + location.search);
+    ui.notesHist = (ui.notesHist || 0) + 1;
+  } catch {}
+}
+
+function notesSyncCurrentIds() {
+  document.querySelectorAll("#note-stack .note-screen").forEach(el => { if (el.id === "note-screen") el.removeAttribute("id"); });
+  document.querySelectorAll(".note-back").forEach(el => { if (el.id === "note-back") el.removeAttribute("id"); });
+  const cur = document.querySelector("#note-stack > .note-screen.is-current") || document.querySelector("#note-stack > .note-screen:last-child");
+  if (cur) {
+    cur.id = "note-screen";
+    const back = cur.querySelector(".note-back");
+    if (back) back.id = "note-back";
+  }
+}
+function notesGo(level, opts) {
+  opts = opts || {};
+  if (ui.notesBusy && !opts.force) return;
+  const prev = document.querySelector("#note-stack > .note-screen.is-current");
+  if (prev) {
+    prev.dataset.scroll = String(prev.scrollTop || 0);
+    prev.classList.remove("is-current");
+    prev.classList.add("is-under");
+  }
+  ui.noteLevel = level;
+  if (opts.day != null) ui.noteDay = opts.day;
+  if (opts.idx != null) ui.noteIdx = opts.idx;
+  if (opts.fromSheet) ui.noteFromTodaySheet = true;
+  if (opts.fromPopup) ui.noteFromPopup = true;
+  const stack = notesStackRoot();
+  const wrap = document.createElement("div");
+  wrap.innerHTML = notesLayerHtml(level);
+  const screen = wrap.firstElementChild;
+  if (!screen) return;
+  screen.classList.add("is-current");
+  if (!opts.instant) screen.classList.add("is-enter");
+  stack.appendChild(screen);
+  bindNotesLayer(screen);
+  notesLockPageScroll();
+  ensureNotesLightbox();
+  if (!opts.noHist) notesPushHistory();
+  notesSyncCurrentIds();
+  if (opts.instant) { notesSyncCurrentIds(); return; }
+  ui.notesBusy = true;
+  screen.style.pointerEvents = "none";
+  requestAnimationFrame(() => {
+    screen.classList.add("is-in");
+    setTimeout(() => {
+      screen.classList.remove("is-enter");
+      screen.style.pointerEvents = "";
+      ui.notesBusy = false;
+    }, NOTES_TRANS_MS + 40);
+  });
+}
+function notesBack(opts) {
+  opts = opts || {};
+  if (ui.notesBusy && !opts.force) return;
+  const lb = document.getElementById("note-lightbox");
+  if (lb && !lb.hidden) {
+    lb.hidden = true;
+    return;
+  }
+  if (!opts.fromPop && (ui.notesHist || 0) > 0) {
+    try { history.back(); return; } catch {}
+  }
+  const stack = document.getElementById("note-stack");
+  const layers = stack ? [...stack.querySelectorAll(":scope > .note-screen")] : [];
+  const cur = layers.filter(el => el.classList.contains("is-current")).pop() || layers[layers.length - 1];
+  const prev = layers.length >= 2 ? layers[layers.length - 2] : null;
+  const finish = () => {
+    if (cur && cur.parentNode) cur.remove();
+    if (prev) {
+      prev.classList.add("is-current");
+      prev.classList.remove("is-under");
+      prev.scrollTop = Number(prev.dataset.scroll || 0);
+      ui.noteLevel = prev.dataset.level || "dates";
+      ui.noteFromTodaySheet = false;
+      ui.noteFromPopup = false;
+    } else {
+      ui.noteLevel = "";
+      ui.noteFromTodaySheet = false;
+      ui.noteFromPopup = false;
+      if (stack && !stack.querySelector(".note-screen") && stack.parentNode) stack.remove();
+      notesUnlockPageScroll();
+    }
+    if (opts.fromPop && (ui.notesHist || 0) > 0) ui.notesHist -= 1;
+    notesSyncCurrentIds();
+    ui.notesBusy = false;
+  };
+  if (!cur) { finish(); return; }
+  ui.notesBusy = true;
+  cur.style.pointerEvents = "none";
+  cur.classList.add("is-leave");
+  cur.classList.remove("is-in", "is-current");
+  let done = false;
+  const end = () => { if (done) return; done = true; finish(); };
+  cur.addEventListener("transitionend", end);
+  setTimeout(end, NOTES_TRANS_MS + 60);
+}
+function bindNotesLayer(screen) {
+  if (!screen || screen.dataset.layerBound === "1") return;
+  screen.dataset.layerBound = "1";
+  screen.querySelectorAll("[data-note-day]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ui.notesBusy) return;
+      notesGo("day", { day: btn.dataset.noteDay || "" });
+    };
+  });
+  screen.querySelectorAll("[data-note-item]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ui.notesBusy) return;
+      const idx = Number(btn.dataset.noteItem);
+      const row = notesRows()[idx];
+      markNotesItemSeen(row);
+      notesGo("item", { idx });
+    };
+  });
+  const back = screen.querySelector(".note-back");
+  if (back) {
+    back.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+      if (ui.notesBusy) return;
+      notesBack();
+    }, true);
+  }
+  notesBindShots(screen);
 }
 function notesSeen() {
   try { return localStorage.getItem("tj-notes-seen") || ""; } catch { return ""; }
@@ -3389,9 +3771,9 @@ function notesPair(text) {
 function notesCardHtml() {
   const days = notesDays();
   if (!days.length) return "";
-  const unseen = (days[0].day || "") > notesSeen();
+  const unseen = notesRows().some(notesItemUnseen) || ((days[0].day || "") > notesSeen());
   return `<button type="button" class="card card-body note-entry" id="note-open">
-    ${unseen ? `<i class="note-dot" aria-hidden="true"></i>` : ""}
+    ${unseen ? `<i class="note-dot" data-note-live="1" aria-hidden="true"></i>` : ""}
     <span class="note-entry-main">
       <span class="label">更新內容</span>
       <span class="small">依日期查看功能說明</span>
@@ -3420,6 +3802,7 @@ function notesLightboxHtml() {
   </div>`;
 }
 function notesBrowserHtml() {
+  return "";
   const level = ui.noteLevel || "";
   if (!level) return "";
   const rows = notesRows();
@@ -3487,78 +3870,52 @@ function notesUnlockPageScroll() {
   if (document.body) document.body.classList.remove("notes-open");
 }
 function syncNotesOverlay() {
+  document.querySelectorAll("#app #note-screen, #app #note-lightbox").forEach(el => el.remove());
+  if (document.getElementById("note-stack")) {
+    if (notesOverlayOpen() || document.querySelector("#note-stack > .note-screen")) notesLockPageScroll();
+    ensureNotesLightbox();
+    return;
+  }
   if (notesOverlayOpen()) {
-    if (!document.getElementById("note-screen")) {
-      const html = notesBrowserHtml();
-      if (html) document.body.insertAdjacentHTML("beforeend", html);
-      if (!syncNotesOverlay.rebinding) {
-        syncNotesOverlay.rebinding = true;
-        try { bindNotesBrowser(); } finally { syncNotesOverlay.rebinding = false; }
-        return;
-      }
-    }
-    pinNotesOverlay();
-    notesLockPageScroll();
-    notesResetScroll();
-    requestAnimationFrame(() => { pinNotesOverlay(); notesResetScroll(); });
-  } else {
-    document.querySelectorAll("body > #note-screen, body > #note-lightbox").forEach(el => el.remove());
-    notesUnlockPageScroll();
+    notesGo(ui.noteLevel || "dates", { instant: true, noHist: false, day: ui.noteDay, idx: ui.noteIdx, fromSheet: !!ui.noteFromTodaySheet, force: true });
+    return;
   }
 }
 function bindNotesBrowser() {
-  // If paint just produced a fresh overlay inside #app, drop the previous body copy.
-  // If a prior bind already moved it to body (tenant settings binds twice), keep it.
-  if (document.querySelector("#app #note-screen, #app #note-lightbox")) {
-    document.querySelectorAll("body > #note-screen, body > #note-lightbox").forEach(el => el.remove());
-  }
+  document.querySelectorAll("#app #note-screen, #app #note-lightbox").forEach(el => el.remove());
   const open = document.getElementById("note-open");
   if (open) open.onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    if (ui.notesBusy) return;
     ui.noteSeenBefore = notesSeen();
-    ui.noteLevel = "dates";
-    ui.keepScroll = true;
     notesMarkSeen();
-    render();
+    notesGo("dates");
   };
-  document.querySelectorAll("[data-note-day]").forEach(btn => {
+  document.querySelectorAll("#app [data-note-day], #update-mask [data-note-item], #update-mask [data-note-day]").forEach(btn => {
+    if (btn.dataset.stackBound === "1") return;
+    btn.dataset.stackBound = "1";
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      ui.noteLevel = "day";
-      ui.noteDay = btn.dataset.noteDay || "";
-      ui.keepScroll = true;
-      render();
-    };
-  });
-  document.querySelectorAll("[data-note-item]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      e.stopPropagation();
-      ui.noteLevel = "item";
-      ui.noteIdx = Number(btn.dataset.noteItem);
-      ui.keepScroll = true;
-      render();
+      if (ui.notesBusy) return;
+      if (btn.hasAttribute("data-note-day")) notesGo("day", { day: btn.dataset.noteDay || "" });
+      else {
+        const idx = Number(btn.dataset.noteItem);
+        markNotesItemSeen(notesRows()[idx]);
+        notesGo("item", { idx, fromPopup: !!btn.closest("#update-mask") });
+      }
     };
   });
   const back = document.getElementById("note-back");
   if (back && back.dataset.noteBound !== "1") {
     back.dataset.noteBound = "1";
-    const go = e => {
+    back.addEventListener("click", e => {
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-      if (ui.noteFromTodaySheet) {
-        ui.noteLevel = "";
-        ui.noteFromTodaySheet = false;
-      } else if (ui.noteLevel === "item") ui.noteLevel = "day";
-      else if (ui.noteLevel === "day") ui.noteLevel = "dates";
-      else ui.noteLevel = "";
-      ui.keepScroll = true;
-      render();
-    };
-    back.addEventListener("click", go, true);
+      notesBack();
+    }, true);
   }
   document.querySelectorAll("[data-note-full]").forEach(btn => {
     btn.onclick = e => {
@@ -3617,7 +3974,13 @@ function unseenChangelog() {
 function changelogSheetHtml() { return ""; }
 function changelogMarkup() {
   const notes = unseenChangelog();
-  const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(changelogLabel(n.ver))}</strong><ul>${n.items.map(i => `<li>${escapeHtml(i.text)}${notesAudTagsHtml(i.aud)}</li>`).join("")}</ul></div>`).join("");
+  const rows = notesRows();
+  const blocks = notes.map(n => `<div class="log-ver"><strong>${escapeHtml(changelogLabel(n.ver))}</strong><ul>${n.items.map(i => {
+    const idx = rows.findIndex(r => r.text === i.text);
+    const row = idx >= 0 ? rows[idx] : { day: notesDayKey(n.ver), text: i.text, ver: n.ver, aud: i.aud };
+    const id = notesItemId(row);
+    return `<li><button type="button" class="note-link" data-note-item="${idx}" data-note-id="${id}">${notesDotHtml(notesItemUnseen(row))}<span class="note-entry-main"><b>${escapeHtml(notesHeadline(row))}</b>${notesAudTagsHtml(i.aud)}</span><span class="note-chev" aria-hidden="true">›</span></button></li>`;
+  }).join("")}</ul></div>`).join("");
   return `<div class="install-mask" id="update-mask">
     <div class="install-sheet">
       <div class="label">軟體更新</div>
@@ -3629,13 +3992,28 @@ function changelogMarkup() {
   </div>`;
 }
 function bindUpdateSheet(mask) {
-  if (!mask || mask.dataset.bound === "1") return;
-  mask.dataset.bound = "1";
-  mask.onclick = e => { if (e.target.id === "update-mask") { closeUpdateNotes(); } };
-  const now = mask.querySelector("#apply-update-now");
-  if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
-  const close = mask.querySelector("#update-close");
-  if (close) close.onclick = e => { e.preventDefault(); closeUpdateNotes(); };
+  if (!mask) return;
+  if (mask.dataset.bound !== "1") {
+    mask.dataset.bound = "1";
+    mask.onclick = e => { if (e.target.id === "update-mask") { closeUpdateNotes(); } };
+    const now = mask.querySelector("#apply-update-now");
+    if (now) now.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
+    const close = mask.querySelector("#update-close");
+    if (close) close.onclick = e => { e.preventDefault(); closeUpdateNotes(); };
+  }
+  mask.querySelectorAll("[data-note-item]").forEach(btn => {
+    if (btn.dataset.stackBound === "1") return;
+    btn.dataset.stackBound = "1";
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (ui.notesBusy) return;
+      const idx = Number(btn.dataset.noteItem);
+      if (idx < 0) return;
+      markNotesItemSeen(notesRows()[idx]);
+      notesGo("item", { idx, fromPopup: true });
+    };
+  });
 }
 function ensureChangelogSheet() {
   let mask = document.getElementById("update-mask");
@@ -3748,10 +4126,15 @@ function notesTodayRows() {
 function todayUpdateSheetHtml(after) {
   const rows = notesTodayRows();
   const day = rows[0] ? notesDayLabel(rows[0].day) : "";
-  const items = rows.map(r => `<button type="button" class="note-link" data-today-note="${r.idx}">
-      <span class="note-entry-main"><b>${escapeHtml(r.text)}</b>${notesAudTagsHtml(r.aud)}</span>
+  const allRows = notesRows();
+  const items = rows.map(r => {
+    const row = allRows[r.idx] || r;
+    return `<button type="button" class="note-link" data-today-note="${r.idx}" data-note-id="${notesItemId(row)}">
+      ${notesDotHtml(notesItemUnseen(row))}
+      <span class="note-entry-main"><b>${escapeHtml(notesHeadline(row))}</b>${notesAudTagsHtml(r.aud)}</span>
       <span class="note-chev" aria-hidden="true">›</span>
-    </button>`).join("") || `<p class="small">目前沒有更新說明</p>`;
+    </button>`;
+  }).join("") || `<p class="small">目前沒有更新說明</p>`;
   return `<div class="today-upd-mask" id="today-upd-mask">
     <div class="today-upd-sheet" id="today-upd-sheet" role="dialog" aria-label="今日更新">
       <button type="button" class="today-upd-handle" id="today-upd-handle" aria-label="往下滑關閉"><i></i></button>
@@ -3775,14 +4158,14 @@ function bindTodayUpdateSheet(mask) {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
+      if (ui.notesBusy) return;
       ui.noteSeenBefore = notesSeen();
-      ui.noteLevel = "item";
-      ui.noteIdx = Number(btn.dataset.todayNote);
-      ui.noteFromTodaySheet = true;
-      ui.keepScroll = true;
       notesMarkSeen();
-      render();
-      requestAnimationFrame(() => { if (typeof syncNotesOverlay === "function") syncNotesOverlay(); });
+      const idx = Number(btn.dataset.todayNote);
+      markNotesItemSeen(notesRows()[idx]);
+      const list = document.getElementById("today-upd-list");
+      if (list) list.dataset.scroll = String(list.scrollTop || 0);
+      notesGo("item", { idx, fromSheet: true });
     };
   });
   const sheet = mask.querySelector("#today-upd-sheet");
@@ -3834,6 +4217,10 @@ function openTodayUpdateSheet(after) {
 function closeTodayUpdateSheet() {
   const mask = document.getElementById("today-upd-mask");
   const bar = document.getElementById("apply-update");
+  try {
+    const label = mask && mask.querySelector(".today-upd-sheet .label");
+    if (label && /已更新到最新版本/.test(label.textContent || "")) markNotesVersionSeen(APP_VERSION);
+  } catch {}
   const finish = () => {
     if (mask && mask.parentNode) mask.remove();
     if (bar) bar.classList.remove("is-away");
@@ -3883,6 +4270,7 @@ function finishUpdateCover() {
 function applyAppUpdate() {
   persistLogin();
   persistUi();
+  try { markNotesVersionSeen(APP_VERSION); } catch {}
   if (ui.pendingFileVer) rememberDismiss(ui.pendingFileVer);
   const reloadNow = () => {
     try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
@@ -6520,6 +6908,12 @@ function subsidyHint(r) {
   return roomNoSubsidy(r) ? "不可申請租屋補助" : "";
 }
 const WATER_FEE_TEXT = "每人每月 NT$ 150，一年 NT$ 1,800";
+function waterFeeYearlyDisplay(raw) {
+  const s = String(raw == null || raw === "" ? WATER_FEE_TEXT : raw).trim();
+  const year = s.match(/一年[^，。；;]*/);
+  if (year) return year[0].replace(/^[，、\s]+/, "").trim();
+  return s.replace(/每人每月[^，。；;]*[，、,;；]?/g, "").replace(/每月[^，。；;]*[，、,;；]?/g, "").replace(/^[，、\s]+|[，、\s]+$/g, "").trim() || s;
+}
 const STUDIO_ELEC_RATE = 5.5;
 const ELEC_FEE_TEXT = "電費自助";
 const STUDIO_MONTH_PAY = {
@@ -18134,7 +18528,7 @@ function tryHistoryBack() {
 }
 function bindHistoryBack() {
   document.querySelectorAll(".back, #back-gate, #back-repair, #acct-bal-back").forEach(btn => {
-    if (!btn || btn.id === "note-back") return;
+    if (!btn || btn.id === "note-back" || (btn.classList && btn.classList.contains("note-back"))) return;
     bindIosPress(btn);
     if (btn.dataset.histBound === "1") return;
     btn.dataset.histBound = "1";
@@ -18147,6 +18541,11 @@ function bindHistoryBack() {
   });
 }
 function onTongjiePop(e) {
+  if (document.querySelector("#note-stack > .note-screen") || (ui && (ui.noteLevel || ui.notesHist))) {
+    ui.navPop = true;
+    try { notesBack({ fromPop: true, force: true }); } finally { ui.navPop = false; }
+    return;
+  }
   const s = e.state && e.state.tj;
   if (!s) return;
   ui.navPop = true;
@@ -34319,7 +34718,7 @@ function roomExtrasHtml(r) {
             return escapeHtml(s.slice(0, i)) + `<span class="topup-origin">儲值機</span>` + escapeHtml(s.slice(i + 3));
           })(r.kind === "factory" ? util.electric : ELEC_FEE_TEXT)}</span>
         </div>
-        <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v"><span>每人每月 NT$ 150</span><span>一年 NT$ 1,800</span></span></div>
+        <div class="row water-fee-row"><span class="k">水費</span><span class="v water-fee-v">${escapeHtml(waterFeeYearlyDisplay(r && r.utilities && r.utilities.water))}</span></div>
       </div>
       <div class="section-title"><h2 class="slide-right">Wifi</h2></div>
       <div class="card card-body slide-left">

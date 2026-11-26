@@ -10261,3 +10261,45 @@ body > #note-screen.note-screen {
 }
 .today-upd-sheet .btn-navy { width: 100%; margin: 10px 0 6px; }
 .today-upd-sheet .ghost { width: 100%; }
+
+
+#note-stack {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  pointer-events: none;
+}
+#note-stack > .note-screen {
+  pointer-events: auto;
+  z-index: 1;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform .22s ease, opacity .22s ease;
+}
+#note-stack > .note-screen.is-current { z-index: 2; }
+#note-stack > .note-screen.is-under { pointer-events: none; }
+#note-stack > .note-screen.is-enter {
+  transform: translate3d(16%, 0, 0);
+  opacity: 0;
+}
+#note-stack > .note-screen.is-enter.is-in,
+#note-stack > .note-screen.is-current:not(.is-enter):not(.is-leave) {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+}
+#note-stack > .note-screen.is-leave {
+  transform: translate3d(16%, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+}
+.note-link:has(.note-dot) { padding-left: 24px; }
+.note-link .note-dot { top: 8px; left: 8px; }
+.note-link .note-entry-main b { font-size: 16px; }
+#update-mask .log-list li { list-style: none; }
+#update-mask .log-list { padding-left: 0; }
+#update-mask .log-list .note-link {
+  width: 100%;
+  background: var(--card, #fff);
+  margin: 0 0 6px;
+}
