@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-15";
-const APP_EDIT_COUNT = 2583;
+const APP_STAMP = "2026-11-27-03-20";
+const APP_EDIT_COUNT = 2584;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "新簽約套房房客第一次付款已含「下個月整月租金」時（金額要真的收足才算），到了下個月 1 號會自動算已繳：房客首頁顯示本月已繳、不會再收到繳租提醒，後台未繳名單也不會列入，帳上也不會重複入帳一筆；只繳不足月租金的不受影響", head: "首次付款含下月租金不再誤判未繳", before: "changelog/2026-11-27-firstpay-next-before.svg", after: "changelog/2026-11-27-firstpay-next-after.svg", aud: ["套房租客", "開發者後台"] }
+  ] },
+  { ver: "2026-11-27-03-15-2583", items: [
     { text: "Android 手機通知右邊改顯示統潔房子圖示，不再出現網址開頭的灰色 T", head: "通知顯示統潔圖示", before: "changelog/2026-11-27-notify-icon-before.svg", after: "changelog/2026-11-27-notify-icon-after.svg", aud: ["套房租客", "開發者後台"] }
   ] },
   { ver: "2026-11-27-03-05-2582", items: [
@@ -7265,9 +7268,68 @@ function studioHandover(t, r) {
 function applyStudioMonthUnpaid(data) {
   applyMonthlyUnpaid(data);
 }
+function firstPayNextMonthOf(data, t, room) {
+  if (!data || !t || !room || roomIsFactory(room) || t.former || t.demo || t.incoming || t.prospect) return null;
+  if (/已續約/.test(String(t.note || ""))) return null;
+  if ((data.renewals || []).some(x => x && x.status !== "cancelled" && x.tenantId && x.tenantId === t.id)) return null;
+  if (!isNewStudioTenant(t, room)) return null;
+  const bits = firstStudioPayBits(t, room);
+  if (!bits || !bits.stub) return null;
+  const startYm = String(ymdOf(t.leaseStart || "") || "").slice(0, 7);
+  const yearYm = String(bits.yearStart || "").slice(0, 7);
+  if (!startYm || !yearYm || yearYm <= startYm) return null;
+  const startPaid = (t.prepaidYm || []).some(y => String(y).slice(0, 7) === startYm) || (t.paid && String(t.paidYm || "").slice(0, 7) === startYm);
+  if (!startPaid) return null;
+  const need = (Number(bits.deposit) || 0) + (Number(bits.rent) || 0);
+  if (!(need > 0)) return null;
+  const prev = prevYmOf(startYm), no = String(room.no || "");
+  let books = 0, bookOn = "";
+  (data.books || []).forEach(b => {
+    if (!b || b.type !== "in" || isRentAutoBook(b)) return;
+    if (!((b.linkedTenantId && b.linkedTenantId === t.id) || (no && String(b.roomNo || "") === no))) return;
+    const d = ymdOf(b.date);
+    if (!d || (d.slice(0, 7) !== startYm && d.slice(0, 7) !== prev)) return;
+    books += Number(b.amount) || 0;
+    if (!bookOn || d < bookOn) bookOn = d;
+  });
+  const amt = Math.max((Number(t.payCash) || 0) + (Number(t.payMega) || 0), Number(t.paidAmt) || 0, books);
+  if (amt + 1 < need) return null;
+  const near = d => (d && (d.slice(0, 7) === startYm || d.slice(0, 7) === prev)) ? d : "";
+  const on = near(ymdOf(t.prepaidOn && t.prepaidOn[startYm])) || near(ymdOf(t.paidAt)) || near(ymdOf(t.remitOn)) || bookOn || ymdOf(t.leaseStart);
+  return { ym: yearYm, on };
+}
+function applyFirstPayNextMonth(data) {
+  if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return false;
+  const now = payYmNow();
+  let changed = false;
+  data.tenants.forEach(t => {
+    if (!t) return;
+    const room = data.rooms.find(r => r && r.id === t.roomId);
+    const hit = firstPayNextMonthOf(data, t, room);
+    if (!hit || hit.ym > now) return;
+    let mine = false;
+    if (!Array.isArray(t.prepaidYm)) t.prepaidYm = [];
+    if (t.prepaidYm.indexOf(hit.ym) < 0) {
+      t.prepaidYm.push(hit.ym);
+      if (!t.prepaidOn || typeof t.prepaidOn !== "object") t.prepaidOn = {};
+      if (hit.on && !t.prepaidOn[hit.ym]) t.prepaidOn[hit.ym] = hit.on;
+      mine = true;
+    }
+    if (hit.ym === now && !(t.paid && String(t.paidYm || "").slice(0, 7) === now)) {
+      t.paid = true;
+      t.paidYm = now;
+      t.paidTouched = true;
+      mine = true;
+    }
+    if (mine) { t.edited = true; t.editedAt = Date.now(); changed = true; }
+  });
+  if (changed) { try { markCloudDirty(); } catch {} }
+  return changed;
+}
 function applyMonthlyUnpaid(data) {
   if (!data || !Array.isArray(data.tenants) || !Array.isArray(data.rooms)) return;
   const ym = payYmNow();
+  try { applyFirstPayNextMonth(data); } catch {}
   data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
   let rolled = "";
   try { rolled = localStorage.getItem(RENT_YM_KEY) || ""; } catch {}
