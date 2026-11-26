@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-01-49";
-const APP_EDIT_COUNT = 2576;
+const APP_STAMP = "2026-11-27-01-58";
+const APP_EDIT_COUNT = 2577;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "開著 App 時出現「有新版本，點此更新」，點下去就直接更新，不必先看更新清單；更新完成後才會跳出「已更新到最新版本」和這次的更新重點，按「知道了」關閉。重新打開 App 若已自動更新，也會顯示一次", head: "點一下就更新", before: "changelog/2026-11-27-tap-update-before.svg", after: "changelog/2026-11-27-tap-update-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
+  ] },
+  { ver: "2026-11-27-01-49-2576", items: [
     { text: "有新版本時，點下方「有新版本，點此查看並更新」打開的視窗，第一次就會列出最新版本的更新重點，不必更新完再看第二次", head: "更新重點即時顯示", before: "changelog/2026-11-27-whatsnew-first-before.svg", after: "changelog/2026-11-27-whatsnew-first-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
   ] },
   { ver: "2026-11-27-01-41-2575", items: [
@@ -3502,7 +3505,6 @@ function notesItemUnseen(row) {
   if (pack.ids[id]) return false;
   const ver = notesVerOf(row);
   if (pack.doneVers.indexOf(ver) >= 0) return false;
-  if (remoteNotesVer && ver === remoteNotesVer) return true;
   if (pack.doneVers.indexOf(APP_VERSION) >= 0 && notesVerIsCurrent(ver)) return false;
   return notesVerIsCurrent(ver);
 }
@@ -4215,12 +4217,12 @@ function ensureUpdateBar() {
     return;
   }
   const lift = ui.role === "tenant" || ui.role === "admin";
-  const text = "有新版本，點此查看並更新";
+  const text = "有新版本，點此更新";
   if (el) {
     el.classList.add("shown");
     el.classList.toggle("lift", lift);
     if (el.textContent !== text) el.textContent = text;
-    el.onclick = () => { openTodayUpdateSheet(); };
+    el.onclick = () => { applyAppUpdate(); };
     return;
   }
   el = document.createElement("div");
@@ -4228,7 +4230,7 @@ function ensureUpdateBar() {
   el.className = "home-upd" + (lift ? " lift" : "");
   el.setAttribute("role", "button");
   el.textContent = text;
-  el.onclick = () => { openTodayUpdateSheet(); };
+  el.onclick = () => { applyAppUpdate(); };
   document.body.appendChild(el);
 }
 
@@ -4317,20 +4319,6 @@ function bindTodayUpdateSheet(mask) {
 }
 function openTodayUpdateSheet(after) {
   if (document.getElementById("today-upd-mask")) return;
-  const rc = loadRemoteNotes.c;
-  if (after !== true && rc && rc.state === "pending" && ui.pendingFileVer === rc.ver) {
-    if (openTodayUpdateSheet.wait) return;
-    openTodayUpdateSheet.wait = true;
-    Promise.race([rc.p, new Promise(r => setTimeout(r, 2500))]).then(() => {
-      openTodayUpdateSheet.wait = false;
-      showTodayUpdateSheet(after);
-    });
-    return;
-  }
-  showTodayUpdateSheet(after);
-}
-function showTodayUpdateSheet(after) {
-  if (document.getElementById("today-upd-mask")) return;
   const bar = document.getElementById("apply-update");
   if (bar) bar.classList.add("is-away");
   document.body.insertAdjacentHTML("beforeend", todayUpdateSheetHtml(after === true));
@@ -4404,6 +4392,10 @@ function applyAppUpdate() {
   persistUi();
   try { markNotesVersionSeen(APP_VERSION); } catch {}
   if (ui.pendingFileVer) rememberDismiss(ui.pendingFileVer);
+  try {
+    const reg = window.__swReg;
+    if (reg && reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+  } catch {}
   const reloadNow = () => {
     try { localStorage.setItem("tj-last-ver", "pending-reload"); } catch {}
     hideUpdateUi();
@@ -4440,58 +4432,12 @@ async function pollRemoteBuild() {
 function scheduleAutoUpdate() {
   // 只留更新列。自動重載會和 Service Worker 互相觸發，畫面一直跳。
 }
-// 新版本更新重點：目前執行的程式只認得自己的 CHANGELOG，所以偵測到新版本時，
-// 直接從網路讀新版 app.js 開頭的 CHANGELOG（只讀到該段結束就中斷），讓「有新版本」視窗第一次就列出最新重點。
-let remoteNotesVer = "";
-function loadRemoteNotes(fileVer) {
-  const v = String(fileVer || "");
-  if (!v || EMBED_PAGE) return Promise.resolve(false);
-  const c = loadRemoteNotes.c;
-  if (c && c.ver === v && (c.state === "ok" || c.state === "pending" || Date.now() - c.at < 15000)) return c.p;
-  const rec = { ver: v, at: Date.now(), state: "pending", p: null };
-  loadRemoteNotes.c = rec;
-  rec.p = (async () => {
-    const ctl = typeof AbortController === "function" ? new AbortController() : null;
-    const res = await fetch("app.js?v=" + encodeURIComponent(v), { cache: "no-store", signal: ctl ? ctl.signal : undefined });
-    if (!res.ok) throw new Error("http " + res.status);
-    let txt = "", a = -1, b = -1;
-    if (res.body && res.body.getReader) {
-      const rd = res.body.getReader();
-      const dec = new TextDecoder();
-      for (;;) {
-        const r = await rd.read();
-        if (r.done) break;
-        txt += dec.decode(r.value, { stream: true });
-        a = txt.indexOf("const CHANGELOG = [");
-        if (a >= 0) { b = txt.indexOf("\n];", a); if (b >= 0) break; }
-        if (txt.length > 1500000) break;
-      }
-      try { if (ctl) ctl.abort(); } catch {}
-    } else txt = await res.text();
-    a = txt.indexOf("const CHANGELOG = [");
-    b = a >= 0 ? txt.indexOf("\n];", a) : -1;
-    if (a < 0 || b < 0) throw new Error("no changelog");
-    const stamp = (txt.match(/const APP_STAMP = "([^"]+)"/) || [])[1];
-    const edit = (txt.match(/const APP_EDIT_COUNT = (\d+)/) || [])[1];
-    if (!stamp || !edit) throw new Error("no version");
-    const newVer = stamp + "-" + edit;
-    const list = new Function("APP_VERSION", "return " + txt.slice(a + 18, b + 2))(newVer);
-    if (!Array.isArray(list) || !list.length || !list.every(n => n && Array.isArray(n.items))) throw new Error("bad changelog");
-    CHANGELOG.splice(0, CHANGELOG.length, ...list);
-    remoteNotesVer = newVer;
-    notesRows._cache = null;
-    rec.state = "ok";
-    return true;
-  })().catch(() => { rec.state = "fail"; return false; });
-  return rec.p;
-}
 function flagAppUpdate(fileVer) {
   if (typeof __reloading !== "undefined" && __reloading) return;
   const ver = String(fileVer || "");
   if (!isNewerBuild(ver)) return;
   if (isDismissed(ver)) return;
   ui.pendingFileVer = ver;
-  try { loadRemoteNotes(ver); } catch {}
   if (ui.updateNotes) return;
   ui.updateReady = true;
   try { ensureUpdateBar(); } catch {}
