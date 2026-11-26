@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-01-58";
-const APP_EDIT_COUNT = 2577;
+const APP_STAMP = "2026-11-27-02-00";
+const APP_EDIT_COUNT = 2578;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,11 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "後台第一次切換分頁、從房間編輯返回資產頁，都改成直接換上已準備好的頁面，不再整頁重畫，切換更快", head: "分頁更順", before: "changelog/2026-11-27-tabs-staff-before.svg", after: "changelog/2026-11-27-tabs-staff-after.svg", aud: ["管理員後台"] },
+    { text: "整體報表點選帳戶、銀行篩選，或在月曆圈選日期，只更新報表卡片和月曆，不再整頁重畫；切換分頁、返回資產頁也更快", head: "篩選更順", before: "changelog/2026-11-27-filter-boss-before.svg", after: "changelog/2026-11-27-filter-boss-after.svg", aud: ["負責人後台"] },
+    { text: "後台閒置時先在背景準備其他分頁（只在用分頁列或左右滑切換、或按返回時使用，資料一變就重建）；房間編輯按返回改為只換頁面內容；帳戶篩選、月曆圈選改為局部更新。4 倍降速實測：租客分頁第一次切換 244→90ms、行程 150→121ms，房間編輯返回 113→62ms（長任務），帳戶篩選 229→123ms、取消 188→77ms，月曆圈選 191→45ms", head: "分頁篩選更順", before: "changelog/2026-11-27-roomback-dev-before.svg", after: "changelog/2026-11-27-roomback-dev-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-01-58-2577", items: [
     { text: "開著 App 時出現「有新版本，點此更新」，點下去就直接更新，不必先看更新清單；更新完成後才會跳出「已更新到最新版本」和這次的更新重點，按「知道了」關閉。重新打開 App 若已自動更新，也會顯示一次", head: "點一下就更新", before: "changelog/2026-11-27-tap-update-before.svg", after: "changelog/2026-11-27-tap-update-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
   ] },
   { ver: "2026-11-27-01-49-2576", items: [
@@ -638,9 +643,9 @@ const CHANGELOG = [
     { text: "「租客登入」名單改成標示「首次登入」時間，並多一行「最近使用」；租客用已登入的手機直接打開、或從 Android 瀏覽器安裝後，也會正確記成已登入、已安裝；開發者自己預覽租客畫面留下的紀錄不再算進去", head: "租客登入更準", before: "changelog/2026-11-27-tenant-login-before.svg", after: "changelog/2026-11-27-tenant-login-after.svg", aud: ["開發者後台"] },
   ] },
   { ver: "2026-11-27-01-15-2574", items: [
-    { text: "點「周邊景點」打開和關閉視窗，不再重畫整個頁面，開關更順", head: "景點視窗更順", note: "無畫面變更", aud: ["套房租客"] },
-    { text: "辦理退租、強制退租確認、收回與恢復續約、個人戶選擇成員、發票預覽，這幾個視窗開關時不再重畫整個頁面，點下去立刻有反應", head: "彈窗更順", note: "無畫面變更", aud: ["管理員後台", "負責人後台"] },
-    { text: "共用的確認視窗改成只開關視窗本身（softSheetOpen/Close），不再整頁重建；發票預覽先開視窗再畫圖。4 倍降速實測（開／關，毫秒）：辦理退租 235→27／205→12，強制退租確認 215→24／190→16，收回續約 285→27／295→15，恢復續約 280→24／320→13，個人戶選擇 217→32／295→17，周邊景點關閉 124→24；發票預覽先出現視窗，再畫圖", head: "彈窗更順", note: "無畫面變更", aud: ["開發者後台"] }
+    { text: "點「周邊景點」打開和關閉視窗，不再重畫整個頁面，開關更順", head: "景點視窗更順", before: "changelog/2026-11-27-nearby-smooth-before.svg", after: "changelog/2026-11-27-nearby-smooth-after.svg", aud: ["套房租客"] },
+    { text: "辦理退租、強制退租確認、收回與恢復續約、個人戶選擇成員、發票預覽，這幾個視窗開關時不再重畫整個頁面，點下去立刻有反應", head: "彈窗更順", before: "changelog/2026-11-27-sheets-admin-before.svg", after: "changelog/2026-11-27-sheets-admin-after.svg", aud: ["管理員後台", "負責人後台"] },
+    { text: "共用的確認視窗改成只開關視窗本身（softSheetOpen/Close），不再整頁重建；發票預覽先開視窗再畫圖。4 倍降速實測（開／關，毫秒）：辦理退租 235→27／205→12，強制退租確認 215→24／190→16，收回續約 285→27／295→15，恢復續約 280→24／320→13，個人戶選擇 217→32／295→17，周邊景點關閉 124→24；發票預覽先出現視窗，再畫圖", head: "彈窗更順", before: "changelog/2026-11-27-sheets-dev-before.svg", after: "changelog/2026-11-27-sheets-dev-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-00-50-2573", items: [
     { text: "開發者在租客卡片向左滑會直接打開 App 內對話；已綁定 LINE 的租客，送出的文字和照片會同時傳到 App 和租客的 LINE，官方帳號其他管理員看不到；租客在 LINE 的回覆也會出現在這個對話裡", head: "私密LINE私訊", before: "changelog/2026-11-27-line-chat-before.svg", after: "changelog/2026-11-27-line-chat-after.svg", aud: ["開發者後台"] }
@@ -649,7 +654,7 @@ const CHANGELOG = [
     { text: "官方 LINE 私訊改為顯示綁定狀態與開啟聊天室按鈕，不再嵌入無法顯示的聊天視窗", head: "LINE私訊修復", before: "changelog/2026-11-27-line-dock-before.svg", after: "changelog/2026-11-27-line-dock-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-00-12-2571", items: [
-    { text: "LINE 綁定名單改為需要金鑰才能讀取，且不再把使用者編號傳到瀏覽器", head: "LINE名單加密", note: "無畫面變更", aud: ["開發者後台"] }
+    { text: "LINE 綁定名單改為需要金鑰才能讀取，且不再把使用者編號傳到瀏覽器", head: "LINE名單加密", before: "changelog/2026-11-27-line-binds-lock-before.svg", after: "changelog/2026-11-27-line-binds-lock-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-26-23-52-2570", items: [
     { text: "指定房號的公告或通知，現在會送到該房已綁定的官方 LINE", head: "房號LINE通知", note: "無畫面變更", aud: ["開發者後台"] }
@@ -18733,10 +18738,20 @@ function onTongjiePop(e) {
   if (!s) return;
   ui.navPop = true;
   try {
+    const prevRole = lastRenderRole;
+    const prevPage = lastRenderPage;
+    const prevAcct = ui.editAcct || "";
     applyNavSnap(s);
     ui.navKey = navKey(navSnap());
-    lastRenderRole = "";
-    lastRenderPage = "";
+    // Admin back between two plain pages: keep the shell and swap only the page body.
+    const softAdmin = prevRole === "admin" && ui.role === "admin" && prevPage && prevPage !== ui.page
+      && !splitOn() && !ui.devPreview && !ui.tenantLook && !ui.checkoutTenantId && (ui.editAcct || "") === prevAcct
+      && !!document.querySelector(".shell.admin-wide .admin-scroll > .admin-static");
+    if (softAdmin) window.__tabNavAt = Date.now();
+    else {
+      lastRenderRole = "";
+      lastRenderPage = "";
+    }
     ui.keepScroll = false;
     releasePickerForNav();
     render();
@@ -27382,8 +27397,10 @@ function bindReportBody() {
         ui.calDay = 1;
         ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
       }
-      ui.keepScroll = true;
-      render();
+      if (!refreshCalFilterLocal()) {
+        ui.keepScroll = true;
+        render();
+      }
       requestAnimationFrame(() => {
         const box = document.getElementById("month-cash");
         if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -27414,8 +27431,10 @@ function bindReportBody() {
         ui.calDay = 1;
         ui.calDayEnd = new Date(ui.calYear, ui.calMonth, 0).getDate();
       }
-      ui.keepScroll = true;
-      render();
+      if (!refreshCalFilterLocal()) {
+        ui.keepScroll = true;
+        render();
+      }
       requestAnimationFrame(() => {
         const box = document.getElementById("month-cash");
         if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -27575,6 +27594,37 @@ function swapCalMonth(dir) {
     grid.classList.add("swap");
   }
   bindCashCal();
+}
+// Account / bank filter changed: redraw only the report cards and the month calendar.
+function refreshCalFilterLocal() {
+  const card = document.getElementById("month-cash");
+  const body = document.getElementById("report-body");
+  if (!card || !body) return false;
+  try {
+    rememberBookForm();
+    const tmp = document.createElement("div");
+    tmp.innerHTML = monthCashHtml();
+    const next = tmp.firstElementChild;
+    if (!next || next.id !== "month-cash") return false;
+    const bodyHtml = overallReportBodyHtml();
+    body.innerHTML = bodyHtml;
+    card.replaceWith(next);
+    bindReportBody();
+    bindCashCal();
+    markAdminPaneFresh();
+    try { persistUi(); } catch {}
+    return true;
+  } catch (err) {
+    try { console.error(err); } catch {}
+    return false;
+  }
+}
+function markAdminPaneFresh() {
+  try {
+    const slot = document.querySelector(".admin-scroll > .admin-static");
+    const cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
+    if (slot && slot.dataset.page === cur && slot.dataset.bound === "1") slot.dataset.view = adminPaneKey();
+  } catch {}
 }
 function refreshCalSurface() {
   rememberBookForm();
@@ -32532,12 +32582,13 @@ function tryAdminFastSwap() {
   const sitting = sc.querySelector(":scope > .admin-static");
   if (!sitting || !sitting.dataset.page || sitting.dataset.page === pageId) return false;
   const saved = adminPaneStore.get(pageId);
-  if (!saved || saved.dataset.view !== adminPaneKey() || saved.dataset.bound !== "1") return false;
+  if (!saved || saved.dataset.view !== adminPaneKey() || (saved.dataset.bound !== "1" && !(saved.dataset.bound === "pre" && prewarmUsable()))) return false;
   sitting.dataset.scroll = String(sc.scrollTop || 0);
   parkAdminPane(sitting);
   saved.hidden = false;
   sc.appendChild(saved);
   adminPaneStore.delete(pageId);
+  if (saved.dataset.bound === "pre") { saved.dataset.bound = "1"; scheduleAdminBind(); try { restoreComposeDraft(); } catch {} }
   sc.scrollTop = Number(saved.dataset.scroll || 0);
   lastRenderRole = ui.role;
   lastRenderPage = ui.page;
@@ -32546,8 +32597,10 @@ function tryAdminFastSwap() {
   return true;
 }
 function renderNow() {
+  try { queueAdminPrewarm(); } catch {}
   if (tryAdminFastSwap()) {
     hideSplash();
+    try { syncHistory(); } catch {}
     return;
   }
   if (!appBootReady) return;
@@ -32805,10 +32858,11 @@ function paintApp() {
       let slot = sc.querySelector(':scope > .admin-static');
       if (!slot || slot.dataset.page !== pageId) {
         const saved = adminPaneStore.get(pageId);
-        if (saved && saved.dataset.view === viewKey && saved.dataset.bound === "1") {
+        if (saved && saved.dataset.view === viewKey && !ui.adminJump && (saved.dataset.bound === "1" || (saved.dataset.bound === "pre" && prewarmUsable()))) {
           saved.hidden = false;
           sc.appendChild(saved);
           adminPaneStore.delete(pageId);
+          if (saved.dataset.bound === "pre") { saved.dataset.bound = "1"; scheduleAdminBind(); try { restoreComposeDraft(); } catch {} }
           sc.scrollTop = ui.keepScroll ? oldAdmin : Number(saved.dataset.scroll || 0);
           ui.adminJump = "";
           lastRenderRole = ui.role;
@@ -32865,6 +32919,15 @@ function paintApp() {
     }
     root.innerHTML = (typeof translateMarkup === "function" ? translateMarkup : s => s)(`${bar}<div class="shell admin-wide" data-staff-look="${isStaffLook() ? escapeHtml(normAdminName(ui.adminName) || "1") : ""}">${toastHtml}${adminView()}</div>${sheet}${ver}${guide}${theme}`);
     if (typeof applyUiLang === "function") applyUiLang(root);
+    try {
+      const st = root.querySelector(".admin-scroll > .admin-static");
+      if (st && !splitOn()) {
+        st.dataset.page = ui.page === "home" || !ui.page ? "dash" : ui.page;
+        st.dataset.view = adminPaneKey();
+        st.dataset.paint = "";
+        st.dataset.bound = "1";
+      }
+    } catch {}
     ui.keepScroll = false;
     scheduleAdminBind(true);
     restoreComposeDraft();
@@ -36615,6 +36678,7 @@ function bindAdminPageSwipe() {
     }
     ui.page = nextPage;
     ui.keepScroll = false;
+    window.__tabNavAt = Date.now();
     render();
   }, { passive: true });
 }
@@ -36646,6 +36710,12 @@ function updateTabBadges() {
 const adminPaneStore = new Map();
 function parkAdminPane(node) {
   if (!node || !node.dataset || !node.dataset.page) return;
+  // Detail pages depend on which room / tenant is open: never keep a parked copy of them.
+  if (/^(room-edit|tenant-sheet|invoice)$/.test(node.dataset.page)) {
+    adminPaneStore.delete(node.dataset.page);
+    if (node.parentNode) node.remove();
+    return;
+  }
   adminPaneStore.set(node.dataset.page, node);
   if (node.parentNode) node.remove();
   while (adminPaneStore.size > 12) {
@@ -36654,10 +36724,70 @@ function parkAdminPane(node) {
     adminPaneStore.delete(first);
   }
 }
+// Build the other admin tabs in idle time so the first tap on a tab is a quick swap.
+// Panes are built detached (never in the document) and marked bound="pre"; they get bound
+// when swapped in. Any data or view change alters adminPaneKey() and the pane is rebuilt.
+function queueAdminPrewarm() {
+  if (queueAdminPrewarm.t || !ui || ui.role !== "admin" || EMBED_PAGE) return;
+  const idle = window.requestIdleCallback ? (fn => window.requestIdleCallback(fn, { timeout: 1500 })) : (fn => setTimeout(fn, 60));
+  let waits = 0;
+  const step = () => {
+    let r = 0;
+    try { r = prewarmAdminPane(); } catch (err) { try { console.error(err); } catch {} }
+    if (r === 1) queueAdminPrewarm.t = setTimeout(() => idle(step), 150);
+    else if (r === -1 && ++waits < 20) queueAdminPrewarm.t = setTimeout(() => idle(step), 2000);
+    else queueAdminPrewarm.t = 0;
+  };
+  queueAdminPrewarm.t = setTimeout(() => idle(step), 1500);
+}
+function prewarmUsable() {
+  return Date.now() - (window.__tabNavAt || 0) < 1500 && !ui.adminJump;
+}
+function prewarmAdminPane() {
+  if (!ui || ui.role !== "admin" || EMBED_PAGE) return 0;
+  if (!appBootReady || document.hidden) return -1;
+  if (render.frame || render.busy || render.need || window.__splitDragging || splitOn()) return -1;
+  if (lastRenderRole !== "admin" || lastRenderPage !== ui.page) return -1;
+  if (ui.toast || ui.installSheet || ui.personPick || ui.nearbyOpen || ui.notifyGuide || ui.aiAvatarSheet || ui.checkoutTenantId || ui.vacateConfirmId || ui.undoRenewId || ui.restoreRenewId || ui.adminJump) return -1;
+  if (document.querySelector(".install-mask, #update-mask, #vacate-mask, #nearby-mask")) return -1;
+  const sc = document.querySelector(".admin-scroll");
+  if (!sc || !sc.querySelector(":scope > .admin-static")) return -1;
+  const cur = ui.page === "home" || !ui.page ? "dash" : ui.page;
+  const ids = adminPages().map(x => x[0]).filter(id => id !== cur && id !== "history" && id !== "logs");
+  const keep = ui.page;
+  for (const id of ids) {
+    let key = "";
+    ui.page = id;
+    try { key = adminPaneKey(); } finally { ui.page = keep; }
+    const have = adminPaneStore.get(id);
+    if (have && have.dataset.view === key) continue;
+    let html = "";
+    const aiKeep = id === "ai" ? [ui.aiOpen, ui.workCalYear, ui.workCalMonth, ui.workCalDay] : null;
+    ui.page = id;
+    if (aiKeep) { ui.aiOpen = false; ui.workCalYear = 0; ui.workCalMonth = 0; ui.workCalDay = 0; }
+    try { html = adminBody(); key = adminPaneKey(); } finally {
+      ui.page = keep;
+      if (aiKeep) { ui.aiOpen = aiKeep[0]; ui.workCalYear = aiKeep[1]; ui.workCalMonth = aiKeep[2]; ui.workCalDay = aiKeep[3]; }
+    }
+    const slot = document.createElement("div");
+    slot.className = "admin-static";
+    slot.dataset.page = id;
+    slot.dataset.view = key;
+    slot.dataset.paint = "";
+    slot.dataset.bound = "pre";
+    slot.dataset.scroll = "0";
+    slot.innerHTML = html;
+    if (have) adminPaneStore.delete(id);
+    adminPaneStore.set(id, slot);
+    return 1;
+  }
+  return 0;
+}
 function adminPaneKey() {
   const page = ui.page === "home" || !ui.page ? "dash" : ui.page;
   return [
     page,
+    (ui.adminCode || "") + ":" + normAdminName(ui.adminName) + ":" + (isStaffLook() ? 1 : 0),
     state && state.updatedAt || 0,
     ui.dashView || "",
     ui.reportView || "",
@@ -49331,6 +49461,7 @@ function bindAdmin() {
       ui.page = id;
       ui.keepScroll = false;
       ui.adminNavAt = Date.now();
+      window.__tabNavAt = Date.now();
       if (typeof pullCloud === "function" && pullCloud.ctrl) { try { pullCloud.ctrl.abort(); } catch {} }
       document.querySelectorAll(".tabs .tab").forEach(t => {
         t.classList.toggle("on", t.dataset.admin === id);
@@ -51662,7 +51793,7 @@ function bindCashCal() {
     ui.calFilter = "";
     ui.calBank = "";
     ui.calFirm = "";
-    stay();
+    if (!refreshCalFilterLocal()) stay();
   };
   const allMonth = document.getElementById("cal-month-all");
   if (allMonth) {
@@ -51680,7 +51811,7 @@ function bindCashCal() {
       ui.calDay = 1;
       ui.calDayEnd = last;
     }
-    setTimeout(stay, 80);
+    setTimeout(() => { refreshCalSurface(); markAdminPaneFresh(); }, 80);
     };
   }
   document.querySelectorAll("[data-cal-kind]").forEach(btn => {
@@ -51770,7 +51901,8 @@ function bindCashCal() {
       ui.calDay = Math.min(a, b);
       ui.calDayEnd = Math.max(a, b);
       if (ui.calDayEnd === ui.calDay) ui.calDayEnd = 0;
-      stay();
+      refreshCalSurface();
+      markAdminPaneFresh();
     };
     grid.onpointerup = endDrag;
     grid.onpointercancel = endDrag;
