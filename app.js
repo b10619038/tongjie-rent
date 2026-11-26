@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-20-06";
-const APP_EDIT_COUNT = 2558;
+const APP_STAMP = "2026-11-26-21-00";
+const APP_EDIT_COUNT = 2560;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -614,8 +614,34 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["設定裡可以依日期查看更新內容", "退款銀行代碼可選，租客和後台互相同步"] },
-  { ver: "2026-11-06-14-45", items: ["調色盤新增焦糖，奶油風格改為奶油"] },
+  { ver: APP_VERSION, items: [
+    { text: "設定裡可以依日期查看更新內容，每項附上更新前、更新後的畫面", before: "changelog/2026-11-26-update-notes-before.svg", after: "changelog/2026-11-26-update-notes-after.svg" },
+    "管理員設定也能開啟更新內容"
+  ] },
+  { ver: "2026-11-26-11-13", items: ["更新時的房子標誌改用柔和淡入", "iPhone 開啟畫面的房子改為置中"] },
+  { ver: "2026-11-26-11-05", items: ["租客在線上時，大頭貼外圍會出現綠色圈圈"] },
+  { ver: "2026-11-26-10-39", items: ["管理員新增行程時，頁面捲動也不會把表單收起來"] },
+  { ver: "2026-11-26-10-25", items: ["手機通知不再顯示信封數字標記"] },
+  { ver: "2026-11-26-10-23", items: ["管理員不再收到已過期的工作提醒和年度水費通知"] },
+  { ver: "2026-11-25-23-26", items: ["開發者預覽租客時，不會把該租客顯示成在線上"] },
+  { ver: "2026-11-25-22-27", items: ["新租客的第一張發票改以租約起始日開立，不再算到前一個月"] },
+  { ver: "2026-11-25-22-04", items: ["已存的照片和影片立即顯示，離線也看得到"] },
+  { ver: "2026-11-25-22-01", items: ["管理員後台標題開啟時由左滑入，每位管理員的通知開關分開記錄"] },
+  { ver: "2026-11-25-21-36", items: ["開發者可以替所有租客收合已發布的公告"] },
+  { ver: "2026-11-25-21-25", items: ["登出文字改成離開圖示，並放大好按"] },
+  { ver: "2026-11-25-21-23", items: ["按鈕點擊更靈敏，較重的儲存延後執行"] },
+  { ver: "2026-11-25-20-26", items: ["管理員發公告時，可選擇送給套房、店面或廠房租客"] },
+  { ver: "2026-11-25-20-06", items: ["發票副本標示為「第二聯 收執聯」"] },
+  { ver: "2026-11-25-19-48", items: ["後台標題拿掉公司名稱，改在標題旁顯示登入者姓名"] },
+  { ver: "2026-11-25-17-37", items: ["開啟畫面的房子改用 App 圖示的綠色房子，縮小後停留約一秒再淡入"] },
+  { ver: "2026-11-25-17-34", items: ["管理員快速連點時畫面只繪製一次，不再卡頓"] },
+  { ver: "2026-11-25-16-42-2509", items: [
+    { text: "退款銀行代碼可選，租客和後台互相同步" },
+    "後台入口 QR 直接畫在圖卡內，開啟立即顯示"
+  ] },
+  { ver: "2026-11-06-14-45", items: [
+    { text: "調色盤新增焦糖，奶油風格改為奶油", after: "changelog/2026-11-06-caramel-after.svg" }
+  ] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
   { ver: "2026-10-20-21-05-2088", items: ["模型圖從點到的廠房小按鈕放大出來"] },
@@ -3192,11 +3218,13 @@ function notesRows() {
     if (!day) return;
     const items = (n.items || []).slice();
     if (all && n.devItems) items.push(...n.devItems);
-    items.forEach(text => {
-      const line = String(text || "").trim();
+    items.forEach(item => {
+      const line = typeof item === "string" ? item.trim() : String((item && item.text) || "").trim();
       if (!line) return;
       if (!all && !notesForTenant(line)) return;
-      rows.push({ day, text: line });
+      const before = item && typeof item === "object" ? String(item.before || "").trim() : "";
+      const after = item && typeof item === "object" ? String(item.after || "").trim() : "";
+      rows.push({ day, text: line, before, after });
     });
   });
   return rows;
@@ -3237,6 +3265,26 @@ function notesCardHtml() {
     <span class="note-chev" aria-hidden="true">›</span>
   </button>`;
 }
+function notesShotHtml(row) {
+  const before = row && row.before ? String(row.before) : "";
+  const after = row && row.after ? String(row.after) : "";
+  if (!before && !after) return "";
+  function cell(src, label, empty) {
+    const cap = `<div class="label">${label}</div>`;
+    if (src) {
+      return `<div>${cap}<button type="button" class="note-shot-btn" data-note-full="${escapeHtml(src)}" data-note-full-label="${escapeHtml(label)}" aria-label="放大${label}畫面"><img class="note-shot-img" src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy" decoding="async"></button></div>`;
+    }
+    return `<div>${cap}<p class="note-shot-empty">${escapeHtml(empty)}</p></div>`;
+  }
+  return `<div class="note-pair">${cell(before, "更新前", "無更新前畫面")}${cell(after, "更新後", "無更新後畫面")}</div>`;
+}
+function notesLightboxHtml() {
+  return `<div class="note-lightbox" id="note-lightbox" hidden>
+    <p class="note-lightbox-label" id="note-lightbox-label"></p>
+    <img id="note-lightbox-img" alt="">
+    <button type="button" class="ghost" id="note-lightbox-close">關閉</button>
+  </div>`;
+}
 function notesBrowserHtml() {
   const level = ui.noteLevel || "";
   if (!level) return "";
@@ -3261,25 +3309,21 @@ function notesBrowserHtml() {
     const row = rows[ui.noteIdx] || null;
     if (!row) body = `<p class="small">找不到這則說明</p>`;
     else {
-      const pair = notesPair(row.text);
       body = `<article class="note-detail">
         <h2>${escapeHtml(row.text)}</h2>
         <p class="small">${escapeHtml(notesDayLabel(row.day))}</p>
-        <p>${escapeHtml(row.text)}。這項已經在現在的版本裡。下面左邊是調整前，右邊是調整後，方便對一下。</p>
-        <div class="note-pair">
-          <div><div class="label">更新前</div><div class="note-shot before"><i></i><b>更新前</b><span>${escapeHtml(pair.before)}</span></div></div>
-          <div><div class="label">更新後</div><div class="note-shot after"><i></i><b>更新後</b><span>${escapeHtml(pair.after)}</span></div></div>
-        </div>
+        <p>${escapeHtml(row.text)}</p>
+        ${notesShotHtml(row)}
       </article>`;
     }
   }
   return `<div class="note-screen" id="note-screen">
     <button type="button" class="back" id="note-back">← 返回</button>
     <div class="note-list">${body}</div>
-  </div>`;
+  </div>${notesLightboxHtml()}`;
 }
 function bindNotesBrowser() {
-  document.querySelectorAll("#note-screen").forEach(el => {
+  document.querySelectorAll("#note-screen, #note-lightbox").forEach(el => {
     if (el.parentNode === document.body) el.remove();
   });
   const open = document.getElementById("note-open");
@@ -3327,6 +3371,30 @@ function bindNotesBrowser() {
     };
     back.addEventListener("click", go, true);
   }
+  document.querySelectorAll("[data-note-full]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const src = btn.getAttribute("data-note-full") || "";
+      const label = btn.getAttribute("data-note-full-label") || "";
+      const lb = document.getElementById("note-lightbox");
+      const img = document.getElementById("note-lightbox-img");
+      const cap = document.getElementById("note-lightbox-label");
+      if (!lb || !img || !src) return;
+      img.src = src;
+      img.alt = label;
+      if (cap) cap.textContent = label;
+      lb.hidden = false;
+    };
+  });
+  const lb = document.getElementById("note-lightbox");
+  const closeLb = () => { if (lb) lb.hidden = true; };
+  if (lb && lb.dataset.bound !== "1") {
+    lb.dataset.bound = "1";
+    lb.addEventListener("click", e => { if (e.target === lb) closeLb(); });
+    const closeBtn = document.getElementById("note-lightbox-close");
+    if (closeBtn) closeBtn.onclick = closeLb;
+  }
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -3344,7 +3412,7 @@ function unseenChangelog() {
   const dev = isDeveloper();
   const take = (raw) => raw.map(n => {
     if (n.onlyDev && !dev) return null;
-    const items = (n.items || []).slice();
+    const items = (n.items || []).map(i => typeof i === "string" ? i : String((i && i.text) || "")).filter(Boolean);
     if (dev && n.devItems) items.push(...n.devItems);
     return items.length ? { ver: n.ver, items } : null;
   }).filter(Boolean);
@@ -36871,6 +36939,9 @@ function adminSettings() {
       ${installed ? `<p class="small" style="margin-top:8px">請用桌面上的圖示打開，通知才會比較穩。</p>` : `<button type="button" class="ghost" id="set-install" style="margin-top:10px">安裝到主畫面</button>`}
     </div>
     ${lookSettingsHtml()}
+    ${typeof langCardHtml === "function" ? langCardHtml() : ""}
+    ${notesCardHtml()}
+    ${notesBrowserHtml()}
     <div class="card card-body clickable" data-page="howto">
       <div class="label">操作教學</div>
       <p class="small" style="margin-top:8px">點開看各頁用法。這份教學會依你現在的身分顯示。</p>
