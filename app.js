@@ -541,17 +541,11 @@ function canPilotTenant() {
   const back = typeof ui !== "undefined" && ui && ui.lookBack;
   return !!(isTenantLook() && back && back.adminCode === "1240");
 }
-function ringPreviewOn(id) {
-  const t = (state.tenants || []).find(x => x && x.id === id);
-  if (!t) return false;
-  const r = (state.rooms || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id));
-  return !!(r && String(r.no) === "7651");
-}
 function tenantAvatarLookHtml(t, ids) {
   const face = avatarHtml(t, "sm");
   if (!t || typeof isDeveloper !== "function" || !isDeveloper()) return face;
   const list = (Array.isArray(ids) && ids.length ? ids : [t.id]).filter(Boolean);
-  const on = list.some(id => (typeof isTenantOnline === "function" && isTenantOnline(id)) || ringPreviewOn(id));
+  const on = list.some(id => typeof isTenantOnline === "function" && isTenantOnline(id));
   const lamp = `<i class="live-lamp${on ? " on" : ""}" data-live-lamp="${escapeHtml(list.join(","))}" aria-hidden="true"></i>`;
   return `<button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="以這位租客操作 App（開發者）"><span class="face-live">${lamp}${face}</span></button>`;
 }
