@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-11-11";
-const APP_EDIT_COUNT = 2555;
+const APP_STAMP = "2026-11-26-11-12";
+const APP_EDIT_COUNT = 2556;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -51082,36 +51082,21 @@ function hideSplash() {
   const house = el.querySelector(".splash-house");
   const leave = () => {
     if (!el.parentNode) return;
-    const t0 = performance.now();
-    const frame = (now) => {
-      const p = Math.min(1, (now - t0) / 360);
-      el.style.opacity = String(1 - p);
-      if (p < 1) requestAnimationFrame(frame);
-      else {
-        if (el.parentNode) el.remove();
-        try { playAdminTitleSlide(); } catch {}
-      }
+    el.classList.add("leave");
+    let gone = false;
+    const done = () => {
+      if (gone || !el.parentNode) return;
+      gone = true;
+      el.remove();
+      try { playAdminTitleSlide(); } catch {}
     };
-    requestAnimationFrame(frame);
+    el.addEventListener("transitionend", e => { if (e.target === el) done(); });
+    setTimeout(done, 520);
   };
-  const fadeHouse = () => {
-    if (!house) { setTimeout(leave, 2000); return; }
-    try { house.getAnimations().forEach(a => a.cancel()); } catch {}
-    house.style.transition = "none";
-    house.style.opacity = "0";
-    house.style.transform = "translateY(14px) scale(0.9)";
-    const t0 = performance.now();
-    const frame = (now) => {
-      const p = Math.min(1, (now - t0) / 1000);
-      const e = 1 - Math.pow(1 - p, 3);
-      house.style.opacity = String(e);
-      house.style.transform = "translateY(" + (14 * (1 - e)).toFixed(2) + "px) scale(" + (0.9 + 0.1 * e).toFixed(3) + ")";
-      if (p < 1) requestAnimationFrame(frame);
-      else setTimeout(leave, 1000);
-    };
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(() => requestAnimationFrame(fadeHouse));
+  const hold = () => setTimeout(leave, 1000);
+  const anims = house && house.getAnimations ? house.getAnimations() : [];
+  if (anims.length) Promise.all(anims.map(a => a.finished.catch(() => {}))).then(hold);
+  else hold();
 }
 let appBootReady = false;
 let lookHold = null;
