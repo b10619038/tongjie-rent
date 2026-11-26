@@ -1,4 +1,4 @@
-const CACHE = "tongjie-app-v2451";
+const CACHE = "tongjie-app-v2452";
 const MEDIA = "tongjie-media-v1";
 const BUILD = "20261003-1398";
 const FILES = ["/", "/index.html", "/app.css", "/app.js", "/html2canvas.min.js", "/fonts/iansui-tc.woff2", "/fonts/iansui-latin.woff2", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/notify-badge.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png", "/images/splash-house.png"];
@@ -139,6 +139,11 @@ async function pingBuild() {
 }
 setInterval(pingBuild, 4000);
 pingBuild();
+function notifyAssetUrl(path) {
+  const p = String(path || "");
+  if (p.indexOf("notify-badge") >= 0) return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAE+0lEQVR42u2cy4scVRTGv9Nd7SRGBxJ1o3+Ca0FwIYwPkrQQ/AtcaBITEV8QdCGCWzfiTgSXbgOSGIMbl4IrEXHjSneCGsceiNNd9bmYc8Odsqr61uNWP+r8oOj0napbp77vvuumAcMwDMMwDMMwDMMwDMMwDMMwDMMwjGjIOgZFMiguEeGSPBL9molIanaHiT9ahzwGWQNIjkUkJZkAuB8AS2K8ly4i+yTF1QYvjzMALgHYAfCdiNxWY1hVc4Zc8hP9fILkjyTv6PG3d+xr2l/6fepE18+Jfk5J/sHjfEkyITnapBrSl/hOuLMqbghXKsRf6DmHerjvN0iOzYRi8X3hFiSz3JGSnOvfr5WIf16vTfXwOTQTysWvEo6eCST5rt/R1sjDTChp859RYbIK8V36qw1KvplQUfL3SM4CxX8pZ1wT8c0ET7indFTDCvFdn3Cxofh+HmaCJ9w5kgeB4r/WQnxW3GNYJhQIx4Bm54OGbb5L2yf5rf57PlgTPOGea9DhJg3Ed0PWs3rNrZzYwzHBE+7ZAPFdzbjcouSnes69WbIeNwZnQk780NHOpZYlf0HyvLvWCTk4E3Iz3Hlgh3u1S/H91dFBmVCwvBDS7LwdQ/zBmeAJuBcgvkt/s4M2v1T8wZiQm2T9Eyj+1T7E33oTPOGeDpjhuj7hlZjNzmBMyAl3N3CS9c4qxN86EzwBpzXa/Pe9Mbr0Lf7WmOC129OAdRmX/nru2mQV4ndkgoTu4Ighvnsh8qS26SElP7+wFmpgFPE7MGFHr5NVGCAkT5D8yXuNWCX+y3nxNY+9JQZGFb+hCf/q56d+QVpFu3+lYqWxdD0/1+l+lHuo3sVvYIIrLDOSu65ANrln007E3exRHO3Rye+zcWljAG+IyGckExFZeOe4nWoPe+fm8xjp5wUR+YrkRETmsQwQkcy79wUANwFMvFjz2qUtNGxlgGOO/2+comfSNRH5RDdLLUry2CnJgwAOVPybscWvMOG2J3YR2SoNkIr0GYCPtWrWDTLT2L5X8cd9iJ8zYaz7Sb9AxB2EMcexBHAqYBugLGuXdathsAhueFh01OsSKABOxjQ7iVyYspaF4EBEMn/vZ2AJZkc1gSTnm2zAKobHO9qvFG3szURktk7xJlskvOuk3wLwHoCF93zOjDskHxeRWd1aZQaEcxLAbkkNSCL3e2vVCa+KTMWfe8NZP22t2MYa4EZWkqsBgjX8L1m2R94MMAMMM2C4xO6E3fRfSJb9rfcOuiKmovNGm2zAXCc7RU+a6gQq9SZLfVAV07HzNL6NXYoQAKf1JYwUPLBLu8/73sfwtComn7EWktObZoAT8gEAPweUtFPeA8cUvk5MfgE5ETO+2DXgwTWcoK1VTLH7ANYonU2vjxFTnRhXasAocuAToPb6vvQoZobIAi7jLopfynfxYATwu45E6rS/i55GVan2Ka0MbXSxN35/CMCvOFoCPuywdLlRyvMi8o37BZQlMbkdFI8B+AVHL2UOIzYfEwC3ALwIYNH77xF5u9peKPhlkrYsSH6YM7tOTFOSfzIuX5Pc1XfNo15rgF8T9L3pGQCXvTF921p5XUR+CCn5FTE9AuCi60c67MAFwG8i8rl/v5UNo2LtEG6Tb1+7lrtYSpEOA+lySJt6G6TWJaZj2VdsNDMMwzAMwzAMwzAMwzAMwzAMwzAMwzAMwzAMY+D8B67LMS3VW4U4AAAAAElFTkSuQmCC";
+  try { return new URL(p, self.registration.scope).href; } catch { return p; }
+}
 self.addEventListener("push", event => {
   event.waitUntil((async () => {
     let data = { title: "統潔＆信潔開發", body: "" };
@@ -149,10 +154,12 @@ self.addEventListener("push", event => {
     }
     const title = data.title || "統潔＆信潔開發";
     const body = data.body || "";
+    const iconUrl = (data.icon && String(data.icon).trim()) || notifyAssetUrl("/icon-192.png");
+    const badgeUrl = (data.badge && String(data.badge).trim()) || notifyAssetUrl("/images/notify-badge.png");
     await self.registration.showNotification(title, {
       body,
-      icon: "/icon-192.png",
-      badge: "/images/notify-badge.png",
+      icon: iconUrl,
+      badge: badgeUrl,
       lang: "zh-Hant",
       subtitle: data.subtitle || "統潔開發",
       vibrate: [200, 80, 200],

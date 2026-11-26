@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-05";
-const APP_EDIT_COUNT = 2582;
+const APP_STAMP = "2026-11-27-03-15";
+const APP_EDIT_COUNT = 2583;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "Android 手機通知右邊改顯示統潔房子圖示，不再出現網址開頭的灰色 T", head: "通知顯示統潔圖示", before: "changelog/2026-11-27-notify-icon-before.svg", after: "changelog/2026-11-27-notify-icon-after.svg", aud: ["套房租客", "開發者後台"] }
+  ] },
+  { ver: "2026-11-27-03-05-2582", items: [
     { text: "每天早上 9 點自動檢查：過了繳費日還沒入帳的房客，會收到一則租金繳費通知（已繳的不會收到）；合約到期前 100 天會收到一則續約確認。App 沒開也會送", head: "每天提醒繳租", before: "changelog/2026-11-27-notify-rent-before.svg", after: "changelog/2026-11-27-notify-rent-after.svg", aud: ["套房租客"] },
     { text: "iPhone 已安裝 App 的房客，現在收得到報修進度、公告、聊天等手機通知（之前會被 Apple 拒收）", head: "iPhone 收得到通知", before: "changelog/2026-11-27-notify-ios-before.svg", after: "changelog/2026-11-27-notify-ios-after.svg", aud: ["套房租客"] },
     { text: "推播訂閱名單整理：不再保存未登入的訂閱，同一台裝置只留一筆，每間房留最新 3 筆、每位管理員留 8 筆，上限 300 筆，房客的訂閱不會再被擠掉", head: "通知名單整理", before: "changelog/2026-11-27-notify-subs-before.svg", after: "changelog/2026-11-27-notify-subs-after.svg", aud: ["開發者後台"] },
@@ -4497,8 +4500,8 @@ function promptAppUpdate(reg) {
   const opts = {
     body: "點通知可查看更新了哪些內容",
     tag: "tongjie-update",
-    badge: "/images/notify-badge.png",
-    icon: "/icon-192.png",
+    badge: notifyAssetUrl("/images/notify-badge.png"),
+    icon: notifyAssetUrl("/icon-192.png"),
     lang: "zh-Hant",
     subtitle: "統潔開發",
     renotify: false
@@ -4595,7 +4598,8 @@ function askTongjieNotify() {
             lang: "zh-Hant",
             tag: "notify-test",
             renotify: true,
-            icon: "/icon-192.png"
+            icon: notifyAssetUrl("/icon-192.png"),
+            badge: notifyAssetUrl("/images/notify-badge.png")
           });
         } catch {}
         try { showOsBanner("統潔開發", "通知已開啟，之後重要訊息會顯示在螢幕上方", "notify-on"); } catch {}
@@ -22374,6 +22378,11 @@ function shouldShowLocalBanner(target) {
   const room = typeof myRoom === "function" ? myRoom() : null;
   return !!(ui.role === "tenant" && room && String(room.no) === String(target));
 }
+function notifyAssetUrl(path) {
+  const p = String(path || "");
+  if (p.indexOf("notify-badge") >= 0) return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAE+0lEQVR42u2cy4scVRTGv9Nd7SRGBxJ1o3+Ca0FwIYwPkrQQ/AtcaBITEV8QdCGCWzfiTgSXbgOSGIMbl4IrEXHjSneCGsceiNNd9bmYc8Odsqr61uNWP+r8oOj0napbp77vvuumAcMwDMMwDMMwDMMwDMMwDMMwDMMwjGjIOgZFMiguEeGSPBL9molIanaHiT9ahzwGWQNIjkUkJZkAuB8AS2K8ly4i+yTF1QYvjzMALgHYAfCdiNxWY1hVc4Zc8hP9fILkjyTv6PG3d+xr2l/6fepE18+Jfk5J/sHjfEkyITnapBrSl/hOuLMqbghXKsRf6DmHerjvN0iOzYRi8X3hFiSz3JGSnOvfr5WIf16vTfXwOTQTysWvEo6eCST5rt/R1sjDTChp859RYbIK8V36qw1KvplQUfL3SM4CxX8pZ1wT8c0ET7indFTDCvFdn3Cxofh+HmaCJ9w5kgeB4r/WQnxW3GNYJhQIx4Bm54OGbb5L2yf5rf57PlgTPOGea9DhJg3Ed0PWs3rNrZzYwzHBE+7ZAPFdzbjcouSnes69WbIeNwZnQk780NHOpZYlf0HyvLvWCTk4E3Iz3Hlgh3u1S/H91dFBmVCwvBDS7LwdQ/zBmeAJuBcgvkt/s4M2v1T8wZiQm2T9Eyj+1T7E33oTPOGeDpjhuj7hlZjNzmBMyAl3N3CS9c4qxN86EzwBpzXa/Pe9Mbr0Lf7WmOC129OAdRmX/nru2mQV4ndkgoTu4Ighvnsh8qS26SElP7+wFmpgFPE7MGFHr5NVGCAkT5D8yXuNWCX+y3nxNY+9JQZGFb+hCf/q56d+QVpFu3+lYqWxdD0/1+l+lHuo3sVvYIIrLDOSu65ANrln007E3exRHO3Rye+zcWljAG+IyGckExFZeOe4nWoPe+fm8xjp5wUR+YrkRETmsQwQkcy79wUANwFMvFjz2qUtNGxlgGOO/2+comfSNRH5RDdLLUry2CnJgwAOVPybscWvMOG2J3YR2SoNkIr0GYCPtWrWDTLT2L5X8cd9iJ8zYaz7Sb9AxB2EMcexBHAqYBugLGuXdathsAhueFh01OsSKABOxjQ7iVyYspaF4EBEMn/vZ2AJZkc1gSTnm2zAKobHO9qvFG3szURktk7xJlskvOuk3wLwHoCF93zOjDskHxeRWd1aZQaEcxLAbkkNSCL3e2vVCa+KTMWfe8NZP22t2MYa4EZWkqsBgjX8L1m2R94MMAMMM2C4xO6E3fRfSJb9rfcOuiKmovNGm2zAXCc7RU+a6gQq9SZLfVAV07HzNL6NXYoQAKf1JYwUPLBLu8/73sfwtComn7EWktObZoAT8gEAPweUtFPeA8cUvk5MfgE5ETO+2DXgwTWcoK1VTLH7ANYonU2vjxFTnRhXasAocuAToPb6vvQoZobIAi7jLopfynfxYATwu45E6rS/i55GVan2Ka0MbXSxN35/CMCvOFoCPuywdLlRyvMi8o37BZQlMbkdFI8B+AVHL2UOIzYfEwC3ALwIYNH77xF5u9peKPhlkrYsSH6YM7tOTFOSfzIuX5Pc1XfNo15rgF8T9L3pGQCXvTF921p5XUR+CCn5FTE9AuCi60c67MAFwG8i8rl/v5UNo2LtEG6Tb1+7lrtYSpEOA+lySJt6G6TWJaZj2VdsNDMMwzAMwzAMwzAMwzAMwzAMwzAMwzAMwzAMY+D8B67LMS3VW4U4AAAAAElFTkSuQmCC";
+  try { return new URL(p, location.origin).href; } catch { return p; }
+}
 function canOsNotify() {
   if (!("Notification" in window)) return false;
   if (Notification.permission !== "granted") return false;
@@ -22393,7 +22402,8 @@ function showOsBanner(title, body, tag, extra) {
   const tid = String((extra && extra.tid) || "");
   const opts = {
     body: text,
-    badge: "/images/notify-badge.png",
+    icon: notifyAssetUrl("/icon-192.png"),
+    badge: notifyAssetUrl("/images/notify-badge.png"),
     lang: "zh-Hant",
     subtitle: "統潔開發",
     vibrate: [200, 80, 200],
