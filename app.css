@@ -10061,5 +10061,76 @@ html[data-theme="void"] .chat-media {
   color: #f0f0f0;
   border-color: #3a3a3a;
 }
+.note-entry, .note-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+}
+.note-entry-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.note-entry-main b { font-size: 17px; line-height: 1.35; }
+.note-chev { color: #8d97a3; font-size: 22px; line-height: 1; }
+.note-dot {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e25b5b;
+}
+button.note-entry.card {
+  overflow: visible;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+}
+.note-entry .note-dot { top: -4px; left: -4px; box-shadow: 0 0 0 2px var(--paper, #f4f1ea); }
+.note-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--paper, #f6f3ee);
+  display: flex;
+  flex-direction: column;
+  padding: calc(12px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.note-list { display: grid; gap: 10px; margin-top: 8px; }
+.note-link {
+  background: var(--card, #fff);
+  border-radius: 18px;
+  padding: 16px 16px 16px 22px;
+  box-shadow: 0 8px 22px rgba(23, 33, 31, .05);
+}
+.note-detail h2 { font-size: 20px; margin: 8px 0 4px; }
+.note-detail p { line-height: 1.7; }
+.note-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.note-shot {
+  min-height: 180px;
+  border-radius: 18px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f3f1ec;
+  color: #5c6560;
+}
+.note-shot i {
+  height: 54px;
+  border-radius: 12px;
+  background: linear-gradient(#dedbd4, #cfcbc3);
+}
+.note-shot b { font-size: 13px; }
+.note-shot span { font-size: 13px; line-height: 1.45; }
+.note-shot.after { background: #e7eee4; color: #243028; }
+.note-shot.after i { background: linear-gradient(#8ea584, #62765b); }
+
 
 

@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-11-12";
-const APP_EDIT_COUNT = 2556;
+const APP_STAMP = "2026-11-26-19-58";
+const APP_EDIT_COUNT = 2557;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -614,7 +614,7 @@ const FACTORY_ROSTER_VER = "20261014-yuwang-datong";
 const FACTORY_PAID_RESET_VER = "20260902-1258";
 const STUDIO_FEE_VER = "20260831-2120";
 const CHANGELOG = [
-  { ver: APP_VERSION, items: ["退款銀行代碼可選，租客和後台互相同步"] },
+  { ver: APP_VERSION, items: ["設定裡可以依日期查看更新內容", "退款銀行代碼可選，租客和後台互相同步"] },
   { ver: "2026-11-06-14-45", items: ["調色盤新增焦糖，奶油風格改為奶油"] },
   { ver: "2026-10-20-21-18-2090", items: ["滑到最右先看到59號左側，再來是59號和61號正面"] },
   { ver: "2026-10-20-21-10-2089", items: ["2號模型可以整間滑進來，不再被切到"] },
@@ -3157,6 +3157,170 @@ function closeUpdateNotes() {
     try { localStorage.setItem("tj-last-ver", APP_VERSION); } catch {}
   }
   hideUpdateUi();
+}
+function notesAudienceAll() {
+  if (typeof isDeveloper === "function" && isDeveloper()) return true;
+  if (typeof canPilotTenant === "function" && canPilotTenant()) return true;
+  if (ui && ui.role === "admin") return true;
+  return false;
+}
+function notesDayKey(ver) {
+  const s = String(ver || "");
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + "-" + m[2] + "-" + m[3];
+  if (s === APP_VERSION || s === APP_STAMP) {
+    const n = String(APP_STAMP).match(/^(\d{4}-\d{2}-\d{2})/);
+    return n ? n[1] : "";
+  }
+  return "";
+}
+function notesDayLabel(day) {
+  const m = String(day || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return day || "";
+  return m[1] + "年" + Number(m[2]) + "月" + Number(m[3]) + "日";
+}
+function notesForTenant(text) {
+  return !/開發者|管理員|負責人|日誌|會計|字軌|保險箱|淨資產|消費分析|廠房模型|後台/.test(String(text || ""));
+}
+function notesRows() {
+  const all = notesAudienceAll();
+  const rows = [];
+  (CHANGELOG || []).forEach(n => {
+    if (!n) return;
+    if (n.onlyDev && !all) return;
+    const day = notesDayKey(n.ver);
+    if (!day) return;
+    const items = (n.items || []).slice();
+    if (all && n.devItems) items.push(...n.devItems);
+    items.forEach(text => {
+      const line = String(text || "").trim();
+      if (!line) return;
+      if (!all && !notesForTenant(line)) return;
+      rows.push({ day, text: line });
+    });
+  });
+  return rows;
+}
+function notesDays() {
+  const map = new Map();
+  notesRows().forEach((row, idx) => {
+    if (!map.has(row.day)) map.set(row.day, []);
+    map.get(row.day).push(idx);
+  });
+  return Array.from(map.keys()).map(day => ({ day, ids: map.get(day) }));
+}
+function notesSeen() {
+  try { return localStorage.getItem("tj-notes-seen") || ""; } catch { return ""; }
+}
+function notesMarkSeen() {
+  const newest = (notesDays()[0] || {}).day || "";
+  try { if (newest) localStorage.setItem("tj-notes-seen", newest); } catch {}
+}
+function notesPair(text) {
+  const s = String(text || "");
+  const changed = s.match(/^(.+?)改成(.+)$/);
+  if (changed) return { before: changed[1].replace(/，/g, ""), after: changed[2] };
+  if (/^拿掉|^移除|^刪掉/.test(s)) return { before: s.replace(/^(拿掉|移除|刪掉)/, "原本有"), after: "已拿掉" };
+  if (/新增|加上/.test(s)) return { before: "原本沒有這一項", after: s };
+  return { before: "調整前", after: s };
+}
+function notesCardHtml() {
+  const days = notesDays();
+  if (!days.length) return "";
+  const unseen = (days[0].day || "") > notesSeen();
+  return `<button type="button" class="card card-body note-entry" id="note-open">
+    ${unseen ? `<i class="note-dot" aria-hidden="true"></i>` : ""}
+    <span class="note-entry-main">
+      <span class="label">更新內容</span>
+      <span class="small">依日期查看功能說明</span>
+    </span>
+    <span class="note-chev" aria-hidden="true">›</span>
+  </button>`;
+}
+function notesBrowserHtml() {
+  const level = ui.noteLevel || "";
+  if (!level) return "";
+  const rows = notesRows();
+  const days = notesDays();
+  const seen = ui.noteSeenBefore || "";
+  let body = "";
+  if (level === "dates") {
+    body = days.map(d => `<button type="button" class="note-link" data-note-day="${escapeHtml(d.day)}">
+      ${d.day > seen ? `<i class="note-dot" aria-hidden="true"></i>` : ""}
+      <span class="note-entry-main"><b>${escapeHtml(notesDayLabel(d.day))}</b><span class="small">${d.ids.length} 項更新</span></span>
+      <span class="note-chev" aria-hidden="true">›</span>
+    </button>`).join("");
+  } else if (level === "day") {
+    const hit = days.find(d => d.day === ui.noteDay);
+    const ids = hit ? hit.ids : [];
+    body = ids.map(idx => `<button type="button" class="note-link" data-note-item="${idx}">
+      <span class="note-entry-main"><b>${escapeHtml(rows[idx].text)}</b></span>
+      <span class="note-chev" aria-hidden="true">›</span>
+    </button>`).join("") || `<p class="small">這天沒有更新說明</p>`;
+  } else if (level === "item") {
+    const row = rows[ui.noteIdx] || null;
+    if (!row) body = `<p class="small">找不到這則說明</p>`;
+    else {
+      const pair = notesPair(row.text);
+      body = `<article class="note-detail">
+        <h2>${escapeHtml(row.text)}</h2>
+        <p class="small">${escapeHtml(notesDayLabel(row.day))}</p>
+        <p>${escapeHtml(row.text)}。這項已經在現在的版本裡。下面左邊是調整前，右邊是調整後，方便對一下。</p>
+        <div class="note-pair">
+          <div><div class="label">更新前</div><div class="note-shot before"><i></i><b>更新前</b><span>${escapeHtml(pair.before)}</span></div></div>
+          <div><div class="label">更新後</div><div class="note-shot after"><i></i><b>更新後</b><span>${escapeHtml(pair.after)}</span></div></div>
+        </div>
+      </article>`;
+    }
+  }
+  return `<div class="note-screen" id="note-screen">
+    <button type="button" class="back" id="note-back">← 返回</button>
+    <div class="note-list">${body}</div>
+  </div>`;
+}
+function bindNotesBrowser() {
+  const screen = document.getElementById("note-screen");
+  if (screen && screen.parentNode !== document.body) document.body.appendChild(screen);
+  const open = document.getElementById("note-open");
+  if (open) open.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    ui.noteSeenBefore = notesSeen();
+    ui.noteLevel = "dates";
+    ui.keepScroll = true;
+    notesMarkSeen();
+    render();
+  };
+  document.querySelectorAll("[data-note-day]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.noteLevel = "day";
+      ui.noteDay = btn.dataset.noteDay || "";
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  document.querySelectorAll("[data-note-item]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.noteLevel = "item";
+      ui.noteIdx = Number(btn.dataset.noteItem);
+      ui.keepScroll = true;
+      render();
+    };
+  });
+  const back = document.getElementById("note-back");
+  if (back) back.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (ui.noteLevel === "item") ui.noteLevel = "day";
+    else if (ui.noteLevel === "day") ui.noteLevel = "dates";
+    else ui.noteLevel = "";
+    ui.keepScroll = true;
+    render();
+  };
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -49003,6 +49167,8 @@ function tenantSettings() {
       </div>
       ${lookSettingsHtml()}
       ${typeof langCardHtml === "function" ? langCardHtml() : ""}
+      ${notesCardHtml()}
+      ${notesBrowserHtml()}
       ${tenantNdaHtml()}
       <div class="card card-body">
         <div class="label">意見分享</div>
@@ -49018,6 +49184,7 @@ function tenantSettings() {
 function bindLookSettings() {
   bindGeoSettings();
   if (typeof bindUiLang === "function") bindUiLang();
+  bindNotesBrowser();
   bindGhostPress();
   bindZoomPhotos();
   const skyBtn = document.getElementById("sky-toggle");
