@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-55";
-const APP_EDIT_COUNT = 2586;
+const APP_STAMP = "2026-11-27-03-35";
+const APP_EDIT_COUNT = 2587;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "部分手機打開更新說明時，較大的「更新後」圖會變成一片空白。已重新輸出這些圖，檔案縮小後就能正常顯示；這次更新後會自動重載圖片", head: "更新後圖不再空白", before: "changelog/2026-11-27-shot-blank-fix-before.svg", after: "changelog/2026-11-27-shot-blank-fix-after.svg", aud: ["套房租客", "管理員後台", "開發者後台", "負責人後台"] }
+  ] },
+  { ver: "2026-11-27-03-55-2586", items: [
     { text: "設定 → 通知下方的通知名稱，點一下會在下面展開這則通知收到時的樣子（示範內容）和什麼時候會收到，再點一次收合，不用再跳出說明視窗", head: "通知預覽", before: "changelog/2026-11-27-tenant-notify-preview-before.svg", after: "changelog/2026-11-27-tenant-notify-preview-after.svg", aud: ["套房租客"] }
   ] },
   { ver: "2026-11-27-03-40-2585", items: [
@@ -3913,7 +3916,8 @@ function notesShotHtml(row) {
   function cell(src, label, empty) {
     const cap = `<div class="label">${label}</div>`;
     if (src) {
-      return `<div>${cap}<button type="button" class="note-shot-btn" data-note-full="${escapeHtml(src)}" data-note-full-label="${escapeHtml(label)}" aria-label="放大${label}畫面"><img class="note-shot-img" src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy" decoding="async"></button></div>`;
+      const url = src + (src.indexOf("?") >= 0 ? "&" : "?") + "v=" + APP_EDIT_COUNT;
+      return `<div>${cap}<button type="button" class="note-shot-btn" data-note-full="${escapeHtml(url)}" data-note-full-label="${escapeHtml(label)}" aria-label="放大${label}畫面"><img class="note-shot-img" src="${escapeHtml(url)}" alt="${escapeHtml(label)}" loading="lazy" decoding="async"></button></div>`;
     }
     return `<div>${cap}<p class="note-shot-empty">${escapeHtml(empty)}</p></div>`;
   }
