@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-19-58";
-const APP_EDIT_COUNT = 2557;
+const APP_STAMP = "2026-11-26-20-06";
+const APP_EDIT_COUNT = 2558;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3279,8 +3279,9 @@ function notesBrowserHtml() {
   </div>`;
 }
 function bindNotesBrowser() {
-  const screen = document.getElementById("note-screen");
-  if (screen && screen.parentNode !== document.body) document.body.appendChild(screen);
+  document.querySelectorAll("#note-screen").forEach(el => {
+    if (el.parentNode === document.body) el.remove();
+  });
   const open = document.getElementById("note-open");
   if (open) open.onclick = e => {
     e.preventDefault();
@@ -3312,15 +3313,20 @@ function bindNotesBrowser() {
     };
   });
   const back = document.getElementById("note-back");
-  if (back) back.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (ui.noteLevel === "item") ui.noteLevel = "day";
-    else if (ui.noteLevel === "day") ui.noteLevel = "dates";
-    else ui.noteLevel = "";
-    ui.keepScroll = true;
-    render();
-  };
+  if (back && back.dataset.noteBound !== "1") {
+    back.dataset.noteBound = "1";
+    const go = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+      if (ui.noteLevel === "item") ui.noteLevel = "day";
+      else if (ui.noteLevel === "day") ui.noteLevel = "dates";
+      else ui.noteLevel = "";
+      ui.keepScroll = true;
+      render();
+    };
+    back.addEventListener("click", go, true);
+  }
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -17745,7 +17751,7 @@ function tryHistoryBack() {
 }
 function bindHistoryBack() {
   document.querySelectorAll(".back, #back-gate, #back-repair, #acct-bal-back").forEach(btn => {
-    if (!btn) return;
+    if (!btn || btn.id === "note-back") return;
     bindIosPress(btn);
     if (btn.dataset.histBound === "1") return;
     btn.dataset.histBound = "1";
