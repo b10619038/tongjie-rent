@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-11-04";
-const APP_EDIT_COUNT = 2552;
+const APP_STAMP = "2026-11-26-11-08";
+const APP_EDIT_COUNT = 2553;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -541,11 +541,17 @@ function canPilotTenant() {
   const back = typeof ui !== "undefined" && ui && ui.lookBack;
   return !!(isTenantLook() && back && back.adminCode === "1240");
 }
+function ringPreviewOn(id) {
+  const t = (state.tenants || []).find(x => x && x.id === id);
+  if (!t) return false;
+  const r = (state.rooms || []).find(x => x && (x.id === t.roomId || x.tenantId === t.id));
+  return !!(r && String(r.no) === "7651");
+}
 function tenantAvatarLookHtml(t, ids) {
   const face = avatarHtml(t, "sm");
   if (!t || typeof isDeveloper !== "function" || !isDeveloper()) return face;
   const list = (Array.isArray(ids) && ids.length ? ids : [t.id]).filter(Boolean);
-  const on = list.some(id => typeof isTenantOnline === "function" && isTenantOnline(id));
+  const on = list.some(id => (typeof isTenantOnline === "function" && isTenantOnline(id)) || ringPreviewOn(id));
   const lamp = `<i class="live-lamp${on ? " on" : ""}" data-live-lamp="${escapeHtml(list.join(","))}" aria-hidden="true"></i>`;
   return `<button type="button" class="avatar-look" data-look-tenant="${escapeHtml(t.id)}" title="以這位租客操作 App（開發者）"><span class="face-live">${lamp}${face}</span></button>`;
 }
@@ -16885,7 +16891,7 @@ function refreshOnlineBadges() {
   });
   document.querySelectorAll("[data-live-lamp]").forEach(el => {
     const ids = String(el.dataset.liveLamp || "").split(",").filter(Boolean);
-    el.classList.toggle("on", ids.some(id => isTenantOnline(id)));
+    el.classList.toggle("on", ids.some(id => isTenantOnline(id) || ringPreviewOn(id)));
   });
   const box = document.getElementById("online-tenants");
   if (box) box.innerHTML = onlineTenantLinesHtml();
