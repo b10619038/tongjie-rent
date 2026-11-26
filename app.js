@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-00-12";
-const APP_EDIT_COUNT = 2571;
+const APP_STAMP = "2026-11-27-00-30";
+const APP_EDIT_COUNT = 2572;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "官方 LINE 私訊改為顯示綁定狀態與開啟聊天室按鈕，不再嵌入無法顯示的聊天視窗", head: "LINE私訊修復", before: "changelog/2026-11-27-line-dock-before.svg", after: "changelog/2026-11-27-line-dock-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-00-12-2571", items: [
     { text: "LINE 綁定名單改為需要金鑰才能讀取，且不再把使用者編號傳到瀏覽器", head: "LINE名單加密", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-26-23-52-2570", items: [
@@ -44008,11 +44011,13 @@ function adminTenants() {
         </div>
         <button type="button" class="ghost" id="line-dock-close" style="width:auto">關閉</button>
       </div>
-      <iframe id="line-dock-frame" src="${LINE_CHAT_URL}" title="官方 LINE 聊天室"></iframe>
-      <div class="line-dock-fallback">
-        <p id="line-dock-note">租客請在官方 LINE 傳送「房號 姓名」，例如 1234 許光漢。</p>
-        <a class="btn-navy" href="${LINE_CHAT_URL}" target="_blank" rel="noopener">開啟 LINE 聊天室視窗</a>
-        <a class="ghost" href="${LINE_OA_URL}" target="_blank" rel="noopener" style="margin-top:8px;display:block;text-align:center">官方帳號 ${LINE_OA_URL.replace("https://","")}</a>
+      <div class="line-dock-body">
+        <div class="line-dock-status">
+          <span class="line-dock-badge" id="line-dock-badge">尚未綁定</span>
+          <p id="line-dock-note">租客請在官方 LINE 傳送「房號 姓名」，例如 1234 許光漢。</p>
+        </div>
+        <a class="btn-navy" id="line-dock-open" href="${LINE_CHAT_URL}" target="_blank" rel="noopener">開啟 LINE 聊天室視窗</a>
+        <a class="ghost" id="line-dock-oa" href="${LINE_OA_URL}" target="_blank" rel="noopener">官方帳號 ${LINE_OA_URL.replace("https://","")}</a>
       </div>
     </div>
   </div>`;
@@ -48225,15 +48230,19 @@ function openLineChatFor(tenantId) {
   const r = t ? state.rooms.find(x => x.id === t.roomId) : null;
   const dock = document.getElementById("line-dock");
   const who = document.getElementById("line-dock-who");
+  const bound = !!(r && lineBindForRoom(r.no));
   if (who) {
-    const bound = r && lineBindForRoom(r.no);
-    who.textContent = bound
-      ? `${r.no} ${t ? t.name : ""} · 已綁定${lineBindName(r.no) ? " " + lineBindName(r.no) : ""}`
-      : `${r ? r.no : ""} ${t ? t.name : ""} · 尚未綁定，請傳「房號 姓名」`;
+    const label = `${r ? r.no : ""} ${t ? t.name : ""}`.trim();
+    who.textContent = label || "選擇租客後開啟聊天室";
+  }
+  const badge = document.getElementById("line-dock-badge");
+  if (badge) {
+    badge.textContent = t || r ? (bound ? "已綁定" : "尚未綁定") : "尚未綁定";
+    badge.classList.toggle("is-bound", bound);
   }
   const note = document.getElementById("line-dock-note");
   if (note && r) {
-    note.textContent = lineBindForRoom(r.no)
+    note.textContent = bound
       ? "此租客已綁定官方 LINE。聊天室後台可用房號或姓名搜尋。"
       : "此租客尚未綁定。請對方加入 @773zynao 並傳送「房號 姓名」。";
   }
