@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-25-23-26";
-const APP_EDIT_COUNT = 2547;
+const APP_STAMP = "2026-11-26-10-22";
+const APP_EDIT_COUNT = 2548;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3782,7 +3782,6 @@ function applyCompany(data) {
 const NOTIFY_PREF_KEY = "tongjie_notify_prefs";
 const NOTIFY_PREF_ITEMS = [
   { id: "unpaid", label: "未繳租金" },
-  { id: "water", label: "年度水費" },
   { id: "repair", label: "租客報修" },
   { id: "memo", label: "工作提醒" }
 ];
@@ -21104,14 +21103,9 @@ function maybeNudgeNotifies() {
       markNudged("admin-unpaid");
       showOsBanner("本月未繳租金", unpaid.length + " 戶尚未繳費", "admin-unpaid");
     }
-    const waters = waterDueSoon();
-    if (waters.length && notifyPrefOn("water") && !alreadyNudged("admin-water")) {
-      markNudged("admin-water");
-      showOsBanner("年度水費", waters.length + " 戶 45 天內到期", "admin-water");
-    }
     const today = ymdOf(nowStamp());
     (myMemos() || []).filter(m => !m.done && m.date).forEach(m => {
-      if (m.date > today) return;
+      if (m.date !== today) return;
       if (m.date === today && m.time) {
         const now = new Date();
         const parts = String(m.time).split(":");
