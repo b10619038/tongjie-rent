@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-02-04";
-const APP_EDIT_COUNT = 2579;
+const APP_STAMP = "2026-11-27-02-07";
+const APP_EDIT_COUNT = 2580;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -20440,7 +20440,7 @@ function pickZh(s) {
   const cjk = parts.find(x => /[\u4e00-\u9fff]/.test(x));
   let out = cjk || parts[0] || "";
   const cityMap = {
-    "New Taipei": "新北市", Kaohsiung: "高雄市", Taipei: "台北市", Taichung: "台中市",
+    "New Taipei": "新北市", Kaohsiung: "高雄市", Takao: "高雄市", Taipei: "台北市", Taichung: "台中市",
     Tainan: "台南市", Taoyuan: "桃園市", Hsinchu: "新竹市", Keelung: "基隆市",
     Chiayi: "嘉義", Hualien: "花蓮", Taitung: "台東", Pingtung: "屏東縣",
     Yilan: "宜蘭", Miaoli: "苗栗", Changhua: "彰化", Nantou: "南投",
@@ -20508,7 +20508,8 @@ async function refreshNetLoc() {
     if (res.ok && /json/.test(res.headers.get("content-type") || "")) {
       const d = await res.json();
       if (d && d.country) {
-        ui.netLoc = { src: "cf", region: pickZh(d.region || d.city || ""), country: d.country, isp: d.isp || "" };
+        const zh = x => { const v = pickZh(x || ""); return /[\u4e00-\u9fff]/.test(v) ? v : ""; };
+        ui.netLoc = { src: "cf", region: zh(d.region) || zh(d.city) || "", country: d.country, isp: d.isp || "" };
         try { backfillAuditAddress(); } catch {}
       }
     }
