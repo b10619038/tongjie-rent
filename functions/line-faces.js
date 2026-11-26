@@ -1,9 +1,10 @@
-import { cors, syncLineFaces } from "./_pay.js";
+import { cors, syncLineFaces, keyOk } from "./_pay.js";
 
 export async function onRequest(context) {
   const request = context.request;
   if (request.method === "OPTIONS") return cors("", 204);
   if (request.method !== "POST") return cors({ ok: true });
+  if (!keyOk(request)) return cors({ error: "key" }, 403);
   try {
     let posted = null;
     let postedPay = null;

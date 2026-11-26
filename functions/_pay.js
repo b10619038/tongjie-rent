@@ -15,6 +15,39 @@ export function cors(data, status) {
   });
 }
 
+export function keyOk(request) {
+  const k = request && request.headers && request.headers.get("X-Tongjie-Key");
+  return !!k && k === STATE_KEY;
+}
+
+export function publicBinds(data) {
+  const byRoom = {};
+  const payRooms = {};
+  const src = (data && data.byRoom) || {};
+  Object.keys(src).forEach(no => {
+    const v = src[no];
+    if (!v) return;
+    const name = (v && typeof v === "object") ? String(v.name || "") : "";
+    byRoom[no] = { bound: true, name };
+  });
+  const users = (data && data.payUsers) || {};
+  Object.keys(users).forEach(uid => {
+    const room = users[uid] && (users[uid].room || users[uid].roomNo);
+    if (room) payRooms[String(room)] = true;
+  });
+  if (data && data.payRooms && typeof data.payRooms === "object") {
+    Object.keys(data.payRooms).forEach(no => { if (data.payRooms[no]) payRooms[no] = true; });
+  }
+  const payProofs = {};
+  Object.keys((data && data.payProofs) || {}).forEach(no => {
+    const p = data.payProofs[no];
+    if (!p || typeof p !== "object") return;
+    payProofs[no] = { ym: p.ym || "", hasText: !!p.hasText, hasImage: !!p.hasImage, at: Number(p.at) || 0 };
+  });
+  return { byRoom, payProofs, payRooms };
+}
+
+
 export function payYmNow() {
   try {
     return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Taipei" }).slice(0, 7);
@@ -362,9 +395,10 @@ async function saveFaceCache(data) {
 }
 async function workerBinds() {
   try {
-    const res = await fetch(STATE_HOOK + "/binds", { cache: "no-store" });
+    const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY }, cache: "no-store" });
     if (!res.ok) return { byRoom: {} };
-    return await res.json();
+    const state = await res.json();
+    return (state && state.lineBinds) || { byRoom: {} };
   } catch { return { byRoom: {} }; }
 }
 function roomUser(row) {
