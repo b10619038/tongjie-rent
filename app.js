@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-02-32";
-const APP_EDIT_COUNT = 2581;
+const APP_STAMP = "2026-11-27-03-05";
+const APP_EDIT_COUNT = 2582;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,12 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "每天早上 9 點自動檢查：過了繳費日還沒入帳的房客，會收到一則租金繳費通知（已繳的不會收到）；合約到期前 100 天會收到一則續約確認。App 沒開也會送", head: "每天提醒繳租", before: "changelog/2026-11-27-notify-rent-before.svg", after: "changelog/2026-11-27-notify-rent-after.svg", aud: ["套房租客"] },
+    { text: "iPhone 已安裝 App 的房客，現在收得到報修進度、公告、聊天等手機通知（之前會被 Apple 拒收）", head: "iPhone 收得到通知", before: "changelog/2026-11-27-notify-ios-before.svg", after: "changelog/2026-11-27-notify-ios-after.svg", aud: ["套房租客"] },
+    { text: "推播訂閱名單整理：不再保存未登入的訂閱，同一台裝置只留一筆，每間房留最新 3 筆、每位管理員留 8 筆，上限 300 筆，房客的訂閱不會再被擠掉", head: "通知名單整理", before: "changelog/2026-11-27-notify-subs-before.svg", after: "changelog/2026-11-27-notify-subs-after.svg", aud: ["開發者後台"] },
+    { text: "房客從官方 LINE 回覆私訊時，開發者手機會跳出「新訊息」通知，點開就是聊天視窗", head: "LINE 回覆會通知", before: "changelog/2026-11-27-notify-linereply-before.svg", after: "changelog/2026-11-27-notify-linereply-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-02-32-2581", items: [
     { text: "操作日誌改成各台裝置的紀錄合併在一起，不再被最後存檔的那台蓋掉；刪除單筆、刪除已選、全部刪除會同步到每台裝置，刪掉的不會再跑回來；最多保留最新 500 筆", head: "日誌不再遺失", before: "changelog/2026-11-27-oplog-sync-before.svg", after: "changelog/2026-11-27-oplog-sync-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-02-07-2580", items: [
@@ -26597,6 +26603,9 @@ function rentPayDueYmd(t, r) {
   return ym + "-" + String(day).padStart(2, "0");
 }
 function ensureRentDueNotices(data) {
+  // Rent-due notices are made once a day by the tongjie-line Worker cron (same ids / rentDueNoticeOn).
+  // Client generation stays off so devices never double-send or notify factory / paid rooms.
+  return;
   const st = data || (typeof state !== "undefined" ? state : null);
   if (!st || !Array.isArray(st.tenants)) return;
   const today = todayYmd();
@@ -26640,6 +26649,8 @@ function ensureRentDueNotices(data) {
   }, 800);
 }
 function ensureRenewNudges(data) {
+  // Renewal asks are made by the tongjie-line Worker cron (same renew-ask-<leaseEnd>-<tid> ids).
+  return;
   if (!data) return;
   const rooms = data.rooms || [];
   const fresh = [];
