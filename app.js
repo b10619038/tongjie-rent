@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-00-50";
-const APP_EDIT_COUNT = 2573;
+const APP_STAMP = "2026-11-27-01-15";
+const APP_EDIT_COUNT = 2574;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,11 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "點「周邊景點」打開和關閉視窗，不再重畫整個頁面，開關更順", head: "景點視窗更順", note: "無畫面變更", aud: ["套房租客"] },
+    { text: "辦理退租、強制退租確認、收回與恢復續約、個人戶選擇成員、發票預覽，這幾個視窗開關時不再重畫整個頁面，點下去立刻有反應", head: "彈窗更順", note: "無畫面變更", aud: ["管理員後台", "負責人後台"] },
+    { text: "共用的確認視窗改成只開關視窗本身（softSheetOpen/Close），不再整頁重建；發票預覽先開視窗再畫圖。4 倍降速實測（開／關，毫秒）：辦理退租 235→27／205→12，強制退租確認 215→24／190→16，收回續約 285→27／295→15，恢復續約 280→24／320→13，個人戶選擇 217→32／295→17，周邊景點關閉 124→24；發票預覽先出現視窗，再畫圖", head: "彈窗更順", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-00-50-2573", items: [
     { text: "開發者在租客卡片向左滑會直接打開 App 內對話；已綁定 LINE 的租客，送出的文字和照片會同時傳到 App 和租客的 LINE，官方帳號其他管理員看不到；租客在 LINE 的回覆也會出現在這個對話裡", head: "私密LINE私訊", before: "changelog/2026-11-27-line-chat-before.svg", after: "changelog/2026-11-27-line-chat-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-00-30-2572", items: [
@@ -4112,6 +4117,34 @@ function openUpdateNotes() {
   const bar = document.getElementById("apply-update");
   if (bar) bar.remove();
   ensureChangelogSheet();
+}
+// Soft sheets: open or close a confirm sheet by itself, without rebuilding the whole page.
+// Returns false when it cannot, and the caller then falls back to the normal full render().
+function softSheetOpen(html) {
+  try {
+    if (!html) return false;
+    const root = document.getElementById("app");
+    const anchor = root && root.querySelector(":scope > .shell");
+    if (!anchor) return false;
+    const tpl = document.createElement("template");
+    tpl.innerHTML = typeof translateMarkup === "function" ? translateMarkup(html) : html;
+    const nodes = Array.from(tpl.content.children);
+    if (!nodes.length) return false;
+    for (const n of nodes) if (n.id && document.getElementById(n.id)) return false;
+    nodes.forEach(n => { try { if (typeof applyUiLang === "function") applyUiLang(n); } catch {} });
+    anchor.after(...nodes);
+    try { persistUi(); } catch {}
+    return true;
+  } catch { return false; }
+}
+function softSheetClose(sel) {
+  try {
+    const els = document.querySelectorAll(sel);
+    if (!els.length) return false;
+    els.forEach(el => el.remove());
+    try { persistUi(); } catch {}
+    return true;
+  } catch { return false; }
 }
 function personPickSheetHtml() {
   if (!ui.personPick) return "";
@@ -8854,6 +8887,25 @@ function poiNavUrl(p) {
   if (typeof isIOS === "function" && isIOS()) return "https://maps.apple.com/?daddr=" + p.lat + "," + p.lng + "&q=" + name + "&dirflg=d";
   return "https://www.google.com/maps/dir/?api=1&destination=" + p.lat + "," + p.lng + "&travelmode=driving";
 }
+function bindNearbySheet() {
+  const closeNearby = () => {
+    ui.nearbyOpen = false;
+    if (softSheetClose("#nearby-mask")) return;
+    render();
+  };
+  const nearbyClose = document.getElementById("nearby-close");
+  if (nearbyClose) nearbyClose.onclick = closeNearby;
+  const nearbyMask = document.getElementById("nearby-mask");
+  if (nearbyMask) nearbyMask.onclick = e => { if (e.target.id === "nearby-mask") closeNearby(); };
+  document.querySelectorAll("[data-poi]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      const p = (ui.nearbyPois || [])[Number(btn.dataset.poi)];
+      if (!p) return;
+      window.open(poiNavUrl(p), "_blank", "noopener");
+    };
+  });
+}
 function nearbySheetHtml() {
   if (!ui.nearbyOpen) return "";
   const area = nearbyArea(typeof myRoom === "function" ? myRoom() : null);
@@ -12566,6 +12618,7 @@ function closeUndoRenew() {
     ui.undoRenewId = "";
     ui.undoRenewFrom = null;
     ui.undoRenewZoom = false;
+    if (softSheetClose("#undo-renew-mask")) return;
     ui.keepScroll = true;
     render();
   };
@@ -12593,8 +12646,8 @@ function openUndoRenew(id, originEl) {
   ui.undoRenewZoom = !!ui.undoRenewFrom;
   ui.undoRenewId = id;
   ui.undoRenewGuard = Date.now() + 500;
-  ui.keepScroll = true;
-  render();
+  if (softSheetOpen(undoRenewConfirmHtml())) { bindUndoRenew(); }
+  else { ui.keepScroll = true; render(); }
   playUndoRenewZoom();
 }
 function restoreSignedRenewal(id) {
@@ -12678,6 +12731,7 @@ function closeRestoreRenew() {
     ui.restoreRenewId = "";
     ui.restoreRenewFrom = null;
     ui.restoreRenewZoom = false;
+    if (softSheetClose("#restore-renew-mask")) return;
     ui.keepScroll = true;
     render();
   };
@@ -12704,8 +12758,8 @@ function openRestoreRenew(id, originEl) {
   ui.restoreRenewZoom = !!ui.restoreRenewFrom;
   ui.restoreRenewId = id;
   ui.restoreRenewGuard = Date.now() + 500;
-  ui.keepScroll = true;
-  render();
+  if (softSheetOpen(restoreRenewConfirmHtml())) { bindUndoRenew(); }
+  else { ui.keepScroll = true; render(); }
   playRestoreRenewZoom();
 }
 function bindUndoRenew() {
@@ -23660,9 +23714,11 @@ function showDepositImputedPreview() {
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    if (!page) return;
     downloadDepositImputedPdf(page, kind, year);
   };
-  paint();
+  // show the sheet first, draw the heavy canvas on the next frame so the tap feels instant
+  requestAnimationFrame(() => setTimeout(() => { if (document.getElementById("invoice-preview-box")) paint(); }, 0));
 }
 function drawInvoiceOverviewCanvas(rows, kind, orient, ym) {
   const portrait = orient !== "landscape";
@@ -24201,9 +24257,11 @@ function showInvoiceOverviewPreview() {
   document.getElementById("inv-prev-pdf").onclick = e => {
     e.preventDefault();
     e.stopPropagation();
+    if (!page) return;
     downloadInvoiceOverviewPdf(page, kind, ui.invoiceYm);
   };
-  paint();
+  // show the sheet first, draw the heavy canvas on the next frame so the tap feels instant
+  requestAnimationFrame(() => setTimeout(() => { if (document.getElementById("invoice-preview-box")) paint(); }, 0));
 }
 function bindInvoiceOverviewBtn() {
   const btn = document.getElementById("invoice-overview-btn");
@@ -27353,6 +27411,7 @@ function bindReportBody() {
     e.preventDefault();
     e.stopPropagation();
     ui.personPick = true;
+    if (softSheetOpen(personPickSheetHtml())) { bindPersonPickSheet(); return; }
     ui.keepScroll = true;
     render();
   };
@@ -27362,6 +27421,15 @@ function bindReportBody() {
     card.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
     card.addEventListener("touchmove", e => e.stopPropagation(), { passive: true });
   });
+  bindPersonPickSheet();
+}
+function bindPersonPickSheet() {
+  const closePick = () => {
+    ui.personPick = false;
+    if (softSheetClose("#person-pick-mask")) return;
+    ui.keepScroll = true;
+    render();
+  };
   document.querySelectorAll("[data-pick-person]").forEach(btn => {
     btn.onclick = e => {
       e.preventDefault();
@@ -27373,10 +27441,10 @@ function bindReportBody() {
     };
   });
   const pickCancel = document.getElementById("person-pick-cancel");
-  if (pickCancel) pickCancel.onclick = () => { ui.personPick = false; ui.keepScroll = true; render(); };
+  if (pickCancel) pickCancel.onclick = closePick;
   const pickMask = document.getElementById("person-pick-mask");
   if (pickMask) pickMask.onclick = e => {
-    if (e.target === pickMask) { ui.personPick = false; ui.keepScroll = true; render(); }
+    if (e.target === pickMask) closePick();
   };
 }
 function bindReportModeBtns() {
@@ -30421,7 +30489,7 @@ function vacateConfirmHtml() {
   </div>`;
 }
 function bindVacateConfirm() {
-  const close = () => { ui.vacateConfirmId = ""; ui.keepScroll = true; render(); };
+  const close = () => { ui.vacateConfirmId = ""; if (softSheetClose("#vacate-mask")) return; ui.keepScroll = true; render(); };
   const mask = document.getElementById("vacate-mask");
   if (mask) mask.onclick = e => { if (e.target.id === "vacate-mask") close(); };
   const no = document.getElementById("vacate-no");
@@ -30440,6 +30508,7 @@ function bindVacateConfirm() {
 function askForceVacate(id) {
   if (!id) return;
   ui.vacateConfirmId = id;
+  if (softSheetOpen(vacateConfirmHtml())) { try { bindVacateConfirm(); } catch {} return; }
   ui.keepScroll = true;
   render();
 }
@@ -32132,6 +32201,36 @@ function saveCheckout(done, opt) {
   ui.keepScroll = true;
   render();
 }
+function closeCheckoutPick() {
+  ui.checkoutTenantId = "";
+  ui.checkoutKind = "pick";
+  if (document.getElementById("checkout-pick-mask") && softSheetClose("#checkout-pick-mask")) return;
+  ui.keepScroll = true;
+  render();
+}
+function bindCheckoutPickSheet() {
+  const keepOpenRow = () => { if (!ui.tenantOpen) ui.tenantOpen = {}; if (ui.checkoutTenantId) ui.tenantOpen[ui.checkoutTenantId] = true; };
+  const closeCo = document.getElementById("checkout-close");
+  if (closeCo) closeCo.onclick = e => { e.preventDefault(); closeCheckoutPick(); };
+  const pickMask = document.getElementById("checkout-pick-mask");
+  if (pickMask) pickMask.onclick = e => {
+    if (e.target === pickMask) closeCheckoutPick();
+  };
+  const pickNormal = document.getElementById("co-kind-normal");
+  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); e.stopPropagation(); keepOpenRow(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
+  const pickEarly = document.getElementById("co-kind-early");
+  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); e.stopPropagation(); keepOpenRow(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
+  const pickForce = document.getElementById("co-kind-force");
+  if (pickForce) pickForce.onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = ui.checkoutTenantId;
+    ui.checkoutTenantId = "";
+    ui.checkoutKind = "pick";
+    softSheetClose("#checkout-pick-mask");
+    askForceVacate(id);
+  };
+}
 function openCheckout(tenantId) {
   const t = (state.tenants || []).find(x => x.id === tenantId);
   if (!t) { toast("找不到租客"); return; }
@@ -32140,6 +32239,7 @@ function openCheckout(tenantId) {
   ui.checkoutTenantId = t.id;
   ui.checkoutKind = (prev && (prev.kind === "early" || prev.kind === "normal")) ? prev.kind : (room && roomIsFactory(room) ? "early" : "pick");
   if (!ui.tenantOpen) ui.tenantOpen = {};
+  if (ui.checkoutKind === "pick" && softSheetOpen(checkoutOverlayHtml())) { bindCheckoutPickSheet(); return; }
   ui.tenantOpen[t.id] = true;
   ui.adminJump = "checkout-form-card";
   ui.keepScroll = false;
@@ -32200,8 +32300,7 @@ function bindOps() {
       openCheckout(btn.dataset.checkoutOpen);
     };
   });
-  const closeCo = document.getElementById("checkout-close");
-  if (closeCo) closeCo.onclick = e => { e.preventDefault(); ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
+  bindCheckoutPickSheet();
   const discardCo = document.getElementById("co-discard");
   if (discardCo) discardCo.onclick = e => {
     e.preventDefault();
@@ -32225,26 +32324,9 @@ function bindOps() {
     ui.keepScroll = true;
     render();
   };
-  const pickMask = document.getElementById("checkout-pick-mask");
-  if (pickMask) pickMask.onclick = e => {
-    if (e.target === pickMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
-  };
   const formMask = document.getElementById("checkout-form-mask");
   if (formMask) formMask.onclick = e => {
     if (e.target === formMask) { ui.checkoutTenantId = ""; ui.checkoutKind = "pick"; ui.keepScroll = true; render(); }
-  };
-  const pickNormal = document.getElementById("co-kind-normal");
-  if (pickNormal) pickNormal.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "normal"; ui.keepScroll = true; render(); };
-  const pickEarly = document.getElementById("co-kind-early");
-  if (pickEarly) pickEarly.onclick = e => { e.preventDefault(); e.stopPropagation(); ui.checkoutKind = "early"; ui.keepScroll = true; render(); };
-  const pickForce = document.getElementById("co-kind-force");
-  if (pickForce) pickForce.onclick = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    const id = ui.checkoutTenantId;
-    ui.checkoutTenantId = "";
-    ui.checkoutKind = "pick";
-    askForceVacate(id);
   };
   const resetKind = document.getElementById("co-kind-reset");
   if (resetKind) resetKind.onclick = e => { e.preventDefault(); ui.checkoutKind = "pick"; ui.keepScroll = true; render(); };
@@ -44921,19 +45003,14 @@ function bindTenant() {
     }
   }
   const nearbyBtn = document.getElementById("nearby-spots");
-  if (nearbyBtn) nearbyBtn.onclick = () => { ui.nearbyOpen = true; setTimeout(() => render(), 80); };
-  const nearbyClose = document.getElementById("nearby-close");
-  if (nearbyClose) nearbyClose.onclick = () => { ui.nearbyOpen = false; render(); };
-  const nearbyMask = document.getElementById("nearby-mask");
-  if (nearbyMask) nearbyMask.onclick = e => { if (e.target.id === "nearby-mask") { ui.nearbyOpen = false; render(); } };
-  document.querySelectorAll("[data-poi]").forEach(btn => {
-    btn.onclick = e => {
-      e.preventDefault();
-      const p = (ui.nearbyPois || [])[Number(btn.dataset.poi)];
-      if (!p) return;
-      window.open(poiNavUrl(p), "_blank", "noopener");
-    };
-  });
+  if (nearbyBtn) nearbyBtn.onclick = () => {
+    ui.nearbyOpen = true;
+    setTimeout(() => {
+      if (!ui.nearbyOpen) return;
+      if (softSheetOpen(nearbySheetHtml())) bindNearbySheet(); else render();
+    }, 80);
+  };
+  bindNearbySheet();
   const payStep = document.getElementById("pay-step");
   if (payStep) {
     payStep.onclick = async () => {
