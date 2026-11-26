@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-22-15";
-const APP_EDIT_COUNT = 2563;
+const APP_STAMP = "2026-11-26-22-25";
+const APP_EDIT_COUNT = 2565;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,8 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "點下方「有新版本」會從底部滑出今天的更新清單，圖卡改小，可先查看再立即更新", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
+    { text: "從設定打開更新內容時，畫面會直接停在最上方，不必再往上滑", aud: ["開發者後台", "管理員後台", "套房租客"] },
     { text: "進入租客、管理員或負責人畫面時，更新內容只顯示該畫面的項目，不再混入其他對象的更新", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] },
     { text: "設定裡可以依日期查看更新內容，每項附上更新前、更新後的畫面", before: "changelog/2026-11-26-update-notes-before.svg", after: "changelog/2026-11-26-update-notes-after.svg", aud: ["管理員後台", "套房租客"] },
     { text: "管理員設定也能開啟更新內容", aud: ["管理員後台"] },
@@ -3248,6 +3250,8 @@ function hideUpdateUi() {
   if (mask) mask.remove();
   const bar = document.getElementById("apply-update");
   if (bar) bar.remove();
+  const today = document.getElementById("today-upd-mask");
+  if (today) today.remove();
 }
 function closeUpdateNotes() {
   if (ui.pendingFileVer && isNewerBuild(ui.pendingFileVer)) rememberDismiss(ui.pendingFileVer);
@@ -3410,10 +3414,61 @@ function notesBrowserHtml() {
     <div class="note-list">${body}</div>
   </div>${notesLightboxHtml()}`;
 }
-function bindNotesBrowser() {
-  document.querySelectorAll("#note-screen, #note-lightbox").forEach(el => {
-    if (el.parentNode === document.body) el.remove();
+function notesOverlayOpen() {
+  return !!(typeof ui !== "undefined" && ui && ui.noteLevel);
+}
+function pinNotesOverlay() {
+  ["note-screen", "note-lightbox"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.parentNode !== document.body) document.body.appendChild(el);
   });
+}
+function notesResetScroll() {
+  const screen = document.getElementById("note-screen");
+  if (screen) {
+    screen.scrollTop = 0;
+    screen.scrollLeft = 0;
+    screen.querySelectorAll(".note-list, .note-detail").forEach(el => { el.scrollTop = 0; el.scrollLeft = 0; });
+  }
+  try { window.scrollTo(0, 0); } catch {}
+  if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
+}
+function notesLockPageScroll() {
+  document.documentElement.classList.add("notes-open");
+  if (document.body) document.body.classList.add("notes-open");
+}
+function notesUnlockPageScroll() {
+  document.documentElement.classList.remove("notes-open");
+  if (document.body) document.body.classList.remove("notes-open");
+}
+function syncNotesOverlay() {
+  if (notesOverlayOpen()) {
+    if (!document.getElementById("note-screen")) {
+      const html = notesBrowserHtml();
+      if (html) document.body.insertAdjacentHTML("beforeend", html);
+      if (!syncNotesOverlay.rebinding) {
+        syncNotesOverlay.rebinding = true;
+        try { bindNotesBrowser(); } finally { syncNotesOverlay.rebinding = false; }
+        return;
+      }
+    }
+    pinNotesOverlay();
+    notesLockPageScroll();
+    notesResetScroll();
+    requestAnimationFrame(() => { pinNotesOverlay(); notesResetScroll(); });
+  } else {
+    document.querySelectorAll("body > #note-screen, body > #note-lightbox").forEach(el => el.remove());
+    notesUnlockPageScroll();
+  }
+}
+function bindNotesBrowser() {
+  // If paint just produced a fresh overlay inside #app, drop the previous body copy.
+  // If a prior bind already moved it to body (tenant settings binds twice), keep it.
+  if (document.querySelector("#app #note-screen, #app #note-lightbox")) {
+    document.querySelectorAll("body > #note-screen, body > #note-lightbox").forEach(el => el.remove());
+  }
   const open = document.getElementById("note-open");
   if (open) open.onclick = e => {
     e.preventDefault();
@@ -3451,7 +3506,10 @@ function bindNotesBrowser() {
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-      if (ui.noteLevel === "item") ui.noteLevel = "day";
+      if (ui.noteFromTodaySheet) {
+        ui.noteLevel = "";
+        ui.noteFromTodaySheet = false;
+      } else if (ui.noteLevel === "item") ui.noteLevel = "day";
       else if (ui.noteLevel === "day") ui.noteLevel = "dates";
       else ui.noteLevel = "";
       ui.keepScroll = true;
@@ -3483,6 +3541,7 @@ function bindNotesBrowser() {
     const closeBtn = document.getElementById("note-lightbox-close");
     if (closeBtn) closeBtn.onclick = closeLb;
   }
+  syncNotesOverlay();
 }
 function changelogStamp(ver) {
   const s = String(ver || "");
@@ -3622,6 +3681,7 @@ function ensureUpdateBar() {
     el.classList.add("shown");
     el.classList.toggle("lift", lift);
     if (el.textContent !== text) el.textContent = text;
+    el.onclick = () => { openTodayUpdateSheet(); };
     return;
   }
   el = document.createElement("div");
@@ -3629,9 +3689,123 @@ function ensureUpdateBar() {
   el.className = "home-upd" + (lift ? " lift" : "");
   el.setAttribute("role", "button");
   el.textContent = text;
-  el.onclick = () => { applyAppUpdate(); };
+  el.onclick = () => { openTodayUpdateSheet(); };
   document.body.appendChild(el);
 }
+
+function notesTodayRows() {
+  const days = notesDays();
+  if (!days.length) return [];
+  const rows = notesRows();
+  return (days[0].ids || []).map(i => {
+    const row = rows[i];
+    return row ? { idx: i, day: row.day, text: row.text, aud: row.aud } : null;
+  }).filter(Boolean);
+}
+function todayUpdateSheetHtml() {
+  const rows = notesTodayRows();
+  const day = rows[0] ? notesDayLabel(rows[0].day) : "";
+  const items = rows.map(r => `<button type="button" class="note-link" data-today-note="${r.idx}">
+      <span class="note-entry-main"><b>${escapeHtml(r.text)}</b>${notesAudTagsHtml(r.aud)}</span>
+      <span class="note-chev" aria-hidden="true">›</span>
+    </button>`).join("") || `<p class="small">目前沒有更新說明</p>`;
+  return `<div class="today-upd-mask" id="today-upd-mask">
+    <div class="today-upd-sheet" id="today-upd-sheet" role="dialog" aria-label="今日更新">
+      <button type="button" class="today-upd-handle" id="today-upd-handle" aria-label="往下滑關閉"><i></i></button>
+      <div class="label">今日更新</div>
+      <h2>${escapeHtml(day || "更新內容")}</h2>
+      <div class="today-upd-list" id="today-upd-list">${items}</div>
+      <button class="btn-navy" id="today-upd-apply" type="button">立即更新</button>
+      <button class="ghost" id="today-upd-close" type="button">關閉</button>
+    </div>
+  </div>`;
+}
+function bindTodayUpdateSheet(mask) {
+  if (!mask || mask.dataset.bound === "1") return;
+  mask.dataset.bound = "1";
+  mask.addEventListener("click", e => { if (e.target.id === "today-upd-mask") closeTodayUpdateSheet(); });
+  const apply = mask.querySelector("#today-upd-apply");
+  if (apply) apply.onclick = e => { e.preventDefault(); e.stopPropagation(); applyAppUpdate(); };
+  const close = mask.querySelector("#today-upd-close");
+  if (close) close.onclick = e => { e.preventDefault(); closeTodayUpdateSheet(); };
+  mask.querySelectorAll("[data-today-note]").forEach(btn => {
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      ui.noteSeenBefore = notesSeen();
+      ui.noteLevel = "item";
+      ui.noteIdx = Number(btn.dataset.todayNote);
+      ui.noteFromTodaySheet = true;
+      ui.keepScroll = true;
+      notesMarkSeen();
+      render();
+      requestAnimationFrame(() => { if (typeof syncNotesOverlay === "function") syncNotesOverlay(); });
+    };
+  });
+  const sheet = mask.querySelector("#today-upd-sheet");
+  const handle = mask.querySelector("#today-upd-handle");
+  if (sheet && handle) {
+    let startY = 0, dy = 0, dragging = false;
+    const down = e => {
+      startY = e.clientY;
+      dy = 0;
+      dragging = true;
+      sheet.style.transition = "none";
+      try { handle.setPointerCapture(e.pointerId); } catch {}
+    };
+    const move = e => {
+      if (!dragging) return;
+      dy = Math.max(0, e.clientY - startY);
+      sheet.style.transform = "translate3d(0," + dy + "px,0)";
+    };
+    const up = () => {
+      if (!dragging) return;
+      dragging = false;
+      sheet.style.transition = "";
+      if (dy > 80) closeTodayUpdateSheet();
+      else sheet.style.transform = "";
+    };
+    handle.addEventListener("pointerdown", down);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  }
+}
+function openTodayUpdateSheet() {
+  if (document.getElementById("today-upd-mask")) return;
+  const bar = document.getElementById("apply-update");
+  if (bar) bar.classList.add("is-away");
+  document.body.insertAdjacentHTML("beforeend", todayUpdateSheetHtml());
+  const mask = document.getElementById("today-upd-mask");
+  const list = document.getElementById("today-upd-list");
+  const sheet = document.getElementById("today-upd-sheet");
+  if (list) list.scrollTop = 0;
+  if (sheet) sheet.scrollTop = 0;
+  bindTodayUpdateSheet(mask);
+  requestAnimationFrame(() => {
+    if (mask) mask.classList.add("open");
+    if (list) list.scrollTop = 0;
+    if (sheet) sheet.scrollTop = 0;
+  });
+}
+function closeTodayUpdateSheet() {
+  const mask = document.getElementById("today-upd-mask");
+  const bar = document.getElementById("apply-update");
+  const finish = () => {
+    if (mask && mask.parentNode) mask.remove();
+    if (bar) bar.classList.remove("is-away");
+    try { ensureUpdateBar(); } catch {}
+  };
+  if (!mask) { finish(); return; }
+  mask.classList.remove("open");
+  const sheet = mask.querySelector("#today-upd-sheet");
+  if (sheet) sheet.style.transform = "";
+  let done = false;
+  const end = () => { if (done) return; done = true; finish(); };
+  mask.addEventListener("transitionend", end);
+  setTimeout(end, 420);
+}
+
 async function wipeClientCache() {
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
