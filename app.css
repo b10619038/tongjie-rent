@@ -10094,8 +10094,8 @@ button.note-entry.card {
 .note-screen {
   position: fixed;
   inset: 0;
-  z-index: 80;
-  background: var(--paper, #f6f3ee);
+  z-index: 400;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   padding: calc(12px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));
@@ -10112,25 +10112,65 @@ button.note-entry.card {
 .note-detail h2 { font-size: 20px; margin: 8px 0 4px; }
 .note-detail p { line-height: 1.7; }
 .note-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.note-shot {
-  min-height: 180px;
+.note-screen, #note-screen.note-screen {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+#note-screen.note-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: #ffffff;
+}
+.note-shot-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
   border-radius: 18px;
-  padding: 14px 12px;
+  overflow: hidden;
+  background: #f3f1ec;
+  box-shadow: 0 8px 22px rgba(23, 33, 31, .06);
+}
+.note-shot-img {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  aspect-ratio: 9 / 16;
+  object-fit: contain;
+  background: #f6f3ee;
+  vertical-align: top;
+}
+.note-shot-empty {
+  min-height: 160px;
+  margin: 0;
+  border-radius: 18px;
+  border: 1px dashed #d5d2cb;
+  background: #f6f3ee;
+  color: #8a8f8b;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 16px 10px;
+  font-size: 13px;
+}
+.note-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0,0,0,.85);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: #f3f1ec;
-  color: #5c6560;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 12px;
 }
-.note-shot i {
-  height: 54px;
-  border-radius: 12px;
-  background: linear-gradient(#dedbd4, #cfcbc3);
-}
-.note-shot b { font-size: 13px; }
-.note-shot span { font-size: 13px; line-height: 1.45; }
-.note-shot.after { background: #e7eee4; color: #243028; }
-.note-shot.after i { background: linear-gradient(#8ea584, #62765b); }
+.note-lightbox[hidden] { display: none; }
+.note-lightbox-label { margin: 0; color: #fff; font-size: 14px; font-weight: 700; }
+.note-lightbox img { max-width: 100%; max-height: min(80vh, 720px); border-radius: 18px; }
+.note-lightbox #note-lightbox-close { width: auto; color: #fff; background: rgba(255,255,255,.15); }
 
 
 
