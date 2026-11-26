@@ -1,7 +1,7 @@
-const CACHE = "tongjie-app-v2417";
+const CACHE = "tongjie-app-v2418";
 const MEDIA = "tongjie-media-v1";
 const BUILD = "20261003-1398";
-const FILES = ["/", "/index.html", "/app.css", "/app.js", "/html2canvas.min.js", "/fonts/iansui-tc.woff2", "/fonts/iansui-latin.woff2", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png", "/images/splash-house.png"];
+const FILES = ["/", "/index.html", "/app.css", "/app.js", "/html2canvas.min.js", "/fonts/iansui-tc.woff2", "/fonts/iansui-latin.woff2", "/i18n.js", "/i18n-pack.js", "/birthday.js", "/name-7021.js", "/repair-sync.js", "/work-scroll.css", "/work-enhance.js", "/manifest.json", "/icon-192.png", "/icon-512.png", "/icon-maskable-512.png", "/images/notify-badge.png", "/images/asset-map.webp", "/images/chop-company.png", "/images/chop-zhao.png", "/images/splash-house.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES).catch(() => {})));
@@ -152,7 +152,7 @@ self.addEventListener("push", event => {
     await self.registration.showNotification(title, {
       body,
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/images/notify-badge.png",
       lang: "zh-Hant",
       subtitle: data.subtitle || "統潔開發",
       vibrate: [200, 80, 200],

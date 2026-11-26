@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-26-10-22";
-const APP_EDIT_COUNT = 2548;
+const APP_STAMP = "2026-11-26-10-24";
+const APP_EDIT_COUNT = 2549;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -3423,7 +3423,7 @@ function promptAppUpdate(reg) {
   const opts = {
     body: "點通知可查看更新了哪些內容",
     tag: "tongjie-update",
-    badge: "/icon-192.png",
+    badge: "/images/notify-badge.png",
     icon: "/icon-192.png",
     lang: "zh-Hant",
     subtitle: "統潔開發",
@@ -20928,7 +20928,7 @@ function showOsBanner(title, body, tag, extra) {
   const tid = String((extra && extra.tid) || "");
   const opts = {
     body: text,
-    badge: "/icon-192.png",
+    badge: "/images/notify-badge.png",
     lang: "zh-Hant",
     subtitle: "統潔開發",
     vibrate: [200, 80, 200],
