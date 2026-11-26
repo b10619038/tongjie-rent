@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-40";
-const APP_EDIT_COUNT = 2585;
+const APP_STAMP = "2026-11-27-03-55";
+const APP_EDIT_COUNT = 2586;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "設定 → 通知下方的通知名稱，點一下會在下面展開這則通知收到時的樣子（示範內容）和什麼時候會收到，再點一次收合，不用再跳出說明視窗", head: "通知預覽", before: "changelog/2026-11-27-tenant-notify-preview-before.svg", after: "changelog/2026-11-27-tenant-notify-preview-after.svg", aud: ["套房租客"] }
+  ] },
+  { ver: "2026-11-27-03-40-2585", items: [
     { text: "設定 → 通知新增「已繳租金、續約申請、入住申請、中途退租、正式退租」五個開關（預設開啟），關掉的那一類，這台手機就不再跳出通知（App 沒開時的推播也一樣）；原本的「租客報修」開關現在也會擋掉推播。點開關左邊的文字，會展開這類通知收到時的樣子和什麼時候會收到，再點一次收合", head: "通知新增五種", before: "changelog/2026-11-27-notify-cats-before.svg", after: "changelog/2026-11-27-notify-cats-after.svg", aud: ["管理員後台", "開發者後台"] }
   ] },
   { ver: "2026-11-27-03-20-2584", items: [
@@ -4911,7 +4914,7 @@ function notifyPrefPreviewHtml(id) {
   const v = NOTIFY_PREF_PREVIEW[id];
   if (!v) return "";
   const open = ui && ui.notifyPreviewOpen === id;
-  return `<div class="pref-preview${open ? " open" : ""}" data-preview-for="${id}"><div class="pref-preview-in"><div class="pv-note"><img class="pv-icon" src="/icon-192.png" alt=""><div class="pv-text"><div class="pv-head"><b>統潔開發</b><span>現在</span></div><div class="pv-title">${escapeHtml(v.t)}</div><div class="pv-body">${escapeHtml(v.b)}</div></div></div><div class="pv-cap">${escapeHtml(v.c)}</div></div></div>`;
+  return `<div class="pref-preview${open ? " open" : ""}" data-preview-for="${id}"><div class="pref-preview-in">${notifyMockHtml(v.t, v.b)}<div class="pv-cap">${escapeHtml(v.c)}</div></div></div>`;
 }
 function notifyPrefOffList() {
   const p = loadNotifyPrefs();
@@ -50615,10 +50618,38 @@ const TENANT_NOTIFY_CATALOG = [
   ["入住確認", "申請入住已核准時會通知。"],
   ["租約結束", "已辦理退租時會通知。"]
 ];
+const TENANT_NOTIFY_SAMPLE = [
+  ["管理員公告", "停水通知\n12/5 上午 9:00–12:00 水塔清洗，請先儲水"],
+  ["使用規範已更新", "請查看最新使用規範"],
+  ["租金繳費通知", "12月租金尚未入帳，請至 App「繳費租金」完成轉帳；若已轉帳可忽略此通知。"],
+  ["屋主催繳", "0000 王○○　本月租金 $7,000 尚未入帳，請於每月 5 日前繳納。"],
+  ["本月租金已入帳", "0000 王○○ 本月租金已入帳"],
+  ["報修進度", "0000 冷氣已改為處理中"],
+  ["報修預約已安排", "0000 12/03 下午 2:00"],
+  ["續約確認", "您好，合約將於 2026-12-31 到期（還有 34 天）。若方便續住，懇請盡早在 App 確認續約並預約簽約日，我們好為您準備新約。"],
+  ["續約簽約時間", "0000 簽約時間改為 12/20 上午 10:00"],
+  ["新訊息", "管理員：您好，明天下午會過去看冷氣"],
+  ["入住已確認", "0000 王○○ 已成為正式租客"],
+  ["租約已結束", "0000 已辦理退租"]
+];
+function notifyMockHtml(title, body) {
+  return `<div class="pv-note"><img class="pv-icon" src="/icon-192.png" alt=""><div class="pv-text"><div class="pv-head"><b>統潔開發</b><span>現在</span></div><div class="pv-title">${escapeHtml(title)}</div><div class="pv-body">${escapeHtml(body).replace(/\n/g, "<br>")}</div></div></div>`;
+}
 function tenantNotifyCatalogHtml() {
-  return `<div class="notify-names">${TENANT_NOTIFY_CATALOG.map((row, i) =>
-    `<button type="button" data-notify-info="${i}">${escapeHtml(row[0])}</button>`
-  ).join("")}</div>`;
+  const openI = ui && ui.tenantNotifyOpen != null ? String(ui.tenantNotifyOpen) : "";
+  const out = [];
+  const panel = i => {
+    const row = TENANT_NOTIFY_CATALOG[i];
+    const sm = TENANT_NOTIFY_SAMPLE[i] || [row[0], ""];
+    return `<div class="pref-preview notify-name-preview${openI === String(i) ? " open" : ""}" data-notify-info-for="${i}"><div class="pref-preview-in">${notifyMockHtml(sm[0], sm[1])}<div class="pv-cap">${escapeHtml(row[1])}</div></div></div>`;
+  };
+  TENANT_NOTIFY_CATALOG.forEach((row, i) => {
+    out.push(`<button type="button" class="${openI === String(i) ? "open" : ""}" data-notify-info="${i}" aria-expanded="${openI === String(i) ? "true" : "false"}">${escapeHtml(row[0])}</button>`);
+    if (i % 2 === 1 || i === TENANT_NOTIFY_CATALOG.length - 1) {
+      for (let k = i - (i % 2); k <= i; k++) out.push(panel(k));
+    }
+  });
+  return `<div class="notify-names">${out.join("")}</div>`;
 }
 function openNotifyInfo(i) {
   const item = TENANT_NOTIFY_CATALOG[Number(i)];
@@ -50953,7 +50984,15 @@ function bindTenantSettings() {
     btn.onclick = e => {
       e.preventDefault();
       e.stopPropagation();
-      openNotifyInfo(btn.dataset.notifyInfo);
+      const i = String(btn.dataset.notifyInfo);
+      const next = String(ui.tenantNotifyOpen == null ? "" : ui.tenantNotifyOpen) === i ? null : i;
+      ui.tenantNotifyOpen = next;
+      document.querySelectorAll("[data-notify-info]").forEach(b => {
+        const on = String(b.dataset.notifyInfo) === next;
+        b.classList.toggle("open", on);
+        b.setAttribute("aria-expanded", on ? "true" : "false");
+      });
+      document.querySelectorAll("[data-notify-info-for]").forEach(pn => pn.classList.toggle("open", String(pn.dataset.notifyInfoFor) === next));
     };
   });
   const notify = document.getElementById("set-notify");

@@ -6230,6 +6230,11 @@ body.print-lease .studio-lease-paper { display: block; }
   -webkit-tap-highlight-color: transparent;
 }
 .notify-names button:active { transform: scale(0.98); background: var(--press-on); }
+.notify-names button.open { box-shadow: inset 0 0 0 2px var(--teal); }
+.notify-names .notify-name-preview { grid-column: 1 / -1; }
+.notify-names { row-gap: 0; }
+.notify-names > button { margin-bottom: 8px; }
+.notify-names .notify-name-preview .pv-cap { margin-bottom: 4px; }
 .howto-fig {
   width: 100%;
   height: auto;
