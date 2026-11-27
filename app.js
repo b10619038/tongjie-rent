@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-03-42";
-const APP_EDIT_COUNT = 2588;
+const APP_STAMP = "2026-11-27-13-25";
+const APP_EDIT_COUNT = 2589;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "登入後台後打開 App，有時會先閃出一下舊的租客資料（例如已換約的房間仍顯示舊房客、不續約、尚無需繳費），過一會才變成正確的畫面。現在已登入時打開 App，會先停在房子標誌，等雲端最新資料到了才顯示畫面，舊資料不會再閃出來；網路很慢（超過約 6 秒）或沒有網路時，才改顯示上次儲存的資料，並跳出「目前顯示的是上次儲存的資料」提醒，連上網後會自動換成最新。另外，這次開啟還沒讀到雲端資料前，不會把這支手機上的舊資料寫回雲端", head: "開啟時不再閃現舊資料", before: "changelog/2026-11-27-open-stale-before.svg", after: "changelog/2026-11-27-open-stale-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
+  ] },
+  { ver: "2026-11-27-03-42-2588", items: [
     { text: "部分手機打開更新說明時，較大的「更新後」圖會變成一片空白。已重新輸出這些圖，檔案縮小後就能正常顯示；這次更新後會自動重載圖片", head: "更新後圖不再空白", before: "changelog/2026-11-27-shot-blank-fix-before.svg", after: "changelog/2026-11-27-shot-blank-fix-after.svg", aud: ["套房租客", "管理員後台", "開發者後台", "負責人後台"] }
   ] },
   { ver: "2026-11-27-03-55-2586", items: [
@@ -17212,6 +17215,7 @@ async function pullCloudNow() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     if (ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 1600) return false;
     const data = await res.json();
+    if (data && typeof data === "object") window.__cloudPulled = true;
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     state.moveFills = mergeMoveFills(state.moveFills, data.moveFills);
     const keepCut = Math.max(Number(state.adminLogoutAt) || 0, Number(data.adminLogoutAt) || 0);
@@ -18248,6 +18252,11 @@ async function pushCloud() {
     if (applyRoomWaitBox(state)) cloudDirty = true;
   } catch {}
   if (pushBusy) { pushAgain = true; return false; }
+  // Never write a local copy to the cloud before this session has read the cloud at least once.
+  if (!window.__cloudPulled && navigator.onLine !== false) {
+    try { await pullCloud(); } catch {}
+    if (pushBusy) { pushAgain = true; return false; }
+  }
   pushBusy = true;
   pushAgain = false;
   try {
@@ -52887,6 +52896,7 @@ function bindPullRefresh() {
 function hideSplash() {
   const el = document.getElementById("splash");
   if (!el || el.dataset.done === "1") return;
+  if (window.__splashHold) return;
   el.dataset.done = "1";
   const house = el.querySelector(".splash-house");
   const leave = () => {
@@ -52938,6 +52948,9 @@ async function boot() {
     applyFont(currentFontScale());
     appBootReady = true;
     try { armPressFeel(); } catch {}
+    // Logged-in start: the first paint comes from the saved local copy, which can be older than the cloud.
+    // Keep the splash up until the cloud copy has arrived (or ~6s / offline) so the old data is never seen.
+    if (ui.role && !window.__cloudPulled && navigator.onLine !== false) window.__splashHold = true;
     render();
     try { armWhatsNew(); } catch {}
     setTimeout(() => { try { startBuildPollFallback(); } catch {} }, 8000);
@@ -52946,6 +52959,18 @@ async function boot() {
     try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
     try { connectPaidCloud(); } catch {}
     const cloudReady = pullCloud().catch(() => false);
+    const freeSplash = () => {
+      if (!window.__splashHold) return;
+      window.__splashHold = false;
+      try { render(); } catch {}
+      if (window.__cloudPulled !== true && ui.role) { try { toast("目前顯示的是上次儲存的資料，連上網路後會自動更新"); } catch {} }
+    };
+    if (window.__splashHold) {
+      cloudReady.then(freeSplash, freeSplash);
+      setTimeout(freeSplash, 6000);
+    } else if (ui.role && !window.__cloudPulled) {
+      cloudReady.then(() => { if (window.__cloudPulled !== true) { try { toast("目前顯示的是上次儲存的資料，連上網路後會自動更新"); } catch {} } }, () => {});
+    }
     await Promise.race([refreshGeo(), new Promise(r => setTimeout(r, 2800))]);
     if (locPrefOn()) askPreciseLocation(false);
     try {
