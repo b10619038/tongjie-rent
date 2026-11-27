@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-23-55";
-const APP_EDIT_COUNT = 2599;
+const APP_STAMP = "2026-11-28-00-20";
+const APP_EDIT_COUNT = 2600;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "更新紀錄的前後圖：點任一張會全螢幕打開，手指左右滑動就能切換「更新前／更新後」，上方有標籤和小圓點顯示目前是哪一張。電腦可用左右方向鍵或畫面上的箭頭切換；點背景、右上角 ✕ 或按 Esc 關閉。可以兩指放大細看，雙擊還原。新舊所有紀錄都適用", head: "前後圖滑動切換", before: "changelog/2026-11-28-note-swipe-before.svg", after: "changelog/2026-11-28-note-swipe-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台", "套房租客"] }
+  ] },
+  { ver: "2026-11-27-23-55-2599", items: [
     { text: "開發者後台多工（2 或 3 個畫面並排）用滾輪捲動不再一頓一頓：每個畫面在別的畫面存檔時都會重讀整份資料，3 個畫面互相觸發，常卡住 1 秒以上。現在改成等停止捲動後才合併更新，同一陣子的多次存檔只讀一次。資產平面圖在最小（或最大）倍率時，滾輪會直接捲動頁面，不再卡在地圖上；中間倍率照樣用滾輪或雙指放大縮小", head: "多工捲動順暢", before: "changelog/2026-11-27-split-scroll-before.svg", after: "changelog/2026-11-27-split-scroll-after.svg", aud: ["開發者後台"] },
     { text: "官方 LINE 讀轉帳截圖的 Gemini 備援型號已更新：第一順位仍是 Gemini 3.5 Flash-Lite，後面改為同樣可用的 3.1 Flash-Lite 與 3.5 Flash。先前清單裡的 2.5 Flash-Lite 與 2.0 Flash 對新金鑰已無法使用，第一個型號若暫時失敗就讀不到圖；現在備援仍能繼續認字。回覆用字不變，全部失敗仍照舊提示。", head: "LINE讀圖型號", before: "changelog/2026-11-27-gemini-models-before.svg", after: "changelog/2026-11-27-gemini-models-after.svg", aud: ["開發者後台"] },
     { text: "租客在官方 LINE 完成繳費回報（已繳費加截圖、轉帳文句或轉帳截圖，含自動綁定）後，App 繳費頁會自動顯示「本月已繳費」並鎖定，不必再回到 App 按一次按鈕。管理員畫面不變", head: "LINE已繳自動顯示", before: "changelog/2026-11-27-pay-auto-line-before.svg", after: "changelog/2026-11-27-pay-auto-line-after.svg", aud: ["套房租客"] },
@@ -3771,6 +3774,159 @@ function notesBindShots(root) {
     };
   });
 }
+const noteViewer = { open: false, idx: 0, shots: [], scale: 1, tx: 0, ty: 0 };
+function noteViewerEl() {
+  let el = document.getElementById("note-viewer");
+  if (el) return el;
+  if (!document.getElementById("note-viewer-css")) {
+    const st = document.createElement("style");
+    st.id = "note-viewer-css";
+    st.textContent = ".note-viewer{position:fixed;inset:0;z-index:5200;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 0 calc(18px + env(safe-area-inset-bottom));touch-action:none;user-select:none;-webkit-user-select:none}"
+      + ".note-viewer[hidden]{display:none}.note-viewer-top{display:flex;align-items:center;gap:10px;color:#fff;font-weight:800;font-size:15px}"
+      + ".note-viewer-dots{display:flex;gap:6px}.note-viewer-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)}.note-viewer-dots i.on{background:#fff}"
+      + ".note-viewer-stage{position:relative;width:100%;flex:1 1 auto;min-height:0;overflow:hidden}.note-viewer-track{display:flex;height:100%;will-change:transform}.note-viewer-track.is-glide{transition:transform .28s cubic-bezier(.22,.82,.24,1)}"
+      + ".note-viewer-slide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0 14px;box-sizing:border-box}.note-viewer-slide img{max-width:100%;max-height:100%;border-radius:16px;transform-origin:center center;pointer-events:none;-webkit-user-drag:none}"
+      + ".note-viewer-x{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:20px;cursor:pointer}"
+      + ".note-viewer-nav{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;z-index:2;border:0;border-radius:50%;background:rgba(0,0,0,.5);box-shadow:0 0 0 1px rgba(255,255,255,.4);color:#fff;font-size:24px;line-height:1;cursor:pointer}.note-viewer-nav[disabled]{opacity:.25;cursor:default}.note-viewer-prev{left:10px}.note-viewer-next{right:10px}"
+      + ".note-viewer-hint{color:rgba(255,255,255,.6);font-size:12px;margin:0}";
+    document.head.appendChild(st);
+  }
+  document.body.insertAdjacentHTML("beforeend", `<div class="note-viewer" id="note-viewer" hidden role="dialog" aria-modal="true" aria-label="更新前後畫面">
+    <div class="note-viewer-top"><span id="note-viewer-label"></span><span class="note-viewer-dots" id="note-viewer-dots"></span></div>
+    <div class="note-viewer-stage" id="note-viewer-stage"><div class="note-viewer-track" id="note-viewer-track"></div>
+      <button type="button" class="note-viewer-nav note-viewer-prev" id="note-viewer-prev" aria-label="上一張">‹</button>
+      <button type="button" class="note-viewer-nav note-viewer-next" id="note-viewer-next" aria-label="下一張">›</button></div>
+    <p class="note-viewer-hint" id="note-viewer-hint">左右滑動切換更新前／更新後</p>
+    <button type="button" class="note-viewer-x" id="note-viewer-x" aria-label="關閉">✕</button>
+  </div>`);
+  el = document.getElementById("note-viewer");
+  const stage = document.getElementById("note-viewer-stage");
+  const track = document.getElementById("note-viewer-track");
+  document.getElementById("note-viewer-x").onclick = e => { e.stopPropagation(); closeNoteViewer(); };
+  document.getElementById("note-viewer-prev").onclick = e => { e.stopPropagation(); noteViewerGo(noteViewer.idx - 1); };
+  document.getElementById("note-viewer-next").onclick = e => { e.stopPropagation(); noteViewerGo(noteViewer.idx + 1); };
+  const pts = new Map();
+  let g = null;
+  const W = () => stage.clientWidth || window.innerWidth || 1;
+  const img = () => track.children[noteViewer.idx] && track.children[noteViewer.idx].querySelector("img");
+  const paintZoom = () => { const im = img(); if (im) im.style.transform = noteViewer.scale > 1 ? `translate(${noteViewer.tx}px,${noteViewer.ty}px) scale(${noteViewer.scale})` : ""; };
+  const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  stage.addEventListener("pointerdown", e => {
+    const onBtn = !!e.target.closest("button");
+    if (e.isPrimary) pts.clear();
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!onBtn) try { stage.setPointerCapture(e.pointerId); } catch {}
+    if (pts.size === 2) g = { mode: "pinch", d0: dist(), s0: noteViewer.scale };
+    else g = { mode: noteViewer.scale > 1 ? "pan" : "swipe", x0: e.clientX, y0: e.clientY, tx0: noteViewer.tx, ty0: noteViewer.ty, moved: false, t0: Date.now(), onBtn };
+    track.classList.remove("is-glide");
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId) || !g) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (g.mode === "pinch" && pts.size >= 2) {
+      noteViewer.scale = Math.max(1, Math.min(4, g.s0 * dist() / g.d0));
+      if (noteViewer.scale === 1) { noteViewer.tx = 0; noteViewer.ty = 0; }
+      paintZoom();
+      return;
+    }
+    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) g.moved = true;
+    if (g.mode === "pan") { noteViewer.tx = g.tx0 + dx; noteViewer.ty = g.ty0 + dy; paintZoom(); return; }
+    if (g.mode === "swipe") {
+      const n = noteViewer.shots.length;
+      const edge = (noteViewer.idx === 0 && dx > 0) || (noteViewer.idx === n - 1 && dx < 0);
+      track.style.transform = `translateX(${-noteViewer.idx * W() + (edge ? dx * 0.3 : dx)}px)`;
+    }
+  });
+  const up = e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (!g) return;
+    if (g.mode === "pinch") { if (pts.size < 2) g = pts.size === 1 ? { mode: noteViewer.scale > 1 ? "pan" : "none", x0: [...pts.values()][0].x, y0: [...pts.values()][0].y, tx0: noteViewer.tx, ty0: noteViewer.ty, moved: true } : null; return; }
+    const dx = e.clientX - g.x0;
+    if (g.mode === "swipe") {
+      const fast = Math.abs(dx) > 30 && Date.now() - g.t0 < 300;
+      if (g.onBtn && !g.moved) { g = null; return; }
+      if (Math.abs(dx) > W() * 0.18 || fast) noteViewerGo(noteViewer.idx + (dx < 0 ? 1 : -1));
+      else noteViewerGo(noteViewer.idx);
+      if (!g.moved && !g.onBtn) {
+        const im = img();
+        const r = im ? im.getBoundingClientRect() : null;
+        if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeNoteViewer();
+      }
+    }
+    g = null;
+  };
+  stage.addEventListener("pointerup", up);
+  stage.addEventListener("pointercancel", up);
+  stage.addEventListener("dblclick", () => { noteViewer.scale = noteViewer.scale > 1 ? 1 : 2; noteViewer.tx = 0; noteViewer.ty = 0; paintZoom(); });
+  el.addEventListener("click", e => { if (e.target === el) closeNoteViewer(); });
+  document.addEventListener("keydown", e => {
+    if (!noteViewer.open) return;
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeNoteViewer(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); noteViewerGo(noteViewer.idx - 1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); noteViewerGo(noteViewer.idx + 1); }
+  }, true);
+  return el;
+}
+function noteViewerGo(i) {
+  const n = noteViewer.shots.length;
+  if (!n) return;
+  const next = Math.max(0, Math.min(n - 1, i));
+  if (next !== noteViewer.idx) {
+    noteViewer.scale = 1; noteViewer.tx = 0; noteViewer.ty = 0;
+    document.querySelectorAll("#note-viewer-track img").forEach(im => { im.style.transform = ""; });
+  }
+  noteViewer.idx = next;
+  const track = document.getElementById("note-viewer-track");
+  const stage = document.getElementById("note-viewer-stage");
+  if (track) {
+    track.classList.add("is-glide");
+    track.style.transform = `translateX(${-next * ((stage && stage.clientWidth) || window.innerWidth)}px)`;
+  }
+  const label = document.getElementById("note-viewer-label");
+  if (label) label.textContent = noteViewer.shots[next].label;
+  document.querySelectorAll("#note-viewer-dots i").forEach((d, k) => d.classList.toggle("on", k === next));
+  const prev = document.getElementById("note-viewer-prev");
+  const nx = document.getElementById("note-viewer-next");
+  if (prev) prev.disabled = next === 0;
+  if (nx) nx.disabled = next === n - 1;
+}
+function openNoteViewer(btn) {
+  const pair = btn.closest(".note-pair");
+  const btns = pair ? [...pair.querySelectorAll("[data-note-full]")] : [btn];
+  const shots = btns.map(b => ({ src: b.getAttribute("data-note-full") || "", label: b.getAttribute("data-note-full-label") || "" })).filter(x => x.src);
+  if (!shots.length) return;
+  const el = noteViewerEl();
+  noteViewer.shots = shots;
+  noteViewer.scale = 1; noteViewer.tx = 0; noteViewer.ty = 0;
+  noteViewer.idx = Math.max(0, btns.indexOf(btn));
+  const many = shots.length > 1;
+  document.getElementById("note-viewer-track").innerHTML = shots.map(x => `<div class="note-viewer-slide"><img src="${escapeHtml(x.src)}" alt="${escapeHtml(x.label)}" decoding="async" draggable="false"></div>`).join("");
+  document.getElementById("note-viewer-dots").innerHTML = many ? shots.map(() => "<i></i>").join("") : "";
+  ["note-viewer-prev", "note-viewer-next", "note-viewer-hint"].forEach(id => { document.getElementById(id).hidden = !many; });
+  el.hidden = false;
+  noteViewer.open = true;
+  const track = document.getElementById("note-viewer-track");
+  track.classList.remove("is-glide");
+  track.style.transform = "";
+  requestAnimationFrame(() => { track.style.transform = `translateX(${-noteViewer.idx * (document.getElementById("note-viewer-stage").clientWidth || window.innerWidth)}px)`; });
+  noteViewerGo(noteViewer.idx);
+  track.classList.remove("is-glide");
+}
+function closeNoteViewer() {
+  const el = document.getElementById("note-viewer");
+  if (el) el.hidden = true;
+  noteViewer.open = false;
+}
+document.addEventListener("click", e => {
+  const btn = e.target && e.target.closest && e.target.closest("[data-note-full]");
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openNoteViewer(btn);
+}, true);
+window.addEventListener("resize", () => { if (noteViewer.open) noteViewerGo(noteViewer.idx); });
 function notesPushHistory() {
   if (!ui || ui.navPop) return;
   try {
@@ -3831,6 +3987,10 @@ function notesGo(level, opts) {
 function notesBack(opts) {
   opts = opts || {};
   if (ui.notesBusy && !opts.force) return;
+  if (noteViewer.open) {
+    closeNoteViewer();
+    return;
+  }
   const lb = document.getElementById("note-lightbox");
   if (lb && !lb.hidden) {
     lb.hidden = true;
