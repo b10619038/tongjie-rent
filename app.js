@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-18-47";
-const APP_EDIT_COUNT = 2597;
+const APP_STAMP = "2026-11-27-19-22";
+const APP_EDIT_COUNT = 2598;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,7 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "官方 LINE 讀轉帳截圖的 Gemini 備援型號已更新：第一順位仍是 Gemini 3.5 Flash-Lite，後面改為同樣可用的 3.1 Flash-Lite 與 3.5 Flash。先前清單裡的 2.5 Flash-Lite 與 2.0 Flash 對新金鑰已無法使用，第一個型號若暫時失敗就讀不到圖；現在備援仍能繼續認字。回覆用字不變，全部失敗仍照舊提示。", head: "LINE讀圖型號", before: "changelog/2026-11-27-gemini-models-before.svg", after: "changelog/2026-11-27-gemini-models-after.svg", aud: ["開發者後台"] },
     { text: "租客在官方 LINE 完成繳費回報（已繳費加截圖、轉帳文句或轉帳截圖，含自動綁定）後，App 繳費頁會自動顯示「本月已繳費」並鎖定，不必再回到 App 按一次按鈕。管理員畫面不變", head: "LINE已繳自動顯示", before: "changelog/2026-11-27-pay-auto-line-before.svg", after: "changelog/2026-11-27-pay-auto-line-after.svg", aud: ["套房租客"] },
     { text: "官方 LINE 讀轉帳截圖改為依序嘗試 Google Vision、Gemini Flash（免費額度）、Cloudflare Workers AI。沒設定 Google 金鑰時只要 Pages 接上 Workers AI 就能認字；全部失敗則照舊回覆，不會出現奇怪句子", head: "LINE讀圖備援", before: "changelog/2026-11-27-line-ocr-fallback-before.svg", after: "changelog/2026-11-27-line-ocr-fallback-after.svg", aud: ["開發者後台"] }
   ] },
