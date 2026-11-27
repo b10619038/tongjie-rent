@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-13-32";
-const APP_EDIT_COUNT = 2590;
+const APP_STAMP = "2026-11-27-13-46";
+const APP_EDIT_COUNT = 2591;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "打開 App 後約 1 秒，租客列表偶爾會閃一下舊資料再變回正確。原因是雲端有時會回傳比較舊的一份資料（約 1 分鐘內），App 把它合併進來，房間的現任租客被短暫改回舊的。現在 App 記住已經看過的最新版本，1 到 2 分鐘內收到比它舊的雲端資料就直接丟掉，開啟時遇到舊資料會自動重抓；存檔後的檢查也不會再把舊資料寫回雲端", head: "開啟後不再閃回舊租客", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-13-32-2590", items: [
     { text: "登入後台後打開 App，有時會先閃出一下舊的租客資料（例如已換約的房間仍顯示舊房客、不續約、尚無需繳費），過一會才變成正確的畫面。現在已登入時打開 App，會先停在房子標誌，等雲端最新資料到了才顯示畫面，舊資料不會再閃出來；網路很慢（超過約 6 秒）或沒有網路時，才改顯示上次儲存的資料，並跳出「目前顯示的是上次儲存的資料」提醒，連上網後會自動換成最新。另外，這次開啟還沒讀到雲端資料前，不會把這支手機上的舊資料寫回雲端", head: "開啟時不再閃現舊資料", before: "changelog/2026-11-27-open-stale-before.svg", after: "changelog/2026-11-27-open-stale-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-03-42-2588", items: [
@@ -17215,6 +17218,18 @@ async function pullCloudNow() {
     if (!res.ok) { ui.cloudOk = false; return false; }
     if (ui && ui.adminNavAt && Date.now() - ui.adminNavAt < 1600) return false;
     const data = await res.json();
+    // Cloud reads can come back older than what we already saw (KV edge cache). Never merge such a snapshot.
+    const dUp = Number(data && data.updatedAt) || 0;
+    if (dUp) {
+      let rv = window.__cloudRev;
+      if (!rv) { try { rv = JSON.parse(localStorage.getItem("tj-cloud-rev") || "null"); } catch { rv = null; } window.__cloudRev = rv; }
+      if (rv && dUp < Number(rv.up) && Date.now() - Number(rv.at) < 120000) { window.__cloudStale = true; return false; }
+      if (!rv || dUp > Number(rv.up)) {
+        window.__cloudRev = { up: dUp, at: Date.now() };
+        try { localStorage.setItem("tj-cloud-rev", JSON.stringify(window.__cloudRev)); } catch {}
+      }
+    }
+    window.__cloudStale = false;
     if (data && typeof data === "object") window.__cloudPulled = true;
     if (!data || !Array.isArray(data.rooms) || !data.rooms.length) { ui.cloudOk = true; return false; }
     state.moveFills = mergeMoveFills(state.moveFills, data.moveFills);
@@ -18255,6 +18270,12 @@ async function pushCloud() {
   // Never write a local copy to the cloud before this session has read the cloud at least once.
   if (!window.__cloudPulled && navigator.onLine !== false) {
     try { await pullCloud(); } catch {}
+    if (!window.__cloudPulled) {
+      // Could not read a current cloud copy yet (offline, error, or a stale read): keep the changes and retry later.
+      clearTimeout(pushCloud.retryT);
+      pushCloud.retryT = setTimeout(() => { try { pushCloud(); } catch {} }, 3000);
+      return false;
+    }
     if (pushBusy) { pushAgain = true; return false; }
   }
   pushBusy = true;
@@ -18558,9 +18579,19 @@ async function pushCloud() {
     ui.cloudOk = !!(res && res.ok);
     if (res && res.ok) {
       try {
+        const wrote = Number(payload.updatedAt) || 0;
+        const rv0 = window.__cloudRev;
+        if (wrote && (!rv0 || wrote >= Number(rv0.up))) {
+          window.__cloudRev = { up: wrote, at: Date.now() };
+          try { localStorage.setItem("tj-cloud-rev", JSON.stringify(window.__cloudRev)); } catch {}
+        }
+      } catch {}
+      try {
         const chk = await fetch(DATA_API, { headers: { "X-Tongjie-Key": SYNC_KEY }, cache: "no-store" });
         if (chk.ok) {
           const live = await chk.json();
+          // A stale read (older than what we just wrote) must never be written back.
+          if ((Number(live && live.updatedAt) || 0) < (Number(payload.updatedAt) || 0)) throw new Error("stale-check");
           const ids = new Set((live.repairs || []).map(r => r && r.id));
           const gone = new Set([].concat(live.repairGone || [], state.repairGone || []).map(String));
           const missing = (state.repairs || []).filter(r => r && r.id && !ids.has(r.id) && !gone.has(String(r.id)));
@@ -52958,7 +52989,14 @@ async function boot() {
     markVersionSeen();
     try { sessionStorage.setItem("tj-sw-reload", "1"); } catch {}
     try { connectPaidCloud(); } catch {}
-    const cloudReady = pullCloud().catch(() => false);
+    const cloudReady = (async () => {
+      let r = await pullCloud().catch(() => false);
+      for (let i = 0; i < 4 && window.__cloudStale; i++) {
+        await new Promise(x => setTimeout(x, 1000));
+        r = await pullCloud().catch(() => false);
+      }
+      return r;
+    })();
     const freeSplash = () => {
       if (!window.__splashHold) return;
       window.__splashHold = false;
