@@ -138,10 +138,10 @@ function tenantsByName(state, name) {
   const want = normBindName(name);
   const hits = [];
   (state.tenants || []).forEach(t => {
-    if (!t || t.former || t.incoming || t.demo || normBindName(t.name) !== want) return;
+    if (!t || t.former || t.demo || t.cancelledApply || t.clearedApply || t.sessionEnded || lbNorm(t.name) !== lbNorm(want)) return;
     const room = (state.rooms || []).find(r => r && r.id === t.roomId);
     if (!room || !roomOk(room.no)) return;
-    hits.push({ room: String(room.no), name: t.name });
+    hits.push({ room: String(room.no), name: t.name, checked: true });
   });
   return hits;
 }
@@ -151,7 +151,7 @@ async function resolveBindPhrase(text) {
   if (!hit.lookup) return { hit };
   const state = await loadRentState();
   if (hit.lookup === "room") {
-    const t = state && currentTenant(state, hit.room);
+    const t = state && (currentTenant(state, hit.room) || lbBindTenants(state, hit.room)[0]);
     if (!t) return { hit: null, reply: "這間目前沒有租客。請改傳「房號 姓名」，例如 7051 許光漢。" };
     return { hit: { room: hit.room, name: t.name } };
   }
@@ -170,10 +170,18 @@ function payUserRoom(data, userId) {
   if (u && u.ym === payYmNow() && /^\d{4}$/.test(String(u.room || ""))) return String(u.room);
   return "";
 }
-function rememberPayUser(data, userId, room) {
+function rememberPayUser(data, userId, room, name) {
   if (!userId || !/^\d{4}$/.test(String(room || ""))) return;
   if (!data.payUsers) data.payUsers = {};
-  data.payUsers[userId] = { room: String(room), ym: payYmNow(), at: Date.now() };
+  const row = { room: String(room), ym: payYmNow(), at: Date.now() };
+  if (name) row.name = String(name);
+  data.payUsers[userId] = row;
+}
+function nameFromPayText(text, room) {
+  const s = String(text || "");
+  const m = s.match(/【繳費通知】\s*(\d{4})\s+(\S+)/);
+  if (!m || m[1] !== String(room || "")) return "";
+  return /^(已繳|首次)/.test(m[2]) ? "" : m[2];
 }
 function takePendingImage(data, userId) {
   const p = data && data.pendingPayImages && data.pendingPayImages[userId];
@@ -208,23 +216,116 @@ function payProofReply(p) {
   return "";
 }
 
+
+// ---- LINE binding store v2 (2026-11-27): merged with worker KV, name-checked ----
+const LB_MAPS = ["byRoom", "payUsers", "pending", "flags", "pendingPayImages"];
+const LB_MISMATCH = "房號和姓名對不上，請確認後再傳一次「房號 姓名」（姓名請用租約上的全名）。已通知管理員協助。";
+function lbPendingText(room, name) {
+  return "已收到 " + room + " " + name + "。目前還沒有這間的入住資料，資料建立後會自動完成綁定。";
+}
+function lbAt(v) { return v && typeof v === "object" ? Number(v.at) || 0 : 0; }
+function lbNorm(s) {
+  let x = String(s || "").replace(/[\uFF01-\uFF5E]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248)).replace(/[\s\u3000]/g, "");
+  let prev = "";
+  while (x && x !== prev) { prev = x; x = x.replace(/^租客/, "").replace(/租客$/, ""); }
+  return x;
+}
+export function mergeBinds(...srcs) {
+  const out = { byRoom: {}, byUser: {}, payProofs: {}, payUsers: {}, pending: {}, flags: {}, pendingPayImages: {}, unbound: {} };
+  for (const s of srcs) {
+    if (!s || typeof s !== "object") continue;
+    Object.keys(s.unbound || {}).forEach(k => { out.unbound[k] = Math.max(Number(out.unbound[k]) || 0, Number(s.unbound[k]) || 0); });
+    LB_MAPS.forEach(m => {
+      const src = s[m];
+      if (!src || typeof src !== "object") return;
+      Object.keys(src).forEach(k => {
+        let v = src[k];
+        if (!v) return;
+        if (m === "byRoom" && typeof v === "string") v = { userId: v, name: "" };
+        if (m === "byRoom" && !(v && v.userId)) return;
+        if (!out[m][k] || lbAt(v) >= lbAt(out[m][k])) out[m][k] = v;
+      });
+    });
+    Object.keys(s.payProofs || {}).forEach(no => {
+      const p = s.payProofs[no];
+      if (!p || typeof p !== "object") return;
+      const c = out.payProofs[no];
+      if (!c || String(p.ym || "") > String(c.ym || "")) out.payProofs[no] = Object.assign({}, p);
+      else if (String(p.ym || "") === String(c.ym || "")) {
+        const n = Object.assign({}, c, p);
+        n.hasText = !!(c.hasText || p.hasText);
+        n.hasImage = !!(c.hasImage || p.hasImage);
+        n.at = Math.max(Number(c.at) || 0, Number(p.at) || 0);
+        if (c.toldYm || p.toldYm) n.toldYm = c.toldYm || p.toldYm;
+        out.payProofs[no] = n;
+      }
+    });
+  }
+  Object.keys(out.byRoom).forEach(no => {
+    const tomb = Number(out.unbound[no]) || 0;
+    if (tomb && tomb >= lbAt(out.byRoom[no])) delete out.byRoom[no];
+  });
+  const now = Date.now();
+  Object.keys(out.pending).forEach(k => { if (now - lbAt(out.pending[k]) > 90 * 864e5) delete out.pending[k]; });
+  Object.keys(out.flags).forEach(k => { if (now - lbAt(out.flags[k]) > 30 * 864e5) delete out.flags[k]; });
+  Object.keys(out.byRoom).forEach(no => {
+    const v = out.byRoom[no];
+    out.byUser[v.userId] = { room: no, name: v.name || "", at: lbAt(v) };
+    delete out.pending[v.userId];
+  });
+  return out;
+}
+function lbBindTenants(state, no) {
+  const room = (state && state.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room || room.demo) return [];
+  return (state.tenants || []).filter(t => t && t.roomId === room.id && !t.former && !t.demo && !t.cancelledApply && !t.clearedApply && !t.sessionEnded && lbNorm(t.name));
+}
+function lbDecide(state, room, name) {
+  if (!state || !Array.isArray(state.tenants)) return { kind: "pending" };
+  const list = lbBindTenants(state, room);
+  const want = lbNorm(name);
+  const t = want && list.find(x => lbNorm(x.name) === want);
+  if (t) return { kind: "bind", t };
+  if (list.length) return { kind: "mismatch" };
+  return { kind: "pending" };
+}
+async function workerFullBinds() {
+  try {
+    const res = await fetch(STATE_HOOK + "/api/binds/full", { headers: { "X-Tongjie-Key": STATE_KEY }, cache: "no-store" });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return j && j.byRoom ? j : null;
+  } catch { return null; }
+}
+async function workerMergeBinds(lineBinds) {
+  try {
+    const res = await fetch(STATE_HOOK + "/api/binds/merge", {
+      method: "POST",
+      headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ lineBinds })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
 export async function getBinds() {
-  let data = null;
+  let cached = null;
   const hit = await caches.default.match(BIND_URL);
   if (hit) {
-    try { data = await hit.json(); } catch {}
+    try { cached = await hit.json(); } catch {}
   }
-  if (!data) {
+  let remote = await workerFullBinds();
+  if (!remote) {
     try {
       const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
       if (res.ok) {
         const state = await res.json();
-        if (state && state.lineBinds && state.lineBinds.byRoom) data = state.lineBinds;
+        if (state && state.lineBinds) remote = state.lineBinds;
       }
     } catch {}
   }
-  if (!data) return { byRoom: {}, byUser: {}, payProofs: {} };
-  if (scrubBindNames(data)) await saveBinds(data);
+  const data = mergeBinds(cached, remote);
+  scrubBindNames(data);
   return data;
 }
 export async function saveBinds(data) {
@@ -237,12 +338,7 @@ export async function saveBinds(data) {
     if (!res.ok) return;
     const state = await res.json();
     if (!state || typeof state !== "object") return;
-    state.lineBinds = {
-      byRoom: (data && data.byRoom) || {},
-      byUser: (data && data.byUser) || {},
-      payProofs: (data && data.payProofs) || {},
-      payUsers: (data && data.payUsers) || {}
-    };
+    state.lineBinds = mergeBinds(state.lineBinds, data);
     const ym = payYmNow();
     const noted = [];
     let toldDirty = false;
@@ -419,6 +515,48 @@ function latestPayRooms(local, remote, postedPay) {
   });
   return best;
 }
+function lbYmd(ms) {
+  return new Date((Number(ms) || 0) + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function lbYmdOnly(v) {
+  const m = String(v || "").match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m ? m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0") : "";
+}
+// Rooms whose current tenant already shows a LINE photo fetched for a LINE user who
+// reported payment for that room become real bindings (worker re-checks pay users too).
+export async function recoverLineBinds(faceCache) {
+  const binds = await getBinds();
+  const faces = faceCache || await loadFaceCache();
+  let state = null;
+  try {
+    const res = await fetch(STATE_HOOK + "/api/state", { headers: { "X-Tongjie-Key": STATE_KEY } });
+    if (res.ok) state = await res.json();
+  } catch {}
+  if (!state || !Array.isArray(state.tenants)) return { ok: false, added: [] };
+  const add = { byRoom: {} };
+  const now = Date.now();
+  Object.keys(faces || {}).forEach(no => {
+    const f = faces[no];
+    if (!roomOk(no) || !f || !f.src || !/^U[0-9a-f]{32}$/i.test(String(f.userId || ""))) return;
+    if (binds.byRoom[no] || binds.byUser[f.userId]) return;
+    if ((Number(binds.unbound && binds.unbound[no]) || 0) >= (Number(f.at) || 0)) return;
+    const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+    if (!room || room.demo) return;
+    const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+    if (!t || t.avatarFrom !== "line" || t.avatar !== f.src) return;
+    if (!(t.lineProofYm || t.paidVia === "line" || t.lineNotified)) return;
+    const day = lbYmd(f.at);
+    const later = (state.tenants || []).some(x => x && x.roomId === room.id && x.former && !x.demo && String(lbYmdOnly(x.leftOn) || lbYmdOnly(x.leaseEnd) || "9999-12-31") >= day);
+    if (later) return;
+    add.byRoom[no] = { userId: String(f.userId), name: t.name || "", at: now, via: "face" };
+  });
+  const remote = await workerFullBinds();
+  const rp = (remote && remote.payUsers) || {};
+  const newPay = Object.keys(binds.payUsers || {}).some(uid => !rp[uid]);
+  if (!Object.keys(add.byRoom).length && !newPay) return { ok: true, added: [] };
+  const out = await workerMergeBinds(mergeBinds(binds, add));
+  return { ok: !!out, added: Object.keys(add.byRoom).sort(), promoted: (out && out.promoted) || [] };
+}
 export async function syncLineFaces(only, posted, postedPay) {
   const local = await getBinds();
   const remote = await workerBinds();
@@ -438,6 +576,9 @@ export async function syncLineFaces(only, posted, postedPay) {
     byRoom[room] = { userId: payBest[room].userId, name: "" };
   });
   const cache = await loadFaceCache();
+  if (!only) {
+    try { await recoverLineBinds(cache); } catch {}
+  }
   const faces = {};
   let more = false;
   let fetched = 0;
@@ -504,6 +645,8 @@ export async function handleLineEvents(request) {
   if (!data.payProofs) data.payProofs = {};
   if (!data.payUsers) data.payUsers = {};
   if (!data.pendingPayImages) data.pendingPayImages = {};
+  if (!data.pending) data.pending = {};
+  if (!data.flags) data.flags = {};
   let dirty = false;
   const justBound = [];
   for (const ev of body.events || []) {
@@ -516,15 +659,37 @@ export async function handleLineEvents(request) {
     if (ev.type !== "message") continue;
     const msg = ev.message || {};
     const text = msg.type === "text" ? String(msg.text || "").trim() : "";
-    const resolved = text ? await resolveBindPhrase(text) : { hit: null };
+    const payLike = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
+    const resolved = text && !payLike ? await resolveBindPhrase(text) : { hit: null };
     const room = resolved.hit ? resolved.hit.room : "";
     const name = resolved.hit ? resolved.hit.name : "";
     if (userId && room && name && replyToken) {
-      data.byUser[userId] = { room, name };
-      data.byRoom[room] = { userId, name };
-      dirty = true;
-      justBound.push({ room, userId });
-      await reply(replyToken, "已綁定 " + room + " " + name);
+      const now = Date.now();
+      const st = await loadRentState();
+      const d = lbDecide(st, room, name);
+      if (d.kind === "bind") {
+        data.byUser[userId] = { room, name: d.t.name, at: now };
+        data.byRoom[room] = { userId, name: d.t.name, at: now };
+        delete data.pending[userId];
+        dirty = true;
+        justBound.push({ room, userId });
+        await reply(replyToken, "已綁定 " + room + " " + d.t.name);
+      } else if (d.kind === "mismatch") {
+        data.flags[userId] = { room, name, at: now, reason: "mismatch" };
+        dirty = true;
+        await reply(replyToken, LB_MISMATCH);
+        try {
+          await fetch(STATE_HOOK + "/api/push", {
+            method: "POST",
+            headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ target: "admin", title: "LINE綁定待確認", body: room + " " + name + "：姓名與租客資料不符", noLine: true })
+          });
+        } catch {}
+      } else {
+        data.pending[userId] = { room, name, at: now };
+        dirty = true;
+        await reply(replyToken, lbPendingText(room, name));
+      }
       continue;
     }
     if (resolved.reply && replyToken) {
@@ -537,7 +702,7 @@ export async function handleLineEvents(request) {
     const fromText = roomFromPayText(text);
     const target = bound || fromText || payUserRoom(data, userId);
     if (isPayText && target) {
-      rememberPayUser(data, userId, target);
+      rememberPayUser(data, userId, target, bound ? "" : nameFromPayText(text, target));
       let proof = notePayProof(data, target, "text");
       if (takePendingImage(data, userId)) proof = notePayProof(data, target, "image");
       dirty = true;
