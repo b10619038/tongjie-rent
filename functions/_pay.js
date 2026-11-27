@@ -825,21 +825,131 @@ export async function kickRecover() {
 }
 
 // ---- LINE image OCR (2026-11-27) ----
-// Reads a tenant's LINE image with Google Vision when a server key is configured.
-// Returns the text ("" = no text found) or null on any error / no key (caller keeps old behavior).
-function lineOcrKey(env) {
-  return String((env && (env.GOOGLE_VISION_KEY || env.LINE_OCR_KEY)) || "").trim();
-}
+// Failover: Google Vision -> Gemini Flash (free) -> Cloudflare Workers AI.
+// Returns the text ("" = no text found) or null on any error / no provider (caller keeps old behavior).
+const OCR_GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+const OCR_CF_MODELS = ["@cf/moondream/moondream3.1-9B-A2B", "@cf/meta/llama-3.2-11b-vision-instruct"];
+const OCR_PROMPT = "這是一張圖片。只把圖上看得見的文字依原樣全部抄下來，不要翻譯、不要解說。看不清楚就略過。";
 function b64FromBuf(buf) {
   const u = new Uint8Array(buf);
   let out = "";
   for (let i = 0; i < u.length; i += 0x8000) out += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
   return btoa(out);
 }
+function ocrKeys(env) {
+  const vis = String((env && (env.GOOGLE_VISION_KEY || env.LINE_OCR_KEY)) || "").trim();
+  const gem = String((env && (env.GEMINI_API_KEY || env.GOOGLE_VISION_KEY || env.LINE_OCR_KEY)) || "").trim();
+  return { vis, gem };
+}
+function ocrTextOf(v) {
+  const s = String(v || "").trim();
+  return s ? s : "";
+}
+async function ocrViaVision(key, b64) {
+  if (!key) return null;
+  const g = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(12000),
+    body: JSON.stringify({ requests: [{ image: { content: b64 }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], imageContext: { languageHints: ["zh-Hant", "en"] } }] })
+  });
+  if (!g.ok) return null;
+  const j = await g.json();
+  const r = j && j.responses && j.responses[0];
+  if (!r || r.error) return null;
+  return ocrTextOf((r.fullTextAnnotation && r.fullTextAnnotation.text) || (r.textAnnotations && r.textAnnotations[0] && r.textAnnotations[0].description) || "");
+}
+async function ocrViaGemini(key, b64, budget) {
+  if (!key) return null;
+  for (let i = 0; i < OCR_GEMINI_MODELS.length; i++) {
+    try {
+      const g = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(OCR_GEMINI_MODELS[i]) + ":generateContent?key=" + encodeURIComponent(key), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(Math.max(2000, Math.min(12000, budget == null ? 12000 : budget))),
+        body: JSON.stringify({
+          contents: [{ parts: [{ inlineData: { mimeType: "image/jpeg", data: b64 } }, { text: OCR_PROMPT }] }],
+          generationConfig: { temperature: 0 }
+        })
+      });
+      if (!g.ok) continue;
+      const data = await g.json().catch(() => null);
+      if (!data || data.error) continue;
+      const text = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p && p.text).filter(Boolean).join("\n");
+      if (String(text || "").trim()) return ocrTextOf(text);
+    } catch {}
+  }
+  return null;
+}
+function ocrPickAiText(res) {
+  if (res == null) return "";
+  if (typeof res === "string") return res;
+  if (typeof res.response === "string") return res.response;
+  if (typeof res.text === "string") return res.text;
+  if (typeof res.description === "string") return res.description;
+  if (typeof res.answer === "string") return res.answer;
+  if (res.result != null) return ocrPickAiText(res.result);
+  const d = res.description || res.caption;
+  if (typeof d === "string") return d;
+  if (Array.isArray(res)) return res.map(ocrPickAiText).filter(Boolean).join("\n");
+  return "";
+}
+async function ocrViaWorkersAi(env, b64, budget) {
+  const ai = env && env.AI;
+  if (!ai || typeof ai.run !== "function") return null;
+  const dataUri = "data:image/jpeg;base64," + b64;
+  for (let i = 0; i < OCR_CF_MODELS.length; i++) {
+    const model = OCR_CF_MODELS[i];
+    const tries = model.indexOf("moondream") >= 0
+      ? [{ image: dataUri, task: "query", question: OCR_PROMPT }, { image: dataUri, prompt: OCR_PROMPT }]
+      : [{ image: dataUri, prompt: OCR_PROMPT, max_tokens: 800 }, { messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: dataUri } }, { type: "text", text: OCR_PROMPT }] }] }];
+    for (let t = 0; t < tries.length; t++) {
+      try {
+        const res = await Promise.race([
+          ai.run(model, tries[t]),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), Math.max(2000, Math.min(12000, budget == null ? 12000 : budget))))
+        ]);
+        const text = ocrPickAiText(res);
+        if (String(text || "").trim()) return ocrTextOf(text);
+      } catch {}
+    }
+  }
+  return null;
+}
+// Exported so /vision-ocr and tests can use the same failover. last.provider is for tests only (never sent to LINE).
+export const ocrLast = { provider: "" };
+export async function ocrImageFromBase64(env, b64) {
+  ocrLast.provider = "";
+  const image = String(b64 || "").replace(/^data:image\/[^;]+;base64,/, "");
+  if (!image) return null;
+  const keys = ocrKeys(env);
+  const until = Date.now() + 40000;
+  const left = () => until - Date.now();
+  try {
+    if (left() > 2000) {
+      const vis = await ocrViaVision(keys.vis, image);
+      if (vis != null) { ocrLast.provider = "vision"; return vis; }
+    }
+  } catch {}
+  try {
+    if (left() > 2000) {
+      const gem = await ocrViaGemini(keys.gem, image, left());
+      if (gem != null) { ocrLast.provider = "gemini"; return gem; }
+    }
+  } catch {}
+  try {
+    if (left() > 2000) {
+      const ai = await ocrViaWorkersAi(env, image, left());
+      if (ai != null) { ocrLast.provider = "workers-ai"; return ai; }
+    }
+  } catch {}
+  return null;
+}
 async function lineImageText(env, msg) {
-  const key = lineOcrKey(env);
-  if (!key || !msg || msg.type !== "image" || !msg.id) return null;
+  if (!msg || msg.type !== "image" || !msg.id) return null;
   if (msg.contentProvider && msg.contentProvider.type && msg.contentProvider.type !== "line") return null;
+  const keys = ocrKeys(env);
+  if (!keys.vis && !keys.gem && !(env && env.AI)) return null;
   try {
     const token = await lineToken();
     if (!token) return null;
@@ -849,19 +959,10 @@ async function lineImageText(env, msg) {
     if (!img.ok) return null;
     const buf = await img.arrayBuffer();
     if (!buf.byteLength || buf.byteLength > 6000000) return null;
-    const g = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({ requests: [{ image: { content: b64FromBuf(buf) }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], imageContext: { languageHints: ["zh-Hant", "en"] } }] })
-    });
-    if (!g.ok) return null;
-    const j = await g.json();
-    const r = j && j.responses && j.responses[0];
-    if (!r || r.error) return null;
-    return String((r.fullTextAnnotation && r.fullTextAnnotation.text) || (r.textAnnotations && r.textAnnotations[0] && r.textAnnotations[0].description) || "");
+    return await ocrImageFromBase64(env, b64FromBuf(buf));
   } catch { return null; }
 }
+
 
 export async function handleLineEvents(request, env) {
   let body = {};
