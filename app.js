@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-19-22";
-const APP_EDIT_COUNT = 2598;
+const APP_STAMP = "2026-11-27-23-55";
+const APP_EDIT_COUNT = 2599;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,7 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "開發者後台多工（2 或 3 個畫面並排）用滾輪捲動不再一頓一頓：每個畫面在別的畫面存檔時都會重讀整份資料，3 個畫面互相觸發，常卡住 1 秒以上。現在改成等停止捲動後才合併更新，同一陣子的多次存檔只讀一次。資產平面圖在最小（或最大）倍率時，滾輪會直接捲動頁面，不再卡在地圖上；中間倍率照樣用滾輪或雙指放大縮小", head: "多工捲動順暢", before: "changelog/2026-11-27-split-scroll-before.svg", after: "changelog/2026-11-27-split-scroll-after.svg", aud: ["開發者後台"] },
     { text: "官方 LINE 讀轉帳截圖的 Gemini 備援型號已更新：第一順位仍是 Gemini 3.5 Flash-Lite，後面改為同樣可用的 3.1 Flash-Lite 與 3.5 Flash。先前清單裡的 2.5 Flash-Lite 與 2.0 Flash 對新金鑰已無法使用，第一個型號若暫時失敗就讀不到圖；現在備援仍能繼續認字。回覆用字不變，全部失敗仍照舊提示。", head: "LINE讀圖型號", before: "changelog/2026-11-27-gemini-models-before.svg", after: "changelog/2026-11-27-gemini-models-after.svg", aud: ["開發者後台"] },
     { text: "租客在官方 LINE 完成繳費回報（已繳費加截圖、轉帳文句或轉帳截圖，含自動綁定）後，App 繳費頁會自動顯示「本月已繳費」並鎖定，不必再回到 App 按一次按鈕。管理員畫面不變", head: "LINE已繳自動顯示", before: "changelog/2026-11-27-pay-auto-line-before.svg", after: "changelog/2026-11-27-pay-auto-line-after.svg", aud: ["套房租客"] },
     { text: "官方 LINE 讀轉帳截圖改為依序嘗試 Google Vision、Gemini Flash（免費額度）、Cloudflare Workers AI。沒設定 Google 金鑰時只要 Pages 接上 Workers AI 就能認字；全部失敗則照舊回覆，不會出現奇怪句子", head: "LINE讀圖備援", before: "changelog/2026-11-27-line-ocr-fallback-before.svg", after: "changelog/2026-11-27-line-ocr-fallback-after.svg", aud: ["開發者後台"] }
@@ -8267,9 +8268,11 @@ function bindAssetMap() {
   wrap.addEventListener("pointermove", onMove);
   wrap.addEventListener("pointerup", onUp);
   wrap.addEventListener("pointercancel", onUp);
+  wrap.style.overscrollBehavior = "auto";
   wrap.addEventListener("wheel", e => {
-    e.preventDefault();
     const z = ui.assetMapZoom || 1;
+    if (!e.ctrlKey && (e.deltaY > 0 ? z <= 1.001 : z >= 2.999)) return;
+    e.preventDefault();
     zoomAt(z * (e.deltaY > 0 ? 0.9 : 1.12), e.clientX, e.clientY);
   }, { passive: false });
 }
@@ -18756,16 +18759,43 @@ window.addEventListener("pagehide", flushPendingWrites);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") flushPendingWrites();
 });
-window.addEventListener("storage", e => {
-  if (!e || e.key !== KEY || !EMBED_PAGE) return;
+let embedStoreRaw = "";
+let embedStoreTimer = 0;
+let embedStoreSince = 0;
+let embedInputAt = 0;
+if (EMBED_PAGE) {
+  const markEmbedInput = () => { embedInputAt = Date.now(); };
+  ["wheel", "scroll", "pointerdown", "touchstart", "keydown"].forEach(t => window.addEventListener(t, markEmbedInput, { capture: true, passive: true }));
+}
+function applyEmbedStore() {
+  embedStoreTimer = 0;
+  const now = Date.now();
+  const quiet = now - embedInputAt;
+  if (quiet < 1500 && now - embedStoreSince < 10000) {
+    embedStoreTimer = setTimeout(applyEmbedStore, 1560 - quiet);
+    return;
+  }
+  embedStoreSince = 0;
+  let raw = "";
+  try { raw = localStorage.getItem(KEY) || ""; } catch {}
+  if (!raw || raw === embedStoreRaw) return;
+  embedStoreRaw = raw;
   try {
-    const next = loadLocal();
+    const data = JSON.parse(raw);
+    data.paidMarks = mergePaidMarkMaps(loadPaidMarks(), data.paidMarks);
+    const next = normalize(data);
     if (!next) return;
     state = next;
     normalize(state);
     ui.keepScroll = true;
     render();
   } catch {}
+}
+window.addEventListener("storage", e => {
+  if (!e || e.key !== KEY || !EMBED_PAGE) return;
+  if (embedStoreTimer) return;
+  embedStoreSince = Date.now();
+  embedStoreTimer = setTimeout(applyEmbedStore, 1200);
 });
 function persistLogin() {
   if (EMBED_PAGE) return;
