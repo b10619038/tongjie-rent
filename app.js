@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-15-22";
-const APP_EDIT_COUNT = 2593;
+const APP_STAMP = "2026-11-27-16-23";
+const APP_EDIT_COUNT = 2594;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "官方 LINE 補上兩個自動回覆：租客先傳轉帳截圖時回「已收到截圖，請再回覆「已繳費」。」；已綁定租客傳其他文字（例如續約）時回「收到，管理員會與您聯繫。」（6 小時內只回一次）。並修正繳費回報後姓名核對被截圖覆蓋的問題，以及讓繳費回報的租客在有人開啟 App 或 LINE 傳訊時自動補綁定", head: "LINE自動回覆", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-15-22-2593", items: [
     { text: "官方 LINE 的租金提醒和「只收到截圖」的自動回覆，已改成只寫月份、金額和應匯帳戶，並請對方回覆「已繳費」和轉帳截圖，不再提到 App 或網址", head: "LINE租金用字", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-14-56-2592", items: [
