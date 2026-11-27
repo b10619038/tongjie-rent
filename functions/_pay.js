@@ -670,25 +670,35 @@ function xferCompanyTail(tail) {
   const t = String(tail || "");
   return t.length >= 4 && XFER_COMPANY_ACCTS.some(a => a.endsWith(t));
 }
-export function parseTransferText(text) {
+export function parseTransferText(text, opt) {
+  const ocr = !!(opt && opt.ocr);
   const s = xferNorm(text);
-  if (!s.trim() || s.length > 600) return null;
-  if (/尚未入帳|請匯至|請以現金|繳費通知|失敗|未成功|取消|退款|退回/.test(s)) return null;
-  const success = /(轉帳|匯款|轉出|轉入|交易|付款|支付|匯出)\s*(已)?\s*(成功|完成)|已(經)?\s*(成功)?\s*(轉帳|匯款|轉出|轉入|匯出|轉了|匯了|轉過去|匯過去)|轉好了|匯好了|轉帳結果|交易結果|轉帳明細|交易明細|通知收款人/.test(s);
+  if (!s.trim() || s.length > (ocr ? 3000 : 600)) return null;
+  if (/尚未入帳|請匯至|請以現金|繳費通知|未成功|退款|退回/.test(s)) return null;
+  if (ocr ? /(交易|轉帳|匯款)\s*(失敗|取消)/.test(s) : /失敗|取消/.test(s)) return null;
+  if (!ocr && /明天|晚點|晚一點|等一下|等等|下週|下禮拜|會轉|會匯|再轉|再匯|要轉|要匯|準備/.test(s)) return null;
+  const success = /(轉帳|匯款|轉出|轉入|交易|付款|支付|匯出)\s*(已)?\s*(成功|完成)|成功\s*(轉出|轉帳|匯出|匯款)|(轉|匯)(了|新[臺台]幣|NT\$|\$)[^\n]{0,20}?給(你|您)|已(經)?\s*(成功)?\s*(轉帳|匯款|轉出|轉入|匯出|轉了|匯了|轉過去|匯過去)|轉好了|匯好了|轉帳結果|交易結果|轉帳明細|交易明細|通知收款人/.test(s);
   let amount = 0;
   let m = s.match(/(?:轉帳|匯款|轉出|轉入|交易|付款|支付)?金額[^\d\n]{0,12}?(\d[\d,]*(?:\.\d{1,2})?)/);
   if (m) amount = xferMoney(m[1]);
   if (!amount && (m = s.match(/(?:NT\$|NTD|TWD|新[臺台]幣|\$)\s*(\d[\d,]*)/i))) amount = xferMoney(m[1]);
   if (!amount && (m = s.match(/(\d[\d,]{2,})\s*元/))) amount = xferMoney(m[1]);
-  if (!amount && success) {
-    const bare = s.replace(/\d{2,4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g, " ").replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ")
+  if (!amount && success && (m = s.match(/(^|[^\d,])(\d{1,3}(?:,\d{3})+)(?![\d,])/))) amount = xferMoney(m[2]);
+  const said = s.match(/[末未後][五5]碼\s*(?:是|為|:)?\s*(\d{5})(?!\d)/);
+  if (!amount && success && !ocr) {
+    const bare = s.replace(/[末未後][五5]碼\s*(?:是|為|:)?\s*\d+/g, " ").replace(/\d{2,4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g, " ").replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ")
       .match(/(^|[^\d*\-])(\d{3,6})(?![\d*\-])/);
-    if (bare) amount = xferMoney(bare[2]);
+    if (bare && !roomOk(bare[2])) amount = xferMoney(bare[2]);
   }
   let toTail = "", fromTail = "", companyHit = false;
   const flat = s.replace(/[\s\-]/g, "");
-  if (XFER_COMPANY_ACCTS.some(a => flat.indexOf(a) >= 0)) companyHit = true;
-  s.split(/\n+/).forEach(line => {
+  const coAcct = XFER_COMPANY_ACCTS.find(a => flat.indexOf(a) >= 0);
+  if (coAcct) companyHit = true;
+  if (said) { if (xferCompanyTail(said[1])) toTail = said[1]; else fromTail = said[1]; }
+  const outRun = s.match(/([0-9*]{5,})\s*成功\s*轉出/);
+  if (outRun && !fromTail) fromTail = xferTail(outRun[1]);
+  s.split(/\n+/).forEach(raw => {
+    const line = raw.replace(/\d{2,4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g, " ").replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ");
     const tok = (line.match(/[0-9*xX×•●·]{4,}[0-9*xX×•●·\- ]*/g) || []).filter(t => (t.match(/\d/g) || []).length >= 3 && !/^\d{1,4}[\/.]\d/.test(t));
     if (!tok.length) return;
     const tail = xferTail(tok[tok.length - 1]);
@@ -701,7 +711,10 @@ export function parseTransferText(text) {
     }
   });
   if (toTail && xferCompanyTail(toTail)) companyHit = true;
-  const ok = (amount && (success || companyHit)) || (companyHit && success);
+  if (coAcct && !toTail) toTail = coAcct.slice(-5);
+  const ok = ocr
+    ? !!(success && amount && (companyHit || /^\d{5}$/.test(fromTail)))
+    : (amount && (success || companyHit)) || (companyHit && success) || (success && !!said);
   if (!ok) return null;
   return { amount, toTail, fromTail, companyHit, toOk: !toTail || xferCompanyTail(toTail) };
 }
@@ -739,6 +752,23 @@ function xferAutoMatch(state, data, x) {
   if (xferPaidYm(t, ym)) return null;
   if (xferRentDue(t, room, ym) !== x.amount) return null;
   return { room: no, name: t.name || "" };
+}
+// Memo like "7632 王小明 11月房租": bind only when the name exactly matches that room's tenant.
+function xferMemoBind(state, data, text, userId) {
+  const raw = xferNorm(text);
+  const re = /(?:^|[^\d])(\d{4})(?!\d)\s*([\u4e00-\u9fff]{2,4})/g;
+  let m;
+  for (const s of [raw, raw.replace(/[ \t]+/g, "")]) while ((m = re.exec(s))) {
+    const no = m[1];
+    if (!roomOk(no)) continue;
+    const owner = roomUser(data.byRoom && data.byRoom[no]);
+    if (owner && owner !== userId) continue;
+    for (let n = m[2].length; n >= 2; n--) {
+      const d = lbDecide(state, no, m[2].slice(0, n));
+      if (d.kind === "bind") return { room: no, name: d.t.name || "" };
+    }
+  }
+  return null;
 }
 function noteXferProof(data, room, x) {
   const p = notePayProof(data, room, "text");
@@ -794,7 +824,46 @@ export async function kickRecover() {
   try { return await recoverLineBinds(); } catch { return null; }
 }
 
-export async function handleLineEvents(request) {
+// ---- LINE image OCR (2026-11-27) ----
+// Reads a tenant's LINE image with Google Vision when a server key is configured.
+// Returns the text ("" = no text found) or null on any error / no key (caller keeps old behavior).
+function lineOcrKey(env) {
+  return String((env && (env.GOOGLE_VISION_KEY || env.LINE_OCR_KEY)) || "").trim();
+}
+function b64FromBuf(buf) {
+  const u = new Uint8Array(buf);
+  let out = "";
+  for (let i = 0; i < u.length; i += 0x8000) out += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(out);
+}
+async function lineImageText(env, msg) {
+  const key = lineOcrKey(env);
+  if (!key || !msg || msg.type !== "image" || !msg.id) return null;
+  if (msg.contentProvider && msg.contentProvider.type && msg.contentProvider.type !== "line") return null;
+  try {
+    const token = await lineToken();
+    if (!token) return null;
+    const img = await fetch("https://api-data.line.me/v2/bot/message/" + encodeURIComponent(msg.id) + "/content", {
+      headers: { Authorization: "Bearer " + token }, signal: AbortSignal.timeout(10000)
+    });
+    if (!img.ok) return null;
+    const buf = await img.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > 6000000) return null;
+    const g = await fetch("https://vision.googleapis.com/v1/images:annotate?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ requests: [{ image: { content: b64FromBuf(buf) }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], imageContext: { languageHints: ["zh-Hant", "en"] } }] })
+    });
+    if (!g.ok) return null;
+    const j = await g.json();
+    const r = j && j.responses && j.responses[0];
+    if (!r || r.error) return null;
+    return String((r.fullTextAnnotation && r.fullTextAnnotation.text) || (r.textAnnotations && r.textAnnotations[0] && r.textAnnotations[0].description) || "");
+  } catch { return null; }
+}
+
+export async function handleLineEvents(request, env) {
   let body = {};
   try { body = await request.json(); } catch (e) {}
   const data = await getBinds();
@@ -871,12 +940,12 @@ export async function handleLineEvents(request) {
     const isPayText = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
     const fromText = roomFromPayText(text);
     const target = bound || fromText || payUserRoom(data, userId);
-    if (xfer) {
+    const doXfer = async (xfer, srcText) => {
       let room = target;
       let boundNow = "";
       if (!room && userId) {
         const st = await loadRentState();
-        const hit = xferAutoMatch(st, data, xfer);
+        const hit = (xfer.toOk ? xferMemoBind(st, data, srcText, userId) : null) || xferAutoMatch(st, data, xfer);
         if (hit) {
           const now = Date.now();
           data.byUser[userId] = { room: hit.room, name: hit.name, at: now };
@@ -902,6 +971,9 @@ export async function handleLineEvents(request) {
         if (replyToken) await reply(replyToken, XFER_ASK);
         await xferAdminPush("LINE轉帳待對帳", "未綁定的 LINE 傳來轉帳資料：" + xferDesc(xfer) + "。已請對方傳房號姓名。");
       }
+    };
+    if (xfer) {
+      await doXfer(xfer, text);
       continue;
     }
     if (isPayText && target) {
@@ -914,6 +986,14 @@ export async function handleLineEvents(request) {
       continue;
     }
     if (isImg) {
+      const seen = msg.type === "image" ? await lineImageText(env, msg) : null;
+      if (seen !== null) {
+        const ox = parseTransferText(seen, { ocr: true });
+        if (ox) {
+          await doXfer(ox, seen);
+          continue;
+        }
+      }
       const imgRoom = target || payUserRoom(data, userId);
       const existing = imgRoom && data.payProofs && data.payProofs[imgRoom];
       const awaitingText = !!(existing && existing.ym === payYmNow() && existing.hasText);
@@ -928,7 +1008,10 @@ export async function handleLineEvents(request) {
         const firstImg = !(pend && pend.ym === payYmNow());
         notePendingImage(data, userId, imgRoom);
         dirty = true;
-        if (imgRoom && firstImg && replyToken) await reply(replyToken, payProofReply({ hasImage: true }));
+        if (seen !== null) {
+          // Read OK and not a transfer: no pay wording. Bound tenants get the plain ack (throttled).
+          if (bound && replyToken && await ackDue(userId)) await reply(replyToken, LINE_ACK);
+        } else if (imgRoom && firstImg && replyToken) await reply(replyToken, payProofReply({ hasImage: true }));
       }
       continue;
     }

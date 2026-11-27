@@ -21,5 +21,13 @@ export async function onRequest(context) {
     if (context.waitUntil) context.waitUntil(job);
   } catch (e) {}
   if (context.waitUntil) context.waitUntil(kickRecover());
-  return handleLineEvents(request);
+  // Image events may be read by OCR (a few seconds): answer LINE right away and finish in the
+  // background; the reply token stays valid well past that.
+  let hasImage = false;
+  try { hasImage = /"type"\s*:\s*"image"/.test(await request.clone().text()); } catch (e) {}
+  if (hasImage && context.waitUntil) {
+    context.waitUntil(handleLineEvents(request, context.env).catch(() => {}));
+    return new Response("OK", { status: 200 });
+  }
+  return handleLineEvents(request, context.env);
 }
