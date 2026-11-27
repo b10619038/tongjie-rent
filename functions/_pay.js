@@ -374,7 +374,14 @@ export async function saveBinds(data) {
         paid: true, paidAt: t.paidAt, paidVia: "line", paidYm: ym,
         editedAt: t.editedAt, name: t.name || ""
       };
-      noted.push(no + " " + (t.name || "") + "　實繳日 " + t.remitOn);
+      let extra = "";
+      if (p.receipt) {
+        const due = xferRentDue(t, room, ym);
+        const amt = Number(p.receipt.amount) || 0;
+        if (amt && due && amt !== due) extra += "　轉帳 " + amt.toLocaleString("zh-TW") + " 元（應繳 " + due.toLocaleString("zh-TW") + " 元，請核對）";
+        if (p.receipt.toOk === false) extra += "　轉入帳號不是公司帳戶，請核對";
+      }
+      noted.push(no + " " + (t.name || "") + "　實繳日 " + t.remitOn + extra);
     });
     if (toldDirty) {
       await caches.default.put(BIND_URL, new Response(JSON.stringify(data || {}), {
@@ -638,6 +645,122 @@ async function paintFacesIntoState(faces) {
   });
 }
 
+// ---- Bank transfer receipt text (2026-11-27) ----
+// Taiwan bank apps let the payer share / copy an editable result text; there is no fixed
+// template, so this is a tolerant keyword parser (success words + amount + account tails).
+const XFER_OK = "已收到轉帳資料，謝謝";
+const XFER_ASK = "已收到轉帳資料，請再傳「房號 姓名」，方便我們對帳。";
+const XFER_COMPANY_ACCTS = ["04009039686", "00897210912150", "010100035909", "010100034775"];
+function xferNorm(text) {
+  return String(text || "")
+    .replace(/[\uFF10-\uFF19]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248))
+    .replace(/[＊]/g, "*").replace(/[：]/g, ":").replace(/[，]/g, ",").replace(/\u3000/g, " ");
+}
+function xferMoney(str) {
+  const n = Number(String(str || "").replace(/[,\s]/g, ""));
+  return n >= 100 && n <= 300000 ? Math.round(n) : 0;
+}
+function xferTail(tok) {
+  const runs = String(tok || "").match(/\d+/g) || [];
+  if (!runs.length) return "";
+  const last = runs[runs.length - 1];
+  return last.length > 5 ? last.slice(-5) : last;
+}
+function xferCompanyTail(tail) {
+  const t = String(tail || "");
+  return t.length >= 4 && XFER_COMPANY_ACCTS.some(a => a.endsWith(t));
+}
+export function parseTransferText(text) {
+  const s = xferNorm(text);
+  if (!s.trim() || s.length > 600) return null;
+  if (/尚未入帳|請匯至|請以現金|繳費通知|失敗|未成功|取消|退款|退回/.test(s)) return null;
+  const success = /(轉帳|匯款|轉出|轉入|交易|付款|支付|匯出)\s*(已)?\s*(成功|完成)|已(經)?\s*(成功)?\s*(轉帳|匯款|轉出|轉入|匯出|轉了|匯了|轉過去|匯過去)|轉好了|匯好了|轉帳結果|交易結果|轉帳明細|交易明細|通知收款人/.test(s);
+  let amount = 0;
+  let m = s.match(/(?:轉帳|匯款|轉出|轉入|交易|付款|支付)?金額[^\d\n]{0,12}?(\d[\d,]*(?:\.\d{1,2})?)/);
+  if (m) amount = xferMoney(m[1]);
+  if (!amount && (m = s.match(/(?:NT\$|NTD|TWD|新[臺台]幣|\$)\s*(\d[\d,]*)/i))) amount = xferMoney(m[1]);
+  if (!amount && (m = s.match(/(\d[\d,]{2,})\s*元/))) amount = xferMoney(m[1]);
+  if (!amount && success) {
+    const bare = s.replace(/\d{2,4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g, " ").replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ")
+      .match(/(^|[^\d*\-])(\d{3,6})(?![\d*\-])/);
+    if (bare) amount = xferMoney(bare[2]);
+  }
+  let toTail = "", fromTail = "", companyHit = false;
+  const flat = s.replace(/[\s\-]/g, "");
+  if (XFER_COMPANY_ACCTS.some(a => flat.indexOf(a) >= 0)) companyHit = true;
+  s.split(/\n+/).forEach(line => {
+    const tok = (line.match(/[0-9*xX×•●·]{4,}[0-9*xX×•●·\- ]*/g) || []).filter(t => (t.match(/\d/g) || []).length >= 3 && !/^\d{1,4}[\/.]\d/.test(t));
+    if (!tok.length) return;
+    const tail = xferTail(tok[tok.length - 1]);
+    if (!tail) return;
+    if (/轉入|收款|受款|存入|入帳|對方|收方/.test(line)) { if (!toTail) toTail = tail; }
+    else if (/轉出|付款|扣款|匯款人|來源|我的|本人|卡號/.test(line)) { if (!fromTail) fromTail = tail; }
+    else if (/末[五5]碼|後[五5]碼|帳號|帳戶/.test(line)) {
+      if (xferCompanyTail(tail)) { if (!toTail) toTail = tail; }
+      else if (!fromTail) fromTail = tail;
+    }
+  });
+  if (toTail && xferCompanyTail(toTail)) companyHit = true;
+  const ok = (amount && (success || companyHit)) || (companyHit && success);
+  if (!ok) return null;
+  return { amount, toTail, fromTail, companyHit, toOk: !toTail || xferCompanyTail(toTail) };
+}
+function xferRentDue(t, r, ym) {
+  const y = String(ym || "").slice(0, 7);
+  const parts = Array.isArray(t && t.leases) ? t.leases : [];
+  const part = parts.find(p => p && String(p.start || "").slice(0, 7) <= y && String(p.end || "").slice(0, 7) >= y);
+  if (part && Number(part.rent) > 0) return Math.round(Number(part.rent));
+  if (part && part.kind === "stub" && Number(t && t.stubRent) > 0) return Math.round(Number(t.stubRent));
+  const n = Number(t && t.rent) || Number(r && r.rent) || 0;
+  return n > 0 ? Math.round(n) : 0;
+}
+function xferPaidYm(t, ym) {
+  if ((t.prepaidYm || []).some(y => String(y).slice(0, 7) === ym)) return true;
+  if (t.paid && String(t.paidYm || "").slice(0, 7) === ym) return true;
+  const on = String(t.remitOn || "").slice(0, 10);
+  return !!(on && on.slice(0, 7) === ym);
+}
+// Unique source-account tail + exact unpaid rent; never amount alone.
+function xferAutoMatch(state, data, x) {
+  if (!state || !x || !/^\d{5}$/.test(String(x.fromTail || "")) || !x.amount || !x.toOk) return null;
+  const ym = payYmNow();
+  const hits = [];
+  (state.tenants || []).forEach(t => {
+    if (!t || t.former || t.incoming || t.demo || t.prospect || t.applyPending) return;
+    if (String(t.bankLast5 || "").trim() !== x.fromTail) return;
+    const room = (state.rooms || []).find(r => r && r.id === t.roomId);
+    if (!room || room.demo || room.kind === "factory" || !roomOk(room.no)) return;
+    hits.push({ t, room });
+  });
+  if (hits.length !== 1) return null;
+  const { t, room } = hits[0];
+  const no = String(room.no);
+  if (roomUser(data.byRoom && data.byRoom[no])) return null;
+  if (xferPaidYm(t, ym)) return null;
+  if (xferRentDue(t, room, ym) !== x.amount) return null;
+  return { room: no, name: t.name || "" };
+}
+function noteXferProof(data, room, x) {
+  const p = notePayProof(data, room, "text");
+  if (!p) return null;
+  p.hasImage = true;
+  p.receipt = { amount: x.amount || 0, toTail: x.toTail || "", fromTail: x.fromTail || "", toOk: x.toOk !== false };
+  return p;
+}
+async function xferAdminPush(title, body) {
+  try {
+    await fetch(STATE_HOOK + "/api/push", {
+      method: "POST",
+      headers: { "X-Tongjie-Key": STATE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ target: "admin", title, body, noLine: true })
+    });
+  } catch {}
+}
+function xferDesc(x) {
+  return ["金額 " + (x.amount ? x.amount.toLocaleString("zh-TW") + " 元" : "未知"),
+    x.toTail ? "轉入末碼 " + x.toTail + (x.toOk === false ? "（不是公司帳戶）" : "") : "",
+    x.fromTail ? "轉出末碼 " + x.fromTail : ""].filter(Boolean).join("，");
+}
 const LINE_ACK = "收到，管理員會與您聯繫。";
 async function ackDue(userId) {
   if (!userId) return false;
@@ -695,7 +818,8 @@ export async function handleLineEvents(request) {
     const msg = ev.message || {};
     const text = msg.type === "text" ? String(msg.text || "").trim() : "";
     const payLike = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
-    const resolved = text && !payLike ? await resolveBindPhrase(text) : { hit: null };
+    const xfer = text && !payLike ? parseTransferText(text) : null;
+    const resolved = text && !payLike && !xfer ? await resolveBindPhrase(text) : { hit: null };
     const room = resolved.hit ? resolved.hit.room : "";
     const name = resolved.hit ? resolved.hit.name : "";
     if (userId && room && name && replyToken) {
@@ -708,9 +832,20 @@ export async function handleLineEvents(request) {
         delete data.pending[userId];
         dirty = true;
         justBound.push({ room, userId });
-        await reply(replyToken, "已綁定 " + room + " " + d.t.name);
+        const fl = data.flags[userId];
+        const px = fl && fl.xfer && fl.xfer.ym === payYmNow() ? fl.xfer : null;
+        if (px) {
+          rememberPayUser(data, userId, room, d.t.name);
+          noteXferProof(data, room, px);
+          delete data.flags[userId];
+          await reply(replyToken, "已綁定 " + room + " " + d.t.name + "\n" + XFER_OK);
+        } else {
+          await reply(replyToken, "已綁定 " + room + " " + d.t.name);
+        }
       } else if (d.kind === "mismatch") {
+        const keepX = data.flags[userId] && data.flags[userId].xfer;
         data.flags[userId] = { room, name, at: now, reason: "mismatch" };
+        if (keepX) data.flags[userId].xfer = keepX;
         dirty = true;
         await reply(replyToken, LB_MISMATCH);
         try {
@@ -736,6 +871,39 @@ export async function handleLineEvents(request) {
     const isPayText = /繳費通知|已繳本月|已繳費|轉帳截圖/.test(text);
     const fromText = roomFromPayText(text);
     const target = bound || fromText || payUserRoom(data, userId);
+    if (xfer) {
+      let room = target;
+      let boundNow = "";
+      if (!room && userId) {
+        const st = await loadRentState();
+        const hit = xferAutoMatch(st, data, xfer);
+        if (hit) {
+          const now = Date.now();
+          data.byUser[userId] = { room: hit.room, name: hit.name, at: now };
+          data.byRoom[hit.room] = { userId, name: hit.name, at: now, via: "xfer" };
+          delete data.pending[userId];
+          room = hit.room;
+          boundNow = "已綁定 " + hit.room + " " + hit.name + "\n";
+          justBound.push({ room: hit.room, userId });
+        }
+      }
+      if (room) {
+        rememberPayUser(data, userId, room, "");
+        noteXferProof(data, room, xfer);
+        takePendingImage(data, userId);
+        if (data.flags[userId] && data.flags[userId].xfer) delete data.flags[userId];
+        dirty = true;
+        if (replyToken) await reply(replyToken, boundNow + XFER_OK);
+      } else if (userId) {
+        const prev = data.flags[userId] || {};
+        data.flags[userId] = Object.assign({}, prev, { at: Date.now(), reason: prev.reason || "xfer",
+          xfer: { ym: payYmNow(), amount: xfer.amount || 0, toTail: xfer.toTail || "", fromTail: xfer.fromTail || "", toOk: xfer.toOk !== false, at: Date.now() } });
+        dirty = true;
+        if (replyToken) await reply(replyToken, XFER_ASK);
+        await xferAdminPush("LINE轉帳待對帳", "未綁定的 LINE 傳來轉帳資料：" + xferDesc(xfer) + "。已請對方傳房號姓名。");
+      }
+      continue;
+    }
     if (isPayText && target) {
       rememberPayUser(data, userId, target, bound ? "" : nameFromPayText(text, target));
       let proof = notePayProof(data, target, "text");
