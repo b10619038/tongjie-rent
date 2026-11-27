@@ -1,4 +1,4 @@
-import { cors, getBinds, keyOk, publicBinds, recoverLineBinds } from "./_pay.js";
+import { cors, getBinds, keyOk, publicBinds, recoverLineBinds, kickRecover } from "./_pay.js";
 
 export async function onRequest(context) {
   const request = context.request;
@@ -14,6 +14,7 @@ export async function onRequest(context) {
   }
   if (request.method !== "GET") return cors({ ok: true });
   if (!keyOk(request)) return cors({ error: "key" }, 403);
+  if (context.waitUntil) context.waitUntil(kickRecover());
   const data = await getBinds();
   return cors(Object.assign(publicBinds(data), { workerVer: "0239" }));
 }

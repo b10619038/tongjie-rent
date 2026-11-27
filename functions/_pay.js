@@ -174,7 +174,9 @@ function rememberPayUser(data, userId, room, name) {
   if (!userId || !/^\d{4}$/.test(String(room || ""))) return;
   if (!data.payUsers) data.payUsers = {};
   const row = { room: String(room), ym: payYmNow(), at: Date.now() };
+  const prev = data.payUsers[userId];
   if (name) row.name = String(name);
+  else if (prev && prev.name && String(prev.room) === String(room)) row.name = prev.name;
   data.payUsers[userId] = row;
 }
 function nameFromPayText(text, room) {
@@ -636,6 +638,39 @@ async function paintFacesIntoState(faces) {
   });
 }
 
+const LINE_ACK = "收到，管理員會與您聯繫。";
+async function ackDue(userId) {
+  if (!userId) return false;
+  const url = "https://internal/line-acks";
+  let m = {};
+  try {
+    const hit = await caches.default.match(url);
+    if (hit) m = (await hit.json()) || {};
+  } catch {}
+  const now = Date.now();
+  if (now - (Number(m[userId]) || 0) < 6 * 3600 * 1000) return false;
+  m[userId] = now;
+  Object.keys(m).forEach(k => { if (now - (Number(m[k]) || 0) > 24 * 3600 * 1000) delete m[k]; });
+  try {
+    await caches.default.put(url, new Response(JSON.stringify(m), {
+      headers: { "Cache-Control": "max-age=86400", "Content-Type": "application/json" }
+    }));
+  } catch {}
+  return true;
+}
+// Throttled, best-effort: pay-report users / LINE photos stored in this edge location
+// become real bindings in the worker store. Safe to call often.
+export async function kickRecover() {
+  const url = "https://internal/recover-at";
+  try {
+    const hit = await caches.default.match(url);
+    const last = hit ? Number(await hit.text()) : 0;
+    if (Date.now() - last < 10 * 60 * 1000) return null;
+    await caches.default.put(url, new Response(String(Date.now()), { headers: { "Cache-Control": "max-age=600" } }));
+  } catch {}
+  try { return await recoverLineBinds(); } catch { return null; }
+}
+
 export async function handleLineEvents(request) {
   let body = {};
   try { body = await request.json(); } catch (e) {}
@@ -721,13 +756,17 @@ export async function handleLineEvents(request) {
         if (!roomUser(data.byRoom && data.byRoom[imgRoom])) justBound.push({ room: imgRoom, userId });
         if (replyToken) await reply(replyToken, payProofReply(proof) || "已收到");
       } else {
+        const pend = data.pendingPayImages[userId];
+        const firstImg = !(pend && pend.ym === payYmNow());
         notePendingImage(data, userId, imgRoom);
         dirty = true;
+        if (imgRoom && firstImg && replyToken) await reply(replyToken, payProofReply({ hasImage: true }));
       }
       continue;
     }
     if (bound) {
       if (userId) justBound.push({ room: bound, userId });
+      if (msg.type === "text" && text && replyToken && await ackDue(userId)) await reply(replyToken, LINE_ACK);
       continue;
     }
   }

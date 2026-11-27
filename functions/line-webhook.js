@@ -1,4 +1,4 @@
-import { cors, handleLineEvents } from "./_pay.js";
+import { cors, handleLineEvents, kickRecover } from "./_pay.js";
 
 const CHAT_LOG = "https://tongjie-line.b10619038.workers.dev/api/linechat/in";
 const CHAT_KEY = "tj-82934388";
@@ -20,5 +20,6 @@ export async function onRequest(context) {
     }).catch(() => {});
     if (context.waitUntil) context.waitUntil(job);
   } catch (e) {}
+  if (context.waitUntil) context.waitUntil(kickRecover());
   return handleLineEvents(request);
 }
