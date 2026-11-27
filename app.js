@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-18-10";
-const APP_EDIT_COUNT = 2596;
+const APP_STAMP = "2026-11-27-18-47";
+const APP_EDIT_COUNT = 2597;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,10 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "租客在官方 LINE 完成繳費回報（已繳費加截圖、轉帳文句或轉帳截圖，含自動綁定）後，App 繳費頁會自動顯示「本月已繳費」並鎖定，不必再回到 App 按一次按鈕。管理員畫面不變", head: "LINE已繳自動顯示", before: "changelog/2026-11-27-pay-auto-line-before.svg", after: "changelog/2026-11-27-pay-auto-line-after.svg", aud: ["套房租客"] },
+    { text: "官方 LINE 讀轉帳截圖改為依序嘗試 Google Vision、Gemini Flash（免費額度）、Cloudflare Workers AI。沒設定 Google 金鑰時只要 Pages 接上 Workers AI 就能認字；全部失敗則照舊回覆，不會出現奇怪句子", head: "LINE讀圖備援", before: "changelog/2026-11-27-line-ocr-fallback-before.svg", after: "changelog/2026-11-27-line-ocr-fallback-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-18-10-2596", items: [
     { text: "官方 LINE 會看租客傳來的圖片：是轉帳成功截圖（讀出金額、轉入公司帳號、轉出末五碼、留言的房號姓名）就當作繳費回報，回「已收到轉帳資料，謝謝」並自動標已繳、推播管理員；未綁定的人截圖末五碼唯一對上且金額相符、或留言房號姓名和租客資料相符才自動綁定，否則請對方傳房號姓名。不是轉帳截圖就不提繳費：已綁定租客回「收到，管理員會與您聯繫。」（6 小時一次），未綁定不回。讀圖失敗時照舊。轉帳文句也會看備註裡的房號姓名，並能讀「成功轉出」、補零的公司帳號和「轉…給你囉」分享文句。需在 Cloudflare Pages 設定 GOOGLE_VISION_KEY 後讀圖才生效", head: "LINE讀轉帳截圖", before: "changelog/2026-11-27-line-ocr-before.svg", after: "changelog/2026-11-27-line-ocr-after.svg", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-17-57-2595", items: [
@@ -5159,14 +5163,37 @@ function tenantLineUnlocked(t, r) {
   if (isDemoTenant(t) && t.lineNotified) return true;
   return false;
 }
-async function syncLinePayProof() {
+async function syncLinePayProof(opts) {
+  const t0 = typeof me === "function" ? me() : null;
+  const r0 = typeof myRoom === "function" ? myRoom() : null;
+  if (!t0 || !r0 || isDemoTenant(t0) || isDevPreview() || isProspectPreview()) {
+    await refreshLineBinds();
+    try { applySeenPayProofs(); } catch {}
+    return false;
+  }
+  if (opts && opts.pull && !paidThisMonth(t0)) {
+    try { await pullCloud(); } catch {}
+  }
   await refreshLineBinds();
   try { applySeenPayProofs(); } catch {}
   const t = typeof me === "function" ? me() : null;
   const r = typeof myRoom === "function" ? myRoom() : null;
-  if (!t || !r || isDemoTenant(t) || isDevPreview() || isProspectPreview()) return false;
-  if (paidThisMonth(t)) return false;
-  return !!(linePayReady(t, r) || tenantLineUnlocked(t, r));
+  if (!t || !r) return false;
+  if (paidThisMonth(t)) {
+    if (r && t.paidVia === "line") rememberPayTold(t, r.no);
+    return true;
+  }
+  if (linePayReady(t, r) || String(t.lineProofYm || "") === payYmNow()) {
+    if (noteLinePaidTenant(t, r)) {
+      try { stampPaidMark(state, t); } catch {}
+      rememberPayTold(t, r.no);
+      save();
+      clearTimeout(saveTimer);
+      try { pushCloud(); } catch {}
+    }
+    return paidThisMonth(t);
+  }
+  return false;
 }
 function armLinePayProofPoll() {
   if (!ui.payProofVis) {
@@ -5174,10 +5201,10 @@ function armLinePayProofPoll() {
     const onBack = () => {
       if (document.visibilityState && document.visibilityState !== "visible") return;
       if (ui.page !== "pay") return;
-      syncLinePayProof().then(ok => {
+      syncLinePayProof({ pull: true }).then(ok => {
         if (!ok || ui.payStepTold) return;
         ui.payStepTold = true;
-        toast("可以按本月已繳費了");
+        toast("本月已繳費");
         ui.keepScroll = true;
         render();
       });
@@ -5192,11 +5219,11 @@ function armLinePayProofPoll() {
     ui.payProofTimer = 0;
     const watching = ui.page === "pay" || ui.page === "home" || Date.now() < (ui.payProofUntil || 0);
     if (!watching) return;
-    const ok = await syncLinePayProof();
+    const ok = await syncLinePayProof({ pull: n === 0 });
     if (ok && (ui.page === "pay" || ui.page === "home")) {
       if (!ui.payStepTold) {
         ui.payStepTold = true;
-        toast("可以按本月已繳費了");
+        toast("本月已繳費");
       }
       ui.keepScroll = true;
       render();
@@ -35215,7 +35242,7 @@ function payAccountCardHtml(b, title) {
 function payView() {
   try { applyDueRenewals(state); } catch {}
   const t = me(); const r = myRoom();
-  const paid = !!(t && t.paid);
+  const paid = paidThisMonth(t);
   const pack = tenantPayAccounts(t, r);
   const co = companyInfo();
   const firstPay = firstStudioPayDue(t, r);
@@ -35241,12 +35268,12 @@ function payView() {
     ? ""
     : `<div class="pay-steps slide-left" id="pay-report"><p>${
         ready
-          ? "可以按本月已繳費了。"
+          ? "官方 LINE 已收到本月繳費，正在更新狀態。"
           : hasText && !hasImage
-            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完回到這裡，按鈕會變成本月已繳費。"
+            ? "已收到回報文字，請再在 LINE 傳轉帳截圖。傳完回到這裡，會自動顯示本月已繳費。"
             : hasImage && !hasText
-              ? "已收到截圖，請再在 LINE 傳回報文字。傳完回到這裡，按鈕會變成本月已繳費。"
-              : "先按回報按鈕傳送訊息，把截圖傳到官方 LINE。<br>傳完回到這裡，按鈕會變成本月已繳費。"
+              ? "已收到截圖，請再在 LINE 傳回報文字。傳完回到這裡，會自動顯示本月已繳費。"
+              : "先按回報按鈕傳送訊息，把截圖傳到官方 LINE。<br>傳完回到這裡，會自動顯示本月已繳費。"
       }</p></div>`;
   const renew = typeof liveRenewalOf === "function" ? liveRenewalOf(t) : null;
   const megaSoon = !!(renew && (renew.status === "done" || renew.status === "applied") && renew.start && !(typeof renewalStartReached === "function" && renewalStartReached(renew)));
@@ -45699,11 +45726,11 @@ function bindTenant() {
       render();
     };
     if (ui.page === "pay") {
-      syncLinePayProof().then(ok => {
+      syncLinePayProof({ pull: true }).then(ok => {
         if (!ok) return;
         if (!ui.payStepTold) {
           ui.payStepTold = true;
-          toast("可以按本月已繳費了");
+          toast("本月已繳費");
         }
         ui.keepScroll = true;
         render();
