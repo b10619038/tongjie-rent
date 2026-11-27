@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-13-46";
-const APP_EDIT_COUNT = 2591;
+const APP_STAMP = "2026-11-27-14-56";
+const APP_EDIT_COUNT = 2592;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "官方 LINE 綁定修正：綁定改存到雲端資料庫，不會再因快取或後台存檔而消失；傳「房號 姓名」時會比對該房現任或即將入住租客的姓名，對不上會請對方確認並通知管理員，還沒有入住資料的會先記下，資料建好後自動綁定；用官方 LINE 回報過繳費、房號和現任租客相符的人會自動成為已綁定；租客畫面的「已綁LINE」只在真正綁定時才顯示", head: "LINE綁定修正", note: "無畫面變更", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-13-46-2591", items: [
     { text: "打開 App 後約 1 秒，租客列表偶爾會閃一下舊資料再變回正確。原因是雲端有時會回傳比較舊的一份資料（約 1 分鐘內），App 把它合併進來，房間的現任租客被短暫改回舊的。現在 App 記住已經看過的最新版本，1 到 2 分鐘內收到比它舊的雲端資料就直接丟掉，開啟時遇到舊資料會自動重抓；存檔後的檢查也不會再把舊資料寫回雲端", head: "開啟後不再閃回舊租客", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-13-32-2590", items: [
@@ -5006,10 +5009,7 @@ function linePayLinked(no) {
   });
 }
 function lineButtonBound(no, t) {
-  if (no && lineBindForRoom(no)) return true;
-  if (linePayLinked(no)) return true;
-  if (!t) return false;
-  return !!(t.paidVia === "line" || t.lineNotified || t.lineProofYm || t.avatarFrom === "line");
+  return !!(no && lineBindForRoom(no));
 }
 function lineBindName(no) {
   const v = ui.lineBinds && ui.lineBinds.byRoom && ui.lineBinds.byRoom[no];
