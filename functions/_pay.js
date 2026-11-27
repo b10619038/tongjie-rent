@@ -827,7 +827,7 @@ export async function kickRecover() {
 // ---- LINE image OCR (2026-11-27) ----
 // Failover: Google Vision -> Gemini Flash (free) -> Cloudflare Workers AI.
 // Returns the text ("" = no text found) or null on any error / no provider (caller keeps old behavior).
-const OCR_GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+const OCR_GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"];
 const OCR_CF_MODELS = ["@cf/moondream/moondream3.1-9B-A2B", "@cf/meta/llama-3.2-11b-vision-instruct"];
 const OCR_PROMPT = "這是一張圖片。只把圖上看得見的文字依原樣全部抄下來，不要翻譯、不要解說。看不清楚就略過。";
 function b64FromBuf(buf) {
