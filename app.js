@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-27-17-57";
-const APP_EDIT_COUNT = 2595;
+const APP_STAMP = "2026-11-27-18-10";
+const APP_EDIT_COUNT = 2596;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -629,6 +629,9 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "官方 LINE 會看租客傳來的圖片：是轉帳成功截圖（讀出金額、轉入公司帳號、轉出末五碼、留言的房號姓名）就當作繳費回報，回「已收到轉帳資料，謝謝」並自動標已繳、推播管理員；未綁定的人截圖末五碼唯一對上且金額相符、或留言房號姓名和租客資料相符才自動綁定，否則請對方傳房號姓名。不是轉帳截圖就不提繳費：已綁定租客回「收到，管理員會與您聯繫。」（6 小時一次），未綁定不回。讀圖失敗時照舊。轉帳文句也會看備註裡的房號姓名，並能讀「成功轉出」、補零的公司帳號和「轉…給你囉」分享文句。需在 Cloudflare Pages 設定 GOOGLE_VISION_KEY 後讀圖才生效", head: "LINE讀轉帳截圖", before: "changelog/2026-11-27-line-ocr-before.svg", after: "changelog/2026-11-27-line-ocr-after.svg", aud: ["開發者後台"] }
+  ] },
+  { ver: "2026-11-27-17-57-2595", items: [
     { text: "官方 LINE 看得懂銀行「轉帳成功」文句：已綁定租客貼上轉帳結果（金額、轉入帳號等）就當作完成繳費回報，自動標本月已繳並推播管理員；金額和應繳不同時推播會註明請核對。未綁定的人只有在轉出帳號末五碼唯一對上、且金額等於該房未繳租金時才自動綁定，否則回「請再傳房號 姓名」並推播管理員待對帳，之後傳房號姓名對上就一併入帳。只憑金額絕不綁定", head: "LINE轉帳文句", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-27-16-23-2594", items: [
