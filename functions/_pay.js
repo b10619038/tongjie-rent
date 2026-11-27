@@ -211,7 +211,7 @@ function notePayProof(data, room, kind) {
 function payProofReply(p) {
   if (!p) return "";
   if (p.hasText && p.hasImage) return "已收到繳費回報與截圖，謝謝";
-  if (p.hasImage) return "已收到截圖，請再傳送繳費回報文字（可從 App 點上方按鈕帶入）";
+  if (p.hasImage) return "已收到截圖，請再回覆「已繳費」。";
   if (p.hasText) return "已收到回報，請再傳轉帳截圖";
   return "";
 }
