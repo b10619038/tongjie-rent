@@ -45,8 +45,8 @@ const ACCOUNT_BANKS = { "統潔": ["聯邦", "農會", "兆豐"], "信潔": ["�
 const BANK_PLACES = ["聯邦", "兆豐", "農會", "超商"];
 const PERSONAL_PEOPLE = ["趙文榮", "趙洪漳", "趙浩鈞", "趙文彬", "趙苡真", "趙海成、趙正賢", "趙貴美", "江秀霞", "黃思敏", "趙淑芬", "許喻涵"];
 const PERSONAL_ACCOUNTS = PERSONAL_PEOPLE.map(p => "個人戶·" + p);
-const APP_STAMP = "2026-11-28-20-20";
-const APP_EDIT_COUNT = 2610;
+const APP_STAMP = "2026-11-28-20-37";
+const APP_EDIT_COUNT = 2611;
 const APP_VERSION = APP_STAMP + "-" + String(APP_EDIT_COUNT);
 const FILE_VER = (function () {
   try {
@@ -631,6 +631,12 @@ const STUDIO_FEE_VER = "20260831-2120";
 // ---------------------------------------------------------------------------
 const CHANGELOG = [
   { ver: APP_VERSION, items: [
+    { text: "月底提前繳下個月房租，現在會記成下個月的「預繳」：這個月已經繳過的租客（套房、廠房都一樣），28 號以後又轉了下個月的房租，租客頁會顯示「12月租金已於 11/28 預繳」，12 月 1 號起直接顯示已繳、不會再被催繳，這個月的入帳日不會被蓋掉。官方 LINE 收到這種月底轉帳或回報時也會回覆「記為下個月的預繳房租」。管理員在已繳租客的入帳卡上，28 號起也能按「記下預繳」手動登記", head: "月底預繳記為下月", before: "changelog/2026-11-28-early-prepay-before.svg", after: "changelog/2026-11-28-early-prepay-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] },
+    { text: "極黑主題下，按住或點租客圖卡時不再閃白色，改成稍微亮一點的深灰，其他可點的卡片和按鈕也檢查過。其他主題完全不變", head: "極黑按壓不閃白", before: "changelog/2026-11-28-void-press-before.svg", after: "changelog/2026-11-28-void-press-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] },
+    { text: "極黑主題下，所有輸入框、下拉選單（租客詳情的現任、租金、押金、匯款銀行、實際匯款日、本月收款日、登入密碼等，其他頁面也一樣）平常不再有灰色外框，點下去要編輯時才出現灰色外框，大小和位置都不變。其他主題完全不變", head: "極黑輸入框無外框", before: "changelog/2026-11-28-void-fields-before.svg", after: "changelog/2026-11-28-void-fields-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] },
+    { text: "極黑主題下，下方選單列（總覽、資產、租客、行程）目前所在分頁的圓形底色調亮，和選單列的深灰明顯分得出來，圖示和文字仍是白色。其他主題完全不變", head: "極黑選單底色變亮", before: "changelog/2026-11-28-void-tab-before.svg", after: "changelog/2026-11-28-void-tab-after.svg", aud: ["開發者後台", "管理員後台", "負責人後台"] }
+  ] },
+  { ver: "2026-11-28-20-20-2610", items: [
     { text: "官方 LINE 綁定更好認：租客傳「房號＋姓名」時，中間用空格、逗號、句點、橫線、加號、底線、全形數字、「7632號」都認得，姓名在前也可以；姓名真的對不上（例如珮／佩）仍然不會綁。對不上時回覆的文字更柔和（不提 App、不放網址），只有「？？」「?」時也會回一句簡短提示。匯款備註用同樣寬鬆的寫法", head: "LINE綁定更寬鬆", note: "無畫面變更", aud: ["開發者後台"] }
   ] },
   { ver: "2026-11-28-20-10-2609", items: [
@@ -3685,6 +3691,10 @@ function notesAutoHead(text) {
     "更新紀錄調整：點進單則說明後，上方不再重複顯示一大段粗體標題，只留返回、日期、對象標籤、說明與前後畫面；更新紀錄列表每則之間加上細分隔線；極黑主題下，說明頁改為深色底、前後畫面外框也改成深色，整個畫面最外層的底色改成更深的黑，管理員後台的對象標籤也看得清楚": "更新紀錄與極黑底色",
     "修正「本月租金尚未繳納」誤報：租約下個月才開始、或已經預繳的租客不會再被提醒，管理員的「本月未繳租金」戶數也只算真的該繳的租客。開發者用「代操」看租客畫面時，不再跳出租客的通知，也不會把這支手機誤綁成租客，退出代操後會自動綁回管理員": "未繳誤報修正",
     "後台「設定」的帳號卡：「身分」那一列改成顯示身分加姓名，例如「開發者 趙O榮」、「負責人 趙O賢」、「管理員 王O明」，一眼就知道目前登入的是誰。上方標題不變": "身分顯示姓名",
+    "極黑主題下，按住或點租客圖卡時不再閃白色，改成稍微亮一點的深灰，其他可點的卡片和按鈕也檢查過。其他主題完全不變": "極黑按壓不閃白",
+    "極黑主題下，所有輸入框、下拉選單（租客詳情的現任、租金、押金、匯款銀行、實際匯款日、本月收款日、登入密碼等，其他頁面也一樣）平常不再有灰色外框，點下去要編輯時才出現灰色外框，大小和位置都不變。其他主題完全不變": "極黑輸入框無外框",
+    "極黑主題下，下方選單列（總覽、資產、租客、行程）目前所在分頁的圓形底色調亮，和選單列的深灰明顯分得出來，圖示和文字仍是白色。其他主題完全不變": "極黑選單底色變亮",
+    "月底提前繳下個月房租，現在會記成下個月的「預繳」：這個月已經繳過的租客（套房、廠房都一樣），28 號以後又轉了下個月的房租，租客頁會顯示「12月租金已於 11/28 預繳」，12 月 1 號起直接顯示已繳、不會再被催繳，這個月的入帳日不會被蓋掉。官方 LINE 收到這種月底轉帳或回報時也會回覆「記為下個月的預繳房租」。管理員在已繳租客的入帳卡上，28 號起也能按「記下預繳」手動登記": "月底預繳記為下月",
     "官方 LINE 綁定更好認：租客傳「房號＋姓名」時，中間用空格、逗號、句點、橫線、加號、底線、全形數字、「7632號」都認得，姓名在前也可以；姓名真的對不上（例如珮／佩）仍然不會綁。對不上時回覆的文字更柔和（不提 App、不放網址），只有「？？」「?」時也會回一句簡短提示。匯款備註用同樣寬鬆的寫法": "LINE綁定更寬鬆",
     "極黑主題下，租客頁最上面兩張卡片（「套房租客／廠房租客」切換和「搜尋」列）最外圈的淺色邊框拿掉；搜尋框的深色膠囊一路拉到卡片右邊，「搜尋」字樣左邊留出空間不再被切到，四個篩選圓點改回和原本主題一樣的顏色。其他主題完全不變": "極黑外框拿掉",
     "租客首頁「內容」裡的「已綁LINE」按鈕：已經綁定時改為灰色、不能按，和設定裡的綁定 LINE 一致。還沒綁定的照舊可按": "首頁已綁LINE不能按",
@@ -35406,13 +35416,60 @@ function rememberPayTold(t, no) {
   }
   try { localStorage.setItem(payToldKey(no), "1"); } catch {}
 }
+// APP-32: rent paid at month-end (day >= EARLY_PAY_DAY) by a tenant whose current month is already paid is next month's rent paid early (預繳).
+// Generic for studio and factory tenants and any due day; never touches this month's paid/remit fields.
+const EARLY_PAY_DAY = 28;
+function earlyPayNextYm(t, room, onYmd) {
+  if (!t || t.former || t.incoming || t.demo || isDemoTenant(t) || !room || room.demo || room.status === "office") return "";
+  const on = ymdOf(onYmd) || todayYmd();
+  const ym = payYmNow();
+  if (on.slice(0, 7) !== ym || Number(on.slice(8, 10)) < EARLY_PAY_DAY) return "";
+  if (!paidThisMonth(t)) return "";
+  const next = nextYmOf(ym);
+  if (!next) return "";
+  if ((t.prepaidYm || []).some(y => String(y).slice(0, 7) === next)) return "";
+  const end = ymdOf(t.leaseEnd);
+  if (end && end.slice(0, 7) < next) return "";
+  return next;
+}
+function notePrepaidNext(data, t, room, onYmd, via) {
+  const next = earlyPayNextYm(t, room, onYmd);
+  if (!next) return "";
+  const on = ymdOf(onYmd) || todayYmd();
+  const group = (typeof factoryGroupTenants === "function" ? factoryGroupTenants(t, data) : null) || [t];
+  (group.length ? group : [t]).forEach(x => {
+    if (!x) return;
+    if (!Array.isArray(x.prepaidYm)) x.prepaidYm = [];
+    if (x.prepaidYm.indexOf(next) < 0) x.prepaidYm.push(next);
+    if (!x.prepaidOn || typeof x.prepaidOn !== "object") x.prepaidOn = {};
+    if (!x.prepaidOn[next]) x.prepaidOn[next] = on;
+    x.edited = true;
+    x.editedAt = Date.now();
+  });
+  try { mirrorPaidFromTenant(data, t); } catch {}
+  return next;
+}
+function applyEarlyPayProof(no, p) {
+  const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
+  if (!room || room.demo || room.kind === "factory") return 0;
+  const t = (state.tenants || []).find(x => x && x.roomId === room.id && !x.former && !x.incoming && !x.demo);
+  if (!t) return 0;
+  const at = Number(p && p.at) || Date.now();
+  const on = new Date(at + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const next = notePrepaidNext(state, t, room, on, "line");
+  if (!next) return 0;
+  pushPhoneNotify("預繳回報", `${no} ${t.name || ""} 已預繳 ${Number(next.slice(5, 7))} 月租金（官方 LINE）`, "admin");
+  return 1;
+}
 function applySeenPayProofs() {
   if (!state || ui.role === "tenant") return 0;
   const proofs = (ui.lineBinds && ui.lineBinds.payProofs) || {};
   const ym = payYmNow();
+  const nextYm = nextYmOf(ym);
   let n = 0;
   Object.keys(proofs).forEach(no => {
     const p = proofs[no];
+    if (p && nextYm && String(p.ym) === nextYm && p.hasText && p.hasImage) { n += applyEarlyPayProof(no, p); return; }
     if (!p || String(p.ym) !== ym || !p.hasText || !p.hasImage) return;
     const room = (state.rooms || []).find(r => r && String(r.no) === String(no));
     if (!room || room.demo || room.kind === "factory") return;
@@ -43996,6 +44053,8 @@ function payAdminCardHtml(t, r) {
     <div class="row"><span class="k">匯款日</span><span class="v">${escapeHtml(date)}</span></div>
     <div class="row"><span class="k">銀行</span><span class="v">${escapeHtml(t.paidVia === "cash" ? "現金" : payBankDisplay(t.payBank || bankNow))}</span></div>
     <div class="row"><span class="k">金額</span><span class="v">${amt ? money(amt) : "—"}</span></div>
+    ${prepaidAheadHtml(t, r) ? `<div class="row"><span class="k">預繳</span><span class="v">${escapeHtml(prepaidAheadHtml(t, r))}</span></div>` : ""}
+    ${earlyPayNextYm(t, r, todayYmd()) ? `<button type="button" class="ghost" data-pay-early="${escapeHtml(t.id)}" style="margin-top:10px">記下 ${Number(nextYmOf(payYmNow()).slice(5, 7))} 月租金預繳（今天轉入）</button>` : ""}
     <button type="button" class="btn-navy" data-pay-unpay="${escapeHtml(t.id)}" style="margin-top:10px">改回未繳</button>
     <button type="button" class="ghost" data-invoice="${escapeHtml(t.roomId || (r && r.id) || "")}" style="margin-top:8px">產出發票</button>
     ${t.invoicePickupAt ? `<div class="small" style="margin-top:8px">領取發票　${escapeHtml(formatDateTime12(String(t.invoicePickupAt).replace("T", " ")))}　7651</div>` : ""}
@@ -44838,6 +44897,22 @@ function bindTenantFold() {
       e.preventDefault();
       e.stopPropagation();
       confirmTenantPaid(btn);
+    };
+  });
+  document.querySelectorAll("[data-pay-early]").forEach(btn => {
+    bindIosPress(btn);
+    btn.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const t = (state.tenants || []).find(x => x && x.id === btn.dataset.payEarly);
+      const room = t && (state.rooms || []).find(r => r && r.id === t.roomId);
+      const hit = t && room ? notePrepaidNext(state, t, room, todayYmd(), "app") : "";
+      if (!hit) { toast("目前不能記預繳"); return; }
+      save();
+      clearTimeout(saveTimer);
+      try { pushCloud(); } catch {}
+      toast("已記 " + Number(hit.slice(5, 7)) + " 月租金預繳");
+      closeSheetThen(btn.closest(".sheet-drop"), refreshTenantList);
     };
   });
   document.querySelectorAll("[data-pay-unpay]").forEach(btn => {
